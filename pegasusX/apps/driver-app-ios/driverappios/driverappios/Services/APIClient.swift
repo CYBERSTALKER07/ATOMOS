@@ -291,19 +291,7 @@ final class APIClient: @unchecked Sendable {
         return try await post("v1/fleet/route/request-early-complete", body: Req(reason: reason, note: note))
     }
 
-    /// Edge 28: Propose quantity negotiation to supplier
-    func proposeNegotiation(orderId: String, items: [NegotiationItemRequest]) async throws -> NegotiationProposalResponse {
-        struct Req: Encodable {
-            let orderId: String
-            let items: [NegotiationItemRequest]
-
-            enum CodingKeys: String, CodingKey {
-                case orderId = "order_id"
-                case items
-            }
-        }
-        return try await post("v1/delivery/negotiate", body: Req(orderId: orderId, items: items))
-    }
+    // Quantity negotiation disabled ecosystem-wide — backend returns 410 feature_disabled.
 
     /// Edge 32: Mark order as delivered on credit
     func markCreditDelivery(orderId: String, photoProofUrl: String? = nil) async throws -> [String: String] {

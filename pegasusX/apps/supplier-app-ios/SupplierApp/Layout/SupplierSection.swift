@@ -50,7 +50,8 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     }
 
     static var opsSections: [SupplierSection] {
-        [.exceptions, .shopClosed, .negotiations, .manifests, .dispatchPreview, .activity, .fleetOrders, .ledger, .operations]
+        // Quantity negotiation disabled ecosystem-wide.
+        [.exceptions, .shopClosed, .manifests, .dispatchPreview, .activity, .fleetOrders, .ledger, .operations]
     }
 
     static var accountSections: [SupplierSection] {

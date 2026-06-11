@@ -51,9 +51,6 @@ export default function ExceptionsPage() {
         <Link href={"/exceptions/shop-closed" as Route} className="text-[var(--color-md-primary)] underline">
           Shop closed queue
         </Link>
-        <Link href={"/exceptions/negotiations" as Route} className="text-[var(--color-md-primary)] underline">
-          Quantity negotiations
-        </Link>
         <Link href={"/exceptions/early-complete" as Route} className="text-[var(--color-md-primary)] underline">
           Early route complete
         </Link>

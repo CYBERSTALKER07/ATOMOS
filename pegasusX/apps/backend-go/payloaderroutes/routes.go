@@ -1,6 +1,8 @@
 package payloaderroutes
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
@@ -9,6 +11,9 @@ import (
 // Deps is the narrow dependency contract for payload routes.
 type Deps struct {
 	Service             *payload.Service
+	OrderService        interface {
+		HandleMissingItems(http.ResponseWriter, *http.Request)
+	}
 	JWTSecret           string
 	FirebaseAuthEnabled bool
 	FirebaseVerifier    auth.FirebaseVerifier
@@ -45,6 +50,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 		rr.Get("/v1/user/notifications", d.Service.HandleUserNotifications)
 		rr.Post("/v1/user/notifications/read", d.Service.HandleMarkNotificationsRead)
+		if d.OrderService != nil {
+			rr.Post("/v1/delivery/missing-items", d.OrderService.HandleMissingItems)
+		}
 		// POST /v1/user/device-token is registered globally via platformroutes.
 	}
 

@@ -21,9 +21,7 @@ struct MoreHubView: View {
                 NavigationLink { ShopClosedView() } label: {
                     Label("Shop closed", systemImage: "storefront")
                 }
-                NavigationLink { NegotiationsView() } label: {
-                    Label("Negotiations", systemImage: "hand.raised")
-                }
+                // Quantity negotiation disabled ecosystem-wide.
             }
             Section("Insights") {
                 NavigationLink { ActivityView() } label: {

@@ -29,7 +29,7 @@ import com.pegasusx.supplier.ui.screens.inventory.InventoryScreen
 import com.pegasusx.supplier.ui.screens.activity.ActivityScreen
 import com.pegasusx.supplier.ui.screens.dispatch.DispatchPreviewScreen
 import com.pegasusx.supplier.ui.screens.exceptions.ExceptionsScreen
-import com.pegasusx.supplier.ui.screens.exceptions.NegotiationsScreen
+// NegotiationsScreen removed — quantity negotiation disabled ecosystem-wide.
 import com.pegasusx.supplier.ui.screens.exceptions.ShopClosedScreen
 import com.pegasusx.supplier.ui.screens.fleet.FleetOrdersScreen
 import com.pegasusx.supplier.ui.screens.manifests.ManifestsScreen

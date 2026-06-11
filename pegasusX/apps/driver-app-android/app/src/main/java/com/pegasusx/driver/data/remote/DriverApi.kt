@@ -20,8 +20,7 @@ import com.pegasusx.driver.data.model.LoginRequest
 import com.pegasusx.driver.data.model.ManifestGateResponse
 import com.pegasusx.driver.data.model.MissingItemsPayload
 import com.pegasusx.driver.data.model.MissingItemsResponse
-import com.pegasusx.driver.data.model.NegotiationPayload
-import com.pegasusx.driver.data.model.NegotiationProposalResponse
+// NegotiationPayload / NegotiationProposalResponse — quantity negotiation disabled.
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.PendingCollection
 import com.pegasusx.driver.data.model.ReorderStopsRequest

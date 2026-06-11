@@ -157,6 +157,7 @@ func main() {
 	})
 	payloaderroutes.RegisterRoutes(r, payloaderroutes.Deps{
 		Service:             app.PayloadService,
+		OrderService:        app.OrderService,
 		JWTSecret:           cfg.JWTSecret,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,

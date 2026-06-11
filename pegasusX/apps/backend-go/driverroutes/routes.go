@@ -67,6 +67,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			rr.Post("/v1/ws/ack", d.Service.HandleWSAck)
 			rr.Get("/v1/user/notifications", d.Service.HandleUserNotifications)
 			rr.Post("/v1/user/notifications/read", d.Service.HandleMarkNotificationsRead)
+			// Quantity negotiation disabled — handler returns 410 feature_disabled.
 			rr.Post("/v1/delivery/negotiate", d.OrderService.HandleProposeNegotiation)
 			rr.Post("/v1/delivery/credit-delivery", d.OrderService.HandleCreditDelivery)
 			rr.Post("/v1/delivery/missing-items", d.OrderService.HandleMissingItems)

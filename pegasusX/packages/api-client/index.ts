@@ -340,12 +340,9 @@ export class ApiClient {
     });
   }
 
-  async getSupplierNegotiationsPending(params?: { limit?: number; offset?: number }): Promise<NegotiationPendingResponse> {
-    const query = new URLSearchParams();
-    if (params?.limit != null) query.set("limit", String(params.limit));
-    if (params?.offset != null) query.set("offset", String(params.offset));
-    const suffix = query.toString() ? `?${query.toString()}` : "";
-    return this.request<NegotiationPendingResponse>(`/v1/supplier/negotiations/pending${suffix}`, "GET");
+  /** Quantity negotiation disabled ecosystem-wide. */
+  async getSupplierNegotiationsPending(_params?: { limit?: number; offset?: number }): Promise<NegotiationPendingResponse> {
+    return { data: [] };
   }
 
   async approveSupplierEarlyComplete(
@@ -358,14 +355,12 @@ export class ApiClient {
     });
   }
 
+  /** Quantity negotiation disabled ecosystem-wide. */
   async resolveSupplierNegotiation(
-    request: NegotiationResolveRequest,
-    idempotencyKey: string,
+    _request: NegotiationResolveRequest,
+    _idempotencyKey: string,
   ): Promise<NegotiationResolveResponse> {
-    return this.request<NegotiationResolveResponse>("/v1/supplier/negotiate/resolve", "POST", {
-      body: request,
-      idempotencyKey,
-    });
+    throw new Error("quantity_negotiation_disabled");
   }
 
   async issueSupplierPaymentBypass(request: PaymentBypassRequest): Promise<PaymentBypassResponse> {

@@ -139,11 +139,8 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runPayloaderE2E(ctx, client, base, cfg, supplierID, dispatchHint); err != nil {
 		return fmt.Errorf("payloader e2e: %w", err)
 	}
-	if negotiateOrderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell); err != nil {
-		return fmt.Errorf("negotiation order create: %w", err)
-	} else if err := runNegotiationE2E(ctx, client, base, cfg, supplierID, cookie, negotiateOrderID); err != nil {
-		return fmt.Errorf("negotiation e2e: %w", err)
-	}
+	// Quantity negotiation disabled ecosystem-wide — skip negotiation E2E.
+	fmt.Println("PX_E2E_NEGOTIATION_SKIPPED")
 
 	if err := runClientPolicyE2E(ctx, client, base); err != nil {
 		return fmt.Errorf("client policy e2e: %w", err)
@@ -172,7 +169,6 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	fmt.Println("PX_E2E_TELEMETRY_OK")
 	fmt.Println("PX_E2E_PAYLOAD_OK")
 	fmt.Println("PX_E2E_SHOP_CLOSED_OK")
-	fmt.Println("PX_E2E_NEGOTIATION_OK")
 	fmt.Println("PX_E2E_CATALOG_OK")
 	fmt.Println("PX_E2E_DEVICE_TOKEN_OK")
 	fmt.Println("PX_E2E_DRIVER_EDGES_OK")

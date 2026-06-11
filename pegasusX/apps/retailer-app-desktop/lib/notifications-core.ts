@@ -38,7 +38,7 @@ const retailerNotificationEventTypes = new Set([
   'RETAILER_PRICE_OVERRIDE',
   'CANCEL_APPROVED',
   'ORDER_COMPLETED',
-  'NEGOTIATION_PROPOSED',
+  // 'NEGOTIATION_PROPOSED', // quantity negotiation disabled
   'PRE_ORDER_AUTO_ACCEPTED',
   'PRE_ORDER_CONFIRMED',
   'PRE_ORDER_EDITED',
