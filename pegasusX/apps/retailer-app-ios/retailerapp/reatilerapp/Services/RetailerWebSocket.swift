@@ -92,12 +92,14 @@ struct PaymentFailureEvent: Decodable {
     }
 }
 
-struct ShopClosedAlertEvent: Decodable {
+struct ShopClosedAlertEvent: Decodable, Identifiable {
     let type: String
     let orderId: String
     let driverName: String
     let options: [String]
     let attemptId: String
+
+    var id: String { "\(orderId)-\(attemptId)" }
 
     enum CodingKeys: String, CodingKey {
         case type
@@ -326,8 +328,23 @@ final class RetailerWebSocket {
                 default: break
                 }
             }
-        case "SHOP_CLOSED_ALERT":
+        case "SHOP_CLOSED", "SHOP_CLOSED_ALERT":
             if let event = try? decoder.decode(ShopClosedAlertEvent.self, from: data) {
+                emit(.shopClosedAlert(event))
+            } else if let orderId = json["order_id"] as? String, !orderId.isEmpty {
+                let driverName = (json["driver_name"] as? String)
+                    ?? (json["driver_id"] as? String)
+                    ?? "Driver"
+                let attemptId = json["attempt_id"] as? String ?? ""
+                let options = json["options"] as? [String]
+                    ?? ["OPEN_NOW", "5_MIN", "CALL_ME", "CLOSED_TODAY"]
+                let event = ShopClosedAlertEvent(
+                    type: type,
+                    orderId: orderId,
+                    driverName: driverName,
+                    options: options,
+                    attemptId: attemptId
+                )
                 emit(.shopClosedAlert(event))
             }
         case "CART_SYNC_UPDATED":

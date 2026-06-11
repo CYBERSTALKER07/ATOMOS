@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   User,
   Mail,
@@ -23,6 +24,7 @@ import {
   RefreshCw,
   WifiOff,
   Clock,
+  Users,
 } from "lucide-react";
 import { Button, Chip, Skeleton } from "@heroui/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -302,6 +304,7 @@ export default function SettingsPage() {
     mutate: mutateAutoOrder,
   } = useLiveData<AutoOrderSettings>("/v1/retailer/settings/auto-order");
   const ws = useOptionalWebSocket();
+  const router = useRouter();
   const [savingGlobal, setSavingGlobal] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [notifOn, setNotifOn] = useState(() => {
@@ -765,6 +768,58 @@ export default function SettingsPage() {
                       )}
                     </Button>
                   )}
+                </div>
+              </section>
+
+              <section className="flex flex-col gap-4 md:col-span-2">
+                <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)] flex items-center gap-2">
+                  <CreditCard
+                    size={20}
+                    className="text-[var(--desk-text-tertiary)]"
+                  />{" "}
+                  Billing & Access
+                </h2>
+                <div className="bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl p-2 shadow-[var(--shadow-sm)]">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/settings/cards")}
+                    className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-[var(--desk-surface-subtle)] transition-colors"
+                  >
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[var(--desk-text-tertiary)]">
+                        <CreditCard size={18} />
+                      </div>
+                      <div>
+                        <span className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] block">
+                          Saved Cards
+                        </span>
+                        <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                          Manage payment methods
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight size={18} className="text-[var(--desk-text-tertiary)]" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/settings/family")}
+                    className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-[var(--desk-surface-subtle)] transition-colors"
+                  >
+                    <div className="flex items-center gap-3 text-left">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[var(--desk-text-tertiary)]">
+                        <Users size={18} />
+                      </div>
+                      <div>
+                        <span className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] block">
+                          Family Members
+                        </span>
+                        <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                          Staff and delegated ordering
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight size={18} className="text-[var(--desk-text-tertiary)]" />
+                  </button>
                 </div>
               </section>
 

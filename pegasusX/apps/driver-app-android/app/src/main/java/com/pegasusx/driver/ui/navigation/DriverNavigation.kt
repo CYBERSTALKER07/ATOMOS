@@ -53,6 +53,10 @@ import com.pegasusx.driver.ui.screens.auth.LoginScreen
 import com.pegasusx.driver.ui.screens.home.HomeScreen
 import com.pegasusx.driver.ui.screens.manifest.DeliveryCorrectionScreen
 import com.pegasusx.driver.ui.screens.manifest.ManifestScreen
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.pegasusx.driver.data.model.OrderState
+import com.pegasusx.driver.ui.components.ActiveRideBar
 import com.pegasusx.driver.ui.screens.manifest.ManifestViewModel
 import com.pegasusx.driver.ui.screens.map.MapScreen
 import com.pegasusx.driver.ui.screens.offload.CashCollectionScreen
@@ -195,6 +199,13 @@ fun DriverNavigation(api: DriverApi, driverWebSocket: DriverWebSocket) {
 
         composable(DriverRoutes.MAIN) {
             val manifestViewModel: ManifestViewModel = hiltViewModel()
+            val manifestState by manifestViewModel.state.collectAsState()
+            val activeRideOrder = manifestState.orders.firstOrNull { order ->
+                order.state != OrderState.COMPLETED &&
+                    order.state != OrderState.CANCELLED &&
+                    order.latitude != null &&
+                    order.longitude != null
+            }
             MainTabView(
                 homeContent = {
                     HomeScreen(
@@ -216,7 +227,14 @@ fun DriverNavigation(api: DriverApi, driverWebSocket: DriverWebSocket) {
                 },
                 profileContent = {
                     ProfileScreen(viewModel = manifestViewModel)
-                }
+                },
+                activeRideBar = { onOpenMap ->
+                    ActiveRideBar(
+                        visible = activeRideOrder != null,
+                        order = activeRideOrder,
+                        onClick = onOpenMap,
+                    )
+                },
             )
         }
 

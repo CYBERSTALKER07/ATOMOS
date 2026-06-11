@@ -20,8 +20,10 @@ import com.pegasusx.retailer.ui.theme.SoftSquircleShape
 import com.pegasusx.retailer.ui.theme.SquircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.SmartToy
@@ -56,6 +58,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun ProfileScreen(
     onAccountClick: () -> Unit = {},
+    onSavedCardsClick: () -> Unit = {},
+    onFamilyMembersClick: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -150,7 +154,13 @@ fun ProfileScreen(
         }
 
         // ── Settings Sections ──
-        item { SettingsSection(onAccountClick = onAccountClick) }
+        item {
+            SettingsSection(
+                onAccountClick = onAccountClick,
+                onSavedCardsClick = onSavedCardsClick,
+                onFamilyMembersClick = onFamilyMembersClick,
+            )
+        }
 
         // ── Sign Out ──
         item {
@@ -281,7 +291,11 @@ private fun EmpathyEngineCard(
 }
 
 @Composable
-private fun SettingsSection(onAccountClick: () -> Unit) {
+private fun SettingsSection(
+    onAccountClick: () -> Unit,
+    onSavedCardsClick: () -> Unit,
+    onFamilyMembersClick: () -> Unit,
+) {
     Surface(
         modifier = Modifier.fillMaxWidth()
             .shadow(3.dp, SoftSquircleShape, ambientColor = Color.Black.copy(alpha = 0.06f), spotColor = Color.Black.copy(alpha = 0.06f)),
@@ -292,6 +306,10 @@ private fun SettingsSection(onAccountClick: () -> Unit) {
             SettingsListItem(icon = Icons.Outlined.Settings, title = "General Settings", subtitle = "Language, preferences", onClick = { })
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Rounded.Person, title = "Account", subtitle = "Business details & receiving hours", onClick = onAccountClick)
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            SettingsListItem(icon = Icons.Outlined.CreditCard, title = "Saved Cards", subtitle = "Manage payment methods", onClick = onSavedCardsClick)
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            SettingsListItem(icon = Icons.Outlined.People, title = "Family Members", subtitle = "Manage family and staff", onClick = onFamilyMembersClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.Notifications, title = "Notifications", subtitle = "Push, email, SMS", onClick = { })
         }

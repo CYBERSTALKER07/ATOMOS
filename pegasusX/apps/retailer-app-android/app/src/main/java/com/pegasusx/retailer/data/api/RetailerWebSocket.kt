@@ -43,6 +43,32 @@ data class RetailerWSMessage(
     @SerialName("supplier_name") val supplierName: String = "",
     @SerialName("state") val state: String = "",
     @SerialName("timestamp") val timestamp: String = "",
+    @SerialName("driver_id") val driverId: String = "",
+    @SerialName("driver_name") val driverName: String = "",
+    @SerialName("attempt_id") val attemptId: String = "",
+    @SerialName("options") val options: List<String> = emptyList(),
+)
+
+val defaultShopClosedOptions = listOf("OPEN_NOW", "5_MIN", "CALL_ME", "CLOSED_TODAY")
+
+fun RetailerWSMessage.toShopClosedAlert(): ShopClosedAlert? {
+    if (type != "SHOP_CLOSED" && type != "SHOP_CLOSED_ALERT") return null
+    if (orderId.isBlank()) return null
+    val resolvedDriver = driverName.ifBlank { driverId.ifBlank { "Driver" } }
+    val resolvedOptions = options.ifEmpty { defaultShopClosedOptions }
+    return ShopClosedAlert(
+        orderId = orderId,
+        driverName = resolvedDriver,
+        attemptId = attemptId,
+        options = resolvedOptions,
+    )
+}
+
+data class ShopClosedAlert(
+    val orderId: String,
+    val driverName: String,
+    val attemptId: String,
+    val options: List<String>,
 )
 
 @Singleton

@@ -89,6 +89,7 @@ struct ContentView: View {
     @State private var cartBounce = false
     @State private var activeOrders: [Order] = []
     @State private var paymentEvent: PaymentRequiredEvent?
+    @State private var shopClosedAlert: ShopClosedAlertEvent?
     @State private var refreshCenter = RetailerRefreshCenter.shared
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -205,6 +206,19 @@ struct ContentView: View {
                 Task { await loadActiveOrders() }
             }
             .presentationDetents([.large])
+            .interactiveDismissDisabled()
+            .presentationCompactAdaptation(.sheet)
+        }
+        .sheet(item: $shopClosedAlert) { alert in
+            NavigationStack {
+                ShopClosedBanner(event: alert) { _ in
+                    shopClosedAlert = nil
+                    Task { await loadActiveOrders() }
+                }
+                .navigationTitle("Shop Status")
+                .navigationBarTitleDisplayMode(.inline)
+            }
+            .presentationDetents([.medium, .large])
             .interactiveDismissDisabled()
             .presentationCompactAdaptation(.sheet)
         }
@@ -644,7 +658,10 @@ struct ContentView: View {
                 await loadActiveOrders()
             case .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited, .preOrderNudge, .preOrderConfirmationPush:
                 await loadActiveOrders()
-            case .shopClosedAlert, .cartSyncUpdated:
+            case .shopClosedAlert(let alert):
+                shopClosedAlert = alert
+                await loadActiveOrders()
+            case .cartSyncUpdated:
                 break
             }
             refreshCenter.trigger()

@@ -36,7 +36,7 @@ struct ProfileView: View {
                 // Settings
                 settingsSection("Company", icon: "building.2.fill", items: [
                     SettingsItem(icon: "building.2", title: "Company Info", subtitle: user.company, view: "AccountProfile"),
-                    SettingsItem(icon: "creditcard", title: "Billing", subtitle: "Manage payment methods"),
+                    SettingsItem(icon: "creditcard", title: "Billing", subtitle: "Manage payment methods", view: "SavedCards"),
                     SettingsItem(icon: "key", title: "API Access", subtitle: "Developer settings"),
                     SettingsItem(icon: "person.2.fill", title: "Family Members", subtitle: "Manage family/staff", view: "FamilyMembers"),
                 ]).slideIn(delay: 0.1)
@@ -351,46 +351,46 @@ struct ProfileView: View {
                 NavigationLink(destination: AccountProfileView()) {
                     settingsRowContent(item)
                 }
-            } else {
-                Button {} label: {
+            } else if item.view == "SavedCards" {
+                NavigationLink(destination: SavedCardsView()) {
                     settingsRowContent(item)
                 }
+            } else {
+                settingsRowContent(item)
             }
         }
     }
     
     private func settingsRowContent(_ item: SettingsItem) -> some View {
-        Button {} label: {
-            HStack(spacing: AppTheme.spacingMD) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: AppTheme.radiusSM)
-                        .fill(AppTheme.accentSoft.opacity(0.4))
-                        .frame(width: 34, height: 34)
-                    Image(systemName: item.icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(AppTheme.accent)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title)
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
-                        .foregroundStyle(AppTheme.textPrimary)
-                    if let subtitle = item.subtitle {
-                        Text(subtitle)
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(AppTheme.textTertiary)
-                    }
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(AppTheme.textTertiary.opacity(0.5))
+        HStack(spacing: AppTheme.spacingMD) {
+            ZStack {
+                RoundedRectangle(cornerRadius: AppTheme.radiusSM)
+                    .fill(AppTheme.accentSoft.opacity(0.4))
+                    .frame(width: 34, height: 34)
+                Image(systemName: item.icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppTheme.accent)
             }
-            .padding(.horizontal, AppTheme.spacingLG)
-            .padding(.vertical, AppTheme.spacingMD)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .foregroundStyle(AppTheme.textPrimary)
+                if let subtitle = item.subtitle {
+                    Text(subtitle)
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(AppTheme.textTertiary.opacity(0.5))
         }
+        .padding(.horizontal, AppTheme.spacingLG)
+        .padding(.vertical, AppTheme.spacingMD)
     }
 
     private func settingsToggle(icon: String, title: String, subtitle: String, color: Color, isOn: Binding<Bool>) -> some View {

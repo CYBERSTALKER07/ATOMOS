@@ -7,6 +7,7 @@ import { clearStoredToken } from "../../lib/bridge";
 import { CartProvider } from "../../lib/cart";
 import RetailerShell from "../../components/RetailerShell";
 import PaymentModal from "../../components/PaymentModal";
+import ShopClosedModal from "../../components/ShopClosedModal";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,6 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <CartProvider>
           <RetailerShell>{children}</RetailerShell>
           <PaymentModal />
+          <ShopClosedModal />
         </CartProvider>
       </NotificationsProvider>
     </WebSocketProvider>

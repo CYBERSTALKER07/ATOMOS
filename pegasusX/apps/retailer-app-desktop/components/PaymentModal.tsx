@@ -239,6 +239,43 @@ export default function PaymentModal() {
     };
   }, [event]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("resume_delivery_payment") !== "1") return;
+
+    let cancelled = false;
+
+    async function resumeDeliveryPayment() {
+      try {
+        const res = await apiFetch("/v1/retailer/pending-payments");
+        if (!res.ok) return;
+        const data: PendingPaymentsResponse = await res.json();
+        const orderId = params.get("order_id") ?? "";
+        const pending =
+          data.pending_payments?.find((session) => session.order_id === orderId) ??
+          data.pending_payments?.[0];
+        if (!cancelled && pending) {
+          setEvent(sessionToPaymentEvent(pending));
+          setState("choosing");
+          setError(null);
+          setCheckoutUrl(null);
+        }
+      } catch {
+        // WebSocket delivery remains the primary realtime path.
+      } finally {
+        if (!cancelled && pathname) {
+          router.replace(pathname);
+        }
+      }
+    }
+
+    void resumeDeliveryPayment();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, router]);
+
   const handleCash = useCallback(async () => {
     if (!event) return;
     setState("processing");

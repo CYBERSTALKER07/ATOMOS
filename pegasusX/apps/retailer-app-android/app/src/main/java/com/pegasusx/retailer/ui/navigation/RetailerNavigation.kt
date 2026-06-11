@@ -43,6 +43,7 @@ import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.ui.components.ActiveDeliveriesSheet
 import com.pegasusx.retailer.ui.components.DeliveryPaymentSheet
 import com.pegasusx.retailer.ui.components.FloatingActiveOrdersBar
+import com.pegasusx.retailer.ui.components.ShopClosedSheet
 import com.pegasusx.retailer.ui.components.PegasusBottomBar
 import com.pegasusx.retailer.ui.components.PegasusTab
 import com.pegasusx.retailer.ui.components.PegasusTopBar
@@ -371,7 +372,19 @@ fun RetailerNavigation(
                     Box(Modifier.fillMaxSize()) {
                         ProfileScreen(
                             onAccountClick = { navController.navigate("ACCOUNT_PROFILE") },
+                            onSavedCardsClick = { navController.navigate("SAVED_CARDS") },
+                            onFamilyMembersClick = { navController.navigate("FAMILY_MEMBERS") },
                         )
+                    }
+                }
+                composable("SAVED_CARDS") {
+                    Box(Modifier.fillMaxSize()) {
+                        SavedCardsScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                }
+                composable("FAMILY_MEMBERS") {
+                    Box(Modifier.fillMaxSize()) {
+                        FamilyMembersScreen(onNavigateBack = { navController.popBackStack() })
                     }
                 }
                 composable("ACCOUNT_PROFILE") {
@@ -575,6 +588,30 @@ fun RetailerNavigation(
             if (globalQROrder?.id != order.id) {
                 globalQROrder = order
             }
+        }
+
+        val shopClosedAlert = navState.shopClosedAlert
+        var shopClosedSubmitting by remember(shopClosedAlert?.orderId) { mutableStateOf(false) }
+        var shopClosedError by remember(shopClosedAlert?.orderId) { mutableStateOf<String?>(null) }
+
+        if (shopClosedAlert != null) {
+            ShopClosedSheet(
+                alert = shopClosedAlert,
+                isSubmitting = shopClosedSubmitting,
+                errorMessage = shopClosedError,
+                onRespond = { option ->
+                    if (shopClosedSubmitting) return@ShopClosedSheet
+                    shopClosedSubmitting = true
+                    shopClosedError = null
+                    coroutineScope.launch {
+                        val result = navigationViewModel.respondToShopClosed(shopClosedAlert.orderId, option)
+                        shopClosedSubmitting = false
+                        if (result.isFailure) {
+                            shopClosedError = result.exceptionOrNull()?.message ?: "Could not submit response"
+                        }
+                    }
+                },
+            )
         }
 
         if (paymentEvent != null && !hidePaymentForAddCard) {

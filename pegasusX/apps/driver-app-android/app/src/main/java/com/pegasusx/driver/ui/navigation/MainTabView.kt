@@ -65,9 +65,10 @@ fun MainTabView(
     mapContent: @Composable () -> Unit,
     ridesContent: @Composable () -> Unit,
     profileContent: @Composable () -> Unit,
-    activeRideBar: @Composable (() -> Unit)? = null
+    activeRideBar: (@Composable (onOpenMap: () -> Unit) -> Unit)? = null,
 ) {
     var selectedTab by remember { mutableStateOf(AppTab.HOME) }
+    val openMapTab: () -> Unit = { selectedTab = AppTab.MAP }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Tab content with M3 emphasized decelerate enter / accelerate exit
@@ -110,7 +111,9 @@ fun MainTabView(
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             // Active ride bar (shown when route active)
-            activeRideBar?.invoke()
+            if (selectedTab != AppTab.MAP) {
+                activeRideBar?.invoke(openMapTab)
+            }
 
             // M3 NavigationBar
             NavigationBar(

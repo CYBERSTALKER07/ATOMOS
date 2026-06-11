@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.api.RetailerWSMessage
 import com.pegasusx.retailer.data.api.RetailerWebSocket
+import com.pegasusx.retailer.data.api.ShopClosedAlert
+import com.pegasusx.retailer.data.api.toShopClosedAlert
 import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.CardCheckoutRequest
 import com.pegasusx.retailer.data.model.ConfirmCashRequest
@@ -49,6 +51,7 @@ data class NavigationUiState(
     val isRefreshing: Boolean = false,
     val syncError: String? = null,
     val loadIssue: NavigationLoadIssue? = null,
+    val shopClosedAlert: ShopClosedAlert? = null,
 ) {
     val activeOrderCount: Int get() = activeOrders.size
     val floatingStatusText: String
@@ -147,6 +150,24 @@ class NavigationViewModel @Inject constructor(
         _uiState.update { it.copy(paymentEvent = null, orderCompleted = false, paymentFailed = false, paymentFailureMessage = "") }
         loadActiveOrders()
         loadPendingPayments()
+    }
+
+    fun clearShopClosedAlert() {
+        _uiState.update { it.copy(shopClosedAlert = null) }
+    }
+
+    suspend fun respondToShopClosed(orderId: String, response: String): Result<Unit> {
+        return try {
+            api.shopClosedResponse(
+                mapOf("order_id" to orderId, "response" to response),
+                "shop-closed-response:$orderId:$response",
+            )
+            clearShopClosedAlert()
+            loadActiveOrders()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     fun loadPendingPayments() {
@@ -322,6 +343,30 @@ class NavigationViewModel @Inject constructor(
                         it.type == "ORDER_REASSIGNED"
                 }
                 .collect { loadActiveOrders() }
+        }
+        viewModelScope.launch {
+            retailerWebSocket.events
+                .filter { it.type == "SHOP_CLOSED" || it.type == "SHOP_CLOSED_ALERT" }
+                .collect { msg ->
+                    msg.toShopClosedAlert()?.let { alert ->
+                        _uiState.update { it.copy(shopClosedAlert = alert) }
+                    }
+                    loadActiveOrders()
+                }
+        }
+        viewModelScope.launch {
+            retailerWebSocket.events
+                .filter {
+                    it.type == "SHOP_CLOSED_RESOLVED" ||
+                        it.type == "SHOP_CLOSED_RESPONSE"
+                }
+                .collect { msg ->
+                    val current = _uiState.value.shopClosedAlert
+                    if (current != null && (msg.orderId.isBlank() || msg.orderId == current.orderId)) {
+                        clearShopClosedAlert()
+                    }
+                    loadActiveOrders()
+                }
         }
     }
 
