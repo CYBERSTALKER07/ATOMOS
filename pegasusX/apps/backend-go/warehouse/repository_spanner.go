@@ -24,6 +24,7 @@ type Repository interface {
 	UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error
 	GetAutoDispatch(ctx context.Context, warehouseID string) (bool, error)
 	UpdateAutoDispatch(ctx context.Context, warehouseID string, enabled bool, emit func(outbox.TxnBuffer) error) error
+	ListAutoDispatchWarehouses(ctx context.Context) ([]AutoDispatchWarehouse, error)
 	GetLocks(ctx context.Context, warehouseID string) (map[string]DispatchLock, error)
 	UpsertLock(ctx context.Context, warehouseID string, lock DispatchLock, emit func(outbox.TxnBuffer) error) error
 	DeleteLock(ctx context.Context, warehouseID, lockID string, emit func(outbox.TxnBuffer) error) error
@@ -421,6 +422,10 @@ func (m *inMemoryRepository) UpdateAutoDispatch(ctx context.Context, warehouseID
 	return nil
 }
 
+func (m *inMemoryRepository) ListAutoDispatchWarehouses(_ context.Context) ([]AutoDispatchWarehouse, error) {
+	return []AutoDispatchWarehouse{}, nil
+}
+
 func (r *SpannerRepository) GetInventoryList(ctx context.Context, warehouseID string) (map[string]InventoryRow, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT ProductId, QuantityOnHand, UpdatedAt
@@ -624,6 +629,38 @@ func (r *SpannerRepository) GetAutoDispatch(ctx context.Context, warehouseID str
 		return false, err
 	}
 	return enabled, nil
+}
+
+func (r *SpannerRepository) ListAutoDispatchWarehouses(ctx context.Context) ([]AutoDispatchWarehouse, error) {
+	if r == nil || r.client == nil {
+		return nil, fmt.Errorf("spanner warehouse repository: nil client")
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT WarehouseId, SupplierId
+		      FROM Warehouses@{FORCE_INDEX=Idx_Warehouses_ByAutoDispatch}
+		      WHERE AutoDispatchEnabled = TRUE
+		        AND IsActive = TRUE`,
+	}
+	iter := r.client.Single().
+		WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).
+		Query(ctx, stmt)
+	defer iter.Stop()
+
+	out := make([]AutoDispatchWarehouse, 0, 8)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return out, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("list auto-dispatch warehouses: %w", err)
+		}
+		var wh AutoDispatchWarehouse
+		if err := row.Columns(&wh.WarehouseID, &wh.SupplierID); err != nil {
+			return nil, fmt.Errorf("scan auto-dispatch warehouse: %w", err)
+		}
+		out = append(out, wh)
+	}
 }
 
 func (r *SpannerRepository) UpdateAutoDispatch(ctx context.Context, warehouseID string, enabled bool, emit func(outbox.TxnBuffer) error) error {

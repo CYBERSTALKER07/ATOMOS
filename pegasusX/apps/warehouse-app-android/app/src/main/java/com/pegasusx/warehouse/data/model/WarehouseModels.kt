@@ -347,6 +347,22 @@ data class DispatchPreview(
     @SerialName("undispatched_orders") val undispatchedOrders: List<DispatchOrder> = emptyList(),
     @SerialName("available_drivers") val availableDrivers: List<AvailableDriver> = emptyList(),
     @SerialName("unavailable_drivers") val unavailableDrivers: List<AvailableDriver> = emptyList(),
+    @SerialName("proposed_routes") val proposedRoutes: List<DispatchProposedRoute> = emptyList(),
+    @SerialName("optimizer_source") val optimizerSource: String? = null,
+    @SerialName("optimizer_warnings") val optimizerWarnings: List<String> = emptyList(),
+    @SerialName("window_constrained_count") val windowConstrainedCount: Int = 0,
+)
+
+// mirror of backend-go/dispatch/plan.RoutesToWire preview payload
+@Serializable
+data class DispatchProposedRoute(
+    @SerialName("driver_id") val driverId: String? = null,
+    @SerialName("driver_name") val driverName: String? = null,
+    @SerialName("vehicle_id") val vehicleId: String? = null,
+    @SerialName("order_ids") val orderIds: List<String> = emptyList(),
+    @SerialName("volume_vu") val volumeVu: Double? = null,
+    @SerialName("max_volume_vu") val maxVolumeVu: Double? = null,
+    @SerialName("stop_count") val stopCount: Int? = null,
 )
 
 @Serializable

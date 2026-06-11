@@ -764,11 +764,19 @@ struct DispatchPreview: Decodable {
     let undispatchedOrders: [DispatchOrder]
     let availableDrivers: [AvailableDriver]
     let unavailableDrivers: [AvailableDriver]
+    let proposedRoutes: [DispatchProposedRoute]
+    let optimizerSource: String?
+    let optimizerWarnings: [String]
+    let windowConstrainedCount: Int
 
     enum CodingKeys: String, CodingKey {
         case undispatchedOrders = "undispatched_orders"
         case availableDrivers = "available_drivers"
         case unavailableDrivers = "unavailable_drivers"
+        case proposedRoutes = "proposed_routes"
+        case optimizerSource = "optimizer_source"
+        case optimizerWarnings = "optimizer_warnings"
+        case windowConstrainedCount = "window_constrained_count"
     }
 
     init(from decoder: Decoder) throws {
@@ -776,6 +784,31 @@ struct DispatchPreview: Decodable {
         undispatchedOrders = try c.decodeIfPresent([DispatchOrder].self, forKey: .undispatchedOrders) ?? []
         availableDrivers = try c.decodeIfPresent([AvailableDriver].self, forKey: .availableDrivers) ?? []
         unavailableDrivers = try c.decodeIfPresent([AvailableDriver].self, forKey: .unavailableDrivers) ?? []
+        proposedRoutes = try c.decodeIfPresent([DispatchProposedRoute].self, forKey: .proposedRoutes) ?? []
+        optimizerSource = try c.decodeIfPresent(String.self, forKey: .optimizerSource)
+        optimizerWarnings = try c.decodeIfPresent([String].self, forKey: .optimizerWarnings) ?? []
+        windowConstrainedCount = try c.decodeIfPresent(Int.self, forKey: .windowConstrainedCount) ?? 0
+    }
+}
+
+struct DispatchProposedRoute: Decodable, Identifiable {
+    var id: String { driverId ?? UUID().uuidString }
+    let driverId: String?
+    let driverName: String?
+    let vehicleId: String?
+    let orderIds: [String]
+    let volumeVu: Double?
+    let maxVolumeVu: Double?
+    let stopCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case driverName = "driver_name"
+        case vehicleId = "vehicle_id"
+        case orderIds = "order_ids"
+        case volumeVu = "volume_vu"
+        case maxVolumeVu = "max_volume_vu"
+        case stopCount = "stop_count"
     }
 }
 

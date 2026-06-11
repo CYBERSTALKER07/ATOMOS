@@ -576,6 +576,10 @@ func (r *warehouseRepoSpy) UpdateAutoDispatch(_ context.Context, _ string, _ boo
 	return nil
 }
 
+func (r *warehouseRepoSpy) ListAutoDispatchWarehouses(_ context.Context) ([]AutoDispatchWarehouse, error) {
+	return nil, nil
+}
+
 func (r *warehouseRepoSpy) UpdateTransferState(ctx context.Context, transferID, supplierID, newState string, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }

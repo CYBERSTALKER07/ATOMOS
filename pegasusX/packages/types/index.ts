@@ -1855,6 +1855,25 @@ export interface WarehouseUnavailableDispatchDriver extends WarehouseDispatchDri
   unavailable_reason?: WarehouseVehicleUnavailableReason;
 }
 
+export interface WarehouseDispatchProposedStop {
+  order_id: string;
+  retailer_id?: string;
+  retailer_name?: string;
+  volume_vu?: number;
+  sequence?: number;
+}
+
+export interface WarehouseDispatchProposedRoute {
+  driver_id?: string;
+  driver_name?: string;
+  vehicle_id?: string;
+  order_ids?: string[];
+  stops?: WarehouseDispatchProposedStop[];
+  volume_vu?: number;
+  max_volume_vu?: number;
+  stop_count?: number;
+}
+
 export interface WarehouseDispatchPreview {
   orders?: WarehouseDispatchOrder[];
   undispatched_orders: WarehouseDispatchOrder[];
@@ -1863,6 +1882,11 @@ export interface WarehouseDispatchPreview {
   unavailable_drivers?: WarehouseUnavailableDispatchDriver[];
   pending_count?: number;
   available_driver_count?: number;
+  preview_ready?: boolean;
+  proposed_routes?: WarehouseDispatchProposedRoute[];
+  optimizer_source?: string;
+  optimizer_warnings?: string[];
+  window_constrained_count?: number;
 }
 
 export interface WarehouseSupplyRequestItem {

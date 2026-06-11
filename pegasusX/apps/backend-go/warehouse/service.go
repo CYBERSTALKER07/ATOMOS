@@ -480,8 +480,11 @@ func (s *Service) HandleDispatchLocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	warehouseID := warehouseIDFromRequest(r)
-	s.mu.RLock()
-	lockMap, err := s.repo.GetLocks(r.Context(), "wh-1")
+	if warehouseID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "warehouse_id_required"})
+		return
+	}
+	lockMap, err := s.repo.GetLocks(r.Context(), warehouseID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_fetch_locks"})
 		return
@@ -501,7 +504,6 @@ func (s *Service) HandleDispatchLocks(w http.ResponseWriter, r *http.Request) {
 			"reason":       v.Reason,
 		})
 	}
-	s.mu.RUnlock()
 	writeJSON(w, http.StatusOK, map[string]any{"locks": locks})
 }
 

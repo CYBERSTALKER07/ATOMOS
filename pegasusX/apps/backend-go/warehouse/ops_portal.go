@@ -12,7 +12,6 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
-	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/httppagination"
 )
@@ -563,7 +562,7 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	whID := warehouseIDFromRequest(r)
-	sid := s.supplierID
+	sid := s.resolveDispatchSupplierID(r.Context(), whID)
 
 	var req struct {
 		Mode   string                 `json:"mode"`
@@ -574,278 +573,34 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 		r.Body.Close()
 	}
 
-	out := DispatchExecuteResult{
-		Status:      "no_op",
-		SupplierID:  sid,
+	out, err := s.ExecuteDispatch(r.Context(), DispatchExecuteRequest{
 		WarehouseID: whID,
-		Manifests:   []DispatchExecuteRoute{},
-	}
-
-	repo := dispatch.NewRepository(s.spannerClient)
-	rows, err := dispatch.FetchAllDispatchable(r.Context(), repo, dispatch.FetchParams{
 		SupplierID:  sid,
-		WarehouseID: whID,
-		StrongRead:  true,
+		Mode:        req.Mode,
+		Routes:      req.Routes,
 	})
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "dispatch execute failed", "warehouse_id", whID, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dispatch_execute_failed"})
 		return
 	}
-	if len(rows) == 0 {
-		writeJSON(w, http.StatusOK, out)
-		return
-	}
 
-	var solveDrivers []PortalDriver
-	if s.opsDrivers != nil {
-		drivers, err := s.opsDrivers(r.Context(), whID)
-		if err == nil {
-			solveDrivers = drivers
-		}
-	} else {
-		s.mu.RLock()
-		solveDrivers = append([]PortalDriver(nil), s.drivers...)
-		s.mu.RUnlock()
-	}
-
-	var driverInputs []dispatch.FleetDriverInput
-	vehicleByDriver := make(map[string]string)
-	for _, driver := range solveDrivers {
-		if !strings.EqualFold(driver.TruckStatus, "AVAILABLE") {
-			continue
-		}
-		driverInputs = append(driverInputs, dispatch.FleetDriverInput{
-			DriverID:     driver.DriverID,
-			DriverName:   driver.Name,
-			VehicleID:    driver.VehicleID,
-			VehicleClass: driver.VehicleClass,
-			MaxVolumeVU:  driver.MaxVolumeVU,
-			IsActive:     driver.IsActive,
-			TruckStatus:  driver.TruckStatus,
-			HomeNodeID:   whID,
-		})
-		vehicleByDriver[strings.TrimSpace(driver.DriverID)] = strings.TrimSpace(driver.VehicleID)
-	}
-
-	var assignment *dispatch.AssignmentResult
-	var source string
-
-	if strings.ToUpper(req.Mode) == "MANUAL" {
-		source = "manual"
-		assignment = &dispatch.AssignmentResult{}
-
-		orderMap := make(map[string]dispatch.DispatchableOrder)
-		for _, row := range rows {
-			orderMap[row.OrderID] = row
-		}
-
-		for _, mr := range req.Routes {
-			route := dispatch.DispatchRoute{
-				DriverID: mr.DriverID,
-			}
-			for _, d := range solveDrivers {
-				if d.DriverID == mr.DriverID {
-					route.MaxVolume = d.MaxVolumeVU
-					break
-				}
-			}
-			for _, oid := range mr.OrderIDs {
-				if o, ok := orderMap[oid]; ok {
-					route.Orders = append(route.Orders, o.ToGeo())
-					route.LoadedVolume += o.VolumeVU
-				}
-			}
-			if len(route.Orders) > 0 {
-				assignment.Routes = append(assignment.Routes, route)
-			}
-		}
-	} else {
-		fleet := dispatch.BuildAvailableFleet(driverInputs, nil)
-		if len(fleet) == 0 {
-			out.Warnings = append(out.Warnings, "no_available_drivers")
-			writeJSON(w, http.StatusOK, out)
-			return
-		}
-
-		depot := dispatch.ResolveDepot(r.Context(), s.spannerClient, whID, dispatch.DepotCoords{
-			Lat: s.fallbackDepotLat,
-			Lng: s.fallbackDepotLng,
-		})
-		job := plan.BuildSolveJob(r.Context(), sid, whID, depot, rows, fleet)
-		assignment, source, err = plan.OptimizeAndValidate(r.Context(), s.optimizerClient, job)
-		if err != nil {
-			s.log.ErrorContext(r.Context(), "dispatch execute optimize failed", "warehouse_id", whID, "err", err)
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dispatch_execute_failed"})
-			return
-		}
-	}
-	out.OptimizerSource = source
-	if assignment != nil {
-		out.Warnings = append(out.Warnings, assignment.Warnings...)
-		for _, orphan := range assignment.Orphans {
-			out.Orphans = append(out.Orphans, orphan.OrderID)
-		}
-	}
-	if assignment == nil || len(assignment.Routes) == 0 {
-		writeJSON(w, http.StatusOK, out)
-		return
-	}
-
-	now := s.now().UTC()
-	batch := &manifest.SupplierWriteBatch{}
-	committed := make([]DispatchExecuteRoute, 0, len(assignment.Routes))
-	type pendingEvent struct {
-		aggregateType string
-		aggregateID   string
-		payload       any
-	}
-	queued := make([]pendingEvent, 0, len(rows)+len(assignment.Routes))
-
-	for _, route := range assignment.Routes {
-		driverID := strings.TrimSpace(route.DriverID)
-		if driverID == "" || len(route.Orders) == 0 {
-			continue
-		}
-		manifestID := uuid.NewString()
-		routeID := uuid.NewString()
-		vehicleID := strings.TrimSpace(vehicleByDriver[driverID])
-		batch.Manifests = append(batch.Manifests, manifest.SupplierTruckRow{
-			ManifestID:    manifestID,
-			SupplierID:    sid,
-			WarehouseID:   whID,
-			RouteID:       routeID,
-			TruckID:       vehicleID,
-			DriverID:      driverID,
-			State:         warehouseDispatchExecuteManifestState,
-			TotalVolumeVU: route.LoadedVolume,
-			MaxVolumeVU:   route.MaxVolume,
-			StopCount:     int64(len(route.Orders)),
-			CreatedAt:     now,
-		})
-
-		orderIDs := make([]string, 0, len(route.Orders))
-		for idx, stop := range route.Orders {
-			orderID := strings.TrimSpace(stop.OrderID)
-			if orderID == "" {
-				continue
-			}
-			batch.Orders = append(batch.Orders, manifest.SupplierManifestOrderRow{
-				ManifestID:    manifestID,
-				OrderID:       orderID,
-				SequenceIndex: int64(idx),
-				LoadingOrder:  int64(idx),
-				VolumeVU:      stop.Volume,
-				State:         "LOADED",
-				UpdatedAt:     now,
-			})
-			batch.OrderPatches = append(batch.OrderPatches, manifest.OrderPatch{
-				OrderID:    orderID,
-				Status:     "LOADED",
-				ManifestID: manifestID,
-				DriverID:   driverID,
-				VehicleID:  vehicleID,
-				RouteID:    routeID,
-				UpdatedAt:  now,
-			})
-			queued = append(queued, pendingEvent{
-				aggregateType: events.AggregateOrder,
-				aggregateID:   orderID,
-				payload: events.OrderEvent{
-					BaseEvent:   events.BaseEvent{Type: events.EventOrderAssigned},
-					OrderID:     orderID,
-					SupplierID:  sid,
-					RetailerID:  stop.RetailerID,
-					WarehouseID: whID,
-					DriverID:    driverID,
-					VehicleID:   vehicleID,
-					RouteID:     routeID,
-					ManifestID:  manifestID,
-					Status:      "LOADED",
-				},
-			})
-			orderIDs = append(orderIDs, orderID)
-		}
-
-		queued = append(queued,
-			pendingEvent{
-				aggregateType: events.AggregateRoute,
-				aggregateID:   routeID,
-				payload: events.RouteEvent{
-					BaseEvent:   events.BaseEvent{Type: events.EventRouteCreated},
-					RouteID:     routeID,
-					ManifestID:  manifestID,
-					SupplierID:  sid,
-					WarehouseID: whID,
-					DriverID:    driverID,
-					VehicleID:   vehicleID,
-					OrderIDs:    orderIDs,
-				},
-			},
-			pendingEvent{
-				aggregateType: events.AggregateManifest,
-				aggregateID:   manifestID,
-				payload: events.ManifestEvent{
-					BaseEvent:   events.BaseEvent{Type: events.EventManifestDraftCreated},
-					ManifestID:  manifestID,
-					RouteID:     routeID,
-					SupplierID:  sid,
-					WarehouseID: whID,
-					DriverID:    driverID,
-					StopCount:   int64(len(orderIDs)),
-				},
-			},
+	if out.Status == "dispatched" {
+		s.log.InfoContext(r.Context(), "dispatch executed",
+			"warehouse_id", whID,
+			"manifests", out.ManifestsCreated,
+			"orders_assigned", out.OrdersAssigned,
+			"optimizer_source", out.OptimizerSource,
 		)
-
-		committed = append(committed, DispatchExecuteRoute{
-			ManifestID: manifestID,
-			RouteID:    routeID,
-			DriverID:   driverID,
-			VehicleID:  vehicleID,
-			OrderIDs:   orderIDs,
-			VolumeVU:   route.LoadedVolume,
-			MaxVolume:  route.MaxVolume,
+		s.broadcastWarehouseEvent(r.Context(), whID, map[string]any{
+			"type":              "DISPATCH_COMMITTED",
+			"warehouse_id":      whID,
+			"manifests_created": out.ManifestsCreated,
+			"orders_assigned":   out.OrdersAssigned,
+			"optimizer_source":  out.OptimizerSource,
+			"timestamp":         s.now().UTC().Format(time.RFC3339Nano),
 		})
-		out.OrdersAssigned += len(orderIDs)
 	}
-
-	if len(committed) == 0 {
-		writeJSON(w, http.StatusOK, out)
-		return
-	}
-
-	store := manifest.NewStore(s.spannerClient)
-	if err := store.CommitSupplier(r.Context(), batch, func(buf outbox.TxnBuffer) error {
-		for _, evt := range queued {
-			if err := outbox.EmitJSON(r.Context(), buf, evt.aggregateType, evt.aggregateID, events.TopicMain, evt.payload); err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
-		s.log.ErrorContext(r.Context(), "dispatch execute commit failed", "warehouse_id", whID, "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dispatch_execute_failed"})
-		return
-	}
-
-	out.Status = "dispatched"
-	out.ManifestsCreated = len(committed)
-	out.Manifests = committed
-
-	s.log.InfoContext(r.Context(), "dispatch executed",
-		"warehouse_id", whID,
-		"manifests", out.ManifestsCreated,
-		"orders_assigned", out.OrdersAssigned,
-		"optimizer_source", out.OptimizerSource,
-	)
-	s.broadcastWarehouseEvent(r.Context(), whID, map[string]any{
-		"type":              "DISPATCH_COMMITTED",
-		"warehouse_id":      whID,
-		"manifests_created": out.ManifestsCreated,
-		"orders_assigned":   out.OrdersAssigned,
-		"optimizer_source":  out.OptimizerSource,
-		"timestamp":         now.Format(time.RFC3339Nano),
-	})
 	writeJSON(w, http.StatusOK, out)
 }
 

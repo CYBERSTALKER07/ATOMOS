@@ -227,6 +227,7 @@ CREATE TABLE Warehouses (
 
 CREATE INDEX Idx_Warehouses_BySupplier ON Warehouses(SupplierId);
 CREATE INDEX Idx_Warehouses_ByPrimaryFactory ON Warehouses(SupplierId, PrimaryFactoryId);
+CREATE INDEX Idx_Warehouses_ByAutoDispatch ON Warehouses(AutoDispatchEnabled, IsActive, WarehouseId) STORING (SupplierId);
 
 CREATE TABLE Factories (
   FactoryId        STRING(36)    NOT NULL,

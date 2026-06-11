@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import type {
   WarehouseDispatchDriver,
   WarehouseDispatchOrder,
+  WarehouseDispatchProposedRoute,
   WarehouseUnavailableDispatchDriver,
 } from '@pegasusx/types';
 import { ApiError } from '@pegasusx/api-client';
@@ -34,6 +35,10 @@ export default function DispatchPage() {
   const [executing, setExecuting] = useState(false);
   const [executeError, setExecuteError] = useState<string | null>(null);
   const [executeSuccess, setExecuteSuccess] = useState<string | null>(null);
+  const [proposedRoutes, setProposedRoutes] = useState<WarehouseDispatchProposedRoute[]>([]);
+  const [optimizerSource, setOptimizerSource] = useState<string | null>(null);
+  const [optimizerWarnings, setOptimizerWarnings] = useState<string[]>([]);
+  const [windowConstrainedCount, setWindowConstrainedCount] = useState(0);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -42,6 +47,10 @@ export default function DispatchPage() {
       setOrders(data.undispatched_orders || data.orders || []);
       setDrivers(data.available_drivers || data.drivers || []);
       setUnavailableDrivers(data.unavailable_drivers || []);
+      setProposedRoutes(data.proposed_routes || []);
+      setOptimizerSource(data.optimizer_source || null);
+      setOptimizerWarnings(data.optimizer_warnings || []);
+      setWindowConstrainedCount(data.window_constrained_count || 0);
       setRestricted(false);
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
@@ -112,6 +121,22 @@ export default function DispatchPage() {
         )}
         {executeSuccess && (
           <p className="text-sm mb-4" style={{ color: 'var(--success)' }}>{executeSuccess}</p>
+        )}
+        {(optimizerSource || optimizerWarnings.length > 0 || windowConstrainedCount > 0) && (
+          <div className="mb-4 rounded-xl border border-(--border) p-4" style={{ background: 'var(--background)' }}>
+            <h2 className="text-sm font-semibold mb-2">Optimizer</h2>
+            {optimizerSource && (
+              <p className="text-xs text-(--muted)">Source: {optimizerSource}</p>
+            )}
+            {windowConstrainedCount > 0 && (
+              <p className="text-xs" style={{ color: 'var(--warning)' }}>
+                {windowConstrainedCount} order(s) constrained by receiving window
+              </p>
+            )}
+            {optimizerWarnings.map(warning => (
+              <p key={warning} className="text-xs" style={{ color: 'var(--warning)' }}>{warning}</p>
+            ))}
+          </div>
         )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md-animate-in">
           {/* Undispatched Orders */}
@@ -193,6 +218,30 @@ export default function DispatchPage() {
             </div>
           </div>
         </div>
+
+        {proposedRoutes.length > 0 && (
+          <div className="mt-6 rounded-xl border border-(--border) p-4" style={{ background: 'var(--background)' }}>
+            <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <Icon name="dispatch" size={16} className="text-(--muted)" />
+              Proposed routes ({proposedRoutes.length})
+            </h2>
+            <div className="space-y-3">
+              {proposedRoutes.map((route, index) => (
+                <div key={`${route.driver_id || 'route'}-${index}`} className="rounded-lg border border-(--border) p-3">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="text-sm font-medium">{route.driver_name || route.driver_id || 'Driver'}</div>
+                    <div className="text-xs text-(--muted)">
+                      {(route.stop_count ?? route.order_ids?.length ?? route.stops?.length ?? 0)} stops
+                    </div>
+                  </div>
+                  <div className="text-xs text-(--muted) font-mono">
+                    {(route.order_ids || route.stops?.map(stop => stop.order_id) || []).join(' → ')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </PageChrome>
     </PageTransition>
   );

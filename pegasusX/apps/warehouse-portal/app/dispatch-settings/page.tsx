@@ -78,7 +78,7 @@ export default function DispatchSettingsPage() {
             <div>
               <h2 className="text-sm font-semibold">Auto dispatch</h2>
               <p className="mt-1 text-sm text-(--muted)">
-                When enabled, the AI worker may commit dispatch assignments without manual operator confirmation.
+                When enabled, the warehouse auto-dispatch worker commits optimizer assignments on a timed cadence without manual confirmation.
               </p>
             </div>
             <button

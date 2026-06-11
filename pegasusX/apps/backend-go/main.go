@@ -35,6 +35,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouseroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/webhookroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -83,6 +84,10 @@ func main() {
 	if app.OrderEventConsumer != nil {
 		go app.OrderEventConsumer.Start(ctx)
 		slog.Info("order event consumer started")
+	}
+	if app.WarehouseService != nil {
+		go warehouse.StartAutoDispatchWorker(ctx, app.WarehouseService, warehouse.AutoDispatchWorkerConfig{})
+		slog.Info("warehouse auto-dispatch worker started")
 	}
 
 	// Phase 1/2 Integration: Kafka Analytics Stream Processor
