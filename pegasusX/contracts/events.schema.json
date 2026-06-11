@@ -73,25 +73,6 @@
         {
           "properties": {
             "type": {
-              "const": "PROMOTION_CHANGED"
-            }
-          },
-          "required": [
-            "type"
-          ],
-          "type": "object"
-        }
-      ],
-      "title": "PromotionChangedEnvelope"
-    },
-    {
-      "allOf": [
-        {
-          "$ref": "#/$defs/UnknownEventPayload"
-        },
-        {
-          "properties": {
-            "type": {
               "const": "COMMAND_DISPATCHED"
             }
           },
@@ -672,6 +653,25 @@
         }
       ],
       "title": "PaymentRequiredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PROMOTION_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PromotionChangedEnvelope"
     },
     {
       "allOf": [

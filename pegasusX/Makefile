@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate px12-preflight validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev
+.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev
 
 help:
 	@echo "pegasusX make targets"
@@ -14,6 +14,7 @@ help:
 	@echo "  parity-contract        role-row api-client contract check (PX11-E1)"
 	@echo "  parity-contract-full   PX12-A full client path vs backend route check"
 	@echo "  gap-hunter-gate        PX12-C event producer/consumer shape gate"
+	@echo "  gen-contracts-gate     verify contracts/events.schema.json matches gen-contracts"
 	@echo "  px12-preflight         PX12 automated QA gates (contract + gap-hunter + launch-readiness)"
 	@echo "  validate-ai-worker-k8s validate ai-worker Kubernetes manifests"
 	@echo "  validate-backend-k8s  validate backend-go Kubernetes manifests"
@@ -67,6 +68,9 @@ parity-contract-full:
 
 gap-hunter-gate:
 	bash scripts/parity/gap_hunter_gate.sh
+
+gen-contracts-gate:
+	bash scripts/parity/gen_contracts_gate.sh
 
 px12-preflight:
 	bash scripts/qa/px12_preflight.sh

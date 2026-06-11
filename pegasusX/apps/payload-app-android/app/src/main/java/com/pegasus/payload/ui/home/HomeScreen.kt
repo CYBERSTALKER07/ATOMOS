@@ -90,6 +90,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pegasus.payload.data.model.LiveOrder
 import com.pegasus.payload.data.model.Manifest
+import com.pegasus.payload.data.model.ManifestExceptionRow
 import com.pegasus.payload.data.model.RecommendReassignResponse
 import com.pegasus.payload.data.model.NotificationItem
 import com.pegasus.payload.data.model.Truck
@@ -122,6 +123,12 @@ fun HomeScreen(
         }
     }
 
+    LaunchedEffect(state.missingItemsReportedMessage) {
+        state.missingItemsReportedMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMissingItemsReportedMessage()
+        }
+    }
     LaunchedEffect(state.syncCompleteMessage) {
         state.syncCompleteMessage?.let {
             snackbarHostState.showSnackbar(it)
@@ -163,6 +170,9 @@ fun HomeScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { viewModel.toggleExceptionsPanel() }) {
+                        Icon(Icons.Filled.Warning, contentDescription = "Manifest exceptions")
+                    }
                     IconButton(onClick = { viewModel.toggleNotificationsPanel() }) {
                         BadgedBox(badge = {
                             if (state.unreadCount > 0) Badge { Text(state.unreadCount.toString()) }
@@ -212,6 +222,8 @@ fun HomeScreen(
                         onToggleItem = viewModel::toggleItem,
                         onSealOrder = viewModel::sealSelectedOrder,
                         onDismissCountdown = viewModel::dismissCountdown,
+                        onReportMissingItems = viewModel::reportMissingItems,
+                        reportingMissingItems = state.reportingMissingItems,
                         canSealOrder = viewModel::canSealOrder,
                         allOrdersSealed = viewModel.allOrdersSealed,
                         onSealManifest = viewModel::sealManifest,
@@ -264,6 +276,14 @@ fun HomeScreen(
                 onDismiss = viewModel::toggleNotificationsPanel,
                 onMarkRead = viewModel::markNotificationRead,
                 onMarkAllRead = viewModel::markAllNotificationsRead,
+            )
+        }
+        if (state.showExceptionsPanel) {
+            ManifestExceptionsSheet(
+                items = state.manifestExceptions,
+                loading = state.loadingExceptions,
+                onDismiss = viewModel::toggleExceptionsPanel,
+                onRefresh = viewModel::loadManifestExceptions,
             )
         }
     }
@@ -338,6 +358,71 @@ private fun NotificationsSheet(
                 LazyColumn(Modifier.fillMaxWidth()) {
                     items(items, key = { it.notificationId }) { n ->
                         NotificationRow(n, onClick = { if (n.isUnread) onMarkRead(n.notificationId) })
+                        HorizontalDivider()
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ManifestExceptionsSheet(
+    items: List<ManifestExceptionRow>,
+    loading: Boolean,
+    onDismiss: () -> Unit,
+    onRefresh: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("Manifest exceptions", style = MaterialTheme.typography.titleLarge)
+                IconButton(onClick = onRefresh) {
+                    Icon(Icons.Filled.Refresh, contentDescription = "Refresh exceptions")
+                }
+            }
+            HorizontalDivider()
+            when {
+                loading && items.isEmpty() -> CenteredSpinner()
+                items.isEmpty() -> EmptyState(
+                    label = "No exceptions",
+                    hint = "Overflow, damaged, and manual removals appear here.",
+                )
+                else -> LazyColumn(Modifier.fillMaxWidth()) {
+                    items(items, key = { it.exceptionId }) { row ->
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(row.reason, style = MaterialTheme.typography.labelLarge)
+                                if (row.escalated) {
+                                    Text(
+                                        "ESCALATED",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            }
+                            Text(
+                                "Order ${row.orderId.take(8)} · Manifest ${row.manifestId.take(8)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Text(
+                                "Attempts ${row.attemptCount}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         HorizontalDivider()
                     }
                 }
@@ -484,6 +569,8 @@ private fun ManifestDetailPane(
     onToggleItem: (String) -> Unit,
     onSealOrder: () -> Unit,
     onDismissCountdown: () -> Unit,
+    onReportMissingItems: (String) -> Unit,
+    reportingMissingItems: Boolean,
     canSealOrder: (String) -> Boolean,
     allOrdersSealed: Boolean,
     onSealManifest: () -> Unit,
@@ -558,7 +645,9 @@ private fun ManifestDetailPane(
                                 orderId = state.postSealOrderId,
                                 dispatchCode = state.dispatchCodes[state.postSealOrderId].orEmpty(),
                                 secondsLeft = state.postSealCountdown,
+                                reportingMissingItems = reportingMissingItems,
                                 onDismiss = onDismissCountdown,
+                                onReportMissingItems = { onReportMissingItems(state.postSealOrderId) },
                             )
                         }
 
@@ -939,7 +1028,9 @@ private fun PostSealCountdownCard(
     orderId: String,
     dispatchCode: String,
     secondsLeft: Int,
+    reportingMissingItems: Boolean,
     onDismiss: () -> Unit,
+    onReportMissingItems: () -> Unit,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.tertiaryContainer,
@@ -972,6 +1063,16 @@ private fun PostSealCountdownCard(
                 modifier = Modifier.fillMaxWidth().height(4.dp),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onReportMissingItems,
+                    enabled = !reportingMissingItems,
+                ) {
+                    if (reportingMissingItems) {
+                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Report missing items")
+                    }
+                }
                 TextButton(onClick = onDismiss) {
                     Text("Continue", style = MaterialTheme.typography.labelLarge)
                 }

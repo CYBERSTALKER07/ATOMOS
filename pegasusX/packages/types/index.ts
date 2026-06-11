@@ -1514,6 +1514,23 @@ export interface WarehouseReplenishmentInsightActionResponse {
   transfer_id?: string;
 }
 
+export interface WarehouseDispatchSettingsResponse {
+  warehouse_id: WarehouseId;
+  auto_dispatch_enabled: boolean;
+}
+
+export interface WarehouseDispatchSettingsPatchRequest {
+  auto_dispatch_enabled: boolean;
+}
+
+export interface FactoryAnalyticsOverviewResponse {
+  daily_activity: unknown[];
+  transfers_total: number;
+  manifests_active: number;
+  exception_queue: number;
+  avg_lead_time_mins: number;
+}
+
 export interface WarehouseOpsFinancialsResponse {
   warehouse_id: WarehouseId;
   period: string;
@@ -1922,3 +1939,29 @@ export type WarehouseLiveEvent =
   | WarehouseDispatchLockChangeEvent
   | WarehouseOutboxFailureEvent
   | WarehouseInventorySyncCompleteEvent;
+
+// ── Notification inbox (GET /v1/user/notifications) ───────────────────────────
+export interface NotificationInboxItem {
+  id: string;
+  notification_id: string;
+  type: string;
+  title: string;
+  body: string;
+  payload?: string;
+  channel: string;
+  read_at?: string | null;
+  created_at: string;
+}
+
+export interface NotificationInboxResponse {
+  notifications: NotificationInboxItem[];
+  unread_count: number;
+  limit?: number;
+  offset?: number;
+  has_more?: boolean;
+}
+
+export interface MarkNotificationsReadRequest {
+  notification_ids?: string[];
+  mark_all?: boolean;
+}

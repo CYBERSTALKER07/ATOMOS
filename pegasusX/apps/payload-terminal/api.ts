@@ -69,18 +69,31 @@ export const PayloadTerminalApi = {
         return res.json();
     },
 
-    reassignOrder: async (token: string, orderId: string, newTerminalId: string, idempotencyKey?: string) => {
-        const headers: Record<string, string> = { 
+    reassignOrder: async (
+        token: string,
+        orderId: string,
+        toDriverId: string,
+        toManifestId?: string,
+        reason: string = 'payload-redispatch',
+        idempotencyKey?: string,
+    ) => {
+        const headers: Record<string, string> = {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
         };
         if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+        const body: Record<string, string> = {
+            order_id: orderId,
+            to_driver_id: toDriverId,
+            reason,
+        };
+        if (toManifestId) body.to_manifest_id = toManifestId;
         const res = await fetch(`${API_BASE}/v1/payloader/reassign-order`, {
             method: 'POST',
             headers,
-            body: JSON.stringify({ order_id: orderId, terminal_id: newTerminalId })
+            body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error('Failed to reassign order');
         return res.json();
-    }
+    },
 };

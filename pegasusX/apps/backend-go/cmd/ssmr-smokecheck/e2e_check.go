@@ -91,6 +91,12 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseDispatchPreview(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch preview: %w", err)
 	}
+	if err := runWarehouseDispatchSettingsE2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("warehouse dispatch settings: %w", err)
+	}
+	if err := runWarehouseReplenishmentInsightE2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("warehouse replenishment insight: %w", err)
+	}
 	if err := ensureWarehouseDispatchFleet(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch fleet: %w", err)
 	}
@@ -158,7 +164,10 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	fmt.Println("PX_E2E_ORDER_OK")
 	fmt.Println("PX_E2E_PAYMENT_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_OK")
+	fmt.Println("PX_E2E_WAREHOUSE_DISPATCH_SETTINGS_OK")
+	fmt.Println("PX_E2E_WAREHOUSE_REPLENISHMENT_OK")
 	fmt.Println("PX_E2E_FACTORY_OK")
+	fmt.Println("PX_E2E_FACTORY_ANALYTICS_OK")
 	fmt.Println("PX_E2E_DELIVERY_OK")
 	fmt.Println("PX_E2E_TELEMETRY_OK")
 	fmt.Println("PX_E2E_PAYLOAD_OK")
@@ -876,6 +885,9 @@ func runWarehouseDispatchLock(ctx context.Context, client *http.Client, base, co
 }
 
 func runFactoryOps(ctx context.Context, client *http.Client, base, cookie string) error {
+	if err := runFactoryAnalyticsOverviewE2E(ctx, client, base, cookie); err != nil {
+		return err
+	}
 	if err := runFactoryInsightsE2E(ctx, client, base); err != nil {
 		return err
 	}
@@ -977,6 +989,24 @@ func runFactoryOps(ctx context.Context, client *http.Client, base, cookie string
 	return nil
 }
 
+func runFactoryAnalyticsOverviewE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	status, respBody, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/factory/analytics/overview", nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("factory analytics overview status %d body %s", status, string(respBody))
+	}
+	var overview struct {
+		TransfersTotal int `json:"transfers_total"`
+	}
+	if err := json.Unmarshal(respBody, &overview); err != nil {
+		return fmt.Errorf("decode factory analytics overview: %w", err)
+	}
+	fmt.Println("PX_E2E_FACTORY_ANALYTICS_OK")
+	return nil
+}
+
 func runFactoryInsightsE2E(ctx context.Context, client *http.Client, base string) error {
 	phone := envOr("FACTORY_DEMO_PHONE", "+998901000099")
 	pin := envOr("FACTORY_DEMO_PIN", "1234")
@@ -1015,6 +1045,69 @@ func runFactoryInsightsE2E(ctx context.Context, client *http.Client, base string
 		return fmt.Errorf("factory insights empty: %s", string(respBody))
 	}
 	fmt.Println("PX_E2E_FACTORY_INSIGHTS_OK")
+
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/warehouse/replenishment/insights/ins_wh_1/approve", nil, loginResp.Token, "ssmr-factory-insight-approve")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("factory insight approve status %d body %s", status, string(respBody))
+	}
+	fmt.Println("PX_E2E_FACTORY_REPLENISHMENT_ACTION_OK")
+	return nil
+}
+
+func runWarehouseDispatchSettingsE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	whID := demoWarehouseID()
+	getURL := base + "/v1/warehouse/ops/dispatch/settings?warehouse_id=" + whID
+	status, respBody, _, err := clientDo(ctx, client, http.MethodGet, getURL, nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("dispatch settings get status %d body %s", status, string(respBody))
+	}
+	patchBody, _ := json.Marshal(map[string]bool{"auto_dispatch_enabled": true})
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, getURL, patchBody, cookie, "ssmr-dispatch-settings")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("dispatch settings patch status %d body %s", status, string(respBody))
+	}
+	return nil
+}
+
+func runWarehouseReplenishmentInsightE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	whID := demoWarehouseID()
+	listURL := base + "/v1/warehouse/replenishment/insights?warehouse_id=" + whID
+	status, respBody, _, err := clientDo(ctx, client, http.MethodGet, listURL, nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("replenishment insights status %d body %s", status, string(respBody))
+	}
+	var insightsResp struct {
+		Insights []struct {
+			ID string `json:"id"`
+		} `json:"insights"`
+	}
+	if err := json.Unmarshal(respBody, &insightsResp); err != nil {
+		return fmt.Errorf("decode replenishment insights: %w", err)
+	}
+	if len(insightsResp.Insights) == 0 {
+		return fmt.Errorf("replenishment insights empty: %s", string(respBody))
+	}
+	insightID := insightsResp.Insights[0].ID
+	actionURL := base + "/v1/warehouse/replenishment/insights/" + insightID + "/approve?warehouse_id=" + whID
+	status, respBody, _, err = clientPost(ctx, client, actionURL, nil, cookie, "ssmr-wh-insight-approve")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("replenishment insight approve status %d body %s", status, string(respBody))
+	}
 	return nil
 }
 
@@ -2155,5 +2248,108 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 		return fmt.Errorf("collect cash status %d: %s", collectResp.StatusCode, string(body))
 	}
 
+	return nil
+}
+
+// runPaymentSmokeCheck exercises unified checkout and global-pay webhook replay.
+func runPaymentSmokeCheck(ctx context.Context, cfg *bootstrap.Config) error {
+	base := strings.TrimRight(envOr("PUBLIC_BASE_URL", "http://localhost:8180"), "/")
+	client := &http.Client{Timeout: 45 * time.Second}
+	if _, err := clientGet(ctx, client, base+"/v1/health"); err != nil {
+		return fmt.Errorf("health: %w", err)
+	}
+	supplierID, cookie, err := ensureSupplierSession(ctx, client, base, cfg)
+	if err != nil {
+		return fmt.Errorf("supplier session: %w", err)
+	}
+	if err := putSupplierTopology(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("supplier topology: %w", err)
+	}
+	retailerID, h3Cell, err := registerRetailer(ctx, client, base, cfg)
+	if err != nil {
+		return fmt.Errorf("retailer register: %w", err)
+	}
+	retailerToken, err := auth.Issue(auth.Claims{
+		Subject:    retailerID,
+		Role:       auth.RoleRetailer,
+		SupplierID: supplierID,
+	}, auth.IssueOptions{Secret: cfg.JWTSecret, Issuer: cfg.JWTIssuer, TTL: 30 * time.Minute})
+	if err != nil {
+		return fmt.Errorf("issue retailer jwt: %w", err)
+	}
+	orderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
+	if err != nil {
+		return fmt.Errorf("order create: %w", err)
+	}
+	sessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, orderID, cfg)
+	if err != nil {
+		return fmt.Errorf("checkout: %w", err)
+	}
+	if err := replayGlobalPayWebhook(ctx, client, base, cfg, sessionID, orderID); err != nil {
+		return fmt.Errorf("webhook: %w", err)
+	}
+	fmt.Println("PX_E2E_PAYMENT_OK")
+	return nil
+}
+
+// runShopClosedSmokeCheck exercises driver shop-closed report and retailer response.
+func runShopClosedSmokeCheck(ctx context.Context, cfg *bootstrap.Config) error {
+	base := strings.TrimRight(envOr("PUBLIC_BASE_URL", "http://localhost:8180"), "/")
+	client := &http.Client{Timeout: 45 * time.Second}
+	if _, err := clientGet(ctx, client, base+"/v1/health"); err != nil {
+		return fmt.Errorf("health: %w", err)
+	}
+	supplierID, cookie, err := ensureSupplierSession(ctx, client, base, cfg)
+	if err != nil {
+		return fmt.Errorf("supplier session: %w", err)
+	}
+	if err := putSupplierTopology(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("supplier topology: %w", err)
+	}
+	retailerID, h3Cell, err := registerRetailer(ctx, client, base, cfg)
+	if err != nil {
+		return fmt.Errorf("retailer register: %w", err)
+	}
+	retailerToken, err := auth.Issue(auth.Claims{
+		Subject:    retailerID,
+		Role:       auth.RoleRetailer,
+		SupplierID: supplierID,
+	}, auth.IssueOptions{Secret: cfg.JWTSecret, Issuer: cfg.JWTIssuer, TTL: 30 * time.Minute})
+	if err != nil {
+		return fmt.Errorf("issue retailer jwt: %w", err)
+	}
+	orderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
+	if err != nil {
+		return fmt.Errorf("order create: %w", err)
+	}
+	sessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, orderID, cfg)
+	if err != nil {
+		return fmt.Errorf("checkout: %w", err)
+	}
+	if err := replayGlobalPayWebhook(ctx, client, base, cfg, sessionID, orderID); err != nil {
+		return fmt.Errorf("webhook: %w", err)
+	}
+	if err := runShopClosedE2E(ctx, client, base, cfg, supplierID, retailerToken, orderID); err != nil {
+		return err
+	}
+	fmt.Println("PX_E2E_SHOP_CLOSED_OK")
+	return nil
+}
+
+// runManifestSealSmokeCheck exercises payloader start-loading, order seal, and manifest seal.
+func runManifestSealSmokeCheck(ctx context.Context, cfg *bootstrap.Config) error {
+	base := strings.TrimRight(envOr("PUBLIC_BASE_URL", "http://localhost:8180"), "/")
+	client := &http.Client{Timeout: 45 * time.Second}
+	if _, err := clientGet(ctx, client, base+"/v1/health"); err != nil {
+		return fmt.Errorf("health: %w", err)
+	}
+	supplierID, _, err := ensureSupplierSession(ctx, client, base, cfg)
+	if err != nil {
+		return fmt.Errorf("supplier session: %w", err)
+	}
+	if err := runPayloaderE2E(ctx, client, base, cfg, supplierID, nil); err != nil {
+		return err
+	}
+	fmt.Println("PX_E2E_PAYLOAD_MANIFEST_LIFECYCLE_OK")
 	return nil
 }

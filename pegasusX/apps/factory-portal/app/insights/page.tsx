@@ -59,6 +59,8 @@ export default function InsightsPage() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -79,6 +81,26 @@ export default function InsightsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const runInsightAction = useCallback(async (insightId: string, action: 'approve' | 'dismiss') => {
+    setActingId(insightId);
+    setActionError(null);
+    try {
+      const res = await apiFetch(`/v1/warehouse/replenishment/insights/${insightId}/${action}`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setActionError(typeof body.error === 'string' ? body.error : `Action failed (${res.status})`);
+        return;
+      }
+      await load();
+    } catch {
+      setActionError('Replenishment action failed.');
+    } finally {
+      setActingId(null);
+    }
+  }, [load]);
 
   useEffect(() => {
     const unsubscribe = subscribeFactoryWS({
@@ -119,6 +141,10 @@ export default function InsightsPage() {
             <Icon name="refresh" size={16} /> Refresh
           </motion.button>
         </div>
+
+        {actionError && (
+          <p className="text-sm" style={{ color: 'var(--color-md-error)' }}>{actionError}</p>
+        )}
 
         {loading ? (
           <FactoryPageState
@@ -161,6 +187,7 @@ export default function InsightsPage() {
                   <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Days Left</th>
                   <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Reorder Qty</th>
                   <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Status</th>
+                  <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -185,6 +212,32 @@ export default function InsightsPage() {
                       <span className={`status-chip ${ins.status === 'ACTIVE' ? 'status-chip--approved' : 'status-chip--draft'}`}>
                         {ins.status}
                       </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      {ins.status === 'OPEN' ? (
+                        <div className="flex justify-end gap-2">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            disabled={actingId === ins.id}
+                            onClick={() => void runInsightAction(ins.id, 'approve')}
+                            className="button--primary rounded-lg px-3 py-1 text-xs disabled:opacity-50"
+                          >
+                            Approve
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            disabled={actingId === ins.id}
+                            onClick={() => void runInsightAction(ins.id, 'dismiss')}
+                            className="button--secondary rounded-lg px-3 py-1 text-xs disabled:opacity-50"
+                          >
+                            Dismiss
+                          </motion.button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-[var(--muted)]">—</span>
+                      )}
                     </td>
                   </motion.tr>
                 ))}

@@ -1190,6 +1190,13 @@ func (a *notificationReaderAdapter) MarkRead(ctx context.Context, recipientID st
 	return a.svc.MarkRead(ctx, recipientID, notificationIDs)
 }
 
+func (a *notificationReaderAdapter) MarkAllRead(ctx context.Context, recipientID string) error {
+	if a == nil || a.svc == nil {
+		return nil
+	}
+	return a.svc.MarkAllRead(ctx, recipientID)
+}
+
 func (a *notificationReaderAdapter) UnreadCount(ctx context.Context, recipientID string) (int64, error) {
 	if a == nil || a.svc == nil {
 		return 0, nil

@@ -48,7 +48,7 @@ val generateEventSchema by tasks.registering(Exec::class) {
         "run",
         "./cmd/gen-contracts",
         "-source",
-        "kafka/events.go",
+        "events/events.go",
         "-mode",
         "json-schema",
         "-schema-out",
@@ -153,6 +153,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material3:material3-window-size-class")
+    implementation("androidx.compose.material3:material3-adaptive-navigation-suite")
+    implementation("androidx.compose.material3.adaptive:adaptive:1.0.0")
+    implementation("androidx.compose.material3.adaptive:adaptive-layout:1.0.0")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.animation:animation")
 

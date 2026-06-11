@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
+import { ApiError } from "@pegasusx/api-client";
 import type { SupplierDispatchPreview } from "@pegasusx/types";
 import { useDispatchData } from "./use-dispatch-data";
 import { PortalSurface } from "../_components/PortalSurface";
@@ -9,16 +10,39 @@ import { PortalSurface } from "../_components/PortalSurface";
 const api = createSupplierApi();
 
 export default function DispatchPage() {
-  const { manifests, loading, error } = useDispatchData();
+  const { manifests, loading, error, refresh } = useDispatchData();
   const [preview, setPreview] = useState<SupplierDispatchPreview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [executing, setExecuting] = useState(false);
+  const [executeError, setExecuteError] = useState<string | null>(null);
+  const [executeSuccess, setExecuteSuccess] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadPreview = useCallback(() => {
     api
       .getSupplierDispatchPreview()
       .then(setPreview)
       .catch((err) => setPreviewError(err instanceof Error ? err.message : "preview_failed"));
   }, []);
+
+  useEffect(() => {
+    loadPreview();
+  }, [loadPreview]);
+
+  const runAutoDispatch = useCallback(async () => {
+    setExecuting(true);
+    setExecuteError(null);
+    setExecuteSuccess(null);
+    try {
+      await api.executeSupplierDispatch({ mode: "AUTO" });
+      setExecuteSuccess("Dispatch committed. Payloader loading gate is now active.");
+      await refresh();
+      loadPreview();
+    } catch (err) {
+      setExecuteError(err instanceof ApiError ? err.message : "dispatch_execute_failed");
+    } finally {
+      setExecuting(false);
+    }
+  }, [loadPreview, refresh]);
 
   const draft = manifests.filter((m) => m.status === "DRAFT");
   const loadingColumn = manifests.filter((m) => m.status === "LOADING");
@@ -32,6 +56,14 @@ export default function DispatchPage() {
       error={error}
       actions={
         <div className="flex gap-3">
+          <button
+            type="button"
+            className="md-btn md-btn-filled"
+            disabled={executing || (preview?.pending_count ?? 0) === 0}
+            onClick={() => void runAutoDispatch()}
+          >
+            {executing ? "Dispatching…" : "Auto dispatch"}
+          </button>
           <div className="relative">
             <input
               type="text"
@@ -75,6 +107,12 @@ export default function DispatchPage() {
         </div>
         {previewError ? (
           <p className="md-typescale-body-small text-[var(--color-md-error)] md:col-span-3">{previewError}</p>
+        ) : null}
+        {executeError ? (
+          <p className="md-typescale-body-small text-[var(--color-md-error)] md:col-span-3">{executeError}</p>
+        ) : null}
+        {executeSuccess ? (
+          <p className="md-typescale-body-small text-[var(--color-md-success)] md:col-span-3">{executeSuccess}</p>
         ) : null}
       </div>
 

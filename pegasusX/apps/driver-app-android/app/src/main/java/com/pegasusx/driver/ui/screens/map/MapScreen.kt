@@ -92,7 +92,11 @@ private fun locationFlow(context: android.content.Context): Flow<Location> = cal
 }
 
 @Composable
-fun MapScreen(viewModel: ManifestViewModel) {
+fun MapScreen(
+    viewModel: ManifestViewModel,
+    onOpenScanner: () -> Unit = {},
+    onOpenCorrection: (orderId: String, retailerName: String) -> Unit = { _, _ -> },
+) {
     val lab = LocalPegasusColors.current
     val context = LocalContext.current
     val uiState by viewModel.state.collectAsState()
@@ -122,6 +126,17 @@ fun MapScreen(viewModel: ManifestViewModel) {
     }
 
     var selectedOrder by remember { mutableStateOf<Order?>(null) }
+
+    val activeOrder = remember(uiState.orders) { resolveActiveOrder(uiState.orders) }
+    val mapPhase = remember(activeOrder, selectedOrder) {
+        resolveMapPhase(activeOrder ?: selectedOrder)
+    }
+
+    LaunchedEffect(activeOrder?.id) {
+        if (activeOrder != null && selectedOrder?.id != activeOrder.id) {
+            selectedOrder = activeOrder
+        }
+    }
 
     // Default center: Tashkent
     val defaultPosition = LatLng(41.2995, 69.2401)
@@ -243,23 +258,45 @@ fun MapScreen(viewModel: ManifestViewModel) {
             }
         }
 
-        // Order count badge
+        // Order count + phase badge
         if (activeOrders.isNotEmpty()) {
-            Box(
+            Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(16.dp)
-                    .background(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        RoundedCornerShape(12.dp)
-                    )
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(
-                    text = "${activeOrders.size} active stop${if (activeOrders.size != 1) "s" else ""}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                Box(
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "${activeOrders.size} active stop${if (activeOrders.size != 1) "s" else ""}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = mapPhase.name,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
 
@@ -324,7 +361,6 @@ fun MapScreen(viewModel: ManifestViewModel) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // Navigate button
                 if (order.latitude != null && order.longitude != null) {
                     Spacer(modifier = Modifier.height(12.dp))
                     FilledTonalButton(
@@ -336,7 +372,6 @@ fun MapScreen(viewModel: ManifestViewModel) {
                             if (intent.resolveActivity(context.packageManager) != null) {
                                 context.startActivity(intent)
                             } else {
-                                // Fallback: open in browser
                                 val webUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${order.latitude},${order.longitude}&travelmode=driving")
                                 context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
                             }
@@ -350,6 +385,27 @@ fun MapScreen(viewModel: ManifestViewModel) {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Navigate", style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+
+                val phaseForCard = resolveMapPhase(activeOrder ?: order)
+                if (phaseForCard == MapPhase.ARRIVED || phaseForCard == MapPhase.VERIFYING) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FilledTonalButton(
+                        onClick = onOpenScanner,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            if (phaseForCard == MapPhase.VERIFYING) "Scan Proof of Delivery" else "Scan QR",
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FilledTonalButton(
+                        onClick = { onOpenCorrection(order.id, order.retailerName) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Delivery Correction", style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }

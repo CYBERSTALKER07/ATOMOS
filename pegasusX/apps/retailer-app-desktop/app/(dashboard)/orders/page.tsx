@@ -26,8 +26,9 @@ import MiniSparkline from "../../../components/MiniSparkline";
 import EmptyState from "../../../components/EmptyState";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
+import { confirmAiOrder, rejectAiOrder } from "../../../lib/api";
 import { useOptionalWebSocket } from "../../../lib/ws";
-import type { Order, RetailerProfile } from "../../../lib/types";
+import type { Order, RetailerProfile, TrackingResponse } from "../../../lib/types";
 
 const chipCfg: Record<
   string,
@@ -82,6 +83,7 @@ export default function OrdersPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [aiActionPending, setAiActionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const ws = useOptionalWebSocket();
   const router = useRouter();
@@ -107,9 +109,47 @@ export default function OrdersPage() {
     useCallback(() => mutateOrders(), [mutateOrders]),
   );
 
-  const { data: orderDetail } = useLiveData<Order>(
-    selectedId ? `/v1/orders/${selectedId}` : "",
+  const { data: trackingData, mutate: mutateTracking } = useLiveData<TrackingResponse>(
+    selectedId ? "/v1/retailer/tracking" : "",
+    15000,
   );
+
+  const trackingDetail = useMemo(() => {
+    if (!selectedId || !trackingData?.orders) return null;
+    return trackingData.orders.find((order) => order.order_id === selectedId) ?? null;
+  }, [selectedId, trackingData]);
+
+  const handleConfirmAiOrder = useCallback(async (orderId: string) => {
+    setAiActionPending(true);
+    setActionError(null);
+    try {
+      const res = await confirmAiOrder(orderId);
+      if (!res.ok) {
+        throw new Error(`Confirm AI order failed with ${res.status}`);
+      }
+      await Promise.all([mutateOrders(), mutateTracking()]);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Confirm AI order failed");
+    } finally {
+      setAiActionPending(false);
+    }
+  }, [mutateOrders, mutateTracking]);
+
+  const handleRejectAiOrder = useCallback(async (orderId: string) => {
+    setAiActionPending(true);
+    setActionError(null);
+    try {
+      const res = await rejectAiOrder(orderId, "Retailer rejected");
+      if (!res.ok) {
+        throw new Error(`Reject AI order failed with ${res.status}`);
+      }
+      await Promise.all([mutateOrders(), mutateTracking()]);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Reject AI order failed");
+    } finally {
+      setAiActionPending(false);
+    }
+  }, [mutateOrders, mutateTracking]);
 
   const list = orders ?? [];
   const filtered = useMemo(() => {
@@ -147,7 +187,27 @@ export default function OrdersPage() {
   const selected = selectedId
     ? (list.find((o) => o.order_id === selectedId) ?? null)
     : (list[0] ?? null);
-  const detail = orderDetail ?? selected;
+  const detail = useMemo(() => {
+    if (!selected) return null;
+    if (!trackingDetail) return selected;
+    return {
+      ...selected,
+      state: trackingDetail.state,
+      amount: trackingDetail.total_amount,
+      items: trackingDetail.items.map((item) => ({
+        line_item_id: item.product_id,
+        order_id: trackingDetail.order_id,
+        sku_id: item.product_id,
+        sku_name: item.product_name,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        status: trackingDetail.state,
+      })),
+    };
+  }, [selected, trackingDetail]);
+  const showAiActions =
+    detail?.state === "PENDING_REVIEW" ||
+    (detail?.order_source === "AI_PREDICTED" && detail?.state === "PENDING");
 
   const loadIssue = useMemo<LoadIssue | null>(() => {
     const message = actionError ?? ordersError?.message;
@@ -538,6 +598,38 @@ export default function OrdersPage() {
                   </div>
                 </div>
               </div>
+
+              {showAiActions && (
+                <div className="mb-10 flex flex-wrap gap-3">
+                  <Button
+                    variant="secondary"
+                    isDisabled={aiActionPending}
+                    onPress={() => void handleRejectAiOrder(detail.order_id)}
+                    className="h-11 px-5 rounded-xl font-bold"
+                  >
+                    Reject Suggestion
+                  </Button>
+                  <Button
+                    variant="primary"
+                    isDisabled={aiActionPending}
+                    onPress={() => void handleConfirmAiOrder(detail.order_id)}
+                    className="h-11 px-5 rounded-xl font-bold"
+                    style={{ background: "var(--desk-accent)", color: "white" }}
+                  >
+                    {aiActionPending ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      "Confirm Suggestion"
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {actionError && (
+                <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                  {actionError}
+                </div>
+              )}
 
               <div className="mb-10">
                 <h3 className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-6">

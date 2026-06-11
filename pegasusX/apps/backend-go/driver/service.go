@@ -26,6 +26,7 @@ import (
 type DriverNotificationReader interface {
 	ListForRecipient(ctx context.Context, recipientID string, limit, offset int) ([]any, error)
 	MarkRead(ctx context.Context, recipientID string, notificationIDs []string) error
+	MarkAllRead(ctx context.Context, recipientID string) error
 	UnreadCount(ctx context.Context, recipientID string) (int64, error)
 }
 
@@ -590,6 +591,7 @@ func (s *Service) HandleManifest(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	hashes := offlineManifestHashes(detail)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"driver_id":               driverID,
 		"manifest_id":             detail.Manifest.ManifestID,
@@ -602,10 +604,53 @@ func (s *Service) HandleManifest(w http.ResponseWriter, r *http.Request) {
 		"transitions":             detail.Transitions,
 		"reassignments":           detail.Reassignments,
 		"exceptions":              detail.Exceptions,
-		"hashes":                  []string{},
-		"legacy_hashes_available": false,
+		"hashes":                  hashes,
+		"legacy_hashes_available": len(hashes) > 0,
 		"offline_nonce":           s.GenerateOfflineNonce(detail.Manifest.ManifestID, driverID),
 	})
+}
+
+func offlineManifestHashes(detail factory.ManifestDetailSnapshot) map[string]string {
+	demoTokens := demoOrderDeliveryTokens()
+	hashes := make(map[string]string)
+	seen := make(map[string]struct{})
+	for _, transfer := range detail.Transfers {
+		orderID := strings.TrimSpace(transfer.OrderID)
+		if orderID == "" {
+			continue
+		}
+		if _, ok := seen[orderID]; ok {
+			continue
+		}
+		seen[orderID] = struct{}{}
+		token := demoTokens[orderID]
+		if token == "" {
+			continue
+		}
+		hashes[orderID] = hashDeliveryToken(token)
+	}
+	return hashes
+}
+
+func demoOrderDeliveryTokens() map[string]string {
+	out := make(map[string]string)
+	for _, row := range demoFleetOrders("") {
+		id, _ := row["id"].(string)
+		token, _ := row["qr_token"].(string)
+		if strings.TrimSpace(id) != "" && strings.TrimSpace(token) != "" {
+			out[id] = token
+		}
+	}
+	return out
+}
+
+func hashDeliveryToken(token string) string {
+	trimmed := strings.TrimSpace(token)
+	if trimmed == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(trimmed))
+	return hex.EncodeToString(sum[:])
 }
 
 // GenerateOfflineNonce deterministically derives an offline signing secret.

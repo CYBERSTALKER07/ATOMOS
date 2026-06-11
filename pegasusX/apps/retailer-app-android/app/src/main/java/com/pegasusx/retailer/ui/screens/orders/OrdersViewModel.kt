@@ -35,8 +35,12 @@ data class OrdersUiState(
         it.status == OrderStatus.LOADED || it.status == OrderStatus.DISPATCHED || it.status == OrderStatus.IN_TRANSIT || it.status == OrderStatus.ARRIVED
     }
     val pendingOrders: List<Order> get() = allOrders.filter {
-        it.status == OrderStatus.PENDING
+        it.status == OrderStatus.PENDING ||
+            it.status == OrderStatus.PENDING_REVIEW ||
+            it.status == OrderStatus.SCHEDULED
     }
+    val aiPendingOrders: List<Order> get() = allOrders.filter { it.needsAiConfirmation }
+    val scheduledPreorders: List<Order> get() = allOrders.filter { it.needsPreorderAction }
 
     val syncMessage: String?
         get() = when (loadIssue) {
@@ -191,6 +195,90 @@ class OrdersViewModel @Inject constructor(
                     predictionId = predictionId,
                     body = mapOf("status" to "REJECTED"),
                     idempotencyKey = "retailer-prediction-correct:$predictionId:rejected",
+                )
+                refresh()
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            }
+        }
+    }
+
+    fun confirmAiOrder(orderId: String) {
+        viewModelScope.launch {
+            try {
+                api.confirmAiOrder(
+                    body = mapOf("order_id" to orderId),
+                    idempotencyKey = "retailer-confirm-ai:$orderId",
+                )
+                refresh()
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            }
+        }
+    }
+
+    fun rejectAiOrder(orderId: String, reason: String = "Retailer rejected") {
+        viewModelScope.launch {
+            try {
+                api.rejectAiOrder(
+                    body = mapOf("order_id" to orderId, "reason" to reason),
+                    idempotencyKey = "retailer-reject-ai:$orderId",
+                )
+                refresh()
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            }
+        }
+    }
+
+    fun confirmPreorder(orderId: String) {
+        viewModelScope.launch {
+            try {
+                api.confirmPreorder(
+                    body = mapOf("order_id" to orderId),
+                    idempotencyKey = "retailer-confirm-preorder:$orderId",
+                )
+                refresh()
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            }
+        }
+    }
+
+    fun editPreorder(order: Order, requestedDeliveryDate: String? = null) {
+        viewModelScope.launch {
+            try {
+                val deliveryDate = requestedDeliveryDate
+                    ?: order.deliverBefore
+                    ?: order.autoConfirmAt
+                    ?: ""
+                val lineItems = order.items.map { item ->
+                    mapOf(
+                        "sku" to item.productId.ifBlank { item.id },
+                        "name" to item.productName,
+                        "quantity" to item.quantity,
+                        "unit_price_minor" to item.unitPrice.toLong(),
+                    )
+                }
+                api.editPreorder(
+                    body = mapOf(
+                        "order_id" to order.id,
+                        "line_items" to lineItems,
+                        "requested_delivery_date" to deliveryDate,
+                    ),
+                    idempotencyKey = "retailer-edit-preorder:${order.id}",
                 )
                 refresh()
             } catch (e: Exception) {

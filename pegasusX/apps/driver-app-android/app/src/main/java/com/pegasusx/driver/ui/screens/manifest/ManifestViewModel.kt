@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pegasusx.driver.data.local.OrderDao
 import com.pegasusx.driver.data.model.AvailabilityRequest
 import com.pegasusx.driver.data.model.DepartRequest
+import com.pegasusx.driver.data.model.EarlyCompletePayload
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.OrderEntity
 import com.pegasusx.driver.data.model.OrderLineItem
@@ -228,6 +229,19 @@ class ManifestViewModel @Inject constructor(
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = "Reorder failed: ${e.message}")
                 loadManifest() // Revert to server state
+            }
+        }
+    }
+
+    fun requestEarlyComplete(reason: String, note: String) {
+        viewModelScope.launch {
+            try {
+                api.requestEarlyComplete(EarlyCompletePayload(reason = reason, note = note))
+                loadManifest()
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    error = e.message ?: "Early complete request failed",
+                )
             }
         }
     }

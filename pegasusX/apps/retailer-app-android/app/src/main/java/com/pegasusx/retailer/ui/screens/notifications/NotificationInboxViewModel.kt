@@ -15,6 +15,8 @@ import kotlinx.serialization.Serializable
 import retrofit2.HttpException
 import javax.inject.Inject
 
+private const val inboxPageSize = 50
+
 @Serializable
 data class NotificationItem(
     @SerialName("id") val id: String,
@@ -45,6 +47,8 @@ data class NotificationInboxState(
     val unreadCount: Int = 0,
     val loading: Boolean = true,
     val isRefreshing: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val hasMore: Boolean = false,
     val error: String? = null,
     val loadIssue: NotificationLoadIssue? = null,
 ) {
@@ -64,17 +68,53 @@ class NotificationInboxViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(NotificationInboxState())
     val uiState: StateFlow<NotificationInboxState> = _uiState.asStateFlow()
+    private var nextOffset = 0
 
     init {
         loadNotifications(initial = true)
     }
 
     fun refresh() {
-        loadNotifications(initial = false)
+        loadNotifications(initial = false, reset = true)
     }
 
-    private fun loadNotifications(initial: Boolean) {
+    fun loadMore() {
+        val state = _uiState.value
+        if (state.loading || state.isRefreshing || state.isLoadingMore || !state.hasMore) {
+            return
+        }
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMore = true, error = null) }
+            try {
+                val page = api.getNotifications(limit = inboxPageSize, offset = nextOffset)
+                nextOffset += page.notifications.size
+                _uiState.update {
+                    it.copy(
+                        items = it.items + page.notifications,
+                        unreadCount = page.unreadCount,
+                        hasMore = page.hasMore,
+                        isLoadingMore = false,
+                        loadIssue = null,
+                    )
+                }
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(
+                        isLoadingMore = false,
+                        error = resolveErrorMessage(e, issue),
+                        loadIssue = issue,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun loadNotifications(initial: Boolean, reset: Boolean = true) {
+        viewModelScope.launch {
+            if (reset) {
+                nextOffset = 0
+            }
             _uiState.update {
                 it.copy(
                     loading = if (initial) true else it.loading,
@@ -83,11 +123,13 @@ class NotificationInboxViewModel @Inject constructor(
                 )
             }
             try {
-                val resp = fetchAllNotifications()
+                val page = api.getNotifications(limit = inboxPageSize, offset = 0)
+                nextOffset = page.notifications.size
                 _uiState.update {
                     it.copy(
-                        items = resp.notifications,
-                        unreadCount = resp.unreadCount,
+                        items = page.notifications,
+                        unreadCount = page.unreadCount,
+                        hasMore = page.hasMore,
                         loading = false,
                         isRefreshing = false,
                         error = null,
@@ -106,22 +148,6 @@ class NotificationInboxViewModel @Inject constructor(
                 }
             }
         }
-    }
-
-    private suspend fun fetchAllNotifications(): NotificationsResponse {
-        val pageSize = 100
-        var offset = 0
-        val items = mutableListOf<NotificationItem>()
-        var unread = 0
-        var hasMore = true
-        while (hasMore && offset < 2500) {
-            val page = api.getNotifications(limit = pageSize, offset = offset)
-            items.addAll(page.notifications)
-            unread = page.unreadCount
-            hasMore = page.hasMore
-            offset += pageSize
-        }
-        return NotificationsResponse(items, unread, hasMore = false)
     }
 
     fun markRead(notificationId: String) {

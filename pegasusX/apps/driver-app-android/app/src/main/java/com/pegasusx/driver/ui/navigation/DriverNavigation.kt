@@ -43,6 +43,7 @@ import java.net.URLEncoder
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.BuildConfig
 import com.pegasusx.driver.data.remote.DriverApi
@@ -53,8 +54,6 @@ import com.pegasusx.driver.ui.screens.auth.LoginScreen
 import com.pegasusx.driver.ui.screens.home.HomeScreen
 import com.pegasusx.driver.ui.screens.manifest.DeliveryCorrectionScreen
 import com.pegasusx.driver.ui.screens.manifest.ManifestScreen
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import com.pegasusx.driver.data.model.OrderState
 import com.pegasusx.driver.ui.components.ActiveRideBar
 import com.pegasusx.driver.ui.screens.manifest.ManifestViewModel
@@ -102,7 +101,13 @@ object DriverRoutes {
 }
 
 @Composable
-fun DriverNavigation(api: DriverApi, driverWebSocket: DriverWebSocket) {
+fun DriverNavigation(
+    api: DriverApi,
+    driverWebSocket: DriverWebSocket,
+    windowSizeClass: WindowSizeClass? = null,
+) {
+    @Suppress("UNUSED_VARIABLE")
+    val adaptiveLayoutClass = windowSizeClass
     val navController = rememberNavController()
     val startDest = if (TokenHolder.token != null) DriverRoutes.MAIN else DriverRoutes.LOGIN
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -220,10 +225,26 @@ fun DriverNavigation(api: DriverApi, driverWebSocket: DriverWebSocket) {
                     )
                 },
                 mapContent = {
-                    MapScreen(viewModel = manifestViewModel)
+                    MapScreen(
+                        viewModel = manifestViewModel,
+                        onOpenScanner = { navController.navigate(DriverRoutes.SCANNER) },
+                        onOpenCorrection = { orderId, retailerName ->
+                            navController.navigate(DriverRoutes.correctionRoute(orderId, retailerName))
+                        },
+                    )
                 },
                 ridesContent = {
-                    ManifestScreen(viewModel = manifestViewModel)
+                    ManifestScreen(
+                        viewModel = manifestViewModel,
+                        onOrderClick = { order ->
+                            navController.navigate(
+                                DriverRoutes.correctionRoute(order.id, order.retailerName)
+                            )
+                        },
+                        onRequestEarlyComplete = { reason, note ->
+                            manifestViewModel.requestEarlyComplete(reason, note)
+                        },
+                    )
                 },
                 profileContent = {
                     ProfileScreen(viewModel = manifestViewModel)

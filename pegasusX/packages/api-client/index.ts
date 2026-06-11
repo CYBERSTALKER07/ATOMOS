@@ -80,6 +80,8 @@ import type {
   WarehouseOrderMutationRequest,
   WarehouseOrderMutationResponse,
   WarehouseOrdersResponse,
+  WarehouseDispatchSettingsPatchRequest,
+  WarehouseDispatchSettingsResponse,
   WarehouseReplenishmentInsightActionResponse,
   WarehouseReplenishmentInsightsResponse,
   WarehouseSupplyRequest,
@@ -348,9 +350,11 @@ export class ApiClient {
 
   async approveSupplierEarlyComplete(
     request: Record<string, unknown>,
+    idempotencyKey?: string,
   ): Promise<void> {
     return this.request<void>("/v1/supplier/route/approve-early-complete", "POST", {
       body: request,
+      idempotencyKey,
     });
   }
 
@@ -602,6 +606,26 @@ export class ApiClient {
     return this.request<WarehouseReplenishmentInsightActionResponse>(
       appendQuery(`/v1/warehouse/replenishment/insights/${insightId}/${action}`, query as Record<string, unknown>),
       "POST",
+    );
+  }
+
+  async getWarehouseDispatchSettings(
+    query: { warehouse_id?: string } = {},
+  ): Promise<WarehouseDispatchSettingsResponse> {
+    return this.request<WarehouseDispatchSettingsResponse>(
+      appendQuery("/v1/warehouse/ops/dispatch/settings", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async patchWarehouseDispatchSettings(
+    request: WarehouseDispatchSettingsPatchRequest,
+    query: { warehouse_id?: string } = {},
+  ): Promise<{ status: string }> {
+    return this.request<{ status: string }>(
+      appendQuery("/v1/warehouse/ops/dispatch/settings", query as Record<string, unknown>),
+      "PATCH",
+      { body: request },
     );
   }
 

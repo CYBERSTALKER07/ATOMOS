@@ -45,7 +45,7 @@ val generateEventSchema by tasks.registering(Exec::class) {
         "run",
         "./cmd/gen-contracts",
         "-source",
-        "kafka/events.go",
+        "events/events.go",
         "-mode",
         "json-schema",
         "-schema-out",

@@ -189,12 +189,12 @@ func TestHandleManifest_DetailResponse(t *testing.T) {
 	if got, _ := body["order_count"].(float64); int(got) != 2 {
 		t.Fatalf("expected order_count 2, got %#v", body)
 	}
-	hashes, ok := body["hashes"].([]any)
-	if !ok || len(hashes) != 0 {
-		t.Fatalf("expected empty compatibility hashes, got %#v", body["hashes"])
+	hashes, ok := body["hashes"].(map[string]any)
+	if !ok || len(hashes) == 0 {
+		t.Fatalf("expected non-empty offline hashes map, got %#v", body["hashes"])
 	}
-	if available, _ := body["legacy_hashes_available"].(bool); available {
-		t.Fatalf("expected legacy_hashes_available=false, got %#v", body)
+	if available, _ := body["legacy_hashes_available"].(bool); !available {
+		t.Fatalf("expected legacy_hashes_available=true when hashes populated, got %#v", body)
 	}
 	manifest, ok := body["manifest"].(map[string]any)
 	if !ok {

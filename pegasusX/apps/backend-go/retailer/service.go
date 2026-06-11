@@ -267,6 +267,7 @@ type OrderLifecycle interface {
 type NotificationReader interface {
 	ListForRecipient(ctx context.Context, recipientID string, limit, offset int) ([]any, error)
 	MarkRead(ctx context.Context, recipientID string, notificationIDs []string) error
+	MarkAllRead(ctx context.Context, recipientID string) error
 	UnreadCount(ctx context.Context, recipientID string) (int64, error)
 }
 

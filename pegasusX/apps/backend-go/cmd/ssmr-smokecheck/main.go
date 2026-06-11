@@ -22,7 +22,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|loadtokens]")
+		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|payment|shop-closed|manifest-seal|loadtokens]")
 		os.Exit(1)
 	}
 
@@ -60,6 +60,12 @@ func main() {
 		checkErr = runSpatialCheck(ctx, cfg)
 	case "e2e":
 		checkErr = runE2ECheck(ctx, cfg)
+	case "payment":
+		checkErr = runPaymentSmokeCheck(ctx, cfg)
+	case "shop-closed":
+		checkErr = runShopClosedSmokeCheck(ctx, cfg)
+	case "manifest-seal":
+		checkErr = runManifestSealSmokeCheck(ctx, cfg)
 	case "loadtokens":
 		checkErr = runLoadTokens(ctx, cfg)
 	default:

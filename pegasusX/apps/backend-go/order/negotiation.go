@@ -24,6 +24,10 @@ type ProposedNegotiationItem struct {
 
 // HandleProposeNegotiation is POST /v1/delivery/negotiate (DRIVER).
 func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Request) {
+	if quantityNegotiationDisabled {
+		writeNegotiationDisabled(w)
+		return
+	}
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
@@ -153,6 +157,10 @@ func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Reques
 
 // HandleResolveNegotiation is POST /v1/supplier/negotiate/resolve (SUPPLIER / ADMIN JWT).
 func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Request) {
+	if quantityNegotiationDisabled {
+		writeNegotiationDisabled(w)
+		return
+	}
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return

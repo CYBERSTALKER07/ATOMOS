@@ -216,16 +216,29 @@ final class APIClient {
     }
     
     struct EditPreorderItem: Encodable {
-        let lineItemId: String
-        let quantity: Int
-        enum CodingKeys: String, CodingKey { case lineItemId = "line_item_id"; case quantity }
+        let sku: String
+        let name: String
+        let quantity: Int64
+        let unitPriceMinor: Int64
+
+        enum CodingKeys: String, CodingKey {
+            case sku
+            case name
+            case quantity
+            case unitPriceMinor = "unit_price_minor"
+        }
     }
-    
+
     struct EditPreorderRequest: Encodable {
         let orderId: String
-        let requestedDeliveryDate: String?
-        let items: [EditPreorderItem]?
-        enum CodingKeys: String, CodingKey { case orderId = "order_id"; case requestedDeliveryDate = "requested_delivery_date"; case items }
+        let requestedDeliveryDate: String
+        let lineItems: [EditPreorderItem]
+
+        enum CodingKeys: String, CodingKey {
+            case orderId = "order_id"
+            case requestedDeliveryDate = "requested_delivery_date"
+            case lineItems = "line_items"
+        }
     }
 
     func confirmAiOrder(orderId: String) async throws {
@@ -240,8 +253,11 @@ final class APIClient {
         let _: APIResponse<String> = try await post(path: "/v1/orders/confirm-preorder", body: ConfirmPreorderRequest(orderId: orderId))
     }
 
-    func editPreorder(orderId: String, deliveryDate: String?, items: [EditPreorderItem]?) async throws {
-        let _: APIResponse<String> = try await post(path: "/v1/orders/edit-preorder", body: EditPreorderRequest(orderId: orderId, requestedDeliveryDate: deliveryDate, items: items))
+    func editPreorder(orderId: String, deliveryDate: String, items: [EditPreorderItem]) async throws {
+        let _: APIResponse<String> = try await post(
+            path: "/v1/orders/edit-preorder",
+            body: EditPreorderRequest(orderId: orderId, requestedDeliveryDate: deliveryDate, lineItems: items)
+        )
     }
 
     // MARK: - Tracking

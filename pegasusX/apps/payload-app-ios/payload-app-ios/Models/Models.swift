@@ -129,6 +129,29 @@ struct ManifestExceptionResponse: Decodable {
     let overflowCount: Int?
 }
 
+struct ManifestExceptionRow: Decodable, Identifiable {
+    let exceptionId: String
+    let manifestId: String
+    let orderId: String
+    let reason: String
+    let attemptCount: Int
+    let escalated: Bool
+    let createdAt: String
+    var id: String { exceptionId }
+    enum CodingKeys: String, CodingKey {
+        case reason, escalated
+        case exceptionId = "exception_id"
+        case manifestId = "manifest_id"
+        case orderId = "order_id"
+        case attemptCount = "attempt_count"
+        case createdAt = "created_at"
+    }
+}
+
+struct ManifestExceptionsResponse: Decodable {
+    let exceptions: [ManifestExceptionRow]
+}
+
 // MARK: - Inject / Reassign
 
 struct InjectOrderRequest: Encodable {

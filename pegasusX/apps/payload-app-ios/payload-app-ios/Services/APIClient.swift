@@ -169,11 +169,8 @@ final class APIClient: @unchecked Sendable {
         return try await post("v1/payload/manifest-exception", body: payload, idempotencyKey: key)
     }
 
-    func manifestExceptionsList(limit: Int = 50, offset: Int = 0) async throws -> Data {
-        // Return raw Data since model might not exist
-        let req = try buildRequest(path: "v1/payloader/manifest-exceptions?limit=\(limit)&offset=\(offset)", method: "GET")
-        let (data, _) = try await dataForRequestWithFallback(req)
-        return data
+    func manifestExceptionsList(limit: Int = 50, offset: Int = 0) async throws -> ManifestExceptionsResponse {
+        try await get("v1/payloader/manifest-exceptions?limit=\(limit)&offset=\(offset)")
     }
 
     func reportMissingItems(orderId: String, items: [MissingItemEntry]) async throws -> StatusResponse {

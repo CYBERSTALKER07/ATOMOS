@@ -482,7 +482,9 @@ export default function SettingsPage() {
     try {
       await apiFetch("/v1/retailer/settings/auto-order/global", {
         method: "PATCH",
-        body: JSON.stringify({ enabled: !autoOrder.global_enabled }),
+        body: JSON.stringify({
+          global_auto_order_enabled: !autoOrder.global_enabled,
+        }),
       });
       mutateAutoOrder();
       setSaveBanner({ kind: "success", message: "Global AI settings updated." });

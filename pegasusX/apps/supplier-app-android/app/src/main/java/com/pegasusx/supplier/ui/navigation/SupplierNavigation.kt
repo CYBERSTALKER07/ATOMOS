@@ -169,7 +169,7 @@ fun SupplierNavigation(
                 MoreScreen(
                     onExceptions = { navController.navigate(SupplierRoutes.EXCEPTIONS) },
                     onShopClosed = { navController.navigate(SupplierRoutes.SHOP_CLOSED) },
-                    onNegotiations = { navController.navigate(SupplierRoutes.NEGOTIATIONS) },
+                    onNegotiations = { /* quantity negotiation disabled */ },
                     onManifests = { navController.navigate(SupplierRoutes.MANIFESTS) },
                     onDispatch = { navController.navigate(SupplierRoutes.DISPATCH_PREVIEW) },
                     onActivity = { navController.navigate(SupplierRoutes.ACTIVITY) },
@@ -193,9 +193,8 @@ fun SupplierNavigation(
             composable(SupplierRoutes.SHOP_CLOSED) {
                 key(refreshEpoch) { ShopClosedScreen(ops) { navController.popBackStack() } }
             }
-            composable(SupplierRoutes.NEGOTIATIONS) {
-                key(refreshEpoch) { NegotiationsScreen(ops) { navController.popBackStack() } }
-            }
+            // Quantity negotiation disabled ecosystem-wide.
+            // composable(SupplierRoutes.NEGOTIATIONS) { ... }
             composable(SupplierRoutes.MANIFESTS) {
                 key(refreshEpoch) { ManifestsScreen(ops) { navController.popBackStack() } }
             }

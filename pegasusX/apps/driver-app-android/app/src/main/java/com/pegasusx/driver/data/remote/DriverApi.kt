@@ -136,7 +136,7 @@ interface DriverApi {
 
     // Read current availability
     @GET("v1/driver/availability")
-    suspend fun getAvailability(): com.google.gson.JsonElement
+    suspend fun getAvailability(): kotlinx.serialization.json.JsonObject
 
     // Partial update to availability
     @PATCH("v1/driver/availability")
@@ -144,11 +144,11 @@ interface DriverApi {
 
     // Fetch driver history
     @GET("v1/driver/history")
-    suspend fun getHistory(): com.google.gson.JsonElement
+    suspend fun getHistory(): kotlinx.serialization.json.JsonObject
 
     // Fetch fleet manifest
     @GET("v1/fleet/manifest")
-    suspend fun getFleetManifest(): com.google.gson.JsonElement
+    suspend fun getFleetManifest(): kotlinx.serialization.json.JsonObject
 
     // Return complete — RETURNING → AVAILABLE after arriving at warehouse
     @POST("v1/fleet/driver/return-complete")
@@ -194,9 +194,9 @@ interface DriverApi {
     @POST("v1/fleet/route/request-early-complete")
     suspend fun requestEarlyComplete(@Body body: EarlyCompletePayload): EarlyCompleteRequestResponse
 
-    // Edge 28: Propose quantity negotiation to supplier
-    @POST("v1/delivery/negotiate")
-    suspend fun proposeNegotiation(@Body body: NegotiationPayload): NegotiationProposalResponse
+    // Quantity negotiation disabled ecosystem-wide — backend returns 410 feature_disabled.
+    // @POST("v1/delivery/negotiate")
+    // suspend fun proposeNegotiation(@Body body: NegotiationPayload): NegotiationProposalResponse
 
     // Edge 32: Mark order as delivered on credit
     @POST("v1/delivery/credit-delivery")

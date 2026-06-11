@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
@@ -434,7 +435,7 @@ func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request
 	}
 	unread, _ := s.notifSvc.UnreadCount(r.Context(), driverID)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"notifications": notifs,
+		"notifications": notifications.ToInboxWireFromAnyList(notifs),
 		"unread_count":  unread,
 		"limit":         limit,
 		"offset":        offset,
@@ -453,17 +454,13 @@ func (s *Service) HandleMarkNotificationsRead(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	var req struct {
-		NotificationIDs []string `json:"notification_ids"`
-	}
+	var req notifications.MarkReadRequest
 	if decErr := json.NewDecoder(r.Body).Decode(&req); decErr != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	if s.notifSvc != nil && len(req.NotificationIDs) > 0 {
-		if markErr := s.notifSvc.MarkRead(r.Context(), driverID, req.NotificationIDs); markErr != nil {
-			s.log.ErrorContext(r.Context(), "mark notifications read failed", "err", markErr, "driver_id", driverID)
-		}
+	if markErr := notifications.ApplyMarkRead(r.Context(), s.notifSvc, driverID, req); markErr != nil {
+		s.log.ErrorContext(r.Context(), "mark notifications read failed", "err", markErr, "driver_id", driverID)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -492,13 +489,16 @@ func iosRouteManifest(driverID, date string) map[string]any {
 	if date == "" {
 		date = time.Now().UTC().Format("2006-01-02")
 	}
+	hashes := offlineManifestHashes(factory.ManifestDetailSnapshot{
+		Transfers: []factory.TransferRow{
+			{OrderID: "ord_factory_1"},
+			{OrderID: "ord_factory_2"},
+		},
+	})
 	return map[string]any{
 		"driver_id":  driverID,
 		"date":       date,
 		"expires_at": time.Now().UTC().Add(24 * time.Hour).Unix(),
-		"hashes": map[string]string{
-			"ord_factory_1": "demo-token-ord-1",
-			"ord_factory_2": "demo-token-ord-2",
-		},
+		"hashes":     hashes,
 	}
 }

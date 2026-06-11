@@ -47,34 +47,47 @@ final class NotificationInboxViewModel {
     var items: [NotificationItem] = []
     var unreadCount: Int = 0
     var isLoading = true
+    var isLoadingMore = false
+    var hasMore = false
 
     private let api = APIClient.shared
+    private let pageSize = 50
+    private var nextOffset = 0
 
     func load() async {
         if items.isEmpty {
             isLoading = true
         }
+        nextOffset = 0
         do {
-            let pageSize = 100
-            var offset = 0
-            var merged: [NotificationItem] = []
-            var totalUnread = 0
-            var hasMore = true
-            while hasMore && offset < 2500 {
-                let resp: NotificationsResponse = try await api.get(
-                    path: "/v1/user/notifications?limit=\(pageSize)&offset=\(offset)"
-                )
-                merged.append(contentsOf: resp.notifications)
-                totalUnread = resp.unreadCount
-                hasMore = resp.hasMore
-                offset += pageSize
-            }
-            items = merged
-            unreadCount = totalUnread
+            let resp: NotificationsResponse = try await api.get(
+                path: "/v1/user/notifications?limit=\(pageSize)&offset=0"
+            )
+            items = resp.notifications
+            unreadCount = resp.unreadCount
+            hasMore = resp.hasMore
+            nextOffset = resp.notifications.count
         } catch {
             // silent — empty state shows
         }
         isLoading = false
+    }
+
+    func loadMore() async {
+        guard hasMore, !isLoadingMore, !isLoading else { return }
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+        do {
+            let resp: NotificationsResponse = try await api.get(
+                path: "/v1/user/notifications?limit=\(pageSize)&offset=\(nextOffset)"
+            )
+            items.append(contentsOf: resp.notifications)
+            unreadCount = resp.unreadCount
+            hasMore = resp.hasMore
+            nextOffset += resp.notifications.count
+        } catch {
+            // keep existing page
+        }
     }
 
     func markRead(_ id: String) async {
@@ -127,20 +140,35 @@ struct NotificationInboxView: View {
                         description: Text("You'll be notified about order updates here")
                     )
                 } else {
-                    List(vm.items) { notif in
-                        Button {
-                            Haptics.light()
-                            if notif.isUnread {
-                                Task { await vm.markRead(notif.id) }
+                    List {
+                        ForEach(Array(vm.items.enumerated()), id: \.element.id) { index, notif in
+                            Button {
+                                Haptics.light()
+                                if notif.isUnread {
+                                    Task { await vm.markRead(notif.id) }
+                                }
+                            } label: {
+                                NotificationRow(notification: notif)
                             }
-                        } label: {
-                            NotificationRow(notification: notif)
+                            .buttonStyle(.plain)
+                            .listRowBackground(notif.isUnread ? Color(.systemGray6) : Color.clear)
+                            .pressable()
+                            .contentShape(Rectangle())
+                            .accessibilityHint(notif.isUnread ? "Marks notification as read" : "Notification already read")
+                            .onAppear {
+                                if index >= vm.items.count - 3 {
+                                    Task { await vm.loadMore() }
+                                }
+                            }
                         }
-                        .buttonStyle(.plain)
-                        .listRowBackground(notif.isUnread ? Color(.systemGray6) : Color.clear)
-                        .pressable()
-                        .contentShape(Rectangle())
-                        .accessibilityHint(notif.isUnread ? "Marks notification as read" : "Notification already read")
+                        if vm.isLoadingMore {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                Spacer()
+                            }
+                            .listRowBackground(Color.clear)
+                        }
                     }
                     .listStyle(.plain)
                 }

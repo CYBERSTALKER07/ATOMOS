@@ -25,15 +25,15 @@ export async function confirmPreorder(orderId: string): Promise<Response> {
 
 export async function editPreorder(
   orderId: string,
-  requestedDeliveryDate?: string,
-  items?: Array<{ line_item_id: string; quantity: number }>
+  requestedDeliveryDate: string,
+  lineItems: Array<{ sku: string; name: string; quantity: number; unit_price_minor: number }>,
 ): Promise<Response> {
   return apiFetch('/v1/orders/edit-preorder', {
     method: 'POST',
     body: JSON.stringify({
       order_id: orderId,
       requested_delivery_date: requestedDeliveryDate,
-      items,
+      line_items: lineItems,
     }),
   });
 }

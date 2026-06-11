@@ -5,7 +5,7 @@ import {
   ArrowDownUp, Lightbulb, Plus, ChevronRight, ChevronLeft,
   FileText, Send, CheckCircle, XCircle, Clock, BarChart3,
   ShoppingCart, Boxes, PackageOpen, CreditCard, DollarSign,
-  UserCheck, Route,
+  UserCheck, Route, Settings,
 } from 'lucide-react';
 
 const iconMap: Record<string, LucideIcon> = {
@@ -37,6 +37,7 @@ const iconMap: Record<string, LucideIcon> = {
   clock: Clock,
   orders: ShoppingCart,
   dispatch: Route,
+  settings: Settings,
   catalog: Boxes,
   returns: PackageOpen,
   payment: CreditCard,

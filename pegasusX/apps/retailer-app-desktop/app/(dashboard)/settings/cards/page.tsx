@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, CreditCard, Loader2, Plus } from "lucide-react";
 import { apiFetch } from "../../../../lib/auth";
@@ -14,6 +14,20 @@ type SavedCard = {
 };
 
 export default function SavedCardsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-2xl mx-auto p-6 flex items-center justify-center py-20">
+          <Loader2 className="animate-spin text-[var(--desk-accent)]" size={28} />
+        </div>
+      }
+    >
+      <SavedCardsPageContent />
+    </Suspense>
+  );
+}
+
+function SavedCardsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("return_to");

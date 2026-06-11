@@ -10,6 +10,7 @@ import { useT, isIOS } from './theme';
 import { extractProblemMessage, getPayloadTranslator, resolvePayloadLocale } from './localization';
 import * as Updates from 'expo-updates';
 import { buildManifest, type LiveOrder, type ManifestItem } from './utils/manifest';
+import { PayloadTerminalApi } from './api';
 import { defaultLocale, type Locale } from '../../packages/i18n/locales';
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -210,6 +211,18 @@ export default function App() {
   const [notifications, setNotifications] = useState<NotifItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
+  type ManifestExceptionItem = {
+    exception_id: string;
+    manifest_id: string;
+    order_id: string;
+    reason: string;
+    attempt_count: number;
+    escalated: boolean;
+    created_at: string;
+  };
+  const [showExceptionsPanel, setShowExceptionsPanel] = useState(false);
+  const [manifestExceptions, setManifestExceptions] = useState<ManifestExceptionItem[]>([]);
+  const [loadingExceptions, setLoadingExceptions] = useState(false);
   const [liveSyncRevision, setLiveSyncRevision] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -504,6 +517,19 @@ export default function App() {
       }
     }, durationMs);
   }, [clearToastTimer, dismissToast, toastMotionProfile.defaultDurationMs, toastMotionProfile.enterDuration, toastMotionProfile.initialScale, toastMotionProfile.startOffsetY, toastOpacity, toastScale, toastTranslateX, toastTranslateY]);
+
+  const loadManifestExceptions = useCallback(async () => {
+    if (!token) return;
+    setLoadingExceptions(true);
+    try {
+      const data = await PayloadTerminalApi.getManifestExceptions(token);
+      setManifestExceptions(Array.isArray(data.exceptions) ? data.exceptions : []);
+    } catch (e: unknown) {
+      showToast('ERROR', e instanceof Error ? e.message : 'Failed to load exceptions', 'error');
+    } finally {
+      setLoadingExceptions(false);
+    }
+  }, [token, showToast]);
 
   const toastPanResponder = useMemo(
     () => PanResponder.create({
@@ -1426,6 +1452,15 @@ export default function App() {
               {activeTruck}
             </Text>
           </View>
+          <Pressable
+            onPress={() => {
+              setShowExceptionsPanel(true);
+              void loadManifestExceptions();
+            }}
+            style={{ padding: 6, marginRight: 4 }}
+          >
+            <MaterialIcons name="report-problem" size={20} color={T.colors.sidebarLabel} />
+          </Pressable>
           <Pressable onPress={() => setShowNotifPanel(true)} style={{ padding: 6 }}>
             <MaterialIcons name="notifications" size={20} color={T.colors.sidebarLabel} />
             {unreadCount > 0 && (
@@ -2107,6 +2142,62 @@ export default function App() {
                 );
               }}
             />
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Manifest Exceptions Panel Modal ──────────────────────────────── */}
+      <Modal visible={showExceptionsPanel} transparent animationType="fade" onRequestClose={() => setShowExceptionsPanel(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ width: 420, maxHeight: '80%', backgroundColor: T.colors.sidebarBackground, borderRadius: 12, overflow: 'hidden' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: T.colors.sidebarSeparator }}>
+              <Text style={{ flex: 1, fontWeight: '700', fontSize: 15, color: T.colors.sidebarLabel, letterSpacing: 0.3 }}>
+                {isIOS ? 'Manifest exceptions' : 'MANIFEST EXCEPTIONS'}
+              </Text>
+              <Pressable onPress={() => void loadManifestExceptions()} style={{ marginRight: 12 }}>
+                <MaterialIcons name="refresh" size={20} color={T.colors.accent} />
+              </Pressable>
+              <Pressable onPress={() => setShowExceptionsPanel(false)}>
+                <MaterialIcons name="close" size={20} color={T.colors.sidebarSecondary} />
+              </Pressable>
+            </View>
+            {loadingExceptions && manifestExceptions.length === 0 ? (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Text style={{ color: T.colors.sidebarSecondary }}>{isIOS ? 'Loading…' : 'LOADING…'}</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={manifestExceptions}
+                keyExtractor={item => item.exception_id}
+                ListEmptyComponent={
+                  <View style={{ padding: 40, alignItems: 'center' }}>
+                    <PayloadStatePanel
+                      theme={T}
+                      variant="warning"
+                      title={isIOS ? 'No exceptions' : 'NO EXCEPTIONS'}
+                      message={isIOS ? 'Overflow, damaged, and manual removals appear here.' : 'OVERFLOW, DAMAGED, AND MANUAL REMOVALS APPEAR HERE.'}
+                      compact
+                    />
+                  </View>
+                }
+                renderItem={({ item }) => (
+                  <View style={{ paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: T.colors.sidebarSeparator }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={{ fontWeight: '700', fontSize: 13, color: T.colors.sidebarLabel, marginRight: 8 }}>{item.reason}</Text>
+                      {item.escalated ? (
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#EF4444' }}>ESCALATED</Text>
+                      ) : null}
+                    </View>
+                    <Text style={{ fontSize: 12, color: T.colors.sidebarSecondary }}>
+                      {isIOS ? 'Order' : 'ORDER'} {item.order_id.slice(0, 8)} · {isIOS ? 'Manifest' : 'MANIFEST'} {item.manifest_id.slice(0, 8)}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: T.colors.tertiaryLabel, marginTop: 4 }}>
+                      {isIOS ? 'Attempts' : 'ATTEMPTS'} {item.attempt_count}
+                    </Text>
+                  </View>
+                )}
+              />
+            )}
           </View>
         </View>
       </Modal>

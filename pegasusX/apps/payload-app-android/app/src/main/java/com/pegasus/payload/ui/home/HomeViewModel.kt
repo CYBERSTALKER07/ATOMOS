@@ -8,6 +8,7 @@ import com.pegasus.payload.data.local.SecureStore
 import com.pegasus.payload.data.model.InjectOrderRequest
 import com.pegasus.payload.data.model.LiveOrder
 import com.pegasus.payload.data.model.Manifest
+import com.pegasus.payload.data.model.ManifestExceptionRow
 import com.pegasus.payload.data.model.NotificationItem
 import com.pegasus.payload.data.model.QueuedAction
 import com.pegasus.payload.data.model.RecommendReassignResponse
@@ -77,6 +78,11 @@ data class HomeUiState(
     val queuedActions: Int = 0,
     val syncCompleteMessage: String? = null,
     val queuedNoticeMessage: String? = null,
+    val reportingMissingItems: Boolean = false,
+    val missingItemsReportedMessage: String? = null,
+    val showExceptionsPanel: Boolean = false,
+    val loadingExceptions: Boolean = false,
+    val manifestExceptions: List<ManifestExceptionRow> = emptyList(),
     val error: String? = null,
 )
 
@@ -450,6 +456,60 @@ class HomeViewModel @Inject constructor(
 
     fun clearEscalatedMessage() {
         _state.update { it.copy(escalatedMessage = null) }
+    }
+
+    fun clearMissingItemsReportedMessage() {
+        _state.update { it.copy(missingItemsReportedMessage = null) }
+    }
+
+    fun toggleExceptionsPanel() {
+        val opening = !_state.value.showExceptionsPanel
+        _state.update { it.copy(showExceptionsPanel = opening) }
+        if (opening) loadManifestExceptions()
+    }
+
+    fun loadManifestExceptions() {
+        if (_state.value.loadingExceptions) return
+        _state.update { it.copy(loadingExceptions = true, error = null) }
+        viewModelScope.launch {
+            runCatching { repository.loadManifestExceptions() }
+                .onSuccess { rows ->
+                    _state.update { it.copy(loadingExceptions = false, manifestExceptions = rows) }
+                }
+                .onFailure { e ->
+                    _state.update {
+                        it.copy(
+                            loadingExceptions = false,
+                            error = e.message ?: "Failed to load manifest exceptions",
+                        )
+                    }
+                }
+        }
+    }
+
+    /** Edge 33: flag sealed order for missing-item review during post-seal window. */
+    fun reportMissingItems(orderId: String) {
+        if (_state.value.reportingMissingItems) return
+        _state.update { it.copy(reportingMissingItems = true, error = null) }
+        viewModelScope.launch {
+            runCatching { repository.reportMissingItems(orderId, emptyList()) }
+                .onSuccess {
+                    _state.update {
+                        it.copy(
+                            reportingMissingItems = false,
+                            missingItemsReportedMessage = "Missing items flagged for review.",
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _state.update {
+                        it.copy(
+                            reportingMissingItems = false,
+                            error = e.message ?: "Failed to report missing items",
+                        )
+                    }
+                }
+        }
     }
 
     // ── Phase 5: Exception (remove order from manifest) ─────────────────────

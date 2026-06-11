@@ -67,6 +67,11 @@ final class HomeViewModel {
     private(set) var loadingRecommendations = false
     private(set) var recommendations: RecommendReassignResponse?
     private(set) var reassigning = false
+    private(set) var reportingMissingItems = false
+    private(set) var missingItemsReportedMessage: String?
+    var showExceptionsPanel = false
+    private(set) var loadingExceptions = false
+    private(set) var manifestExceptions: [ManifestExceptionRow] = []
 
     private let api: APIClient
     private let ws: WebSocketClient
@@ -296,6 +301,40 @@ final class HomeViewModel {
 
     func clearError() { error = nil }
     func clearEscalatedMessage() { escalatedMessage = nil }
+    func clearMissingItemsReportedMessage() { missingItemsReportedMessage = nil }
+
+    func toggleExceptionsPanel() {
+        showExceptionsPanel.toggle()
+        if showExceptionsPanel {
+            Task { await loadManifestExceptions() }
+        }
+    }
+
+    func loadManifestExceptions() async {
+        guard !loadingExceptions else { return }
+        loadingExceptions = true
+        error = nil
+        defer { loadingExceptions = false }
+        do {
+            let resp = try await api.manifestExceptionsList()
+            manifestExceptions = resp.exceptions
+        } catch {
+            self.error = describe(error)
+        }
+    }
+
+    func reportMissingItems(orderId: String) async {
+        guard !reportingMissingItems else { return }
+        reportingMissingItems = true
+        error = nil
+        defer { reportingMissingItems = false }
+        do {
+            _ = try await api.reportMissingItems(orderId: orderId, items: [])
+            missingItemsReportedMessage = "Missing items flagged for review."
+        } catch {
+            self.error = describe(error)
+        }
+    }
 
     // MARK: - Phase 5: Exception (remove order from manifest)
 

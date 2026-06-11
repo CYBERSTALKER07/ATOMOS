@@ -21,6 +21,7 @@
     "@heroui/react": "^3.0.2",
     "@heroui/styles": "^3.0.2",
     "@pegasusx/i18n": "workspace:*",
+    "@pegasusx/motion-tokens": "workspace:*",
     "@pegasusx/types": "workspace:*",
     "@pegasusx/ui-kit": "workspace:*",
     "@tauri-apps/api": "^2.10.1",

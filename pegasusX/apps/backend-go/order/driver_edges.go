@@ -209,7 +209,7 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claims, ok := auth.FromContext(r.Context())
-	if !ok || claims.Role != auth.RoleDriver {
+	if !ok || (claims.Role != auth.RoleDriver && claims.Role != auth.RolePayload) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
@@ -240,7 +240,7 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 	if err := s.emitDriverEdgeEvent(r.Context(), current, map[string]any{
 		"type":        events.EventMissingItemsReported,
 		"order_id":    req.OrderID,
-		"driver_id":   claims.Subject,
+		"driver_id":   missingItemsDriverID(claims, current),
 		"supplier_id": current.SupplierID,
 		"retailer_id": current.RetailerID,
 		"note":        req.Note,
@@ -428,4 +428,14 @@ func applyShopClosedBypassOffload(ctx context.Context, txn *spanner.ReadWriteTra
 		mutations = append(mutations, outboxMutation(e))
 	}
 	return txn.BufferWrite(mutations)
+}
+
+func missingItemsDriverID(claims auth.Claims, order Order) string {
+	if claims.Role == auth.RoleDriver {
+		return claims.Subject
+	}
+	if order.DriverID != "" {
+		return order.DriverID
+	}
+	return claims.Subject
 }

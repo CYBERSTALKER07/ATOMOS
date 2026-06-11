@@ -10,38 +10,33 @@ import {
   type RetailerNotificationItem,
 } from './notifications-core';
 
+const INBOX_PAGE_SIZE = 50;
+
 type BackendNotificationsResponse = {
   notifications?: BackendNotificationItem[];
   unread_count?: number;
   has_more?: boolean;
 };
 
-async function fetchAllNotifications(): Promise<BackendNotificationsResponse> {
-  const pageSize = 100;
-  let offset = 0;
-  const notifications: BackendNotificationItem[] = [];
-  let unreadCount = 0;
-  let hasMore = true;
-  while (hasMore && offset < 2500) {
-    const res = await apiFetch(`/v1/user/notifications?limit=${pageSize}&offset=${offset}`);
-    if (!res.ok) {
-      throw new Error(`Notifications fetch failed with ${res.status}`);
-    }
-    const data = (await res.json()) as BackendNotificationsResponse;
-    notifications.push(...(data.notifications ?? []));
-    unreadCount = data.unread_count ?? unreadCount;
-    hasMore = Boolean(data.has_more);
-    offset += pageSize;
+async function fetchNotificationPage(offset: number): Promise<BackendNotificationsResponse> {
+  const res = await apiFetch(
+    `/v1/user/notifications?limit=${INBOX_PAGE_SIZE}&offset=${offset}`,
+  );
+  if (!res.ok) {
+    throw new Error(`Notifications fetch failed with ${res.status}`);
   }
-  return { notifications, unread_count: unreadCount, has_more: false };
+  return (await res.json()) as BackendNotificationsResponse;
 }
 
 type NotificationsContextType = {
   items: RetailerNotificationItem[];
   unreadCount: number;
   loading: boolean;
+  isLoadingMore: boolean;
+  hasMore: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+  loadMore: () => Promise<void>;
   markRead: (notificationId: string) => Promise<void>;
   markAllRead: () => Promise<void>;
 };
@@ -53,13 +48,20 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const [items, setItems] = useState<RetailerNotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nextOffset, setNextOffset] = useState(0);
 
   const refresh = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await fetchAllNotifications();
-      setItems((data.notifications ?? []).map(normalizeNotification));
+      const data = await fetchNotificationPage(0);
+      const pageItems = (data.notifications ?? []).map(normalizeNotification);
+      setItems(pageItems);
       setUnreadCount(data.unread_count ?? 0);
+      setHasMore(Boolean(data.has_more));
+      setNextOffset(pageItems.length);
       setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load notifications');
@@ -67,6 +69,26 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       setLoading(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loading || isLoadingMore || !hasMore) {
+      return;
+    }
+    setIsLoadingMore(true);
+    try {
+      const data = await fetchNotificationPage(nextOffset);
+      const pageItems = (data.notifications ?? []).map(normalizeNotification);
+      setItems((current) => [...current, ...pageItems]);
+      setUnreadCount(data.unread_count ?? unreadCount);
+      setHasMore(Boolean(data.has_more));
+      setNextOffset((current) => current + pageItems.length);
+      setError(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load more notifications');
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [hasMore, isLoadingMore, loading, nextOffset, unreadCount]);
 
   const markRead = useCallback(async (notificationId: string) => {
     const target = items.find((item) => item.id === notificationId);
@@ -118,7 +140,20 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   }, [lastMessage, refresh]);
 
   return (
-    <NotificationsContext.Provider value={{ items, unreadCount, loading, error, refresh, markRead, markAllRead }}>
+    <NotificationsContext.Provider
+      value={{
+        items,
+        unreadCount,
+        loading,
+        isLoadingMore,
+        hasMore,
+        error,
+        refresh,
+        loadMore,
+        markRead,
+        markAllRead,
+      }}
+    >
       {children}
     </NotificationsContext.Provider>
   );

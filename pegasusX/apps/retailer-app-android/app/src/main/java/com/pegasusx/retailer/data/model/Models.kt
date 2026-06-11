@@ -398,6 +398,8 @@ data class Order(
     val displayTotal: String get() = formatRetailerAmount(totalAmount, currency)
     val itemCount: Int get() = items.sumOf { it.quantity }
     val isAiGenerated: Boolean get() = orderSource == "AI_PREDICTED"
+    val needsAiConfirmation: Boolean get() = status == OrderStatus.PENDING_REVIEW
+    val needsPreorderAction: Boolean get() = status == OrderStatus.SCHEDULED
 }
 
 fun formatRetailerAmount(amount: Long, currency: String): String {

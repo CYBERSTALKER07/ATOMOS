@@ -64,6 +64,17 @@ func (s *Service) MarkRead(ctx context.Context, recipientID string, notification
 	return nil
 }
 
+// MarkAllRead marks every unread notification for a recipient as read.
+func (s *Service) MarkAllRead(ctx context.Context, recipientID string) error {
+	if err := s.repo.MarkAllRead(ctx, recipientID); err != nil {
+		return fmt.Errorf("mark all read: %w", err)
+	}
+	if s.cache != nil {
+		s.cache.Invalidate(ctx, "notifications:"+recipientID)
+	}
+	return nil
+}
+
 // UnreadCount returns the unread notification count for a recipient.
 func (s *Service) UnreadCount(ctx context.Context, recipientID string) (int64, error) {
 	return s.repo.UnreadCount(ctx, recipientID)

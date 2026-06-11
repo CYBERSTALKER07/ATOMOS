@@ -46,7 +46,7 @@ fun MoreScreen(
     val exceptions = listOf(
         MoreDestination("Exceptions", "Operational queue", Icons.Default.Warning, onExceptions),
         MoreDestination("Shop closed", "Driver wait cases", Icons.Default.Store, onShopClosed),
-        MoreDestination("Negotiations", "Quantity proposals", Icons.Default.Handshake, onNegotiations),
+        // Quantity negotiation disabled ecosystem-wide.
     )
     val insights = listOf(
         MoreDestination("Activity", "Recent events", Icons.Default.Timeline, onActivity),

@@ -10,6 +10,10 @@ import com.pegasus.payload.data.model.LiveOrder
 import com.pegasus.payload.data.model.Manifest
 import com.pegasus.payload.data.model.ManifestExceptionRequest
 import com.pegasus.payload.data.model.ManifestExceptionResponse
+import com.pegasus.payload.data.model.ManifestExceptionRow
+import com.pegasus.payload.data.model.ManifestExceptionsResponse
+import com.pegasus.payload.data.model.MissingItemEntry
+import com.pegasus.payload.data.model.MissingItemsRequest
 import com.pegasus.payload.data.model.MarkReadRequest
 import com.pegasus.payload.data.model.NotificationsResponse
 import com.pegasus.payload.data.model.QueuedAction
@@ -127,6 +131,15 @@ class PayloadRepository @Inject constructor(
             idempotencyKey = deterministicIdempotencyKey("reassign-order", "$orderId-$toDriverId"),
         )
     }
+
+    suspend fun reportMissingItems(orderId: String, items: List<MissingItemEntry> = emptyList()): StatusResponse =
+        api.missingItems(
+            req = MissingItemsRequest(orderId = orderId, missingItems = items),
+            idempotencyKey = deterministicIdempotencyKey("missing-items", orderId),
+        )
+
+    suspend fun loadManifestExceptions(limit: Int = 50, offset: Int = 0): List<ManifestExceptionRow> =
+        api.manifestExceptionsList(limit = limit, offset = offset).exceptions
 
     // ── Phase 6: notifications ───────────────────────────────────────────────
 

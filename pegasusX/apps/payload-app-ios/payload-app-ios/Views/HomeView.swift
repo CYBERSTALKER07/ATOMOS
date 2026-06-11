@@ -28,6 +28,13 @@ struct HomeView: View {
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
+                            viewModel.toggleExceptionsPanel()
+                        } label: {
+                            Image(systemName: "exclamationmark.triangle")
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
                             viewModel.toggleNotificationsPanel()
                         } label: {
                             Image(systemName: "bell")
@@ -141,8 +148,22 @@ struct HomeView: View {
         )) {
             NotificationsSheet(viewModel: viewModel)
         }
+        .sheet(isPresented: Binding(
+            get: { viewModel.showExceptionsPanel },
+            set: { viewModel.showExceptionsPanel = $0 }
+        )) {
+            ManifestExceptionsSheet(viewModel: viewModel)
+        }
         .overlay(alignment: .bottom) {
             VStack(spacing: 8) {
+                if let msg = viewModel.missingItemsReportedMessage {
+                    InfoBanner(text: msg, tint: .orange)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .task {
+                            try? await Task.sleep(nanoseconds: 3_000_000_000)
+                            viewModel.clearMissingItemsReportedMessage()
+                        }
+                }
                 if let msg = viewModel.queuedNoticeMessage {
                     InfoBanner(text: msg, tint: .orange)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -426,7 +447,11 @@ private struct ManifestWorkflow: View {
                             orderId: psId,
                             dispatchCode: viewModel.dispatchCodes[psId] ?? "",
                             secondsLeft: viewModel.postSealCountdown,
-                            onDismiss: { viewModel.dismissCountdown() }
+                            reportingMissingItems: viewModel.reportingMissingItems,
+                            onDismiss: { viewModel.dismissCountdown() },
+                            onReportMissingItems: {
+                                Task { await viewModel.reportMissingItems(orderId: psId) }
+                            }
                         )
                     }
 
@@ -735,7 +760,9 @@ private struct PostSealCountdownView: View {
     let orderId: String
     let dispatchCode: String
     let secondsLeft: Int
+    let reportingMissingItems: Bool
     let onDismiss: () -> Void
+    let onReportMissingItems: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -778,6 +805,24 @@ private struct PostSealCountdownView: View {
             
             ProgressView(value: Double(secondsLeft) / 60.0)
                 .tint(TermTheme.live)
+
+            Button {
+                onReportMissingItems()
+            } label: {
+                HStack {
+                    if reportingMissingItems {
+                        ProgressView().controlSize(.small)
+                    }
+                    Text("REPORT_MISSING_ITEMS")
+                        .font(.system(size: 14, weight: .black, design: .monospaced))
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(TermTheme.card)
+                .foregroundStyle(TermTheme.accent)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .disabled(reportingMissingItems)
             
             Button {
                 onDismiss()
@@ -1390,6 +1435,62 @@ private struct NotificationsSheet: View {
                 if viewModel.unreadCount > 0 {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Mark all read") { viewModel.markAllNotificationsRead() }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct ManifestExceptionsSheet: View {
+    @Bindable var viewModel: HomeViewModel
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if viewModel.loadingExceptions && viewModel.manifestExceptions.isEmpty {
+                    ProgressView("Loading exceptions…")
+                } else if viewModel.manifestExceptions.isEmpty {
+                    PayloadStateView(
+                        variant: .warning,
+                        title: "NO_EXCEPTIONS",
+                        message: "Overflow, damaged, and manual removals appear here.",
+                        compact: false
+                    )
+                } else {
+                    List(viewModel.manifestExceptions) { row in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(row.reason)
+                                    .font(.headline)
+                                if row.escalated {
+                                    Text("ESCALATED")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.red)
+                                }
+                            }
+                            Text("Order \(row.orderId.prefix(8)) · Manifest \(row.manifestId.prefix(8))")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Text("Attempts \(row.attemptCount)")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("Manifest exceptions")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Close") { viewModel.toggleExceptionsPanel() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await viewModel.loadManifestExceptions() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
                     }
                 }
             }

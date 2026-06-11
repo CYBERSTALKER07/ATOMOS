@@ -1,7 +1,8 @@
 import type { WsMessage } from './ws';
 
 export type BackendNotificationItem = {
-  notification_id: string;
+  id?: string;
+  notification_id?: string;
   type: string;
   title: string;
   body: string;
@@ -44,8 +45,9 @@ const retailerNotificationEventTypes = new Set([
 ]);
 
 export function normalizeNotification(item: BackendNotificationItem): RetailerNotificationItem {
+  const id = item.id ?? item.notification_id ?? "";
   return {
-    id: item.notification_id,
+    id,
     type: item.type,
     title: item.title,
     body: item.body,

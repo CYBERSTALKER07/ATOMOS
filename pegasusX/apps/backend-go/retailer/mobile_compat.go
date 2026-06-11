@@ -138,7 +138,7 @@ func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request
 	}
 	unread, _ := s.notifSvc.UnreadCount(r.Context(), rid)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"notifications": notifs,
+		"notifications": notifications.ToInboxWireFromAnyList(notifs),
 		"unread_count":  unread,
 		"limit":         limit,
 		"offset":        offset,
@@ -157,17 +157,13 @@ func (s *Service) HandleMarkNotificationsRead(w http.ResponseWriter, r *http.Req
 		writeRetailerIdentityError(w, err)
 		return
 	}
-	var req struct {
-		NotificationIDs []string `json:"notification_ids"`
-	}
+	var req notifications.MarkReadRequest
 	if decErr := json.NewDecoder(r.Body).Decode(&req); decErr != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	if s.notifSvc != nil && len(req.NotificationIDs) > 0 {
-		if markErr := s.notifSvc.MarkRead(r.Context(), rid, req.NotificationIDs); markErr != nil {
-			s.log.ErrorContext(r.Context(), "mark notifications read failed", "err", markErr, "retailer_id", rid)
-		}
+	if markErr := notifications.ApplyMarkRead(r.Context(), s.notifSvc, rid, req); markErr != nil {
+		s.log.ErrorContext(r.Context(), "mark notifications read failed", "err", markErr, "retailer_id", rid)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

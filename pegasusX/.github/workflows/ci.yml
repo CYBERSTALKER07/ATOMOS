@@ -29,6 +29,8 @@ jobs:
         run: make parity-contract-full
       - name: Gap hunter gate
         run: make gap-hunter-gate
+      - name: Gen-contracts gate
+        run: make gen-contracts-gate
       - name: Validate backend K8s manifests
         run: make validate-backend-k8s
       - name: Validate ai-worker K8s manifests

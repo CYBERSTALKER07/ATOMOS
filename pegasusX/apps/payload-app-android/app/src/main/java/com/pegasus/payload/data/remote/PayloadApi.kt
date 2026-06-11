@@ -10,6 +10,7 @@ import com.pegasus.payload.data.model.LoginResponse
 import com.pegasus.payload.data.model.Manifest
 import com.pegasus.payload.data.model.ManifestExceptionRequest
 import com.pegasus.payload.data.model.ManifestExceptionResponse
+import com.pegasus.payload.data.model.ManifestExceptionsResponse
 import com.pegasus.payload.data.model.ManifestsResponse
 import com.pegasus.payload.data.model.MarkReadRequest
 import com.pegasus.payload.data.model.MissingItemsRequest
@@ -136,7 +137,7 @@ interface PayloadApi {
     suspend fun manifestExceptionsList(
         @Query("limit") limit: Int = 50,
         @Query("offset") offset: Int = 0,
-    ): com.google.gson.JsonElement
+    ): ManifestExceptionsResponse
 
     @POST("v1/delivery/missing-items")
     suspend fun missingItems(

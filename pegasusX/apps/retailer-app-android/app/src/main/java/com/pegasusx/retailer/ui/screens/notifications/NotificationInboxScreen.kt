@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -183,6 +184,27 @@ fun NotificationInboxScreen(
                             onClick = { if (notif.readAt == null) viewModel.markRead(notif.id) },
                         )
                         HorizontalDivider()
+                    }
+                    if (state.hasMore) {
+                        item(key = "inbox-load-more-sentinel") {
+                            androidx.compose.runtime.LaunchedEffect(state.items.size, state.isLoadingMore) {
+                                if (!state.isLoadingMore) {
+                                    viewModel.loadMore()
+                                }
+                            }
+                            if (state.isLoadingMore) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.height(1.dp))
+                            }
+                        }
                     }
                 }
             }

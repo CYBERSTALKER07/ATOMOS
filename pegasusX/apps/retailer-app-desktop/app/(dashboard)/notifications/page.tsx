@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, Bell, CheckCheck, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "@heroui/react";
@@ -9,11 +9,22 @@ import { useRetailerNotifications } from "../../../lib/notifications";
 import { useOptionalWebSocket } from "../../../lib/ws";
 
 export default function NotificationsPage() {
-  const { items, unreadCount, loading, error, refresh, markRead, markAllRead } =
-    useRetailerNotifications();
+  const {
+    items,
+    unreadCount,
+    loading,
+    isLoadingMore,
+    hasMore,
+    error,
+    refresh,
+    loadMore,
+    markRead,
+    markAllRead,
+  } = useRetailerNotifications();
   const ws = useOptionalWebSocket();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -44,6 +55,23 @@ export default function NotificationsPage() {
       setActionError(err instanceof Error ? err.message : "Mark read failed");
     }
   }, [markRead]);
+
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || !hasMore) {
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void loadMore();
+        }
+      },
+      { rootMargin: "240px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, items.length, loadMore]);
 
   const loadIssue = useMemo<"restricted" | "offline" | "error" | null>(() => {
     const message = actionError ?? error;
@@ -267,6 +295,12 @@ export default function NotificationsPage() {
                 </div>
               </motion.button>
             ))}
+            {hasMore && <div ref={loadMoreRef} className="h-8" aria-hidden="true" />}
+            {isLoadingMore && (
+              <div className="flex justify-center py-4">
+                <RefreshCw size={18} className="animate-spin text-[var(--desk-accent)]" />
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

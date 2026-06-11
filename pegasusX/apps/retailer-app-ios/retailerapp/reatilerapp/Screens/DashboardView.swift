@@ -437,14 +437,34 @@ struct DashboardView: View {
     }
 
     private func editPreorder(_ orderId: String) async {
-        // UI for editing the preorder would go here.
-        // For now we'll just demonstrate calling edit with no changes.
+        guard let order = await findOrder(orderId) else { return }
+        let deliveryDate = order.deliverBefore ?? order.autoConfirmAt ?? order.estimatedDelivery ?? ""
+        guard !deliveryDate.isEmpty else { return }
+        let lineItems = order.items.map { item in
+            APIClient.EditPreorderItem(
+                sku: item.productId.isEmpty ? item.id : item.productId,
+                name: item.productName,
+                quantity: Int64(item.quantity),
+                unitPriceMinor: Int64(item.unitPrice.rounded())
+            )
+        }
+        guard !lineItems.isEmpty else { return }
         do {
-            try await APIClient.shared.editPreorder(orderId: orderId, deliveryDate: nil, items: nil)
+            try await APIClient.shared.editPreorder(orderId: orderId, deliveryDate: deliveryDate, items: lineItems)
             await loadData()
         } catch {
             print("Failed to edit preorder")
         }
+    }
+
+    private func findOrder(_ orderId: String) async -> Order? {
+        if let order = activeOrders.first(where: { $0.id == orderId }) {
+            return order
+        }
+        let retailerId = AuthManager.shared.currentUser?.id ?? ""
+        guard !retailerId.isEmpty else { return nil }
+        let orders: [Order] = (try? await api.get(path: "/v1/retailers/\(retailerId)/orders")) ?? []
+        return orders.first { $0.id == orderId }
     }
 
     private func preorder(_ forecast: DemandForecast) async {

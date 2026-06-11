@@ -27,6 +27,7 @@ type Repository interface {
 	Create(ctx context.Context, n Notification) error
 	ListByRecipient(ctx context.Context, recipientID string, limit, offset int) ([]Notification, error)
 	MarkRead(ctx context.Context, notificationIDs []string) error
+	MarkAllRead(ctx context.Context, recipientID string) error
 	UnreadCount(ctx context.Context, recipientID string) (int64, error)
 }
 
@@ -138,6 +139,45 @@ func (r *SpannerRepository) MarkRead(ctx context.Context, notificationIDs []stri
 	})
 	if err != nil {
 		return fmt.Errorf("mark notifications read: %w", err)
+	}
+	return nil
+}
+
+// MarkAllRead sets IsRead=true on every unread notification for a recipient.
+func (r *SpannerRepository) MarkAllRead(ctx context.Context, recipientID string) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		stmt := spanner.Statement{
+			SQL: `SELECT NotificationId FROM Notifications@{FORCE_INDEX=Idx_Notifications_ByRecipientUnread}
+				WHERE RecipientId = @rid AND IsRead = FALSE`,
+			Params: map[string]any{"rid": recipientID},
+		}
+		iter := txn.Query(ctx, stmt)
+		defer iter.Stop()
+		var mutations []*spanner.Mutation
+		for {
+			row, nextErr := iter.Next()
+			if nextErr == iterator.Done {
+				break
+			}
+			if nextErr != nil {
+				return fmt.Errorf("list unread for mark all: %w", nextErr)
+			}
+			var notificationID string
+			if colErr := row.Columns(&notificationID); colErr != nil {
+				return fmt.Errorf("scan notification id: %w", colErr)
+			}
+			mutations = append(mutations, spanner.UpdateMap("Notifications", map[string]any{
+				"NotificationId": notificationID,
+				"IsRead":         true,
+			}))
+		}
+		if len(mutations) == 0 {
+			return nil
+		}
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		return fmt.Errorf("mark all notifications read for %s: %w", recipientID, err)
 	}
 	return nil
 }

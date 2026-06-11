@@ -8,4 +8,5 @@ packages:
   - "packages/api-client"
   - "packages/validation"
   - "packages/i18n"
+  - "packages/motion-tokens"
   - "packages/ui-kit"

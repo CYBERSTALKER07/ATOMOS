@@ -122,6 +122,22 @@ data class ManifestExceptionResponse(
     @SerialName("overflow_count") val overflowCount: Int = 0,
 )
 
+@Serializable
+data class ManifestExceptionRow(
+    @SerialName("exception_id") val exceptionId: String,
+    @SerialName("manifest_id") val manifestId: String,
+    @SerialName("order_id") val orderId: String,
+    val reason: String = "",
+    @SerialName("attempt_count") val attemptCount: Long = 0,
+    val escalated: Boolean = false,
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class ManifestExceptionsResponse(
+    val exceptions: List<ManifestExceptionRow> = emptyList(),
+)
+
 // ─── Inject ──────────────────────────────────────────────────────────────────
 
 @Serializable
