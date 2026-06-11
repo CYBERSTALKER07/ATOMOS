@@ -190,6 +190,9 @@ dependencies {
     // Google Maps
     implementation("com.google.maps.android:maps-compose:6.2.1")
 
+    // QR generation for retailer delivery confirmation overlays
+    implementation("com.google.zxing:core:3.5.3")
+
     // Barcode scanning removed from ecosystem scope — see docs/BARCODE_SCANNING.md
     // To reinstate: re-add CameraX 1.4.1 + com.google.mlkit:barcode-scanning:17.3.0
     // and add android.permission.CAMERA to AndroidManifest.xml.

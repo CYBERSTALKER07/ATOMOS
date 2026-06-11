@@ -373,7 +373,7 @@ func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID s
 		SQL: `SELECT OrderId, SupplierId, RetailerId,
 		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
 		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), Status, LineItemsJson,
-		             TotalMinor, Currency, CreatedAt, UpdatedAt
+		             TotalMinor, Currency, CreatedAt, UpdatedAt, Lat, Lng
 		      FROM Orders
 		      WHERE RetailerId = @RetailerId
 		        AND Status IN UNNEST(@Statuses)
@@ -406,7 +406,7 @@ func (r *SpannerRepository) ListRecentReceipts(ctx context.Context, retailerID s
 		SQL: `SELECT OrderId, SupplierId, RetailerId,
 		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
 		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), Status, LineItemsJson,
-		             TotalMinor, Currency, CreatedAt, UpdatedAt
+		             TotalMinor, Currency, CreatedAt, UpdatedAt, Lat, Lng
 		      FROM Orders
 		      WHERE RetailerId = @RetailerId
 		        AND Status = @Status
@@ -1084,6 +1084,8 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 		lineItems []byte
 		createdAt time.Time
 		updatedAt time.Time
+		lat       spanner.NullFloat64
+		lng       spanner.NullFloat64
 	)
 	if err := row.Columns(
 		&order.OrderID,
@@ -1100,6 +1102,8 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 		&order.Currency,
 		&createdAt,
 		&updatedAt,
+		&lat,
+		&lng,
 	); err != nil {
 		return TrackingOrder{}, fmt.Errorf("scan retailer tracking order: %w", err)
 	}
@@ -1112,7 +1116,35 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 	}
 	order.LiveLocationAvailable = false
 	order.Items = decodeTrackingLineItems(lineItems)
+	if lat.Valid {
+		order.DeliveryLat = lat.Float64
+	}
+	if lng.Valid {
+		order.DeliveryLng = lng.Float64
+	}
+	order.DeliveryToken = trackingDeliveryToken(order)
+	order.PaymentStatus = trackingPaymentStatus(order.Status)
 	return order, nil
+}
+
+func trackingDeliveryToken(order TrackingOrder) string {
+	switch strings.TrimSpace(order.Status) {
+	case "LOADED", "IN_TRANSIT", "ARRIVED", "ARRIVING", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION":
+		return strings.TrimSpace(order.OrderID)
+	default:
+		return ""
+	}
+}
+
+func trackingPaymentStatus(status string) string {
+	switch strings.TrimSpace(status) {
+	case "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION":
+		return "pending"
+	case "COMPLETED":
+		return "paid"
+	default:
+		return ""
+	}
 }
 
 func decodeTrackingLineItems(raw []byte) []TrackingLineItem {

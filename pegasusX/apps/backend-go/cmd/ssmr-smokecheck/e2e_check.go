@@ -1823,6 +1823,21 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 	}
 	json.NewDecoder(qrResp.Body).Decode(&qrData)
 
+	// QR flow: Driver validates token (no state transition)
+	validatePayload := `{"order_id":"` + orderID + `","scanned_token":"` + qrData.Payload + `"}`
+	validateReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/order/validate-qr", strings.NewReader(validatePayload))
+	validateReq.Header.Set("Authorization", "Bearer "+driverToken)
+	validateReq.Header.Set("Content-Type", "application/json")
+	validateResp, err := client.Do(validateReq)
+	if err != nil {
+		return fmt.Errorf("validate qr request: %w", err)
+	}
+	defer validateResp.Body.Close()
+	if validateResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(validateResp.Body)
+		return fmt.Errorf("validate qr status %d: %s", validateResp.StatusCode, string(body))
+	}
+
 	// QR flow: Driver scans QR
 	scanPayload := `{"qr_payload":"` + qrData.Payload + `"}`
 	scanReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/scan-qr", strings.NewReader(scanPayload))
@@ -1853,7 +1868,7 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 		return fmt.Errorf("report damage status %d: %s", dmgResp.StatusCode, string(body))
 	}
 
-	// Retailer confirms cash
+	// Retailer selects cash (driver-only completion path)
 	cashPayload := `{"order_id":"` + orderID + `"}`
 	cashReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/confirm-cash", strings.NewReader(cashPayload))
 	cashReq.Header.Set("Authorization", "Bearer "+retailerToken)
@@ -1866,6 +1881,29 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 	if cashResp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(cashResp.Body)
 		return fmt.Errorf("confirm cash status %d: %s", cashResp.StatusCode, string(body))
+	}
+	var cashSelect struct {
+		State string `json:"state"`
+	}
+	_ = json.NewDecoder(cashResp.Body).Decode(&cashSelect)
+	if cashSelect.State != "" && cashSelect.State != "PENDING_CASH_COLLECTION" {
+		return fmt.Errorf("confirm cash expected PENDING_CASH_COLLECTION, got %s", cashSelect.State)
+	}
+
+	// Driver collects cash and completes order
+	collectPayload := `{"order_id":"` + orderID + `","latitude":41.31,"longitude":69.24}`
+	collectReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/order/collect-cash", strings.NewReader(collectPayload))
+	collectReq.Header.Set("Authorization", "Bearer "+driverToken)
+	collectReq.Header.Set("Content-Type", "application/json")
+	collectReq.Header.Set("Idempotency-Key", "ssmr-collect-cash-"+orderID)
+	collectResp, err := client.Do(collectReq)
+	if err != nil {
+		return fmt.Errorf("collect cash request: %w", err)
+	}
+	defer collectResp.Body.Close()
+	if collectResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(collectResp.Body)
+		return fmt.Errorf("collect cash status %d: %s", collectResp.StatusCode, string(body))
 	}
 
 	return nil

@@ -9,6 +9,7 @@ import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.OrderEntity
 import com.pegasusx.driver.data.model.OrderLineItem
 import com.pegasusx.driver.data.model.OrderState
+import com.pegasusx.driver.data.model.PendingCollection
 import com.pegasusx.driver.data.model.ReorderStopsRequest
 import com.pegasusx.driver.data.model.ReturnCompleteRequest
 import com.pegasusx.driver.data.remote.ConnectionState
@@ -44,6 +45,7 @@ data class ManifestUiState(
     val awaitingSeal: Boolean = false,  // true when manifest exists but not SEALED
     val wsConnectionState: ConnectionState = ConnectionState.DISCONNECTED,
     val lastWsRefreshAt: Long? = null,
+    val pendingCollections: List<PendingCollection> = emptyList(),
 )
 
 @HiltViewModel
@@ -92,6 +94,7 @@ class ManifestViewModel @Inject constructor(
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
                 val orders = api.getAssignedOrders()
+                val pendingCollections = runCatching { api.getPendingCollections() }.getOrDefault(emptyList())
 
                 // Cache to Room
                 val entities = orders.map { it.toEntity() }
@@ -114,6 +117,7 @@ class ManifestViewModel @Inject constructor(
 
                 _state.value = _state.value.copy(
                     orders = orders,
+                    pendingCollections = pendingCollections,
                     isLoading = false,
                     totalStops = orders.count { it.state != OrderState.COMPLETED && it.state != OrderState.CANCELLED },
                     truckStatus = derivedStatus,

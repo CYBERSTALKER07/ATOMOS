@@ -16,6 +16,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 )
 
@@ -1062,6 +1063,19 @@ func (s *Service) attachLiveLocations(ctx context.Context, orders []TrackingOrde
 		}
 		orders[i].LiveLocationAvailable = true
 		orders[i].DriverLocation = trackingLocationFromTelemetry(lookup.location)
+		if orders[i].DeliveryLat != 0 && orders[i].DeliveryLng != 0 {
+			driverLat := lookup.location.Lat
+			driverLng := lookup.location.Lng
+			if driverLat == 0 && lookup.location.Latitude != 0 {
+				driverLat = lookup.location.Latitude
+			}
+			if driverLng == 0 && lookup.location.Longitude != 0 {
+				driverLng = lookup.location.Longitude
+			}
+			if proximity.HaversineDistance(driverLat, driverLng, orders[i].DeliveryLat, orders[i].DeliveryLng) < 0.100 {
+				orders[i].IsApproaching = true
+			}
+		}
 	}
 	return orders
 }

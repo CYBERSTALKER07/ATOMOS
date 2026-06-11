@@ -265,6 +265,11 @@ func mobileTrackingOrder(order TrackingOrder) map[string]any {
 	m["driver_latitude"] = driverLat(order)
 	m["driver_longitude"] = driverLng(order)
 	m["live_location_available"] = order.LiveLocationAvailable
+	m["delivery_token"] = order.DeliveryToken
+	m["is_approaching"] = order.IsApproaching
+	if order.PaymentStatus != "" {
+		m["payment_status"] = order.PaymentStatus
+	}
 
 	if order.DriverLocation != nil {
 		m["driver_location"] = order.DriverLocation

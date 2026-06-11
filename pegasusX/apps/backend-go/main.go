@@ -195,6 +195,7 @@ func main() {
 	})
 	telemetryroutes.RegisterRoutes(r, telemetryroutes.Deps{
 		TelemetryHub:        app.TelemetryHub,
+		RetailerHub:         app.RetailerHub,
 		LastLocations:       app.DriverLocations,
 		SupplierID:          app.Supplier.SupplierID,
 		Log:                 slog.Default(),

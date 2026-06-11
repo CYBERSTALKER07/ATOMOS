@@ -31,6 +31,9 @@ export default function DispatchPage() {
   const [loading, setLoading] = useState(true);
   const [restricted, setRestricted] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [executing, setExecuting] = useState(false);
+  const [executeError, setExecuteError] = useState<string | null>(null);
+  const [executeSuccess, setExecuteSuccess] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -55,6 +58,22 @@ export default function DispatchPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const runAutoDispatch = useCallback(async () => {
+    setExecuting(true);
+    setExecuteError(null);
+    setExecuteSuccess(null);
+    try {
+      await warehouseApi.executeWarehouseDispatch({ mode: 'AUTO' });
+      setExecuteSuccess('Dispatch committed. Payloader loading gate is now active.');
+      setLoading(true);
+      await load();
+    } catch (err) {
+      setExecuteError(err instanceof ApiError ? err.message : 'Dispatch execute failed');
+    } finally {
+      setExecuting(false);
+    }
+  }, [load]);
+
   const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
 
   return (
@@ -65,18 +84,35 @@ export default function DispatchPage() {
         loading={loading}
         error={restricted ? 'You do not have permission to view dispatch preview for this scope.' : loadError}
         actions={
-          <button
-            type="button"
-            onClick={() => {
-              setLoading(true);
-              load();
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary"
-          >
-            <Icon name="refresh" size={16} /> Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={executing || restricted || orders.length === 0}
+              onClick={runAutoDispatch}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--primary disabled:opacity-50"
+            >
+              <Icon name="dispatch" size={16} />
+              {executing ? 'Dispatching…' : 'Auto dispatch'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                load();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary"
+            >
+              <Icon name="refresh" size={16} /> Refresh
+            </button>
+          </div>
         }
       >
+        {executeError && (
+          <p className="text-sm mb-4" style={{ color: 'var(--error)' }}>{executeError}</p>
+        )}
+        {executeSuccess && (
+          <p className="text-sm mb-4" style={{ color: 'var(--success)' }}>{executeSuccess}</p>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md-animate-in">
           {/* Undispatched Orders */}
           <div className="rounded-xl border border-(--border) p-4" style={{ background: 'var(--background)' }}>

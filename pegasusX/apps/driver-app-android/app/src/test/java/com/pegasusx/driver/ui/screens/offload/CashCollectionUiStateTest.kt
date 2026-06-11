@@ -59,6 +59,17 @@ class CashCollectionUiStateTest {
     }
 
     @Test
+    fun `two step cash flow sets cashReceived before completion`() {
+        val stepOne = CashCollectionUiState(orderId = "o-123", amount = 50_000L, cashReceived = true)
+        assertTrue(stepOne.cashReceived)
+        assertFalse(stepOne.completed)
+
+        val stepTwo = stepOne.copy(showConfirmDialog = true, isCompleting = true)
+        assertTrue(stepTwo.showConfirmDialog)
+        assertTrue(stepTwo.isCompleting)
+    }
+
+    @Test
     fun `error clears on retry`() {
         val initial = CashCollectionUiState(error = "Network error")
         val retrying = initial.copy(isCompleting = true, error = null)

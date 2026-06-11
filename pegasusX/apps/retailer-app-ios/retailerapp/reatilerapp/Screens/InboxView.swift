@@ -106,7 +106,7 @@ struct InboxView: View {
                 Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight)
 
                 // QR Code
-                if let qrData = order.qrCode {
+                if let qrData = order.deliveryQRCodePayload {
                     HStack {
                         Spacer()
                         VStack(spacing: AppTheme.spacingSM) {

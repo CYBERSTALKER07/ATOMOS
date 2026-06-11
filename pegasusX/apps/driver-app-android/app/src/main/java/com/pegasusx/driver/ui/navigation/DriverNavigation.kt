@@ -62,6 +62,7 @@ import com.pegasusx.driver.ui.screens.offload.ShopClosedWaitingScreen
 import com.pegasusx.driver.ui.screens.profile.ProfileScreen
 import com.pegasusx.driver.ui.screens.scanner.ScannerScreen
 import com.pegasusx.driver.ui.screens.notifications.DriverNotificationInboxScreen
+import com.pegasusx.driver.ui.screens.offline.OfflineVerifierScreen
 import com.pegasusx.driver.ui.theme.MotionTokens
 
 object DriverRoutes {
@@ -74,6 +75,7 @@ object DriverRoutes {
     const val PAYMENT_WAITING = "payment_waiting/{orderId}/{amount}"
     const val CASH_COLLECTION = "cash_collection/{orderId}/{amount}"
     const val SHOP_CLOSED_WAITING = "shop_closed_waiting/{orderId}"
+    const val OFFLINE_VERIFIER = "offline_verifier"
 
     fun correctionRoute(orderId: String, retailerName: String): String {
         val encodedName = URLEncoder.encode(retailerName.ifBlank { "_" }, "UTF-8")
@@ -199,6 +201,10 @@ fun DriverNavigation(api: DriverApi, driverWebSocket: DriverWebSocket) {
                         viewModel = manifestViewModel,
                         onOpenMap = { /* Map tab handled internally by MainTabView */ },
                         onScanQR = { navController.navigate(DriverRoutes.SCANNER) },
+                        onOfflineVerify = { navController.navigate(DriverRoutes.OFFLINE_VERIFIER) },
+                        onResumeCashCollection = { orderId, amount ->
+                            navController.navigate(DriverRoutes.cashCollectionRoute(orderId, amount))
+                        },
                         onNotificationsClick = { navController.navigate(DriverRoutes.NOTIFICATIONS) { launchSingleTop = true } },
                     )
                 },
@@ -212,6 +218,10 @@ fun DriverNavigation(api: DriverApi, driverWebSocket: DriverWebSocket) {
                     ProfileScreen(viewModel = manifestViewModel)
                 }
             )
+        }
+
+        composable(DriverRoutes.OFFLINE_VERIFIER) {
+            OfflineVerifierScreen(onBack = { navController.popBackStack() })
         }
 
         composable(DriverRoutes.SCANNER) {
@@ -241,7 +251,7 @@ fun DriverNavigation(api: DriverApi, driverWebSocket: DriverWebSocket) {
                 onClose = { navController.popBackStack() },
                 onOffloadConfirmed = { response ->
                     navController.popBackStack()
-                    if (response.paymentMethod == "cash") {
+                    if (response.paymentMethod.equals("CASH", ignoreCase = true)) {
                         navController.navigate(
                             DriverRoutes.cashCollectionRoute(response.orderId, response.amount)
                         )

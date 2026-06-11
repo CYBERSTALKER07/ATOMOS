@@ -17,6 +17,8 @@ struct CashCollectionView: View {
     var onSplitPayment: ((String, Int) -> Void)?
 
     @State private var isCompleting = false
+    @State private var cashReceived = false
+    @State private var showConfirmDialog = false
     @State private var errorMessage: String?
 
     var body: some View {
@@ -103,13 +105,17 @@ struct CashCollectionView: View {
 
             // MARK: - Button
             Button {
-                completeWithCash()
+                if cashReceived {
+                    showConfirmDialog = true
+                } else {
+                    cashReceived = true
+                }
             } label: {
                 HStack(spacing: 8) {
                     if isCompleting {
                         ProgressView().tint(LabTheme.buttonFg)
                     }
-                    Text("Cash Collected — Complete")
+                    Text(cashReceived ? "Confirm & Complete" : "Cash Received")
                         .font(.system(size: 15, weight: .bold))
                 }
                 .foregroundStyle(LabTheme.buttonFg)
@@ -122,6 +128,18 @@ struct CashCollectionView: View {
             .padding(.bottom, LabTheme.s24)
         }
         .background(LabTheme.bg)
+        .confirmationDialog(
+            "Confirm cash collection?",
+            isPresented: $showConfirmDialog,
+            titleVisibility: .visible
+        ) {
+            Button("Complete Delivery", role: .destructive) {
+                completeWithCash()
+            }
+            Button("Go Back", role: .cancel) {}
+        } message: {
+            Text("You received \(amount.formattedAmount) from the retailer. This completes the delivery.")
+        }
     }
 
     private func completeWithCash() {

@@ -1,7 +1,9 @@
 package com.pegasusx.retailer.ui.components
 
+import android.graphics.Bitmap
 import android.os.Build
 import android.view.WindowManager
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -27,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,6 +38,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.pegasusx.retailer.data.model.Order
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import org.json.JSONObject
 
 @Composable
 fun QROverlay(
@@ -98,12 +104,7 @@ fun QROverlay(
                     )
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Icon(
-                        Icons.Outlined.QrCode2,
-                        contentDescription = "QR Code",
-                        modifier = Modifier.size(180.dp),
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
+                    DeliveryQrCode(order)
 
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
@@ -128,4 +129,50 @@ fun QROverlay(
             }
         }
     }
+}
+
+@Composable
+private fun DeliveryQrCode(order: Order) {
+    val payload = buildDeliveryQrPayload(order)
+    val bitmap = remember(payload) { payload?.let { generateQrBitmap(it, 720, 720) } }
+
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = "QR Code",
+            modifier = Modifier.size(180.dp),
+        )
+    } else {
+        Icon(
+            Icons.Outlined.QrCode2,
+            contentDescription = "QR Code",
+            modifier = Modifier.size(180.dp),
+            tint = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+private fun buildDeliveryQrPayload(order: Order): String? {
+    val token = order.qrCode?.takeIf { it.isNotBlank() } ?: return null
+    return JSONObject(
+        mapOf(
+            "order_id" to order.id,
+            "token" to token,
+        ),
+    ).toString()
+}
+
+private fun generateQrBitmap(data: String, width: Int, height: Int): Bitmap? {
+    return runCatching {
+        val matrix = QRCodeWriter().encode(data, BarcodeFormat.QR_CODE, width, height)
+        val pixels = IntArray(width * height)
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                pixels[y * width + x] = if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE
+            }
+        }
+        Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
+            setPixels(pixels, 0, width, 0, 0, width, height)
+        }
+    }.getOrNull()
 }

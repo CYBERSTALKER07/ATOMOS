@@ -7,6 +7,7 @@ import com.pegasusx.retailer.data.api.RetailerWSMessage
 import com.pegasusx.retailer.data.api.RetailerWebSocket
 import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.CardCheckoutRequest
+import com.pegasusx.retailer.data.model.ConfirmCashRequest
 import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.formatRetailerAmount
 import com.pegasusx.retailer.data.model.Order
@@ -177,6 +178,15 @@ class NavigationViewModel @Inject constructor(
     suspend fun cashCheckout(orderId: String): Result<Unit> {
         return try {
             api.cashCheckout(CashCheckoutRequest(orderId = orderId), "retailer-cash-checkout:$orderId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun confirmCash(orderId: String): Result<Unit> {
+        return try {
+            api.confirmCash(ConfirmCashRequest(orderId = orderId), "retailer-confirm-cash:$orderId")
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

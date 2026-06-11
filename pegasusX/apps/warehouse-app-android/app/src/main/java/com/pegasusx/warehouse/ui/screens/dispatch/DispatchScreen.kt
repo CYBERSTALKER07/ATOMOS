@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,6 +28,7 @@ import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.google.gson.JsonObject
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -58,6 +60,7 @@ fun DispatchScreen(
     var requestPendingCancellation by remember { mutableStateOf<WarehouseSupplyRequest?>(null) }
     var lockPendingRelease by remember { mutableStateOf<WarehouseDispatchLock?>(null) }
     var actionMessage by remember { mutableStateOf<DispatchActionMessage?>(null) }
+    var executing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }
     val realtimeClient = remember(context) { WarehouseRealtimeClient(context) }
@@ -197,6 +200,30 @@ fun DispatchScreen(
         }
     }
 
+    fun runAutoDispatch() {
+        if (executing || preview?.undispatchedOrders.isNullOrEmpty()) return
+        executing = true
+        scope.launch {
+            runCatching {
+                val body = JsonObject().apply { addProperty("mode", "AUTO") }
+                api.executeDispatch(body)
+            }.onSuccess { response ->
+                if (response.isSuccessful) {
+                    actionMessage = DispatchActionMessage(
+                        title = "Dispatch Committed",
+                        message = "Payloader loading gate is now active.",
+                    )
+                    load()
+                } else {
+                    actionMessage = DispatchActionMessage("Dispatch Failed", codeMessage(response.code()))
+                }
+            }.onFailure { throwable ->
+                actionMessage = DispatchActionMessage("Dispatch Failed", throwable.message ?: "Network error")
+            }
+            executing = false
+        }
+    }
+
     fun releaseDispatchLock(lock: WarehouseDispatchLock) {
         scope.launch {
             runCatching { api.releaseDispatchLock(lock.lockId) }
@@ -230,7 +257,7 @@ fun DispatchScreen(
                     onEvent = { liveEvent ->
                         when (liveEvent.type) {
                             "SUPPLY_REQUEST_UPDATE" -> reloadSupplyRequests()
-                            "DISPATCH_LOCK_CHANGE" -> {
+                            "DISPATCH_LOCK_CHANGE", "DISPATCH_COMMITTED" -> {
                                 reloadDispatchLocks()
                                 load()
                             }
@@ -254,6 +281,11 @@ fun DispatchScreen(
                 title = { Text("Dispatch") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 actions = {
+                    if (tab == 0 && !preview?.undispatchedOrders.isNullOrEmpty()) {
+                        IconButton(onClick = { runAutoDispatch() }, enabled = !executing) {
+                            Icon(Icons.Default.PlayArrow, "Auto dispatch")
+                        }
+                    }
                     if (tab == 2) {
                         IconButton(onClick = { showCreateSupplyRequest = true }) { Icon(Icons.Default.Add, "New request") }
                     }

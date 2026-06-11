@@ -226,6 +226,11 @@ type TrackingOrder struct {
 	CreatedAt             string                   `json:"created_at"`
 	UpdatedAt             string                   `json:"updated_at"`
 	Items                 []TrackingLineItem       `json:"items"`
+	DeliveryToken         string                   `json:"delivery_token,omitempty"`
+	IsApproaching         bool                     `json:"is_approaching"`
+	PaymentStatus         string                   `json:"payment_status,omitempty"`
+	DeliveryLat           float64                  `json:"-"`
+	DeliveryLng           float64                  `json:"-"`
 }
 
 type TrackingEventType string

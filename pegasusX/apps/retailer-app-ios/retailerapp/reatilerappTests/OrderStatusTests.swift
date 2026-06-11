@@ -81,6 +81,10 @@ struct OrderStatusTests {
         #expect(OrderStatus.inTransit.hasDeliveryToken == true)
     }
 
+    @Test func hasDeliveryToken_arriving() {
+        #expect(OrderStatus.arriving.hasDeliveryToken == true)
+    }
+
     @Test func hasDeliveryToken_arrived() {
         #expect(OrderStatus.arrived.hasDeliveryToken == true)
     }

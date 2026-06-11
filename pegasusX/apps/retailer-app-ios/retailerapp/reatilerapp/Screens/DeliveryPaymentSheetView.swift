@@ -14,6 +14,7 @@ struct DeliveryPaymentSheetView: View {
 
     enum PaymentPhase {
         case choose
+        case cashConfirm
         case processing
         case cashPending
         case success
@@ -34,6 +35,8 @@ struct DeliveryPaymentSheetView: View {
                 switch phase {
                 case .choose:
                     chooseContent
+                case .cashConfirm:
+                    cashConfirmContent
                 case .processing:
                     processingContent
                 case .cashPending:
@@ -109,8 +112,7 @@ struct DeliveryPaymentSheetView: View {
                     label: "Cash on Delivery",
                     description: "Pay the driver in cash"
                 ) {
-                    phase = .processing
-                    Task { await initiateCashCheckout() }
+                    phase = .cashConfirm
                 }
 
                 ForEach(cardGatewayOptions) { option in
@@ -122,6 +124,68 @@ struct DeliveryPaymentSheetView: View {
                         phase = .processing
                         Task { await initiateCardCheckout(gateway: option.gateway) }
                     }
+                }
+            }
+            .padding(.horizontal, AppTheme.spacingLG)
+
+            Spacer()
+        }
+    }
+
+    // MARK: - Cash Confirm
+
+    private var cashConfirmContent: some View {
+        VStack(spacing: AppTheme.spacingXL) {
+            Spacer(minLength: AppTheme.spacingXL)
+
+            ZStack {
+                Circle()
+                    .fill(AppTheme.warningSoft)
+                    .frame(width: 80, height: 80)
+                Image(systemName: "banknote.fill")
+                    .font(.system(size: 32, weight: .semibold))
+                    .foregroundStyle(AppTheme.warning)
+            }
+
+            VStack(spacing: AppTheme.spacingSM) {
+                Text("Confirm Cash Handoff")
+                    .font(.system(.title2, design: .rounded, weight: .bold))
+                    .foregroundStyle(AppTheme.textPrimary)
+
+                Text(formattedAmount)
+                    .font(.system(.title3, design: .rounded, weight: .semibold))
+                    .foregroundStyle(AppTheme.warning)
+
+                Text("Only confirm after the driver has physically received the cash.")
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            HStack(spacing: AppTheme.spacingMD) {
+                Button {
+                    phase = .choose
+                } label: {
+                    Text("Back")
+                        .font(.system(.body, design: .rounded, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(AppTheme.surfaceElevated)
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .clipShape(.rect(cornerRadius: AppTheme.radiusButton))
+                }
+
+                Button {
+                    phase = .processing
+                    Task { await confirmCash() }
+                } label: {
+                    Text("Confirm Cash Received")
+                        .font(.system(.body, design: .rounded, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(AppTheme.warning)
+                        .foregroundStyle(.white)
+                        .clipShape(.rect(cornerRadius: AppTheme.radiusButton))
                 }
             }
             .padding(.horizontal, AppTheme.spacingLG)
@@ -306,6 +370,26 @@ struct DeliveryPaymentSheetView: View {
                 restricted: "Payment access is restricted for this account.",
                 offline: "Offline mode active. Reconnect and retry payment.",
                 fallback: "Payment could not be completed. Please try again.",
+            )
+            phase = .failed
+        }
+    }
+
+    private func confirmCash() async {
+        do {
+            let body = ["order_id": event.orderId]
+            let _: [String: DiscardableCodable] = try await api.post(
+                path: "/v1/delivery/confirm-cash",
+                body: body,
+                headers: ["Idempotency-Key": "retailer-confirm-cash:\(event.orderId)"]
+            )
+            phase = .cashPending
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Payment access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry cash confirmation.",
+                fallback: "Cash confirmation could not be completed. Please try again.",
             )
             phase = .failed
         }

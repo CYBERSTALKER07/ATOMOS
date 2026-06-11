@@ -91,8 +91,8 @@ final class APIClient: @unchecked Sendable {
         return try await post("v1/payloader/recommend-reassign", body: payload)
     }
 
-    func reassignOrder(orderId: String, newTerminalId: String) async throws -> StatusResponse {
-        let payload = ["order_id": orderId, "terminal_id": newTerminalId]
+    func reassignOrder(orderId: String, toDriverId: String, reason: String = "payload-redispatch") async throws -> StatusResponse {
+        let payload = ["order_id": orderId, "to_driver_id": toDriverId, "reason": reason]
         return try await post("v1/payloader/reassign-order", body: payload)
     }
 

@@ -6,6 +6,8 @@ import com.pegasusx.retailer.data.model.AuthResponse
 import com.pegasusx.retailer.data.model.AutoOrderSettings
 import com.pegasusx.retailer.data.model.CardCheckoutRequest
 import com.pegasusx.retailer.data.model.CardCheckoutResponse
+import com.pegasusx.retailer.data.model.ConfirmCashRequest
+import com.pegasusx.retailer.data.model.ConfirmCashResponse
 import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.CashCheckoutResponse
 import com.pegasusx.retailer.data.model.DemandForecast
@@ -171,6 +173,12 @@ interface PegasusApi {
         @Body body: CashCheckoutRequest,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): CashCheckoutResponse
+
+    @POST("/v1/delivery/confirm-cash")
+    suspend fun confirmCash(
+        @Body body: ConfirmCashRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): ConfirmCashResponse
 
     @POST("/v1/order/card-checkout")
     suspend fun cardCheckout(

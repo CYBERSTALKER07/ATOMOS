@@ -110,9 +110,10 @@ class OrderStatusTest {
     }
 
     @Test
-    fun hasDeliveryToken_dispatched_inTransit_arrived() {
+    fun hasDeliveryToken_dispatched_inTransit_arriving_arrived() {
         assertTrue(OrderStatus.DISPATCHED.hasDeliveryToken)
         assertTrue(OrderStatus.IN_TRANSIT.hasDeliveryToken)
+        assertTrue(OrderStatus.ARRIVING.hasDeliveryToken)
         assertTrue(OrderStatus.ARRIVED.hasDeliveryToken)
     }
 

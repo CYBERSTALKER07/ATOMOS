@@ -15,6 +15,7 @@ struct DispatchView: View {
     @State private var requestPendingCancellation: WarehouseSupplyRequest?
     @State private var lockPendingRelease: WarehouseDispatchLock?
     @State private var actionAlert: DispatchActionAlert?
+    @State private var executing = false
 
     var body: some View {
         NavigationStack {
@@ -38,6 +39,12 @@ struct DispatchView: View {
             .navigationTitle("Dispatch")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    if selectedSegment == 0, let preview, !preview.undispatchedOrders.isEmpty {
+                        Button("Auto Dispatch", systemImage: "play.fill") {
+                            Task { await runAutoDispatch() }
+                        }
+                        .disabled(executing)
+                    }
                     if selectedSegment == 2 {
                         Button("New Request", systemImage: "plus") { showCreateSupplyRequest = true }
                     }
@@ -313,7 +320,7 @@ struct DispatchView: View {
             switch event.type {
             case "SUPPLY_REQUEST_UPDATE":
                 Task { await reloadSupplyRequests() }
-            case "DISPATCH_LOCK_CHANGE":
+            case "DISPATCH_LOCK_CHANGE", "DISPATCH_COMMITTED":
                 Task {
                     await reloadDispatchLocks()
                     await reloadDispatchPreview()
@@ -382,6 +389,22 @@ struct DispatchView: View {
             await reloadSupplyRequests()
         } catch {
             actionAlert = DispatchActionAlert(title: "Cancellation Failed", message: describe(error))
+        }
+    }
+
+    private func runAutoDispatch() async {
+        guard !executing else { return }
+        executing = true
+        defer { executing = false }
+        do {
+            try await WarehouseService.executeDispatch(body: ["mode": "AUTO"])
+            actionAlert = DispatchActionAlert(
+                title: "Dispatch Committed",
+                message: "Payloader loading gate is now active."
+            )
+            await reloadDispatchPreview()
+        } catch {
+            actionAlert = DispatchActionAlert(title: "Dispatch Failed", message: describe(error))
         }
     }
 

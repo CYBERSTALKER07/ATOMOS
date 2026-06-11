@@ -30,7 +30,14 @@ type PaymentEvent = Omit<PaymentRequired, "available_card_gateways" | "amount"> 
   gateway?: string;
 };
 
-type PaymentState = "idle" | "choosing" | "processing" | "success" | "error";
+type PaymentState =
+  | "idle"
+  | "choosing"
+  | "confirm-cash"
+  | "processing"
+  | "cash-pending"
+  | "success"
+  | "error";
 
 function formatAmount(amount: number): string {
   return amount.toLocaleString("en-US").replace(/,/g, " ");
@@ -188,6 +195,19 @@ export default function PaymentModal() {
     setCheckoutUrl(null);
   }, []);
 
+  useWsEvent(
+    "ORDER_COMPLETED",
+    useCallback(
+      (msg: WsMessage) => {
+        if (event && msg.order_id === event.order_id) {
+          setState("success");
+          setTimeout(dismiss, 2000);
+        }
+      },
+      [event, dismiss],
+    ),
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -220,25 +240,29 @@ export default function PaymentModal() {
     setState("processing");
     setError(null);
     try {
-      const res = await apiFetch("/v1/order/cash-checkout", {
+      const res = await apiFetch("/v1/delivery/confirm-cash", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": `retailer-cash-checkout:${event.order_id}`,
+          "Idempotency-Key": `retailer-confirm-cash:${event.order_id}`,
         },
         body: JSON.stringify({ order_id: event.order_id }),
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "Cash checkout failed");
+        throw new Error(text || "Cash confirmation failed");
       }
-      setState("success");
-      setTimeout(dismiss, 2000);
+      setState("cash-pending");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Cash checkout failed");
+      setError(err instanceof Error ? err.message : "Cash confirmation failed");
       setState("choosing");
     }
   }, [event, dismiss]);
+
+  const reviewCash = useCallback(() => {
+    setError(null);
+    setState("confirm-cash");
+  }, []);
 
   const handleCard = useCallback(
     async (gateway: string) => {
@@ -392,10 +416,48 @@ export default function PaymentModal() {
                       </a>
                     )}
                   </div>
+                ) : state === "cash-pending" ? (
+                  <div className="flex flex-col items-center gap-4 py-8 text-center">
+                    <Banknote size={40} className="text-[var(--desk-warning)]" />
+                    <div>
+                      <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)]">
+                        Awaiting driver cash collection
+                      </p>
+                      <p className="text-xs text-[var(--desk-text-tertiary)] mt-1">
+                        The driver will collect {formatAmount(event.amount)} UZS and complete the delivery.
+                      </p>
+                    </div>
+                  </div>
+                ) : state === "confirm-cash" ? (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-[var(--desk-warning)]/30 bg-[var(--desk-warning)]/10 p-4 text-left">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--desk-warning)]">
+                        Cash Payment
+                      </p>
+                      <p className="mt-2 text-sm font-bold text-[var(--desk-text-primary)]">
+                        Confirm you will pay {formatAmount(event.amount)} UZS in cash. The driver will collect and complete the delivery.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <button
+                        onClick={() => setState("choosing")}
+                        className="flex h-12 items-center justify-center rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] font-bold text-[var(--desk-text-primary)] transition-all hover:border-[var(--desk-border-strong)]"
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={handleCash}
+                        className="flex h-12 items-center justify-center rounded-2xl bg-[var(--desk-warning)] px-4 font-bold text-white transition-all hover:scale-[1.01]"
+                      >
+                        Pay with Cash
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     <button
-                      onClick={handleCash}
+                      onClick={reviewCash}
                       className="flex items-center gap-4 w-full p-4 rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] hover:border-[var(--desk-border-strong)] hover:shadow-md transition-all group"
                     >
                       <div className="w-12 h-12 rounded-xl bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)] flex items-center justify-center group-hover:bg-[var(--desk-accent-soft)] group-hover:text-[var(--desk-accent)] transition-colors">

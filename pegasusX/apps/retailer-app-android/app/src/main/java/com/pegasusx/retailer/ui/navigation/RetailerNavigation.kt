@@ -550,6 +550,15 @@ fun RetailerNavigation(
             }
         }
 
+        LaunchedEffect(navState.approachingOrderIds, navState.activeOrders) {
+            val approachingId = navState.approachingOrderIds.firstOrNull() ?: return@LaunchedEffect
+            val order = navState.activeOrders.firstOrNull { it.id == approachingId && it.status.hasDeliveryToken }
+                ?: return@LaunchedEffect
+            if (globalQROrder?.id != order.id) {
+                globalQROrder = order
+            }
+        }
+
         if (paymentEvent != null) {
             DeliveryPaymentSheet(
                 event = paymentEvent,
@@ -557,16 +566,24 @@ fun RetailerNavigation(
                 errorMessage = paymentError,
                 isCompact = isCompact,
                 onSelectCash = {
+                    paymentError = null
+                    paymentPhase = PaymentPhase.CASH_CONFIRM
+                },
+                onConfirmCash = {
                     paymentPhase = PaymentPhase.PROCESSING
                     coroutineScope.launch {
-                        val result = navigationViewModel.cashCheckout(paymentEvent.orderId)
+                        val result = navigationViewModel.confirmCash(paymentEvent.orderId)
                         if (result.isSuccess) {
                             paymentPhase = PaymentPhase.CASH_PENDING
                         } else {
-                            paymentError = result.exceptionOrNull()?.message ?: "Cash checkout failed"
+                            paymentError = result.exceptionOrNull()?.message ?: "Cash confirmation failed"
                             paymentPhase = PaymentPhase.FAILED
                         }
                     }
+                },
+                onBackToPaymentChoice = {
+                    paymentError = null
+                    paymentPhase = PaymentPhase.CHOOSE
                 },
                 onSelectCard = { gateway ->
                     paymentPhase = PaymentPhase.PROCESSING

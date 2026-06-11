@@ -82,6 +82,9 @@ struct ActiveDeliveriesView: View {
         for await event in ws.eventStream() {
             if case .driverApproaching(let orderId, _, _, _, _, _) = event {
                 approachingOrderIds.insert(orderId)
+                if let order = orders.first(where: { $0.id == orderId && $0.status.hasDeliveryToken }) {
+                    qrOverlayOrder = order
+                }
             }
         }
     }
@@ -397,7 +400,7 @@ struct OrderDetailSheet: View {
                     .slideIn(delay: 0.15)
 
                     // Show QR — JIT: only after dispatch
-                    if order.status.hasDeliveryToken, let qrData = order.qrCode {
+                    if order.status.hasDeliveryToken, let qrData = order.deliveryQRCodePayload {
                         VStack(spacing: AppTheme.spacingSM) {
                             QRCodeView(data: qrData, size: 180)
                             Text("Show this QR code to the driver")
@@ -547,7 +550,7 @@ struct QROverlay: View {
                     .font(.system(.headline, design: .rounded))
                     .foregroundStyle(AppTheme.textPrimary)
 
-                if let qrData = order.qrCode {
+                if let qrData = order.deliveryQRCodePayload {
                     QRCodeView(data: qrData, size: 240)
                         .padding(AppTheme.spacingXL)
                         .background(AppTheme.cardBackground)

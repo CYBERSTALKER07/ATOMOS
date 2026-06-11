@@ -8,6 +8,7 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -866,11 +867,16 @@ func (a *inventoryAdapter) AdjustStock(ctx context.Context, inventoryID string, 
 func driverOrderListQuery(client *spanner.Client) driver.DriverOrderQuery {
 	return func(ctx context.Context, driverID string) ([]driver.DriverOrderView, error) {
 		stmt := spanner.Statement{
-			SQL: `SELECT OrderID, RetailerID, Status, TotalMinor, Lat, Lng, PaymentGateway,
-			             RouteID, CreatedAt, UpdatedAt
-			      FROM Orders
-			      WHERE DriverID = @did AND Status NOT IN ('COMPLETED', 'CANCELLED')
-			      ORDER BY CreatedAt DESC LIMIT 50`,
+			SQL: `SELECT o.OrderId, o.RetailerId, COALESCE(r.Name, o.RetailerId), o.Status,
+			             o.TotalMinor, o.Lat, o.Lng, COALESCE(o.RouteId, ''),
+			             o.LineItemsJson, o.CreatedAt, o.UpdatedAt,
+			             COALESCE(mo.SequenceIndex, 0)
+			      FROM Orders o
+			      LEFT JOIN Retailers r ON r.RetailerId = o.RetailerId
+			      LEFT JOIN ManifestOrders mo ON mo.ManifestId = o.ManifestId AND mo.OrderId = o.OrderId
+			      WHERE o.DriverId = @did AND o.Status NOT IN ('COMPLETED', 'CANCELLED')
+			      ORDER BY COALESCE(mo.SequenceIndex, 999999) ASC, o.CreatedAt ASC
+			      LIMIT 50`,
 			Params: map[string]interface{}{"did": driverID},
 		}
 		iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
@@ -885,11 +891,13 @@ func driverOrderListQuery(client *spanner.Client) driver.DriverOrderQuery {
 				return nil, fmt.Errorf("driver order list: %w", err)
 			}
 			var o driver.DriverOrderView
-			var routeID spanner.NullString
 			var lat, lng spanner.NullFloat64
-			var gateway spanner.NullString
+			var lineItems []byte
 			var createdAt, updatedAt time.Time
-			if err := row.Columns(&o.OrderID, &o.RetailerID, &o.Status, &o.TotalMinor, &lat, &lng, &gateway, &routeID, &createdAt, &updatedAt); err != nil {
+			if err := row.Columns(
+				&o.OrderID, &o.RetailerID, &o.RetailerName, &o.Status, &o.TotalMinor,
+				&lat, &lng, &o.RouteID, &lineItems, &createdAt, &updatedAt, &o.SequenceIndex,
+			); err != nil {
 				return nil, fmt.Errorf("driver order scan: %w", err)
 			}
 			if lat.Valid {
@@ -898,12 +906,7 @@ func driverOrderListQuery(client *spanner.Client) driver.DriverOrderQuery {
 			if lng.Valid {
 				o.Lng = lng.Float64
 			}
-			if routeID.Valid {
-				o.RouteID = routeID.StringVal
-			}
-			if gateway.Valid {
-				o.PaymentGateway = gateway.StringVal
-			}
+			o.Items = decodeDriverOrderLineItems(lineItems)
 			o.CreatedAt = createdAt.Format(time.RFC3339Nano)
 			o.UpdatedAt = updatedAt.Format(time.RFC3339Nano)
 			orders = append(orders, o)
@@ -915,13 +918,43 @@ func driverOrderListQuery(client *spanner.Client) driver.DriverOrderQuery {
 	}
 }
 
+func decodeDriverOrderLineItems(raw []byte) []driver.DriverOrderLineView {
+	if len(raw) == 0 {
+		return nil
+	}
+	var source []struct {
+		SKU       string `json:"sku_id"`
+		Name      string `json:"name"`
+		Quantity  int64  `json:"quantity"`
+		UnitPrice int64  `json:"unit_price"`
+	}
+	if err := json.Unmarshal(raw, &source); err != nil {
+		return nil
+	}
+	items := make([]driver.DriverOrderLineView, 0, len(source))
+	for _, item := range source {
+		items = append(items, driver.DriverOrderLineView{
+			ProductID:   item.SKU,
+			ProductName: item.Name,
+			Quantity:    item.Quantity,
+			UnitPrice:   item.UnitPrice,
+		})
+	}
+	return items
+}
+
 // driverOrderGetQuery returns a DriverOrderGetQuery backed by Spanner.
 func driverOrderGetQuery(client *spanner.Client) driver.DriverOrderGetQuery {
 	return func(ctx context.Context, orderID string) (driver.DriverOrderView, bool, error) {
 		stmt := spanner.Statement{
-			SQL: `SELECT OrderID, RetailerID, Status, TotalMinor, Lat, Lng, PaymentGateway,
-			             RouteID, CreatedAt, UpdatedAt
-			      FROM Orders WHERE OrderID = @oid`,
+			SQL: `SELECT o.OrderId, o.RetailerId, COALESCE(r.Name, o.RetailerId), o.Status,
+			             o.TotalMinor, o.Lat, o.Lng, COALESCE(o.RouteId, ''),
+			             o.LineItemsJson, o.CreatedAt, o.UpdatedAt,
+			             COALESCE(mo.SequenceIndex, 0)
+			      FROM Orders o
+			      LEFT JOIN Retailers r ON r.RetailerId = o.RetailerId
+			      LEFT JOIN ManifestOrders mo ON mo.ManifestId = o.ManifestId AND mo.OrderId = o.OrderId
+			      WHERE o.OrderId = @oid`,
 			Params: map[string]interface{}{"oid": orderID},
 		}
 		iter := client.Single().Query(ctx, stmt)
@@ -934,11 +967,13 @@ func driverOrderGetQuery(client *spanner.Client) driver.DriverOrderGetQuery {
 			return driver.DriverOrderView{}, false, fmt.Errorf("driver order get: %w", err)
 		}
 		var o driver.DriverOrderView
-		var routeID spanner.NullString
 		var lat, lng spanner.NullFloat64
-		var gateway spanner.NullString
+		var lineItems []byte
 		var createdAt, updatedAt time.Time
-		if err := row.Columns(&o.OrderID, &o.RetailerID, &o.Status, &o.TotalMinor, &lat, &lng, &gateway, &routeID, &createdAt, &updatedAt); err != nil {
+		if err := row.Columns(
+			&o.OrderID, &o.RetailerID, &o.RetailerName, &o.Status, &o.TotalMinor,
+			&lat, &lng, &o.RouteID, &lineItems, &createdAt, &updatedAt, &o.SequenceIndex,
+		); err != nil {
 			return driver.DriverOrderView{}, false, fmt.Errorf("driver order get scan: %w", err)
 		}
 		if lat.Valid {
@@ -947,12 +982,7 @@ func driverOrderGetQuery(client *spanner.Client) driver.DriverOrderGetQuery {
 		if lng.Valid {
 			o.Lng = lng.Float64
 		}
-		if routeID.Valid {
-			o.RouteID = routeID.StringVal
-		}
-		if gateway.Valid {
-			o.PaymentGateway = gateway.StringVal
-		}
+		o.Items = decodeDriverOrderLineItems(lineItems)
 		o.CreatedAt = createdAt.Format(time.RFC3339Nano)
 		o.UpdatedAt = updatedAt.Format(time.RFC3339Nano)
 		return o, true, nil

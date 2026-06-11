@@ -22,6 +22,8 @@ type Deps struct {
 		HandleCreditDelivery(http.ResponseWriter, *http.Request)
 		HandleMissingItems(http.ResponseWriter, *http.Request)
 		HandleSplitPayment(http.ResponseWriter, *http.Request)
+		HandleValidateQR(http.ResponseWriter, *http.Request)
+		HandleAmendOrder(http.ResponseWriter, *http.Request)
 	}
 	FirebaseAuthEnabled bool
 	FirebaseVerifier    auth.FirebaseVerifier
@@ -58,8 +60,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			rr.Post("/v1/fleet/route/request-early-complete", d.OrderService.HandleRequestEarlyComplete)
 			rr.Get("/v1/orders/{orderID}", d.Service.HandleOrderGet)
 			rr.Patch("/v1/orders/{orderID}/state", d.Service.HandleOrderStatePatch)
-			rr.Post("/v1/order/validate-qr", d.Service.HandleOrderValidateQR)
-			rr.Post("/v1/order/amend", d.Service.HandleOrderAmend)
+			rr.Post("/v1/order/validate-qr", d.OrderService.HandleValidateQR)
+			rr.Post("/v1/order/amend", d.OrderService.HandleAmendOrder)
 			rr.Post("/v1/delivery/shop-closed", d.OrderService.HandleReportShopClosed)
 			rr.Post("/v1/delivery/bypass-offload", d.OrderService.HandleBypassOffload)
 			rr.Post("/v1/ws/ack", d.Service.HandleWSAck)

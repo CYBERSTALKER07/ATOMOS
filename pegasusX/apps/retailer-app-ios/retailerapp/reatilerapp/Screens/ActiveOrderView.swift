@@ -112,7 +112,7 @@ struct ActiveOrderView: View {
                 Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight)
 
                 // QR Code — JIT: only after dispatch
-                if order.status.hasDeliveryToken, let qrData = order.qrCode {
+                if order.status.hasDeliveryToken, let qrData = order.deliveryQRCodePayload {
                     VStack(spacing: AppTheme.spacingSM) {
                         Text("QR Code for Driver")
                             .font(.system(.caption, design: .rounded, weight: .bold))

@@ -108,7 +108,7 @@ enum class OrderStatus {
 
     /** QR code is available after payload seal (DISPATCHED) when JIT token is generated. */
     val hasDeliveryToken: Boolean
-        get() = this in listOf(DISPATCHED, IN_TRANSIT, ARRIVED)
+        get() = this in listOf(DISPATCHED, IN_TRANSIT, ARRIVING, ARRIVED)
 
     /** Ordered list of steps for the timeline UI. */
     val timelineStepIndex: Int
@@ -644,6 +644,19 @@ data class CashCheckoutResponse(
     val amount: Long,
     @SerialName("driver_id") val driverId: String? = null,
     @SerialName("retailer_id") val retailerId: String,
+    val message: String,
+)
+
+@Serializable
+data class ConfirmCashRequest(
+    @SerialName("order_id") val orderId: String,
+)
+
+@Serializable
+data class ConfirmCashResponse(
+    val success: Boolean,
+    @SerialName("order_id") val orderId: String,
+    val state: String,
     val message: String,
 )
 

@@ -159,8 +159,6 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 			manifestID := uuid.NewString()
 			routeID := uuid.NewString()
 			vehicleID := strings.TrimSpace(vehicleByDriver[driverID])
-			sealedAt := now
-
 			batch.Manifests = append(batch.Manifests, manifest.SupplierTruckRow{
 				ManifestID:    manifestID,
 				SupplierID:    supplierID,
@@ -168,11 +166,10 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 				RouteID:       routeID,
 				TruckID:       vehicleID,
 				DriverID:      driverID,
-				State:         "SEALED",
+				State:         "DRAFT",
 				TotalVolumeVU: route.LoadedVolume,
 				MaxVolumeVU:   route.MaxVolume,
 				StopCount:     int64(len(route.Orders)),
-				SealedAt:      &sealedAt,
 				CreatedAt:     now,
 			})
 
@@ -239,7 +236,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 					aggregateType: events.AggregateManifest,
 					aggregateID:   manifestID,
 					payload: events.ManifestEvent{
-						BaseEvent:   events.BaseEvent{Type: events.EventManifestSealed},
+						BaseEvent:   events.BaseEvent{Type: events.EventManifestDraftCreated},
 						ManifestID:  manifestID,
 						RouteID:     routeID,
 						SupplierID:  supplierID,

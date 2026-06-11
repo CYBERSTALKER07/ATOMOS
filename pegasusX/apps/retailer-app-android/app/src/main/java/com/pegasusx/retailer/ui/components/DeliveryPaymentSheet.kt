@@ -56,7 +56,7 @@ import com.pegasusx.retailer.ui.theme.StatusOrangeSoft
 import com.pegasusx.retailer.ui.theme.StatusRed
 import com.pegasusx.retailer.ui.theme.StatusRedSoft
 
-enum class PaymentPhase { CHOOSE, PROCESSING, CASH_PENDING, SUCCESS, FAILED }
+enum class PaymentPhase { CHOOSE, CASH_CONFIRM, PROCESSING, CASH_PENDING, SUCCESS, FAILED }
 
 private data class CardGatewayOption(
     val gateway: String,
@@ -72,6 +72,8 @@ fun DeliveryPaymentSheet(
     errorMessage: String?,
     isCompact: Boolean = true,
     onSelectCash: () -> Unit,
+    onConfirmCash: () -> Unit,
+    onBackToPaymentChoice: () -> Unit,
     onSelectCard: (gateway: String) -> Unit,
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
@@ -80,7 +82,7 @@ fun DeliveryPaymentSheet(
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
             onDismissRequest = {
-                if (phase == PaymentPhase.CHOOSE || phase == PaymentPhase.FAILED) onDismiss()
+                if (phase == PaymentPhase.CHOOSE || phase == PaymentPhase.CASH_CONFIRM || phase == PaymentPhase.FAILED) onDismiss()
             },
             sheetState = sheetState,
             shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
@@ -88,11 +90,11 @@ fun DeliveryPaymentSheet(
             tonalElevation = 0.dp,
             dragHandle = { Spacer(Modifier.height(32.dp)) }
         ) {
-            DeliveryPaymentSheetContent(event, phase, errorMessage, onSelectCash, onSelectCard, onRetry, onDismiss)
+            DeliveryPaymentSheetContent(event, phase, errorMessage, onSelectCash, onConfirmCash, onBackToPaymentChoice, onSelectCard, onRetry, onDismiss)
         }
     } else {
         Dialog(onDismissRequest = {
-            if (phase == PaymentPhase.CHOOSE || phase == PaymentPhase.FAILED) onDismiss()
+            if (phase == PaymentPhase.CHOOSE || phase == PaymentPhase.CASH_CONFIRM || phase == PaymentPhase.FAILED) onDismiss()
         }) {
             Surface(
                 shape = RoundedCornerShape(32.dp),
@@ -100,7 +102,7 @@ fun DeliveryPaymentSheet(
                 tonalElevation = 0.dp
             ) {
                 Column(Modifier.padding(vertical = 32.dp)) {
-                    DeliveryPaymentSheetContent(event, phase, errorMessage, onSelectCash, onSelectCard, onRetry, onDismiss)
+                    DeliveryPaymentSheetContent(event, phase, errorMessage, onSelectCash, onConfirmCash, onBackToPaymentChoice, onSelectCard, onRetry, onDismiss)
                 }
             }
         }
@@ -113,6 +115,8 @@ fun DeliveryPaymentSheetContent(
     phase: PaymentPhase,
     errorMessage: String?,
     onSelectCash: () -> Unit,
+    onConfirmCash: () -> Unit,
+    onBackToPaymentChoice: () -> Unit,
     onSelectCard: (gateway: String) -> Unit,
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
@@ -124,10 +128,79 @@ fun DeliveryPaymentSheetContent(
     ) { currentPhase ->
         when (currentPhase) {
             PaymentPhase.CHOOSE -> ChooseContent(event, onSelectCash, onSelectCard)
+            PaymentPhase.CASH_CONFIRM -> CashConfirmContent(event, onConfirmCash, onBackToPaymentChoice)
             PaymentPhase.PROCESSING -> ProcessingContent()
             PaymentPhase.CASH_PENDING -> CashPendingContent(event)
             PaymentPhase.SUCCESS -> SuccessContent(event, onDismiss)
             PaymentPhase.FAILED -> FailedContent(errorMessage, onRetry, onDismiss)
+        }
+    }
+}
+
+@Composable
+private fun CashConfirmContent(
+    event: RetailerWSMessage,
+    onConfirmCash: () -> Unit,
+    onBackToPaymentChoice: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(StatusOrangeSoft),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Rounded.LocalAtm,
+                contentDescription = null,
+                modifier = Modifier.size(36.dp),
+                tint = StatusOrange,
+            )
+        }
+        Spacer(Modifier.height(20.dp))
+        Text(
+            "Confirm Cash Handoff",
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "${event.amount}",
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = StatusOrange,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Only confirm after the driver has physically received the cash.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(24.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            OutlinedButton(
+                onClick = onBackToPaymentChoice,
+                modifier = Modifier.weight(1f).height(52.dp),
+            ) {
+                Text("Back", fontWeight = FontWeight.Bold)
+            }
+            Button(
+                onClick = onConfirmCash,
+                modifier = Modifier.weight(1f).height(52.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = StatusOrange),
+            ) {
+                Text("Confirm Cash", fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

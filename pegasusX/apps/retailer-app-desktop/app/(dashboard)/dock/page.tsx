@@ -68,6 +68,13 @@ function formatAmount(amount: number): string {
   return amount.toLocaleString("en-US").replace(/,/g, " ");
 }
 
+function buildDeliveryQrPayload(order: TrackingOrder): string {
+  return JSON.stringify({
+    order_id: order.order_id,
+    token: order.delivery_token,
+  });
+}
+
 /* ── Types ── */
 
 interface SupplierGroup {
@@ -92,7 +99,16 @@ export default function DockPage() {
     new Set(),
   );
   const [revealedTokens, setRevealedTokens] = useState<Set<string>>(new Set());
+  const [autoOpenedOrderIds, setAutoOpenedOrderIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [activeQrOrderId, setActiveQrOrderId] = useState<string | null>(null);
   const expansionTouchedRef = useRef(false);
+
+  const activeQrOrder = useMemo(
+    () => orders.find((order) => order.order_id === activeQrOrderId) ?? null,
+    [orders, activeQrOrderId],
+  );
 
   const syncStatus = useMemo(() => {
     const offline = typeof navigator !== "undefined" && !navigator.onLine;
@@ -152,12 +168,15 @@ export default function DockPage() {
     "DRIVER_APPROACHING",
     useCallback((msg: WsMessage) => {
       const orderId = msg.order_id as string | undefined;
+      const deliveryToken =
+        typeof msg.delivery_token === "string" ? msg.delivery_token : undefined;
       if (!orderId) return;
       setOrders((prev) =>
         prev.map((o) =>
           o.order_id === orderId
             ? {
                 ...o,
+                delivery_token: deliveryToken || o.delivery_token,
                 is_approaching: true,
                 state: o.state === "IN_TRANSIT" ? "ARRIVING" : o.state,
               }
@@ -280,6 +299,28 @@ export default function DockPage() {
     });
   }, [orders]);
 
+  useEffect(() => {
+    if (activeQrOrderId && !activeQrOrder) {
+      setActiveQrOrderId(null);
+    }
+  }, [activeQrOrderId, activeQrOrder]);
+
+  useEffect(() => {
+    const candidate = orders.find(
+      (order) =>
+        !!order.delivery_token &&
+        (order.is_approaching || order.state === "ARRIVED") &&
+        !autoOpenedOrderIds.has(order.order_id),
+    );
+    if (!candidate) return;
+
+    expansionTouchedRef.current = true;
+    setExpandedSuppliers((prev) => new Set(prev).add(candidate.supplier_id));
+    setRevealedTokens((prev) => new Set(prev).add(candidate.order_id));
+    setAutoOpenedOrderIds((prev) => new Set(prev).add(candidate.order_id));
+    setActiveQrOrderId(candidate.order_id);
+  }, [orders, autoOpenedOrderIds]);
+
   const toggleSupplier = (id: string) => {
     expansionTouchedRef.current = true;
     setExpandedSuppliers((prev) => {
@@ -310,6 +351,50 @@ export default function DockPage() {
       className="min-h-full p-6 md:p-8"
       style={{ background: "var(--desk-canvas)" }}
     >
+      <AnimatePresence>
+        {activeQrOrder?.delivery_token ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[130] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+            onClick={() => setActiveQrOrderId(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 12 }}
+              className="w-full max-w-sm rounded-3xl border border-[var(--desk-border)] bg-white p-6 text-center shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                Driver Approaching
+              </p>
+              <h2 className="mt-2 md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                Order #{activeQrOrder.order_id.slice(-8)}
+              </h2>
+              <p className="mt-1 text-sm text-[var(--desk-text-secondary)]">
+                Show this QR to the driver for delivery confirmation.
+              </p>
+              <div className="mt-5 flex justify-center">
+                <QRCodeSVG
+                  value={buildDeliveryQrPayload(activeQrOrder)}
+                  size={220}
+                  bgColor="transparent"
+                  fgColor="var(--desk-text-primary)"
+                />
+              </div>
+              <button
+                onClick={() => setActiveQrOrderId(null)}
+                className="mt-6 h-11 w-full rounded-2xl bg-[var(--desk-text-primary)] font-bold text-white"
+              >
+                Close
+              </button>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
       <header className="mb-8">
         <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
           Dock Control
@@ -552,7 +637,7 @@ export default function DockPage() {
                                         className="p-2 bg-white rounded-xl shadow-lg border border-[var(--desk-border)]"
                                       >
                                         <QRCodeSVG
-                                          value={order.delivery_token}
+                                          value={buildDeliveryQrPayload(order)}
                                           size={80}
                                           bgColor="transparent"
                                           fgColor="var(--desk-text-primary)"

@@ -551,13 +551,8 @@ class HomeViewModel @Inject constructor(
         if (_state.value.reassigning) return
         _state.update { it.copy(reassigning = true, error = null) }
         viewModelScope.launch {
-            runCatching { repository.fleetReassign(listOf(orderId), newDriverId) }
-                .onSuccess { resp ->
-                    val conflict = resp.conflicts.firstOrNull { it.orderId == orderId }
-                    if (conflict != null) {
-                        _state.update { it.copy(reassigning = false, error = "Reassign conflict: ${conflict.reason}") }
-                        return@onSuccess
-                    }
+            runCatching { repository.applyReassignOrder(orderId, newDriverId) }
+                .onSuccess { _ ->
                     _state.update { s ->
                         val nextOrders = s.orders.filterNot { it.orderId == orderId }
                         val nextSelected = if (s.selectedOrderId == orderId) nextOrders.firstOrNull()?.orderId else s.selectedOrderId

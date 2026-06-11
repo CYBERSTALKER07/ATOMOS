@@ -26,6 +26,7 @@ const (
 
 type Deps struct {
 	TelemetryHub        *ws.Hub
+	RetailerHub         *ws.Hub
 	LastLocations       telemetry.LastLocationWriter
 	SupplierID          string
 	Log                 *slog.Logger
@@ -132,13 +133,28 @@ func (d Deps) handleLocation(w http.ResponseWriter, r *http.Request) {
 		dist := proximity.HaversineDistance(payload.Data.Lat, payload.Data.Lng, *loc.NextStopLat, *loc.NextStopLng)
 		if dist < 0.100 { // 100 meters
 			arrivalPayload, _ := json.Marshal(map[string]any{
-				"type": "DELIVERY_ARRIVING",
-				"driver_id": identity.DriverID,
-				"order_id": loc.NextStopOrderID,
+				"type":        "DELIVERY_ARRIVING",
+				"driver_id":   identity.DriverID,
+				"order_id":    loc.NextStopOrderID,
 				"retailer_id": loc.NextStopRetailerID,
 				"distance_km": dist,
 			})
 			d.TelemetryHub.Broadcast(r.Context(), "retailer:"+loc.NextStopRetailerID, arrivalPayload)
+
+			if d.RetailerHub != nil && strings.TrimSpace(loc.NextStopOrderID) != "" {
+				deliveryToken := strings.TrimSpace(loc.NextStopOrderID)
+				approachPayload, _ := json.Marshal(map[string]any{
+					"type":            "DRIVER_APPROACHING",
+					"order_id":        loc.NextStopOrderID,
+					"retailer_id":     loc.NextStopRetailerID,
+					"driver_id":       identity.DriverID,
+					"delivery_token":  deliveryToken,
+					"driver_latitude": payload.Data.Lat,
+					"driver_longitude": payload.Data.Lng,
+					"distance_km":     dist,
+				})
+				d.RetailerHub.Broadcast(r.Context(), "retailer:"+loc.NextStopRetailerID, approachPayload)
+			}
 		}
 	}
 

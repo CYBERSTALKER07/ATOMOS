@@ -79,6 +79,8 @@ fun HomeScreen(
     viewModel: ManifestViewModel,
     onOpenMap: () -> Unit,
     onScanQR: () -> Unit,
+    onOfflineVerify: () -> Unit = {},
+    onResumeCashCollection: (orderId: String, amount: Long) -> Unit = { _, _ -> },
     onNotificationsClick: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
@@ -184,10 +186,38 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
+        if (state.pendingCollections.isNotEmpty()) {
+            StaggeredAppear(index = 6) {
+                val pending = state.pendingCollections.first()
+                PegasusCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .pressable {
+                            onResumeCashCollection(pending.orderId, pending.amount)
+                        },
+                ) {
+                    Column(modifier = Modifier.padding(PegasusSpacing.lg)) {
+                        Text(
+                            text = "Pending cash collection",
+                            fontWeight = FontWeight.Bold,
+                            color = lab.fg,
+                        )
+                        Text(
+                            text = "Order ${pending.orderId.takeLast(6)} · ${pending.amount.formattedAmount()}",
+                            fontSize = 13.sp,
+                            color = lab.fgTertiary,
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(PegasusSpacing.s20))
+        }
+
         // MARK: - Quick Actions
-        StaggeredAppear(index = 6) {
+        StaggeredAppear(index = 7) {
             QuickActionsSection(
                 onScanQR = onScanQR,
+                onOfflineVerify = onOfflineVerify,
                 hasArrivedOrder = state.orders.any { it.state == OrderState.ARRIVED }
             )
         }
@@ -195,7 +225,7 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
         // MARK: - Recent Activity
-        StaggeredAppear(index = 7) {
+        StaggeredAppear(index = 8) {
             RecentActivitySection(
                 completedOrders = state.orders.filter { it.state == OrderState.COMPLETED }
             )
@@ -756,7 +786,11 @@ private fun MapButton(pendingCount: Int, onOpenMap: () -> Unit) {
 // ── Quick Actions ──
 
 @Composable
-private fun QuickActionsSection(onScanQR: () -> Unit, hasArrivedOrder: Boolean = false) {
+private fun QuickActionsSection(
+    onScanQR: () -> Unit,
+    onOfflineVerify: () -> Unit = {},
+    hasArrivedOrder: Boolean = false,
+) {
     val lab = LocalPegasusColors.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
@@ -781,7 +815,7 @@ private fun QuickActionsSection(onScanQR: () -> Unit, hasArrivedOrder: Boolean =
                 icon = Icons.Default.ShieldMoon,
                 label = "Offline\nVerify",
                 modifier = Modifier.weight(1f),
-                onClick = {}
+                onClick = onOfflineVerify
             )
             ActionTile(
                 icon = Icons.Default.Sync,

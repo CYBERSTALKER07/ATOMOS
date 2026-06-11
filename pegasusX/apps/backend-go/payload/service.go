@@ -12,12 +12,14 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
+	"google.golang.org/api/iterator"
 )
 
 const (
@@ -85,14 +87,21 @@ type payloaderTruckWire struct {
 	VehicleClass string `json:"vehicle_class"`
 }
 
+type liveOrderLineWire struct {
+	SKUID       string `json:"sku_id"`
+	ProductName string `json:"product_name"`
+	Quantity    int64  `json:"quantity"`
+}
+
 type liveOrderWire struct {
-	OrderID        string `json:"order_id"`
-	RetailerID     string `json:"retailer_id,omitempty"`
-	Amount         int64  `json:"amount,omitempty"`
-	PaymentGateway string `json:"payment_gateway,omitempty"`
-	State          string `json:"state"`
-	RouteID        string `json:"route_id,omitempty"`
-	WarehouseID    string `json:"warehouse_id,omitempty"`
+	OrderID        string              `json:"order_id"`
+	RetailerID     string              `json:"retailer_id,omitempty"`
+	Amount         int64               `json:"amount,omitempty"`
+	PaymentGateway string              `json:"payment_gateway,omitempty"`
+	State          string              `json:"state"`
+	RouteID        string              `json:"route_id,omitempty"`
+	WarehouseID    string              `json:"warehouse_id,omitempty"`
+	Items          []liveOrderLineWire `json:"items,omitempty"`
 }
 
 // TruckRow represents one payloader-visible truck row.
@@ -502,8 +511,18 @@ func (s *Service) HandleOrders(w http.ResponseWriter, r *http.Request) {
 	vehicleFilter := strings.TrimSpace(r.URL.Query().Get("vehicle_id"))
 
 	s.mu.Lock()
+	if s.repo != nil && !s.spannerLoaded {
+		if hydrator, ok := s.repo.(interface {
+			Hydrate(context.Context, string, *Service) error
+		}); ok {
+			if err := hydrator.Hydrate(r.Context(), s.supplierID, s); err == nil {
+				s.spannerLoaded = true
+			}
+		}
+	}
 	s.ensureDemoDataLocked()
 	rows := append([]OrderRow(nil), s.orders...)
+	lineItemsByOrder := s.orderLineItemsLocked()
 	s.mu.Unlock()
 
 	if stateFilter != "" || manifestFilter != "" || vehicleFilter != "" {
@@ -530,9 +549,88 @@ func (s *Service) HandleOrders(w http.ResponseWriter, r *http.Request) {
 			Amount:  rows[i].TotalMinor,
 			State:   rows[i].Status,
 			RouteID: rows[i].RouteID,
+			Items:   lineItemsByOrder[rows[i].OrderID],
 		}
 	}
 	writeJSON(w, http.StatusOK, wire)
+}
+
+func (s *Service) orderLineItemsLocked() map[string][]liveOrderLineWire {
+	out := make(map[string][]liveOrderLineWire)
+	if s.repo == nil {
+		return out
+	}
+	spannerRepo, ok := s.repo.(*SpannerRepository)
+	if !ok || spannerRepo.client == nil {
+		return out
+	}
+	orderIDs := make([]string, 0, len(s.orders))
+	for _, row := range s.orders {
+		if row.OrderID != "" {
+			orderIDs = append(orderIDs, row.OrderID)
+		}
+	}
+	if len(orderIDs) == 0 {
+		for _, rows := range s.manifestOrders {
+			for _, mo := range rows {
+				orderIDs = append(orderIDs, mo.OrderID)
+			}
+		}
+	}
+	if len(orderIDs) == 0 {
+		return out
+	}
+	ctx := context.Background()
+	stmt := spanner.Statement{
+		SQL: `SELECT OrderId, LineItemsJson FROM Orders WHERE OrderId IN UNNEST(@oids)`,
+		Params: map[string]interface{}{"oids": orderIDs},
+	}
+	iter := spannerRepo.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			break
+		}
+		var orderID string
+		var raw []byte
+		if err := row.Columns(&orderID, &raw); err != nil {
+			continue
+		}
+		out[orderID] = decodeLiveOrderLineItems(raw)
+	}
+	return out
+}
+
+func decodeLiveOrderLineItems(raw []byte) []liveOrderLineWire {
+	if len(raw) == 0 {
+		return nil
+	}
+	var source []struct {
+		SKU       string `json:"sku"`
+		SKUID     string `json:"sku_id"`
+		Name      string `json:"name"`
+		Quantity  int64  `json:"quantity"`
+	}
+	if err := json.Unmarshal(raw, &source); err != nil {
+		return nil
+	}
+	items := make([]liveOrderLineWire, 0, len(source))
+	for _, item := range source {
+		sku := item.SKU
+		if sku == "" {
+			sku = item.SKUID
+		}
+		items = append(items, liveOrderLineWire{
+			SKUID:       sku,
+			ProductName: item.Name,
+			Quantity:    item.Quantity,
+		})
+	}
+	return items
 }
 
 // HandleStartLoading serves POST /v1/payloader/manifests/{manifestID}/start-loading.

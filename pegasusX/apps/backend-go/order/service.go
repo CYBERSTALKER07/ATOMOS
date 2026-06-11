@@ -415,6 +415,21 @@ type ConfirmOffloadResponse struct {
 	Message       string `json:"message"`
 }
 
+// ValidateQRRequest is the wire shape for POST /v1/order/validate-qr.
+type ValidateQRRequest struct {
+	OrderID       string `json:"order_id"`
+	ScannedToken  string `json:"scanned_token"`
+}
+
+// ValidateQRResponse matches the driver scanner contract without mutating order state.
+type ValidateQRResponse struct {
+	OrderID      string                `json:"order_id"`
+	RetailerName string                `json:"retailer_name"`
+	TotalAmount  int64                 `json:"total_amount"`
+	State        Status                `json:"state"`
+	Items        []DriverOrderLineItem `json:"items"`
+}
+
 // CompleteOrderRequest is the wire shape for POST /v1/order/complete.
 type CompleteOrderRequest struct {
 	OrderID         string     `json:"order_id"`
@@ -1406,10 +1421,11 @@ func (s *Service) ConfirmOffload(ctx context.Context, claims auth.Claims, req Co
 		s.broadcastPaymentRequired(ctx, result.Order)
 	}
 
+	paymentMethod := resolveOrderPaymentMethod(ctx, s.spannerClient, result.Order.OrderID)
 	return ConfirmOffloadResponse{
 		OrderID:       result.Order.OrderID,
 		State:         result.Order.Status,
-		PaymentMethod: "CASH",
+		PaymentMethod: paymentMethod,
 		Amount:        result.Order.TotalMinor,
 		Currency:      result.Order.Currency,
 		RetailerID:    result.Order.RetailerID,
@@ -1758,6 +1774,77 @@ func (s *Service) HandleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// ValidateQR checks a scanned delivery token against the order without advancing lifecycle.
+func (s *Service) ValidateQR(ctx context.Context, claims auth.Claims, req ValidateQRRequest) (ValidateQRResponse, error) {
+	orderID := strings.TrimSpace(req.OrderID)
+	token := strings.TrimSpace(req.ScannedToken)
+	if orderID == "" || token == "" {
+		return ValidateQRResponse{}, errors.New("order_id and scanned_token required")
+	}
+
+	orderRecord, found, err := s.repo.GetOrder(ctx, orderID)
+	if err != nil {
+		return ValidateQRResponse{}, fmt.Errorf("load order %s: %w", orderID, err)
+	}
+	if !found {
+		return ValidateQRResponse{}, ErrOrderNotFound
+	}
+	if claims.Role == auth.RoleDriver && strings.TrimSpace(orderRecord.DriverID) != strings.TrimSpace(claims.Subject) {
+		return ValidateQRResponse{}, ErrOrderForbidden
+	}
+	if err := validateDeliveryToken(orderRecord, token); err != nil {
+		return ValidateQRResponse{}, err
+	}
+
+	resp := driverOrderResponse(orderRecord, "")
+	retailerName := resolveRetailerDisplayName(ctx, s.spannerClient, orderRecord.RetailerID)
+	return ValidateQRResponse{
+		OrderID:      orderRecord.OrderID,
+		RetailerName: retailerName,
+		TotalAmount:  orderRecord.TotalMinor,
+		State:        orderRecord.Status,
+		Items:        resp.Items,
+	}, nil
+}
+
+// HandleValidateQR is POST /v1/order/validate-qr.
+func (s *Service) HandleValidateQR(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	var req ValidateQRRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	defer r.Body.Close()
+
+	resp, err := s.ValidateQR(r.Context(), claims, req)
+	if err != nil {
+		s.writeOrderMutationError(w, "validate qr failed", req.OrderID, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func validateDeliveryToken(orderRecord Order, token string) error {
+	expected := strings.TrimSpace(orderRecord.QRToken)
+	if expected == "" {
+		expected = orderRecord.OrderID
+	}
+	if token != expected {
+		return errors.New("invalid qr token")
+	}
+	return nil
 }
 
 // HandleGetQRPayload serves GET /v1/order/{orderID}/qr-payload.
@@ -2220,6 +2307,24 @@ func (s *Service) broadcastPaymentRequired(ctx context.Context, orderRecord Orde
 	s.broadcastOrderEnvelope(ctx, orderRecord, envelope)
 }
 
+func (s *Service) broadcastCashCollectionRequired(ctx context.Context, orderRecord Order) {
+	data := paymentRequiredData(orderRecord)
+	data["payment_method"] = "CASH"
+	data["status"] = string(StatusPendingCashCollection)
+	envelope := wsEnvelope{
+		Type:      events.EventPaymentRequired,
+		Timestamp: orderRecord.UpdatedAt.Format(time.RFC3339Nano),
+		Data:      data,
+	}
+	payload, err := json.Marshal(envelope)
+	if err != nil {
+		return
+	}
+	if s.driverHub != nil && strings.TrimSpace(orderRecord.DriverID) != "" {
+		s.driverHub.Broadcast(ctx, "driver:"+orderRecord.DriverID, payload)
+	}
+}
+
 func (s *Service) broadcastSettlementRequired(ctx context.Context, orderRecord Order) {
 	envelope := wsEnvelope{
 		Type:      events.EventSettlementRequired,
@@ -2517,7 +2622,9 @@ func validateStatusTransition(current Status, next Status) error {
 		allowed = next == StatusAwaitingPayment || next == StatusDeliveredOnCredit
 	case StatusDeliveredOnCredit:
 		allowed = next == StatusCompleted
-	case StatusAwaitingPayment, StatusPendingCashCollection:
+	case StatusAwaitingPayment:
+		allowed = next == StatusCompleted || next == StatusPendingCashCollection
+	case StatusPendingCashCollection:
 		allowed = next == StatusCompleted
 	case StatusCompleted:
 		allowed = false
@@ -2534,6 +2641,125 @@ func validateStatusTransition(current Status, next Status) error {
 	}
 
 	return nil
+}
+
+// AmendItemRequest is one line adjustment from the driver offload review surface.
+type AmendItemRequest struct {
+	ProductID   string `json:"product_id"`
+	AcceptedQty int64  `json:"accepted_qty"`
+	RejectedQty int64  `json:"rejected_qty"`
+	Reason      string `json:"reason"`
+}
+
+// AmendOrderRequest is POST /v1/order/amend.
+type AmendOrderRequest struct {
+	OrderID     string             `json:"order_id"`
+	Items       []AmendItemRequest `json:"items"`
+	DriverNotes string             `json:"driver_notes"`
+}
+
+// AmendOrderResponse matches native driver amend contracts.
+type AmendOrderResponse struct {
+	Success       bool   `json:"success"`
+	Message       string `json:"message"`
+	AdjustedTotal int64  `json:"adjusted_total"`
+}
+
+// AmendOrder applies driver-reported rejections and recomputes order totals.
+func (s *Service) AmendOrder(ctx context.Context, claims auth.Claims, req AmendOrderRequest) (AmendOrderResponse, error) {
+	orderID := strings.TrimSpace(req.OrderID)
+	if orderID == "" {
+		return AmendOrderResponse{}, errors.New("order_id required")
+	}
+	if len(req.Items) == 0 {
+		return AmendOrderResponse{}, errors.New("items required")
+	}
+
+	current, err := s.loadDriverTransitionOrder(ctx, claims, orderID)
+	if err != nil {
+		return AmendOrderResponse{}, err
+	}
+
+	amendByProduct := make(map[string]AmendItemRequest, len(req.Items))
+	for _, item := range req.Items {
+		key := strings.TrimSpace(item.ProductID)
+		if key == "" {
+			continue
+		}
+		amendByProduct[key] = item
+	}
+
+	updatedItems := make([]LineItem, 0, len(current.LineItems))
+	var adjustedTotal int64
+	for _, line := range current.LineItems {
+		key := strings.TrimSpace(line.SKU)
+		if amend, ok := amendByProduct[key]; ok {
+			if amend.AcceptedQty < 0 {
+				return AmendOrderResponse{}, fmt.Errorf("invalid accepted_qty for %s", key)
+			}
+			line.Quantity = amend.AcceptedQty
+		}
+		lineTotal := line.UnitPrice * line.Quantity
+		adjustedTotal += lineTotal
+		updatedItems = append(updatedItems, line)
+	}
+
+	previousTotal := current.TotalMinor
+	current.LineItems = updatedItems
+	current.TotalMinor = adjustedTotal
+	current.UpdatedAt = s.now()
+
+	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
+		payload := map[string]any{
+			"type":            "ORDER_AMENDED",
+			"order_id":        current.OrderID,
+			"driver_id":       claims.Subject,
+			"previous_total":  previousTotal,
+			"adjusted_total":  adjustedTotal,
+			"currency":        current.Currency,
+			"driver_notes":    strings.TrimSpace(req.DriverNotes),
+			"amended_items":   req.Items,
+			"timestamp":       current.UpdatedAt.Format(time.RFC3339Nano),
+		}
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, payload)
+	}); err != nil {
+		return AmendOrderResponse{}, fmt.Errorf("amend order %s: %w", orderID, err)
+	}
+
+	s.afterOrderMutation(ctx, current)
+
+	return AmendOrderResponse{
+		Success:       true,
+		Message:       "amended",
+		AdjustedTotal: adjustedTotal,
+	}, nil
+}
+
+// HandleAmendOrder is POST /v1/order/amend.
+func (s *Service) HandleAmendOrder(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	var req AmendOrderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	defer r.Body.Close()
+
+	resp, err := s.AmendOrder(r.Context(), claims, req)
+	if err != nil {
+		s.writeOrderMutationError(w, "amend order failed", req.OrderID, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleReportDamage serves POST /v1/delivery/report-damage.
@@ -2685,45 +2911,38 @@ func (s *Service) HandleRetailerConfirmCash(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if current.Status != StatusAwaitingPayment && current.Status != StatusInTransit && current.Status != StatusArrived {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_status_for_cash_confirmation"})
+	if current.Status != StatusAwaitingPayment {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_status_for_cash_selection"})
 		return
 	}
 
 	previousStatus := current.Status
-	current.Status = StatusCompleted
+	current.Status = StatusPendingCashCollection
 	current.UpdatedAt = s.now()
 
 	if err := s.repo.UpdateOrder(r.Context(), current, nil, func(txn outbox.TxnBuffer) error {
-		if err := emitPaymentCleared(r.Context(), txn, current, "CASH"); err != nil {
-			return err
-		}
-		if err := emitOrderFinalized(r.Context(), txn, current); err != nil {
-			return err
-		}
 		return emitOrderStatusChanged(r.Context(), txn, orderStatusEmitParams{
 			Claims:         claims,
 			Order:          current,
 			PreviousStatus: previousStatus,
-			Reason:         "retailer_confirmed_cash",
+			Reason:         "retailer_selected_cash",
 			ActorID:        claims.Subject,
 		})
 	}); err != nil {
-		s.log.ErrorContext(r.Context(), "failed to confirm cash", "order_id", orderID, "err", err)
+		s.log.ErrorContext(r.Context(), "failed to select cash payment", "order_id", orderID, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "update_failed"})
 		return
 	}
-	
+
 	s.afterOrderMutation(r.Context(), current)
-	s.broadcastPaymentCleared(r.Context(), current)
-	s.broadcastOrderFinalized(r.Context(), current)
-	s.broadcastOrderStatusChanged(r.Context(), current, previousStatus, "retailer_confirmed_cash", current.Version+1)
+	s.broadcastCashCollectionRequired(r.Context(), current)
+	s.broadcastOrderStatusChanged(r.Context(), current, previousStatus, "retailer_selected_cash", current.Version+1)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"success":  true,
 		"order_id": orderID,
 		"state":    current.Status,
-		"message":  "cash_confirmed",
+		"message":  "awaiting_driver_cash_collection",
 	})
 }
 
@@ -2746,4 +2965,53 @@ func supplierOrdersKey(supplierID string) string {
 func defaultOrderID() string {
 	// Scaffold: timestamp-based id. Production swaps for uuid.NewV7.
 	return fmt.Sprintf("ord_%d", time.Now().UnixNano())
+}
+
+func resolveOrderPaymentMethod(ctx context.Context, client *spanner.Client, orderID string) string {
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" || client == nil {
+		return "CASH"
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT Gateway FROM PaymentLedgerEntries
+		      WHERE OrderId = @oid
+		      ORDER BY OccurredAt DESC
+		      LIMIT 1`,
+		Params: map[string]any{"oid": orderID},
+	}
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		return "CASH"
+	}
+	var gateway spanner.NullString
+	if err := row.Columns(&gateway); err != nil || !gateway.Valid {
+		return "CASH"
+	}
+	switch strings.ToUpper(strings.TrimSpace(gateway.StringVal)) {
+	case "CASH", "":
+		return "CASH"
+	default:
+		return "CARD"
+	}
+}
+
+func resolveRetailerDisplayName(ctx context.Context, client *spanner.Client, retailerID string) string {
+	retailerID = strings.TrimSpace(retailerID)
+	if retailerID == "" {
+		return ""
+	}
+	if client == nil {
+		return retailerID
+	}
+	row, err := client.Single().ReadRow(ctx, "Retailers", spanner.Key{retailerID}, []string{"Name"})
+	if err != nil {
+		return retailerID
+	}
+	var name spanner.NullString
+	if err := row.Column(0, &name); err != nil || !name.Valid || strings.TrimSpace(name.StringVal) == "" {
+		return retailerID
+	}
+	return strings.TrimSpace(name.StringVal)
 }

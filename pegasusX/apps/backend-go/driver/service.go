@@ -29,20 +29,30 @@ type DriverNotificationReader interface {
 	UnreadCount(ctx context.Context, recipientID string) (int64, error)
 }
 
+// DriverOrderLineView is a line item on the driver fleet order projection.
+type DriverOrderLineView struct {
+	ProductID   string `json:"product_id"`
+	ProductName string `json:"product_name"`
+	Quantity    int64  `json:"quantity"`
+	UnitPrice   int64  `json:"unit_price"`
+}
+
 // DriverOrderView is a single order row projected for the driver fleet surface.
 type DriverOrderView struct {
-	OrderID         string  `json:"id"`
-	RetailerID      string  `json:"retailer_id"`
-	RetailerName    string  `json:"retailer_name"`
-	Status          string  `json:"state"`
-	TotalMinor      int64   `json:"total_amount"`
-	DeliveryAddress string  `json:"delivery_address,omitempty"`
-	Lat             float64 `json:"latitude"`
-	Lng             float64 `json:"longitude"`
-	PaymentGateway  string  `json:"payment_gateway"`
-	RouteID         string  `json:"route_id,omitempty"`
-	CreatedAt       string  `json:"created_at"`
-	UpdatedAt       string  `json:"updated_at"`
+	OrderID         string                `json:"id"`
+	RetailerID      string                `json:"retailer_id"`
+	RetailerName    string                `json:"retailer_name"`
+	Status          string                `json:"state"`
+	TotalMinor      int64                 `json:"total_amount"`
+	DeliveryAddress string                `json:"delivery_address,omitempty"`
+	Lat             float64               `json:"latitude"`
+	Lng             float64               `json:"longitude"`
+	PaymentGateway  string                `json:"payment_gateway"`
+	RouteID         string                `json:"route_id,omitempty"`
+	SequenceIndex   int64                 `json:"sequence_index,omitempty"`
+	Items           []DriverOrderLineView `json:"items,omitempty"`
+	CreatedAt       string                `json:"created_at"`
+	UpdatedAt       string                `json:"updated_at"`
 }
 
 // DriverOrderQuery lists active orders assigned to a driver from Spanner.

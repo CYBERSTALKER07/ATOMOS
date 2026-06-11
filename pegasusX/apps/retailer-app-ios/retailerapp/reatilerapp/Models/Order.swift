@@ -307,6 +307,21 @@ struct Order: Codable, Identifiable, Hashable {
     var itemCount: Int {
         items.reduce(0) { $0 + $1.quantity }
     }
+
+    var deliveryQRCodePayload: String? {
+        guard let qrCode, !qrCode.isEmpty else { return nil }
+        let payload = RetailerDeliveryQRPayload(order_id: id, token: qrCode)
+        guard let data = try? JSONEncoder().encode(payload),
+              let encoded = String(data: data, encoding: .utf8) else {
+            return qrCode
+        }
+        return encoded
+    }
+}
+
+private struct RetailerDeliveryQRPayload: Encodable {
+    let order_id: String
+    let token: String
 }
 
 // MARK: - Tracking Order (for delivery map)

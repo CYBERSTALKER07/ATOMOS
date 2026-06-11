@@ -382,11 +382,7 @@ final class HomeViewModel {
         error = nil
         defer { reassigning = false }
         do {
-            let resp = try await api.fleetReassign(orderIds: [orderId], newRouteId: newDriverId)
-            if let conflict = resp.conflicts?.first(where: { $0.orderId == orderId }) {
-                error = "Reassign conflict: \(conflict.reason ?? "unknown")"
-                return
-            }
+            _ = try await api.reassignOrder(orderId: orderId, toDriverId: newDriverId)
             orders.removeAll { $0.orderId == orderId }
             if selectedOrderId == orderId { selectedOrderId = orders.first?.orderId }
             reDispatchOrderId = nil

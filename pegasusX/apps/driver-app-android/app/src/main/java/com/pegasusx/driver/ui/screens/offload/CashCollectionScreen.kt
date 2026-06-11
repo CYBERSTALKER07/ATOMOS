@@ -154,7 +154,13 @@ fun CashCollectionScreen(
         }
 
         Button(
-            onClick = { viewModel.collectCash() },
+            onClick = {
+                if (state.cashReceived) {
+                    viewModel.collectCash()
+                } else {
+                    viewModel.acknowledgeCashReceived()
+                }
+            },
             enabled = !state.isCompleting,
             modifier = Modifier
                 .fillMaxWidth()
@@ -170,11 +176,36 @@ fun CashCollectionScreen(
                 )
             } else {
                 Text(
-                    text = "Cash Collected — Complete",
+                    text = if (state.cashReceived) "Confirm & Complete" else "Cash Received",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )
             }
         }
+    }
+
+    if (state.showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissConfirmDialog() },
+            title = { Text("Confirm cash collection?") },
+            text = {
+                Text(
+                    "You received ${state.amount.formattedAmount()} from the retailer. " +
+                        "This will complete the delivery and cannot be undone."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.dismissConfirmDialog()
+                        viewModel.collectCash()
+                    },
+                    enabled = !state.isCompleting,
+                ) { Text("Complete Delivery") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissConfirmDialog() }) { Text("Go Back") }
+            },
+        )
     }
 }

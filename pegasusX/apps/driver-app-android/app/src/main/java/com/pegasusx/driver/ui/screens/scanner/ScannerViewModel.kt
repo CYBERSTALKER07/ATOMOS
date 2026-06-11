@@ -12,6 +12,7 @@ import com.pegasusx.driver.data.model.ValidateQRResponse
 import com.pegasusx.driver.data.remote.DriverApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import org.json.JSONObject
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,12 +60,17 @@ class ScannerViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(isSubmitting = true, error = null)
             try {
-                val parts = qrToken.split(":")
-                val orderId = if (parts.size >= 2) parts[0] else qrToken
+                val parsedJson = runCatching { JSONObject(qrToken) }.getOrNull()
+                val parsedToken = parsedJson?.optString("token")?.takeIf { it.isNotBlank() }
+                val parsedOrderId = parsedJson?.optString("order_id")?.takeIf { it.isNotBlank() }
+
+                val effectiveToken = parsedToken ?: qrToken
+                val parts = effectiveToken.split(":")
+                val orderId = parsedOrderId ?: if (parts.size >= 2) parts[0] else effectiveToken
 
                 val response = withTimeout(30_000L) {
                     api.validateQR(
-                        ValidateQRRequest(orderId = orderId, scannedToken = qrToken)
+                        ValidateQRRequest(orderId = orderId, scannedToken = effectiveToken)
                     )
                 }
                 _state.value = _state.value.copy(

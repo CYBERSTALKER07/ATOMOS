@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -622,7 +623,7 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	if strings.ToUpper(req.Mode) == "MANUAL" {
 		source = "manual"
 		assignment = &dispatch.AssignmentResult{}
-		
+
 		orderMap := make(map[string]dispatch.DispatchableOrder)
 		for _, row := range rows {
 			orderMap[row.OrderID] = row
@@ -698,8 +699,6 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 		manifestID := uuid.NewString()
 		routeID := uuid.NewString()
 		vehicleID := strings.TrimSpace(vehicleByDriver[driverID])
-		sealedAt := now
-
 		batch.Manifests = append(batch.Manifests, manifest.SupplierTruckRow{
 			ManifestID:    manifestID,
 			SupplierID:    sid,
@@ -707,11 +706,10 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 			RouteID:       routeID,
 			TruckID:       vehicleID,
 			DriverID:      driverID,
-			State:         "SEALED",
+			State:         "DRAFT",
 			TotalVolumeVU: route.LoadedVolume,
 			MaxVolumeVU:   route.MaxVolume,
 			StopCount:     int64(len(route.Orders)),
-			SealedAt:      &sealedAt,
 			CreatedAt:     now,
 		})
 
@@ -777,7 +775,7 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 				aggregateType: events.AggregateManifest,
 				aggregateID:   manifestID,
 				payload: events.ManifestEvent{
-					BaseEvent:   events.BaseEvent{Type: events.EventManifestSealed},
+					BaseEvent:   events.BaseEvent{Type: events.EventManifestDraftCreated},
 					ManifestID:  manifestID,
 					RouteID:     routeID,
 					SupplierID:  sid,
@@ -829,6 +827,14 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 		"orders_assigned", out.OrdersAssigned,
 		"optimizer_source", out.OptimizerSource,
 	)
+	s.broadcastWarehouseEvent(r.Context(), whID, map[string]any{
+		"type":              "DISPATCH_COMMITTED",
+		"warehouse_id":      whID,
+		"manifests_created": out.ManifestsCreated,
+		"orders_assigned":   out.OrdersAssigned,
+		"optimizer_source":  out.OptimizerSource,
+		"timestamp":         now.Format(time.RFC3339Nano),
+	})
 	writeJSON(w, http.StatusOK, out)
 }
 
@@ -848,7 +854,7 @@ func (s *Service) handleOpsDispatchSettings(w http.ResponseWriter, r *http.Reque
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"warehouse_id": whID,
+			"warehouse_id":          whID,
 			"auto_dispatch_enabled": enabled,
 		})
 
@@ -865,9 +871,9 @@ func (s *Service) handleOpsDispatchSettings(w http.ResponseWriter, r *http.Reque
 		if payload.AutoDispatchEnabled != nil {
 			err := s.repo.UpdateAutoDispatch(r.Context(), whID, *payload.AutoDispatchEnabled, func(buf outbox.TxnBuffer) error {
 				eventPayload := events.WarehouseEvent{
-					BaseEvent: events.BaseEvent{Type: "WAREHOUSE_DISPATCH_SETTINGS_UPDATED"},
+					BaseEvent:   events.BaseEvent{Type: "WAREHOUSE_DISPATCH_SETTINGS_UPDATED"},
 					WarehouseID: whID,
-					SupplierID: s.supplierID,
+					SupplierID:  s.supplierID,
 				}
 				return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, whID, events.TopicMain, eventPayload)
 			})
@@ -877,8 +883,8 @@ func (s *Service) handleOpsDispatchSettings(w http.ResponseWriter, r *http.Reque
 				return
 			}
 			s.broadcastWarehouseEvent(r.Context(), whID, map[string]any{
-				"type": "WAREHOUSE_DISPATCH_SETTINGS_UPDATED",
-				"warehouse_id": whID,
+				"type":                  "WAREHOUSE_DISPATCH_SETTINGS_UPDATED",
+				"warehouse_id":          whID,
 				"auto_dispatch_enabled": *payload.AutoDispatchEnabled,
 			})
 		}
@@ -927,7 +933,7 @@ func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 		driverID := "drv-" + uuid.NewString()[:8]
-		
+
 		if s.spannerClient != nil {
 			now := s.now().UTC()
 			m := spanner.Insert("Drivers",
@@ -951,7 +957,7 @@ func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 			s.drivers = append(s.drivers, driver)
 			s.mu.Unlock()
 		}
-		
+
 		writeJSON(w, http.StatusCreated, map[string]any{
 			"driver_id": driverID,
 			"pin":       "4321",
@@ -1022,7 +1028,7 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 		vehicleID := "veh-" + uuid.NewString()[:8]
-		
+
 		if s.spannerClient != nil {
 			now := s.now().UTC()
 			m := spanner.Insert("Vehicles",
@@ -1046,13 +1052,13 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 			s.vehicles = append(s.vehicles, vehicle)
 			s.mu.Unlock()
 		}
-		
+
 		writeJSON(w, http.StatusCreated, map[string]any{
-			"vehicle_id": vehicleID,
-			"label": req.Label,
+			"vehicle_id":    vehicleID,
+			"label":         req.Label,
 			"license_plate": req.LicensePlate,
 			"vehicle_class": req.VehicleClass,
-			"is_active": true,
+			"is_active":     true,
 		})
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -1133,7 +1139,7 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 		staffID := "stf-" + uuid.NewString()[:8]
-		
+
 		if s.spannerClient != nil {
 			now := s.now().UTC()
 			m := spanner.Insert("SupplierUsers",
@@ -1151,7 +1157,7 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 			s.staff = append(s.staff, row)
 			s.mu.Unlock()
 		}
-		
+
 		writeJSON(w, http.StatusCreated, map[string]any{"staff_id": staffID, "pin": "5678"})
 		return
 	}

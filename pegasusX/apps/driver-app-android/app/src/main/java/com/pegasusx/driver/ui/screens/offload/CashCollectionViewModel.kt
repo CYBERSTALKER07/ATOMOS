@@ -22,6 +22,8 @@ import javax.inject.Inject
 data class CashCollectionUiState(
     val orderId: String = "",
     val amount: Long = 0,
+    val cashReceived: Boolean = false,
+    val showConfirmDialog: Boolean = false,
     val isCompleting: Boolean = false,
     val completed: Boolean = false,
     val error: String? = null,
@@ -43,6 +45,14 @@ class CashCollectionViewModel @Inject constructor(
     val state: StateFlow<CashCollectionUiState> = _state.asStateFlow()
 
     private val fusedClient = LocationServices.getFusedLocationProviderClient(app)
+
+    fun acknowledgeCashReceived() {
+        _state.update { it.copy(cashReceived = true, showConfirmDialog = true, error = null) }
+    }
+
+    fun dismissConfirmDialog() {
+        _state.update { it.copy(showConfirmDialog = false) }
+    }
 
     @SuppressLint("MissingPermission")
     fun collectCash() {
