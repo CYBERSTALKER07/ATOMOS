@@ -148,23 +148,16 @@ final class HomeViewModel {
         loadingManifest = true
         defer { loadingManifest = false }
         do {
-            // Backend has no "draft OR loading" filter — try DRAFT first then LOADING.
-            let draft = try await api.draftManifests(truckId: truckId)
-            if let m = draft.manifests.first {
-                manifest = m
+            let draft = try await api.supplierManifests(state: "DRAFT")
+            if let match = draft.manifests.first(where: { $0.truckId == truckId }) {
+                manifest = match
                 return
             }
-            let loading = try await loadingManifests(truckId: truckId)
-            manifest = loading.manifests.first
+            let loading = try await api.supplierManifests(state: "LOADING")
+            manifest = loading.manifests.first(where: { $0.truckId == truckId })
         } catch {
             self.error = describe(error)
         }
-    }
-
-    /// Backend supports `?state=LOADING&truck_id=X` against the same endpoint.
-    private func loadingManifests(truckId: String) async throws -> ManifestsResponse {
-        // Reuse APIClient.draftManifests by inlining a typed call:
-        try await api.manifests(state: "LOADING", truckId: truckId)
     }
 
     private func loadOrders(for truckId: String) async {
@@ -256,7 +249,7 @@ final class HomeViewModel {
         error = nil
         defer { startingLoading = false }
         do {
-            _ = try await api.startLoading(manifestId: id)
+            _ = try await api.supplierStartLoading(manifestId: id)
             manifest = manifest.map { mutateState($0, to: "LOADING") }
         } catch {
             self.error = describe(error)
@@ -273,7 +266,7 @@ final class HomeViewModel {
         error = nil
         defer { sealingManifest = false }
         do {
-            _ = try await api.sealManifest(manifestId: id)
+            _ = try await api.supplierSealManifest(manifestId: id)
             manifestSealed = true
             manifest = manifest.map { mutateState($0, to: "SEALED") }
         } catch {
@@ -371,7 +364,7 @@ final class HomeViewModel {
             let body = (try? JSONEncoder().encode(InjectOrderRequest(orderId: trimmed))).flatMap { String(data: $0, encoding: .utf8) } ?? ""
             let action = QueuedAction(
                 id: deterministicQueueActionId(action: "inject-order", entityId: "\(manifestId)-\(trimmed)"),
-                endpoint: "/v1/payloader/manifests/\(manifestId)/inject-order",
+                endpoint: "/v1/supplier/manifests/\(manifestId)/inject-order",
                 method: "POST",
                 body: body,
                 createdAt: Date().timeIntervalSince1970
@@ -385,7 +378,7 @@ final class HomeViewModel {
         error = nil
         defer { injectingOrder = false }
         do {
-            _ = try await api.injectOrder(manifestId: manifestId, orderId: trimmed)
+            _ = try await api.supplierInjectOrder(manifestId: manifestId, orderId: trimmed)
             await loadManifest(for: truckId)
             await loadOrders(for: truckId)
         } catch {

@@ -52,6 +52,7 @@ struct FleetMapView: View {
     @State private var navPath = NavigationPath()
     @State private var cameraPosition: MapCameraPosition = .userLocation(followsHeading: true, fallback: .automatic)
     @State private var isCameraLocked: Bool = false
+    @State private var userPannedAt: Date?
 
     @State private var phase: MapPhase = .pickingOrder
     @State private var selectedMission: Mission?
@@ -90,6 +91,9 @@ struct FleetMapView: View {
                                 onCancel: { navPath = NavigationPath() },
                                 onShopClosed: { orderId in
                                     navPath.append("shop-closed-waiting")
+                                },
+                                onCreditDelivery: { orderId in
+                                    Task { await vm.markCreditDelivery(orderId: orderId) }
                                 }
                             )
                             .toolbar(.hidden, for: .navigationBar)
@@ -118,7 +122,10 @@ struct FleetMapView: View {
                                     navPath = NavigationPath()
                                     withAnimation(Anim.snappy) { phase = .pickingOrder; selectedMission = nil }
                                 },
-                                onCancel: { navPath = NavigationPath() }
+                                onCancel: { navPath = NavigationPath() },
+                                onSplitPayment: { orderId, amount in
+                                    Task { await vm.recordSplitPayment(orderId: orderId, totalAmount: amount) }
+                                }
                             )
                             .toolbar(.hidden, for: .navigationBar)
                         }
@@ -159,7 +166,20 @@ struct FleetMapView: View {
     private var mapBody: some View {
         ZStack {
             Map(position: $cameraPosition) {
-                UserAnnotation()
+                if !(isCameraLocked && phase == .activeDelivery) {
+                    UserAnnotation()
+                }
+
+                if isCameraLocked, phase == .activeDelivery, let coord = vm.displayLocation {
+                    Annotation("You", coordinate: coord) {
+                        Image(systemName: "location.north.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(LabTheme.buttonFg)
+                            .padding(8)
+                            .background(LabTheme.fg, in: Circle())
+                            .rotationEffect(.degrees(vm.displayBearing))
+                    }
+                }
 
                 ForEach(vm.pendingMissions) { mission in
                     Annotation(mission.order_id, coordinate: CLLocationCoordinate2D(
@@ -174,6 +194,11 @@ struct FleetMapView: View {
                         .stroke(LabTheme.fg.opacity(0.25), lineWidth: 2)
                 }
 
+                if vm.displayRouteCoordinates.count >= 2 {
+                    MapPolyline(coordinates: vm.displayRouteCoordinates)
+                        .stroke(LabTheme.fg.opacity(0.45), style: StrokeStyle(lineWidth: 3, dash: [8, 6]))
+                }
+
                 if let loc = vm.location, let target = currentTarget {
                     MapPolyline(coordinates: [
                         loc,
@@ -185,8 +210,8 @@ struct FleetMapView: View {
             .mapStyle(.standard(elevation: .realistic))
             .mapControls { MapCompass() }
             .onMapCameraChange(frequency: .onEnd) {
-                // If the user drags we just unlock
                 isCameraLocked = false
+                userPannedAt = Date()
             }
             .ignoresSafeArea()
 
@@ -210,12 +235,54 @@ struct FleetMapView: View {
         .ignoresSafeArea(edges: .bottom)
         .task {
             vm.requestLocationPermission()
+            vm.startLocationInterpolation()
             await vm.loadMissions()
             if let active = vm.activeMission {
                 selectedMission = active
                 phase = .activeDelivery
+                isCameraLocked = true
                 await telemetryVM.start()
             }
+        }
+        .onChange(of: phase) { _, newPhase in
+            if newPhase == .activeDelivery {
+                isCameraLocked = true
+                userPannedAt = nil
+                vm.refreshPlannedRoute()
+            }
+        }
+        .task(id: userPannedAt) {
+            guard let pannedAt = userPannedAt, phase == .activeDelivery else { return }
+            try? await Task.sleep(nanoseconds: MapCameraConfig.idleRecenterMs)
+            if userPannedAt == pannedAt {
+                isCameraLocked = true
+                userPannedAt = nil
+            }
+        }
+        .onChange(of: vm.displayLocation) { _, coordinate in
+            guard isCameraLocked, phase == .activeDelivery, let coordinate else { return }
+            withAnimation(.easeInOut(duration: MapCameraConfig.cameraAnimationSeconds)) {
+                cameraPosition = .camera(
+                    MapCameraMath.trackingCamera(
+                        coordinate: coordinate,
+                        bearing: vm.displayBearing,
+                        speedMps: vm.displaySpeedMps
+                    )
+                )
+            }
+        }
+        .onChange(of: vm.displayBearing) { _, _ in
+            guard isCameraLocked, phase == .activeDelivery, let coordinate = vm.displayLocation else { return }
+            cameraPosition = .camera(
+                MapCameraMath.trackingCamera(
+                    coordinate: coordinate,
+                    bearing: vm.displayBearing,
+                    speedMps: vm.displaySpeedMps
+                )
+            )
+        }
+        .onDisappear {
+            vm.stopLocationInterpolation()
         }
         .onChange(of: vm.latestTransmitLocation) { _, loc in
             // V.O.I.D. Adaptive Transmission Protocol Filtered Execution
@@ -269,17 +336,18 @@ struct FleetMapView: View {
                 if phase != .pickingOrder, currentTarget != nil {
                     HStack(spacing: 8) {
                         Button {
-                            withAnimation(.easeInOut(duration: 1.0)) {
+                            withAnimation(.easeInOut(duration: MapCameraConfig.cameraAnimationSeconds)) {
                                 isCameraLocked = true
-                                cameraPosition = .camera(
-                                    MapCamera(
-                                        centerCoordinate: vm.location ?? FleetViewModel.warehouseCenter,
-                                        distance: max((vm.speed ?? 0.0) * 20.0, 400.0), // V.O.I.D. Dynamic Vault-Pitch Look-Ahead
-                                        heading: vm.course ?? 0,
-                                        pitch: 60
+                                userPannedAt = nil
+                                if let coordinate = vm.displayLocation ?? vm.location {
+                                    cameraPosition = .camera(
+                                        MapCameraMath.trackingCamera(
+                                            coordinate: coordinate,
+                                            bearing: vm.displayBearing,
+                                            speedMps: vm.displaySpeedMps
+                                        )
                                     )
-                                )
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                } else {
                                     cameraPosition = .userLocation(followsHeading: true, fallback: .automatic)
                                 }
                             }
@@ -326,8 +394,37 @@ struct FleetMapView: View {
             .animation(Anim.snappy, value: phase)
             .animation(Anim.snappy, value: zoomFocus)
 
+            if phase == .activeDelivery, let cue = vm.navigationCue {
+                navigationCueBanner(cue)
+                    .padding(.horizontal, LabTheme.s16)
+                    .padding(.top, 10)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
             Spacer()
         }
+    }
+
+    private func navigationCueBanner(_ cue: NavigationCue) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: "location.north.line.fill")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(LabTheme.fg)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(RouteNavigation.formatDistance(cue.distanceM))
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(LabTheme.fg)
+                Text(cue.instruction)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(LabTheme.fg.opacity(0.85))
+                    .lineLimit(2)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(LabTheme.separator, lineWidth: 0.5))
     }
 
     // MARK: - Bottom Sheet Router
@@ -536,7 +633,8 @@ struct FleetMapView: View {
                 Button {
                     Haptics.heavy()
                     vm.activeMission = mission
-                    withAnimation(Anim.sheetReveal) { phase = .activeDelivery }
+                    vm.refreshPlannedRoute()
+                    withAnimation(Anim.sheetReveal) { phase = .activeDelivery; isCameraLocked = true; userPannedAt = nil }
                     Task { await telemetryVM.start() }
                 } label: {
                     Text("START_OPERATIONAL_FLOW")

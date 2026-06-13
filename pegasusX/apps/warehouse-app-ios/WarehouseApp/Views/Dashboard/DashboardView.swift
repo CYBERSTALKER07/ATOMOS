@@ -27,6 +27,8 @@ struct DashboardView: View {
                         Button("Retry") { load() }
                     }
                 } else {
+                    FleetLiveMapSection(mapHeight: 300, showsExpand: false)
+                        .padding(.horizontal)
                     LazyVGrid(columns: columns, spacing: LabTheme.spacingMD) {
                         KpiCard(title: "Active Orders", value: "\(stats.activeOrders)", icon: "cart", index: 0)
                         KpiCard(title: "Completed", value: "\(stats.completedToday)", icon: "checkmark.circle", index: 1)

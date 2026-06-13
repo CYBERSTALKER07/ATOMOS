@@ -9,6 +9,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.pegasusx.driver.data.model.CollectCashRequest
+import com.pegasusx.driver.data.model.SplitPaymentPayload
 import com.pegasusx.driver.data.remote.DriverApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,7 @@ data class CashCollectionUiState(
     val showConfirmDialog: Boolean = false,
     val isCompleting: Boolean = false,
     val completed: Boolean = false,
+    val splitPaymentRecorded: Boolean = false,
     val error: String? = null,
     val distanceM: Double? = null,
     val locationAvailable: Boolean = true
@@ -52,6 +54,36 @@ class CashCollectionViewModel @Inject constructor(
 
     fun dismissConfirmDialog() {
         _state.update { it.copy(showConfirmDialog = false) }
+    }
+
+    fun recordSplitPayment(cashMinor: Long? = null, cardMinor: Long? = null, currency: String? = null) {
+        viewModelScope.launch {
+            _state.update { it.copy(isCompleting = true, error = null) }
+            try {
+                val total = _state.value.amount
+                val cash = cashMinor ?: total / 2
+                val card = cardMinor ?: (total - cash)
+                if (cash + card <= 0) {
+                    _state.update {
+                        it.copy(isCompleting = false, error = "Split amounts must be greater than zero")
+                    }
+                    return@launch
+                }
+                api.splitPayment(
+                    SplitPaymentPayload(
+                        orderId = orderId,
+                        cashMinor = cash,
+                        cardMinor = card,
+                        currency = currency,
+                    )
+                )
+                _state.update { it.copy(isCompleting = false, splitPaymentRecorded = true) }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(isCompleting = false, error = e.message ?: "Split payment failed")
+                }
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")

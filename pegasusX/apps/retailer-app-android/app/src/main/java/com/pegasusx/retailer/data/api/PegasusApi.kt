@@ -18,6 +18,7 @@ import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.PendingPaymentsResponse
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.data.model.ProductCategory
+import com.pegasusx.retailer.data.model.ProcurementOrderRequest
 import com.pegasusx.retailer.data.model.ProcurementOrderResponse
 import com.pegasusx.retailer.data.model.RegisterRequest
 import com.pegasusx.retailer.data.model.RetailerAnalytics
@@ -61,7 +62,10 @@ interface PegasusApi {
     suspend fun getOrders(@Path("id") retailerId: String): List<Order>
 
     @POST("/v1/order/create")
-    suspend fun createOrder(@Body body: Map<String, @JvmSuppressWildcards Any>): ProcurementOrderResponse
+    suspend fun createOrder(
+        @Body body: ProcurementOrderRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): ProcurementOrderResponse
 
     @POST("/v1/order/cancel")
     suspend fun cancelOrder(

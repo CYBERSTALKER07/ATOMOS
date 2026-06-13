@@ -306,26 +306,19 @@ struct VerifyHandshakeResponse: Codable {
 
 struct UpdateOrderDuringDeliveryRequest: Codable {
     let orderId: String
-    let items: [AmendItemPayload]
-    let driverNotes: String?
+    let latitude: Double
+    let longitude: Double
 
     enum CodingKeys: String, CodingKey {
         case orderId = "order_id"
-        case items
-        case driverNotes = "driver_notes"
+        case latitude
+        case longitude
     }
 }
 
 struct UpdateOrderDuringDeliveryResponse: Codable {
     let success: Bool
     let message: String
-    let adjustedTotal: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case success
-        case message
-        case adjustedTotal = "adjusted_total"
-    }
 }
 
 struct MissingItemRequest: Codable {
@@ -352,16 +345,6 @@ struct MissingItemsResponse: Codable {
 
 struct SplitPaymentResponse: Codable {
     let status: String
-    let orderId: String
-    let firstAmount: Int64
-    let secondAmount: Int64
-
-    enum CodingKeys: String, CodingKey {
-        case status
-        case orderId = "order_id"
-        case firstAmount = "first_amount"
-        case secondAmount = "second_amount"
-    }
 }
 
 // MARK: - Mock Orders

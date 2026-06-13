@@ -23,7 +23,7 @@ import java.util.Locale
 @Composable
 fun TreasuryScreen(
     api: WarehouseApi,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var overview by remember { mutableStateOf<TreasuryOverview?>(null) }
     var invoices by remember { mutableStateOf<List<Invoice>>(emptyList()) }
@@ -65,7 +65,7 @@ fun TreasuryScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Treasury") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } } },
                 actions = { IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") } },
             )
         },

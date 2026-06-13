@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -34,7 +35,7 @@ type Deps struct {
 func RegisterRoutes(r chi.Router, d Deps) {
 	r.Get("/healthz", handleHealthz)
 	r.Get("/ready", handleReady(d))
-	r.Get("/metrics", handleMetricsStub)
+	r.Handle("/metrics", promhttp.Handler())
 	r.Get("/v1/health", handleHealthz)
 	if d.RedisPoolStats != nil {
 		r.Get("/debug/infra/redis", handleRedisStats(d.RedisPoolStats))
@@ -90,12 +91,6 @@ func handleReady(d Deps) http.HandlerFunc {
 			"components": results,
 		})
 	}
-}
-
-func handleMetricsStub(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("# pegasusx metrics stub\n"))
 }
 
 func readinessStatus(ok bool) string {

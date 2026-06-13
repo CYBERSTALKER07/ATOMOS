@@ -13,6 +13,7 @@ struct LoginView: View {
     }
 
     var body: some View {
+        NavigationStack {
         GeometryReader { proxy in
             ScrollView {
                 VStack(spacing: SupplierTheme.spacingXXL) {
@@ -60,6 +61,14 @@ struct LoginView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(loading || phone.isEmpty || password.isEmpty)
 
+                    NavigationLink {
+                        PortalHandoffView(feature: .register)
+                    } label: {
+                        Text("Register on web portal")
+                            .frame(maxWidth: formMaxWidth, minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+
                     Spacer(minLength: SupplierTheme.spacingXXL)
                 }
                 .frame(maxWidth: .infinity)
@@ -67,6 +76,7 @@ struct LoginView: View {
             }
         }
         .background(SupplierTheme.background)
+        }
     }
 
     private func login() {

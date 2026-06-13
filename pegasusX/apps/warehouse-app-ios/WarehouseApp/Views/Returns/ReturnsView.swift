@@ -27,7 +27,7 @@ struct ReturnsView: View {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(item.productName)
                                     .font(.headline)
-                                Text("Qty: \(item.quantity) · \(item.reason)")
+                                Text("Qty: \(item.quantity) · \(item.status)")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -55,7 +55,7 @@ struct ReturnsView: View {
         Task {
             do {
                 let resp = try await WarehouseService.returns()
-                returns = resp.returns
+                returns = resp.items
             } catch {
                 self.error = error.localizedDescription
             }

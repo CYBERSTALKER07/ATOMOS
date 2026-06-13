@@ -18,13 +18,20 @@ export const duration = {
   long4: 0.6,
 } as const;
 
-export const easing = {
-  standard: [0.2, 0, 0, 1] as const,
-  standardDecelerate: [0, 0, 0, 1] as const,
-  standardAccelerate: [0.3, 0, 1, 1] as const,
-  emphasizedDecelerate: [0.05, 0.7, 0.1, 1] as const,
-  emphasizedAccelerate: [0.3, 0, 0.8, 0.15] as const,
-  linear: [0, 0, 1, 1] as const,
+export type CubicBezierEasing = [number, number, number, number];
+
+export type MotionTransition = {
+  duration?: number;
+  ease?: CubicBezierEasing;
+};
+
+export const easing: Record<string, CubicBezierEasing> = {
+  standard: [0.2, 0, 0, 1],
+  standardDecelerate: [0, 0, 0, 1],
+  standardAccelerate: [0.3, 0, 1, 1],
+  emphasizedDecelerate: [0.05, 0.7, 0.1, 1],
+  emphasizedAccelerate: [0.3, 0, 0.8, 0.15],
+  linear: [0, 0, 1, 1],
 };
 
 export const spring = {
@@ -65,8 +72,8 @@ export const motionVariants = {
 
 export function reducedMotionTransition(
   prefersReduced: boolean,
-  transition: { duration?: number; ease?: readonly number[] },
-) {
+  transition: MotionTransition,
+): MotionTransition {
   if (prefersReduced) {
     return { duration: 0.01 };
   }

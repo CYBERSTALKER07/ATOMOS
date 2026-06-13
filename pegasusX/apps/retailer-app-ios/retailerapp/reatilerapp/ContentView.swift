@@ -35,7 +35,7 @@ enum AppTab: String, CaseIterable {
 
 enum SideMenuTab: String, Hashable, CaseIterable {
     case home, catalog, orders, suppliers
-    case insights, futureDemand, autoOrder, profile
+    case insights, procurement, futureDemand, autoOrder, profile
 
     var title: String {
         switch self {
@@ -44,6 +44,7 @@ enum SideMenuTab: String, Hashable, CaseIterable {
         case .orders: "Orders"
         case .suppliers: "Suppliers"
         case .insights: "Insights"
+        case .procurement: "Procurement"
         case .futureDemand: "Future Demand"
         case .autoOrder: "Auto Order"
         case .profile: "Profile"
@@ -57,6 +58,7 @@ enum SideMenuTab: String, Hashable, CaseIterable {
         case .orders: "shippingbox"
         case .suppliers: "building.2"
         case .insights: "chart.bar.xaxis"
+        case .procurement: "chart.bar"
         case .futureDemand: "waveform.path.ecg"
         case .autoOrder: "arrow.2.squarepath"
         case .profile: "person.crop.circle"
@@ -84,6 +86,7 @@ struct ContentView: View {
     @State private var showProfile = false
     @State private var showCart = false
     @State private var showInsights = false
+    @State private var showProcurement = false
     @State private var showNotificationInbox = false
     @State private var notificationCount = 3
     @State private var cartBounce = false
@@ -173,6 +176,20 @@ struct ContentView: View {
         .sheet(isPresented: $showInsights) {
             NavigationStack {
                 InsightsView()
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationCompactAdaptation(.sheet)
+        }
+        .sheet(isPresented: $showProcurement) {
+            NavigationStack {
+                ProcurementView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showProcurement = false }
+                                .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
+                        }
+                    }
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
@@ -326,7 +343,7 @@ struct ContentView: View {
                                 .transition(.opacity)
                         }
 
-                        ForEach([SideMenuTab.insights, .futureDemand, .autoOrder, .profile], id: \.self) { tab in
+                        ForEach([SideMenuTab.insights, .procurement, .futureDemand, .autoOrder, .profile], id: \.self) { tab in
                             sidebarItem(for: tab)
                         }
                     }
@@ -424,6 +441,11 @@ struct ContentView: View {
         case .insights:
             NavigationStack {
                 InsightsView()
+                    .toolbar { standardToolbar }
+            }
+        case .procurement:
+            NavigationStack {
+                ProcurementView()
                     .toolbar { standardToolbar }
             }
         case .futureDemand:
@@ -592,7 +614,14 @@ struct ContentView: View {
     private func handleSidebarNavigation(_ destination: SidebarDestination) {
         switch destination {
         case .dashboard: selectedTab = .home
-        case .procurement: selectedTab = .home
+        case .procurement:
+            if horizontalSizeClass == .regular {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    sideMenuSelection = .procurement
+                }
+            } else {
+                showProcurement = true
+            }
         case .autoOrder: showAutoOrder = true
         case .futureDemand: showFutureDemand = true
         case .inbox: showNotificationInbox = true

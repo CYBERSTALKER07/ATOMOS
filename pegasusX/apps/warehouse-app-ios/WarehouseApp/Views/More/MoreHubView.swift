@@ -3,40 +3,70 @@ import SwiftUI
 /// Portal parity hub for secondary warehouse admin routes (pegasus warehouse-portal nav).
 struct MoreHubView: View {
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Fulfillment") {
-                    NavigationLink { ManifestsView() } label: {
-                        Label("Manifests", systemImage: "doc.text")
-                    }
-                    NavigationLink { DispatchView() } label: {
-                        Label("Dispatch", systemImage: "paperplane")
-                    }
-                    NavigationLink { TransferActionsView() } label: {
-                        Label("Transfer actions", systemImage: "arrow.left.arrow.right")
-                    }
+        List {
+            Section("Fulfillment") {
+                NavigationLink { ManifestsView() } label: {
+                    Label("Manifests", systemImage: "doc.text")
                 }
-                Section("Inventory") {
-                    NavigationLink { ProductsView() } label: {
-                        Label("Products", systemImage: "square.grid.2x2")
-                    }
-                    NavigationLink { SupplyRequestsHubView() } label: {
-                        Label("Supply Requests", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                    NavigationLink { DemandForecastView() } label: {
-                        Label("Demand Forecast", systemImage: "chart.line.uptrend.xyaxis")
-                    }
+                NavigationLink { DispatchView() } label: {
+                    Label("Dispatch", systemImage: "paperplane")
                 }
-                Section("Operations") {
-                    NavigationLink { CRMView() } label: {
-                        Label("Retailers", systemImage: "person.crop.rectangle")
-                    }
-                    NavigationLink { ReturnsView() } label: {
-                        Label("Returns", systemImage: "arrow.uturn.backward")
-                    }
+                NavigationLink { DispatchSettingsView() } label: {
+                    Label("Dispatch settings", systemImage: "slider.horizontal.3")
+                }
+                NavigationLink { FleetLiveMapView() } label: {
+                    Label("Live fleet map", systemImage: "map")
+                }
+                NavigationLink { TransferActionsView() } label: {
+                    Label("Transfer actions", systemImage: "arrow.left.arrow.right")
                 }
             }
-            .navigationTitle("More")
+            Section("Inventory") {
+                NavigationLink { ProductsView() } label: {
+                    Label("Products", systemImage: "square.grid.2x2")
+                }
+                NavigationLink { SupplyRequestsHubView() } label: {
+                    Label("Supply Requests", systemImage: "arrow.triangle.2.circlepath")
+                }
+                NavigationLink { ReplenishmentView() } label: {
+                    Label("Replenishment", systemImage: "shippingbox")
+                }
+                NavigationLink { DemandForecastView() } label: {
+                    Label("Demand Forecast", systemImage: "chart.line.uptrend.xyaxis")
+                }
+            }
+            Section("Operations") {
+                NavigationLink { CRMView() } label: {
+                    Label("Retailers", systemImage: "person.crop.rectangle")
+                }
+                NavigationLink { ReturnsView() } label: {
+                    Label("Returns", systemImage: "arrow.uturn.backward")
+                }
+                NavigationLink { AnalyticsView() } label: {
+                    Label("Analytics", systemImage: "chart.bar.xaxis")
+                }
+                NavigationLink { TreasuryView() } label: {
+                    Label("Treasury", systemImage: "banknote")
+                }
+                NavigationLink { PaymentConfigView() } label: {
+                    Label("Payment config", systemImage: "creditcard")
+                }
+            }
+            Section("Portal only") {
+                NavigationLink { PortalHandoffView(feature: .setup) } label: {
+                    Label("Warehouse setup", systemImage: "gearshape.2")
+                }
+                NavigationLink { PortalHandoffView(feature: .profile) } label: {
+                    Label("Profile", systemImage: "person.crop.circle")
+                }
+                NavigationLink { PortalHandoffView(feature: .notifications) } label: {
+                    Label("Notifications", systemImage: "bell")
+                }
+                NavigationLink { PortalHandoffView(feature: .search) } label: {
+                    Label("Global search", systemImage: "magnifyingglass")
+                }
+            }
         }
+        .navigationTitle("More")
     }
 }

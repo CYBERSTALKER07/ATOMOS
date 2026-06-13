@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun StaffScreen(
     api: WarehouseApi,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var staff by remember { mutableStateOf<List<StaffMember>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -49,7 +49,7 @@ fun StaffScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Staff") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } } },
                 actions = {
                     IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") }
                     IconButton(onClick = { showCreate = true }) { Icon(Icons.Default.Add, "Add") }

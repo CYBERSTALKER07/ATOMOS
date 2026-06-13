@@ -310,6 +310,33 @@ export interface SupplierFleetOrderRow {
   total_minor?: number;
   currency?: string;
   updated_at?: string;
+  driver_location?: SupplierOrderDriverLocation;
+}
+
+export interface SupplierFleetLiveRoute {
+  manifest_id: string;
+  route_id: string;
+  driver_id: string;
+  driver_name?: string;
+  manifest_state: string;
+  route_geometry?: RouteGeometryWire;
+  driver_location?: SupplierOrderDriverLocation;
+  live_location_available: boolean;
+  location_stale?: boolean;
+}
+
+export interface SupplierFleetLiveMapResponse {
+  routes: SupplierFleetLiveRoute[];
+  fetched_at: string;
+}
+
+/** Warehouse ops live fleet map — same route wire shape as supplier fleet live map. */
+export type WarehouseFleetLiveRoute = SupplierFleetLiveRoute;
+
+export interface WarehouseFleetLiveMapResponse {
+  routes: WarehouseFleetLiveRoute[];
+  warehouse_id: string;
+  fetched_at: string;
 }
 
 export interface SupplierBillingSetupRequest {
@@ -684,6 +711,74 @@ export interface SupplierDispatchPreview {
   }>;
   pending_count?: number;
   available_driver_count?: number;
+  proposed_routes?: DispatchProposedRoute[];
+  optimizer_source?: string;
+  optimizer_warnings?: string[];
+  window_constrained_count?: number;
+}
+
+export interface SupplierDispatchExecuteRoute {
+  manifest_id?: string;
+  route_id?: string;
+  driver_id: string;
+  vehicle_id?: string;
+  order_ids: string[];
+  volume_vu?: number;
+  max_volume_vu?: number;
+}
+
+export interface SupplierDispatchExecuteRequest {
+  mode?: "MANUAL" | "AUTO" | string;
+}
+
+export interface SupplierDispatchExecuteResponse {
+  status: string;
+  supplier_id: string;
+  warehouse_id?: string;
+  manifests_created?: number;
+  orders_assigned?: number;
+  optimizer_source?: string;
+  warnings?: string[];
+  manifests?: SupplierDispatchExecuteRoute[];
+  orphan_order_ids?: string[];
+}
+
+export interface RouteGeometryWire {
+  route_id?: string;
+  encoded_polyline?: string;
+  coordinates: Array<{ lat: number; lng: number }>;
+  source: string;
+  stop_count?: number;
+}
+
+export interface RouteStepWire {
+  instruction: string;
+  distance_m: number;
+  duration_s: number;
+  maneuver?: string;
+  lat: number;
+  lng: number;
+}
+
+export interface DispatchProposedRoute {
+  driver_id?: string;
+  driver_name?: string;
+  loaded_volume?: number;
+  max_volume?: number;
+  util_pct?: number;
+  stop_count?: number;
+  volume_vu?: number;
+  max_volume_vu?: number;
+  order_ids?: string[];
+  stops?: Array<{
+    order_id: string;
+    retailer_id?: string;
+    retailer_name?: string;
+    lat?: number;
+    lng?: number;
+    volume_vu?: number;
+  }>;
+  route_geometry?: RouteGeometryWire;
 }
 
 export type SupplierAIRecommendationStatus =
@@ -1837,6 +1932,7 @@ export interface WarehouseDispatchOrder {
   retailer_name: string;
   total_uzs: number;
   item_count: number;
+  volume_vu?: number;
   created_at?: string;
 }
 
@@ -1866,12 +1962,12 @@ export interface WarehouseDispatchProposedStop {
 export interface WarehouseDispatchProposedRoute {
   driver_id?: string;
   driver_name?: string;
-  vehicle_id?: string;
   order_ids?: string[];
   stops?: WarehouseDispatchProposedStop[];
   volume_vu?: number;
   max_volume_vu?: number;
   stop_count?: number;
+  route_geometry?: RouteGeometryWire;
 }
 
 export interface WarehouseDispatchPreview {
@@ -1887,6 +1983,60 @@ export interface WarehouseDispatchPreview {
   optimizer_source?: string;
   optimizer_warnings?: string[];
   window_constrained_count?: number;
+}
+
+export interface WarehouseDispatchCapacityWarning {
+  driver_id: string;
+  loaded_vu: number;
+  max_volume_vu: number;
+  effective_max_vu: number;
+}
+
+export interface WarehouseDispatchExecuteRoute {
+  manifest_id?: string;
+  route_id?: string;
+  driver_id: string;
+  vehicle_id?: string;
+  order_ids: string[];
+  volume_vu?: number;
+  max_volume_vu?: number;
+}
+
+export interface WarehouseDispatchExecuteRequest {
+  mode: "MANUAL" | "AUTO" | string;
+  routes?: WarehouseDispatchExecuteRoute[];
+  force_capacity?: boolean;
+}
+
+export interface WarehouseDispatchExecuteResponse {
+  status: string;
+  supplier_id: string;
+  warehouse_id?: string;
+  manifests_created?: number;
+  orders_assigned?: number;
+  optimizer_source?: string;
+  warnings?: string[];
+  capacity_warnings?: WarehouseDispatchCapacityWarning[];
+  manifests?: WarehouseDispatchExecuteRoute[];
+  orphan_order_ids?: string[];
+}
+
+export interface CatalogProduct {
+  product_id: string;
+  supplier_id: string;
+  category_id: string;
+  name: string;
+  description?: string;
+  image_url?: string;
+  price_minor: number;
+  currency: string;
+  stock_quantity: number;
+  unit: string;
+  unit_volume_vu?: number;
+  is_active: boolean;
+  version: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface WarehouseSupplyRequestItem {
@@ -1919,6 +2069,37 @@ export interface CreateWarehouseDispatchLockResponse {
   lock_id: string;
   lock_type: string;
   status: "LOCKED" | string;
+}
+
+export interface WarehouseCRMRetailer {
+  retailer_id: string;
+  business_name: string;
+  total_orders: number;
+  total_revenue: number;
+  last_order_date?: string;
+}
+
+export interface WarehouseCRMListResponse {
+  retailers: WarehouseCRMRetailer[];
+}
+
+export interface WarehouseReturnItem {
+  line_item_id: string;
+  order_id: string;
+  product_name: string;
+  quantity: number;
+  status: string;
+  updated_at?: string;
+}
+
+export interface WarehouseReturnListResponse {
+  items: WarehouseReturnItem[];
+}
+
+export interface WarehouseTreasuryOverview {
+  total_invoiced: number;
+  total_paid: number;
+  total_outstanding: number;
 }
 
 export interface WarehouseSupplyRequestUpdateEvent {

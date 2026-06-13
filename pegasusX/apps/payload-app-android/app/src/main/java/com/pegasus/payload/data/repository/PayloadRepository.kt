@@ -54,22 +54,22 @@ class PayloadRepository @Inject constructor(
 
     /** Draft OR currently-loading manifest for the selected truck, or null. */
     suspend fun loadOpenManifest(truckId: String): Manifest? {
-        val draft = api.manifests(state = "DRAFT", truckId = truckId).manifests.firstOrNull()
+        val draft = api.supplierManifests(state = "DRAFT").manifests.firstOrNull { it.truckId == truckId }
         if (draft != null) return draft
-        return api.manifests(state = "LOADING", truckId = truckId).manifests.firstOrNull()
+        return api.supplierManifests(state = "LOADING").manifests.firstOrNull { it.truckId == truckId }
     }
 
-    suspend fun loadManifestDetail(manifestId: String): Manifest =
-        api.manifestDetail(manifestId)
+    suspend fun loadSupplierManifestDetail(manifestId: String): Manifest =
+        api.supplierManifestDetail(manifestId)
 
     /** Live orders (with line items) for the selected vehicle. */
     suspend fun loadOrders(vehicleId: String, state: String = "LOADED"): List<LiveOrder> =
         api.orders(vehicleId = vehicleId, state = state)
 
     suspend fun startLoading(manifestId: String): StatusResponse =
-        api.startLoading(
+        api.supplierStartLoading(
             manifestId = manifestId,
-            idempotencyKey = deterministicIdempotencyKey("start-loading", manifestId),
+            idempotencyKey = deterministicIdempotencyKey("supplier-start-loading", manifestId),
         )
 
     suspend fun sealOrder(orderId: String, terminalId: String): SealOrderResponse =
@@ -79,9 +79,9 @@ class PayloadRepository @Inject constructor(
         )
 
     suspend fun sealManifest(manifestId: String): SealManifestResponse =
-        api.sealManifest(
+        api.supplierSealManifest(
             manifestId = manifestId,
-            idempotencyKey = deterministicIdempotencyKey("seal-manifest", manifestId),
+            idempotencyKey = deterministicIdempotencyKey("supplier-seal-manifest", manifestId),
         )
 
     // ── Phase 5 ──────────────────────────────────────────────────────────────
@@ -98,10 +98,10 @@ class PayloadRepository @Inject constructor(
     )
 
     suspend fun injectOrder(manifestId: String, orderId: String): StatusResponse =
-        api.injectOrder(
+        api.supplierInjectOrder(
             manifestId = manifestId,
             req = InjectOrderRequest(orderId = orderId),
-            idempotencyKey = deterministicIdempotencyKey("inject-order", "$manifestId-$orderId"),
+            idempotencyKey = deterministicIdempotencyKey("supplier-inject-order", "$manifestId-$orderId"),
         )
 
     suspend fun recommendReassign(orderId: String): RecommendReassignResponse =

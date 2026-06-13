@@ -196,7 +196,7 @@ fun HomeScreen(
                             onResumeCashCollection(pending.orderId, pending.amount)
                         },
                 ) {
-                    Column(modifier = Modifier.padding(PegasusSpacing.lg)) {
+                    Column(modifier = Modifier.padding(PegasusSpacing.s16)) {
                         Text(
                             text = "Pending cash collection",
                             fontWeight = FontWeight.Bold,

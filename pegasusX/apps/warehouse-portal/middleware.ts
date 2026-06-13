@@ -79,7 +79,11 @@ export const config = {
     '/returns/:path*',
     '/treasury/:path*',
     '/dispatch/:path*',
+    '/dispatch-settings/:path*',
     '/payment-config/:path*',
+    '/replenishment/:path*',
+    '/transfers/:path*',
+    '/profile/:path*',
     '/setup/:path*',
   ],
 };

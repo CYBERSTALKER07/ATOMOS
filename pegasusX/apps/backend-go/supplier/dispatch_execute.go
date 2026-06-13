@@ -3,16 +3,18 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
-	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
@@ -21,7 +23,11 @@ import (
 // dispatchExecuteManifestState is written on execute; payloader seals before depart.
 const dispatchExecuteManifestState = "DRAFT"
 
+// dispatchExecuteCommittedStatus is returned when one or more manifests are persisted.
+const dispatchExecuteCommittedStatus = "dispatched"
+
 // DispatchExecuteResult is the supplier-portal response for a committed dispatch.
+// Status is "no_op" when nothing was committed; "dispatched" when one or more manifests were written.
 type DispatchExecuteResult struct {
 	Status           string                 `json:"status"`
 	SupplierID       string                 `json:"supplier_id"`
@@ -47,9 +53,9 @@ type DispatchExecuteRoute struct {
 
 // HandleDispatchExecute serves POST /v1/supplier/dispatch/execute. It runs the
 // optimiser over the supplier's dispatchable orders, then atomically persists
-// one SEALED manifest per route, flips each assigned order to LOADED with its
+// one DRAFT manifest per route, flips each assigned order to LOADED with its
 // driver/vehicle/route/manifest binding, and emits ROUTE_CREATED +
-// MANIFEST_SEALED + ORDER_ASSIGNED so every downstream client converges.
+// MANIFEST_DRAFT_CREATED + ORDER_ASSIGNED so every downstream client converges.
 func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -59,17 +65,51 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "dispatch_unavailable"})
 		return
 	}
-	sid := s.scopedSupplierID(r)
-	warehouseFilter := auth.EffectiveWarehouseID(r.Context())
-	if warehouseFilter == "" {
-		warehouseFilter = strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body: " + err.Error()})
+		return
 	}
+	defer r.Body.Close()
+
+	// Idempotency guard (API flavor): same key + same body → replay; different body → 409.
+	if key := strings.TrimSpace(r.Header.Get("Idempotency-Key")); key != "" && s.idem != nil {
+		hash := sha256Hex(body)
+		rec, hit, err := idempotency.Guard(r.Context(), s.idem, key, hash)
+		switch {
+		case errors.Is(err, idempotency.ErrConflict):
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "idempotency_key_payload_mismatch"})
+			return
+		case err != nil:
+			s.log.Warn("idempotency guard failed", "err", err)
+		case hit:
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(rec.StatusCode)
+			_, _ = w.Write(rec.Response)
+			return
+		}
+	}
+
+	sid := s.scopedSupplierID(r)
+	warehouseFilter := resolveSupplierDispatchWarehouseID(r)
 
 	result, err := s.executeDispatch(r.Context(), sid, warehouseFilter)
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "dispatch execute failed", "supplier_id", sid, "warehouse_id", warehouseFilter, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dispatch_execute_failed"})
 		return
+	}
+
+	resultBytes, _ := json.Marshal(result)
+
+	if key := strings.TrimSpace(r.Header.Get("Idempotency-Key")); key != "" && s.idem != nil {
+		_ = s.idem.Save(r.Context(), key, idempotency.Record{
+			BodyHash:   sha256Hex(body),
+			StatusCode: http.StatusOK,
+			Response:   resultBytes,
+			StoredAt:   time.Now().UTC(),
+		}, 24*time.Hour)
 	}
 
 	if s.cache != nil {
@@ -94,6 +134,20 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 		Manifests:   []DispatchExecuteRoute{},
 	}
 
+	lockWarehouseID := strings.TrimSpace(warehouseID)
+	var freezeLocks map[string]dispatch.FreezeLock
+	if lockWarehouseID != "" {
+		var err error
+		freezeLocks, err = dispatch.LoadFreezeLocks(ctx, s.portalSpanner, lockWarehouseID)
+		if err != nil {
+			return DispatchExecuteResult{}, err
+		}
+		if frozen, reason := dispatch.IsWarehouseDispatchFrozen(freezeLocks, lockWarehouseID); frozen {
+			out.Warnings = append(out.Warnings, reason)
+			return out, nil
+		}
+	}
+
 	repo := dispatch.NewRepository(s.portalSpanner)
 	rows, err := dispatch.FetchAllDispatchable(ctx, repo, dispatch.FetchParams{
 		SupplierID:  supplierID,
@@ -103,11 +157,25 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 	if err != nil {
 		return DispatchExecuteResult{}, err
 	}
+	if lockWarehouseID == "" {
+		lockWarehouseID = resolveDispatchLockWarehouseID(rows)
+		if lockWarehouseID != "" {
+			freezeLocks, err = dispatch.LoadFreezeLocks(ctx, s.portalSpanner, lockWarehouseID)
+			if err != nil {
+				return DispatchExecuteResult{}, err
+			}
+			if frozen, reason := dispatch.IsWarehouseDispatchFrozen(freezeLocks, lockWarehouseID); frozen {
+				out.Warnings = append(out.Warnings, reason)
+				return out, nil
+			}
+		}
+	}
+	rows = dispatch.FilterFreezeLockedOrders(freezeLocks, rows)
 	if len(rows) == 0 {
 		return out, nil
 	}
 
-	fleet, vehicleByDriver, err := s.buildDispatchFleet(ctx, supplierID, warehouseID)
+	fleet, vehicleByDriver, err := s.buildDispatchFleet(ctx, supplierID, warehouseID, freezeLocks)
 	if err != nil {
 		return DispatchExecuteResult{}, err
 	}
@@ -141,6 +209,23 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 	}
 
 	now := s.now().UTC()
+	lockID := ""
+	if lockWarehouseID != "" {
+		lockID, err = dispatch.AcquireManualDispatchLock(ctx, s.portalSpanner, lockWarehouseID, supplierID, supplierID, now)
+		if errors.Is(err, dispatch.ErrDispatchLocked) {
+			out.Warnings = append(out.Warnings, "warehouse_dispatch_locked")
+			return out, nil
+		}
+		if err != nil {
+			return DispatchExecuteResult{}, err
+		}
+		defer func() {
+			if releaseErr := dispatch.ReleaseManualDispatchLock(ctx, s.portalSpanner, lockWarehouseID, lockID, supplierID, supplierID, s.now().UTC()); releaseErr != nil {
+				s.log.WarnContext(ctx, "dispatch execute lock release failed", "warehouse_id", lockWarehouseID, "lock_id", lockID, "err", releaseErr)
+			}
+		}()
+	}
+
 	committed := make([]DispatchExecuteRoute, 0, len(assignment.Routes))
 	type pendingEvent struct {
 		aggregateType string
@@ -286,12 +371,22 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 	}
 	out.ManifestsCreated = len(committed)
 	out.Manifests = committed
+	if len(committed) > 0 {
+		out.Status = dispatchExecuteCommittedStatus
+	}
+	if s.manifestStore != nil && len(committed) > 0 {
+		manifestIDs := make([]string, 0, len(committed))
+		for _, route := range committed {
+			manifestIDs = append(manifestIDs, route.ManifestID)
+		}
+		s.manifestStore.PersistDispatchPreviewGeometries(ctx, manifestIDs)
+	}
 	return out, nil
 }
 
 // buildDispatchFleet hydrates the active driver+vehicle fleet for the optimiser
 // and a driver→vehicle lookup for manifest binding.
-func (s *Service) buildDispatchFleet(ctx context.Context, supplierID, warehouseID string) ([]dispatch.AvailableDriver, map[string]string, error) {
+func (s *Service) buildDispatchFleet(ctx context.Context, supplierID, warehouseID string, freezeLocks map[string]dispatch.FreezeLock) ([]dispatch.AvailableDriver, map[string]string, error) {
 	vehiclesByID := make(map[string]dispatch.VehicleSpec)
 	if vehicles, err := s.repo.ListFleetVehicles(ctx, supplierID); err == nil {
 		for _, vehicle := range vehicles {
@@ -303,6 +398,10 @@ func (s *Service) buildDispatchFleet(ctx context.Context, supplierID, warehouseI
 	if err != nil {
 		return nil, nil, err
 	}
+	busy, err := s.driversOnActiveManifests(ctx, supplierID, warehouseID, collectSupplierDriverIDs(drivers, warehouseID))
+	if err != nil {
+		return nil, nil, err
+	}
 	driverInputs := make([]dispatch.FleetDriverInput, 0, len(drivers))
 	vehicleByDriver := make(map[string]string, len(drivers))
 	for _, driver := range drivers {
@@ -310,6 +409,13 @@ func (s *Service) buildDispatchFleet(ctx context.Context, supplierID, warehouseI
 			continue
 		}
 		if warehouseID != "" && !strings.EqualFold(strings.TrimSpace(driver.HomeNodeID), warehouseID) {
+			continue
+		}
+		driverID := strings.TrimSpace(driver.DriverID)
+		if busy[driverID] {
+			continue
+		}
+		if len(dispatch.FilterFreezeLockedDriverIDs(freezeLocks, []string{driverID})) == 0 {
 			continue
 		}
 		driverInputs = append(driverInputs, dispatch.FleetDriverInput{
@@ -340,4 +446,13 @@ func (s *Service) broadcastDispatchCommitted(ctx context.Context, supplierID str
 		return
 	}
 	s.portalSupplierHub.Broadcast(ctx, "supplier:"+supplierID, payload)
+}
+
+func resolveDispatchLockWarehouseID(rows []dispatch.DispatchableOrder) string {
+	for _, row := range rows {
+		if warehouseID := strings.TrimSpace(row.WarehouseID); warehouseID != "" {
+			return warehouseID
+		}
+	}
+	return ""
 }

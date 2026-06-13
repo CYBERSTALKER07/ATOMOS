@@ -36,7 +36,8 @@ data class OffloadReviewUiState(
     val audits: List<OffloadLineAudit> = emptyList(),
     val isSubmitting: Boolean = false,
     val error: String? = null,
-    val offloadResult: ConfirmOffloadResponse? = null
+    val offloadResult: ConfirmOffloadResponse? = null,
+    val creditDeliveryRecorded: Boolean = false,
 ) {
     val originalTotal: Long get() = audits.sumOf { it.item.lineTotal }
     val adjustedTotal: Long get() = audits.sumOf { it.acceptedTotal }
@@ -97,6 +98,24 @@ class OffloadReviewViewModel @Inject constructor(
             val audits = current.audits.toMutableList()
             audits[index] = audits[index].copy(reason = reason)
             current.copy(audits = audits)
+        }
+    }
+
+    fun markCreditDelivery(photoProofUrl: String? = null) {
+        viewModelScope.launch {
+            _state.update { it.copy(isSubmitting = true, error = null) }
+            try {
+                val body = buildMap {
+                    put("order_id", orderId)
+                    photoProofUrl?.takeIf { it.isNotBlank() }?.let { put("photo_proof_url", it) }
+                }
+                api.markCreditDelivery(body)
+                _state.update { it.copy(isSubmitting = false, creditDeliveryRecorded = true) }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(isSubmitting = false, error = e.message ?: "Credit delivery failed")
+                }
+            }
         }
     }
 

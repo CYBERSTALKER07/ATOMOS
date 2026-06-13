@@ -92,6 +92,19 @@ final class APIClient: @unchecked Sendable {
         try await get("v1/fleet/orders")
     }
 
+    func getRouteGeometry(
+        routeId: String,
+        includeSteps: Bool = true,
+        from coordinate: CLLocationCoordinate2D? = nil,
+        reroute: Bool = false
+    ) async throws -> RouteGeometryResponse {
+        var query = "include_steps=\(includeSteps ? "true" : "false")"
+        if reroute, let coordinate {
+            query += "&reroute=true&from_lat=\(coordinate.latitude)&from_lng=\(coordinate.longitude)"
+        }
+        return try await get("v1/fleet/route/\(routeId)/geometry?\(query)")
+    }
+
     func getManifest(date: String) async throws -> RouteManifest {
         try await get("v1/driver/manifest?date=\(date)")
     }
@@ -177,8 +190,8 @@ final class APIClient: @unchecked Sendable {
         return try await post("v1/delivery/verify-handshake", body: body)
     }
 
-    func updateOrderDuringDelivery(orderId: String, items: [AmendItemPayload], driverNotes: String?) async throws -> UpdateOrderDuringDeliveryResponse {
-        let body = UpdateOrderDuringDeliveryRequest(orderId: orderId, items: items, driverNotes: driverNotes)
+    func updateOrderDuringDelivery(orderId: String, latitude: Double, longitude: Double) async throws -> UpdateOrderDuringDeliveryResponse {
+        let body = UpdateOrderDuringDeliveryRequest(orderId: orderId, latitude: latitude, longitude: longitude)
         return try await post("v1/delivery/update-order-during-delivery", body: body)
     }
 
@@ -307,9 +320,17 @@ final class APIClient: @unchecked Sendable {
     }
 
     /// Edge 35: Create split payment
-    func splitPayment(orderId: String, firstAmount: Int64, secondAmount: Int64) async throws -> SplitPaymentResponse {
-        struct Req: Encodable { let order_id: String; let first_amount: Int64; let second_amount: Int64 }
-        return try await post("v1/delivery/split-payment", body: Req(order_id: orderId, first_amount: firstAmount, second_amount: secondAmount))
+    func splitPayment(orderId: String, cashMinor: Int64, cardMinor: Int64, currency: String? = nil) async throws -> SplitPaymentResponse {
+        struct Req: Encodable {
+            let order_id: String
+            let cash_minor: Int64
+            let card_minor: Int64
+            let currency: String?
+        }
+        return try await post(
+            "v1/delivery/split-payment",
+            body: Req(order_id: orderId, cash_minor: cashMinor, card_minor: cardMinor, currency: currency)
+        )
     }
 
     // MARK: - Driver Profile

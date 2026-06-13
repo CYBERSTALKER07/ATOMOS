@@ -6,6 +6,7 @@ struct DispatchPreviewView: View {
     @State private var selectedWarehouseId: String?
     @State private var loading = true
     @State private var error: String?
+    @State private var showExecuteConfirm = false
 
     var body: some View {
         Group {
@@ -43,6 +44,8 @@ struct DispatchPreviewView: View {
                         }
                     }
                     Section {
+                        Button("Execute auto-dispatch") { showExecuteConfirm = true }
+                            .disabled(loading || preview == nil)
                         Button("Refresh preview") { Task { await load() } }
                             .disabled(loading)
                     }
@@ -51,6 +54,23 @@ struct DispatchPreviewView: View {
         }
         .navigationTitle("Dispatch preview")
         .task { await load() }
+        .alert("Execute dispatch?", isPresented: $showExecuteConfirm) {
+            Button("Confirm", role: .destructive) { Task { await execute() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Assign pending orders to available drivers.")
+        }
+    }
+
+    private func execute() async {
+        loading = true
+        defer { loading = false }
+        do {
+            try await SupplierOperationsService.executeDispatch(warehouseId: selectedWarehouseId)
+            await load()
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 
     private func load() async {

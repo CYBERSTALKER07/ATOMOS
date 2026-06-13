@@ -86,6 +86,20 @@ final class CorrectionViewModel {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
+            let location = await MainActor.run { FleetViewModel.lastKnownLocation }
+            if let location, location.latitude != 0 || location.longitude != 0 {
+                let edge = try await fleetService.updateOrderDuringDelivery(
+                    orderId: orderId,
+                    latitude: location.latitude,
+                    longitude: location.longitude
+                )
+                guard edge.success else {
+                    submitError = edge.message
+                    Haptics.error()
+                    return false
+                }
+            }
+
             let items = lineItems.map {
                 (
                     lineItemId: $0.id,

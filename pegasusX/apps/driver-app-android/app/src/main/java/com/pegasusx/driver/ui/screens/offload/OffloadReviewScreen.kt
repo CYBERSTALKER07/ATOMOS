@@ -307,7 +307,7 @@ fun OffloadReviewScreen(
                 .padding(horizontal = 16.dp, vertical = 4.dp)
         ) {
             androidx.compose.material3.OutlinedButton(
-                onClick = { state.orderId?.let { onCreditDelivery(it) } },
+                onClick = { viewModel.markCreditDelivery() },
                 enabled = !state.isSubmitting,
                 modifier = Modifier
                     .fillMaxWidth()

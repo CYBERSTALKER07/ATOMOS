@@ -16,6 +16,8 @@ func (c *Config) ValidateProductionProfile() error {
 		"GLOBAL_PAY_WEBHOOK_SECRET": c.GlobalPayWebhookSecret,
 		"ADYEN_WEBHOOK_SECRET":      c.AdyenWebhookSecret,
 		"STRIPE_WEBHOOK_SECRET":     c.StripeWebhookSecret,
+		"PAYME_WEBHOOK_SECRET":      c.PaymeWebhookSecret,
+		"CLICK_WEBHOOK_SECRET":      c.ClickWebhookSecret,
 	}
 	for name, value := range checks {
 		if isDevWebhookSecret(value) {

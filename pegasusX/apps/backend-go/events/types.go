@@ -94,6 +94,17 @@ type WarehouseEvent struct {
 	Action            string `json:"action,omitempty"`
 }
 
+// DispatchLockEvent is emitted when a manual dispatch freeze lock is acquired or released.
+type DispatchLockEvent struct {
+	BaseEvent
+	LockID      string `json:"lock_id"`
+	SupplierID  string `json:"supplier_id"`
+	WarehouseID string `json:"warehouse_id,omitempty"`
+	FactoryID   string `json:"factory_id,omitempty"`
+	LockType    string `json:"lock_type"`
+	LockedBy    string `json:"locked_by"`
+}
+
 // DriverEvent handles driver creation and updates.
 type DriverEvent struct {
 	BaseEvent

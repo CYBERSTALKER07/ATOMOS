@@ -17,6 +17,7 @@ import {
   validateIdentity,
   validateVerification,
   validateProfile,
+  normalizeReceivingWindow,
 } from "./wizard-state";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
@@ -76,15 +77,17 @@ export default function RetailerRegisterPage() {
     setSubmitError(null);
     try {
       const phone = `${dialCode}${state.identity.phoneLocal}`;
+      const lat = Number.parseFloat(state.profile.latitude.trim());
+      const lng = Number.parseFloat(state.profile.longitude.trim());
       const payload = {
-        account: {
-          legalName: state.profile.legalName,
-          contactName: state.profile.contactName,
-          email: state.profile.email,
-          country: state.identity.countryCode,
-          phone,
-        },
-        id_token: state.verification.otpCode, // Usually we pass the firebase token here. Passing OTP as fallback for scaffold.
+        phone_number: phone,
+        password: state.verification.otpCode,
+        store_name: state.profile.legalName.trim(),
+        owner_name: state.profile.contactName.trim(),
+        latitude: lat,
+        longitude: lng,
+        receiving_window_open: normalizeReceivingWindow(state.profile.receivingWindowOpen),
+        receiving_window_close: normalizeReceivingWindow(state.profile.receivingWindowClose),
       };
       
       const res = await fetch(`${API}/v1/auth/retailer/register`, {
@@ -270,6 +273,70 @@ export default function RetailerRegisterPage() {
                       />
                     </div>
                     {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-1">
+                        Latitude
+                      </label>
+                      <div className="relative group">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--desk-text-tertiary)] group-focus-within:text-[var(--desk-accent)] transition-colors" size={18} />
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className="w-full h-12 pl-12 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] border border-transparent focus:border-[var(--desk-accent)] transition-all md-typescale-body-medium font-bold"
+                          value={state.profile.latitude}
+                          onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, latitude: e.target.value } }))}
+                        />
+                      </div>
+                      {errors.latitude && <p className="text-red-500 text-xs mt-1">{errors.latitude}</p>}
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-1">
+                        Longitude
+                      </label>
+                      <div className="relative group">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--desk-text-tertiary)] group-focus-within:text-[var(--desk-accent)] transition-colors" size={18} />
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className="w-full h-12 pl-12 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] border border-transparent focus:border-[var(--desk-accent)] transition-all md-typescale-body-medium font-bold"
+                          value={state.profile.longitude}
+                          onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, longitude: e.target.value } }))}
+                        />
+                      </div>
+                      {errors.longitude && <p className="text-red-500 text-xs mt-1">{errors.longitude}</p>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-1">
+                        Receiving window open
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="09:00"
+                        className="w-full h-12 px-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] border border-transparent focus:border-[var(--desk-accent)] transition-all md-typescale-body-medium font-bold"
+                        value={state.profile.receivingWindowOpen}
+                        onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, receivingWindowOpen: e.target.value } }))}
+                      />
+                      {errors.receivingWindowOpen && <p className="text-red-500 text-xs mt-1">{errors.receivingWindowOpen}</p>}
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-1">
+                        Receiving window close
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="18:00"
+                        className="w-full h-12 px-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] border border-transparent focus:border-[var(--desk-accent)] transition-all md-typescale-body-medium font-bold"
+                        value={state.profile.receivingWindowClose}
+                        onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, receivingWindowClose: e.target.value } }))}
+                      />
+                      {errors.receivingWindowClose && <p className="text-red-500 text-xs mt-1">{errors.receivingWindowClose}</p>}
+                    </div>
                   </div>
                 </div>
               )}

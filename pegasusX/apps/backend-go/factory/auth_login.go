@@ -1,14 +1,31 @@
 package factory
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/api/iterator"
 )
+
+type factoryStaffRecord struct {
+	UserID            string
+	SupplierID        string
+	Name              string
+	Phone             string
+	PasswordHash      string
+	SupplierRole      string
+	AssignedFactoryID string
+	IsActive          bool
+}
 
 // HandleFactoryLogin authenticates factory staff for native clients.
 // POST /v1/auth/factory/login  body: { "phone", "pin" } or { "phone", "password" }
@@ -29,62 +46,236 @@ func (s *Service) HandleFactoryLogin(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	idToken := strings.TrimSpace(req.IDToken)
 
+	var staff factoryStaffRecord
+	var lookupPhone string
+	var verified bool
+
+	idToken := strings.TrimSpace(req.IDToken)
 	if idToken != "" && s.firebaseVerifier != nil {
-		claims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
+		fbClaims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
 		if err != nil {
 			s.log.Warn("firebase token verification failed", "err", err)
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_id_token"})
 			return
 		}
-		if claims.PhoneNumber == "" {
+		if fbClaims.PhoneNumber == "" {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "phone_number_missing_in_token"})
 			return
 		}
-		// In a real DB, check if factory staff with claims.PhoneNumber exists
-		// For scaffold, we check against the demo phone
-		expectPhone := strings.TrimSpace(os.Getenv("FACTORY_DEMO_PHONE"))
-		if expectPhone == "" {
-			expectPhone = "+998901000099"
-		}
-		if claims.PhoneNumber != expectPhone {
-			// Unregistered phone numbers are BLOCKED pending admin approval.
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
-			return
-		}
+		lookupPhone = fbClaims.PhoneNumber
+		verified = true
 	} else {
-		phone := strings.TrimSpace(req.Phone)
+		lookupPhone = strings.TrimSpace(req.Phone)
 		secret := strings.TrimSpace(req.PIN)
 		if secret == "" {
 			secret = strings.TrimSpace(req.Password)
 		}
-		if phone == "" || secret == "" {
+		if lookupPhone == "" || secret == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "phone_and_pin_required"})
 			return
 		}
-
-		expectPhone := strings.TrimSpace(os.Getenv("FACTORY_DEMO_PHONE"))
-		if expectPhone == "" {
-			expectPhone = "+998901000099"
+		if s.spannerClient == nil {
+			if !s.verifyFactoryDemoCredentials(lookupPhone, secret) {
+				writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+				return
+			}
+			s.issueFactoryDemoToken(w, lookupPhone)
+			return
 		}
-		expectSecret := strings.TrimSpace(os.Getenv("FACTORY_DEMO_PIN"))
-		if expectSecret == "" {
-			expectSecret = strings.TrimSpace(os.Getenv("FACTORY_DEMO_PASSWORD"))
+		rec, found, err := s.lookupFactoryStaffByPhone(r.Context(), lookupPhone)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "factory staff lookup failed", "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
+			return
 		}
-		if expectSecret == "" {
-			expectSecret = "1234"
-		}
-		if phone != expectPhone {
+		if !found {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
 			return
 		}
-		if secret != expectSecret {
+		if !verifyFactoryStaffSecret(rec.PasswordHash, secret) {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
 			return
 		}
+		staff = rec
+		verified = true
 	}
 
+	if s.spannerClient == nil {
+		if !s.verifyFactoryDemoPhone(lookupPhone) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
+			return
+		}
+		s.issueFactoryDemoToken(w, lookupPhone)
+		return
+	}
+
+	if !verified || staff.UserID == "" {
+		rec, found, err := s.lookupFactoryStaffByPhone(r.Context(), lookupPhone)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "factory staff lookup failed", "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
+			return
+		}
+		if !found {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
+			return
+		}
+		staff = rec
+	}
+
+	factoryID := strings.TrimSpace(staff.AssignedFactoryID)
+	if factoryID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "factory_not_assigned"})
+		return
+	}
+	if s.jwtSecret == "" {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "jwt_not_configured"})
+		return
+	}
+
+	supplierID := strings.TrimSpace(staff.SupplierID)
+	if supplierID == "" {
+		supplierID = s.supplierID
+	}
+
+	jwtClaims := auth.Claims{
+		Subject:      staff.UserID,
+		Role:         auth.RoleFactory,
+		SupplierID:   supplierID,
+		SupplierRole: auth.Role(strings.TrimSpace(staff.SupplierRole)),
+		HomeNodeType: auth.HomeNodeFactory,
+		HomeNodeID:   factoryID,
+		IsConfigured: true,
+		PhoneNumber:  staff.Phone,
+	}
+	if strings.EqualFold(staff.SupplierRole, string(auth.RoleFactoryAdmin)) {
+		jwtClaims.SupplierRole = auth.RoleFactoryAdmin
+	}
+
+	token, err := auth.Issue(jwtClaims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_token_failed"})
+		return
+	}
+	refresh, err := auth.Issue(jwtClaims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 7 * 24 * time.Hour})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_refresh_failed"})
+		return
+	}
+
+	factoryName, _ := s.lookupFactoryName(r.Context(), factoryID)
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"token":         token,
+		"refresh_token": refresh,
+		"factory_id":    factoryID,
+		"factory_name":  factoryName,
+		"role":          string(jwtClaims.Role),
+		"factory_role":  string(jwtClaims.SupplierRole),
+		"name":          staff.Name,
+	})
+}
+
+func (s *Service) lookupFactoryStaffByPhone(ctx context.Context, phone string) (factoryStaffRecord, bool, error) {
+	phone = strings.TrimSpace(phone)
+	if phone == "" {
+		return factoryStaffRecord{}, false, nil
+	}
+	if s.spannerClient == nil {
+		return factoryStaffRecord{}, false, errors.New("spanner_not_configured")
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT UserId, SupplierId, Name, Phone, PasswordHash, SupplierRole, COALESCE(AssignedFactoryId, ''), IsActive
+		      FROM SupplierUsers@{FORCE_INDEX=Idx_SupplierUsers_ByPhone}
+		      WHERE Phone = @phone
+		        AND IsActive = true
+		        AND SupplierRole IN ('FACTORY', 'FACTORY_ADMIN', 'FACTORY_STAFF')
+		      LIMIT 1`,
+		Params: map[string]any{"phone": phone},
+	}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return factoryStaffRecord{}, false, nil
+	}
+	if err != nil {
+		return factoryStaffRecord{}, false, fmt.Errorf("query factory staff by phone: %w", err)
+	}
+
+	var rec factoryStaffRecord
+	if err := row.Columns(
+		&rec.UserID,
+		&rec.SupplierID,
+		&rec.Name,
+		&rec.Phone,
+		&rec.PasswordHash,
+		&rec.SupplierRole,
+		&rec.AssignedFactoryID,
+		&rec.IsActive,
+	); err != nil {
+		return factoryStaffRecord{}, false, fmt.Errorf("scan factory staff: %w", err)
+	}
+	if !rec.IsActive {
+		return factoryStaffRecord{}, false, nil
+	}
+	return rec, true, nil
+}
+
+func (s *Service) lookupFactoryName(ctx context.Context, factoryID string) (string, error) {
+	factoryID = strings.TrimSpace(factoryID)
+	if factoryID == "" || s.spannerClient == nil {
+		return "", nil
+	}
+	row, err := s.spannerClient.Single().ReadRow(ctx, "Factories", spanner.Key{factoryID}, []string{"Name"})
+	if err != nil {
+		return "", err
+	}
+	var name string
+	if err := row.Columns(&name); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(name), nil
+}
+
+func verifyFactoryStaffSecret(storedHash, secret string) bool {
+	storedHash = strings.TrimSpace(storedHash)
+	secret = strings.TrimSpace(secret)
+	if storedHash == "" || secret == "" {
+		return false
+	}
+	if strings.HasPrefix(storedHash, "$2a$") || strings.HasPrefix(storedHash, "$2b$") || strings.HasPrefix(storedHash, "$2y$") {
+		return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(secret)) == nil
+	}
+	return storedHash == secret
+}
+
+func (s *Service) verifyFactoryDemoCredentials(phone, secret string) bool {
+	if !s.verifyFactoryDemoPhone(phone) {
+		return false
+	}
+	expectSecret := strings.TrimSpace(os.Getenv("FACTORY_DEMO_PIN"))
+	if expectSecret == "" {
+		expectSecret = strings.TrimSpace(os.Getenv("FACTORY_DEMO_PASSWORD"))
+	}
+	if expectSecret == "" {
+		expectSecret = "1234"
+	}
+	return secret == expectSecret
+}
+
+func (s *Service) verifyFactoryDemoPhone(phone string) bool {
+	expectPhone := strings.TrimSpace(os.Getenv("FACTORY_DEMO_PHONE"))
+	if expectPhone == "" {
+		expectPhone = "+998901000099"
+	}
+	return phone == expectPhone
+}
+
+func (s *Service) issueFactoryDemoToken(w http.ResponseWriter, phone string) {
 	factoryID := strings.TrimSpace(os.Getenv("FACTORY_DEMO_ID"))
 	if factoryID == "" {
 		factoryID = "factory-demo-1"
@@ -106,6 +297,7 @@ func (s *Service) HandleFactoryLogin(w http.ResponseWriter, r *http.Request) {
 		HomeNodeType: auth.HomeNodeFactory,
 		HomeNodeID:   factoryID,
 		IsConfigured: true,
+		PhoneNumber:  phone,
 	}
 	token, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
 	if err != nil {
@@ -117,7 +309,6 @@ func (s *Service) HandleFactoryLogin(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_refresh_failed"})
 		return
 	}
-
 	writeJSON(w, http.StatusOK, map[string]string{
 		"token":         token,
 		"refresh_token": refresh,

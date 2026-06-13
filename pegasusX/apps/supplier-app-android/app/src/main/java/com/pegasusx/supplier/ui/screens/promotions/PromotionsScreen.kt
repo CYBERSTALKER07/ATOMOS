@@ -45,6 +45,8 @@ fun PromotionsScreen(api: SupplierApi) {
     var error by remember { mutableStateOf<String?>(null) }
     var promotions by remember { mutableStateOf(emptyList<SupplierPromotion>()) }
     var showCreate by remember { mutableStateOf(false) }
+    var showEdit by remember { mutableStateOf(false) }
+    var editingPromotion by remember { mutableStateOf<SupplierPromotion?>(null) }
     var name by remember { mutableStateOf("") }
     var discountBps by remember { mutableStateOf("500") }
     val scope = rememberCoroutineScope()
@@ -104,6 +106,12 @@ fun PromotionsScreen(api: SupplierApi) {
                             trailingContent = {
                                 if (promo.isActive) {
                                     TextButton(onClick = {
+                                        editingPromotion = promo
+                                        name = promo.name
+                                        discountBps = promo.discountBps.toString()
+                                        showEdit = true
+                                    }) { Text("Edit") }
+                                    TextButton(onClick = {
                                         scope.launch {
                                             api.deactivatePromotion(promo.promotionId)
                                             reload()
@@ -158,6 +166,59 @@ fun PromotionsScreen(api: SupplierApi) {
             },
             dismissButton = {
                 TextButton(onClick = { showCreate = false }) { Text("Cancel") }
+            },
+        )
+    }
+
+    val editing = editingPromotion
+    if (showEdit && editing != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showEdit = false
+                editingPromotion = null
+            },
+            title = { Text("Edit promotion") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = discountBps,
+                        onValueChange = { discountBps = it.filter { ch -> ch.isDigit() } },
+                        label = { Text("Discount (bps)") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val bps = discountBps.toLongOrNull() ?: return@TextButton
+                    if (name.isBlank()) return@TextButton
+                    scope.launch {
+                        api.updatePromotion(
+                            editing.promotionId,
+                            SupplierPromotionUpsertRequest(
+                                name = name.trim(),
+                                discountBps = bps,
+                                scopeType = editing.scopeType,
+                                retailerScope = editing.retailerScope,
+                            ),
+                        )
+                        showEdit = false
+                        editingPromotion = null
+                        reload()
+                    }
+                }) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showEdit = false
+                    editingPromotion = null
+                }) { Text("Cancel") }
             },
         )
     }

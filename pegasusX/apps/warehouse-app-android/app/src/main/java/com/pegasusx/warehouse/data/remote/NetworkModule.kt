@@ -163,4 +163,14 @@ object NetworkModule {
     @Singleton
     fun provideWarehouseOperationsRepository(api: WarehouseApi): WarehouseOperationsRepository =
         WarehouseOperationsRepository(api)
+
+    @Provides
+    @Singleton
+    fun provideWarehouseRealtimeSignals(): WarehouseRealtimeSignals = WarehouseRealtimeSignals()
+
+    @Provides
+    @Singleton
+    fun provideWarehouseRealtimeClient(
+        @ApplicationContext context: Context,
+    ): WarehouseRealtimeClient = WarehouseRealtimeClient(context)
 }

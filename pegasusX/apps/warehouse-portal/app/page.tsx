@@ -8,6 +8,7 @@ import EmptyState from '@/components/EmptyState';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import PageTransition from '@/components/PageTransition';
+import FleetLiveMapPanel from '@/components/FleetLiveMapPanel';
 
 interface DashboardData {
   active_orders: number;
@@ -197,6 +198,19 @@ export default function WarehouseDashboard() {
             </motion.div>
           </Link>
         ))}
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+        className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden"
+      >
+        <div className="p-4 border-b border-[var(--border)]">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Live fleet map</h2>
+          <p className="text-sm text-[var(--muted)] mt-1">Active sealed routes and driver positions for this node.</p>
+        </div>
+        <FleetLiveMapPanel className="h-[360px] w-full" />
       </motion.div>
 
       {/* Fleet Status Breakdown */}

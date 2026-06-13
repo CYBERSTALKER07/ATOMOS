@@ -21,7 +21,7 @@ import java.util.Locale
 @Composable
 fun CRMScreen(
     api: WarehouseApi,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var retailers by remember { mutableStateOf<List<Retailer>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -47,7 +47,7 @@ fun CRMScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Retailers") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } } },
                 actions = { IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") } },
             )
         },

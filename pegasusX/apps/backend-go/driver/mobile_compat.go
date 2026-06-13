@@ -11,6 +11,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 )
 
 func demoFleetOrders(driverID string) []map[string]any {
@@ -501,4 +502,13 @@ func iosRouteManifest(driverID, date string) map[string]any {
 		"expires_at": time.Now().UTC().Add(24 * time.Hour).Unix(),
 		"hashes":     hashes,
 	}
+}
+
+func demoRouteGeometry(routeID string) routing.RouteGeometry {
+	waypoints := []routing.LatLng{
+		{Lat: 41.2995, Lng: 69.2401},
+		{Lat: 41.285, Lng: 69.203},
+		{Lat: 41.335, Lng: 69.288},
+	}
+	return routing.BuildDenseRouteGeometry(routeID, waypoints)
 }

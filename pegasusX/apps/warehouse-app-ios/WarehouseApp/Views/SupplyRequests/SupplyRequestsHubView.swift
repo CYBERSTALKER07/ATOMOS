@@ -19,15 +19,19 @@ struct SupplyRequestsHubView: View {
                 ContentUnavailableView("No requests", systemImage: "tray", description: Text("No supply requests in this state."))
             } else {
                 List(filtered) { request in
-                    VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                        Text(request.requestId)
-                            .font(.headline)
-                        Text(request.state)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        if !request.notes.isEmpty {
-                            Text(request.notes)
-                                .font(.caption)
+                    NavigationLink {
+                        SupplyRequestDetailView(requestId: request.requestId)
+                    } label: {
+                        VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                            Text(request.requestId)
+                                .font(.headline)
+                            Text(request.state)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            if !request.notes.isEmpty {
+                                Text(request.notes)
+                                    .font(.caption)
+                            }
                         }
                     }
                 }

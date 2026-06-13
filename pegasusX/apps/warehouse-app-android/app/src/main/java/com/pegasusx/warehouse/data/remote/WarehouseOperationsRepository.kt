@@ -51,4 +51,19 @@ class WarehouseOperationsRepository @Inject constructor(
 
     suspend fun refreshToken(refreshToken: String): Response<AuthResponse> =
         api.refreshToken(RefreshTokenRequest(refreshToken))
+
+    suspend fun getFleetLiveMap(warehouseId: String? = null): Response<WarehouseFleetLiveMapResponse> =
+        api.getFleetLiveMap(warehouseId)
+
+    suspend fun getDispatchSettings(): Response<DispatchSettingsResponse> =
+        api.getDispatchSettings()
+
+    suspend fun patchDispatchSettings(enabled: Boolean): Response<Map<String, String>> =
+        api.patchDispatchSettings(DispatchSettingsPatchRequest(autoDispatchEnabled = enabled))
+
+    suspend fun getSupplyRequest(id: String): Response<WarehouseSupplyRequest> =
+        api.getSupplyRequest(id)
+
+    suspend fun getPaymentConfig(): Response<PaymentConfigResponse> =
+        api.getPaymentConfig()
 }

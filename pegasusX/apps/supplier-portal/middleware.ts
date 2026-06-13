@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-// Onboarding gate: any supplier whose JWT claim `is_configured` is false is
-// redirected to /setup/billing until they finish bank + payment-gateway
-// configuration (or explicitly skip). Public routes are excluded.
+// Onboarding gate: unregistered suppliers → /setup/business; registered but
+// unconfigured → /setup/billing until bank + payment-gateway setup (or skip).
+// Public routes are excluded.
 //
 // HARD PRODUCT INVARIANT: this gate must not redirect to /auth/register —
 // banking/payments live at /setup/billing, never inside the wizard.
@@ -35,20 +35,36 @@ export function middleware(req: NextRequest) {
     return res;
   }
 
+  const isRegistered = readIsRegistered(session);
   const isConfigured = readIsConfigured(session);
-  if (!isConfigured) {
+
+  if (!isRegistered && pathname !== "/setup/business") {
     const url = req.nextUrl.clone();
     url.pathname = "/setup/business";
+    return NextResponse.redirect(url);
+  }
+
+  if (isRegistered && !isConfigured && pathname !== "/setup/billing") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/setup/billing";
     return NextResponse.redirect(url);
   }
 
   return NextResponse.next();
 }
 
-// Decode the JWT payload without verifying the signature. Verification
-// happens on the backend; the gate only needs to read the is_configured
-// claim to decide where to redirect. Anything malformed → treat as
-// unconfigured (safest default — pushes the supplier toward setup).
+function readIsRegistered(jwt: string): boolean {
+  const parts = jwt.split(".");
+  if (parts.length !== 3) return false;
+  try {
+    const json = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    const claims = JSON.parse(json) as { is_registered?: boolean };
+    return claims.is_registered === true;
+  } catch {
+    return false;
+  }
+}
+
 function isTokenExpired(jwt: string): boolean {
   const parts = jwt.split(".");
   if (parts.length !== 3) return true;

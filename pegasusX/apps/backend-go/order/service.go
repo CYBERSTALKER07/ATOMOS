@@ -26,6 +26,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/packages/handoff"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
@@ -87,10 +88,11 @@ var (
 
 // LineItem is one line on an order.
 type LineItem struct {
-	SKU       string `json:"sku"`
-	Name      string `json:"name"`
-	Quantity  int64  `json:"quantity"`
-	UnitPrice int64  `json:"unit_price_minor"` // minor units (tiyin / cents)
+	SKU           string  `json:"sku"`
+	Name          string  `json:"name"`
+	Quantity      int64   `json:"quantity"`
+	UnitPrice     int64   `json:"unit_price_minor"` // minor units (tiyin / cents)
+	UnitVolumeVU  float64 `json:"unit_volume_vu,omitempty"`
 }
 
 // Order is the persisted aggregate.
@@ -190,6 +192,7 @@ type Service struct {
 	supplierHub   *ws.Hub
 	driverHub     *ws.Hub
 	spannerClient *spanner.Client
+	manifestStore *manifest.Store
 	shopGrace     time.Duration
 	log           *slog.Logger
 	now           func() time.Time
@@ -262,6 +265,11 @@ func NewService(c ServiceConfig) *Service {
 // SetPaymentCapturer sets the capturer after construction.
 func (s *Service) SetPaymentCapturer(pc PaymentCapturer) {
 	s.paymentCapturer = pc
+}
+
+// SetManifestStore wires manifest persistence for route geometry refresh after reorder.
+func (s *Service) SetManifestStore(store *manifest.Store) {
+	s.manifestStore = store
 }
 
 // CreateRequest is the wire shape for POST /v1/order/create.

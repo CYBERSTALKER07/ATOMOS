@@ -1,5 +1,7 @@
 import SwiftUI
 
+private let dispatchTetrisBuffer = 0.95
+
 struct DispatchView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var preview: DispatchPreview?
@@ -16,6 +18,10 @@ struct DispatchView: View {
     @State private var lockPendingRelease: WarehouseDispatchLock?
     @State private var actionAlert: DispatchActionAlert?
     @State private var executing = false
+    @State private var selectedDriverId = ""
+    @State private var selectedOrderIds: Set<String> = []
+    @State private var showCapacityDialog = false
+    @State private var capacityWarnings: [DispatchCapacityWarning] = []
 
     var body: some View {
         NavigationStack {
@@ -39,12 +45,6 @@ struct DispatchView: View {
             .navigationTitle("Dispatch")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    if selectedSegment == 0, let preview, !preview.undispatchedOrders.isEmpty {
-                        Button("Auto Dispatch", systemImage: "play.fill") {
-                            Task { await runAutoDispatch() }
-                        }
-                        .disabled(executing)
-                    }
                     if selectedSegment == 2 {
                         Button("New Request", systemImage: "plus") { showCreateSupplyRequest = true }
                     }
@@ -69,6 +69,16 @@ struct DispatchView: View {
                 @unknown default:
                     break
                 }
+            }
+            .confirmationDialog("Capacity exceeded", isPresented: $showCapacityDialog, titleVisibility: .visible) {
+                Button("Dispatch anyway", role: .destructive) {
+                    Task { await runManualDispatch(forceCapacity: true) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(capacityWarnings.map {
+                    String(format: "%.1f VU loaded / %.1f VU effective max", $0.loadedVu, $0.effectiveMaxVu)
+                }.joined(separator: "\n"))
             }
             .sheet(isPresented: $showCreateSupplyRequest) {
                 CreateSupplyRequestSheet { factoryId, priority, notes in
@@ -126,6 +136,10 @@ struct DispatchView: View {
     @ViewBuilder
     private func dispatchContent(preview: DispatchPreview) -> some View {
         VStack(spacing: 0) {
+            FleetLiveMapSection(mapHeight: 240, showsExpand: false)
+                .padding(.horizontal)
+                .padding(.top, LabTheme.spacingSM)
+
             Picker("View", selection: $selectedSegment) {
                 Text("Orders (\(preview.undispatchedOrders.count))").tag(0)
                 Text("Drivers (\(preview.availableDrivers.count + preview.unavailableDrivers.count))").tag(1)
@@ -163,13 +177,84 @@ struct DispatchView: View {
         if preview.undispatchedOrders.isEmpty {
             ContentUnavailableView("All Dispatched", systemImage: "checkmark.circle", description: Text("No pending orders"))
         } else {
-            List(preview.undispatchedOrders) { order in
-                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                    Text(order.retailerName.isEmpty ? String(order.orderId.prefix(8)) : order.retailerName)
-                        .font(.headline)
-                    Text("\(order.totalUzs.formatted()) UZS · \(order.itemCount) items")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+            let selectedDriver = preview.availableDrivers.first(where: { $0.driverId == selectedDriverId })
+            let selectedVolume = preview.undispatchedOrders
+                .filter { selectedOrderIds.contains($0.orderId) }
+                .reduce(0.0) { $0 + $1.volumeVu }
+            let effectiveMax = (selectedDriver?.maxVolumeVu ?? 0) * dispatchTetrisBuffer
+            List {
+                Section {
+                    Picker("Truck / driver", selection: $selectedDriverId) {
+                        Text("Select truck / driver").tag("")
+                        ForEach(preview.availableDrivers) { driver in
+                            Text("\(driver.name) · \(driver.maxVolumeVu, specifier: "%.0f") VU max")
+                                .tag(driver.driverId)
+                        }
+                    }
+                    if selectedDriver != nil {
+                        Text("Loaded \(selectedVolume, specifier: "%.1f") / \(effectiveMax, specifier: "%.1f") VU effective")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Button {
+                        Task { await runManualDispatch(forceCapacity: false) }
+                    } label: {
+                        Text(executing ? "Dispatching…" : "Dispatch (\(selectedOrderIds.count))")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(executing || selectedDriverId.isEmpty || selectedOrderIds.isEmpty)
+                }
+                Section("Orders") {
+                    ForEach(preview.undispatchedOrders) { order in
+                        Button {
+                            if selectedOrderIds.contains(order.orderId) {
+                                selectedOrderIds.remove(order.orderId)
+                            } else {
+                                selectedOrderIds.insert(order.orderId)
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: selectedOrderIds.contains(order.orderId) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(selectedOrderIds.contains(order.orderId) ? Color.accentColor : .secondary)
+                                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                    Text(order.retailerName.isEmpty ? String(order.orderId.prefix(8)) : order.retailerName)
+                                        .font(.headline)
+                                        .foregroundStyle(.primary)
+                                    Text("\(order.totalUzs.formatted()) UZS · \(order.volumeVu, specifier: "%.1f") VU")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                            }
+                        }
+                    }
+                }
+                if !preview.proposedRoutes.isEmpty || !preview.optimizerWarnings.isEmpty {
+                    Section("Smart suggest preview") {
+                        if let source = preview.optimizerSource, !source.isEmpty {
+                            Text("Source: \(source)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        ForEach(preview.optimizerWarnings, id: \.self) { warning in
+                            Text(warning)
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                        ForEach(preview.proposedRoutes) { route in
+                            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                Text(route.driverName ?? route.driverId ?? "Driver")
+                                    .font(.headline)
+                                Text("\(route.stopCount ?? route.orderIds.count) stops · \(route.volumeVu ?? 0, specifier: "%.1f") VU")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                Text(route.orderIds.joined(separator: " → "))
+                                    .font(.caption.monospaced())
+                                    .lineLimit(2)
+                            }
+                        }
+                    }
                 }
             }
             .listStyle(.insetGrouped)
@@ -217,11 +302,18 @@ struct DispatchView: View {
                 }
             }
             Spacer()
-            Text(driver.truckStatus.isEmpty ? "IDLE" : driver.truckStatus)
-                .font(.caption.bold())
-                .padding(.horizontal, LabTheme.spacingSM)
-                .padding(.vertical, LabTheme.spacingXS)
-                .background(.quaternary, in: Capsule())
+            VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
+                Text(driver.truckStatus.isEmpty ? "IDLE" : driver.truckStatus)
+                    .font(.caption.bold())
+                    .padding(.horizontal, LabTheme.spacingSM)
+                    .padding(.vertical, LabTheme.spacingXS)
+                    .background(.quaternary, in: Capsule())
+                if driver.maxVolumeVu > 0 {
+                    Text("\(driver.maxVolumeVu, specifier: "%.0f") VU")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
     }
 
@@ -392,17 +484,36 @@ struct DispatchView: View {
         }
     }
 
-    private func runAutoDispatch() async {
-        guard !executing else { return }
+    private func runManualDispatch(forceCapacity: Bool) async {
+        guard !executing, !selectedDriverId.isEmpty, !selectedOrderIds.isEmpty else { return }
         executing = true
         defer { executing = false }
         do {
-            try await WarehouseService.executeDispatch(body: ["mode": "AUTO"])
-            actionAlert = DispatchActionAlert(
-                title: "Dispatch Committed",
-                message: "Payloader loading gate is now active."
-            )
-            await reloadDispatchPreview()
+            let result = try await WarehouseService.executeDispatch(body: DispatchExecuteRequest(
+                mode: "MANUAL",
+                forceCapacity: forceCapacity,
+                routes: [
+                    DispatchExecuteRouteRequest(
+                        driverId: selectedDriverId,
+                        orderIds: Array(selectedOrderIds),
+                    ),
+                ],
+            ))
+            switch result.status {
+            case "capacity_exceeded":
+                capacityWarnings = result.capacityWarnings
+                showCapacityDialog = true
+            case "dispatched":
+                actionAlert = DispatchActionAlert(
+                    title: "Dispatch Committed",
+                    message: "Assigned \(result.ordersAssigned) order(s). Payloader loading gate is active."
+                )
+                selectedOrderIds = []
+                await reloadDispatchPreview()
+            default:
+                let warning = result.warnings.first ?? "Dispatch did not commit."
+                actionAlert = DispatchActionAlert(title: "Dispatch Incomplete", message: warning)
+            }
         } catch {
             actionAlert = DispatchActionAlert(title: "Dispatch Failed", message: describe(error))
         }

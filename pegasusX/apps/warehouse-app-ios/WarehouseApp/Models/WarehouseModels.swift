@@ -620,16 +620,22 @@ struct Retailer: Decodable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case retailerId = "retailer_id"
         case name
+        case businessName = "business_name"
         case totalOrders = "total_orders"
+        case orderCount = "order_count"
         case totalRevenue = "total_revenue"
+        case revenueUzs = "revenue_uzs"
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         retailerId = try c.decode(String.self, forKey: .retailerId)
-        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
-        totalOrders = try c.decodeIfPresent(Int.self, forKey: .totalOrders) ?? 0
-        totalRevenue = try c.decodeIfPresent(Int.self, forKey: .totalRevenue) ?? 0
+        name = try c.decodeIfPresent(String.self, forKey: .businessName)
+            ?? (try c.decodeIfPresent(String.self, forKey: .name)) ?? ""
+        totalOrders = try c.decodeIfPresent(Int.self, forKey: .totalOrders)
+            ?? (try c.decodeIfPresent(Int.self, forKey: .orderCount)) ?? 0
+        totalRevenue = try c.decodeIfPresent(Int.self, forKey: .totalRevenue)
+            ?? (try c.decodeIfPresent(Int.self, forKey: .revenueUzs)) ?? 0
     }
 }
 
@@ -640,35 +646,54 @@ struct RetailerListResponse: Decodable {
 // MARK: - Return
 
 struct ReturnItem: Decodable, Identifiable {
-    var id: String { returnId }
-    let returnId: String
+    var id: String { lineItemId }
+    let lineItemId: String
     let orderId: String
     let productName: String
     let quantity: Int
-    let reason: String
-    let createdAt: String
+    let status: String
+    let updatedAt: String
 
     enum CodingKeys: String, CodingKey {
+        case lineItemId = "line_item_id"
         case returnId = "return_id"
         case orderId = "order_id"
         case productName = "product_name"
-        case quantity, reason
+        case quantity, status
+        case updatedAt = "updated_at"
         case createdAt = "created_at"
+        case reason
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        returnId = try c.decode(String.self, forKey: .returnId)
+        lineItemId = try c.decodeIfPresent(String.self, forKey: .lineItemId)
+            ?? (try c.decodeIfPresent(String.self, forKey: .returnId)) ?? ""
         orderId = try c.decodeIfPresent(String.self, forKey: .orderId) ?? ""
         productName = try c.decodeIfPresent(String.self, forKey: .productName) ?? ""
         quantity = try c.decodeIfPresent(Int.self, forKey: .quantity) ?? 0
-        reason = try c.decodeIfPresent(String.self, forKey: .reason) ?? ""
-        createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
+        status = try c.decodeIfPresent(String.self, forKey: .status)
+            ?? (try c.decodeIfPresent(String.self, forKey: .reason)) ?? ""
+        updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
+            ?? (try c.decodeIfPresent(String.self, forKey: .createdAt)) ?? ""
     }
 }
 
 struct ReturnListResponse: Decodable {
-    let returns: [ReturnItem]
+    let items: [ReturnItem]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        if let decoded = try c.decodeIfPresent([ReturnItem].self, forKey: .items) {
+            items = decoded
+            return
+        }
+        items = try c.decodeIfPresent([ReturnItem].self, forKey: .returns) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case items, returns
+    }
 }
 
 // MARK: - Treasury
@@ -684,14 +709,29 @@ struct TreasuryOverview: Decodable {
         case totalReceivable = "total_receivable"
         case totalCollected = "total_collected"
         case overdueAmount = "overdue_amount"
+        case totalInvoiced = "total_invoiced"
+        case totalPaid = "total_paid"
+        case totalOutstanding = "total_outstanding"
+        case invoicedUzs = "invoiced_uzs"
+        case paidUzs = "paid_uzs"
+        case outstandingUzs = "outstanding_uzs"
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        balance = try c.decodeIfPresent(Int.self, forKey: .balance) ?? 0
-        totalReceivable = try c.decodeIfPresent(Int.self, forKey: .totalReceivable) ?? 0
-        totalCollected = try c.decodeIfPresent(Int.self, forKey: .totalCollected) ?? 0
-        overdueAmount = try c.decodeIfPresent(Int.self, forKey: .overdueAmount) ?? 0
+        let invoiced = try c.decodeIfPresent(Int.self, forKey: .totalInvoiced)
+            ?? (try c.decodeIfPresent(Int.self, forKey: .invoicedUzs))
+            ?? (try c.decodeIfPresent(Int.self, forKey: .totalReceivable)) ?? 0
+        let paid = try c.decodeIfPresent(Int.self, forKey: .totalPaid)
+            ?? (try c.decodeIfPresent(Int.self, forKey: .paidUzs))
+            ?? (try c.decodeIfPresent(Int.self, forKey: .totalCollected)) ?? 0
+        let outstanding = try c.decodeIfPresent(Int.self, forKey: .totalOutstanding)
+            ?? (try c.decodeIfPresent(Int.self, forKey: .outstandingUzs))
+            ?? (try c.decodeIfPresent(Int.self, forKey: .overdueAmount)) ?? 0
+        balance = try c.decodeIfPresent(Int.self, forKey: .balance) ?? paid
+        totalReceivable = invoiced
+        totalCollected = paid
+        overdueAmount = outstanding
     }
 
     static let empty = TreasuryOverview(balance: 0, totalReceivable: 0, totalCollected: 0, overdueAmount: 0)
@@ -818,12 +858,14 @@ struct DispatchOrder: Decodable, Identifiable {
     let retailerName: String
     let totalUzs: Int
     let itemCount: Int
+    let volumeVu: Double
 
     enum CodingKeys: String, CodingKey {
         case orderId = "order_id"
         case retailerName = "retailer_name"
         case totalUzs = "total_uzs"
         case itemCount = "item_count"
+        case volumeVu = "volume_vu"
     }
 
     init(from decoder: Decoder) throws {
@@ -832,6 +874,7 @@ struct DispatchOrder: Decodable, Identifiable {
         retailerName = try c.decodeIfPresent(String.self, forKey: .retailerName) ?? ""
         totalUzs = try c.decodeIfPresent(Int.self, forKey: .totalUzs) ?? 0
         itemCount = try c.decodeIfPresent(Int.self, forKey: .itemCount) ?? 0
+        volumeVu = try c.decodeIfPresent(Double.self, forKey: .volumeVu) ?? 0
     }
 }
 
@@ -842,6 +885,7 @@ struct AvailableDriver: Decodable, Identifiable {
     let phone: String
     let vehicleLabel: String
     let truckStatus: String
+    let maxVolumeVu: Double
     let unavailableReason: String?
 
     enum CodingKeys: String, CodingKey {
@@ -850,6 +894,7 @@ struct AvailableDriver: Decodable, Identifiable {
         case phone
         case vehicleLabel = "vehicle_label"
         case truckStatus = "truck_status"
+        case maxVolumeVu = "max_volume_vu"
         case unavailableReason = "unavailable_reason"
     }
 
@@ -860,7 +905,66 @@ struct AvailableDriver: Decodable, Identifiable {
         phone = try c.decodeIfPresent(String.self, forKey: .phone) ?? ""
         vehicleLabel = try c.decodeIfPresent(String.self, forKey: .vehicleLabel) ?? ""
         truckStatus = try c.decodeIfPresent(String.self, forKey: .truckStatus) ?? ""
+        maxVolumeVu = try c.decodeIfPresent(Double.self, forKey: .maxVolumeVu) ?? 0
         unavailableReason = try c.decodeIfPresent(String.self, forKey: .unavailableReason)
+    }
+}
+
+struct DispatchCapacityWarning: Decodable {
+    let driverId: String
+    let loadedVu: Double
+    let maxVolumeVu: Double
+    let effectiveMaxVu: Double
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case loadedVu = "loaded_vu"
+        case maxVolumeVu = "max_volume_vu"
+        case effectiveMaxVu = "effective_max_vu"
+    }
+}
+
+struct DispatchExecuteResponse: Decodable {
+    let status: String
+    let ordersAssigned: Int
+    let warnings: [String]
+    let capacityWarnings: [DispatchCapacityWarning]
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case ordersAssigned = "orders_assigned"
+        case warnings
+        case capacityWarnings = "capacity_warnings"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        ordersAssigned = try c.decodeIfPresent(Int.self, forKey: .ordersAssigned) ?? 0
+        warnings = try c.decodeIfPresent([String].self, forKey: .warnings) ?? []
+        capacityWarnings = try c.decodeIfPresent([DispatchCapacityWarning].self, forKey: .capacityWarnings) ?? []
+    }
+}
+
+struct DispatchExecuteRouteRequest: Encodable {
+    let driverId: String
+    let orderIds: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case orderIds = "order_ids"
+    }
+}
+
+struct DispatchExecuteRequest: Encodable {
+    let mode: String
+    let forceCapacity: Bool
+    let routes: [DispatchExecuteRouteRequest]
+
+    enum CodingKeys: String, CodingKey {
+        case mode
+        case forceCapacity = "force_capacity"
+        case routes
     }
 }
 

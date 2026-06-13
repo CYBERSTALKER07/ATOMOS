@@ -2,6 +2,10 @@ package com.pegasusx.supplier.data.remote
 
 import android.util.Log
 import com.pegasusx.supplier.BuildConfig
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -32,6 +36,7 @@ data class SupplierWSMessage(
 class SupplierWebSocket @Inject constructor(
     private val client: OkHttpClient,
     private val json: Json,
+    private val api: SupplierApi,
 ) {
     companion object {
         private const val TAG = "SupplierWebSocket"
@@ -40,6 +45,7 @@ class SupplierWebSocket @Inject constructor(
         private const val MAX_RECONNECT_ATTEMPTS = 10
     }
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var socket: WebSocket? = null
     private val reconnectExecutor = Executors.newSingleThreadScheduledExecutor()
     private var reconnectTask: ScheduledFuture<*>? = null
@@ -50,16 +56,12 @@ class SupplierWebSocket @Inject constructor(
 
     private var currentBaseUrl: String? = null
 
-    fun connect(baseUrl: String, token: String) {
-        if (socket != null) return
+    fun connect(baseUrl: String) {
+        if (!TokenHolder.isLoggedIn) return
         reconnectTask?.cancel(false)
         intentionalClose.set(false)
         currentBaseUrl = baseUrl.trimEnd('/')
-        val wsUrl = buildWsUrl(currentBaseUrl!!, token)
-        val request = Request.Builder().url(wsUrl)
-            .header("X-App-Version", BuildConfig.VERSION_NAME)
-            .build()
-        socket = client.newWebSocket(request, listener)
+        scope.launch { openSocket(currentBaseUrl!!) }
     }
 
     fun disconnect() {
@@ -67,6 +69,24 @@ class SupplierWebSocket @Inject constructor(
         reconnectTask?.cancel(false)
         socket?.close(1000, "client_close")
         socket = null
+    }
+
+    private suspend fun openSocket(base: String) {
+        if (intentionalClose.get()) return
+        val response = runCatching { api.getWsSession() }.getOrNull()
+        val session = response?.body()
+        if (response?.isSuccessful != true || session == null || session.token.isBlank()) {
+            Log.w(TAG, "ws-session fetch failed code=${response?.code()}")
+            scheduleReconnect()
+            return
+        }
+        socket?.close(1000, "reconnect")
+        socket = null
+        val wsUrl = buildWsUrl(base, session.token)
+        val request = Request.Builder().url(wsUrl)
+            .header("X-App-Version", BuildConfig.VERSION_NAME)
+            .build()
+        socket = client.newWebSocket(request, listener)
     }
 
     private fun buildWsUrl(base: String, token: String): String {
@@ -111,8 +131,7 @@ class SupplierWebSocket @Inject constructor(
         reconnectTask = reconnectExecutor.schedule({
             socket = null
             val base = currentBaseUrl ?: return@schedule
-            val token = TokenHolder.token ?: return@schedule
-            connect(base, token)
+            scope.launch { openSocket(base) }
         }, delay, TimeUnit.MILLISECONDS)
     }
 }

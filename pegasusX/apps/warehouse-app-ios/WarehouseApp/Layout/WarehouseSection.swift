@@ -1,0 +1,106 @@
+import SwiftUI
+
+enum WarehouseSection: String, CaseIterable, Identifiable {
+    case dashboard = "Dashboard"
+    case orders = "Orders"
+    case drivers = "Drivers"
+    case vehicles = "Vehicles"
+    case inventory = "Inventory"
+    case dispatch = "Dispatch"
+    case analytics = "Analytics"
+    case treasury = "Treasury"
+    case staff = "Staff"
+    case manifests = "Manifests"
+    case dispatchSettings = "Dispatch settings"
+    case fleetLiveMap = "Live fleet"
+    case transferActions = "Transfer actions"
+    case products = "Products"
+    case supplyRequests = "Supply requests"
+    case replenishment = "Replenishment"
+    case demandForecast = "Demand forecast"
+    case retailers = "Retailers"
+    case returns = "Returns"
+    case paymentConfig = "Payment config"
+    case portalSetup = "Warehouse setup"
+    case portalProfile = "Profile"
+    case portalNotifications = "Notifications"
+    case portalSearch = "Global search"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .dashboard: "square.grid.2x2"
+        case .orders: "cart"
+        case .drivers: "person.badge.key"
+        case .vehicles: "truck.box"
+        case .inventory: "archivebox"
+        case .dispatch: "paperplane"
+        case .analytics: "chart.bar.xaxis"
+        case .treasury: "banknote"
+        case .staff: "person.2"
+        case .manifests: "doc.text"
+        case .dispatchSettings: "slider.horizontal.3"
+        case .fleetLiveMap: "map"
+        case .transferActions: "arrow.left.arrow.right"
+        case .products: "square.grid.2x2"
+        case .supplyRequests: "arrow.triangle.2.circlepath"
+        case .replenishment: "shippingbox"
+        case .demandForecast: "chart.line.uptrend.xyaxis"
+        case .retailers: "person.crop.rectangle"
+        case .returns: "arrow.uturn.backward"
+        case .paymentConfig: "creditcard"
+        case .portalSetup: "gearshape.2"
+        case .portalProfile: "person.crop.circle"
+        case .portalNotifications: "bell"
+        case .portalSearch: "magnifyingglass"
+        }
+    }
+
+    /// Primary iPhone tabs (compact shell).
+    static var compactTabs: [WarehouseSection] {
+        [.dashboard, .orders, .dispatch]
+    }
+
+    static var primarySections: [WarehouseSection] {
+        compactTabs + [.drivers, .vehicles, .inventory, .analytics, .treasury, .staff]
+    }
+
+    static var fulfillmentSections: [WarehouseSection] {
+        [.manifests, .dispatchSettings, .fleetLiveMap, .transferActions]
+    }
+
+    static var inventorySections: [WarehouseSection] {
+        [.products, .supplyRequests, .replenishment, .demandForecast]
+    }
+
+    static var operationsSections: [WarehouseSection] {
+        [.retailers, .returns, .paymentConfig]
+    }
+
+    static var portalSections: [WarehouseSection] {
+        [.portalSetup, .portalProfile, .portalNotifications, .portalSearch]
+    }
+
+    /// iPad sidebar: mirrors warehouse-portal nav groups.
+    static var sidebarSections: [WarehouseSection] {
+        primarySections + fulfillmentSections + inventorySections + operationsSections + portalSections
+    }
+
+    var portalFeature: WarehousePortalFeature? {
+        switch self {
+        case .portalSetup: .setup
+        case .portalProfile: .profile
+        case .portalNotifications: .notifications
+        case .portalSearch: .search
+        default: nil
+        }
+    }
+}
+
+enum WarehouseCompactTab: Hashable {
+    case dashboard
+    case orders
+    case dispatch
+    case more
+}

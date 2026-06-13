@@ -16,7 +16,9 @@ val localProps = Properties().also { props ->
     if (f.exists()) props.load(f.inputStream())
 }
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
+val devPortalHost: String = localProps.getProperty("dev.portal.host", devHost)
 val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
+val prodPortalBaseUrl: String = localProps.getProperty("prod.portal.base.url", "https://warehouse.pegasus.uz")
 val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
 
 val contractsSchemaFile = rootProject.file("../../contracts/events.schema.json")
@@ -108,6 +110,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "API_BASE_URL", "\"http://$devHost:8180\"")
+        buildConfigField("String", "PORTAL_BASE_URL", "\"http://$devPortalHost:3002\"")
     }
 
     buildTypes {
@@ -119,6 +122,7 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("String", "API_BASE_URL", "\"$prodApiBaseUrl\"")
+            buildConfigField("String", "PORTAL_BASE_URL", "\"$prodPortalBaseUrl\"")
         }
     }
 
@@ -163,6 +167,9 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("com.squareup.retrofit2:converter-kotlinx-serialization:2.11.0")
+
+    // MapLibre (fleet live map polylines)
+    implementation("org.maplibre.gl:android-sdk:11.7.1")
 
     // Core
     implementation("androidx.core:core-ktx:1.15.0")

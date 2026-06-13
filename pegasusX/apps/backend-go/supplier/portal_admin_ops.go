@@ -14,24 +14,30 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"google.golang.org/api/iterator"
 )
 
 // PortalOpsConfig wires optional Spanner + supplier hub for admin-parity endpoints.
 type PortalOpsConfig struct {
-	Spanner          *spanner.Client
-	SupplierHub      *ws.Hub
-	OptimizerClient  *optimizerclient.Client
-	PlanCounters     *plan.SourceCounters
-	FallbackDepotLat float64
-	FallbackDepotLng float64
+	Spanner              *spanner.Client
+	ManifestStore        *manifest.Store
+	RouteGeometryBuilder *routing.GeometryBuilder
+	SupplierHub          *ws.Hub
+	OptimizerClient      *optimizerclient.Client
+	PlanCounters         *plan.SourceCounters
+	FallbackDepotLat     float64
+	FallbackDepotLng     float64
 }
 
 // SetPortalOps attaches cross-cutting deps used by supplier admin-parity handlers.
 func (s *Service) SetPortalOps(cfg PortalOpsConfig) {
 	s.portalSpanner = cfg.Spanner
+	s.manifestStore = cfg.ManifestStore
+	s.routeGeometryBuilder = cfg.RouteGeometryBuilder
 	s.portalSupplierHub = cfg.SupplierHub
 	s.optimizerClient = cfg.OptimizerClient
 	s.planCounters = cfg.PlanCounters

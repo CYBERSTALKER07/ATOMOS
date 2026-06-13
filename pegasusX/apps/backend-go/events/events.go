@@ -19,6 +19,8 @@ var (
 	// TopicMain resolves once at process start so isolated sandboxes can publish
 	// to client-specific Kafka topics without patching every outbox call site.
 	TopicMain = topicFromEnv("KAFKA_TOPIC_MAIN", DefaultTopicMain)
+	// TopicFreezeLocks carries AI-worker freeze-lock signals for manual dispatch.
+	TopicFreezeLocks = topicFromEnv("KAFKA_TOPIC_FREEZE_LOCKS", "pegasusx-freeze-locks")
 )
 
 // EventType constants. Add new types here, in events.schema.json, and in
@@ -36,6 +38,8 @@ const (
 	EventWarehouseCreated             = "WAREHOUSE_CREATED"
 	EventWarehouseSupplyRequestOpened = "WAREHOUSE_SUPPLY_REQUEST_OPENED"
 	EventWarehouseDispatchLockChanged = "WAREHOUSE_DISPATCH_LOCK_CHANGED"
+	EventFreezeLockAcquired           = "FREEZE_LOCK_ACQUIRED"
+	EventFreezeLockReleased           = "FREEZE_LOCK_RELEASED"
 
 	EventWarehouseTransferCreated  = "WAREHOUSE_TRANSFER_CREATED"
 	EventWarehouseTransferReceived = "WAREHOUSE_TRANSFER_RECEIVED"

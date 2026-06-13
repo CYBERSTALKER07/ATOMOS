@@ -1,13 +1,4 @@
-// Shared step-form types for the supplier onboarding wizard.
-//
-// HARD PRODUCT INVARIANT: this wizard has exactly four steps —
-//   1. Account     (country selector + phone with auto-prefix)
-//   2. Location    (warehouse + billing address)
-//   3. Business    (tax id, company reg, fleet config)
-//   4. Categories  (product / service categories the supplier serves)
-// Bank + payment-gateway setup is intentionally NOT in this wizard —
-// it lives at /setup/billing post-registration to reduce registration
-// friction. Do not collapse below 4 steps. Do not move banking back in.
+// Shared step-form types for the retailer registration wizard.
 
 export type StepId = "identity" | "verification" | "profile";
 
@@ -44,6 +35,10 @@ export interface ProfileStep {
   legalName: string;
   contactName: string;
   email: string;
+  latitude: string;
+  longitude: string;
+  receivingWindowOpen: string;
+  receivingWindowClose: string;
 }
 
 export interface WizardState {
@@ -66,6 +61,10 @@ export const INITIAL_STATE: WizardState = {
     legalName: "",
     contactName: "",
     email: "",
+    latitude: "41.2995",
+    longitude: "69.2401",
+    receivingWindowOpen: "09:00",
+    receivingWindowClose: "18:00",
   },
 };
 
@@ -74,8 +73,28 @@ export const STEP_ORDER: StepId[] = ["identity", "verification", "profile"];
 export const STEP_LABELS: Record<StepId, string> = {
   identity: "Phone Verification",
   verification: "Confirm Code",
-  profile: "Basic Profile",
+  profile: "Store Profile",
 };
+
+export function normalizeReceivingWindow(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const match = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
+  if (!match) return trimmed;
+  const hour = Number.parseInt(match[1], 10);
+  const minute = Number.parseInt(match[2], 10);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return trimmed;
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+export function validateReceivingWindowField(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(normalizeReceivingWindow(trimmed))) {
+    return "Use HH:MM (24-hour)";
+  }
+  return undefined;
+}
 
 export function validateIdentity(s: IdentityStep): Record<string, string> {
   const e: Record<string, string> = {};
@@ -95,5 +114,14 @@ export function validateProfile(s: ProfileStep): Record<string, string> {
   if (s.legalName.trim().length < 2) e.legalName = "Legal name is required";
   if (s.contactName.trim().length < 2) e.contactName = "Contact name is required";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email)) e.email = "Valid email is required";
+  const lat = Number.parseFloat(s.latitude.trim());
+  const lng = Number.parseFloat(s.longitude.trim());
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) e.latitude = "Valid latitude required";
+  if (!Number.isFinite(lng) || lng < -180 || lng > 180) e.longitude = "Valid longitude required";
+  if (lat === 0 && lng === 0) e.latitude = "Store coordinates required";
+  const openError = validateReceivingWindowField(s.receivingWindowOpen);
+  if (openError) e.receivingWindowOpen = openError;
+  const closeError = validateReceivingWindowField(s.receivingWindowClose);
+  if (closeError) e.receivingWindowClose = closeError;
   return e;
 }

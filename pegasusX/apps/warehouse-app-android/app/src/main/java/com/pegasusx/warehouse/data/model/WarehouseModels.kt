@@ -372,6 +372,7 @@ data class DispatchOrder(
     @SerialName("total_uzs") val totalUzs: Long = 0,
     @SerialName("created_at") val createdAt: String = "",
     @SerialName("item_count") val itemCount: Int = 0,
+    @SerialName("volume_vu") val volumeVu: Double = 0.0,
 )
 
 @Serializable
@@ -381,7 +382,24 @@ data class AvailableDriver(
     val phone: String = "",
     @SerialName("vehicle_label") val vehicleLabel: String = "",
     @SerialName("truck_status") val truckStatus: String = "",
+    @SerialName("max_volume_vu") val maxVolumeVu: Double = 0.0,
     @SerialName("unavailable_reason") val unavailableReason: String? = null,
+)
+
+@Serializable
+data class DispatchCapacityWarning(
+    @SerialName("driver_id") val driverId: String = "",
+    @SerialName("loaded_vu") val loadedVu: Double = 0.0,
+    @SerialName("max_volume_vu") val maxVolumeVu: Double = 0.0,
+    @SerialName("effective_max_vu") val effectiveMaxVu: Double = 0.0,
+)
+
+@Serializable
+data class DispatchExecuteResponse(
+    val status: String = "",
+    @SerialName("orders_assigned") val ordersAssigned: Int = 0,
+    val warnings: List<String> = emptyList(),
+    @SerialName("capacity_warnings") val capacityWarnings: List<DispatchCapacityWarning> = emptyList(),
 )
 
 // ── Warehouse Realtime ──

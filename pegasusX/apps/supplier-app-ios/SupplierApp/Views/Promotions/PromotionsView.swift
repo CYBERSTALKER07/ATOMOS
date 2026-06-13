@@ -6,6 +6,8 @@ struct PromotionsView: View {
     @State private var loading = true
     @State private var error: String?
     @State private var showCreate = false
+    @State private var showEdit = false
+    @State private var editingPromotion: SupplierPromotion?
     @State private var name = ""
     @State private var discountBps = "500"
 
@@ -31,6 +33,15 @@ struct PromotionsView: View {
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if promo.isActive {
+                            Button {
+                                editingPromotion = promo
+                                name = promo.name
+                                discountBps = String(promo.discountBps)
+                                showEdit = true
+                            } label: {
+                                Text("Edit")
+                            }
+                            .tint(.blue)
                             Button(role: .destructive) {
                                 Task { await deactivate(promo.promotionId) }
                             } label: {
@@ -76,6 +87,28 @@ struct PromotionsView: View {
             }
             .presentationDetents([.medium])
         }
+        .sheet(isPresented: $showEdit) {
+            NavigationStack {
+                Form {
+                    TextField("Name", text: $name)
+                    TextField("Discount (bps)", text: $discountBps)
+                        .keyboardType(.numberPad)
+                }
+                .navigationTitle("Edit promotion")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            showEdit = false
+                            editingPromotion = nil
+                        }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") { Task { await saveEdit() } }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
     }
 
     private func promoSummary(_ promo: SupplierPromotion) -> String {
@@ -113,6 +146,30 @@ struct PromotionsView: View {
             name = ""
             discountBps = "500"
             showCreate = false
+            await load(silent: true)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func saveEdit() async {
+        guard let promo = editingPromotion else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let bps = Int64(discountBps.filter(\.isNumber)), bps > 0 else { return }
+        do {
+            _ = try await SupplierService.updatePromotion(
+                promotionId: promo.promotionId,
+                SupplierPromotionUpsertRequest(
+                    name: trimmed,
+                    description: "",
+                    discountBps: bps,
+                    scopeType: promo.scopeType,
+                    retailerScope: promo.retailerScope
+                )
+            )
+            showEdit = false
+            editingPromotion = nil
             await load(silent: true)
         } catch {
             self.error = error.localizedDescription

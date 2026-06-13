@@ -156,6 +156,9 @@ importers:
       '@pegasusx/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@pegasusx/motion-tokens':
+        specifier: workspace:*
+        version: link:../../packages/motion-tokens
       '@pegasusx/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -286,6 +289,9 @@ importers:
       lucide-react:
         specifier: ^0.511.0
         version: 0.511.0(react@19.0.0)
+      maplibre-gl:
+        specifier: ^5.19.0
+        version: 5.24.0
       next:
         specifier: ^15.0.0
         version: 15.5.18(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -295,6 +301,9 @@ importers:
       react-dom:
         specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
+      react-map-gl:
+        specifier: ^8.1.0
+        version: 8.1.1(mapbox-gl@3.24.0)(maplibre-gl@5.24.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.0.0
@@ -356,6 +365,9 @@ importers:
       lucide-react:
         specifier: ^1.7.0
         version: 1.17.0(react@19.0.0)
+      maplibre-gl:
+        specifier: ^5.19.0
+        version: 5.24.0
       motion:
         specifier: ^12.38.0
         version: 12.40.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -368,6 +380,9 @@ importers:
       react-dom:
         specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
+      react-map-gl:
+        specifier: ^8.1.0
+        version: 8.1.1(mapbox-gl@3.24.0)(maplibre-gl@5.24.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       recharts:
         specifier: ^3.8.0
         version: 3.8.1(@types/react@19.2.15)(react-dom@19.0.0(react@19.0.0))(react-is@18.3.1)(react@19.0.0)(redux@5.0.1)
@@ -410,6 +425,8 @@ importers:
         version: link:../types
 
   packages/i18n: {}
+
+  packages/motion-tokens: {}
 
   packages/types: {}
 
@@ -10968,12 +10985,27 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.12.2':
     optional: true
 
+  '@vis.gl/react-mapbox@8.1.1(mapbox-gl@3.24.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+    dependencies:
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+    optionalDependencies:
+      mapbox-gl: 3.24.0
+
   '@vis.gl/react-mapbox@8.1.1(mapbox-gl@3.24.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
     optionalDependencies:
       mapbox-gl: 3.24.0
+
+  '@vis.gl/react-maplibre@8.1.1(maplibre-gl@5.24.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+    dependencies:
+      '@maplibre/maplibre-gl-style-spec': 19.3.3
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+    optionalDependencies:
+      maplibre-gl: 5.24.0
 
   '@vis.gl/react-maplibre@8.1.1(maplibre-gl@5.24.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
@@ -14805,6 +14837,16 @@ snapshots:
   react-is@17.0.2: {}
 
   react-is@18.3.1: {}
+
+  react-map-gl@8.1.1(mapbox-gl@3.24.0)(maplibre-gl@5.24.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+    dependencies:
+      '@vis.gl/react-mapbox': 8.1.1(mapbox-gl@3.24.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@vis.gl/react-maplibre': 8.1.1(maplibre-gl@5.24.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+    optionalDependencies:
+      mapbox-gl: 3.24.0
+      maplibre-gl: 5.24.0
 
   react-map-gl@8.1.1(mapbox-gl@3.24.0)(maplibre-gl@5.24.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
     dependencies:

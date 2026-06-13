@@ -3,6 +3,7 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -690,15 +691,6 @@ func (s *Service) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 			s.log.WarnContext(r.Context(), "dashboard count query failed, falling back", "err", err)
 		}
 	}
-	if pending == 0 && s.dashboardQuery == nil {
-		s.mu.RLock()
-		for _, o := range s.orders {
-			if strings.EqualFold(o.Status, "PENDING") || strings.EqualFold(o.Status, "AWAITING_REVIEW") {
-				pending++
-			}
-		}
-		s.mu.RUnlock()
-	}
 
 	base := supplierDashboardResponse{
 		SupplierID:    sid,
@@ -716,7 +708,7 @@ func (s *Service) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, detail)
 }
 
-// HandleEarnings returns scaffold supplier earnings summaries.
+// HandleEarnings returns ledger-backed supplier earnings summaries.
 func (s *Service) HandleEarnings(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -724,55 +716,23 @@ func (s *Service) HandleEarnings(w http.ResponseWriter, r *http.Request) {
 	}
 	sid := s.scopedSupplierID(r)
 	now := s.now()
-	if s.earningsLookup != nil {
-		resp, err := s.earningsLookup(r.Context(), sid, s.currency, now)
-		if err == nil {
-			if strings.TrimSpace(resp.Currency) == "" {
-				resp.Currency = s.currency
-			}
-			if strings.TrimSpace(resp.UpdatedAt) == "" {
-				resp.UpdatedAt = now.Format(time.RFC3339Nano)
-			}
-			writeJSON(w, http.StatusOK, resp)
-			return
-		}
-		s.log.Warn("supplier earnings authority lookup failed", "err", err, "supplier_id", sid)
+	if s.earningsLookup == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "earnings_unavailable"})
+		return
 	}
-	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	weekStart := dayStart.AddDate(0, 0, -int(dayStart.Weekday()))
-	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-
-	var today, week, month int64
-	s.mu.RLock()
-	for _, o := range s.orders {
-		if !strings.EqualFold(o.Decision, "APPROVED") && !strings.EqualFold(o.Status, "COMPLETED") {
-			continue
-		}
-		ts, err := time.Parse(time.RFC3339Nano, o.UpdatedAt)
-		if err != nil {
-			continue
-		}
-		if !ts.Before(dayStart) {
-			today += o.TotalMinor
-		}
-		if !ts.Before(weekStart) {
-			week += o.TotalMinor
-		}
-		if !ts.Before(monthStart) {
-			month += o.TotalMinor
-		}
+	resp, err := s.earningsLookup(r.Context(), sid, s.currency, now)
+	if err != nil {
+		s.log.WarnContext(r.Context(), "supplier earnings authority lookup failed", "err", err, "supplier_id", sid)
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "earnings_unavailable"})
+		return
 	}
-	s.mu.RUnlock()
-
-	writeJSON(w, http.StatusOK, SupplierEarningsResponse{
-		Currency:        s.currency,
-		TodayMinor:      today,
-		WeekMinor:       week,
-		MonthMinor:      month,
-		AuthoritySource: "scaffold_orders",
-		Authoritative:   false,
-		UpdatedAt:       now.Format(time.RFC3339Nano),
-	})
+	if strings.TrimSpace(resp.Currency) == "" {
+		resp.Currency = s.currency
+	}
+	if strings.TrimSpace(resp.UpdatedAt) == "" {
+		resp.UpdatedAt = now.Format(time.RFC3339Nano)
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleInventory supports GET/PATCH /v1/supplier/inventory.
@@ -933,41 +893,19 @@ func (s *Service) listSupplierOrdersPage(ctx context.Context, supplierID, status
 }
 
 func (s *Service) listSupplierOrders(ctx context.Context, supplierID, statusFilter, groupFilter string) ([]SupplierOrder, error) {
-	orders := make([]SupplierOrder, 0, len(s.orders))
-	if reader, ok := s.repo.(supplierOrderReader); ok {
-		durable, err := reader.ListOrders(ctx, supplierID, 300, 0)
-		if err != nil {
-			return nil, err
-		}
-		orders = append(orders, durable...)
+	reader, ok := s.repo.(supplierOrderReader)
+	if !ok {
+		return []SupplierOrder{}, nil
 	}
-
-	byOrderID := make(map[string]int, len(orders))
+	orders, err := reader.ListOrders(ctx, supplierID, 300, 0)
+	if err != nil {
+		return nil, err
+	}
 	for i := range orders {
 		if strings.TrimSpace(orders[i].SupplierID) == "" {
 			orders[i].SupplierID = supplierID
 		}
-		byOrderID[orders[i].OrderID] = i
 	}
-
-	s.mu.RLock()
-	for _, scaffold := range s.orders {
-		scaffoldOrder := scaffold
-		if strings.TrimSpace(scaffoldOrder.SupplierID) == "" {
-			scaffoldOrder.SupplierID = supplierID
-		}
-		if idx, ok := byOrderID[scaffoldOrder.OrderID]; ok {
-			if strings.TrimSpace(scaffoldOrder.Decision) != "" {
-				orders[idx].Decision = scaffoldOrder.Decision
-			}
-			if strings.TrimSpace(scaffoldOrder.Note) != "" {
-				orders[idx].Note = scaffoldOrder.Note
-			}
-			continue
-		}
-		orders = append(orders, scaffoldOrder)
-	}
-	s.mu.RUnlock()
 
 	filtered := make([]SupplierOrder, 0, len(orders))
 	for _, order := range orders {
@@ -1055,32 +993,52 @@ func (s *Service) HandleVetOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	now := s.now().Format(time.RFC3339Nano)
-	s.mu.Lock()
-	o := s.orders[req.OrderID]
-	if o.OrderID == "" {
-		o = SupplierOrder{
-			OrderID:    req.OrderID,
-			RetailerID: strings.TrimSpace(req.RetailerID),
-			Status:     "AWAITING_REVIEW",
-			TotalMinor: req.TotalMinor,
-			Currency:   strings.TrimSpace(req.Currency),
-			CreatedAt:  now,
-		}
-		if o.Currency == "" {
-			o.Currency = s.currency
-		}
+	sid := s.scopedSupplierID(r)
+	vetter, ok := s.repo.(supplierOrderVetter)
+	if !ok {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "vet_unavailable"})
+		return
 	}
-	o.Decision = req.Decision
-	o.Note = strings.TrimSpace(req.Note)
-	if req.Decision == "APPROVED" {
-		o.Status = "APPROVED"
-	} else {
-		o.Status = "REJECTED"
-	}
-	o.UpdatedAt = now
-	s.orders[o.OrderID] = o
-	s.mu.Unlock()
 
-	writeJSON(w, http.StatusOK, map[string]any{"order": o})
+	decidedBy := sid
+	actorRole := string(auth.RoleAdmin)
+	if claims, ok := auth.FromContext(r.Context()); ok {
+		if strings.TrimSpace(claims.Subject) != "" {
+			decidedBy = strings.TrimSpace(claims.Subject)
+		}
+		if strings.TrimSpace(string(claims.Role)) != "" {
+			actorRole = string(claims.Role)
+		}
+	}
+
+	order, err := vetter.VetOrder(r.Context(), sid, VetOrderParams{
+		OrderID:   req.OrderID,
+		Decision:  req.Decision,
+		Note:      strings.TrimSpace(req.Note),
+		DecidedBy: decidedBy,
+		ActorRole: actorRole,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrOrderNotFound):
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
+		case errors.Is(err, ErrVetForbidden):
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		case errors.Is(err, ErrInvalidVetState):
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_vet_state"})
+		case errors.Is(err, ErrOrderAlreadyAssigned):
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "order_already_assigned"})
+		case errors.Is(err, ErrPaymentNotCleared):
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "payment_not_cleared"})
+		default:
+			s.log.ErrorContext(r.Context(), "vet order failed", "order_id", req.OrderID, "supplier_id", sid, "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "vet_failed"})
+		}
+		return
+	}
+
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), supplierCacheKey(sid))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"order": order})
 }

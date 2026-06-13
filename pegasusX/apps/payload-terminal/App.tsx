@@ -833,12 +833,7 @@ export default function App() {
     if (!token || !activeTruck) return;
     try {
       const fetchManifestForState = async (state: 'DRAFT' | 'LOADING') => {
-        const res = await fetch(
-          `${API_BASE}/v1/payloader/manifests?state=${state}&truck_id=${encodeURIComponent(activeTruck)}`,
-          { headers: { 'Authorization': `Bearer ${token}` } },
-        );
-        if (!res.ok) return null;
-        const data = await res.json();
+        const data = await PayloadTerminalApi.getSupplierManifests(token, state);
         return (data.manifests || []).find((m: any) => m.truck_id === activeTruck) ?? null;
       };
 
@@ -892,15 +887,11 @@ export default function App() {
     if (!manifestId || !token) return;
     setIsStartingLoad(true);
     try {
-      const res = await fetch(`${API_BASE}/v1/payloader/manifests/${manifestId}/start-loading`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Idempotency-Key': buildPayloadIdempotencyKey('start-loading', manifestId),
-        },
-      });
-      if (!res.ok) throw new Error(await extractProblemMessage(res, locale));
+      await PayloadTerminalApi.supplierStartLoading(
+        token,
+        manifestId,
+        buildPayloadIdempotencyKey('supplier-start-loading', manifestId),
+      );
       setManifestState('LOADING');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: unknown) {
@@ -949,18 +940,11 @@ export default function App() {
     if (!manifestId || !token) return;
     setIsSealingManifest(true);
     try {
-      const res = await fetch(`${API_BASE}/v1/payloader/manifests/${manifestId}/seal`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Idempotency-Key': buildPayloadIdempotencyKey('seal-manifest', manifestId),
-        },
-      });
-      if (!res.ok) {
-        throw new Error(await extractProblemMessage(res, locale));
-      }
-      const data = await res.json();
+      const data = await PayloadTerminalApi.supplierSealManifest(
+        token,
+        manifestId,
+        buildPayloadIdempotencyKey('supplier-seal-manifest', manifestId),
+      );
       setManifestState('SEALED');
       setAllSealed(true);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -982,19 +966,13 @@ export default function App() {
     if (!manifestId || !token || !injectOrderId.trim()) return;
     setIsInjecting(true);
     try {
-      const res = await fetch(`${API_BASE}/v1/payloader/manifests/${manifestId}/inject-order`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Idempotency-Key': buildPayloadIdempotencyKey('inject-order', `${manifestId}-${injectOrderId.trim()}`),
-        },
-        body: JSON.stringify({ order_id: injectOrderId.trim() }),
-      });
-      if (!res.ok) {
-        throw new Error(await extractProblemMessage(res, locale));
-      }
-      const data = await res.json();
+      const trimmed = injectOrderId.trim();
+      const data = await PayloadTerminalApi.supplierInjectOrder(
+        token,
+        manifestId,
+        trimmed,
+        buildPayloadIdempotencyKey('supplier-inject-order', `${manifestId}-${trimmed}`),
+      );
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast(
         tx('payload.alert.order_injected_title'),
@@ -1010,8 +988,8 @@ export default function App() {
       if (!isOnline) {
         // Offline: queue the action
         const action: QueuedAction = {
-          id: buildPayloadIdempotencyKey('inject-order', `${manifestId}-${injectOrderId.trim()}`),
-          endpoint: `/v1/payloader/manifests/${manifestId}/inject-order`,
+          id: buildPayloadIdempotencyKey('supplier-inject-order', `${manifestId}-${injectOrderId.trim()}`),
+          endpoint: `/v1/supplier/manifests/${manifestId}/inject-order`,
           method: 'POST',
           body: JSON.stringify({ order_id: injectOrderId.trim() }),
           createdAt: Date.now(),

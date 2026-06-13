@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.pegasusx.warehouse.ui.navigation.WarehouseRoutes
+import com.pegasusx.warehouse.ui.portal.WarehousePortalFeature
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 
 private data class MoreDestination(
@@ -24,11 +25,15 @@ private data class MoreDestination(
 private val fulfillment = listOf(
     MoreDestination("Manifests", "Loading manifests", Icons.Default.Description, WarehouseRoutes.MANIFESTS),
     MoreDestination("Dispatch", "Preview, supply, locks", Icons.Default.LocalShipping, WarehouseRoutes.DISPATCH),
+    MoreDestination("Dispatch settings", "Auto-dispatch policy", Icons.Default.Tune, WarehouseRoutes.DISPATCH_SETTINGS),
+    MoreDestination("Live fleet map", "Route geometry + drivers", Icons.Default.Map, WarehouseRoutes.FLEET_LIVE_MAP),
     MoreDestination("Transfer actions", "Emergency / receive", Icons.Default.SwapHoriz, WarehouseRoutes.TRANSFER_ACTIONS),
 )
 
 private val inventory = listOf(
     MoreDestination("Products", "Catalog SKUs", Icons.Default.GridView, WarehouseRoutes.PRODUCTS),
+    MoreDestination("Supply requests", "Factory restock queue", Icons.Default.Sync, WarehouseRoutes.SUPPLY_REQUESTS),
+    MoreDestination("Replenishment", "Stock velocity insights", Icons.Default.Inventory2, WarehouseRoutes.REPLENISHMENT),
     MoreDestination("Demand Forecast", "Projected demand", Icons.Default.ShowChart, WarehouseRoutes.DEMAND_FORECAST),
 )
 
@@ -37,23 +42,27 @@ private val operations = listOf(
     MoreDestination("Returns", "Return queue", Icons.Default.Undo, WarehouseRoutes.RETURNS),
     MoreDestination("Analytics", "KPI trends", Icons.Default.Analytics, WarehouseRoutes.ANALYTICS),
     MoreDestination("Treasury", "Ledger overview", Icons.Default.AccountBalance, WarehouseRoutes.TREASURY),
+    MoreDestination("Payment config", "Gateway visibility", Icons.Default.Payment, WarehouseRoutes.PAYMENT_CONFIG),
+)
+
+private val portalAccount = listOf(
+    MoreDestination("Warehouse setup", "Onboarding wizard", Icons.Default.Settings, WarehouseRoutes.portalHandoff(WarehousePortalFeature.SETUP.routeKey)),
+    MoreDestination("Profile", "Account settings", Icons.Default.Person, WarehouseRoutes.portalHandoff(WarehousePortalFeature.PROFILE.routeKey)),
+    MoreDestination("Notifications", "Alert inbox", Icons.Default.Notifications, WarehouseRoutes.portalHandoff(WarehousePortalFeature.NOTIFICATIONS.routeKey)),
+    MoreDestination("Global search", "Portal navigation", Icons.Default.Search, WarehouseRoutes.portalHandoff(WarehousePortalFeature.SEARCH.routeKey)),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoreHubScreen(
     onNavigate: (String) -> Unit,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("More") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
             )
         },
     ) { innerPadding ->
@@ -72,6 +81,10 @@ fun MoreHubScreen(
             }
             item { SectionHeader("Operations") }
             operations.forEach { dest ->
+                item { MoreRow(dest, onNavigate) }
+            }
+            item { SectionHeader("Portal only") }
+            portalAccount.forEach { dest ->
                 item { MoreRow(dest, onNavigate) }
             }
         }

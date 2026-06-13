@@ -31,6 +31,18 @@ protocol FleetServiceProtocol {
 
     /// POST /v1/order/amend — partial-quantity reconciliation. rejectedQty 0 = fully accepted, item.quantity = fully rejected.
     func amendOrder(orderId: String, driverId: String, items: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus, reason: String)]) async throws
+
+    /// POST /v1/delivery/verify-handshake — geofence + token verification at scan time.
+    func verifyHandshake(orderId: String, token: String, latitude: Double, longitude: Double) async throws -> VerifyHandshakeResponse
+
+    /// POST /v1/delivery/update-order-during-delivery — in-delivery reconciliation edge.
+    func updateOrderDuringDelivery(orderId: String, latitude: Double, longitude: Double) async throws -> UpdateOrderDuringDeliveryResponse
+
+    /// POST /v1/delivery/credit-delivery — mark delivered on credit.
+    func markCreditDelivery(orderId: String, photoProofUrl: String?) async throws -> [String: String]
+
+    /// POST /v1/delivery/split-payment — record cash/card split.
+    func splitPayment(orderId: String, cashMinor: Int64, cardMinor: Int64, currency: String?) async throws -> SplitPaymentResponse
 }
 
 // MARK: - Stub Implementation
@@ -75,5 +87,25 @@ final class FleetServiceStub: FleetServiceProtocol {
     func amendOrder(orderId: String, driverId: String, items: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus, reason: String)]) async throws {
         try await Task.sleep(nanoseconds: 500_000_000)
         // Stub: always succeeds
+    }
+
+    func verifyHandshake(orderId: String, token: String, latitude: Double, longitude: Double) async throws -> VerifyHandshakeResponse {
+        try await Task.sleep(nanoseconds: 200_000_000)
+        return VerifyHandshakeResponse(success: true, message: "ok")
+    }
+
+    func updateOrderDuringDelivery(orderId: String, latitude: Double, longitude: Double) async throws -> UpdateOrderDuringDeliveryResponse {
+        try await Task.sleep(nanoseconds: 200_000_000)
+        return UpdateOrderDuringDeliveryResponse(success: true, message: "ok")
+    }
+
+    func markCreditDelivery(orderId: String, photoProofUrl: String?) async throws -> [String: String] {
+        try await Task.sleep(nanoseconds: 200_000_000)
+        return ["status": "DELIVERED_ON_CREDIT", "order_id": orderId]
+    }
+
+    func splitPayment(orderId: String, cashMinor: Int64, cardMinor: Int64, currency: String?) async throws -> SplitPaymentResponse {
+        try await Task.sleep(nanoseconds: 200_000_000)
+        return SplitPaymentResponse(status: "split_recorded")
     }
 }

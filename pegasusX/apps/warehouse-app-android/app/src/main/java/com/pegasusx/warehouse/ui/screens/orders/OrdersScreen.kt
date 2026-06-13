@@ -26,7 +26,7 @@ private val STATES = listOf("ALL", "PENDING", "LOADED", "IN_TRANSIT", "ARRIVED",
 fun OrdersScreen(
     api: WarehouseApi,
     onOrderClick: (String) -> Unit,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var orders by remember { mutableStateOf<List<Order>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -62,7 +62,7 @@ fun OrdersScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Orders") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } } },
                 actions = {
                     Box {
                         IconButton(onClick = { filterExpanded = true }) {

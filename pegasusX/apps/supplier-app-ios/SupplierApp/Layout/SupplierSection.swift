@@ -12,7 +12,15 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     case activity = "Activity"
     case fleetOrders = "Fleet orders"
     case ledger = "Ledger"
+    case payments = "Payments"
     case operations = "Operations"
+    case analytics = "Analytics"
+    case aiRecommendations = "AI recommendations"
+    case geoReport = "Geo report"
+    case topology = "Topology"
+    case deliveryZones = "Delivery zones"
+    case supplyLanes = "Supply lanes"
+    case catalog = "Catalog"
     case inventory = "Inventory"
     case earnings = "Earnings"
     case profile = "Profile"
@@ -32,7 +40,15 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         case .activity: "clock.arrow.circlepath"
         case .fleetOrders: "truck.box.fill"
         case .ledger: "banknote"
+        case .payments: "creditcard"
         case .operations: "wrench.and.screwdriver"
+        case .analytics: "chart.bar"
+        case .aiRecommendations: "sparkles"
+        case .geoReport: "map"
+        case .topology: "building.2.crop.circle"
+        case .deliveryZones: "mappin.and.ellipse"
+        case .supplyLanes: "arrow.triangle.swap"
+        case .catalog: "square.grid.2x2"
         case .inventory: "archivebox"
         case .earnings: "chart.line.uptrend.xyaxis"
         case .profile: "building.2"
@@ -44,17 +60,25 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         [.dashboard, .orders, .fleet]
     }
 
-    /// iPad sidebar: primary + ops (account reachable via More hub on phone).
+    /// iPad sidebar: primary + ops + intelligence + network + account.
     static var sidebarSections: [SupplierSection] {
-        compactTabs + opsSections + accountSections
+        compactTabs + opsSections + intelligenceSections + networkSections + accountSections
     }
 
     static var opsSections: [SupplierSection] {
         // Quantity negotiation disabled ecosystem-wide.
-        [.exceptions, .shopClosed, .manifests, .dispatchPreview, .activity, .fleetOrders, .ledger, .operations]
+        [.exceptions, .shopClosed, .manifests, .dispatchPreview, .activity, .fleetOrders, .ledger, .payments, .operations]
+    }
+
+    static var intelligenceSections: [SupplierSection] {
+        [.analytics, .aiRecommendations, .geoReport]
+    }
+
+    static var networkSections: [SupplierSection] {
+        [.topology, .deliveryZones, .supplyLanes]
     }
 
     static var accountSections: [SupplierSection] {
-        [.inventory, .earnings, .profile]
+        [.catalog, .inventory, .earnings, .profile]
     }
 }

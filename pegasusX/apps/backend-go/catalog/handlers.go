@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/httppagination"
+	"github.com/pegasusx/pegasusx/apps/backend-go/storage"
 )
 
 // scopedSupplierID resolves the caller's supplier scope from JWT claims and
@@ -30,7 +31,12 @@ func scopedSupplierID(w http.ResponseWriter, r *http.Request, bodySupplierID str
 
 // HandleListCategories serves GET /v1/catalog/categories.
 func (s *Service) HandleListCategories(w http.ResponseWriter, r *http.Request) {
-	supplierID := r.URL.Query().Get("supplier_id")
+	supplierID := strings.TrimSpace(r.URL.Query().Get("supplier_id"))
+	if supplierID == "" {
+		if sid, ok := auth.ResolveSupplierID(r.Context()); ok {
+			supplierID = sid
+		}
+	}
 	if supplierID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "supplier_id required"})
 		return
@@ -47,6 +53,11 @@ func (s *Service) HandleListCategories(w http.ResponseWriter, r *http.Request) {
 // HandleListProducts serves GET /v1/catalog/products.
 func (s *Service) HandleListProducts(w http.ResponseWriter, r *http.Request) {
 	supplierID := strings.TrimSpace(r.URL.Query().Get("supplier_id"))
+	if supplierID == "" {
+		if sid, ok := auth.ResolveSupplierID(r.Context()); ok {
+			supplierID = sid
+		}
+	}
 	categoryID := strings.TrimSpace(r.URL.Query().Get("category_id"))
 	retailerID := strings.TrimSpace(r.URL.Query().Get("retailer_id"))
 	if retailerID == "" {
@@ -117,8 +128,9 @@ func (s *Service) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
 		ImageURL      string `json:"image_url"`
 		PriceMinor    int64  `json:"price_minor"`
 		Currency      string `json:"currency"`
-		StockQuantity int64  `json:"stock_quantity"`
-		Unit          string `json:"unit"`
+		StockQuantity int64   `json:"stock_quantity"`
+		Unit          string  `json:"unit"`
+		UnitVolumeVU  float64 `json:"unit_volume_vu"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -147,6 +159,7 @@ func (s *Service) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
 		Currency:      req.Currency,
 		StockQuantity: req.StockQuantity,
 		Unit:          unit,
+		UnitVolumeVU:  req.UnitVolumeVU,
 		IsActive:      true,
 	}
 	if err := s.CreateProduct(r.Context(), p); err != nil {
@@ -170,9 +183,10 @@ func (s *Service) HandleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 		ImageURL      string `json:"image_url"`
 		PriceMinor    int64  `json:"price_minor"`
 		Currency      string `json:"currency"`
-		StockQuantity int64  `json:"stock_quantity"`
-		Unit          string `json:"unit"`
-		IsActive      *bool  `json:"is_active"`
+		StockQuantity int64    `json:"stock_quantity"`
+		Unit          string   `json:"unit"`
+		UnitVolumeVU  *float64 `json:"unit_volume_vu"`
+		IsActive      *bool    `json:"is_active"`
 		Version       int64  `json:"version"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -207,6 +221,9 @@ func (s *Service) HandleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Unit != "" {
 		existing.Unit = req.Unit
+	}
+	if req.UnitVolumeVU != nil {
+		existing.UnitVolumeVU = *req.UnitVolumeVU
 	}
 	if req.IsActive != nil {
 		existing.IsActive = *req.IsActive
@@ -296,6 +313,36 @@ func (s *Service) HandleCreateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, cat)
+}
+
+// HandleGetUploadTicket serves GET /v1/catalog/products/upload-ticket?ext=jpg.
+// Returns a signed GCS PUT URL and the eventual public image_url for catalog create/update.
+func (s *Service) HandleGetUploadTicket(w http.ResponseWriter, r *http.Request) {
+	supplierID, ok := auth.ResolveSupplierID(r.Context())
+	if !ok || supplierID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	extension := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("ext")))
+	if extension == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "ext required"})
+		return
+	}
+	allowed := map[string]bool{"jpg": true, "jpeg": true, "png": true, "webp": true}
+	if !allowed[extension] {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "unsupported extension"})
+		return
+	}
+	uploadURL, imageURL, err := storage.GenerateUploadTicket(supplierID, extension)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "upload ticket failed", "err", err, "supplier_id", supplierID)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{
+		"upload_url": uploadURL,
+		"image_url":  imageURL,
+	})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

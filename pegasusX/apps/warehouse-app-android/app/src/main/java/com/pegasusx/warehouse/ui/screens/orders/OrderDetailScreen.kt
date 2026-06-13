@@ -62,7 +62,7 @@ fun OrderDetailScreen(
     api: WarehouseApi,
     opsRepository: WarehouseOperationsRepository,
     orderId: String,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var order by remember { mutableStateOf<Order?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -195,7 +195,7 @@ fun OrderDetailScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Order Detail") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } } },
                 actions = { IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") } },
             )
         },

@@ -1,0 +1,69 @@
+package com.pegasusx.warehouse.ui.portal
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Store
+import androidx.compose.ui.graphics.vector.ImageVector
+
+/** Portal-only surfaces — native apps hand off to warehouse-portal (port 3002). */
+enum class WarehousePortalFeature(
+    val routeKey: String,
+    val title: String,
+    val subtitle: String,
+    val portalPath: String,
+    val icon: ImageVector,
+) {
+    REGISTER(
+        routeKey = "register",
+        title = "Register warehouse",
+        subtitle = "Create a new warehouse account",
+        portalPath = "/auth/register",
+        icon = Icons.Default.Store,
+    ),
+    SETUP(
+        routeKey = "setup",
+        title = "Warehouse setup",
+        subtitle = "Location, billing, and configuration",
+        portalPath = "/setup/location",
+        icon = Icons.Default.Settings,
+    ),
+    PROFILE(
+        routeKey = "profile",
+        title = "Profile",
+        subtitle = "Account and warehouse identity",
+        portalPath = "/profile",
+        icon = Icons.Default.Person,
+    ),
+    NOTIFICATIONS(
+        routeKey = "notifications",
+        title = "Notifications",
+        subtitle = "Alerts and operational inbox",
+        portalPath = "/",
+        icon = Icons.Default.Notifications,
+    ),
+    SEARCH(
+        routeKey = "search",
+        title = "Global search",
+        subtitle = "Jump to any portal page",
+        portalPath = "/",
+        icon = Icons.Default.Search,
+    ),
+    ;
+
+    val handoffMessage: String
+        get() = when (this) {
+            REGISTER -> "New warehouse registration is completed on the warehouse web portal."
+            SETUP -> "Warehouse setup and onboarding run on the web portal after registration."
+            PROFILE -> "Profile and account settings are managed on the warehouse web portal."
+            NOTIFICATIONS -> "The notification panel lives in the warehouse portal top bar. Open the portal to review alerts."
+            SEARCH -> "Global search (⌘K) is available on the warehouse web portal desktop shell."
+        }
+
+    companion object {
+        fun fromRouteKey(key: String): WarehousePortalFeature? =
+            entries.firstOrNull { it.routeKey == key }
+    }
+}

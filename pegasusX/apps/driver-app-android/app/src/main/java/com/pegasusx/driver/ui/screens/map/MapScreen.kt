@@ -64,12 +64,19 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.pegasusx.driver.data.telemetry.LocationInterpolator
+import com.pegasusx.driver.data.telemetry.MapCameraConfig
+import com.pegasusx.driver.data.telemetry.MapCameraMath
+import com.pegasusx.driver.data.telemetry.buildPlannedRoutePolyline
 import com.pegasusx.driver.data.telemetry.LocationTrail
+import com.pegasusx.driver.data.telemetry.formatNavigationDistance
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.OrderState
 import com.pegasusx.driver.ui.screens.manifest.ManifestViewModel
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -144,7 +151,10 @@ fun MapScreen(
         position = CameraPosition.fromLatLngZoom(defaultPosition, 12f)
     }
 
-    var isCameraLocked by remember { mutableStateOf(false) }
+    var isCameraLocked by remember { mutableStateOf(mapPhase == MapPhase.NAVIGATING) }
+    var userPannedAt by remember { mutableStateOf<Long?>(null) }
+
+    val locationInterpolator = remember { LocationInterpolator() }
 
     val locationFlow = remember(hasLocationPermission) {
         if (hasLocationPermission) locationFlow(context) else emptyFlow()
@@ -152,41 +162,89 @@ fun MapScreen(
     val currentLocation by locationFlow.collectAsState(initial = null)
     val trailPoints by LocationTrail.points.collectAsState()
 
-    // 1. Spatiotemporal Camera Lock (Dynamic Bounding)
-    LaunchedEffect(currentLocation, isCameraLocked) {
-        val loc = currentLocation
-        if (isCameraLocked && loc != null) {
-            // V.O.I.D. Dynamic Zoom: Clamp(19.0 - (Velocity / 20), 14.0, 19.0)
-            val speedMps = loc.speed // Meters per second
-            val dynamicZoom = (19.0f - (speedMps / 6f)).coerceIn(14.0f, 19.0f) // adjusted for m/s
+    LaunchedEffect(currentLocation) {
+        currentLocation?.let { locationInterpolator.onGps(it) }
+    }
 
-            // Project camera target forward based on speed (Look-Ahead bounding)
-            // In a real-world scenario we use SphericalUtil.computeOffset, but here we'll center on loc 
-            // to keep it native until the utility is imported, or emulate it via tilt.
-            
-            val position = CameraPosition.Builder()
-                .target(LatLng(loc.latitude, loc.longitude))
-                .zoom(dynamicZoom)    // Velocity-Based Zoom
-                .tilt(60f)      // Immersive 3D pitch
-                .bearing(if (loc.hasBearing()) loc.bearing else cameraPositionState.position.bearing)
-                .build()
-            
-            // Fast low-latency update for smooth tracking
-            cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(position), 1000)
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            locationInterpolator.tick()
+            delay(MapCameraConfig.INTERPOLATION_FRAME_MS)
         }
+    }
+
+    val displayPosition by locationInterpolator.position.collectAsState()
+    val displayBearing by locationInterpolator.bearing.collectAsState()
+    val displaySpeed by locationInterpolator.speedMps.collectAsState()
+
+    LaunchedEffect(displayPosition, uiState.routeSteps, uiState.routeGeometry, mapPhase, activeOrder?.routeId) {
+        val position = displayPosition ?: return@LaunchedEffect
+        viewModel.updateNavigationCue(position.latitude, position.longitude)
+        if (mapPhase == MapPhase.NAVIGATING) {
+            viewModel.checkRouteDeviation(activeOrder?.routeId, position.latitude, position.longitude)
+        }
+    }
+
+    val plannedRoutePoints = remember(activeOrders, activeOrder?.routeId) {
+        buildPlannedRoutePolyline(activeOrders, activeOrder?.routeId)
+    }
+    val routePolylinePoints = remember(uiState.routeGeometry, plannedRoutePoints) {
+        if (uiState.routeGeometry.size >= 2) {
+            uiState.routeGeometry.map { LatLng(it.lat, it.lng) }
+        } else {
+            plannedRoutePoints
+        }
+    }
+
+    LaunchedEffect(mapPhase) {
+        if (mapPhase == MapPhase.NAVIGATING) {
+            isCameraLocked = true
+            userPannedAt = null
+        }
+    }
+
+    LaunchedEffect(userPannedAt) {
+        val pannedAt = userPannedAt ?: return@LaunchedEffect
+        if (mapPhase != MapPhase.NAVIGATING) return@LaunchedEffect
+        delay(MapCameraConfig.IDLE_RECENTER_MS)
+        if (userPannedAt == pannedAt) {
+            isCameraLocked = true
+            userPannedAt = null
+        }
+    }
+
+    // 1. Spatiotemporal Camera Lock (Dynamic Bounding)
+    LaunchedEffect(displayPosition, displayBearing, displaySpeed, isCameraLocked) {
+        val pos = displayPosition ?: return@LaunchedEffect
+        if (!isCameraLocked) return@LaunchedEffect
+
+        val position = MapCameraMath.trackingCameraPosition(
+            lat = pos.latitude,
+            lng = pos.longitude,
+            bearing = displayBearing,
+            speedMps = displaySpeed,
+            fallbackBearing = cameraPositionState.position.bearing,
+        )
+
+        cameraPositionState.animate(
+            CameraUpdateFactory.newCameraPosition(position),
+            MapCameraConfig.CAMERA_ANIMATION_MS,
+        )
     }
 
     // 2. Gesture Break (Intentional User Override)
     LaunchedEffect(cameraPositionState.isMoving) {
-        if (cameraPositionState.isMoving && 
-            cameraPositionState.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE) {
+        if (cameraPositionState.isMoving &&
+            cameraPositionState.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE
+        ) {
             isCameraLocked = false
+            userPannedAt = System.currentTimeMillis()
         }
     }
 
     // Fit camera to orders when they load (if not locked)
     LaunchedEffect(activeOrders) {
-        if (!isCameraLocked && activeOrders.isNotEmpty()) {
+        if (!isCameraLocked && activeOrders.isNotEmpty() && mapPhase != MapPhase.NAVIGATING) {
             val boundsBuilder = LatLngBounds.builder()
             activeOrders.forEach { order ->
                 boundsBuilder.include(LatLng(order.latitude!!, order.longitude!!))
@@ -218,7 +276,7 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             properties = MapProperties(
-                isMyLocationEnabled = hasLocationPermission,
+                isMyLocationEnabled = hasLocationPermission && !(isCameraLocked && mapPhase == MapPhase.NAVIGATING),
                 isBuildingEnabled = true
             ),
             uiSettings = MapUiSettings(
@@ -235,6 +293,23 @@ fun MapScreen(
                     points = trailPoints,
                     color = lab.fg.copy(alpha = 0.35f),
                     width = 6f,
+                )
+            }
+            if (routePolylinePoints.size >= 2) {
+                Polyline(
+                    points = routePolylinePoints,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
+                    width = 5f,
+                )
+            }
+            val driverPin = displayPosition
+            if (isCameraLocked && mapPhase == MapPhase.NAVIGATING && driverPin != null) {
+                Marker(
+                    state = MarkerState(position = driverPin),
+                    title = "You",
+                    rotation = displayBearing,
+                    flat = true,
+                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
                 )
             }
             activeOrders.forEach { order ->
@@ -296,6 +371,45 @@ fun MapScreen(
                         ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+        }
+
+        if (mapPhase == MapPhase.NAVIGATING && uiState.navigationCue != null) {
+            val cue = uiState.navigationCue!!
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 88.dp, start = 16.dp, end = 16.dp)
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                        RoundedCornerShape(16.dp),
+                    )
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Navigation,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = formatNavigationDistance(cue.distanceM),
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = cue.instruction,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }
@@ -418,7 +532,10 @@ fun MapScreen(
                 .padding(bottom = if (selectedOrder != null) 180.dp else 16.dp, end = 16.dp)
         ) {
             FloatingActionButton(
-                onClick = { isCameraLocked = true },
+                onClick = {
+                    isCameraLocked = true
+                    userPannedAt = null
+                },
                 containerColor = if (isCameraLocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                 contentColor = if (isCameraLocked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
             ) {

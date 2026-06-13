@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun TransferActionsScreen(
     opsRepository: WarehouseOperationsRepository,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var volumeInput by remember { mutableStateOf("20") }
     var transferIdInput by remember { mutableStateOf("") }
@@ -68,11 +68,7 @@ fun TransferActionsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Transfer actions") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

@@ -19,8 +19,12 @@ export default function PortalInventoryPage() {
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deltas, setDeltas] = useState<Record<string, string>>({});
+  const [adjustingSku, setAdjustingSku] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadInventory = () => {
+    setLoading(true);
+    setError(null);
     supplierFetch("/v1/supplier/inventory")
       .then(async (res) => {
         if (!res.ok) throw new Error(`inventory ${res.status}`);
@@ -29,7 +33,41 @@ export default function PortalInventoryPage() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load inventory"))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadInventory();
   }, []);
+
+  const adjustRow = async (row: InventoryRow) => {
+    const raw = deltas[row.sku_id]?.trim() ?? "";
+    const quantityDelta = Number.parseInt(raw, 10);
+    if (!Number.isFinite(quantityDelta) || quantityDelta === 0) {
+      setError("Enter a non-zero quantity delta");
+      return;
+    }
+    setAdjustingSku(row.sku_id);
+    setError(null);
+    try {
+      const res = await supplierFetch("/v1/supplier/inventory", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sku_id: row.sku_id,
+          quantity_delta: quantityDelta,
+          quantity: row.quantity,
+          reason: "portal_adjust",
+        }),
+      });
+      if (!res.ok) throw new Error(`adjust ${res.status}`);
+      setDeltas((prev) => ({ ...prev, [row.sku_id]: "" }));
+      loadInventory();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "adjust_failed");
+    } finally {
+      setAdjustingSku(null);
+    }
+  };
 
   const pagination = usePagination(rows, 20);
 
@@ -69,6 +107,7 @@ export default function PortalInventoryPage() {
               <th className="px-4 py-3 md-typescale-label-large">Product</th>
               <th className="px-4 py-3 md-typescale-label-large text-right">Qty</th>
               <th className="px-4 py-3 md-typescale-label-large text-right">Unit (minor)</th>
+              <th className="px-4 py-3 md-typescale-label-large text-right">Adjust</th>
             </tr>
           </thead>
           <tbody>
@@ -78,6 +117,27 @@ export default function PortalInventoryPage() {
                 <td className="px-4 py-3">{row.product_name}</td>
                 <td className="px-4 py-3 text-right">{row.quantity}</td>
                 <td className="px-4 py-3 text-right">{row.unit_price_minor}</td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <input
+                      type="number"
+                      className="md-input-outlined w-24 px-2 py-1 text-right"
+                      placeholder="±qty"
+                      value={deltas[row.sku_id] ?? ""}
+                      onChange={(e) =>
+                        setDeltas((prev) => ({ ...prev, [row.sku_id]: e.target.value }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="md-btn md-btn-tonal md-typescale-label-medium px-3 py-1"
+                      disabled={adjustingSku === row.sku_id}
+                      onClick={() => void adjustRow(row)}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>

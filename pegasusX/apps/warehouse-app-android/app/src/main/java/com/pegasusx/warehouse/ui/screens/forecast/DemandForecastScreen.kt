@@ -62,7 +62,7 @@ private enum class ForecastSegment { Products, Series }
 @Composable
 fun DemandForecastScreen(
     api: WarehouseApi,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var horizon by remember { mutableIntStateOf(7) }
     var forecast by remember { mutableStateOf(DemandForecastResponse()) }
@@ -97,11 +97,7 @@ fun DemandForecastScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Demand Forecast") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
                 actions = {
                     var expanded by remember { mutableStateOf(false) }
                     Box {

@@ -125,6 +125,53 @@ data class SupplierFleetOrderRow(
 )
 
 @Serializable
+data class RouteCoordinateWire(
+    val lat: Double,
+    val lng: Double,
+)
+
+@Serializable
+data class RouteGeometryWire(
+    @SerialName("route_id") val routeId: String? = null,
+    @SerialName("encoded_polyline") val encodedPolyline: String? = null,
+    val coordinates: List<RouteCoordinateWire> = emptyList(),
+    val source: String = "",
+    @SerialName("stop_count") val stopCount: Int? = null,
+)
+
+@Serializable
+data class SupplierDriverLocationWire(
+    @SerialName("driver_id") val driverId: String,
+    @SerialName("supplier_id") val supplierId: String? = null,
+    val lat: Double,
+    val lng: Double,
+    val latitude: Double,
+    val longitude: Double,
+    @SerialName("reported_at") val reportedAt: String = "",
+    @SerialName("received_at") val receivedAt: String = "",
+    @SerialName("stale_after_seconds") val staleAfterSeconds: Int = 0,
+)
+
+@Serializable
+data class SupplierFleetLiveRoute(
+    @SerialName("manifest_id") val manifestId: String,
+    @SerialName("route_id") val routeId: String,
+    @SerialName("driver_id") val driverId: String,
+    @SerialName("driver_name") val driverName: String? = null,
+    @SerialName("manifest_state") val manifestState: String,
+    @SerialName("route_geometry") val routeGeometry: RouteGeometryWire? = null,
+    @SerialName("driver_location") val driverLocation: SupplierDriverLocationWire? = null,
+    @SerialName("live_location_available") val liveLocationAvailable: Boolean = false,
+    @SerialName("location_stale") val locationStale: Boolean? = null,
+)
+
+@Serializable
+data class SupplierFleetLiveMapResponse(
+    val routes: List<SupplierFleetLiveRoute> = emptyList(),
+    @SerialName("fetched_at") val fetchedAt: String = "",
+)
+
+@Serializable
 data class ShopClosedAttemptRow(
     @SerialName("attempt_id") val attemptId: String,
     @SerialName("order_id") val orderId: String,
@@ -243,4 +290,131 @@ data class SupplierActivityEvent(
 @Serializable
 data class SupplierActivityResponse(
     val events: List<SupplierActivityEvent> = emptyList(),
+)
+
+@Serializable
+data class SettlementCurrencyTotal(
+    val currency: String = "",
+    @SerialName("entry_count") val entryCount: Int = 0,
+    @SerialName("amount_minor_total") val amountMinorTotal: Long = 0,
+)
+
+@Serializable
+data class SettlementAuthorityRow(
+    val gateway: String = "",
+    @SerialName("entry_type") val entryType: String = "",
+    val currency: String = "",
+    @SerialName("entry_count") val entryCount: Long = 0,
+    @SerialName("amount_minor_total") val amountMinorTotal: Long = 0,
+    @SerialName("first_occurred_at") val firstOccurredAt: String = "",
+    @SerialName("last_occurred_at") val lastOccurredAt: String = "",
+)
+
+@Serializable
+data class SettlementAuthorityResponse(
+    val items: List<SettlementAuthorityRow> = emptyList(),
+    val count: Int = 0,
+    @SerialName("group_limit") val groupLimit: Int = 0,
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("entry_count_total") val entryCountTotal: Int = 0,
+    @SerialName("totals_by_currency") val totalsByCurrency: List<SettlementCurrencyTotal> = emptyList(),
+)
+
+@Serializable
+data class ReconciliationMismatchRow(
+    val gateway: String = "",
+    val currency: String = "",
+    @SerialName("net_amount_minor") val netAmountMinor: Long = 0,
+    @SerialName("credit_amount_minor_total") val creditAmountMinorTotal: Long = 0,
+    @SerialName("debit_amount_minor_total") val debitAmountMinorTotal: Long = 0,
+    @SerialName("entry_count_total") val entryCountTotal: Long = 0,
+    @SerialName("last_occurred_at") val lastOccurredAt: String = "",
+)
+
+@Serializable
+data class SupplierAIRecommendationEvidence(
+    val label: String = "",
+    val value: String = "",
+    val href: String? = null,
+)
+
+@Serializable
+data class SupplierAIRecommendation(
+    @SerialName("recommendation_id") val recommendationId: String = "",
+    @SerialName("aggregate_id") val aggregateId: String = "",
+    @SerialName("aggregate_type") val aggregateType: String = "",
+    val action: String = "",
+    val status: String = "",
+    val score: Double = 0.0,
+    val confidence: Double = 0.0,
+    val source: String = "",
+    val explanation: String = "",
+    @SerialName("reason_codes") val reasonCodes: List<String> = emptyList(),
+    val evidence: List<SupplierAIRecommendationEvidence> = emptyList(),
+    val decision: String? = null,
+    @SerialName("decision_note") val decisionNote: String? = null,
+    @SerialName("decided_by") val decidedBy: String? = null,
+    @SerialName("decided_at") val decidedAt: String? = null,
+    @SerialName("generated_at") val generatedAt: String = "",
+    @SerialName("updated_at") val updatedAt: String = "",
+)
+
+@Serializable
+data class SupplierAIRecommendationsResponse(
+    val items: List<SupplierAIRecommendation> = emptyList(),
+    val count: Int = 0,
+    val limit: Int = 0,
+    val status: String? = null,
+    @SerialName("updated_at") val updatedAt: String = "",
+)
+
+@Serializable
+data class SupplierAIRecommendationDecisionRequest(
+    @SerialName("recommendation_id") val recommendationId: String,
+    val decision: String,
+    val note: String? = null,
+)
+
+@Serializable
+data class SupplierAIRecommendationDecisionResponse(
+    val recommendation: SupplierAIRecommendation,
+)
+
+@Serializable
+data class ReconciliationMismatchResponse(
+    val items: List<ReconciliationMismatchRow> = emptyList(),
+    val count: Int = 0,
+    @SerialName("mismatch_threshold_minor") val mismatchThresholdMinor: Long = 0,
+)
+
+@Serializable
+data class SupplierOrgMember(
+    @SerialName("user_id") val userId: String,
+    val name: String = "",
+    val phone: String = "",
+    @SerialName("supplier_role") val supplierRole: String = "",
+    @SerialName("assigned_warehouse_id") val assignedWarehouseId: String? = null,
+    @SerialName("assigned_factory_id") val assignedFactoryId: String? = null,
+)
+
+@Serializable
+data class SupplierOrgMembersResponse(
+    @SerialName("supplier_id") val supplierId: String = "",
+    val items: List<SupplierOrgMember> = emptyList(),
+)
+
+@Serializable
+data class SupplierOrgMemberCreateRequest(
+    val name: String,
+    val email: String? = null,
+    val phone: String,
+    val password: String,
+    @SerialName("supplier_role") val supplierRole: String,
+    @SerialName("assigned_warehouse_id") val assignedWarehouseId: String? = null,
+    @SerialName("assigned_factory_id") val assignedFactoryId: String? = null,
+)
+
+@Serializable
+data class ApproveEarlyCompleteRequest(
+    @SerialName("driver_id") val driverId: String,
 )

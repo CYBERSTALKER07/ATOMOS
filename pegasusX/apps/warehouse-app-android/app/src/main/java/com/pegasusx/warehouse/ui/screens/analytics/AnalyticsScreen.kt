@@ -23,7 +23,7 @@ import kotlin.math.roundToLong
 @Composable
 fun AnalyticsScreen(
     api: WarehouseApi,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var data by remember { mutableStateOf<AnalyticsData?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -50,7 +50,7 @@ fun AnalyticsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Analytics") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } } },
                 actions = {
                     FilterChip(selected = period == "7d", onClick = { period = "7d" }, label = { Text("7d") }, modifier = Modifier.padding(end = PegasusSpacing.xs))
                     FilterChip(selected = period == "30d", onClick = { period = "30d" }, label = { Text("30d") }, modifier = Modifier.padding(end = PegasusSpacing.sm))

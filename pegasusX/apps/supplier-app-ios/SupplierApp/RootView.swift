@@ -18,8 +18,8 @@ struct RootView: View {
         .animation(SupplierAnim.smooth, value: tokenStore.isAuthenticated)
         .animation(SupplierAnim.smooth, value: tokenStore.needsBillingGate)
         .onChange(of: tokenStore.isAuthenticated) { _, authenticated in
-            if authenticated, let token = tokenStore.token {
-                realtime.connect(token: token) { event in
+            if authenticated {
+                realtime.connect { event in
                     guard !event.type.hasPrefix("SYSTEM") else { return }
                     realtimeHub.bump()
                 }
@@ -28,8 +28,8 @@ struct RootView: View {
             }
         }
         .onAppear {
-            if tokenStore.isAuthenticated, let token = tokenStore.token {
-                realtime.connect(token: token) { event in
+            if tokenStore.isAuthenticated {
+                realtime.connect { event in
                     guard !event.type.hasPrefix("SYSTEM") else { return }
                     realtimeHub.bump()
                 }

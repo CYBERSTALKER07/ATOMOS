@@ -424,6 +424,7 @@ CREATE TABLE Products (
   Currency       STRING(3)     NOT NULL,
   StockQuantity  INT64         NOT NULL DEFAULT (0),
   Unit           STRING(20)    NOT NULL DEFAULT ('UNIT'),
+  UnitVolumeVU   FLOAT64       NOT NULL DEFAULT (1.0),
   IsActive       BOOL          NOT NULL DEFAULT (TRUE),
   Version        INT64         NOT NULL DEFAULT (1),
   CreatedAt      TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -548,6 +549,8 @@ CREATE TABLE SupplierTruckManifests (
   SealedAt          TIMESTAMP,
   DispatchedAt      TIMESTAMP,
   CompletedAt       TIMESTAMP,
+  EncodedRoutePolyline STRING(MAX),
+  RouteGeometrySource STRING(32),
   CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (ManifestId);

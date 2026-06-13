@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,8 +21,11 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
+	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"google.golang.org/api/iterator"
 )
@@ -74,7 +78,10 @@ type Service struct {
 	opsVehicles    WarehouseOpsVehiclesQuery
 	cache          *cache.Cache
 	spannerClient  *spanner.Client
-	supplierHub    *ws.Hub
+	manifestStore  *manifest.Store
+	routeGeometryBuilder *routing.GeometryBuilder
+	locations            telemetry.LastLocationReader
+	supplierHub          *ws.Hub
 	warehouseHub   *ws.Hub
 	log            *slog.Logger
 
@@ -99,7 +106,7 @@ type Service struct {
 	products          []portalProduct
 	manifests         []portalManifest
 	retailers         []portalRetailer
-	returns           []portalReturn
+	returns           []portalReturnItem
 	insights          []replenishmentInsight
 	internalTransfers map[string]memoryTransferRow
 	firebaseVerifier  auth.FirebaseVerifier
@@ -114,8 +121,11 @@ type ServiceConfig struct {
 	OpsDrivers     WarehouseOpsDriversQuery
 	OpsVehicles    WarehouseOpsVehiclesQuery
 	Cache          *cache.Cache
-	Spanner        *spanner.Client
-	SupplierHub    *ws.Hub
+	Spanner              *spanner.Client
+	ManifestStore        *manifest.Store
+	RouteGeometryBuilder *routing.GeometryBuilder
+	Locations            telemetry.LastLocationReader
+	SupplierHub          *ws.Hub
 	WarehouseHub   *ws.Hub
 	Log            *slog.Logger
 
@@ -185,8 +195,11 @@ func NewService(c ServiceConfig) *Service {
 		opsDrivers:       c.OpsDrivers,
 		opsVehicles:      c.OpsVehicles,
 		cache:            c.Cache,
-		spannerClient:    c.Spanner,
-		supplierHub:      c.SupplierHub,
+		spannerClient:        c.Spanner,
+		manifestStore:        c.ManifestStore,
+		routeGeometryBuilder: c.RouteGeometryBuilder,
+		locations:            c.Locations,
+		supplierHub:          c.SupplierHub,
 		warehouseHub:     c.WarehouseHub,
 		log:              c.Log,
 		supplierID:       c.SupplierID,
@@ -537,16 +550,20 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 		if warehouseID == "" {
 			warehouseID = strings.TrimSpace(claims.HomeNodeID)
 		}
+		lockType := strings.TrimSpace(payload.LockType)
+		if lockType == "" {
+			lockType = "MANUAL_DISPATCH"
+		}
 		lock := DispatchLock{
 			LockID:     "lock_" + strings.ReplaceAll(nowTS, ":", ""),
 			EntityType: strings.TrimSpace(payload.EntityType),
 			EntityID:   strings.TrimSpace(payload.EntityID),
-			Reason:     strings.TrimSpace(payload.Reason),
+			Reason:     encodeDispatchLockReason(lockType, payload.Reason),
 			CreatedAt:  nowTS,
 		}
 
 		eventPayload := events.WarehouseEvent{
-			BaseEvent:   events.BaseEvent{Type: events.EventWarehouseDispatchLockChanged},
+			BaseEvent:   events.BaseEvent{Type: events.EventWarehouseDispatchLockChanged, Timestamp: nowTS},
 			LockID:      lock.LockID,
 			WarehouseID: warehouseID,
 			SupplierID:  s.supplierID,
@@ -556,7 +573,7 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := s.repo.UpsertLock(r.Context(), warehouseID, lock, func(txn outbox.TxnBuffer) error {
-			return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, lock.LockID, events.TopicMain, eventPayload)
+			return emitDispatchLockAcquireOutbox(r.Context(), txn, lock.LockID, eventPayload, lockType, warehouseID, claims.Subject, nowTS)
 		}); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_dispatch_lock_failed"})
 			return
@@ -568,10 +585,6 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 
 		s.broadcastWarehouseEvent(r.Context(), warehouseID, eventPayload)
 		s.log.Info("warehouse dispatch lock acquired", "supplier_id", s.supplierID, "warehouse_id", warehouseID, "lock_id", lock.LockID)
-		lockType := strings.TrimSpace(payload.LockType)
-		if lockType == "" {
-			lockType = "MANUAL_DISPATCH"
-		}
 		writeJSON(w, http.StatusCreated, map[string]any{
 			"lock_id":   lock.LockID,
 			"lock_type": lockType,
@@ -599,18 +612,19 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		released = releasedLock
+		releasedLockType := decodeDispatchLockType(released.Reason)
 		if err := s.repo.DeleteLock(r.Context(), warehouseID, lockID, func(txn outbox.TxnBuffer) error {
 			eventPayload := events.WarehouseEvent{
-				BaseEvent:   events.BaseEvent{Type: events.EventWarehouseDispatchLockChanged},
+				BaseEvent:   events.BaseEvent{Type: events.EventWarehouseDispatchLockChanged, Timestamp: s.now().Format(time.RFC3339Nano)},
 				LockID:      lockID,
 				WarehouseID: warehouseID,
 				SupplierID:  s.supplierID,
 				Status:      "RELEASED",
 				Action:      "RELEASED",
 				RequestedBy: claims.Subject,
-				RequestID:   released.EntityID, // map entity_id to request_id for convenience in tracking
+				RequestID:   released.EntityID,
 			}
-			return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, lockID, events.TopicMain, eventPayload)
+			return emitDispatchLockReleaseOutbox(r.Context(), txn, lockID, eventPayload, releasedLockType, warehouseID, claims.Subject)
 		}); err != nil {
 			if errors.Is(err, errDispatchLockNotFound) {
 				writeJSON(w, http.StatusNotFound, map[string]string{"error": "dispatch_lock_not_found"})
@@ -675,6 +689,21 @@ func (s *Service) snapshotSupplyRequestForecast(ctx context.Context, warehouseID
 	}
 
 	return projectedUnits, committedUnits, pendingConfirmationUnits, nil
+}
+
+// portalSeedEnabled gates in-memory demo seed data. Disabled when Spanner is wired
+// unless WAREHOUSE_PORTAL_SEED=true is set explicitly for local scaffold runs.
+func (s *Service) portalSeedEnabled() bool {
+	if s.spannerClient != nil {
+		switch strings.ToLower(strings.TrimSpace(os.Getenv("WAREHOUSE_PORTAL_SEED"))) {
+		case "1", "true", "yes":
+			return true
+		default:
+			return false
+		}
+	}
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("WAREHOUSE_PORTAL_SEED")))
+	return v == "1" || v == "true" || v == "yes"
 }
 
 func warehouseIDFromRequest(r *http.Request) string {
@@ -797,6 +826,74 @@ func warehouseSupplyRequestsKey(supplierID string, warehouseID string) string {
 
 func warehouseDispatchLocksKey(supplierID string) string {
 	return "warehouse:dispatch-locks:" + supplierID
+}
+
+func encodeDispatchLockReason(lockType, reason string) string {
+	lt := strings.TrimSpace(lockType)
+	if lt == "" {
+		lt = "MANUAL_DISPATCH"
+	}
+	r := strings.TrimSpace(reason)
+	if r == "" {
+		return "lock_type:" + lt
+	}
+	return "lock_type:" + lt + "|" + r
+}
+
+func decodeDispatchLockType(reason string) string {
+	reason = strings.TrimSpace(reason)
+	if strings.HasPrefix(reason, "lock_type:") {
+		rest := strings.TrimPrefix(reason, "lock_type:")
+		if idx := strings.Index(rest, "|"); idx >= 0 {
+			return strings.TrimSpace(rest[:idx])
+		}
+		if rest != "" {
+			return rest
+		}
+	}
+	return "MANUAL_DISPATCH"
+}
+
+func emitDispatchLockAcquireOutbox(ctx context.Context, txn outbox.TxnBuffer, lockID string, warehouseEvent events.WarehouseEvent, lockType, warehouseID, lockedBy, timestamp string) error {
+	if err := outbox.EmitJSON(ctx, txn, events.AggregateWarehouse, lockID, events.TopicMain, warehouseEvent); err != nil {
+		return err
+	}
+	if lockType != "MANUAL_DISPATCH" {
+		return nil
+	}
+	freeze := events.DispatchLockEvent{
+		BaseEvent:   events.BaseEvent{Type: events.EventFreezeLockAcquired, Timestamp: timestamp},
+		LockID:      lockID,
+		SupplierID:  warehouseEvent.SupplierID,
+		WarehouseID: warehouseID,
+		LockType:    lockType,
+		LockedBy:    lockedBy,
+	}
+	if err := outbox.EmitJSON(ctx, txn, "DispatchLock", lockID, events.TopicFreezeLocks, freeze); err != nil {
+		return err
+	}
+	return outbox.EmitJSON(ctx, txn, "DispatchLock", lockID, events.TopicMain, freeze)
+}
+
+func emitDispatchLockReleaseOutbox(ctx context.Context, txn outbox.TxnBuffer, lockID string, warehouseEvent events.WarehouseEvent, lockType, warehouseID, lockedBy string) error {
+	if err := outbox.EmitJSON(ctx, txn, events.AggregateWarehouse, lockID, events.TopicMain, warehouseEvent); err != nil {
+		return err
+	}
+	if lockType != "MANUAL_DISPATCH" {
+		return nil
+	}
+	freeze := events.DispatchLockEvent{
+		BaseEvent:   events.BaseEvent{Type: events.EventFreezeLockReleased, Timestamp: warehouseEvent.BaseEvent.Timestamp},
+		LockID:      lockID,
+		SupplierID:  warehouseEvent.SupplierID,
+		WarehouseID: warehouseID,
+		LockType:    lockType,
+		LockedBy:    lockedBy,
+	}
+	if err := outbox.EmitJSON(ctx, txn, "DispatchLock", lockID, events.TopicFreezeLocks, freeze); err != nil {
+		return err
+	}
+	return outbox.EmitJSON(ctx, txn, "DispatchLock", lockID, events.TopicMain, freeze)
 }
 
 func writeJSON(w http.ResponseWriter, code int, body any) {

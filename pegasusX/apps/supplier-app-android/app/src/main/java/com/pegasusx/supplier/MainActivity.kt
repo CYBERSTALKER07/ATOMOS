@@ -16,6 +16,7 @@ import com.pegasusx.supplier.ui.theme.PegasusSupplierTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.launch
+import org.maplibre.android.MapLibre
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -28,11 +29,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        MapLibre.getInstance(this)
         enableEdgeToEdge()
         if (TokenHolder.isLoggedIn) {
-            TokenHolder.token?.let { token ->
-                supplierWebSocket.connect(BuildConfig.API_BASE_URL.trimEnd('/'), token)
-            }
+            supplierWebSocket.connect(BuildConfig.API_BASE_URL.trimEnd('/'))
         }
         lifecycleScope.launch {
             supplierWebSocket.messages.collect { msg ->

@@ -38,6 +38,7 @@ import type {
   SupplierBroadcastResponse,
   SupplierReplenishmentTriggerResponse,
   SupplierFleetOrderRow,
+  SupplierFleetLiveMapResponse,
   SupplierLoginRequest,
   SupplierLoginResponse,
   SupplierManifestsResponse,
@@ -48,6 +49,8 @@ import type {
   SupplierActivityResponse,
   SupplierAIRecommendationsResponse,
   SupplierDispatchPreview,
+  SupplierDispatchExecuteRequest,
+  SupplierDispatchExecuteResponse,
   SupplierOrgMemberCreateRequest,
   SupplierOrgMembersResponse,
   SupplierOrdersResponse,
@@ -70,11 +73,14 @@ import type {
   WarehouseDispatchLockAcquireRequest,
   WarehouseDispatchLockReleaseResponse,
   WarehouseDispatchLocksResponse,
+  WarehouseDispatchExecuteRequest,
+  WarehouseDispatchExecuteResponse,
   WarehouseDispatchPreview,
   WarehouseDemandForecastResponse,
   WarehouseEmergencyTransferRequest,
   WarehouseForceReceiveRequest,
   WarehouseInventoryResponse,
+  WarehouseFleetLiveMapResponse,
   WarehouseOpsDashboardResponse,
   WarehouseOpsFinancialsResponse,
   WarehouseOrderMutationRequest,
@@ -280,11 +286,14 @@ export class ApiClient {
   }
 
   async executeSupplierDispatch(
-    request: Record<string, unknown>,
-  ): Promise<void> {
-    return this.request<void>("/v1/supplier/dispatch/execute", "POST", {
-      body: request,
-    });
+    request: SupplierDispatchExecuteRequest = { mode: "AUTO" },
+    query: { warehouse_id?: string } = {},
+  ): Promise<SupplierDispatchExecuteResponse> {
+    return this.request<SupplierDispatchExecuteResponse>(
+      appendQuery("/v1/supplier/dispatch/execute", query as Record<string, unknown>),
+      "POST",
+      { body: request },
+    );
   }
 
   async getSupplierActivity(query: { limit?: number } = {}): Promise<SupplierActivityResponse> {
@@ -381,6 +390,10 @@ export class ApiClient {
 
   async getSupplierFleetOrders(): Promise<SupplierFleetOrderRow[]> {
     return this.request<SupplierFleetOrderRow[]>("/v1/supplier/fleet/orders", "GET");
+  }
+
+  async getSupplierFleetLiveMap(): Promise<SupplierFleetLiveMapResponse> {
+    return this.request<SupplierFleetLiveMapResponse>("/v1/supplier/fleet/live-map", "GET");
   }
 
   async getSupplierEarnings(): Promise<{
@@ -486,6 +499,10 @@ export class ApiClient {
     return this.request<WarehouseOpsDashboardResponse>(appendQuery("/v1/warehouse/ops/dashboard", query as Record<string, unknown>), "GET");
   }
 
+  async getWarehouseFleetLiveMap(query: { warehouse_id?: string } = {}): Promise<WarehouseFleetLiveMapResponse> {
+    return this.request<WarehouseFleetLiveMapResponse>(appendQuery("/v1/warehouse/ops/fleet/live-map", query as Record<string, unknown>), "GET");
+  }
+
   async getWarehouseInventory(query: { warehouse_id?: string } = {}): Promise<WarehouseInventoryResponse> {
     return this.request<WarehouseInventoryResponse>(appendQuery("/v1/warehouse/ops/inventory", query as Record<string, unknown>), "GET");
   }
@@ -499,10 +516,10 @@ export class ApiClient {
   }
 
   async executeWarehouseDispatch(
-    request: Record<string, unknown>,
+    request: WarehouseDispatchExecuteRequest,
     query: { warehouse_id?: string } = {},
-  ): Promise<void> {
-    return this.request<void>(appendQuery("/v1/warehouse/ops/dispatch/execute", query as Record<string, unknown>), "POST", {
+  ): Promise<WarehouseDispatchExecuteResponse> {
+    return this.request<WarehouseDispatchExecuteResponse>(appendQuery("/v1/warehouse/ops/dispatch/execute", query as Record<string, unknown>), "POST", {
       body: request,
     });
   }

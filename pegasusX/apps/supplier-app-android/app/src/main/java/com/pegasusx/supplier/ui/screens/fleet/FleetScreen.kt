@@ -18,7 +18,11 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FleetScreen(api: SupplierApi, ops: SupplierOperationsRepository) {
+fun FleetScreen(
+    api: SupplierApi,
+    ops: SupplierOperationsRepository,
+    onOpenLiveMap: () -> Unit = {},
+) {
     var tab by remember { mutableIntStateOf(0) }
     var drivers by remember { mutableStateOf<List<FleetDriver>>(emptyList()) }
     var vehicles by remember { mutableStateOf<List<FleetVehicle>>(emptyList()) }
@@ -54,6 +58,7 @@ fun FleetScreen(api: SupplierApi, ops: SupplierOperationsRepository) {
             TopAppBar(
                 title = { Text("Fleet") },
                 actions = {
+                    TextButton(onClick = onOpenLiveMap) { Text("Live map") }
                     TextButton(onClick = { load() }) { Text("Refresh") }
                 },
             )

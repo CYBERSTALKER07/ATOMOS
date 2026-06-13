@@ -3,12 +3,14 @@ package manifest
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 )
 
 // SupplierTruckRow is the durable projection of a supplier/payload manifest.
@@ -121,12 +123,20 @@ type FactoryWriteBatch struct {
 
 // Store reads and writes manifest tables in Spanner.
 type Store struct {
-	client *spanner.Client
+	client          *spanner.Client
+	geometryBuilder *routing.GeometryBuilder
 }
 
 // NewStore constructs a manifest Spanner store.
 func NewStore(client *spanner.Client) *Store {
 	return &Store{client: client}
+}
+
+// SetGeometryBuilder configures optional OSRM-backed route geometry resolution.
+func (s *Store) SetGeometryBuilder(builder *routing.GeometryBuilder) {
+	if s != nil {
+		s.geometryBuilder = builder
+	}
 }
 
 // CommitSupplier applies supplier manifest mutations and outbox events atomically.
@@ -235,6 +245,66 @@ func (s *Store) ListSupplierManifests(ctx context.Context, supplierID string) ([
 		rows = append(rows, parsed)
 	}
 	return rows, nil
+}
+
+// DriversOnActiveManifests returns driver IDs that already hold an open manifest.
+// Active means DRAFT, LOADING, SEALED, or DISPATCHED — drivers are not re-dispatched until COMPLETED.
+func (s *Store) DriversOnActiveManifests(ctx context.Context, supplierID, warehouseID string, driverIDs []string) (map[string]bool, error) {
+	out := make(map[string]bool, len(driverIDs))
+	if s == nil || s.client == nil || len(driverIDs) == 0 {
+		return out, nil
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	warehouseID = strings.TrimSpace(warehouseID)
+	if supplierID == "" && warehouseID == "" {
+		return out, nil
+	}
+
+	var stmt spanner.Statement
+	if warehouseID != "" {
+		stmt = spanner.Statement{
+			SQL: `SELECT DISTINCT DriverId
+			      FROM SupplierTruckManifests@{FORCE_INDEX=Idx_SupplierManifests_ByWarehouse}
+			      WHERE WarehouseId = @warehouseId
+			        AND DriverId IN UNNEST(@driverIds)
+			        AND State IN ('DRAFT', 'LOADING', 'SEALED', 'DISPATCHED')`,
+			Params: map[string]any{
+				"warehouseId": warehouseID,
+				"driverIds":   driverIDs,
+			},
+		}
+	} else {
+		stmt = spanner.Statement{
+			SQL: `SELECT DISTINCT DriverId
+			      FROM SupplierTruckManifests@{FORCE_INDEX=Idx_SupplierManifests_BySupplierId}
+			      WHERE SupplierId = @supplierId
+			        AND DriverId IN UNNEST(@driverIds)
+			        AND State IN ('DRAFT', 'LOADING', 'SEALED', 'DISPATCHED')`,
+			Params: map[string]any{
+				"supplierId": supplierID,
+				"driverIds":  driverIDs,
+			},
+		}
+	}
+
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return out, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("drivers on active manifests: %w", err)
+		}
+		var driverID string
+		if err := row.Columns(&driverID); err != nil {
+			return nil, fmt.Errorf("drivers on active manifests scan: %w", err)
+		}
+		if driverID != "" {
+			out[driverID] = true
+		}
+	}
 }
 
 // ListSupplierManifestOrders returns junction rows for one manifest.
@@ -522,7 +592,7 @@ func supplierMutations(batch *SupplierWriteBatch) ([]*spanner.Mutation, error) {
 		if p.RouteID != "" {
 			row["RouteId"] = p.RouteID
 		}
-		mutations = append(mutations, spanner.InsertOrUpdateMap("Orders", row))
+		mutations = append(mutations, spanner.UpdateMap("Orders", row))
 	}
 
 	return mutations, nil

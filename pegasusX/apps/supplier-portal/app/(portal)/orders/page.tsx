@@ -11,12 +11,13 @@ import StatusBadge from '@/components/StatusBadge';
 import { PortalSurface } from '../_components/PortalSurface';
 import type { SupplierOrder } from '@pegasusx/types';
 
-type OrderFilter = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+type OrderFilter = 'ACTIVE' | 'REVIEW' | 'COMPLETED' | 'CANCELLED';
 
 const supplierApi = createSupplierApi();
 const PAGE_SIZE = 25;
 const filterLabels: Record<OrderFilter, string> = {
   ACTIVE: 'Active Orders',
+  REVIEW: 'Awaiting Review',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
 };
@@ -61,15 +62,17 @@ export default function OrdersPage() {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
+  const [vettingId, setVettingId] = useState<string | null>(null);
+
   const loadOrders = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await supplierApi.getSupplierOrders({
-        limit: PAGE_SIZE,
-        offset: page * PAGE_SIZE,
-        filter,
-      });
+      const query =
+        filter === 'REVIEW'
+          ? { limit: PAGE_SIZE, offset: page * PAGE_SIZE, status: 'AWAITING_REVIEW' }
+          : { limit: PAGE_SIZE, offset: page * PAGE_SIZE, filter };
+      const response = await supplierApi.getSupplierOrders(query);
       setOrders(response.orders);
       setTotal(response.total ?? response.orders.length);
     } catch (err) {
@@ -93,14 +96,27 @@ export default function OrdersPage() {
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
 
+  const vetOrder = async (orderId: string, decision: 'APPROVED' | 'REJECTED') => {
+    setVettingId(orderId);
+    try {
+      await supplierApi.vetSupplierOrder({ order_id: orderId, decision });
+      toast(`Order ${decision.toLowerCase()}`, 'success');
+      await loadOrders();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : 'vet_failed', 'error');
+    } finally {
+      setVettingId(null);
+    }
+  };
+
   const exportCsv = async () => {
     setExporting(true);
     try {
-      const response = await supplierApi.getSupplierOrders({
-        limit: 300,
-        offset: 0,
-        filter,
-      });
+      const query =
+        filter === 'REVIEW'
+          ? { limit: 300, offset: 0, status: 'AWAITING_REVIEW' }
+          : { limit: 300, offset: 0, filter };
+      const response = await supplierApi.getSupplierOrders(query);
       downloadCsv(
         `supplier-orders-${filter.toLowerCase()}.csv`,
         ['order_id', 'status', 'retailer_id', 'driver_id', 'total_minor', 'currency', 'updated_at'],
@@ -127,7 +143,7 @@ export default function OrdersPage() {
       description="Durable supplier-scoped orders with assignment and live driver snapshots."
       actions={
         <div className="flex flex-wrap gap-2">
-          {(['ACTIVE', 'COMPLETED', 'CANCELLED'] as OrderFilter[]).map((nextFilter) => (
+          {(['ACTIVE', 'REVIEW', 'COMPLETED', 'CANCELLED'] as OrderFilter[]).map((nextFilter) => (
             <button
               key={nextFilter}
               type="button"
@@ -163,24 +179,27 @@ export default function OrdersPage() {
               <th className="md-typescale-label-medium p-4 font-medium">Assignment</th>
               <th className="md-typescale-label-medium p-4 font-medium">Live</th>
               <th className="md-typescale-label-medium p-4 font-medium text-right">Total</th>
+              {filter === 'REVIEW' ? (
+                <th className="md-typescale-label-medium p-4 font-medium text-right">Actions</th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-[var(--color-md-outline)]">
+                <td colSpan={filter === 'REVIEW' ? 8 : 7} className="p-8 text-center text-[var(--color-md-outline)]">
                   Loading supplier orders…
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-[var(--color-md-error)]">
+                <td colSpan={filter === 'REVIEW' ? 8 : 7} className="p-8 text-center text-[var(--color-md-error)]">
                   {error}
                 </td>
               </tr>
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-[var(--color-md-outline)]">
+                <td colSpan={filter === 'REVIEW' ? 8 : 7} className="p-8 text-center text-[var(--color-md-outline)]">
                   No {filterLabels[filter].toLowerCase()} at this time.
                 </td>
               </tr>
@@ -215,6 +234,28 @@ export default function OrdersPage() {
                     ) : null}
                   </td>
                   <td className="p-4 text-right">{formatMoney(order)}</td>
+                  {filter === 'REVIEW' ? (
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          className="md-btn md-btn-tonal md-typescale-label-medium px-3 py-1"
+                          disabled={vettingId === order.order_id}
+                          onClick={() => void vetOrder(order.order_id, 'APPROVED')}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          className="md-btn md-btn-outlined md-typescale-label-medium px-3 py-1"
+                          disabled={vettingId === order.order_id}
+                          onClick={() => void vetOrder(order.order_id, 'REJECTED')}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  ) : null}
                 </tr>
               ))
             )}

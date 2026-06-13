@@ -62,6 +62,7 @@ data class SupplierOrder(
     @SerialName("retailer_id") val retailerId: String,
     val status: String = "",
     val decision: String? = null,
+    val note: String? = null,
     @SerialName("total_minor") val totalMinor: Long = 0,
     val currency: String = "",
     @SerialName("updated_at") val updatedAt: String = "",
@@ -112,6 +113,57 @@ data class InventoryItem(
     @SerialName("product_name") val productName: String = "",
     val quantity: Long = 0,
     @SerialName("updated_at") val updatedAt: String = "",
+)
+
+@Serializable
+data class CatalogCategory(
+    @SerialName("category_id") val categoryId: String,
+    val name: String = "",
+)
+
+@Serializable
+data class CatalogUploadTicket(
+    @SerialName("upload_url") val uploadUrl: String,
+    @SerialName("image_url") val imageUrl: String,
+)
+
+@Serializable
+data class CatalogProductCreateRequest(
+    @SerialName("category_id") val categoryId: String,
+    val name: String,
+    val description: String = "",
+    @SerialName("price_minor") val priceMinor: Long,
+    val currency: String,
+    @SerialName("unit_volume_vu") val unitVolumeVu: Double,
+    @SerialName("stock_quantity") val stockQuantity: Long = 0,
+    val unit: String = "UNIT",
+    @SerialName("image_url") val imageUrl: String? = null,
+)
+
+@Serializable
+data class CatalogProduct(
+    @SerialName("product_id") val productId: String,
+    val name: String = "",
+    @SerialName("category_id") val categoryId: String = "",
+    @SerialName("price_minor") val priceMinor: Long = 0,
+    val currency: String = "",
+    val unit: String = "UNIT",
+    @SerialName("unit_volume_vu") val unitVolumeVu: Double = 1.0,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("is_active") val isActive: Boolean = true,
+    val version: Long = 0,
+)
+
+@Serializable
+data class CatalogProductUpdateRequest(
+    val name: String,
+    @SerialName("price_minor") val priceMinor: Long,
+    val currency: String,
+    val unit: String,
+    @SerialName("unit_volume_vu") val unitVolumeVu: Double,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("is_active") val isActive: Boolean,
+    val version: Long,
 )
 
 @Serializable

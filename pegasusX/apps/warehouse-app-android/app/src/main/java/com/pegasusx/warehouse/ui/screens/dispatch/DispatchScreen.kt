@@ -7,7 +7,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.DispatchPreview
 import com.pegasusx.warehouse.data.model.CreateWarehouseDispatchLockRequest
 import com.pegasusx.warehouse.data.model.CreateWarehouseSupplyRequestRequest
@@ -22,12 +22,16 @@ import com.pegasusx.warehouse.data.model.WarehouseDispatchLock
 import com.pegasusx.warehouse.data.model.WarehouseSupplyRequest
 import com.pegasusx.warehouse.data.model.WarehouseSupplyRequestTransitionRequest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeClient
+import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
+import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeStatus
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -40,11 +44,15 @@ private val DISPATCH_UNAVAILABLE_REASON_LABELS = mapOf(
     "MANUAL_HOLD" to "Manual Hold",
 )
 
+private const val DISPATCH_TETRIS_BUFFER = 0.95
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DispatchScreen(
     api: WarehouseApi,
-    onBack: () -> Unit,
+    opsRepository: WarehouseOperationsRepository,
+    realtimeSignals: WarehouseRealtimeSignals,
+    onBack: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -61,6 +69,11 @@ fun DispatchScreen(
     var lockPendingRelease by remember { mutableStateOf<WarehouseDispatchLock?>(null) }
     var actionMessage by remember { mutableStateOf<DispatchActionMessage?>(null) }
     var executing by remember { mutableStateOf(false) }
+    var selectedDriverId by remember { mutableStateOf("") }
+    var selectedOrderIds by remember { mutableStateOf(setOf<String>()) }
+    var driverMenuExpanded by remember { mutableStateOf(false) }
+    var capacityWarnings by remember { mutableStateOf<List<com.pegasusx.warehouse.data.model.DispatchCapacityWarning>>(emptyList()) }
+    var showCapacityDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }
     val realtimeClient = remember(context) { WarehouseRealtimeClient(context) }
@@ -200,20 +213,45 @@ fun DispatchScreen(
         }
     }
 
-    fun runAutoDispatch() {
-        if (executing || preview?.undispatchedOrders.isNullOrEmpty()) return
+    fun runManualDispatch(forceCapacity: Boolean = false) {
+        if (executing || selectedDriverId.isBlank() || selectedOrderIds.isEmpty()) return
         executing = true
         scope.launch {
             runCatching {
-                val body = JsonObject().apply { addProperty("mode", "AUTO") }
+                val orderIds = JsonArray()
+                selectedOrderIds.forEach { orderIds.add(it) }
+                val route = JsonObject().apply {
+                    addProperty("driver_id", selectedDriverId)
+                    add("order_ids", orderIds)
+                }
+                val routes = JsonArray().apply { add(route) }
+                val body = JsonObject().apply {
+                    addProperty("mode", "MANUAL")
+                    addProperty("force_capacity", forceCapacity)
+                    add("routes", routes)
+                }
                 api.executeDispatch(body)
             }.onSuccess { response ->
-                if (response.isSuccessful) {
-                    actionMessage = DispatchActionMessage(
-                        title = "Dispatch Committed",
-                        message = "Payloader loading gate is now active.",
-                    )
-                    load()
+                if (response.isSuccessful && response.body() != null) {
+                    val result = response.body()!!
+                    when (result.status) {
+                        "capacity_exceeded" -> {
+                            capacityWarnings = result.capacityWarnings
+                            showCapacityDialog = true
+                        }
+                        "dispatched" -> {
+                            actionMessage = DispatchActionMessage(
+                                title = "Dispatch Committed",
+                                message = "Assigned ${result.ordersAssigned} order(s). Payloader loading gate is active.",
+                            )
+                            selectedOrderIds = emptySet()
+                            load()
+                        }
+                        else -> {
+                            val warning = result.warnings.firstOrNull() ?: "Dispatch did not commit."
+                            actionMessage = DispatchActionMessage("Dispatch Incomplete", warning)
+                        }
+                    }
                 } else {
                     actionMessage = DispatchActionMessage("Dispatch Failed", codeMessage(response.code()))
                 }
@@ -279,13 +317,8 @@ fun DispatchScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Dispatch") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } } },
                 actions = {
-                    if (tab == 0 && !preview?.undispatchedOrders.isNullOrEmpty()) {
-                        IconButton(onClick = { runAutoDispatch() }, enabled = !executing) {
-                            Icon(Icons.Default.PlayArrow, "Auto dispatch")
-                        }
-                    }
                     if (tab == 2) {
                         IconButton(onClick = { showCreateSupplyRequest = true }) { Icon(Icons.Default.Add, "New request") }
                     }
@@ -307,6 +340,12 @@ fun DispatchScreen(
                 }
             }
             preview != null -> Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                FleetLiveMapSection(
+                    ops = opsRepository,
+                    realtimeSignals = realtimeSignals,
+                    modifier = Modifier.padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.sm),
+                    mapHeight = 280.dp,
+                )
                 TabRow(selectedTabIndex = tab) {
                     Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Orders (${preview!!.undispatchedOrders.size})") })
                     Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Drivers (${preview!!.availableDrivers.size + preview!!.unavailableDrivers.size})") })
@@ -323,20 +362,134 @@ fun DispatchScreen(
                                 Text("All orders dispatched", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         } else {
-                            LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
+                            val selectedDriver = preview!!.availableDrivers.firstOrNull { it.driverId == selectedDriverId }
+                            val selectedVolume = preview!!.undispatchedOrders
+                                .filter { selectedOrderIds.contains(it.orderId) }
+                                .sumOf { it.volumeVu }
+                            val effectiveMax = (selectedDriver?.maxVolumeVu ?: 0.0) * DISPATCH_TETRIS_BUFFER
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.md),
+                                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                                ) {
+                                    Box {
+                                        OutlinedButton(
+                                            onClick = { driverMenuExpanded = true },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            Text(
+                                                selectedDriver?.let { "${it.name} · ${it.maxVolumeVu} VU max" }
+                                                    ?: "Select truck / driver",
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = driverMenuExpanded,
+                                            onDismissRequest = { driverMenuExpanded = false },
+                                        ) {
+                                            preview!!.availableDrivers.forEach { driver ->
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            "${driver.name} · ${driver.vehicleLabel.ifBlank { driver.truckStatus }}",
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        selectedDriverId = driver.driverId
+                                                        driverMenuExpanded = false
+                                                    },
+                                                )
+                                            }
+                                        }
+                                    }
+                                    if (selectedDriver != null) {
+                                        Text(
+                                            "Loaded ${"%.1f".format(selectedVolume)} / ${"%.1f".format(effectiveMax)} VU effective",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    Button(
+                                        onClick = { runManualDispatch(false) },
+                                        enabled = !executing && selectedDriverId.isNotBlank() && selectedOrderIds.isNotEmpty(),
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text(if (executing) "Dispatching…" else "Dispatch (${selectedOrderIds.size})")
+                                    }
+                                }
+                                LazyColumn(
+                                    contentPadding = PaddingValues(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.md),
+                                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                                ) {
                                 items(preview!!.undispatchedOrders, key = { it.orderId }) { o ->
                                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                                         Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                                            Checkbox(
+                                                checked = selectedOrderIds.contains(o.orderId),
+                                                onCheckedChange = { checked ->
+                                                    selectedOrderIds = if (checked) {
+                                                        selectedOrderIds + o.orderId
+                                                    } else {
+                                                        selectedOrderIds - o.orderId
+                                                    }
+                                                },
+                                            )
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(o.retailerName.ifBlank { o.orderId.take(8) }, style = MaterialTheme.typography.titleSmall)
                                                 Text(
-                                                    fmt.format(o.totalUzs) + " UZS · ${o.itemCount} items",
+                                                    fmt.format(o.totalUzs) + " UZS · ${"%.1f".format(o.volumeVu)} VU",
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )
                                             }
                                         }
                                     }
+                                }
+                                if (preview!!.proposedRoutes.isNotEmpty() || preview!!.optimizerWarnings.isNotEmpty()) {
+                                    item {
+                                        Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                                            Text(
+                                                "Smart suggest preview",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(top = PegasusSpacing.sm),
+                                            )
+                                            preview!!.optimizerSource?.let { source ->
+                                                Text("Source: $source", style = MaterialTheme.typography.bodySmall)
+                                            }
+                                            preview!!.optimizerWarnings.forEach { warning ->
+                                                Text(warning, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
+                                            }
+                                        }
+                                    }
+                                    items(preview!!.proposedRoutes.size) { index ->
+                                        val route = preview!!.proposedRoutes[index]
+                                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                            Column(modifier = Modifier.padding(PegasusSpacing.lg)) {
+                                                Text(
+                                                    route.driverName ?: route.driverId ?: "Driver",
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                )
+                                                Text(
+                                                    "${route.stopCount ?: route.orderIds.size} stops · ${"%.1f".format(route.volumeVu ?: 0.0)} VU",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                                Text(
+                                                    route.orderIds.joinToString(" → "),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                                 }
                             }
                         }
@@ -526,6 +679,34 @@ fun DispatchScreen(
                 }
             },
             dismissButton = { TextButton(onClick = { lockPendingRelease = null }) { Text("Keep") } },
+        )
+    }
+
+    if (showCapacityDialog) {
+        AlertDialog(
+            onDismissRequest = { showCapacityDialog = false },
+            title = { Text("Capacity exceeded") },
+            text = {
+                Column {
+                    Text("Selected orders exceed the truck effective capacity (95% buffer).")
+                    capacityWarnings.forEach { warning ->
+                        Text(
+                            "${"%.1f".format(warning.loadedVu)} VU loaded / ${"%.1f".format(warning.effectiveMaxVu)} VU max",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = PegasusSpacing.sm),
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCapacityDialog = false
+                    runManualDispatch(forceCapacity = true)
+                }) { Text("Dispatch anyway") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCapacityDialog = false }) { Text("Cancel") }
+            },
         )
     }
 

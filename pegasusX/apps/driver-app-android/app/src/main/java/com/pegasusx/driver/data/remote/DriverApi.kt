@@ -23,6 +23,7 @@ import com.pegasusx.driver.data.model.MissingItemsResponse
 // NegotiationPayload / NegotiationProposalResponse — quantity negotiation disabled.
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.PendingCollection
+import com.pegasusx.driver.data.model.RouteGeometryResponse
 import com.pegasusx.driver.data.model.ReorderStopsRequest
 import com.pegasusx.driver.data.model.ReturnCompleteRequest
 import com.pegasusx.driver.data.model.RouteManifest
@@ -74,6 +75,15 @@ interface DriverApi {
     // Driver's assigned orders
     @GET("v1/fleet/orders")
     suspend fun getAssignedOrders(): List<Order>
+
+    @GET("v1/fleet/route/{routeId}/geometry")
+    suspend fun getRouteGeometry(
+        @Path("routeId") routeId: String,
+        @Query("include_steps") includeSteps: Boolean = true,
+        @Query("from_lat") fromLat: Double? = null,
+        @Query("from_lng") fromLng: Double? = null,
+        @Query("reroute") reroute: Boolean? = null,
+    ): RouteGeometryResponse
 
     // Delivery confirmation (QR verified)
     @POST("v1/order/deliver")

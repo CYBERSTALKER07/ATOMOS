@@ -39,6 +39,31 @@ func TestIsWarehouseDispatchLocked_BlocksWarehouseScope(t *testing.T) {
 	}
 }
 
+func TestManualCapacityWarnings_FlagsOverload(t *testing.T) {
+	warnings := manualCapacityWarnings([]dispatch.DispatchRoute{{
+		DriverID:     "drv-1",
+		MaxVolume:    100,
+		LoadedVolume: 96,
+	}})
+	if len(warnings) != 1 {
+		t.Fatalf("warnings = %#v want 1 overload", warnings)
+	}
+	if warnings[0].EffectiveMaxVU != 95 {
+		t.Fatalf("effective max = %v want 95", warnings[0].EffectiveMaxVU)
+	}
+}
+
+func TestManualCapacityWarnings_AllowsWithinBuffer(t *testing.T) {
+	warnings := manualCapacityWarnings([]dispatch.DispatchRoute{{
+		DriverID:     "drv-1",
+		MaxVolume:    100,
+		LoadedVolume: 90,
+	}})
+	if len(warnings) != 0 {
+		t.Fatalf("warnings = %#v want none", warnings)
+	}
+}
+
 func TestFilterLockedDrivers_ExcludesLockedDriverIDs(t *testing.T) {
 	locks := map[string]DispatchLock{
 		"l1": {EntityType: "DRIVER", EntityID: "drv-locked"},

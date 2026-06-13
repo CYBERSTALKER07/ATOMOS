@@ -553,7 +553,7 @@ class HomeViewModel @Inject constructor(
             repository.enqueue(
                 QueuedAction(
                     id = deterministicQueueActionId("inject-order", "$manifestId-$trimmed"),
-                    endpoint = "/v1/payloader/manifests/$manifestId/inject-order",
+                    endpoint = "/v1/supplier/manifests/$manifestId/inject-order",
                     method = "POST",
                     body = body,
                     createdAt = System.currentTimeMillis(),

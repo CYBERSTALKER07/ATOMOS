@@ -1,13 +1,11 @@
 // Shared step-form types for the supplier onboarding wizard.
 //
-// HARD PRODUCT INVARIANT: this wizard has exactly four steps —
-//   1. Account     (country selector + phone with auto-prefix)
-//   2. Location    (warehouse + billing address)
-//   3. Business    (tax id, company reg, fleet config)
-//   4. Categories  (product / service categories the supplier serves)
+// HARD PRODUCT INVARIANT: this wizard has exactly three steps —
+//   1. Identity     (country selector + phone with auto-prefix)
+//   2. Verification (email / OTP confirmation)
+//   3. Profile      (business + warehouse profile fields)
 // Bank + payment-gateway setup is intentionally NOT in this wizard —
-// it lives at /setup/billing post-registration to reduce registration
-// friction. Do not collapse below 4 steps. Do not move banking back in.
+// it lives at /setup/billing post-registration. Do not collapse below 3 steps.
 
 export type StepId = "identity" | "verification" | "profile";
 

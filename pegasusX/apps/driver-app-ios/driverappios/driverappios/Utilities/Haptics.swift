@@ -16,4 +16,10 @@ enum Haptics {
     static func error()            { UINotificationFeedbackGenerator().notificationOccurred(.error) }
     static func warning()          { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
     static func selectionChanged() { UISelectionFeedbackGenerator().selectionChanged() }
+    static func maneuver() {
+        medium()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            medium()
+        }
+    }
 }

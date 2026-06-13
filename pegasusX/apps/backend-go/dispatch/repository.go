@@ -2,13 +2,11 @@ package dispatch
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"google.golang.org/api/iterator"
 )
 
@@ -62,9 +60,11 @@ func (r *Repository) FetchDispatchable(ctx context.Context, params FetchParams) 
 	        FROM Orders o
 	        JOIN Retailers r ON o.RetailerId = r.RetailerId
 	        WHERE o.SupplierId = @supplierId
-	          AND o.Status IN ('PENDING', 'LOADED')
 	          AND (o.RouteId IS NULL OR o.RouteId = '')
-	          AND (o.ManifestId IS NULL OR o.ManifestId = '')`
+	          AND (o.ManifestId IS NULL OR o.ManifestId = '')` + dispatchableEligibilitySQL
+
+	queryParams["clearedEntryTypes"] = clearedPaymentEntryTypes
+	queryParams["clearedSessionStatuses"] = clearedPaymentSessionStatuses
 
 	if warehouseID := strings.TrimSpace(params.WarehouseID); warehouseID != "" {
 		sql += " AND o.WarehouseId = @warehouseId"
@@ -89,9 +89,16 @@ func (r *Repository) FetchDispatchable(ctx context.Context, params FetchParams) 
 	defer iter.Stop()
 
 	results := make([]DispatchableOrder, 0, 8)
+	scratches := make([]volumeEnrichRow, 0, 8)
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
+			if err := enrichDispatchableVolumes(ctx, r.client, scratches); err != nil {
+				return nil, err
+			}
+			for _, scratch := range scratches {
+				results = append(results, *scratch.Order)
+			}
 			return results, nil
 		}
 		if err != nil {
@@ -117,29 +124,9 @@ func (r *Repository) FetchDispatchable(ctx context.Context, params FetchParams) 
 		); err != nil {
 			return nil, fmt.Errorf("scan dispatchable order: %w", err)
 		}
-		current.VolumeVU = estimateVolumeVU(lineItemsRaw)
-		results = append(results, current)
+		scratches = append(scratches, volumeEnrichRow{
+			Order:        &current,
+			LineItemsRaw: lineItemsRaw,
+		})
 	}
-}
-
-func estimateVolumeVU(lineItemsRaw []byte) float64 {
-	if len(lineItemsRaw) == 0 {
-		return 1
-	}
-	var items []order.LineItem
-	if err := json.Unmarshal(lineItemsRaw, &items); err != nil || len(items) == 0 {
-		return 1
-	}
-	var total float64
-	for _, item := range items {
-		qty := float64(item.Quantity)
-		if qty <= 0 {
-			qty = 1
-		}
-		total += qty
-	}
-	if total <= 0 {
-		return 1
-	}
-	return total
 }

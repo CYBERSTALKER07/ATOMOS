@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun InventoryScreen(
     api: WarehouseApi,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var items by remember { mutableStateOf<List<InventoryItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -50,7 +50,7 @@ fun InventoryScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Inventory") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } } },
                 actions = {
                     FilterChip(
                         selected = lowOnly,

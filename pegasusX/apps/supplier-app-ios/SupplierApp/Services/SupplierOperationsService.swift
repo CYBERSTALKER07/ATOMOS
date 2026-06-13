@@ -51,8 +51,16 @@ enum SupplierOperationsService {
         try await APIClient.shared.post("v1/supplier/dispatch/preview", body: body)
     }
 
-    static func executeDispatch(body: [String: String]) async throws {
-        try await APIClient.shared.postVoid("v1/supplier/dispatch/execute", body: body)
+    static func executeDispatch(warehouseId: String? = nil) async throws {
+        var query: [String: String] = [:]
+        if let warehouseId, !warehouseId.isEmpty {
+            query["warehouse_id"] = warehouseId
+        }
+        try await APIClient.shared.postVoid(
+            "v1/supplier/dispatch/execute",
+            body: ["mode": "AUTO"],
+            query: query
+        )
     }
 
     static func pricingRules() async throws -> SupplierPricingRule {
@@ -75,6 +83,10 @@ enum SupplierOperationsService {
 
     static func fleetOrders() async throws -> [SupplierFleetOrderRow] {
         try await APIClient.shared.get("v1/supplier/fleet/orders")
+    }
+
+    static func fleetLiveMap() async throws -> SupplierFleetLiveMapResponse {
+        try await APIClient.shared.get("v1/supplier/fleet/live-map")
     }
 
     static func wsSession() async throws -> SupplierWsSessionResponse {
@@ -101,16 +113,49 @@ enum SupplierOperationsService {
         return try await APIClient.shared.get("v1/payment/ledger", query: query)
     }
 
+    static func paymentSettlementAuthority() async throws -> SettlementAuthorityResponse {
+        try await APIClient.shared.get("v1/payment/settlement/authority", query: ["group_limit": "200"])
+    }
+
+    static func paymentReconciliationMismatches() async throws -> ReconciliationMismatchResponse {
+        try await APIClient.shared.get(
+            "v1/payment/reconciliation/mismatches",
+            query: ["group_limit": "200", "mismatch_threshold_minor": "1"]
+        )
+    }
+
+    static func orgMembers() async throws -> [SupplierOrgMember] {
+        let resp: SupplierOrgMembersResponse = try await APIClient.shared.get("v1/supplier/org/members")
+        return resp.items
+    }
+
+    static func createOrgMember(_ request: SupplierOrgMemberCreateRequest, idempotencyKey: String) async throws -> [SupplierOrgMember] {
+        let resp: SupplierOrgMembersResponse = try await APIClient.shared.post(
+            "v1/supplier/org/members",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
+        return resp.items
+    }
+
     static func triggerReplenishment() async throws -> SupplierReplenishmentTriggerResponse {
         try await APIClient.shared.postEmpty("v1/supplier/replenishment/trigger")
     }
 
-    static func createFleetDriver(_ request: FleetDriverCreateRequest) async throws -> FleetDriversResponse {
-        try await APIClient.shared.post("v1/supplier/fleet/drivers", body: request)
+    static func createFleetDriver(_ request: FleetDriverCreateRequest, idempotencyKey: String) async throws -> FleetDriversResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/fleet/drivers",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
     }
 
-    static func createFleetVehicle(_ request: FleetVehicleCreateRequest) async throws -> FleetVehiclesResponse {
-        try await APIClient.shared.post("v1/supplier/fleet/vehicles", body: request)
+    static func createFleetVehicle(_ request: FleetVehicleCreateRequest, idempotencyKey: String) async throws -> FleetVehiclesResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/fleet/vehicles",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
     }
 
     static func updateProfile(_ request: SupplierProfileUpdateRequest) async throws -> SupplierProfile {
@@ -129,20 +174,36 @@ enum SupplierOperationsService {
         try await APIClient.shared.postVoid("v1/supplier/orders/vet", body: body)
     }
 
-    static func aiRecommendations() async throws -> [String: String] { // placeholder
-        try await APIClient.shared.get("v1/supplier/ai/recommendations")
+    static func aiRecommendations(status: String? = nil, limit: Int = 50) async throws -> SupplierAIRecommendationsResponse {
+        var query: [String: String] = ["limit": String(limit)]
+        if let status, !status.isEmpty, status.uppercased() != "ALL" {
+            query["status"] = status
+        }
+        return try await APIClient.shared.get("v1/supplier/ai/recommendations", query: query)
     }
 
-    static func recordAiRecommendationDecision(body: [String: String]) async throws {
-        try await APIClient.shared.postVoid("v1/supplier/ai/recommendations", body: body)
+    static func recordAiRecommendationDecision(
+        _ request: SupplierAIRecommendationDecisionRequest,
+        idempotencyKey: String
+    ) async throws -> SupplierAIRecommendationDecisionResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/ai/recommendations",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
     }
 
     static func issuePaymentBypass(body: [String: String]) async throws {
         try await APIClient.shared.postVoid("v1/supplier/orders/payment-bypass", body: body)
     }
 
-    static func approveEarlyComplete(body: [String: String]) async throws {
-        try await APIClient.shared.postVoid("v1/supplier/route/approve-early-complete", body: body)
+    static func approveEarlyComplete(driverId: String) async throws {
+        let key = "supplier-approve-early-complete:\(driverId)"
+        try await APIClient.shared.postVoid(
+            "v1/supplier/route/approve-early-complete",
+            body: ApproveEarlyCompleteRequest(driverId: driverId),
+            idempotencyKey: key
+        )
     }
 
     static func empathyAdoption() async throws -> [String: String] { // placeholder

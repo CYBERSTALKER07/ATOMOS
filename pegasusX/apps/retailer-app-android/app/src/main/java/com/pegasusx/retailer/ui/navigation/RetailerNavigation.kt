@@ -65,6 +65,7 @@ import com.pegasusx.retailer.ui.screens.catalog.CatalogScreen
 import com.pegasusx.retailer.ui.screens.catalog.CategorySuppliersScreen
 import com.pegasusx.retailer.ui.screens.dashboard.DashboardScreen
 import com.pegasusx.retailer.ui.screens.orders.OrdersScreen
+import com.pegasusx.retailer.ui.screens.procurement.ProcurementScreen
 import com.pegasusx.retailer.ui.screens.suppliers.MySuppliersScreen
 import com.pegasusx.retailer.ui.screens.analytics.AnalyticsScreen
 import com.pegasusx.retailer.ui.screens.autoorder.AutoOrderScreen
@@ -127,8 +128,7 @@ fun RetailerNavigation(
                                 }
                             }
                             com.pegasusx.retailer.ui.components.SidebarDestination.PROCUREMENT -> {
-                                currentTab = PegasusTab.CATALOG
-                                navController.navigate(PegasusTab.CATALOG.name) {
+                                navController.navigate("PROCUREMENT") {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
                                 }
@@ -316,11 +316,9 @@ fun RetailerNavigation(
                                 }
                             },
                             onOpenProcurement = {
-                                currentTab = PegasusTab.CATALOG
-                                navController.navigate(PegasusTab.CATALOG.name) {
+                                navController.navigate("PROCUREMENT") {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
-                                    restoreState = true
                                 }
                             },
                             onOpenProfile = {
@@ -420,6 +418,7 @@ fun RetailerNavigation(
                 }
                 composable("CART") { Box(Modifier.fillMaxSize()) { CartScreen(viewModel = cartViewModel) } }
                 composable("ANALYTICS") { Box(Modifier.fillMaxSize()) { AnalyticsScreen() } }
+                composable("PROCUREMENT") { Box(Modifier.fillMaxSize()) { ProcurementScreen() } }
                 composable("AUTO_ORDER") { Box(Modifier.fillMaxSize()) { AutoOrderScreen() } }
                 composable("NOTIFICATIONS") {
                     Box(Modifier.fillMaxSize()) {
@@ -526,8 +525,7 @@ fun RetailerNavigation(
                             }
                         }
                         com.pegasusx.retailer.ui.components.SidebarDestination.PROCUREMENT -> {
-                            currentTab = PegasusTab.CATALOG
-                            navController.navigate(PegasusTab.CATALOG.name) {
+                            navController.navigate("PROCUREMENT") {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true
                             }

@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ReturnsScreen(
     api: WarehouseApi,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var items by remember { mutableStateOf<List<ReturnItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -44,7 +44,7 @@ fun ReturnsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Returns") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } } },
                 actions = { IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") } },
             )
         },

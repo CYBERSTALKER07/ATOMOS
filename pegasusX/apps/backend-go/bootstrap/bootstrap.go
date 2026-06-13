@@ -38,9 +38,11 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
+	"github.com/pegasusx/pegasusx/apps/backend-go/storage"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
@@ -83,6 +85,8 @@ type Config struct {
 	GlobalPayWebhookSecret          string
 	AdyenWebhookSecret              string
 	StripeWebhookSecret             string
+	PaymeWebhookSecret              string
+	ClickWebhookSecret              string
 	AirwallexDirectExecutionEnabled bool
 
 	TestingMode bool // bypasses strict-mode checks for infra that cannot be mocked
@@ -104,7 +108,9 @@ type Config struct {
 	MaxSuppliers         int
 
 	OptimizerBaseURL string
+	RoutingOSRMURL   string
 	InternalAPIKey   string
+	GCSBucketName    string
 }
 
 // App holds every long-lived singleton. Wire new app-wide dependencies here,
@@ -187,6 +193,8 @@ func LoadConfig() (*Config, error) {
 		GlobalPayWebhookSecret:          envOr("GLOBAL_PAY_WEBHOOK_SECRET", "dev-global-pay-secret"),
 		AdyenWebhookSecret:              envOr("ADYEN_WEBHOOK_SECRET", "dev-adyen-secret"),
 		StripeWebhookSecret:             envOr("STRIPE_WEBHOOK_SECRET", "dev-stripe-secret"),
+		PaymeWebhookSecret:              envOr("PAYME_WEBHOOK_SECRET", "dev-payme-secret"),
+		ClickWebhookSecret:              envOr("CLICK_WEBHOOK_SECRET", "dev-click-secret"),
 		AirwallexDirectExecutionEnabled: envBool("AIRWALLEX_DIRECT_EXECUTION_ENABLED", false),
 		SeedSupplierName:                envOr("SEED_SUPPLIER_NAME", "pegasusX Supplier"),
 		SeedSupplierCountry:             envOr("SEED_SUPPLIER_COUNTRY", "UZ"),
@@ -202,7 +210,9 @@ func LoadConfig() (*Config, error) {
 		AllowAuthBypass:                 envBool("ALLOW_AUTH_BYPASS", false),
 		MaxSuppliers:                    envInt("MAX_SUPPLIERS", 10),
 		OptimizerBaseURL:                envOr("OPTIMIZER_BASE_URL", "http://localhost:8081"),
+		RoutingOSRMURL:                  envOr("ROUTING_OSRM_URL", ""),
 		InternalAPIKey:                  envOr("INTERNAL_API_KEY", "dev-internal-key"),
+		GCSBucketName:                   envOr("GCS_BUCKET_NAME", ""),
 	}
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET required")
@@ -224,9 +234,14 @@ func LoadConfig() (*Config, error) {
 // downstream packages depend only on the interfaces, not the implementations.
 func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	log := slog.Default()
+	outboundCircuits := NewOutboundCircuits()
 	ws.SetAllowedOrigins(cfg.WebSocketAllowedOrigins)
 	if cfg.RequireInfraAdapters {
 		log.Info("strict infra adapter mode enabled")
+	}
+
+	if err := storage.InitGCS(ctx, cfg.GCSBucketName); err != nil {
+		log.Warn("gcs init failed; catalog image uploads use placeholders", "err", err)
 	}
 
 	cacheBackend := cache.Backend(cache.NewInMemoryBackend())
@@ -281,6 +296,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	relayStore := outbox.Store(memoryOutboxStore)
 	outboxAppender := outboxEventAppender(memoryOutboxStore)
 	var spannerClient *spanner.Client
+	var manifestStore *manifest.Store
+	var routeGeometryBuilder *routing.GeometryBuilder
 	outboxPublisher := outbox.Publisher(&loggingOutboxPublisher{log: log})
 	cleanup := make([]func(), 0, 3)
 	if client, store, err := tryNewSpannerOutboxStore(ctx, cfg); err != nil {
@@ -296,6 +313,13 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			client.Close()
 		})
 		log.Info("spanner outbox store enabled", "database", spannerDatabasePath(cfg))
+		manifestStore = manifest.NewStore(spannerClient)
+		osrmClient := routing.NewOSRMClient(cfg.RoutingOSRMURL, outboundCircuits.OSRM)
+		routeGeometryBuilder = routing.NewGeometryBuilder(osrmClient)
+		manifestStore.SetGeometryBuilder(routeGeometryBuilder)
+		if osrmClient != nil {
+			log.Info("OSRM routing enabled", "base_url", cfg.RoutingOSRMURL)
+		}
 	}
 	kafkaEnabled := false
 	if kafkaPublisher, err := newKafkaRuntimePublisher(cfg.KafkaBrokers, outbox.KafkaPublisherConfig{}); err != nil {
@@ -506,6 +530,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		JWTSecret:       cfg.JWTSecret,
 		Handoff:         handoffEngine,
 	})
+	orderSvc.SetManifestStore(manifestStore)
 	var optimizerCli *optimizerclient.Client
 	if strings.TrimSpace(cfg.OptimizerBaseURL) != "" && strings.TrimSpace(cfg.InternalAPIKey) != "" {
 		optimizerCli = optimizerclient.New(cfg.OptimizerBaseURL, cfg.InternalAPIKey)
@@ -514,8 +539,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	dispatchCounters := &plan.SourceCounters{}
 
 	supplierSvc.SetPortalOps(supplier.PortalOpsConfig{
-		Spanner:          spannerClient,
-		SupplierHub:      supplierHub,
+		Spanner:              spannerClient,
+		ManifestStore:        manifestStore,
+		RouteGeometryBuilder: routeGeometryBuilder,
+		SupplierHub:          supplierHub,
 		OptimizerClient:  optimizerCli,
 		PlanCounters:     dispatchCounters,
 		FallbackDepotLat: cfg.DeliveryZoneCenterLat,
@@ -554,29 +581,31 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		JWTIssuer:     cfg.JWTIssuer,
 	})
 	payloadSvc := payload.NewService(payload.ServiceConfig{
-		Repo:        payloadRepo,
-		Cache:       cacheClient,
-		SupplierHub: supplierHub,
-		PayloadHub:  payloadHub,
-		DriverHub:   driverHub,
-		NotifSvc:    notifSvc,
-		Log:         log,
-		SupplierID:  supplierSeed.SupplierID,
-		Currency:    cfg.SeedSupplierCurrency,
-		JWTSecret:   cfg.JWTSecret,
-		JWTIssuer:   cfg.JWTIssuer,
+		Repo:          payloadRepo,
+		Cache:         cacheClient,
+		SupplierHub:   supplierHub,
+		PayloadHub:    payloadHub,
+		DriverHub:     driverHub,
+		NotifSvc:      notifSvc,
+		Log:           log,
+		SupplierID:    supplierSeed.SupplierID,
+		Currency:      cfg.SeedSupplierCurrency,
+		JWTSecret:     cfg.JWTSecret,
+		JWTIssuer:     cfg.JWTIssuer,
+		ManifestStore: manifest.NewStore(spannerClient),
 	})
 	payloadSvc.SetPortalManifestLister(&supplier.ManifestLister{Service: supplierSvc})
 	payloadSvc.WarmManifestCache(ctx)
 	factorySvc.WarmManifestCache(ctx)
 	var driverOrderList driver.DriverOrderQuery
 	var driverOrderGet driver.DriverOrderGetQuery
+	var driverRouteGeometry driver.RouteGeometryLookup
 	var driverDepart driver.DepartFn
 	var driverReturnComplete driver.ReturnCompleteFn
 	if spannerClient != nil {
 		driverOrderList = driverOrderListQuery(spannerClient)
 		driverOrderGet = driverOrderGetQuery(spannerClient)
-		manifestStore := manifest.NewStore(spannerClient)
+		driverRouteGeometry = driverRouteGeometryQuery(spannerClient, routeGeometryBuilder)
 		driverDepart = func(ctx context.Context, driverID string) (driver.DepartResult, bool, error) {
 			departed, ok, err := manifestStore.DepartDriver(ctx, driverID, time.Now().UTC())
 			if err != nil || !ok {
@@ -606,6 +635,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		NotifSvc:       notifAdapter,
 		OrderList:      driverOrderList,
 		OrderGet:       driverOrderGet,
+		RouteGeometry:  driverRouteGeometry,
 		Depart:         driverDepart,
 		ReturnComplete: driverReturnComplete,
 		ManifestTokens: func(ctx context.Context, orderIDs []string) map[string]string {
@@ -665,6 +695,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		GlobalPayWebhookSecret:          cfg.GlobalPayWebhookSecret,
 		AdyenWebhookSecret:              cfg.AdyenWebhookSecret,
 		StripeWebhookSecret:             cfg.StripeWebhookSecret,
+		PaymeWebhookSecret:              cfg.PaymeWebhookSecret,
+		ClickWebhookSecret:              cfg.ClickWebhookSecret,
 		AirwallexDirectExecutionEnabled: cfg.AirwallexDirectExecutionEnabled,
 		Log:                             log,
 	})
@@ -689,15 +721,18 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		whOpsVehicles = warehouseOpsVehiclesQuery(spannerClient)
 	}
 	warehouseSvc := warehouse.NewService(warehouse.ServiceConfig{
-		Repo:             warehouseRepo,
-		Planner:          orderSvc,
-		AnalyticsQuery:   warehouseAnalytics,
-		OpsOrders:        whOpsOrders,
-		OpsDrivers:       whOpsDrivers,
-		OpsVehicles:      whOpsVehicles,
-		Cache:            cacheClient,
-		Spanner:          spannerClient,
-		SupplierHub:      supplierHub,
+		Repo:                 warehouseRepo,
+		Planner:              orderSvc,
+		AnalyticsQuery:       warehouseAnalytics,
+		OpsOrders:            whOpsOrders,
+		OpsDrivers:           whOpsDrivers,
+		OpsVehicles:          whOpsVehicles,
+		Cache:                cacheClient,
+		Spanner:              spannerClient,
+		ManifestStore:        manifestStore,
+		RouteGeometryBuilder: routeGeometryBuilder,
+		Locations:            driverLocations,
+		SupplierHub:          supplierHub,
 		WarehouseHub:     warehouseHub,
 		Log:              log,
 		SupplierID:       supplierSeed.SupplierID,
@@ -723,7 +758,6 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		}
 		log.Info("reliability middleware enabled")
 	}
-	outboundCircuits := NewOutboundCircuits()
 	infraHealth := buildInfraHealthChecks(redisEnabled, cacheBackend, spannerClient)
 
 	policyRepo := platform.PolicyRepository(platform.NewMemoryPolicyRepository())
@@ -1021,6 +1055,95 @@ func driverOrderGetQuery(client *spanner.Client) driver.DriverOrderGetQuery {
 	}
 }
 
+func driverRouteGeometryQuery(client *spanner.Client, builder *routing.GeometryBuilder) driver.RouteGeometryLookup {
+	return func(ctx context.Context, driverID, routeID string, opts driver.RouteGeometryOptions) (routing.RouteGeometry, bool, error) {
+		driverID = strings.TrimSpace(driverID)
+		routeID = strings.TrimSpace(routeID)
+		if driverID == "" || routeID == "" {
+			return routing.RouteGeometry{}, false, nil
+		}
+
+		ownStmt := spanner.Statement{
+			SQL: `SELECT COUNT(*) FROM Orders
+			      WHERE DriverId = @did AND RouteId = @rid
+			        AND Status NOT IN ('COMPLETED', 'CANCELLED')`,
+			Params: map[string]interface{}{"did": driverID, "rid": routeID},
+		}
+		ownIter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, ownStmt)
+		defer ownIter.Stop()
+		ownRow, err := ownIter.Next()
+		if err != nil {
+			return routing.RouteGeometry{}, false, fmt.Errorf("route ownership check: %w", err)
+		}
+		var owned int64
+		if err := ownRow.Columns(&owned); err != nil {
+			return routing.RouteGeometry{}, false, fmt.Errorf("route ownership scan: %w", err)
+		}
+		if owned == 0 {
+			return routing.RouteGeometry{}, false, nil
+		}
+
+		waypoints, waypointErr := routing.WaypointsForDriverRoute(ctx, client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)), driverID, routeID)
+		if waypointErr != nil {
+			return routing.RouteGeometry{}, false, waypointErr
+		}
+
+		if opts.RerouteFrom != nil {
+			waypoints = routing.WaypointsAhead(*opts.RerouteFrom, waypoints, 0)
+			var geometry routing.RouteGeometry
+			if builder != nil {
+				geometry = builder.BuildDetail(ctx, routeID, waypoints, opts.IncludeSteps)
+			} else {
+				geometry = routing.BuildDenseRouteGeometry(routeID, waypoints)
+			}
+			geometry.Source = "reroute_" + geometry.Source
+			return geometry, true, nil
+		}
+
+		storedStmt := spanner.Statement{
+			SQL: `SELECT EncodedRoutePolyline, RouteGeometrySource, StopCount
+			      FROM SupplierTruckManifests
+			      WHERE DriverId = @did AND RouteId = @rid
+			        AND EncodedRoutePolyline IS NOT NULL
+			        AND EncodedRoutePolyline != ''
+			      ORDER BY UpdatedAt DESC
+			      LIMIT 1`,
+			Params: map[string]interface{}{"did": driverID, "rid": routeID},
+		}
+		storedIter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, storedStmt)
+		storedRow, storedErr := storedIter.Next()
+		storedIter.Stop()
+		if storedErr == nil {
+			var encoded string
+			var source spanner.NullString
+			var stopCount int64
+			if err := storedRow.Columns(&encoded, &source, &stopCount); err == nil && encoded != "" {
+				geometry, decodeErr := routing.GeometryFromStoredPolyline(
+					routeID,
+					encoded,
+					source.StringVal,
+					int(stopCount),
+				)
+				if decodeErr == nil {
+					if opts.IncludeSteps && builder != nil && len(waypoints) >= 2 {
+						detail := builder.BuildDetail(ctx, routeID, waypoints, true)
+						geometry.Steps = detail.Steps
+					}
+					return geometry, true, nil
+				}
+			}
+		}
+
+		var geometry routing.RouteGeometry
+		if builder != nil {
+			geometry = builder.BuildDetail(ctx, routeID, waypoints, opts.IncludeSteps)
+		} else {
+			geometry = routing.BuildDenseRouteGeometry(routeID, waypoints)
+		}
+		return geometry, true, nil
+	}
+}
+
 // warehouseAnalyticsCountQuery returns a WarehouseAnalyticsQuery backed by
 // stale Spanner reads.
 func warehouseAnalyticsCountQuery(client *spanner.Client) warehouse.WarehouseAnalyticsQuery {
@@ -1088,7 +1211,8 @@ func warehouseOpsDriversQuery(client *spanner.Client) warehouse.WarehouseOpsDriv
 		stmt := spanner.Statement{
 			SQL: `SELECT d.DriverId, d.Name, COALESCE(d.Phone, ''), d.IsActive,
 			             COALESCE(d.VehicleId, ''), COALESCE(v.VehicleClass, 'CLASS_B'),
-			             COALESCE(v.MaxVolumeVU, 150.0), COALESCE(v.IsActive, FALSE)
+			             COALESCE(v.MaxVolumeVU, 150.0), COALESCE(v.IsActive, FALSE),
+			             COALESCE(v.Label, v.LicensePlate, '')
 			      FROM Drivers@{FORCE_INDEX=Idx_Drivers_ByHomeNode} d
 			      LEFT JOIN Vehicles v ON d.VehicleId = v.VehicleId
 			      WHERE d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = @wid
@@ -1098,6 +1222,7 @@ func warehouseOpsDriversQuery(client *spanner.Client) warehouse.WarehouseOpsDriv
 		iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 		defer iter.Stop()
 		var drivers []warehouse.PortalDriver
+		driverIDs := make([]string, 0, 8)
 		for {
 			row, err := iter.Next()
 			if err == iterator.Done {
@@ -1117,6 +1242,7 @@ func warehouseOpsDriversQuery(client *spanner.Client) warehouse.WarehouseOpsDriv
 				&d.VehicleClass,
 				&d.MaxVolumeVU,
 				&d.VehicleIsActive,
+				&d.VehicleLabel,
 			); err != nil {
 				return nil, fmt.Errorf("warehouse ops drivers scan: %w", err)
 			}
@@ -1134,11 +1260,59 @@ func warehouseOpsDriversQuery(client *spanner.Client) warehouse.WarehouseOpsDriv
 				d.TruckStatus = "AVAILABLE"
 			}
 			drivers = append(drivers, d)
+			driverIDs = append(driverIDs, d.DriverID)
+		}
+		if len(driverIDs) > 0 {
+			busy, err := warehouseDriversOnActiveManifests(ctx, client, warehouseID, driverIDs)
+			if err != nil {
+				return nil, err
+			}
+			for i := range drivers {
+				if busy[drivers[i].DriverID] {
+					drivers[i].TruckStatus = "IN_TRANSIT"
+				}
+			}
 		}
 		if drivers == nil {
 			drivers = []warehouse.PortalDriver{}
 		}
 		return drivers, nil
+	}
+}
+
+func warehouseDriversOnActiveManifests(ctx context.Context, client *spanner.Client, warehouseID string, driverIDs []string) (map[string]bool, error) {
+	out := make(map[string]bool, len(driverIDs))
+	if client == nil || warehouseID == "" || len(driverIDs) == 0 {
+		return out, nil
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT DISTINCT DriverId
+		      FROM SupplierTruckManifests@{FORCE_INDEX=Idx_SupplierManifests_ByWarehouse}
+		      WHERE WarehouseId = @wid
+		        AND DriverId IN UNNEST(@driverIds)
+		        AND State IN ('DRAFT', 'LOADING', 'SEALED', 'DISPATCHED')`,
+		Params: map[string]any{
+			"wid":       warehouseID,
+			"driverIds": driverIDs,
+		},
+	}
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return out, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("warehouse active manifest drivers: %w", err)
+		}
+		var driverID string
+		if err := row.Columns(&driverID); err != nil {
+			return nil, fmt.Errorf("warehouse active manifest drivers scan: %w", err)
+		}
+		if driverID != "" {
+			out[driverID] = true
+		}
 	}
 }
 

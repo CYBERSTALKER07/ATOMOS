@@ -1,7 +1,12 @@
 package com.pegasusx.driver.ui.screens.manifest
 
+import android.annotation.SuppressLint
+import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.pegasusx.driver.data.local.OrderDao
 import com.pegasusx.driver.data.model.AvailabilityRequest
 import com.pegasusx.driver.data.model.DepartRequest
@@ -11,20 +16,32 @@ import com.pegasusx.driver.data.model.OrderEntity
 import com.pegasusx.driver.data.model.OrderLineItem
 import com.pegasusx.driver.data.model.OrderState
 import com.pegasusx.driver.data.model.PendingCollection
+import com.pegasusx.driver.data.model.RouteCoordinate
+import com.pegasusx.driver.data.model.RouteStep
 import com.pegasusx.driver.data.model.ReorderStopsRequest
+import com.pegasusx.driver.data.telemetry.NavigationCue
+import com.pegasusx.driver.data.telemetry.NavigationCueAnnouncer
+import com.pegasusx.driver.data.telemetry.RouteDeviationAction
+import com.pegasusx.driver.data.telemetry.RouteDeviationTracker
+import com.pegasusx.driver.data.telemetry.advanceNavigationStepIndex
+import com.pegasusx.driver.data.telemetry.resolveNavigationCue
+import com.pegasusx.driver.data.telemetry.shouldAnnounceManeuverAdvance
 import com.pegasusx.driver.data.model.ReturnCompleteRequest
+import com.pegasusx.driver.data.model.UpdateOrderDuringDeliveryRequest
 import com.pegasusx.driver.data.remote.ConnectionState
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.data.remote.TokenHolder
 import com.pegasusx.driver.data.remote.shouldRefreshManifestOnWsEvent
 import com.pegasusx.driver.data.repository.ProfileRepository
+import com.pegasusx.driver.ui.screens.map.resolveActiveOrder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -47,10 +64,15 @@ data class ManifestUiState(
     val wsConnectionState: ConnectionState = ConnectionState.DISCONNECTED,
     val lastWsRefreshAt: Long? = null,
     val pendingCollections: List<PendingCollection> = emptyList(),
+    val routeGeometry: List<RouteCoordinate> = emptyList(),
+    val routeSteps: List<RouteStep> = emptyList(),
+    val navigationCue: NavigationCue? = null,
+    val deliveryEdgeMessage: String? = null,
 )
 
 @HiltViewModel
 class ManifestViewModel @Inject constructor(
+    private val app: Application,
     private val api: DriverApi,
     private val orderDao: OrderDao,
     private val json: Json,
@@ -60,6 +82,11 @@ class ManifestViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(ManifestUiState())
     val state: StateFlow<ManifestUiState> = _state.asStateFlow()
+    private var navigationStepIndex = 0
+    private val navigationCueAnnouncer = NavigationCueAnnouncer(app)
+    private val routeDeviationTracker = RouteDeviationTracker()
+    private var isReroutingRoute = false
+    private val fusedClient = LocationServices.getFusedLocationProviderClient(app)
 
     init {
         loadManifest()
@@ -125,6 +152,7 @@ class ManifestViewModel @Inject constructor(
                     isReturning = derivedStatus == "RETURNING",
                     error = null,
                 )
+                loadRouteGeometry(resolveActiveOrder(orders)?.routeId)
             } catch (e: Exception) {
                 // Fallback to Room cache
                 try {
@@ -144,6 +172,105 @@ class ManifestViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun loadRouteGeometry(routeId: String?) {
+        if (routeId.isNullOrBlank()) {
+            navigationStepIndex = 0
+            navigationCueAnnouncer.stop()
+            routeDeviationTracker.reset()
+            _state.value = _state.value.copy(
+                routeGeometry = emptyList(),
+                routeSteps = emptyList(),
+                navigationCue = null,
+            )
+            return
+        }
+        viewModelScope.launch {
+            runCatching { api.getRouteGeometry(routeId) }
+                .onSuccess { response ->
+                    navigationStepIndex = 0
+                    navigationCueAnnouncer.stop()
+                    routeDeviationTracker.reset()
+                    _state.value = _state.value.copy(
+                        routeGeometry = response.coordinates,
+                        routeSteps = response.steps,
+                        navigationCue = null,
+                    )
+                }
+                .onFailure {
+                    navigationStepIndex = 0
+                    navigationCueAnnouncer.stop()
+                    routeDeviationTracker.reset()
+                    _state.value = _state.value.copy(
+                        routeGeometry = emptyList(),
+                        routeSteps = emptyList(),
+                        navigationCue = null,
+                    )
+                }
+        }
+    }
+
+    fun checkRouteDeviation(routeId: String?, lat: Double, lng: Double) {
+        if (routeId.isNullOrBlank() || isReroutingRoute) {
+            return
+        }
+        val action = routeDeviationTracker.evaluate(
+            nowMs = System.currentTimeMillis(),
+            lat = lat,
+            lng = lng,
+            polyline = _state.value.routeGeometry,
+        )
+        if (action == RouteDeviationAction.Reroute) {
+            rerouteRouteGeometry(routeId, lat, lng)
+        }
+    }
+
+    private fun rerouteRouteGeometry(routeId: String, lat: Double, lng: Double) {
+        isReroutingRoute = true
+        viewModelScope.launch {
+            runCatching {
+                api.getRouteGeometry(
+                    routeId = routeId,
+                    includeSteps = true,
+                    fromLat = lat,
+                    fromLng = lng,
+                    reroute = true,
+                )
+            }.onSuccess { response ->
+                navigationStepIndex = 0
+                navigationCueAnnouncer.stop()
+                routeDeviationTracker.reset()
+                _state.value = _state.value.copy(
+                    routeGeometry = response.coordinates,
+                    routeSteps = response.steps,
+                    navigationCue = null,
+                )
+            }.onFailure {
+                routeDeviationTracker.reset()
+            }
+            isReroutingRoute = false
+        }
+    }
+
+    fun updateNavigationCue(lat: Double?, lng: Double?) {
+        val steps = _state.value.routeSteps
+        if (lat == null || lng == null || steps.isEmpty()) {
+            _state.value = _state.value.copy(navigationCue = null)
+            return
+        }
+        val previousIndex = navigationStepIndex
+        navigationStepIndex = advanceNavigationStepIndex(navigationStepIndex, steps, lat, lng)
+        val cue = resolveNavigationCue(steps, navigationStepIndex, lat, lng)
+        if (cue != null && shouldAnnounceManeuverAdvance(previousIndex, navigationStepIndex)) {
+            navigationCueAnnouncer.onManeuverAdvanced(cue)
+        }
+        _state.value = _state.value.copy(navigationCue = cue)
+    }
+
+    override fun onCleared() {
+        navigationCueAnnouncer.shutdown()
+        super.onCleared()
     }
 
     fun transitionOrder(orderId: String, newState: OrderState) {
@@ -226,6 +353,7 @@ class ManifestViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 api.reorderStops(ReorderStopsRequest(routeId = routeId, orderSequence = orderSequence))
+                loadRouteGeometry(routeId)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = "Reorder failed: ${e.message}")
                 loadManifest() // Revert to server state
@@ -241,6 +369,42 @@ class ManifestViewModel @Inject constructor(
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     error = e.message ?: "Early complete request failed",
+                )
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun updateOrderDuringDelivery(orderId: String) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(deliveryEdgeMessage = null, error = null)
+            try {
+                val location = fusedClient.getCurrentLocation(
+                    Priority.PRIORITY_HIGH_ACCURACY,
+                    CancellationTokenSource().token,
+                ).await()
+                if (location == null) {
+                    _state.value = _state.value.copy(error = "GPS unavailable for in-delivery update")
+                    return@launch
+                }
+                val response = api.updateOrderDuringDelivery(
+                    UpdateOrderDuringDeliveryRequest(
+                        orderId = orderId,
+                        latitude = location.latitude,
+                        longitude = location.longitude,
+                    )
+                )
+                if (!response.success) {
+                    _state.value = _state.value.copy(
+                        error = response.message.ifBlank { "In-delivery update rejected" },
+                    )
+                    return@launch
+                }
+                _state.value = _state.value.copy(deliveryEdgeMessage = response.message)
+                loadManifest()
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    error = e.message ?: "In-delivery update failed",
                 )
             }
         }

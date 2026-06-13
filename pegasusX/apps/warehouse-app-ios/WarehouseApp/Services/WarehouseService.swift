@@ -114,8 +114,8 @@ enum WarehouseService {
         try await api.post("v1/warehouse/ops/dispatch/preview", body: body)
     }
 
-    static func executeDispatch(body: [String: String]) async throws {
-        try await api.postVoid("v1/warehouse/ops/dispatch/execute", body: body)
+    static func executeDispatch(body: DispatchExecuteRequest) async throws -> DispatchExecuteResponse {
+        try await api.post("v1/warehouse/ops/dispatch/execute", body: body)
     }
 
     static func supplyRequests(state: String? = nil) async throws -> [WarehouseSupplyRequest] {
@@ -219,5 +219,24 @@ enum WarehouseService {
 
     static func overflowOrder(orderId: String, body: WarehouseOrderMutationRequest) async throws -> WarehouseOrderMutationResponse {
         try await api.post("v1/warehouse/ops/orders/\(orderId)/overflow", body: body)
+    }
+
+    static func fleetLiveMap(warehouseId: String? = nil) async throws -> WarehouseFleetLiveMapResponse {
+        var query: [String: String] = [:]
+        if let warehouseId, !warehouseId.isEmpty {
+            query["warehouse_id"] = warehouseId
+        }
+        return try await api.get("v1/warehouse/ops/fleet/live-map", query: query)
+    }
+
+    static func dispatchSettings() async throws -> DispatchSettingsResponse {
+        try await api.get("v1/warehouse/ops/dispatch/settings")
+    }
+
+    static func patchDispatchSettings(enabled: Bool) async throws {
+        try await api.patchVoid(
+            "v1/warehouse/ops/dispatch/settings",
+            body: DispatchSettingsPatchRequest(autoDispatchEnabled: enabled)
+        )
     }
 }

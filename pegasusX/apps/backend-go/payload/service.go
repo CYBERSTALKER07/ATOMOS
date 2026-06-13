@@ -16,6 +16,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -60,6 +61,7 @@ type Service struct {
 	seq            int64
 
 	portalLister PortalManifestLister
+	manifestStore *manifest.Store
 }
 
 // ServiceConfig is the constructor input.
@@ -78,6 +80,7 @@ type ServiceConfig struct {
 	JWTIssuer  string
 	Now        func() time.Time
 	FirebaseVerifier auth.FirebaseVerifier
+	ManifestStore *manifest.Store
 }
 
 type payloaderTruckWire struct {
@@ -214,6 +217,7 @@ func NewService(c ServiceConfig) *Service {
 		jwtIssuer:      c.JWTIssuer,
 		now:            c.Now,
 		firebaseVerifier: c.FirebaseVerifier,
+		manifestStore:    c.ManifestStore,
 		manifestOrders: make(map[string][]ManifestOrder),
 		overflowCount:  make(map[string]int64),
 	}
@@ -1463,6 +1467,13 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if s.manifestStore != nil {
+		if geomErr := s.manifestStore.PersistRouteGeometryForManifest(r.Context(), manifestID, "manifest_sealed"); geomErr != nil {
+			s.log.WarnContext(r.Context(), "manifest route geometry persist failed",
+				"manifest_id", manifestID, "err", geomErr)
+		}
+	}
+
 	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID))
 	s.broadcastPayloadEvent(r.Context(), events.EventManifestSealed, map[string]any{
 		"manifest_id": manifestID,
@@ -1550,6 +1561,13 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "manifest_seal_failed"})
 			return
+		}
+
+		if s.manifestStore != nil {
+			if geomErr := s.manifestStore.PersistRouteGeometryForManifest(r.Context(), req.ManifestID, "manifest_sealed"); geomErr != nil {
+				s.log.WarnContext(r.Context(), "manifest route geometry persist failed",
+					"manifest_id", req.ManifestID, "err", geomErr)
+			}
 		}
 
 		s.invalidatePayloadKeys(r.Context(), payloadManifestKey(req.ManifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID))

@@ -35,7 +35,7 @@ private fun vehicleUnavailableReasonLabel(reason: String): String =
 @Composable
 fun VehiclesScreen(
     api: WarehouseApi,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var vehicles by remember { mutableStateOf<List<Vehicle>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -87,7 +87,7 @@ fun VehiclesScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Vehicles") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } } },
                 actions = {
                     IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") }
                     IconButton(onClick = { showCreate = true }) { Icon(Icons.Default.Add, "Add") }

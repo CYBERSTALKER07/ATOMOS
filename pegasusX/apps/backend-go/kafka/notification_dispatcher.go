@@ -81,7 +81,8 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleOrderAssignmentEvent(ctx, msg.Value, traceID)
 	case events.EventRetailerRegistered:
 		return d.handleRetailerRegistered(ctx, msg.Value, traceID)
-	case events.EventSupplierUpdated, events.EventSupplierBillingConfigured:
+	case events.EventSupplierUpdated, events.EventSupplierBillingConfigured,
+		events.EventSupplierProfileUpdated, events.EventSupplierBillingUpdated, events.EventSupplierMemberAdded:
 		return d.handleSupplierUpdated(ctx, msg.Value, traceID)
 	case events.EventShopClosed, events.EventShopClosedResponse, events.EventShopClosedEscalated, events.EventShopClosedResolved:
 		return d.handleShopClosedEvent(ctx, msg.Value, traceID)

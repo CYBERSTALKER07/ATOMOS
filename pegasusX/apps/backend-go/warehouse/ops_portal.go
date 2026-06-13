@@ -1,7 +1,9 @@
 package warehouse
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,8 +14,11 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/httppagination"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
+	"google.golang.org/api/iterator"
 )
 
 // warehouseDispatchExecuteManifestState is written on execute; payloader seals before depart.
@@ -27,6 +32,7 @@ type PortalDriver struct {
 	TruckStatus              string  `json:"truck_status"`
 	IsActive                 bool    `json:"is_active"`
 	VehicleID                string  `json:"vehicle_id,omitempty"`
+	VehicleLabel             string  `json:"vehicle_label,omitempty"`
 	VehicleClass             string  `json:"vehicle_class,omitempty"`
 	MaxVolumeVU              float64 `json:"max_volume_vu,omitempty"`
 	VehicleIsActive          bool    `json:"vehicle_is_active,omitempty"`
@@ -71,19 +77,20 @@ type portalManifest struct {
 }
 
 type portalRetailer struct {
-	RetailerID   string `json:"retailer_id"`
-	BusinessName string `json:"business_name"`
-	OrderCount   int64  `json:"order_count"`
-	RevenueUZS   int64  `json:"revenue_uzs"`
-	LastOrderAt  string `json:"last_order_at,omitempty"`
+	RetailerID    string `json:"retailer_id"`
+	BusinessName  string `json:"business_name"`
+	TotalOrders   int64  `json:"total_orders"`
+	TotalRevenue  int64  `json:"total_revenue"`
+	LastOrderDate string `json:"last_order_date,omitempty"`
 }
 
-type portalReturn struct {
-	ReturnID    string `json:"return_id"`
+type portalReturnItem struct {
+	LineItemID  string `json:"line_item_id"`
 	OrderID     string `json:"order_id"`
 	ProductName string `json:"product_name"`
 	Quantity    int    `json:"quantity"`
 	Status      string `json:"status"`
+	UpdatedAt   string `json:"updated_at,omitempty"`
 }
 
 type portalOrder struct {
@@ -94,6 +101,9 @@ type portalOrder struct {
 }
 
 func (s *Service) ensurePortalSeed() {
+	if !s.portalSeedEnabled() {
+		return
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.portalSeeded {
@@ -119,10 +129,10 @@ func (s *Service) ensurePortalSeed() {
 	}
 	s.manifests = []portalManifest{{ManifestID: "mf-1", DriverName: "Jamshid R.", VehicleLabel: "Van 12", StopCount: 6, CreatedAt: now}}
 	s.retailers = []portalRetailer{
-		{RetailerID: "ret-1", BusinessName: "Corner Shop 12", OrderCount: 42, RevenueUZS: 128000000, LastOrderAt: now},
-		{RetailerID: "ret-2", BusinessName: "Family Market", OrderCount: 18, RevenueUZS: 56000000, LastOrderAt: now},
+		{RetailerID: "ret-1", BusinessName: "Corner Shop 12", TotalOrders: 42, TotalRevenue: 128000000, LastOrderDate: now},
+		{RetailerID: "ret-2", BusinessName: "Family Market", TotalOrders: 18, TotalRevenue: 56000000, LastOrderDate: now},
 	}
-	s.returns = []portalReturn{{ReturnID: "retn-1", OrderID: "ord-wh-1", ProductName: "Mineral Water 1.5L", Quantity: 2, Status: "PENDING"}}
+	s.returns = []portalReturnItem{{LineItemID: "retn-1", OrderID: "ord-wh-1", ProductName: "Mineral Water 1.5L", Quantity: 2, Status: "PENDING", UpdatedAt: now}}
 	s.portalSeeded = true
 }
 
@@ -206,10 +216,12 @@ func (s *Service) handleOpsDashboard(w http.ResponseWriter, r *http.Request) {
 		s.mu.RUnlock()
 	}
 
-	inventoryList, _ := s.repo.GetInventoryList(r.Context(), "wh-1")
-	for _, row := range inventoryList {
-		if row.Quantity < 20 {
-			lowStock++
+	if s.repo != nil && whID != "" {
+		inventoryList, _ := s.repo.GetInventoryList(r.Context(), whID)
+		for _, row := range inventoryList {
+			if row.Quantity < 20 {
+				lowStock++
+			}
 		}
 	}
 	s.mu.RLock()
@@ -236,11 +248,20 @@ func (s *Service) handleOpsDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
-	s.ensurePortalSeed()
+	whID := warehouseIDFromRequest(r)
+	if whID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_required"})
+		return
+	}
+	if s.repo == nil {
+		s.ensurePortalSeed()
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "inventory_unavailable"})
+		return
+	}
 	switch r.Method {
 	case http.MethodGet:
 		lowOnly := strings.EqualFold(r.URL.Query().Get("low_stock"), "true")
-		inventoryList, err := s.repo.GetInventoryList(r.Context(), "wh-1")
+		inventoryList, err := s.repo.GetInventoryList(r.Context(), whID)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_fetch_inventory"})
 			return
@@ -272,7 +293,7 @@ func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer r.Body.Close()
-		err := s.repo.UpdateInventoryQuantity(r.Context(), "wh-1", body.ProductID, body.Quantity, func(buf outbox.TxnBuffer) error {
+		err := s.repo.UpdateInventoryQuantity(r.Context(), whID, body.ProductID, body.Quantity, func(buf outbox.TxnBuffer) error {
 			// omit event emission for simple patch if none is required
 			return nil
 		})
@@ -346,6 +367,30 @@ func (s *Service) handleOpsOrderDetail(w http.ResponseWriter, r *http.Request, o
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	whID := warehouseIDFromRequest(r)
+	if detail, ok := s.loadOpsOrderDetailFromSpanner(r.Context(), whID, orderID); ok {
+		writeJSON(w, http.StatusOK, detail)
+		return
+	}
+	if s.opsOrders != nil {
+		rows, err := s.opsOrders(r.Context(), whID, 200)
+		if err == nil {
+			for _, row := range rows {
+				if row.OrderID != orderID {
+					continue
+				}
+				writeJSON(w, http.StatusOK, map[string]any{
+					"order_id":      row.OrderID,
+					"retailer_name": "Retailer " + row.RetailerID,
+					"state":         strings.ToUpper(row.Status),
+					"total_uzs":     int(row.TotalMinor / 100),
+					"line_items":    []map[string]any{},
+				})
+				return
+			}
+		}
+	}
+	s.ensurePortalSeed()
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, row := range s.orders {
@@ -364,6 +409,72 @@ func (s *Service) handleOpsOrderDetail(w http.ResponseWriter, r *http.Request, o
 		return
 	}
 	writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
+}
+
+func (s *Service) loadOpsOrderDetailFromSpanner(ctx context.Context, warehouseID, orderID string) (map[string]any, bool) {
+	if s.spannerClient == nil || strings.TrimSpace(orderID) == "" {
+		return nil, false
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT o.OrderId, o.RetailerId, o.Status, o.TotalMinor, o.LineItemsJson, COALESCE(r.Name, '')
+		      FROM Orders o
+		      LEFT JOIN Retailers r ON o.RetailerId = r.RetailerId
+		      WHERE o.OrderId = @orderId
+		        AND (@warehouseId = '' OR o.WarehouseId = @warehouseId)
+		      LIMIT 1`,
+		Params: map[string]any{
+			"orderId":     orderID,
+			"warehouseId": strings.TrimSpace(warehouseID),
+		},
+	}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return nil, false
+	}
+	if err != nil {
+		s.log.WarnContext(ctx, "ops order detail query failed", "order_id", orderID, "err", err)
+		return nil, false
+	}
+
+	var (
+		retailerID   string
+		status       string
+		totalMinor   int64
+		lineItemsRaw []byte
+		retailerName string
+	)
+	if err := row.Columns(&orderID, &retailerID, &status, &totalMinor, &lineItemsRaw, &retailerName); err != nil {
+		s.log.WarnContext(ctx, "ops order detail scan failed", "order_id", orderID, "err", err)
+		return nil, false
+	}
+	if strings.TrimSpace(retailerName) == "" {
+		retailerName = "Retailer " + retailerID
+	}
+
+	lineItems := make([]map[string]any, 0)
+	if len(lineItemsRaw) > 0 {
+		var parsed []order.LineItem
+		if err := json.Unmarshal(lineItemsRaw, &parsed); err == nil {
+			for _, item := range parsed {
+				lineItems = append(lineItems, map[string]any{
+					"product_id":   item.SKU,
+					"product_name": item.Name,
+					"quantity":     item.Quantity,
+					"unit_price":   int(item.UnitPrice / 100),
+				})
+			}
+		}
+	}
+
+	return map[string]any{
+		"order_id":      orderID,
+		"retailer_name": retailerName,
+		"state":         strings.ToUpper(status),
+		"total_uzs":     int(totalMinor / 100),
+		"line_items":    lineItems,
+	}, true
 }
 
 func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Request) {
@@ -449,6 +560,7 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 					"name":          d.Name,
 					"truck_status":  d.TruckStatus,
 					"vehicle_id":    d.VehicleID,
+					"vehicle_label": d.VehicleLabel,
 					"vehicle_class": d.VehicleClass,
 					"max_volume_vu": d.MaxVolumeVU,
 				}
@@ -470,6 +582,7 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 				"name":          d.Name,
 				"truck_status":  d.TruckStatus,
 				"vehicle_id":    d.VehicleID,
+				"vehicle_label": d.VehicleLabel,
 				"vehicle_class": d.VehicleClass,
 				"max_volume_vu": d.MaxVolumeVU,
 			}
@@ -515,6 +628,10 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 		job := plan.BuildSolveJob(r.Context(), s.supplierID, whID, depot, dispatchRows, fleet)
 		solve := plan.RunSolvePreview(r.Context(), s.optimizerClient, s.planCounters, job)
 		if len(solve.ProposedRoutes) > 0 {
+			routing.AttachRouteGeometryToProposedRoutes(r.Context(), s.routeGeometryBuilder, routing.LatLng{
+				Lat: depot.Lat,
+				Lng: depot.Lng,
+			}, solve.ProposedRoutes)
 			response["proposed_routes"] = solve.ProposedRoutes
 		}
 		if solve.OptimizerSource != "" {
@@ -531,15 +648,23 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 }
 
 type DispatchExecuteResult struct {
-	Status           string                 `json:"status"`
-	SupplierID       string                 `json:"supplier_id"`
-	WarehouseID      string                 `json:"warehouse_id,omitempty"`
-	ManifestsCreated int                    `json:"manifests_created"`
-	OrdersAssigned   int                    `json:"orders_assigned"`
-	OptimizerSource  string                 `json:"optimizer_source,omitempty"`
-	Warnings         []string               `json:"warnings,omitempty"`
-	Manifests        []DispatchExecuteRoute `json:"manifests"`
-	Orphans          []string               `json:"orphan_order_ids,omitempty"`
+	Status           string                      `json:"status"`
+	SupplierID       string                      `json:"supplier_id"`
+	WarehouseID      string                      `json:"warehouse_id,omitempty"`
+	ManifestsCreated int                         `json:"manifests_created"`
+	OrdersAssigned   int                         `json:"orders_assigned"`
+	OptimizerSource  string                      `json:"optimizer_source,omitempty"`
+	Warnings         []string                    `json:"warnings,omitempty"`
+	CapacityWarnings []DispatchCapacityWarning   `json:"capacity_warnings,omitempty"`
+	Manifests        []DispatchExecuteRoute      `json:"manifests"`
+	Orphans          []string                    `json:"orphan_order_ids,omitempty"`
+}
+
+type DispatchCapacityWarning struct {
+	DriverID       string  `json:"driver_id"`
+	LoadedVU       float64 `json:"loaded_vu"`
+	MaxVolumeVU    float64 `json:"max_volume_vu"`
+	EffectiveMaxVU float64 `json:"effective_max_vu"`
 }
 
 type DispatchExecuteRoute struct {
@@ -565,8 +690,9 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	sid := s.resolveDispatchSupplierID(r.Context(), whID)
 
 	var req struct {
-		Mode   string                 `json:"mode"`
-		Routes []DispatchExecuteRoute `json:"routes"`
+		Mode          string                 `json:"mode"`
+		Routes        []DispatchExecuteRoute `json:"routes"`
+		ForceCapacity bool                   `json:"force_capacity"`
 	}
 	if r.Body != nil {
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -574,10 +700,11 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	}
 
 	out, err := s.ExecuteDispatch(r.Context(), DispatchExecuteRequest{
-		WarehouseID: whID,
-		SupplierID:  sid,
-		Mode:        req.Mode,
-		Routes:      req.Routes,
+		WarehouseID:   whID,
+		SupplierID:    sid,
+		Mode:          req.Mode,
+		Routes:        req.Routes,
+		ForceCapacity: req.ForceCapacity,
 	})
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "dispatch execute failed", "warehouse_id", whID, "err", err)
@@ -746,17 +873,92 @@ func (s *Service) handleAssignVehicle(w http.ResponseWriter, r *http.Request, dr
 		return
 	}
 	defer r.Body.Close()
+
+	vehicleID := strings.TrimSpace(req.VehicleID)
+	whID := warehouseIDFromRequest(r)
+	if s.spannerClient != nil {
+		if err := s.persistDriverVehicleAssignment(r.Context(), whID, driverID, vehicleID); err != nil {
+			if strings.Contains(err.Error(), "driver_not_found") {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "driver_not_found"})
+				return
+			}
+			s.log.ErrorContext(r.Context(), "assign vehicle failed", "driver_id", driverID, "vehicle_id", vehicleID, "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "assign_vehicle_failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "assigned", "driver_id": driverID, "vehicle_id": vehicleID})
+		return
+	}
+
+	s.ensurePortalSeed()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i := range s.drivers {
 		if s.drivers[i].DriverID != driverID {
 			continue
 		}
-		s.drivers[i].VehicleID = strings.TrimSpace(req.VehicleID)
+		s.drivers[i].VehicleID = vehicleID
 		writeJSON(w, http.StatusOK, map[string]string{"status": "assigned", "driver_id": driverID})
 		return
 	}
 	writeJSON(w, http.StatusNotFound, map[string]string{"error": "driver_not_found"})
+}
+
+func (s *Service) persistDriverVehicleAssignment(ctx context.Context, warehouseID, driverID, vehicleID string) error {
+	if s.spannerClient == nil {
+		return fmt.Errorf("spanner_not_configured")
+	}
+	now := s.now().UTC()
+	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, err := txn.ReadRow(ctx, "Drivers", spanner.Key{driverID}, []string{"HomeNodeType", "HomeNodeId"})
+		if err != nil {
+			return fmt.Errorf("driver_not_found: %w", err)
+		}
+		var homeNodeType, homeNodeID string
+		if err := row.Columns(&homeNodeType, &homeNodeID); err != nil {
+			return err
+		}
+		if warehouseID != "" && (!strings.EqualFold(homeNodeType, "WAREHOUSE") || homeNodeID != warehouseID) {
+			return fmt.Errorf("driver_not_found")
+		}
+
+		mutations := []*spanner.Mutation{
+			spanner.UpdateMap("Drivers", map[string]any{
+				"DriverId":  driverID,
+				"VehicleId": nullableWarehouseString(vehicleID),
+				"UpdatedAt": now,
+			}),
+		}
+		if vehicleID != "" {
+			clearStmt := spanner.Statement{
+				SQL: `SELECT DriverId FROM Drivers@{FORCE_INDEX=Idx_Drivers_ByHomeNode}
+				      WHERE HomeNodeType = 'WAREHOUSE' AND HomeNodeId = @wid AND VehicleId = @vid AND DriverId != @driverId`,
+				Params: map[string]any{"wid": homeNodeID, "vid": vehicleID, "driverId": driverID},
+			}
+			iter := txn.Query(ctx, clearStmt)
+			defer iter.Stop()
+			for {
+				row, err := iter.Next()
+				if err == iterator.Done {
+					break
+				}
+				if err != nil {
+					return err
+				}
+				var otherDriverID string
+				if err := row.Columns(&otherDriverID); err != nil {
+					return err
+				}
+				mutations = append(mutations, spanner.UpdateMap("Drivers", map[string]any{
+					"DriverId":  otherDriverID,
+					"VehicleId": spanner.NullString{},
+					"UpdatedAt": now,
+				}))
+			}
+		}
+		return txn.BufferWrite(mutations)
+	})
+	return err
 }
 
 func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
@@ -865,7 +1067,11 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 		whID := warehouseIDFromRequest(r)
 		if s.spannerClient != nil && whID != "" {
 			stmt := spanner.Statement{
-				SQL:    `SELECT UserId, Name, Role FROM SupplierUsers WHERE HomeNodeId = @wh_id AND HomeNodeType = "WAREHOUSE"`,
+				SQL: `SELECT UserId, Name, Phone, SupplierRole
+				      FROM SupplierUsers
+				      WHERE AssignedWarehouseId = @wh_id
+				        AND IsActive = true
+				        AND SupplierRole IN ('WAREHOUSE', 'WAREHOUSE_ADMIN', 'WAREHOUSE_STAFF', 'PAYLOADER')`,
 				Params: map[string]any{"wh_id": whID},
 			}
 			iter := s.spannerClient.Single().Query(r.Context(), stmt)
@@ -877,7 +1083,7 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				var st portalStaff
-				if err := row.Columns(&st.StaffID, &st.Name, &st.Role); err == nil {
+				if err := row.Columns(&st.StaffID, &st.Name, &st.Phone, &st.Role); err == nil {
 					staff = append(staff, st)
 				}
 			}
@@ -955,11 +1161,22 @@ func (s *Service) HandleOpsManifests(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) HandleOpsCRM(w http.ResponseWriter, r *http.Request) {
-	s.ensurePortalSeed()
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	whID := warehouseIDFromRequest(r)
+	if s.spannerClient != nil && !s.portalSeedEnabled() {
+		retailers, err := s.loadWarehouseCRMFromSpanner(r.Context(), whID)
+		if err != nil {
+			s.log.WarnContext(r.Context(), "warehouse crm query failed", "err", err, "warehouse_id", whID)
+			writeJSON(w, http.StatusOK, map[string]any{"retailers": []portalRetailer{}})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"retailers": retailers})
+		return
+	}
+	s.ensurePortalSeed()
 	s.mu.RLock()
 	retailers := append([]portalRetailer(nil), s.retailers...)
 	s.mu.RUnlock()
@@ -967,15 +1184,19 @@ func (s *Service) HandleOpsCRM(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) HandleOpsReturns(w http.ResponseWriter, r *http.Request) {
-	s.ensurePortalSeed()
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	if s.spannerClient != nil && !s.portalSeedEnabled() {
+		writeJSON(w, http.StatusOK, map[string]any{"items": []portalReturnItem{}})
+		return
+	}
+	s.ensurePortalSeed()
 	s.mu.RLock()
-	returns := append([]portalReturn(nil), s.returns...)
+	items := append([]portalReturnItem(nil), s.returns...)
 	s.mu.RUnlock()
-	writeJSON(w, http.StatusOK, map[string]any{"returns": returns})
+	writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
 func (s *Service) HandleOpsAnalytics(w http.ResponseWriter, r *http.Request) {
@@ -1025,12 +1246,24 @@ func (s *Service) HandleOpsAnalytics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) HandleOpsTreasury(w http.ResponseWriter, r *http.Request) {
-	s.ensurePortalSeed()
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	whID := warehouseIDFromRequest(r)
 	view := strings.TrimSpace(r.URL.Query().Get("view"))
+	if view == "" {
+		view = "overview"
+	}
+	if s.spannerClient != nil && !s.portalSeedEnabled() {
+		if view == "invoices" {
+			writeJSON(w, http.StatusOK, map[string]any{"invoices": []any{}})
+			return
+		}
+		writeJSON(w, http.StatusOK, s.loadWarehouseTreasuryOverview(r.Context(), whID))
+		return
+	}
+	s.ensurePortalSeed()
 	if view == "invoices" {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"invoices": []map[string]any{
@@ -1040,9 +1273,9 @@ func (s *Service) HandleOpsTreasury(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"invoiced_uzs":    120000000,
-		"paid_uzs":        98000000,
-		"outstanding_uzs": 22000000,
+		"total_invoiced":    int64(120000000),
+		"total_paid":        int64(98000000),
+		"total_outstanding": int64(22000000),
 	})
 }
 
@@ -1121,5 +1354,82 @@ func supplyRequestIOSPayload(req SupplyRequest) map[string]any {
 		"created_by":      req.RequestedBy,
 		"created_at":      req.CreatedAt,
 		"updated_at":      req.UpdatedAt,
+	}
+}
+
+func (s *Service) loadWarehouseCRMFromSpanner(ctx context.Context, warehouseID string) ([]portalRetailer, error) {
+	if s.spannerClient == nil {
+		return nil, fmt.Errorf("spanner_not_configured")
+	}
+	warehouseID = strings.TrimSpace(warehouseID)
+	if warehouseID == "" {
+		return []portalRetailer{}, nil
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT o.RetailerId, COALESCE(r.Name, ''), COUNT(*), COALESCE(SUM(o.TotalMinor), 0), MAX(o.UpdatedAt)
+		      FROM Orders@{FORCE_INDEX=Idx_Orders_ByWarehouseCreated} o
+		      LEFT JOIN Retailers r ON o.RetailerId = r.RetailerId
+		      WHERE o.WarehouseId = @warehouseId
+		      GROUP BY o.RetailerId, r.Name
+		      ORDER BY MAX(o.UpdatedAt) DESC
+		      LIMIT 100`,
+		Params: map[string]any{"warehouseId": warehouseID},
+	}
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.MaxStaleness(15*time.Second)).Query(ctx, stmt)
+	defer iter.Stop()
+
+	retailers := make([]portalRetailer, 0, 16)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("warehouse crm query: %w", err)
+		}
+		var rec portalRetailer
+		var lastOrder spanner.NullTime
+		if err := row.Columns(&rec.RetailerID, &rec.BusinessName, &rec.TotalOrders, &rec.TotalRevenue, &lastOrder); err != nil {
+			return nil, fmt.Errorf("warehouse crm scan: %w", err)
+		}
+		if lastOrder.Valid {
+			rec.LastOrderDate = lastOrder.Time.UTC().Format(time.RFC3339)
+		}
+		retailers = append(retailers, rec)
+	}
+	return retailers, nil
+}
+
+func (s *Service) loadWarehouseTreasuryOverview(ctx context.Context, warehouseID string) map[string]any {
+	var totalInvoiced, totalPaid, totalOutstanding int64
+	if s.analyticsQuery != nil && strings.TrimSpace(warehouseID) != "" {
+		counts, err := s.analyticsQuery(ctx, warehouseID)
+		if err == nil {
+			totalInvoiced = counts.TotalRevenue
+			totalPaid = counts.TotalRevenue
+		} else {
+			s.log.WarnContext(ctx, "treasury analytics query failed", "err", err, "warehouse_id", warehouseID)
+		}
+	}
+	if s.spannerClient != nil && strings.TrimSpace(warehouseID) != "" {
+		stmt := spanner.Statement{
+			SQL: `SELECT COALESCE(SUM(TotalMinor), 0)
+			      FROM Orders@{FORCE_INDEX=Idx_Orders_ByWarehouseCreated}
+			      WHERE WarehouseId = @warehouseId
+			        AND Status IN ('PENDING', 'LOADED', 'IN_TRANSIT', 'ARRIVED')`,
+			Params: map[string]any{"warehouseId": warehouseID},
+		}
+		iter := s.spannerClient.Single().WithTimestampBound(spanner.MaxStaleness(15*time.Second)).Query(ctx, stmt)
+		defer iter.Stop()
+		row, err := iter.Next()
+		if err == nil {
+			_ = row.Columns(&totalOutstanding)
+		}
+	}
+	return map[string]any{
+		"total_invoiced":    totalInvoiced,
+		"total_paid":        totalPaid,
+		"total_outstanding": totalOutstanding,
 	}
 }

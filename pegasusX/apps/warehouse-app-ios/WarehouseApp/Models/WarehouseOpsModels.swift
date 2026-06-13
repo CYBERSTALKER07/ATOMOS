@@ -85,6 +85,24 @@ struct ReplenishmentInsightActionResponse: Decodable {
     }
 }
 
+struct DispatchSettingsResponse: Decodable {
+    let warehouseId: String
+    let autoDispatchEnabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case warehouseId = "warehouse_id"
+        case autoDispatchEnabled = "auto_dispatch_enabled"
+    }
+}
+
+struct DispatchSettingsPatchRequest: Encodable {
+    let autoDispatchEnabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case autoDispatchEnabled = "auto_dispatch_enabled"
+    }
+}
+
 struct OpsFinancialsResponse: Decodable {
     let warehouseId: String
     let period: String
@@ -129,5 +147,86 @@ struct RefreshTokenRequest: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case refreshToken = "refresh_token"
+    }
+}
+
+struct RouteCoordinateWire: Decodable {
+    let lat: Double
+    let lng: Double
+}
+
+struct RouteGeometryWire: Decodable {
+    let routeId: String?
+    let encodedPolyline: String?
+    let coordinates: [RouteCoordinateWire]
+    let source: String
+    let stopCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case routeId = "route_id"
+        case encodedPolyline = "encoded_polyline"
+        case coordinates, source
+        case stopCount = "stop_count"
+    }
+}
+
+struct WarehouseDriverLocationWire: Decodable {
+    let driverId: String
+    let supplierId: String?
+    let lat: Double
+    let lng: Double
+    let latitude: Double
+    let longitude: Double
+    let reportedAt: String
+    let receivedAt: String
+    let staleAfterSeconds: Int
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case supplierId = "supplier_id"
+        case lat, lng, latitude, longitude
+        case reportedAt = "reported_at"
+        case receivedAt = "received_at"
+        case staleAfterSeconds = "stale_after_seconds"
+    }
+
+    var resolvedLatitude: Double { latitude != 0 ? latitude : lat }
+    var resolvedLongitude: Double { longitude != 0 ? longitude : lng }
+}
+
+struct WarehouseFleetLiveRoute: Decodable, Identifiable {
+    var id: String { manifestId }
+    let manifestId: String
+    let routeId: String
+    let driverId: String
+    let driverName: String?
+    let manifestState: String
+    let routeGeometry: RouteGeometryWire?
+    let driverLocation: WarehouseDriverLocationWire?
+    let liveLocationAvailable: Bool
+    let locationStale: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case routeId = "route_id"
+        case driverId = "driver_id"
+        case driverName = "driver_name"
+        case manifestState = "manifest_state"
+        case routeGeometry = "route_geometry"
+        case driverLocation = "driver_location"
+        case liveLocationAvailable = "live_location_available"
+        case locationStale = "location_stale"
+    }
+}
+
+struct WarehouseFleetLiveMapResponse: Decodable {
+    let routes: [WarehouseFleetLiveRoute]
+    let warehouseId: String
+    let fetchedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case routes
+        case warehouseId = "warehouse_id"
+        case fetchedAt = "fetched_at"
     }
 }

@@ -214,6 +214,8 @@ type Service struct {
 	globalPayWebhookSecret string
 	adyenWebhookSecret     string
 	stripeWebhookSecret    string
+	paymeWebhookSecret     string
+	clickWebhookSecret     string
 
 	log   *slog.Logger
 	now   func() time.Time
@@ -237,6 +239,8 @@ type ServiceConfig struct {
 	GlobalPayWebhookSecret string
 	AdyenWebhookSecret     string
 	StripeWebhookSecret    string
+	PaymeWebhookSecret     string
+	ClickWebhookSecret     string
 
 	Log   *slog.Logger
 	Now   func() time.Time
@@ -331,6 +335,12 @@ func NewService(c ServiceConfig) *Service {
 	if c.StripeWebhookSecret == "" {
 		c.StripeWebhookSecret = "dev-stripe-secret"
 	}
+	if c.PaymeWebhookSecret == "" {
+		c.PaymeWebhookSecret = "dev-payme-secret"
+	}
+	if c.ClickWebhookSecret == "" {
+		c.ClickWebhookSecret = "dev-click-secret"
+	}
 	if c.Execution == nil {
 		c.Execution = NewProviderExecutionRouter(ProviderExecutionRouterConfig{
 			AirwallexDirectExecutionEnabled: c.AirwallexDirectExecutionEnabled,
@@ -353,6 +363,8 @@ func NewService(c ServiceConfig) *Service {
 		globalPayWebhookSecret: c.GlobalPayWebhookSecret,
 		adyenWebhookSecret:     c.AdyenWebhookSecret,
 		stripeWebhookSecret:    c.StripeWebhookSecret,
+		paymeWebhookSecret:     c.PaymeWebhookSecret,
+		clickWebhookSecret:     c.ClickWebhookSecret,
 		log:                    c.Log,
 		now:                    c.Now,
 		newID:                  c.NewID,

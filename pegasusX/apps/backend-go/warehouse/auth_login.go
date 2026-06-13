@@ -1,14 +1,30 @@
 package warehouse
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/api/iterator"
 )
+
+type warehouseStaffRecord struct {
+	UserID              string
+	SupplierID          string
+	Name                string
+	Phone               string
+	PasswordHash        string
+	SupplierRole        string
+	AssignedWarehouseID string
+	IsActive            bool
+}
 
 // HandleWarehouseLogin authenticates warehouse staff (phone + PIN) for native clients.
 // POST /v1/auth/warehouse/login
@@ -20,87 +36,108 @@ func (s *Service) HandleWarehouseLogin(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var req struct {
-		Phone   string `json:"phone"`
-		PIN     string `json:"pin"`
-		IDToken string `json:"id_token"`
+		Phone    string `json:"phone"`
+		PIN      string `json:"pin"`
+		Password string `json:"password"`
+		IDToken  string `json:"id_token"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	idToken := strings.TrimSpace(req.IDToken)
 
+	var staff warehouseStaffRecord
+	var lookupPhone string
+
+	idToken := strings.TrimSpace(req.IDToken)
 	if idToken != "" && s.firebaseVerifier != nil {
-		claims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
+		fbClaims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
 		if err != nil {
 			s.log.Warn("firebase token verification failed", "err", err)
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_id_token"})
 			return
 		}
-		if claims.PhoneNumber == "" {
+		if fbClaims.PhoneNumber == "" {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "phone_number_missing_in_token"})
 			return
 		}
-		// In a real DB, check if warehouse staff with claims.PhoneNumber exists
-		// For scaffold, we check against the demo phone
-		expectPhone := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_PHONE"))
-		if expectPhone == "" {
-			expectPhone = "+998901000088"
-		}
-		if claims.PhoneNumber != expectPhone {
-			// Unregistered phone numbers are BLOCKED pending admin approval.
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
-			return
-		}
+		lookupPhone = fbClaims.PhoneNumber
 	} else {
-		phone := strings.TrimSpace(req.Phone)
-		pin := strings.TrimSpace(req.PIN)
-		if phone == "" || pin == "" {
+		lookupPhone = strings.TrimSpace(req.Phone)
+		secret := strings.TrimSpace(req.PIN)
+		if secret == "" {
+			secret = strings.TrimSpace(req.Password)
+		}
+		if lookupPhone == "" || secret == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "phone_and_pin_required"})
 			return
 		}
-
-		expectPhone := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_PHONE"))
-		if expectPhone == "" {
-			expectPhone = "+998901000088"
+		rec, found, err := s.lookupWarehouseStaffByPhone(r.Context(), lookupPhone)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "warehouse staff lookup failed", "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
+			return
 		}
-		expectPIN := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_PIN"))
-		if expectPIN == "" {
-			expectPIN = "1234"
-		}
-		if phone != expectPhone {
+		if !found {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
 			return
 		}
-		if pin != expectPIN {
+		if !verifyWarehouseStaffSecret(rec.PasswordHash, secret) {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
 			return
 		}
+		staff = rec
 	}
 
-	warehouseID := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_ID"))
+	if staff.UserID == "" {
+		rec, found, err := s.lookupWarehouseStaffByPhone(r.Context(), lookupPhone)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "warehouse staff lookup failed", "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
+			return
+		}
+		if !found {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
+			return
+		}
+		staff = rec
+	}
+
+	warehouseID := strings.TrimSpace(staff.AssignedWarehouseID)
 	if warehouseID == "" {
-		warehouseID = "wh-demo-1"
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_not_assigned"})
+		return
 	}
 	if s.jwtSecret == "" {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "jwt_not_configured"})
 		return
 	}
 
-	claims := auth.Claims{
-		Subject:      "wh-staff-demo",
+	supplierID := strings.TrimSpace(staff.SupplierID)
+	if supplierID == "" {
+		supplierID = s.supplierID
+	}
+
+	jwtClaims := auth.Claims{
+		Subject:      staff.UserID,
 		Role:         auth.RoleWarehouse,
-		SupplierID:   s.supplierID,
+		SupplierID:   supplierID,
+		SupplierRole: auth.Role(strings.TrimSpace(staff.SupplierRole)),
 		HomeNodeType: auth.HomeNodeWarehouse,
 		HomeNodeID:   warehouseID,
 		IsConfigured: true,
+		PhoneNumber:  staff.Phone,
 	}
-	token, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
+	if strings.EqualFold(staff.SupplierRole, string(auth.RoleWarehouseAdmin)) {
+		jwtClaims.SupplierRole = auth.RoleWarehouseAdmin
+	}
+
+	token, err := auth.Issue(jwtClaims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_token_failed"})
 		return
 	}
-	refresh, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 7 * 24 * time.Hour})
+	refresh, err := auth.Issue(jwtClaims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 7 * 24 * time.Hour})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_refresh_failed"})
 		return
@@ -110,9 +147,69 @@ func (s *Service) HandleWarehouseLogin(w http.ResponseWriter, r *http.Request) {
 		"token":         token,
 		"refresh_token": refresh,
 		"warehouse_id":  warehouseID,
-		"role":          string(auth.RoleWarehouse),
-		"name":          "Warehouse Demo",
+		"role":          string(jwtClaims.Role),
+		"name":          staff.Name,
 	})
+}
+
+func (s *Service) lookupWarehouseStaffByPhone(ctx context.Context, phone string) (warehouseStaffRecord, bool, error) {
+	phone = strings.TrimSpace(phone)
+	if phone == "" {
+		return warehouseStaffRecord{}, false, nil
+	}
+	if s.spannerClient == nil {
+		return warehouseStaffRecord{}, false, errors.New("spanner_not_configured")
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT UserId, SupplierId, Name, Phone, PasswordHash, SupplierRole, COALESCE(AssignedWarehouseId, ''), IsActive
+		      FROM SupplierUsers@{FORCE_INDEX=Idx_SupplierUsers_ByPhone}
+		      WHERE Phone = @phone
+		        AND IsActive = true
+		        AND SupplierRole IN ('WAREHOUSE', 'WAREHOUSE_ADMIN', 'WAREHOUSE_STAFF', 'PAYLOADER')
+		      LIMIT 1`,
+		Params: map[string]any{"phone": phone},
+	}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return warehouseStaffRecord{}, false, nil
+	}
+	if err != nil {
+		return warehouseStaffRecord{}, false, fmt.Errorf("query warehouse staff by phone: %w", err)
+	}
+
+	var rec warehouseStaffRecord
+	if err := row.Columns(
+		&rec.UserID,
+		&rec.SupplierID,
+		&rec.Name,
+		&rec.Phone,
+		&rec.PasswordHash,
+		&rec.SupplierRole,
+		&rec.AssignedWarehouseID,
+		&rec.IsActive,
+	); err != nil {
+		return warehouseStaffRecord{}, false, fmt.Errorf("scan warehouse staff: %w", err)
+	}
+	if !rec.IsActive {
+		return warehouseStaffRecord{}, false, nil
+	}
+	return rec, true, nil
+}
+
+func verifyWarehouseStaffSecret(storedHash, secret string) bool {
+	storedHash = strings.TrimSpace(storedHash)
+	secret = strings.TrimSpace(secret)
+	if storedHash == "" || secret == "" {
+		return false
+	}
+	if strings.HasPrefix(storedHash, "$2a$") || strings.HasPrefix(storedHash, "$2b$") || strings.HasPrefix(storedHash, "$2y$") {
+		return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(secret)) == nil
+	}
+	return storedHash == secret
 }
 
 // HandleWarehouseRefresh re-issues access tokens from a refresh JWT.

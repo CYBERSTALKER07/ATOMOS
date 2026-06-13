@@ -423,6 +423,18 @@ data class ProcurementOrderResponse(
     @SerialName("created_at") val createdAt: String? = null,
 )
 
+@Serializable
+data class ProcurementOrderRequest(
+    @SerialName("retailer_id") val retailerId: String,
+    @SerialName("items") val items: List<ProcurementOrderItem>,
+)
+
+@Serializable
+data class ProcurementOrderItem(
+    @SerialName("product_id") val productId: String,
+    @SerialName("quantity") val quantity: Int,
+)
+
 // ── AI Demand Forecast (iOS: DemandForecast) ──
 
 @Serializable

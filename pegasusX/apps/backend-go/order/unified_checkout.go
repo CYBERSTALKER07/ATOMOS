@@ -246,7 +246,7 @@ func (s *Service) authoritativeCheckoutLines(
 				UnitPrice: line.UnitPrice,
 			})
 		}
-		return lineItems, nil
+		return s.enrichLineItemVolumes(ctx, lineItems)
 	}
 	lineItems := make([]LineItem, 0, len(inputs))
 	for _, line := range inputs {
@@ -257,5 +257,5 @@ func (s *Service) authoritativeCheckoutLines(
 			UnitPrice: line.UnitPrice,
 		})
 	}
-	return lineItems, nil
+	return s.enrichLineItemVolumes(ctx, lineItems)
 }

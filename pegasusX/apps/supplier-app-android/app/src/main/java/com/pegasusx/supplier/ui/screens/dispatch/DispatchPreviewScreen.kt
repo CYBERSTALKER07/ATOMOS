@@ -25,6 +25,9 @@ fun DispatchPreviewScreen(ops: SupplierOperationsRepository, onBack: () -> Unit)
     var selectedWarehouseId by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var executing by remember { mutableStateOf(false) }
+    var executeMessage by remember { mutableStateOf<String?>(null) }
+    var showExecuteConfirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun load() {
@@ -104,8 +107,54 @@ fun DispatchPreviewScreen(ops: SupplierOperationsRepository, onBack: () -> Unit)
                         }
                     }
                 }
+                executeMessage?.let { msg ->
+                    Text(msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+                Button(
+                    onClick = { showExecuteConfirm = true },
+                    enabled = !loading && !executing && preview != null,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(if (executing) "Executing…" else "Execute auto-dispatch") }
                 OutlinedButton(onClick = { load() }, enabled = !loading) { Text("Refresh preview") }
             }
         }
+    }
+
+    if (showExecuteConfirm) {
+        AlertDialog(
+            onDismissRequest = { if (!executing) showExecuteConfirm = false },
+            title = { Text("Execute dispatch?") },
+            text = { Text("This assigns pending orders to available drivers. Confirm to proceed.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            executing = true
+                            executeMessage = null
+                            try {
+                                val resp = ops.executeDispatch(selectedWarehouseId)
+                                executeMessage = if (resp.isSuccessful) {
+                                    "Dispatch executed"
+                                } else {
+                                    "Execute failed (${resp.code()})"
+                                }
+                                if (resp.isSuccessful) load()
+                            } catch (e: Exception) {
+                                executeMessage = e.message
+                            } finally {
+                                executing = false
+                                showExecuteConfirm = false
+                            }
+                        }
+                    },
+                    enabled = !executing,
+                ) { Text("Confirm") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExecuteConfirm = false }, enabled = !executing) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }

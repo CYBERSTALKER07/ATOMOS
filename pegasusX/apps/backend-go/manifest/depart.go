@@ -80,7 +80,7 @@ func (s *Store) DepartDriver(ctx context.Context, driverID string, now time.Time
 			if !strings.EqualFold(o.Status, "LOADED") {
 				continue
 			}
-			mutations = append(mutations, spanner.InsertOrUpdateMap("Orders", map[string]any{
+			mutations = append(mutations, spanner.UpdateMap("Orders", map[string]any{
 				"OrderId":   o.OrderID,
 				"Status":    "IN_TRANSIT",
 				"UpdatedAt": spanner.CommitTimestamp,

@@ -26,7 +26,9 @@ const NAV: NavSection[] = [
       { href: "/dispatch", icon: "dispatch", label: "Dispatch" },
       { href: "/manifests", icon: "manifests", label: "Manifests" },
       { href: "/fleet", icon: "fleet", label: "Fleet" },
+      { href: "/fleet/orders", icon: "orders", label: "Fleet Orders" },
       { href: "/exceptions", icon: "warning", label: "Exceptions" },
+      { href: "/operations", icon: "dispatch", label: "Operations" },
     ],
   },
   {
@@ -46,6 +48,14 @@ const NAV: NavSection[] = [
       { href: "/warehouses", icon: "warehouse", label: "Warehouses" },
       { href: "/delivery-zones", icon: "global", label: "Delivery Zones" },
       { href: "/supply-lanes", icon: "fleet", label: "Supply Lanes" },
+      { href: "/geo-report", icon: "global", label: "Geo Report" },
+    ],
+  },
+  {
+    label: "Intelligence",
+    items: [
+      { href: "/analytics", icon: "overview", label: "Analytics" },
+      { href: "/ai/recommendations", icon: "overview", label: "AI Recommendations" },
     ],
   },
   {

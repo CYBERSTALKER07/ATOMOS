@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ManifestsScreen(
     api: WarehouseApi,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var manifests by remember { mutableStateOf<List<Manifest>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -44,7 +44,7 @@ fun ManifestsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Manifests") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } } },
                 actions = { IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") } },
             )
         },

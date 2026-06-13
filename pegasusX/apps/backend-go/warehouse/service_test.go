@@ -180,13 +180,17 @@ func TestHandleDispatchLock_AcquireReleaseSeamParity(t *testing.T) {
 	if repo.applyCalls != 1 {
 		t.Fatalf("expected 1 repo apply call after acquire, got %d", repo.applyCalls)
 	}
-	if len(repo.events) != 1 {
-		t.Fatalf("expected 1 outbox event after acquire, got %d", len(repo.events))
+	if len(repo.events) != 3 {
+		t.Fatalf("expected 3 outbox events after acquire, got %d", len(repo.events))
 	}
 
 	acquirePayload := decodeWarehouseOutboxPayload(t, repo.events[0])
 	if got, _ := acquirePayload["type"].(string); got != events.EventWarehouseDispatchLockChanged {
 		t.Fatalf("expected event type %q, got %q", events.EventWarehouseDispatchLockChanged, got)
+	}
+	freezeAcquirePayload := decodeWarehouseOutboxPayload(t, repo.events[1])
+	if got, _ := freezeAcquirePayload["type"].(string); got != events.EventFreezeLockAcquired {
+		t.Fatalf("expected event type %q, got %q", events.EventFreezeLockAcquired, got)
 	}
 	if got, _ := acquirePayload["action"].(string); got != "ACQUIRED" {
 		t.Fatalf("expected action ACQUIRED, got %q", got)
@@ -212,16 +216,20 @@ func TestHandleDispatchLock_AcquireReleaseSeamParity(t *testing.T) {
 	if repo.applyCalls != 2 {
 		t.Fatalf("expected 2 repo apply calls after release, got %d", repo.applyCalls)
 	}
-	if len(repo.events) != 2 {
-		t.Fatalf("expected 2 outbox events after release, got %d", len(repo.events))
+	if len(repo.events) != 6 {
+		t.Fatalf("expected 6 outbox events after release, got %d", len(repo.events))
 	}
 
-	releasePayload := decodeWarehouseOutboxPayload(t, repo.events[1])
+	releasePayload := decodeWarehouseOutboxPayload(t, repo.events[3])
 	if got, _ := releasePayload["type"].(string); got != events.EventWarehouseDispatchLockChanged {
 		t.Fatalf("expected event type %q, got %q", events.EventWarehouseDispatchLockChanged, got)
 	}
 	if got, _ := releasePayload["action"].(string); got != "RELEASED" {
 		t.Fatalf("expected action RELEASED, got %q", got)
+	}
+	freezeReleasePayload := decodeWarehouseOutboxPayload(t, repo.events[4])
+	if got, _ := freezeReleasePayload["type"].(string); got != events.EventFreezeLockReleased {
+		t.Fatalf("expected event type %q, got %q", events.EventFreezeLockReleased, got)
 	}
 	if got, _ := releasePayload["lock_id"].(string); got != lock.LockID {
 		t.Fatalf("expected lock_id %q, got %q", lock.LockID, got)
@@ -250,8 +258,14 @@ func TestHandleDispatchLock_ReleaseMissingReturnsNotFound(t *testing.T) {
 	}
 
 	outboxTypesAfterAcquire := warehouseOutboxEventTypes(repo.events)
-	if len(outboxTypesAfterAcquire) != 1 || outboxTypesAfterAcquire[0] != events.EventWarehouseDispatchLockChanged {
+	if len(outboxTypesAfterAcquire) != 3 {
 		t.Fatalf("unexpected outbox events after acquire: %#v", outboxTypesAfterAcquire)
+	}
+	if outboxTypesAfterAcquire[0] != events.EventWarehouseDispatchLockChanged {
+		t.Fatalf("expected first outbox event %q, got %q", events.EventWarehouseDispatchLockChanged, outboxTypesAfterAcquire[0])
+	}
+	if outboxTypesAfterAcquire[1] != events.EventFreezeLockAcquired {
+		t.Fatalf("expected freeze-lock acquire event, got %#v", outboxTypesAfterAcquire)
 	}
 	cacheCallsAfterAcquire := len(cacheBackend.deletedKeys)
 	supplierTypesAfterAcquire := warehouseWSMessageTypes(supplierConn.messages)

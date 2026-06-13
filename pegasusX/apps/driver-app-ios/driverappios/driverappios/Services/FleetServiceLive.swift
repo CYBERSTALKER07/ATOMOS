@@ -139,6 +139,36 @@ final class FleetServiceLive: FleetServiceProtocol {
         }
     }
 
+    func verifyHandshake(orderId: String, token: String, latitude: Double, longitude: Double) async throws -> VerifyHandshakeResponse {
+        try await api.verifyHandshake(
+            orderId: orderId,
+            token: token,
+            latitude: latitude,
+            longitude: longitude
+        )
+    }
+
+    func updateOrderDuringDelivery(orderId: String, latitude: Double, longitude: Double) async throws -> UpdateOrderDuringDeliveryResponse {
+        try await api.updateOrderDuringDelivery(
+            orderId: orderId,
+            latitude: latitude,
+            longitude: longitude
+        )
+    }
+
+    func markCreditDelivery(orderId: String, photoProofUrl: String? = nil) async throws -> [String: String] {
+        try await api.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl)
+    }
+
+    func splitPayment(orderId: String, cashMinor: Int64, cardMinor: Int64, currency: String? = nil) async throws -> SplitPaymentResponse {
+        try await api.splitPayment(
+            orderId: orderId,
+            cashMinor: cashMinor,
+            cardMinor: cardMinor,
+            currency: currency
+        )
+    }
+
     // MARK: - Offline Delivery Queue
 
     @MainActor

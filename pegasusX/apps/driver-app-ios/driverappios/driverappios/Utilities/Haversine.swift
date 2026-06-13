@@ -30,6 +30,28 @@ func haversineDistance(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D)
     return R * c
 }
 
+/// Projects a point along [bearingDegrees] for [distanceMeters] from (lat, lon).
+func offsetCoordinate(
+    lat: Double,
+    lon: Double,
+    bearingDegrees: Double,
+    distanceMeters: Double
+) -> CLLocationCoordinate2D {
+    let bearing = bearingDegrees.degreesToRadians
+    let lat1 = lat.degreesToRadians
+    let lon1 = lon.degreesToRadians
+    let angularDistance = distanceMeters / 6_371_000
+    let lat2 = asin(
+        sin(lat1) * cos(angularDistance) +
+            cos(lat1) * sin(angularDistance) * cos(bearing)
+    )
+    let lon2 = lon1 + atan2(
+        sin(bearing) * sin(angularDistance) * cos(lat1),
+        cos(angularDistance) - sin(lat1) * sin(lat2)
+    )
+    return CLLocationCoordinate2D(latitude: lat2.radiansToDegrees, longitude: lon2.radiansToDegrees)
+}
+
 /// Formats a distance for display.
 /// - < 1000 m → "245m"
 /// - ≥ 1000 m → "12.50km"
@@ -43,4 +65,5 @@ func formattedDistance(_ meters: Double) -> String {
 
 private extension Double {
     var degreesToRadians: Double { self * .pi / 180 }
+    var radiansToDegrees: Double { self * 180 / .pi }
 }

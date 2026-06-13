@@ -115,6 +115,20 @@ struct SupplierPricingRule: Decodable {
     }
 }
 
+struct SupplierPricingRuleUpdateRequest: Encodable {
+    let baseMarkupBps: Int
+    let retailerDiscountBps: Int
+    let minMarginBps: Int
+    let currency: String?
+
+    enum CodingKeys: String, CodingKey {
+        case baseMarkupBps = "base_markup_bps"
+        case retailerDiscountBps = "retailer_discount_bps"
+        case minMarginBps = "min_margin_bps"
+        case currency
+    }
+}
+
 struct SupplierTopologyWarehouse: Decodable, Identifiable {
     var id: String { warehouseId }
     let warehouseId: String
@@ -315,6 +329,84 @@ struct SupplierFleetOrderRow: Decodable, Identifiable {
     }
 }
 
+// MARK: - Fleet live map
+
+struct RouteGeometryWire: Decodable {
+    let routeId: String?
+    let encodedPolyline: String?
+    let coordinates: [RouteCoordinateWire]
+    let source: String
+    let stopCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case routeId = "route_id"
+        case encodedPolyline = "encoded_polyline"
+        case coordinates, source
+        case stopCount = "stop_count"
+    }
+}
+
+struct RouteCoordinateWire: Decodable {
+    let lat: Double
+    let lng: Double
+}
+
+struct SupplierDriverLocationWire: Decodable {
+    let driverId: String
+    let supplierId: String?
+    let lat: Double
+    let lng: Double
+    let latitude: Double
+    let longitude: Double
+    let reportedAt: String
+    let receivedAt: String
+    let staleAfterSeconds: Int
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case supplierId = "supplier_id"
+        case lat, lng, latitude, longitude
+        case reportedAt = "reported_at"
+        case receivedAt = "received_at"
+        case staleAfterSeconds = "stale_after_seconds"
+    }
+}
+
+struct SupplierFleetLiveRoute: Decodable, Identifiable {
+    var id: String { manifestId }
+    let manifestId: String
+    let routeId: String
+    let driverId: String
+    let driverName: String?
+    let manifestState: String
+    let routeGeometry: RouteGeometryWire?
+    let driverLocation: SupplierDriverLocationWire?
+    let liveLocationAvailable: Bool
+    let locationStale: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case routeId = "route_id"
+        case driverId = "driver_id"
+        case driverName = "driver_name"
+        case manifestState = "manifest_state"
+        case routeGeometry = "route_geometry"
+        case driverLocation = "driver_location"
+        case liveLocationAvailable = "live_location_available"
+        case locationStale = "location_stale"
+    }
+}
+
+struct SupplierFleetLiveMapResponse: Decodable {
+    let routes: [SupplierFleetLiveRoute]
+    let fetchedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case routes
+        case fetchedAt = "fetched_at"
+    }
+}
+
 struct SupplierWsSessionResponse: Decodable {
     let token: String
     let expiresAt: String
@@ -434,5 +526,241 @@ struct SupplierProfileUpdateRequest: Encodable {
         case legalName = "legal_name"
         case contactName = "contact_name"
         case email, phone, country
+    }
+}
+
+// MARK: - Finance reconciliation
+
+struct SettlementCurrencyTotal: Decodable {
+    let currency: String
+    let entryCount: Int
+    let amountMinorTotal: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case currency
+        case entryCount = "entry_count"
+        case amountMinorTotal = "amount_minor_total"
+    }
+}
+
+struct SettlementAuthorityRow: Decodable, Identifiable {
+    var id: String { "\(gateway)-\(entryType)-\(currency)" }
+    let gateway: String
+    let entryType: String
+    let currency: String
+    let entryCount: Int
+    let amountMinorTotal: Int64
+    let firstOccurredAt: String
+    let lastOccurredAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case gateway
+        case entryType = "entry_type"
+        case currency
+        case entryCount = "entry_count"
+        case amountMinorTotal = "amount_minor_total"
+        case firstOccurredAt = "first_occurred_at"
+        case lastOccurredAt = "last_occurred_at"
+    }
+}
+
+struct SettlementAuthorityResponse: Decodable {
+    let items: [SettlementAuthorityRow]
+    let count: Int
+    let supplierId: String
+    let entryCountTotal: Int
+    let totalsByCurrency: [SettlementCurrencyTotal]
+
+    enum CodingKeys: String, CodingKey {
+        case items, count
+        case supplierId = "supplier_id"
+        case entryCountTotal = "entry_count_total"
+        case totalsByCurrency = "totals_by_currency"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        items = try c.decodeIfPresent([SettlementAuthorityRow].self, forKey: .items) ?? []
+        count = try c.decodeIfPresent(Int.self, forKey: .count) ?? 0
+        supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
+        entryCountTotal = try c.decodeIfPresent(Int.self, forKey: .entryCountTotal) ?? 0
+        totalsByCurrency = try c.decodeIfPresent([SettlementCurrencyTotal].self, forKey: .totalsByCurrency) ?? []
+    }
+}
+
+struct ReconciliationMismatchRow: Decodable, Identifiable {
+    var id: String { "\(gateway)-\(currency)" }
+    let gateway: String
+    let currency: String
+    let netAmountMinor: Int64
+    let creditAmountMinorTotal: Int64
+    let debitAmountMinorTotal: Int64
+    let entryCountTotal: Int
+    let lastOccurredAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case gateway, currency
+        case netAmountMinor = "net_amount_minor"
+        case creditAmountMinorTotal = "credit_amount_minor_total"
+        case debitAmountMinorTotal = "debit_amount_minor_total"
+        case entryCountTotal = "entry_count_total"
+        case lastOccurredAt = "last_occurred_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        gateway = try c.decodeIfPresent(String.self, forKey: .gateway) ?? ""
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? ""
+        netAmountMinor = try c.decodeIfPresent(Int64.self, forKey: .netAmountMinor) ?? 0
+        creditAmountMinorTotal = try c.decodeIfPresent(Int64.self, forKey: .creditAmountMinorTotal) ?? 0
+        debitAmountMinorTotal = try c.decodeIfPresent(Int64.self, forKey: .debitAmountMinorTotal) ?? 0
+        entryCountTotal = try c.decodeIfPresent(Int.self, forKey: .entryCountTotal) ?? 0
+        lastOccurredAt = try c.decodeIfPresent(String.self, forKey: .lastOccurredAt) ?? ""
+    }
+}
+
+// MARK: - AI recommendations
+
+struct SupplierAIRecommendationEvidence: Decodable, Identifiable {
+    var id: String { "\(label)-\(value)" }
+    let label: String
+    let value: String
+    let href: String?
+}
+
+struct SupplierAIRecommendation: Decodable, Identifiable {
+    var id: String { recommendationId }
+    let recommendationId: String
+    let aggregateId: String
+    let aggregateType: String
+    let action: String
+    let status: String
+    let score: Double
+    let confidence: Double
+    let source: String
+    let explanation: String
+    let reasonCodes: [String]
+    let evidence: [SupplierAIRecommendationEvidence]
+    let decision: String?
+    let decisionNote: String?
+    let decidedBy: String?
+    let decidedAt: String?
+    let generatedAt: String
+    let updatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case recommendationId = "recommendation_id"
+        case aggregateId = "aggregate_id"
+        case aggregateType = "aggregate_type"
+        case action, status, score, confidence, source, explanation
+        case reasonCodes = "reason_codes"
+        case evidence, decision
+        case decisionNote = "decision_note"
+        case decidedBy = "decided_by"
+        case decidedAt = "decided_at"
+        case generatedAt = "generated_at"
+        case updatedAt = "updated_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        recommendationId = try c.decodeIfPresent(String.self, forKey: .recommendationId) ?? ""
+        aggregateId = try c.decodeIfPresent(String.self, forKey: .aggregateId) ?? ""
+        aggregateType = try c.decodeIfPresent(String.self, forKey: .aggregateType) ?? ""
+        action = try c.decodeIfPresent(String.self, forKey: .action) ?? ""
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        score = try c.decodeIfPresent(Double.self, forKey: .score) ?? 0
+        confidence = try c.decodeIfPresent(Double.self, forKey: .confidence) ?? 0
+        source = try c.decodeIfPresent(String.self, forKey: .source) ?? ""
+        explanation = try c.decodeIfPresent(String.self, forKey: .explanation) ?? ""
+        reasonCodes = try c.decodeIfPresent([String].self, forKey: .reasonCodes) ?? []
+        evidence = try c.decodeIfPresent([SupplierAIRecommendationEvidence].self, forKey: .evidence) ?? []
+        decision = try c.decodeIfPresent(String.self, forKey: .decision)
+        decisionNote = try c.decodeIfPresent(String.self, forKey: .decisionNote)
+        decidedBy = try c.decodeIfPresent(String.self, forKey: .decidedBy)
+        decidedAt = try c.decodeIfPresent(String.self, forKey: .decidedAt)
+        generatedAt = try c.decodeIfPresent(String.self, forKey: .generatedAt) ?? ""
+        updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt) ?? ""
+    }
+}
+
+struct SupplierAIRecommendationsResponse: Decodable {
+    let items: [SupplierAIRecommendation]
+    let count: Int
+    let limit: Int
+    let status: String?
+    let updatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case items, count, limit, status
+        case updatedAt = "updated_at"
+    }
+}
+
+struct SupplierAIRecommendationDecisionRequest: Encodable {
+    let recommendationId: String
+    let decision: String
+    let note: String?
+
+    enum CodingKeys: String, CodingKey {
+        case recommendationId = "recommendation_id"
+        case decision, note
+    }
+}
+
+struct SupplierAIRecommendationDecisionResponse: Decodable {
+    let recommendation: SupplierAIRecommendation
+}
+
+struct ReconciliationMismatchResponse: Decodable {
+    let items: [ReconciliationMismatchRow]
+}
+
+// MARK: - Org members
+
+struct SupplierOrgMember: Decodable, Identifiable {
+    var id: String { userId }
+    let userId: String
+    let name: String
+    let phone: String
+    let supplierRole: String
+    let assignedWarehouseId: String?
+    let assignedFactoryId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case name, phone
+        case supplierRole = "supplier_role"
+        case assignedWarehouseId = "assigned_warehouse_id"
+        case assignedFactoryId = "assigned_factory_id"
+    }
+}
+
+struct SupplierOrgMembersResponse: Decodable {
+    let items: [SupplierOrgMember]
+}
+
+struct SupplierOrgMemberCreateRequest: Encodable {
+    let name: String
+    let email: String?
+    let phone: String
+    let password: String
+    let supplierRole: String
+    let assignedWarehouseId: String?
+    let assignedFactoryId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name, email, phone, password
+        case supplierRole = "supplier_role"
+        case assignedWarehouseId = "assigned_warehouse_id"
+        case assignedFactoryId = "assigned_factory_id"
+    }
+}
+
+struct ApproveEarlyCompleteRequest: Encodable {
+    let driverId: String
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
     }
 }

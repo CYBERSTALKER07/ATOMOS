@@ -6,6 +6,7 @@ import { ApiError } from "@pegasusx/api-client";
 import type { SupplierDispatchPreview } from "@pegasusx/types";
 import { useDispatchData } from "./use-dispatch-data";
 import { PortalSurface } from "../_components/PortalSurface";
+import DispatchPreviewMap from "@/components/DispatchPreviewMap";
 
 const api = createSupplierApi();
 
@@ -33,8 +34,26 @@ export default function DispatchPage() {
     setExecuteError(null);
     setExecuteSuccess(null);
     try {
-      await api.executeSupplierDispatch({ mode: "AUTO" });
-      setExecuteSuccess("Dispatch committed. Payloader loading gate is now active.");
+      const result = await api.executeSupplierDispatch({ mode: "AUTO" });
+      if (result.status === "dispatched") {
+        const parts = [
+          `Dispatch committed: ${result.manifests_created ?? 0} manifest(s), ${result.orders_assigned ?? 0} order(s).`,
+        ];
+        if (result.optimizer_source) {
+          parts.push(`Optimizer: ${result.optimizer_source}.`);
+        }
+        if (result.orphan_order_ids?.length) {
+          parts.push(`${result.orphan_order_ids.length} order(s) could not be assigned.`);
+        }
+        setExecuteSuccess(parts.join(" "));
+      } else if (result.warnings?.length) {
+        setExecuteError(result.warnings.join("; "));
+      } else {
+        setExecuteSuccess("No orders were dispatched.");
+      }
+      if (result.warnings?.length && result.status === "dispatched") {
+        setExecuteError(result.warnings.join("; "));
+      }
       await refresh();
       loadPreview();
     } catch (err) {
@@ -115,6 +134,23 @@ export default function DispatchPage() {
           <p className="md-typescale-body-small text-[var(--color-md-success)] md:col-span-3">{executeSuccess}</p>
         ) : null}
       </div>
+
+      {preview?.proposed_routes && preview.proposed_routes.length > 0 ? (
+        <div className="md-card p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="md-typescale-title-medium">Smart suggest route map</h2>
+            {preview.optimizer_source ? (
+              <span className="md-typescale-label-small text-[var(--color-md-outline)]">
+                Source: {preview.optimizer_source}
+              </span>
+            ) : null}
+          </div>
+          <DispatchPreviewMap
+            routes={preview.proposed_routes}
+            className="h-80 w-full rounded-xl border border-[var(--color-md-outline-variant)] overflow-hidden"
+          />
+        </div>
+      ) : null}
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
         {/* Draft Column */}

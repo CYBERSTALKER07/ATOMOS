@@ -102,6 +102,12 @@ func (s *Service) HandleFleetRouteReorder(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
 	}
+	if s.manifestStore != nil {
+		if geomErr := s.manifestStore.PersistRouteGeometryForDriverRoute(ctx, driverID, req.RouteID, "route_reordered"); geomErr != nil {
+			s.log.WarnContext(ctx, "route geometry refresh after reorder failed",
+				"route_id", req.RouteID, "driver_id", driverID, "err", geomErr)
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status":     "REORDERED",
 		"route_id":   req.RouteID,

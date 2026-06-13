@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -31,11 +32,26 @@ fun MoreScreen(
     onFleetOrders: () -> Unit,
     onLedger: () -> Unit,
     onOperations: () -> Unit,
+    onAnalytics: () -> Unit,
+    onAiRecommendations: () -> Unit,
+    onGeoReport: () -> Unit,
+    onTopology: () -> Unit,
+    onDeliveryZones: () -> Unit,
+    onSupplyLanes: () -> Unit,
+    onPayments: () -> Unit,
     onInventory: () -> Unit,
+    onCatalog: () -> Unit,
     onPromotions: () -> Unit,
+    onPricing: () -> Unit,
+    onReturns: () -> Unit,
+    onReconciliation: () -> Unit,
+    onEarlyComplete: () -> Unit,
+    onOrgFleet: () -> Unit,
     onEarnings: () -> Unit,
     onProfile: () -> Unit,
     onBilling: () -> Unit,
+    onChargebacks: () -> Unit,
+    onPaymentBypass: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     val fulfillment = listOf(
@@ -46,19 +62,40 @@ fun MoreScreen(
     val exceptions = listOf(
         MoreDestination("Exceptions", "Operational queue", Icons.Default.Warning, onExceptions),
         MoreDestination("Shop closed", "Driver wait cases", Icons.Default.Store, onShopClosed),
+        MoreDestination("Early route complete", "Approve driver escalation", Icons.Default.CheckCircle, onEarlyComplete),
         // Quantity negotiation disabled ecosystem-wide.
+    )
+    val intelligence = listOf(
+        MoreDestination("Analytics", "Operational metrics", Icons.Default.BarChart, onAnalytics),
+        MoreDestination("AI recommendations", "Advisory queue & decisions", Icons.Default.AutoAwesome, onAiRecommendations),
+        MoreDestination("Geo report", "H3 coverage", Icons.Default.Public, onGeoReport),
+    )
+    val network = listOf(
+        MoreDestination("Factories & warehouses", "Topology nodes", Icons.Default.Apartment, onTopology),
+        MoreDestination("Delivery zones", "Coverage areas", Icons.Default.Map, onDeliveryZones),
+        MoreDestination("Supply lanes", "Lane utilization", Icons.Default.AltRoute, onSupplyLanes),
+    )
+    val treasury = listOf(
+        MoreDestination("Payments", "Settlement authority", Icons.Default.CreditCard, onPayments),
+        MoreDestination("Chargebacks", "Manage on desktop", Icons.Default.Payments, onChargebacks),
+        MoreDestination("Payment ledger", "Treasury entries", Icons.Default.AccountBalance, onLedger),
+        MoreDestination("Reconciliation", "Settlement mismatches", Icons.Default.Balance, onReconciliation),
     )
     val insights = listOf(
         MoreDestination("Activity", "Recent events", Icons.Default.Timeline, onActivity),
-        MoreDestination("Payment ledger", "Treasury entries", Icons.Default.AccountBalance, onLedger),
-        MoreDestination("Operations", "Replenishment trigger", Icons.Default.Build, onOperations),
+        MoreDestination("Replenishment", "Trigger restock", Icons.Default.Build, onOperations),
+        MoreDestination("Portal operations", "Bypass & broadcast", Icons.Default.Computer, onPaymentBypass),
     )
     val account = listOf(
+        MoreDestination("Catalog", "Product unit VU for dispatch", Icons.Default.Category, onCatalog),
         MoreDestination("Inventory", "SKU levels", Icons.Default.Inventory2, onInventory),
+        MoreDestination("Pricing", "Markup and discount rules", Icons.Default.PriceChange, onPricing),
         MoreDestination("Promotions", "Sales and discounts", Icons.Default.LocalOffer, onPromotions),
+        MoreDestination("Returns", "Cancelled and rejected orders", Icons.Default.Undo, onReturns),
+        MoreDestination("Org & fleet", "Drivers, vehicles, staff", Icons.Default.Groups, onOrgFleet),
         MoreDestination("Earnings", "Revenue summary", Icons.Default.Payments, onEarnings),
         MoreDestination("Profile", "Company profile", Icons.Default.Person, onProfile),
-        MoreDestination("Billing setup", "Banking & gateway", Icons.Default.CreditCard, onBilling),
+        MoreDestination("Billing setup", "Banking & gateway (portal)", Icons.Default.CreditCard, onBilling),
     )
 
     Scaffold(topBar = { TopAppBar(title = { Text("More") }) }) { padding ->
@@ -71,6 +108,12 @@ fun MoreScreen(
             fulfillment.forEach { item { MoreRow(it) } }
             item { SectionHeader("Exceptions") }
             exceptions.forEach { item { MoreRow(it) } }
+            item { SectionHeader("Intelligence") }
+            intelligence.forEach { item { MoreRow(it) } }
+            item { SectionHeader("Network") }
+            network.forEach { item { MoreRow(it) } }
+            item { SectionHeader("Treasury") }
+            treasury.forEach { item { MoreRow(it) } }
             item { SectionHeader("Insights") }
             insights.forEach { item { MoreRow(it) } }
             item { SectionHeader("Account") }

@@ -125,6 +125,34 @@ enum class RejectionReason(val label: String) {
     OTHER("Other")
 }
 
+// ── Route geometry ──
+
+@Serializable
+data class RouteCoordinate(
+    val lat: Double,
+    val lng: Double,
+)
+
+@Serializable
+data class RouteStep(
+    val instruction: String = "",
+    @SerialName("distance_m") val distanceM: Double = 0.0,
+    @SerialName("duration_s") val durationS: Double = 0.0,
+    val maneuver: String? = null,
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
+)
+
+@Serializable
+data class RouteGeometryResponse(
+    @SerialName("route_id") val routeId: String,
+    @SerialName("encoded_polyline") val encodedPolyline: String? = null,
+    val coordinates: List<RouteCoordinate> = emptyList(),
+    val source: String = "",
+    @SerialName("stop_count") val stopCount: Int = 0,
+    val steps: List<RouteStep> = emptyList(),
+)
+
 // ── QR Validation ──
 
 @Serializable
@@ -348,16 +376,14 @@ data class MissingItemsResponse(
 @Serializable
 data class SplitPaymentPayload(
     @SerialName("order_id") val orderId: String,
-    @SerialName("first_amount") val firstAmount: Long,
-    @SerialName("second_amount") val secondAmount: Long
+    @SerialName("cash_minor") val cashMinor: Long,
+    @SerialName("card_minor") val cardMinor: Long,
+    val currency: String? = null,
 )
 
 @Serializable
 data class SplitPaymentResponse(
     val status: String,
-    @SerialName("order_id") val orderId: String,
-    @SerialName("first_amount") val firstAmount: Long,
-    @SerialName("second_amount") val secondAmount: Long
 )
 
 @Serializable
@@ -377,15 +403,14 @@ data class VerifyHandshakeResponse(
 @Serializable
 data class UpdateOrderDuringDeliveryRequest(
     @SerialName("order_id") val orderId: String,
-    val items: List<AmendItemPayload>,
-    @SerialName("driver_notes") val driverNotes: String? = null
+    val latitude: Double,
+    val longitude: Double,
 )
 
 @Serializable
 data class UpdateOrderDuringDeliveryResponse(
     val success: Boolean,
     val message: String,
-    @SerialName("adjusted_total") val adjustedTotal: Long? = null
 )
 
 // ── Driver Earnings (mirror of backend-go/fleet/driver_api.go) ──

@@ -15,6 +15,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
@@ -24,10 +26,13 @@ import com.pegasusx.supplier.ui.screens.auth.LoginScreen
 import com.pegasusx.supplier.ui.screens.billing.BillingScreen
 import com.pegasusx.supplier.ui.screens.dashboard.DashboardScreen
 import com.pegasusx.supplier.ui.screens.earnings.EarningsScreen
+import com.pegasusx.supplier.ui.screens.fleet.FleetLiveMapScreen
 import com.pegasusx.supplier.ui.screens.fleet.FleetScreen
+import com.pegasusx.supplier.ui.screens.catalog.CatalogScreen
 import com.pegasusx.supplier.ui.screens.inventory.InventoryScreen
 import com.pegasusx.supplier.ui.screens.activity.ActivityScreen
 import com.pegasusx.supplier.ui.screens.dispatch.DispatchPreviewScreen
+import com.pegasusx.supplier.ui.screens.exceptions.EarlyCompleteScreen
 import com.pegasusx.supplier.ui.screens.exceptions.ExceptionsScreen
 // NegotiationsScreen removed — quantity negotiation disabled ecosystem-wide.
 import com.pegasusx.supplier.ui.screens.exceptions.ShopClosedScreen
@@ -37,8 +42,21 @@ import com.pegasusx.supplier.ui.screens.more.MoreScreen
 import com.pegasusx.supplier.ui.screens.operations.OperationsScreen
 import com.pegasusx.supplier.ui.screens.orders.OrdersScreen
 import com.pegasusx.supplier.ui.screens.profile.ProfileScreen
+import com.pegasusx.supplier.ui.screens.orgfleet.OrgFleetScreen
+import com.pegasusx.supplier.ui.screens.pricing.PricingScreen
 import com.pegasusx.supplier.ui.screens.promotions.PromotionsScreen
+import com.pegasusx.supplier.ui.screens.returns.ReturnsScreen
 import com.pegasusx.supplier.ui.screens.treasury.LedgerScreen
+import com.pegasusx.supplier.ui.screens.treasury.PaymentsScreen
+import com.pegasusx.supplier.ui.screens.treasury.ReconciliationScreen
+import com.pegasusx.supplier.ui.screens.analytics.AnalyticsScreen
+import com.pegasusx.supplier.ui.screens.ai.AIRecommendationsScreen
+import com.pegasusx.supplier.ui.screens.network.DeliveryZonesScreen
+import com.pegasusx.supplier.ui.screens.network.GeoReportScreen
+import com.pegasusx.supplier.ui.screens.network.SupplyLanesScreen
+import com.pegasusx.supplier.ui.screens.network.TopologyScreen
+import com.pegasusx.supplier.ui.screens.portal.PortalHandoffScreen
+import com.pegasusx.supplier.ui.portal.SupplierPortalFeature
 
 object SupplierRoutes {
     const val LOGIN = "login"
@@ -48,7 +66,13 @@ object SupplierRoutes {
     const val FLEET = "fleet"
     const val MORE = "more"
     const val INVENTORY = "inventory"
+    const val CATALOG = "catalog"
     const val PROMOTIONS = "promotions"
+    const val PRICING = "pricing"
+    const val RETURNS = "returns"
+    const val RECONCILIATION = "reconciliation"
+    const val EARLY_COMPLETE = "early_complete"
+    const val ORG_FLEET = "org_fleet"
     const val EARNINGS = "earnings"
     const val PROFILE = "profile"
     const val EXCEPTIONS = "exceptions"
@@ -58,8 +82,19 @@ object SupplierRoutes {
     const val DISPATCH_PREVIEW = "dispatch_preview"
     const val ACTIVITY = "activity"
     const val FLEET_ORDERS = "fleet_orders"
+    const val FLEET_LIVE_MAP = "fleet_live_map"
     const val LEDGER = "ledger"
     const val OPERATIONS = "operations"
+    const val ANALYTICS = "analytics"
+    const val AI_RECOMMENDATIONS = "ai_recommendations"
+    const val GEO_REPORT = "geo_report"
+    const val TOPOLOGY = "topology"
+    const val DELIVERY_ZONES = "delivery_zones"
+    const val SUPPLY_LANES = "supply_lanes"
+    const val PAYMENTS = "payments"
+    const val PORTAL_HANDOFF = "portal_handoff/{feature}"
+
+    fun portalHandoff(feature: SupplierPortalFeature) = "portal_handoff/${feature.routeKey}"
 }
 
 private data class SupplierTab(val route: String, val label: String, val icon: ImageVector)
@@ -86,7 +121,12 @@ fun SupplierNavigation(
     if (!loggedIn) {
         NavHost(navController = navController, startDestination = SupplierRoutes.LOGIN) {
             composable(SupplierRoutes.LOGIN) {
-                LoginScreen(api = api) {
+                LoginScreen(
+                    api = api,
+                    onRegisterPortal = {
+                        navController.navigate(SupplierRoutes.portalHandoff(SupplierPortalFeature.REGISTER))
+                    },
+                ) {
                     sessionEpoch++
                     navController.navigate(
                         if (TokenHolder.isConfigured) SupplierRoutes.DASHBOARD else SupplierRoutes.BILLING,
@@ -164,7 +204,15 @@ fun SupplierNavigation(
                 }
             }
             composable(SupplierRoutes.ORDERS) { key(refreshEpoch) { OrdersScreen(ops) } }
-            composable(SupplierRoutes.FLEET) { key(refreshEpoch) { FleetScreen(api = api, ops = ops) } }
+            composable(SupplierRoutes.FLEET) {
+                key(refreshEpoch) {
+                    FleetScreen(
+                        api = api,
+                        ops = ops,
+                        onOpenLiveMap = { navController.navigate(SupplierRoutes.FLEET_LIVE_MAP) },
+                    )
+                }
+            }
             composable(SupplierRoutes.MORE) {
                 MoreScreen(
                     onExceptions = { navController.navigate(SupplierRoutes.EXCEPTIONS) },
@@ -176,11 +224,26 @@ fun SupplierNavigation(
                     onFleetOrders = { navController.navigate(SupplierRoutes.FLEET_ORDERS) },
                     onLedger = { navController.navigate(SupplierRoutes.LEDGER) },
                     onOperations = { navController.navigate(SupplierRoutes.OPERATIONS) },
+                    onAnalytics = { navController.navigate(SupplierRoutes.ANALYTICS) },
+                    onAiRecommendations = { navController.navigate(SupplierRoutes.AI_RECOMMENDATIONS) },
+                    onGeoReport = { navController.navigate(SupplierRoutes.GEO_REPORT) },
+                    onTopology = { navController.navigate(SupplierRoutes.TOPOLOGY) },
+                    onDeliveryZones = { navController.navigate(SupplierRoutes.DELIVERY_ZONES) },
+                    onSupplyLanes = { navController.navigate(SupplierRoutes.SUPPLY_LANES) },
+                    onPayments = { navController.navigate(SupplierRoutes.PAYMENTS) },
                     onInventory = { navController.navigate(SupplierRoutes.INVENTORY) },
+                    onCatalog = { navController.navigate(SupplierRoutes.CATALOG) },
                     onPromotions = { navController.navigate(SupplierRoutes.PROMOTIONS) },
+                    onPricing = { navController.navigate(SupplierRoutes.PRICING) },
+                    onReturns = { navController.navigate(SupplierRoutes.RETURNS) },
+                    onReconciliation = { navController.navigate(SupplierRoutes.RECONCILIATION) },
+                    onEarlyComplete = { navController.navigate(SupplierRoutes.EARLY_COMPLETE) },
+                    onOrgFleet = { navController.navigate(SupplierRoutes.ORG_FLEET) },
                     onEarnings = { navController.navigate(SupplierRoutes.EARNINGS) },
                     onProfile = { navController.navigate(SupplierRoutes.PROFILE) },
-                    onBilling = { navController.navigate(SupplierRoutes.BILLING) },
+                    onBilling = { navController.navigate(SupplierRoutes.portalHandoff(SupplierPortalFeature.BUSINESS_SETUP)) },
+                    onChargebacks = { navController.navigate(SupplierRoutes.portalHandoff(SupplierPortalFeature.CHARGEBACKS)) },
+                    onPaymentBypass = { navController.navigate(SupplierRoutes.portalHandoff(SupplierPortalFeature.PAYMENT_BYPASS)) },
                     onSignOut = {
                         TokenHolder.clear()
                         sessionEpoch++
@@ -207,16 +270,71 @@ fun SupplierNavigation(
             composable(SupplierRoutes.FLEET_ORDERS) {
                 key(refreshEpoch) { FleetOrdersScreen(ops) { navController.popBackStack() } }
             }
+            composable(SupplierRoutes.FLEET_LIVE_MAP) {
+                key(refreshEpoch) {
+                    FleetLiveMapScreen(
+                        ops = ops,
+                        realtimeSignals = realtimeSignals,
+                    ) { navController.popBackStack() }
+                }
+            }
             composable(SupplierRoutes.LEDGER) {
                 key(refreshEpoch) { LedgerScreen(ops) { navController.popBackStack() } }
             }
             composable(SupplierRoutes.OPERATIONS) {
                 key(refreshEpoch) { OperationsScreen(ops) { navController.popBackStack() } }
             }
+            composable(SupplierRoutes.ANALYTICS) {
+                key(refreshEpoch) { AnalyticsScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.AI_RECOMMENDATIONS) {
+                key(refreshEpoch) { AIRecommendationsScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.GEO_REPORT) {
+                key(refreshEpoch) { GeoReportScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.TOPOLOGY) {
+                key(refreshEpoch) { TopologyScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.DELIVERY_ZONES) {
+                key(refreshEpoch) { DeliveryZonesScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.SUPPLY_LANES) {
+                key(refreshEpoch) { SupplyLanesScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.PAYMENTS) {
+                key(refreshEpoch) { PaymentsScreen(ops) { navController.popBackStack() } }
+            }
             composable(SupplierRoutes.INVENTORY) { key(refreshEpoch) { InventoryScreen(api) } }
+            composable(SupplierRoutes.CATALOG) { key(refreshEpoch) { CatalogScreen(api) } }
             composable(SupplierRoutes.PROMOTIONS) { key(refreshEpoch) { PromotionsScreen(api) } }
+            composable(SupplierRoutes.PRICING) {
+                key(refreshEpoch) { PricingScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.RETURNS) {
+                key(refreshEpoch) { ReturnsScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.RECONCILIATION) {
+                key(refreshEpoch) { ReconciliationScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.EARLY_COMPLETE) {
+                key(refreshEpoch) { EarlyCompleteScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.ORG_FLEET) {
+                key(refreshEpoch) { OrgFleetScreen(api, ops) { navController.popBackStack() } }
+            }
             composable(SupplierRoutes.EARNINGS) { key(refreshEpoch) { EarningsScreen(api = api, ops = ops) } }
             composable(SupplierRoutes.PROFILE) { key(refreshEpoch) { ProfileScreen(api) } }
+            composable(
+                route = SupplierRoutes.PORTAL_HANDOFF,
+                arguments = listOf(navArgument("feature") { type = NavType.StringType }),
+            ) { entry ->
+                val key = entry.arguments?.getString("feature").orEmpty()
+                val feature = SupplierPortalFeature.fromRouteKey(key)
+                if (feature != null) {
+                    PortalHandoffScreen(feature) { navController.popBackStack() }
+                }
+            }
         }
     }
 }

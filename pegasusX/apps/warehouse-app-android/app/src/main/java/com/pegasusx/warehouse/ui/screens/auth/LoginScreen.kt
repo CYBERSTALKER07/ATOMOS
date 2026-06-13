@@ -1,5 +1,6 @@
 package com.pegasusx.warehouse.ui.screens.auth
 
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -17,12 +18,15 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import com.pegasusx.warehouse.data.model.LoginRequest
 import com.pegasusx.warehouse.data.remote.TokenHolder
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.ui.portal.WarehousePortalFeature
+import com.pegasusx.warehouse.ui.portal.WarehousePortalLinks
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +41,12 @@ fun LoginScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
+
+    fun openPortalRegister() {
+        val intent = Intent(Intent.ACTION_VIEW, WarehousePortalLinks.openUri(WarehousePortalFeature.REGISTER))
+        context.startActivity(intent)
+    }
 
     Scaffold { innerPadding ->
         Column(
@@ -130,7 +140,10 @@ fun LoginScreen(
                                 TokenHolder.warehouseId = auth.warehouseId
                                 onLoginSuccess()
                             } else {
-                                error = "Login failed (${resp.code()})"
+                                error = when (resp.code()) {
+                                    404 -> "No account found. Register your warehouse on the web portal."
+                                    else -> "Login failed (${resp.code()})"
+                                }
                             }
                         } catch (e: Exception) {
                             error = e.message ?: "Network error"
@@ -153,6 +166,12 @@ fun LoginScreen(
                 } else {
                     Text("Sign In")
                 }
+            }
+
+            Spacer(Modifier.height(PegasusSpacing.lg))
+
+            TextButton(onClick = ::openPortalRegister) {
+                Text("New warehouse? Register on the web portal")
             }
         }
     }

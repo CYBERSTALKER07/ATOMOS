@@ -70,6 +70,23 @@ final class ScannerViewModel {
         Task {
             do {
                 let response = try await fleetService.validateQR(orderId: payload.order_id, scannedToken: payload.token)
+                let location = await MainActor.run { FleetViewModel.lastKnownLocation }
+                if let location, location.latitude != 0 || location.longitude != 0 {
+                    let handshake = try await fleetService.verifyHandshake(
+                        orderId: payload.order_id,
+                        token: payload.token,
+                        latitude: location.latitude,
+                        longitude: location.longitude
+                    )
+                    guard handshake.success else {
+                        isProcessing = false
+                        alertTitle = "Handshake Failed"
+                        alertMessage = handshake.message
+                        showAlert = true
+                        Haptics.error()
+                        return
+                    }
+                }
                 isProcessing = false
                 scanSucceeded = true
                 validatedResponse = response

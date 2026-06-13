@@ -31,7 +31,7 @@ private val DRIVER_UNAVAILABLE_REASON_LABELS = mapOf(
 @Composable
 fun DriversScreen(
     api: WarehouseApi,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var drivers by remember { mutableStateOf<List<Driver>>(emptyList()) }
     var vehicles by remember { mutableStateOf<List<Vehicle>>(emptyList()) }
@@ -71,7 +71,7 @@ fun DriversScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Drivers") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } } },
                 actions = {
                     IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") }
                     IconButton(onClick = { showCreate = true }) { Icon(Icons.Default.Add, "Add") }

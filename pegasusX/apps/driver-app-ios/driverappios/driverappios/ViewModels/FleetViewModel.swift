@@ -34,6 +34,13 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     var showMarkerSheet = false
     var isTelemetryLive = false
     var locationTrail: [CLLocationCoordinate2D] = []
+    var plannedRouteCoordinates: [CLLocationCoordinate2D] = []
+    var routeGeometryCoordinates: [CLLocationCoordinate2D] = []
+    var routeSteps: [RouteStep] = []
+    var navigationCue: NavigationCue?
+    var displayLocation: CLLocationCoordinate2D?
+    var displayBearing: CLLocationDirection = 0
+    var displaySpeedMps: CLLocationSpeed = 0
     var lastRealtimeRefreshAt: Date?
     var gpsError: String?
     var isLoadingMissions = false
@@ -43,7 +50,13 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     /// Orders that have already been auto-transitioned to ARRIVED (one-shot guard)
     private var arrivedIds: Set<String> = []
+    private var navigationStepIndex = 0
+    private let navigationVoiceAnnouncer = NavigationVoiceAnnouncer()
+    private let routeDeviationTracker = RouteDeviationTracker()
+    private var isReroutingRoute = false
     private let maxTrailPoints = 60
+    private let locationInterpolator = LocationInterpolator()
+    private var interpolationTask: Task<Void, Never>?
 
     // MARK: - Services
 
@@ -90,6 +103,10 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         orders.contains { $0.state.isActive }
     }
 
+    var displayRouteCoordinates: [CLLocationCoordinate2D] {
+        routeGeometryCoordinates.count >= 2 ? routeGeometryCoordinates : plannedRouteCoordinates
+    }
+
     // MARK: - End Session State
     var isEndingSession = false
     var endSessionError: String?
@@ -99,6 +116,10 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     var manifestSealed = false
     var manifestState: String?
     var awaitingSeal = false
+
+    // MARK: - Delivery-edge feedback
+    var deliveryEdgeError: String?
+    var deliveryEdgeMessage: String?
 
     // MARK: - Init
 
@@ -154,12 +175,134 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         }
 
         deriveTruckStatus()
+        refreshPlannedRoute()
+        await loadRouteGeometry()
+    }
+
+    func refreshPlannedRoute() {
+        let routeId = activeOrder?.routeId ?? activeMission?.route_id ?? resolveActiveRouteId(orders: orders)
+        plannedRouteCoordinates = buildPlannedRouteCoordinates(orders: orders, activeRouteId: routeId)
+    }
+
+    func loadRouteGeometry() async {
+        let routeId = activeOrder?.routeId ?? activeMission?.route_id ?? resolveActiveRouteId(orders: orders)
+        guard let routeId, !routeId.isEmpty else {
+            navigationStepIndex = 0
+            navigationVoiceAnnouncer.stop()
+            routeDeviationTracker.reset()
+            routeGeometryCoordinates = []
+            routeSteps = []
+            navigationCue = nil
+            return
+        }
+        do {
+            let response = try await APIClient.shared.getRouteGeometry(routeId: routeId)
+            navigationStepIndex = 0
+            navigationVoiceAnnouncer.stop()
+            routeDeviationTracker.reset()
+            routeGeometryCoordinates = response.coordinates.map {
+                CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng)
+            }
+            routeSteps = response.steps
+            navigationCue = nil
+        } catch {
+            navigationStepIndex = 0
+            navigationVoiceAnnouncer.stop()
+            routeDeviationTracker.reset()
+            routeGeometryCoordinates = []
+            routeSteps = []
+            navigationCue = nil
+        }
+    }
+
+    func checkRouteDeviation(coordinate: CLLocationCoordinate2D?) {
+        guard isTransitActive, let coordinate, !isReroutingRoute else { return }
+        let routeId = activeOrder?.routeId ?? activeMission?.route_id ?? resolveActiveRouteId(orders: orders)
+        guard let routeId, !routeId.isEmpty else { return }
+        let action = routeDeviationTracker.evaluate(
+            now: Date(),
+            coordinate: coordinate,
+            polyline: routeGeometryCoordinates
+        )
+        guard action == .reroute else { return }
+        Task { await rerouteRouteGeometry(routeId: routeId, from: coordinate) }
+    }
+
+    private func rerouteRouteGeometry(routeId: String, from coordinate: CLLocationCoordinate2D) async {
+        isReroutingRoute = true
+        defer { isReroutingRoute = false }
+        do {
+            let response = try await APIClient.shared.getRouteGeometry(
+                routeId: routeId,
+                includeSteps: true,
+                from: coordinate,
+                reroute: true
+            )
+            navigationStepIndex = 0
+            navigationVoiceAnnouncer.stop()
+            routeDeviationTracker.reset()
+            routeGeometryCoordinates = response.coordinates.map {
+                CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng)
+            }
+            routeSteps = response.steps
+            navigationCue = nil
+        } catch {
+            routeDeviationTracker.reset()
+        }
+    }
+
+    func updateNavigationCue(coordinate: CLLocationCoordinate2D?) {
+        guard let coordinate, !routeSteps.isEmpty else {
+            navigationCue = nil
+            return
+        }
+        let previousIndex = navigationStepIndex
+        navigationStepIndex = RouteNavigation.advanceStepIndex(
+            currentIndex: navigationStepIndex,
+            steps: routeSteps,
+            coordinate: coordinate
+        )
+        navigationCue = RouteNavigation.resolveCue(
+            steps: routeSteps,
+            stepIndex: navigationStepIndex,
+            coordinate: coordinate
+        )
+        if let cue = navigationCue, shouldAnnounceManeuverAdvance(previousIndex: previousIndex, nextIndex: navigationStepIndex) {
+            navigationVoiceAnnouncer.announce(cue)
+        }
+    }
+
+    func startLocationInterpolation() {
+        interpolationTask?.cancel()
+        interpolationTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                self.locationInterpolator.tick()
+                self.displayLocation = self.locationInterpolator.displayCoordinate
+                self.displayBearing = self.locationInterpolator.displayBearing
+                self.displaySpeedMps = self.locationInterpolator.displaySpeedMps
+                self.updateNavigationCue(coordinate: self.displayLocation)
+                self.checkRouteDeviation(coordinate: self.displayLocation)
+                try? await Task.sleep(nanoseconds: MapCameraConfig.interpolationFrameNs)
+            }
+        }
+    }
+
+    func stopLocationInterpolation() {
+        interpolationTask?.cancel()
+        interpolationTask = nil
+        locationInterpolator.clear()
+        displayLocation = nil
+        navigationVoiceAnnouncer.stop()
+        routeDeviationTracker.reset()
     }
 
     func selectMission(_ mission: Mission) {
         Haptics.heavy()
         activeMission = mission
         activeOrder = orders.first { $0.id == mission.order_id }
+        refreshPlannedRoute()
+        Task { await loadRouteGeometry() }
         showMarkerSheet = true
     }
 
@@ -175,6 +318,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
             activeMission = nil
             activeOrder = nil
             showMarkerSheet = false
+            refreshPlannedRoute()
         }
     }
 
@@ -257,6 +401,67 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    // MARK: - Delivery-edge APIs
+
+    func markCreditDelivery(orderId: String, photoProofUrl: String? = nil) async {
+        deliveryEdgeError = nil
+        deliveryEdgeMessage = nil
+        do {
+            _ = try await fleetService.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl)
+            deliveryEdgeMessage = "Credit delivery recorded"
+            await loadMissions()
+        } catch {
+            deliveryEdgeError = error.localizedDescription
+        }
+    }
+
+    func recordSplitPayment(orderId: String, totalAmount: Int, cashMinor: Int? = nil, cardMinor: Int? = nil, currency: String? = nil) async {
+        deliveryEdgeError = nil
+        deliveryEdgeMessage = nil
+        let cash = cashMinor ?? Int64(totalAmount / 2)
+        let card = cardMinor ?? Int64(totalAmount - Int(cash))
+        guard cash + card > 0 else {
+            deliveryEdgeError = "Split amounts must be greater than zero"
+            return
+        }
+        do {
+            _ = try await fleetService.splitPayment(
+                orderId: orderId,
+                cashMinor: cash,
+                cardMinor: card,
+                currency: currency
+            )
+            deliveryEdgeMessage = "Split payment recorded"
+        } catch {
+            deliveryEdgeError = error.localizedDescription
+        }
+    }
+
+    func updateOrderDuringDelivery(orderId: String) async {
+        deliveryEdgeError = nil
+        deliveryEdgeMessage = nil
+        let location = await MainActor.run { Self.lastKnownLocation }
+        guard let location, location.latitude != 0 || location.longitude != 0 else {
+            deliveryEdgeError = "GPS unavailable for in-delivery update"
+            return
+        }
+        do {
+            let response = try await fleetService.updateOrderDuringDelivery(
+                orderId: orderId,
+                latitude: location.latitude,
+                longitude: location.longitude
+            )
+            guard response.success else {
+                deliveryEdgeError = response.message
+                return
+            }
+            deliveryEdgeMessage = response.message
+            await loadMissions()
+        } catch {
+            deliveryEdgeError = error.localizedDescription
+        }
+    }
+
     private func legacyStartTransit() async {
         isTransitActive = true
         Haptics.heavy()
@@ -326,6 +531,8 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         Task {
             do {
                 _ = try await APIClient.shared.reorderStops(routeId: routeId, orderSequence: sequence)
+                await loadRouteGeometry()
+                refreshPlannedRoute()
             } catch {
                 // Revert on failure
                 await loadMissions()
@@ -364,6 +571,12 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
             if loc.speed >= 0 {
                 self.speed = loc.speed
             }
+            self.locationInterpolator.onGps(loc)
+            self.displayLocation = self.locationInterpolator.displayCoordinate ?? loc.coordinate
+            self.displayBearing = self.locationInterpolator.displayBearing
+            self.displaySpeedMps = self.locationInterpolator.displaySpeedMps
+            self.updateNavigationCue(coordinate: self.displayLocation)
+            self.checkRouteDeviation(coordinate: self.displayLocation)
             Self.lastKnownLocation = loc.coordinate
             self.gpsError = nil
             self.appendTrailPoint(loc.coordinate)

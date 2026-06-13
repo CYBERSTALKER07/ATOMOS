@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun LoginScreen(
     api: SupplierApi,
+    onRegisterPortal: () -> Unit = {},
     onLoginSuccess: () -> Unit,
 ) {
     var phone by remember { mutableStateOf("") }
@@ -142,6 +143,10 @@ fun LoginScreen(
                 } else {
                     Text("Sign In")
                 }
+            }
+            Spacer(Modifier.height(PegasusSpacing.md))
+            TextButton(onClick = onRegisterPortal, modifier = Modifier.fillMaxWidth()) {
+                Text("Register on web portal")
             }
         }
     }

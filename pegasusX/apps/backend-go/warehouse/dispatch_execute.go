@@ -16,10 +16,11 @@ import (
 
 // DispatchExecuteRequest is the service-layer input for warehouse dispatch commit.
 type DispatchExecuteRequest struct {
-	WarehouseID string
-	SupplierID  string
-	Mode        string
-	Routes      []DispatchExecuteRoute
+	WarehouseID   string
+	SupplierID    string
+	Mode          string
+	Routes        []DispatchExecuteRoute
+	ForceCapacity bool
 }
 
 // ExecuteDispatch runs the warehouse smart-dispatch optimizer and commits manifests.
@@ -119,6 +120,19 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 	}
 	if assignment == nil || len(assignment.Routes) == 0 {
 		return out, nil
+	}
+
+	if strings.ToUpper(req.Mode) == "MANUAL" {
+		capacityWarnings := manualCapacityWarnings(assignment.Routes)
+		if len(capacityWarnings) > 0 {
+			out.CapacityWarnings = capacityWarnings
+			if !req.ForceCapacity {
+				out.Status = "capacity_exceeded"
+				out.Warnings = append(out.Warnings, "capacity_exceeded")
+				return out, nil
+			}
+			out.Warnings = append(out.Warnings, "capacity_override")
+		}
 	}
 
 	now := s.now().UTC()
@@ -257,6 +271,13 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 	out.Status = "dispatched"
 	out.ManifestsCreated = len(committed)
 	out.Manifests = committed
+	if s.manifestStore != nil && len(committed) > 0 {
+		manifestIDs := make([]string, 0, len(committed))
+		for _, route := range committed {
+			manifestIDs = append(manifestIDs, route.ManifestID)
+		}
+		s.manifestStore.PersistDispatchPreviewGeometries(ctx, manifestIDs)
+	}
 	return out, nil
 }
 
@@ -372,4 +393,25 @@ func buildManualAssignment(rows []dispatch.DispatchableOrder, drivers []PortalDr
 		}
 	}
 	return assignment
+}
+
+func manualCapacityWarnings(routes []dispatch.DispatchRoute) []DispatchCapacityWarning {
+	warnings := make([]DispatchCapacityWarning, 0)
+	for _, route := range routes {
+		maxVU := route.MaxVolume
+		if maxVU <= 0 {
+			continue
+		}
+		effective := maxVU * dispatch.TetrisBuffer
+		if route.LoadedVolume <= effective {
+			continue
+		}
+		warnings = append(warnings, DispatchCapacityWarning{
+			DriverID:      route.DriverID,
+			LoadedVU:      route.LoadedVolume,
+			MaxVolumeVU:   maxVU,
+			EffectiveMaxVU: effective,
+		})
+	}
+	return warnings
 }

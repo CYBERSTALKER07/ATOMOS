@@ -135,23 +135,21 @@ fun CashCollectionScreen(
         Spacer(modifier = Modifier.height(48.dp))
 
         // Edge 35: Split Payment button
-        if (onSplitPayment != null) {
-            OutlinedButton(
-                onClick = { state.orderId?.let { onSplitPayment(it, state.amount) } },
-                enabled = !state.isCompleting,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = MaterialTheme.shapes.medium,
-            ) {
-                Text(
-                    text = "Split Payment (Pay Now + Pay Later)",
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp
-                )
-            }
-            Spacer(modifier = Modifier.height(12.dp))
+        OutlinedButton(
+            onClick = { viewModel.recordSplitPayment() },
+            enabled = !state.isCompleting,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text(
+                text = "Split Payment (Pay Now + Pay Later)",
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp
+            )
         }
+        Spacer(modifier = Modifier.height(12.dp))
 
         Button(
             onClick = {

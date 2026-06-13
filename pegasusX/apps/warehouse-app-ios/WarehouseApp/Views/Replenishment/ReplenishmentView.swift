@@ -1,0 +1,106 @@
+import SwiftUI
+
+struct ReplenishmentView: View {
+    @State private var insights: [ReplenishmentInsight] = []
+    @State private var loading = true
+    @State private var error: String?
+    @State private var actingId: String?
+    @State private var statusMessage: String?
+
+    var body: some View {
+        Group {
+            if loading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error {
+                ContentUnavailableView {
+                    Label("Error", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(error)
+                } actions: {
+                    Button("Retry") { load() }
+                }
+            } else if insights.isEmpty {
+                ContentUnavailableView("No insights", systemImage: "tray", description: Text("No replenishment insights for this warehouse."))
+            } else {
+                List(insights) { insight in
+                    VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                        Text(insight.productName)
+                            .font(.headline)
+                        Text("\(insight.urgency) · \(insight.status)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text("Stock \(insight.currentStock) · Reorder \(insight.reorderQuantity)")
+                            .font(.caption)
+                        Text("Days until stockout: \(insight.daysUntilStockout)")
+                            .font(.caption)
+                        HStack {
+                            Button("Approve") {
+                                runAction(insightId: insight.id, action: "approve")
+                            }
+                            .disabled(actingId == insight.id)
+                            Button("Dismiss", role: .destructive) {
+                                runAction(insightId: insight.id, action: "dismiss")
+                            }
+                            .disabled(actingId == insight.id)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(.vertical, LabTheme.spacingXS)
+                }
+                .listStyle(.insetGrouped)
+            }
+        }
+        .navigationTitle("Replenishment")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Refresh", systemImage: "arrow.clockwise") { load() }
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if let statusMessage {
+                Text(statusMessage)
+                    .font(.caption)
+                    .padding(8)
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusSM))
+                    .padding()
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                            self.statusMessage = nil
+                        }
+                    }
+            }
+        }
+        .task { load() }
+        .refreshable { load() }
+    }
+
+    private func load() {
+        loading = true
+        error = nil
+        Task {
+            do {
+                let response = try await WarehouseService.replenishmentInsights()
+                insights = response.rows
+            } catch {
+                self.error = error.localizedDescription
+            }
+            loading = false
+        }
+    }
+
+    private func runAction(insightId: String, action: String) {
+        actingId = insightId
+        Task {
+            do {
+                _ = try await WarehouseService.replenishmentInsightAction(insightId: insightId, action: action)
+                statusMessage = action == "approve" ? "Insight approved" : "Insight dismissed"
+                load()
+            } catch {
+                statusMessage = error.localizedDescription
+            }
+            actingId = nil
+        }
+    }
+}

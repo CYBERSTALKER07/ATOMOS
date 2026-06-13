@@ -1,5 +1,6 @@
 package com.pegasusx.driver.ui.screens.scanner
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.os.Build
 import android.os.VibrationEffect
@@ -7,17 +8,21 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.pegasusx.driver.data.model.ValidateQRRequest
 import com.pegasusx.driver.data.model.ValidateQRResponse
+import com.pegasusx.driver.data.model.VerifyHandshakeRequest
 import com.pegasusx.driver.data.remote.DriverApi
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import org.json.JSONObject
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 
@@ -26,6 +31,7 @@ data class ScannerUiState(
     val scannedToken: String? = null,
     val isSubmitting: Boolean = false,
     val validated: ValidateQRResponse? = null,
+    val handshakeVerified: Boolean = false,
     val error: String? = null
 )
 
@@ -37,6 +43,8 @@ class ScannerViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(ScannerUiState())
     val state: StateFlow<ScannerUiState> = _state.asStateFlow()
+
+    private val fusedClient = LocationServices.getFusedLocationProviderClient(app)
 
     fun onQrDetected(rawValue: String) {
         if (!_state.value.isScanning) return
@@ -56,6 +64,7 @@ class ScannerViewModel @Inject constructor(
         vibrator?.vibrate(VibrationEffect.createOneShot(150, VibrationEffect.DEFAULT_AMPLITUDE))
     }
 
+    @SuppressLint("MissingPermission")
     private fun validateQR(qrToken: String) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isSubmitting = true, error = null)
@@ -73,10 +82,39 @@ class ScannerViewModel @Inject constructor(
                         ValidateQRRequest(orderId = orderId, scannedToken = effectiveToken)
                     )
                 }
-                _state.value = _state.value.copy(
-                    isSubmitting = false,
-                    validated = response
-                )
+
+                val location = fusedClient.getCurrentLocation(
+                    Priority.PRIORITY_HIGH_ACCURACY,
+                    CancellationTokenSource().token
+                ).await()
+                if (location != null) {
+                    val handshake = api.verifyHandshake(
+                        VerifyHandshakeRequest(
+                            orderId = orderId,
+                            token = effectiveToken,
+                            latitude = location.latitude,
+                            longitude = location.longitude,
+                        )
+                    )
+                    if (!handshake.success) {
+                        _state.value = _state.value.copy(
+                            isSubmitting = false,
+                            error = handshake.message.ifBlank { "Handshake verification failed" }
+                        )
+                        return@launch
+                    }
+                    _state.value = _state.value.copy(
+                        isSubmitting = false,
+                        validated = response,
+                        handshakeVerified = true,
+                    )
+                } else {
+                    _state.value = _state.value.copy(
+                        isSubmitting = false,
+                        validated = response,
+                        error = "GPS unavailable — handshake not verified",
+                    )
+                }
             } catch (e: TimeoutCancellationException) {
                 _state.value = _state.value.copy(
                     isSubmitting = false,

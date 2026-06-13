@@ -42,10 +42,18 @@ final class APIClient: Sendable {
         return try await execute(request)
     }
 
-    func post<B: Encodable, T: Decodable>(_ path: String, body: B, authenticated: Bool = true) async throws -> T {
+    func post<B: Encodable, T: Decodable>(
+        _ path: String,
+        body: B,
+        idempotencyKey: String? = nil,
+        authenticated: Bool = true
+    ) async throws -> T {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
+        }
         request.httpBody = try encoder.encode(body)
         if authenticated {
             await attachToken(&request)
@@ -86,10 +94,42 @@ final class APIClient: Sendable {
         return try await execute(request)
     }
 
-    func postVoid<B: Encodable>(_ path: String, body: B, authenticated: Bool = true) async throws {
+    func patchVoid<B: Encodable>(
+        _ path: String,
+        body: B,
+        idempotencyKey: String? = nil,
+        authenticated: Bool = true
+    ) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
+        }
+        request.httpBody = try encoder.encode(body)
+        if authenticated {
+            await attachToken(&request)
+        }
+        _ = try await executeVoid(request)
+    }
+
+    func postVoid<B: Encodable>(
+        _ path: String,
+        body: B,
+        query: [String: String] = [:],
+        idempotencyKey: String? = nil,
+        authenticated: Bool = true
+    ) async throws {
+        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        if !query.isEmpty {
+            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+        }
+        var request = URLRequest(url: components.url!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
+        }
         request.httpBody = try encoder.encode(body)
         if authenticated {
             await attachToken(&request)

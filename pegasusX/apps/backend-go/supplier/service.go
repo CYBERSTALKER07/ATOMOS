@@ -17,7 +17,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -28,7 +27,9 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
+	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"golang.org/x/crypto/bcrypt"
@@ -203,15 +204,14 @@ type Service struct {
 
 	inventorySvc InventoryServicer
 
-	portalSpanner     *spanner.Client
-	portalSupplierHub *ws.Hub
+	portalSpanner          *spanner.Client
+	manifestStore          *manifest.Store
+	routeGeometryBuilder   *routing.GeometryBuilder
+	portalSupplierHub      *ws.Hub
 	optimizerClient   *optimizerclient.Client
 	planCounters      *plan.SourceCounters
 	fallbackDepotLat  float64
 	fallbackDepotLng  float64
-
-	mu     sync.RWMutex
-	orders map[string]SupplierOrder
 }
 
 const supplierWebSocketSessionTTL = 10 * time.Minute
@@ -276,7 +276,6 @@ func NewService(c ServiceConfig) *Service {
 		log:            c.Log,
 		now:            c.Now,
 		inventorySvc:   c.InventoryService,
-		orders:         make(map[string]SupplierOrder),
 	}
 }
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LoginView: View {
     @Environment(TokenStore.self) private var tokenStore
+    @Environment(\.openURL) private var openURL
     @State private var phone = ""
     @State private var pin = ""
     @State private var loading = false
@@ -58,6 +59,14 @@ struct LoginView: View {
             .tint(.primary)
             .disabled(loading || phone.isEmpty || pin.isEmpty)
 
+            Button {
+                openURL(WarehousePortalLinks.url(for: .register))
+            } label: {
+                Text("New warehouse? Register on the web portal")
+                    .font(.footnote)
+            }
+            .padding(.top, LabTheme.spacingSM)
+
             Spacer()
         }
         .padding()
@@ -71,7 +80,11 @@ struct LoginView: View {
                 let auth = try await WarehouseService.login(phone: phone, pin: pin)
                 tokenStore.store(auth: auth)
             } catch {
-                self.error = error.localizedDescription
+                if let apiError = error as? APIError, case .httpError(404) = apiError {
+                    self.error = "No account found. Register your warehouse on the web portal."
+                } else {
+                    self.error = error.localizedDescription
+                }
             }
             loading = false
         }

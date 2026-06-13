@@ -92,6 +92,7 @@ struct SupplierOrder: Decodable, Identifiable, Hashable {
     let retailerId: String
     let status: String
     let decision: String?
+    let note: String?
     let totalMinor: Int64
     let currency: String
     let updatedAt: String
@@ -99,7 +100,7 @@ struct SupplierOrder: Decodable, Identifiable, Hashable {
     enum CodingKeys: String, CodingKey {
         case orderId = "order_id"
         case retailerId = "retailer_id"
-        case status, decision
+        case status, decision, note
         case totalMinor = "total_minor"
         case currency
         case updatedAt = "updated_at"
@@ -187,6 +188,104 @@ struct InventoryItem: Decodable, Identifiable {
         case productName = "product_name"
         case quantity
         case updatedAt = "updated_at"
+    }
+}
+
+// MARK: - Catalog
+
+struct CatalogProduct: Decodable, Identifiable {
+    let productId: String
+    let name: String
+    let categoryId: String
+    let priceMinor: Int64
+    let currency: String
+    let unit: String
+    let unitVolumeVu: Double
+    let imageUrl: String?
+    let isActive: Bool
+    let version: Int64
+
+    var id: String { productId }
+
+    enum CodingKeys: String, CodingKey {
+        case productId = "product_id"
+        case name
+        case categoryId = "category_id"
+        case priceMinor = "price_minor"
+        case currency
+        case unit
+        case unitVolumeVu = "unit_volume_vu"
+        case imageUrl = "image_url"
+        case isActive = "is_active"
+        case version
+    }
+}
+
+struct CatalogCategory: Decodable, Identifiable {
+    let categoryId: String
+    let name: String
+
+    var id: String { categoryId }
+
+    enum CodingKeys: String, CodingKey {
+        case categoryId = "category_id"
+        case name
+    }
+}
+
+struct CatalogUploadTicket: Decodable {
+    let uploadUrl: String
+    let imageUrl: String
+
+    enum CodingKeys: String, CodingKey {
+        case uploadUrl = "upload_url"
+        case imageUrl = "image_url"
+    }
+}
+
+struct CatalogProductCreateRequest: Encodable {
+    let categoryId: String
+    let name: String
+    let description: String
+    let priceMinor: Int64
+    let currency: String
+    let unitVolumeVu: Double
+    let stockQuantity: Int64
+    let unit: String
+    let imageUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case categoryId = "category_id"
+        case name
+        case description
+        case priceMinor = "price_minor"
+        case currency
+        case unitVolumeVu = "unit_volume_vu"
+        case stockQuantity = "stock_quantity"
+        case unit
+        case imageUrl = "image_url"
+    }
+}
+
+struct CatalogProductUpdateRequest: Encodable {
+    let name: String
+    let priceMinor: Int64
+    let currency: String
+    let unit: String
+    let unitVolumeVu: Double
+    let imageUrl: String?
+    let isActive: Bool
+    let version: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case priceMinor = "price_minor"
+        case currency
+        case unit
+        case unitVolumeVu = "unit_volume_vu"
+        case imageUrl = "image_url"
+        case isActive = "is_active"
+        case version
     }
 }
 

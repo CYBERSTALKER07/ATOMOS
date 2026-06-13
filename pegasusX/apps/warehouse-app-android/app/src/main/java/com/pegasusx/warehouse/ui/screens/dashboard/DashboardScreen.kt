@@ -15,6 +15,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.DashboardData
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
+import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
+import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
 import com.pegasusx.warehouse.ui.navigation.WarehouseRoutes
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -43,6 +46,8 @@ private val kpiCards = listOf(
 @Composable
 fun DashboardScreen(
     api: WarehouseApi,
+    opsRepository: WarehouseOperationsRepository,
+    realtimeSignals: WarehouseRealtimeSignals,
     onNavigate: (String) -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -101,13 +106,25 @@ fun DashboardScreen(
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
-            else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 160.dp),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+            else -> Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
+                FleetLiveMapSection(
+                    ops = opsRepository,
+                    realtimeSignals = realtimeSignals,
+                    onOpenFullMap = { onNavigate(WarehouseRoutes.FLEET_LIVE_MAP) },
+                )
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 160.dp),
+                    contentPadding = PaddingValues(bottom = PegasusSpacing.lg),
+                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                 items(kpiCards.size) { index ->
                     val card = kpiCards[index]
                     ElevatedCard(
@@ -136,6 +153,7 @@ fun DashboardScreen(
                         }
                     }
                 }
+            }
             }
         }
     }

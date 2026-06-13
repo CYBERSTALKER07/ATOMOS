@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { BentoCard, BentoGrid, BentoSkeleton } from "@/components/BentoGrid";
+import FleetLiveMapPanel from "@/components/FleetLiveMapPanel";
 import StatusBadge from "@/components/StatusBadge";
 import { useDashboardData } from "./use-dashboard-data";
 
@@ -152,50 +153,22 @@ export default function DashboardPage() {
           </p>
         </BentoCard>
 
-        <BentoCard size="anchor" className="p-0 flex flex-col overflow-hidden">
+        <BentoCard size="anchor" className="p-0 flex flex-col overflow-hidden min-h-[480px]">
           <div
-            className="p-4 border-b flex justify-between items-center"
+            className="p-4 border-b flex justify-between items-center gap-3"
             style={{ borderColor: "var(--desk-border)", background: "var(--desk-surface-raised)" }}
           >
-            <h2 className="md-typescale-title-medium">Dispatch queue</h2>
-            <Link href="/dispatch" className="md-btn md-btn-text text-sm h-8 px-2">
-              View all
+            <div>
+              <h2 className="md-typescale-title-medium">Live fleet map</h2>
+              <p className="md-typescale-body-small" style={{ color: "var(--desk-text-secondary)" }}>
+                Sealed manifest polylines and driver GPS.
+              </p>
+            </div>
+            <Link href="/fleet" className="md-btn md-btn-text text-sm h-8 px-2 shrink-0">
+              Fleet
             </Link>
           </div>
-          <div className="overflow-x-auto flex-1">
-            <table className="desk-table w-full">
-              <thead>
-                <tr>
-                  <th>Manifest</th>
-                  <th>Status</th>
-                  <th className="text-right">Orders</th>
-                  <th>Driver</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentManifests.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="p-8 text-center" style={{ color: "var(--desk-text-secondary)" }}>
-                      No active manifests in queue.
-                    </td>
-                  </tr>
-                ) : (
-                  recentManifests.map((manifest) => (
-                    <tr key={manifest.id}>
-                      <td className="font-mono" style={{ color: "var(--desk-accent-strong)" }}>
-                        {manifest.id.substring(0, 12)}
-                      </td>
-                      <td>
-                        <StatusBadge state={manifest.status} />
-                      </td>
-                      <td className="text-right">{manifest.ordersCount}</td>
-                      <td className="truncate">{manifest.driverName}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <FleetLiveMapPanel className="flex-1 min-h-[360px]" />
         </BentoCard>
 
         <BentoCard size="list" className="p-5 flex flex-col">
@@ -223,6 +196,46 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </BentoCard>
+
+        <BentoCard size="list" className="p-0 flex flex-col overflow-hidden max-h-[320px]">
+          <div
+            className="p-4 border-b flex justify-between items-center gap-3"
+            style={{ borderColor: "var(--desk-border)", background: "var(--desk-surface-raised)" }}
+          >
+            <h2 className="md-typescale-title-medium">Dispatch queue</h2>
+            <Link href="/dispatch" className="md-btn md-btn-text text-sm h-8 px-2 shrink-0">
+              View all
+            </Link>
+          </div>
+          <div className="overflow-y-auto flex-1 p-4 space-y-2">
+            {recentManifests.length === 0 ? (
+              <p className="md-typescale-body-small" style={{ color: "var(--desk-text-secondary)" }}>
+                No active manifests in queue.
+              </p>
+            ) : (
+              recentManifests.map((manifest) => (
+                <div
+                  key={manifest.id}
+                  className="flex items-center justify-between gap-3 py-2 border-b last:border-b-0"
+                  style={{ borderColor: "var(--desk-border)" }}
+                >
+                  <div className="min-w-0">
+                    <div className="font-mono text-sm truncate" style={{ color: "var(--desk-accent-strong)" }}>
+                      {manifest.id.substring(0, 12)}
+                    </div>
+                    <div className="md-typescale-body-small truncate" style={{ color: "var(--desk-text-secondary)" }}>
+                      {manifest.driverName}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="md-typescale-label-medium tabular-nums">{manifest.ordersCount}</span>
+                    <StatusBadge state={manifest.status} />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </BentoCard>
 

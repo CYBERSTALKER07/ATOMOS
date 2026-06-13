@@ -43,6 +43,20 @@ data class ReplenishmentInsight(
 data class ReplenishmentInsightsResponse(
     val insights: List<ReplenishmentInsight> = emptyList(),
     val data: List<ReplenishmentInsight> = emptyList(),
+) {
+    fun resolved(): List<ReplenishmentInsight> =
+        insights.ifEmpty { data }
+}
+
+@Serializable
+data class DispatchSettingsResponse(
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("auto_dispatch_enabled") val autoDispatchEnabled: Boolean = false,
+)
+
+@Serializable
+data class DispatchSettingsPatchRequest(
+    @SerialName("auto_dispatch_enabled") val autoDispatchEnabled: Boolean,
 )
 
 @Serializable
@@ -75,4 +89,52 @@ data class WarehouseOrderMutationRequest(
 data class WarehouseOrderMutationResponse(
     @SerialName("order_id") val orderId: String,
     val status: String,
+)
+
+@Serializable
+data class RouteCoordinateWire(
+    val lat: Double,
+    val lng: Double,
+)
+
+@Serializable
+data class RouteGeometryWire(
+    @SerialName("route_id") val routeId: String? = null,
+    @SerialName("encoded_polyline") val encodedPolyline: String? = null,
+    val coordinates: List<RouteCoordinateWire> = emptyList(),
+    val source: String = "",
+    @SerialName("stop_count") val stopCount: Int? = null,
+)
+
+@Serializable
+data class WarehouseDriverLocationWire(
+    @SerialName("driver_id") val driverId: String,
+    @SerialName("supplier_id") val supplierId: String? = null,
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+    @SerialName("reported_at") val reportedAt: String = "",
+    @SerialName("received_at") val receivedAt: String = "",
+    @SerialName("stale_after_seconds") val staleAfterSeconds: Int = 0,
+)
+
+@Serializable
+data class WarehouseFleetLiveRoute(
+    @SerialName("manifest_id") val manifestId: String,
+    @SerialName("route_id") val routeId: String,
+    @SerialName("driver_id") val driverId: String,
+    @SerialName("driver_name") val driverName: String? = null,
+    @SerialName("manifest_state") val manifestState: String,
+    @SerialName("route_geometry") val routeGeometry: RouteGeometryWire? = null,
+    @SerialName("driver_location") val driverLocation: WarehouseDriverLocationWire? = null,
+    @SerialName("live_location_available") val liveLocationAvailable: Boolean = false,
+    @SerialName("location_stale") val locationStale: Boolean? = null,
+)
+
+@Serializable
+data class WarehouseFleetLiveMapResponse(
+    val routes: List<WarehouseFleetLiveRoute> = emptyList(),
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("fetched_at") val fetchedAt: String = "",
 )

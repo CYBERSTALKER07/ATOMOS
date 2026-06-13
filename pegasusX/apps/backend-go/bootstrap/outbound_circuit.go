@@ -9,6 +9,7 @@ type OutboundCircuits struct {
 	Payment      *circuit.Breaker
 	Notification *circuit.Breaker
 	Telegram     *circuit.Breaker
+	OSRM         *circuit.Breaker
 }
 
 // NewOutboundCircuits constructs default outbound breakers.
@@ -18,5 +19,6 @@ func NewOutboundCircuits() *OutboundCircuits {
 		Payment:      circuit.New("payment", cfg),
 		Notification: circuit.New("notification", cfg),
 		Telegram:     circuit.New("telegram", cfg),
+		OSRM:         circuit.New("osrm", cfg),
 	}
 }

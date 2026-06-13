@@ -235,7 +235,7 @@ func (r *SpannerRepository) ListOrders(ctx context.Context, supplierID string, l
 	stmt := spanner.Statement{
 		SQL: `SELECT OrderId, SupplierId, RetailerId,
 		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
-		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), Status,
+		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), Status, ConfirmationStatus,
 		             TotalMinor, Currency, CreatedAt, UpdatedAt
 		      FROM Orders
 		      WHERE SupplierId = @supplierId
@@ -272,9 +272,10 @@ func (r *SpannerRepository) ListOrders(ctx context.Context, supplierID string, l
 
 func decodeSupplierOrder(row *spanner.Row) (SupplierOrder, error) {
 	var (
-		order     SupplierOrder
-		createdAt time.Time
-		updatedAt time.Time
+		order              SupplierOrder
+		confirmationStatus string
+		createdAt          time.Time
+		updatedAt          time.Time
 	)
 	if err := row.Columns(
 		&order.OrderID,
@@ -286,6 +287,7 @@ func decodeSupplierOrder(row *spanner.Row) (SupplierOrder, error) {
 		&order.RouteID,
 		&order.ManifestID,
 		&order.Status,
+		&confirmationStatus,
 		&order.TotalMinor,
 		&order.Currency,
 		&createdAt,
@@ -296,10 +298,7 @@ func decodeSupplierOrder(row *spanner.Row) (SupplierOrder, error) {
 
 	order.CreatedAt = createdAt.UTC().Format(time.RFC3339Nano)
 	order.UpdatedAt = updatedAt.UTC().Format(time.RFC3339Nano)
-	order.TrackingStatus = "unassigned"
-	if strings.TrimSpace(order.DriverID) != "" && strings.TrimSpace(order.RouteID) != "" {
-		order.TrackingStatus = "assigned"
-	}
+	applySupplierOrderPresentation(&order, confirmationStatus, order.Status)
 	order.LiveLocationAvailable = false
 	return order, nil
 }

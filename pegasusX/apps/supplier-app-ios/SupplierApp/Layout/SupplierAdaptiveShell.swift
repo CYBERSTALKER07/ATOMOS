@@ -105,8 +105,24 @@ struct SupplierAdaptiveShell: View {
             FleetOrdersView()
         case .ledger:
             LedgerView()
+        case .payments:
+            PaymentsView()
         case .operations:
             OperationsView()
+        case .analytics:
+            AnalyticsView()
+        case .aiRecommendations:
+            AIRecommendationsView()
+        case .geoReport:
+            GeoReportView()
+        case .topology:
+            TopologyView()
+        case .deliveryZones:
+            DeliveryZonesView()
+        case .supplyLanes:
+            SupplyLanesView()
+        case .catalog:
+            CatalogView()
         case .inventory:
             InventoryView()
         case .earnings:

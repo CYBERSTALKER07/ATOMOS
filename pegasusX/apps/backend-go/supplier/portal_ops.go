@@ -13,6 +13,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 )
 
 // SupplierManifestRow is a supplier-scoped manifest queue projection.
@@ -102,10 +103,7 @@ func (s *Service) HandleDispatchPreview(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	sid := s.scopedSupplierID(r)
-	warehouseFilter := auth.EffectiveWarehouseID(r.Context())
-	if warehouseFilter == "" {
-		warehouseFilter = strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
-	}
+	warehouseFilter := resolveSupplierDispatchWarehouseID(r)
 	limit, offset := parseListPagination(r, 300, 5000)
 	preview, err := s.buildSupplierDispatchPreview(r.Context(), sid, warehouseFilter, limit, offset)
 	if err != nil {
@@ -151,17 +149,7 @@ func (s *Service) HandleManifests(w http.ResponseWriter, r *http.Request) {
 	}
 	wire := make([]manifest.Wire, len(rows))
 	for i := range rows {
-		wire[i] = manifest.FromPortalRow(manifest.PortalRow{
-			ManifestID:   rows[i].ManifestID,
-			Status:       rows[i].Status,
-			OrdersCount:  rows[i].OrdersCount,
-			DriverID:     rows[i].DriverID,
-			DriverName:   rows[i].DriverName,
-			VehiclePlate: rows[i].VehiclePlate,
-			VehicleID:    rows[i].VehicleID,
-			TotalVu:      rows[i].TotalVu,
-			UpdatedAt:    rows[i].UpdatedAt,
-		})
+		wire[i] = supplierManifestToWire(rows[i])
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"manifests": wire})
 }
@@ -210,7 +198,7 @@ func (s *Service) buildSupplierDashboardDetail(ctx context.Context, sid string, 
 		fleetMaxVU = 1
 	}
 
-	manifests, err := s.aggregateManifests(ctx, sid, orders)
+	manifests, err := s.listSupplierManifests(ctx, sid)
 	if err != nil {
 		return supplierDashboardDetail{}, err
 	}
@@ -254,12 +242,104 @@ func (s *Service) buildSupplierDashboardDetail(ctx context.Context, sid string, 
 	return detail, nil
 }
 
-func (s *Service) listSupplierManifests(ctx context.Context, supplierID string) ([]SupplierManifestRow, error) {
-	orders, err := s.listSupplierOrders(ctx, supplierID, "", "")
-	if err != nil {
-		return nil, err
+func (s *Service) aggregateManifestsLegacy(ctx context.Context, supplierID string, orders []SupplierOrder) ([]SupplierManifestRow, error) {
+	type manifestAcc struct {
+		row      SupplierManifestRow
+		statuses map[string]int
 	}
-	return s.aggregateManifests(ctx, supplierID, orders)
+	byManifest := map[string]*manifestAcc{}
+	unassigned := make([]SupplierOrder, 0)
+
+	driverNames := map[string]string{}
+	if drivers, err := s.repo.ListFleetDrivers(ctx, supplierID); err == nil {
+		for _, d := range drivers {
+			driverNames[d.DriverID] = strings.TrimSpace(d.Name)
+		}
+	}
+	vehiclePlates := map[string]string{}
+	if vehicles, err := s.repo.ListFleetVehicles(ctx, supplierID); err == nil {
+		for _, v := range vehicles {
+			vehiclePlates[v.VehicleID] = strings.TrimSpace(v.LicensePlate)
+		}
+	}
+
+	for _, order := range orders {
+		mid := strings.TrimSpace(order.ManifestID)
+		if mid == "" {
+			unassigned = append(unassigned, order)
+			continue
+		}
+		acc, ok := byManifest[mid]
+		if !ok {
+			acc = &manifestAcc{
+				row: SupplierManifestRow{
+					ManifestID: mid,
+					Status:     "DRAFT",
+					DriverID:   strings.TrimSpace(order.DriverID),
+				},
+				statuses: map[string]int{},
+			}
+			byManifest[mid] = acc
+		}
+		acc.row.OrdersCount++
+		acc.row.TotalVu += order.TotalMinor / 1000
+		if order.UpdatedAt > acc.row.UpdatedAt {
+			acc.row.UpdatedAt = order.UpdatedAt
+		}
+		status := strings.ToUpper(strings.TrimSpace(order.Status))
+		acc.statuses[status]++
+		if strings.TrimSpace(order.DriverID) != "" {
+			acc.row.DriverID = order.DriverID
+		}
+		vid := strings.TrimSpace(order.VehicleID)
+		if vid != "" {
+			acc.row.VehicleID = vid
+			acc.row.TruckID = vid
+		}
+		if plate := vehiclePlates[vid]; plate != "" {
+			acc.row.VehiclePlate = plate
+		}
+	}
+
+	rows := make([]SupplierManifestRow, 0, len(byManifest))
+	for _, acc := range byManifest {
+		acc.row.Status = manifestStatusFromOrders(acc.statuses)
+		acc.row.State = acc.row.Status
+		acc.row.StopCount = acc.row.OrdersCount
+		acc.row.TotalVolumeVU = float64(acc.row.TotalVu)
+		if name := driverNames[acc.row.DriverID]; name != "" {
+			acc.row.DriverName = name
+		} else if acc.row.DriverID != "" {
+			acc.row.DriverName = acc.row.DriverID
+		} else {
+			acc.row.DriverName = "Unassigned"
+		}
+		rows = append(rows, acc.row)
+	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i].UpdatedAt > rows[j].UpdatedAt })
+
+	if len(unassigned) > 0 {
+		rows = append(rows, SupplierManifestRow{
+			ManifestID:  "unassigned",
+			Status:      "DRAFT",
+			State:       "DRAFT",
+			OrdersCount: len(unassigned),
+			StopCount:   len(unassigned),
+			DriverName:  "Unassigned",
+			UpdatedAt:   unassigned[0].UpdatedAt,
+		})
+	}
+	return rows, nil
+}
+
+func manifestStatusFromOrders(statuses map[string]int) string {
+	if statuses["IN_TRANSIT"]+statuses["ARRIVED"]+statuses["COMPLETED"] > 0 {
+		return "DISPATCHED"
+	}
+	if statuses["LOADED"] > 0 {
+		return "LOADING"
+	}
+	return "DRAFT"
 }
 
 func (s *Service) listSupplierSupplyLanes(ctx context.Context, supplierID string) ([]SupplierSupplyLaneRow, error) {
@@ -445,104 +525,6 @@ func aggregateOrderMetrics(orders []SupplierOrder, now time.Time) orderMetricsAg
 	}
 }
 
-func (s *Service) aggregateManifests(ctx context.Context, supplierID string, orders []SupplierOrder) ([]SupplierManifestRow, error) {
-	type manifestAcc struct {
-		row      SupplierManifestRow
-		statuses map[string]int
-	}
-	byManifest := map[string]*manifestAcc{}
-	unassigned := make([]SupplierOrder, 0)
-
-	driverNames := map[string]string{}
-	if drivers, err := s.repo.ListFleetDrivers(ctx, supplierID); err == nil {
-		for _, d := range drivers {
-			driverNames[d.DriverID] = strings.TrimSpace(d.Name)
-		}
-	}
-	vehiclePlates := map[string]string{}
-	if vehicles, err := s.repo.ListFleetVehicles(ctx, supplierID); err == nil {
-		for _, v := range vehicles {
-			vehiclePlates[v.VehicleID] = strings.TrimSpace(v.LicensePlate)
-		}
-	}
-
-	for _, order := range orders {
-		mid := strings.TrimSpace(order.ManifestID)
-		if mid == "" {
-			unassigned = append(unassigned, order)
-			continue
-		}
-		acc, ok := byManifest[mid]
-		if !ok {
-			acc = &manifestAcc{
-				row: SupplierManifestRow{
-					ManifestID: mid,
-					Status:     "DRAFT",
-					DriverID:   strings.TrimSpace(order.DriverID),
-				},
-				statuses: map[string]int{},
-			}
-			byManifest[mid] = acc
-		}
-		acc.row.OrdersCount++
-		acc.row.TotalVu += order.TotalMinor / 1000
-		if order.UpdatedAt > acc.row.UpdatedAt {
-			acc.row.UpdatedAt = order.UpdatedAt
-		}
-		status := strings.ToUpper(strings.TrimSpace(order.Status))
-		acc.statuses[status]++
-		if strings.TrimSpace(order.DriverID) != "" {
-			acc.row.DriverID = order.DriverID
-		}
-		vid := strings.TrimSpace(order.VehicleID)
-		if vid != "" {
-			acc.row.VehicleID = vid
-			acc.row.TruckID = vid
-		}
-		if plate := vehiclePlates[vid]; plate != "" {
-			acc.row.VehiclePlate = plate
-		}
-	}
-
-	rows := make([]SupplierManifestRow, 0, len(byManifest))
-	for _, acc := range byManifest {
-		acc.row.Status = manifestStatusFromOrders(acc.statuses)
-		acc.row.State = acc.row.Status
-		acc.row.StopCount = acc.row.OrdersCount
-		acc.row.TotalVolumeVU = float64(acc.row.TotalVu)
-		if name := driverNames[acc.row.DriverID]; name != "" {
-			acc.row.DriverName = name
-		} else if acc.row.DriverID != "" {
-			acc.row.DriverName = acc.row.DriverID
-		} else {
-			acc.row.DriverName = "Unassigned"
-		}
-		rows = append(rows, acc.row)
-	}
-	sort.Slice(rows, func(i, j int) bool { return rows[i].UpdatedAt > rows[j].UpdatedAt })
-
-	if len(unassigned) > 0 {
-		rows = append(rows, SupplierManifestRow{
-			ManifestID:  "unassigned",
-			Status:      "DRAFT",
-			OrdersCount: len(unassigned),
-			DriverName:  "Unassigned",
-			UpdatedAt:   unassigned[0].UpdatedAt,
-		})
-	}
-	return rows, nil
-}
-
-func manifestStatusFromOrders(statuses map[string]int) string {
-	if statuses["IN_TRANSIT"]+statuses["ARRIVED"]+statuses["COMPLETED"] > 0 {
-		return "DISPATCHED"
-	}
-	if statuses["LOADED"] > 0 {
-		return "LOADING"
-	}
-	return "DRAFT"
-}
-
 func (s *Service) buildSupplierDispatchPreview(ctx context.Context, supplierID, warehouseID string, limit, offset int) (SupplierDispatchPreview, error) {
 	undispatched := make([]map[string]any, 0)
 	windowConstrained := 0
@@ -597,7 +579,14 @@ func (s *Service) buildSupplierDispatchPreview(ctx context.Context, supplierID, 
 	if err != nil {
 		return SupplierDispatchPreview{}, err
 	}
+	busy, err := s.driversOnActiveManifests(ctx, supplierID, warehouseID, collectSupplierDriverIDs(drivers, warehouseID))
+	if err != nil {
+		return SupplierDispatchPreview{}, err
+	}
 	for _, driver := range drivers {
+		if warehouseID != "" && !strings.EqualFold(strings.TrimSpace(driver.HomeNodeID), warehouseID) {
+			continue
+		}
 		entry := map[string]any{
 			"driver_id":  driver.DriverID,
 			"name":       driver.Name,
@@ -607,13 +596,17 @@ func (s *Service) buildSupplierDispatchPreview(ctx context.Context, supplierID, 
 			entry["vehicle_class"] = spec.VehicleClass
 			entry["max_volume_vu"] = spec.MaxVolumeVU
 		}
-		if driver.IsActive {
-			entry["truck_status"] = "AVAILABLE"
-			available = append(available, entry)
-		} else {
-			entry["truck_status"] = "UNAVAILABLE"
-			entry["unavailable_reason"] = "INACTIVE"
+		truckStatus, isUnavailable := supplierDriverTruckStatus(driver.IsActive, busy[strings.TrimSpace(driver.DriverID)])
+		entry["truck_status"] = truckStatus
+		if isUnavailable {
+			if !driver.IsActive {
+				entry["unavailable_reason"] = "INACTIVE"
+			} else {
+				entry["unavailable_reason"] = truckStatus
+			}
 			unavailable = append(unavailable, entry)
+		} else {
+			available = append(available, entry)
 		}
 	}
 
@@ -633,6 +626,9 @@ func (s *Service) buildSupplierDispatchPreview(ctx context.Context, supplierID, 
 				continue
 			}
 			if warehouseID != "" && !strings.EqualFold(strings.TrimSpace(driver.HomeNodeID), warehouseID) {
+				continue
+			}
+			if busy[strings.TrimSpace(driver.DriverID)] {
 				continue
 			}
 			driverInputs = append(driverInputs, dispatch.FleetDriverInput{
@@ -658,6 +654,10 @@ func (s *Service) buildSupplierDispatchPreview(ctx context.Context, supplierID, 
 		out.ProposedRoutes = solve.ProposedRoutes
 		out.OptimizerSource = solve.OptimizerSource
 		out.OptimizerWarnings = solve.OptimizerWarnings
+		routing.AttachRouteGeometryToProposedRoutes(ctx, s.routeGeometryBuilder, routing.LatLng{
+			Lat: depot.Lat,
+			Lng: depot.Lng,
+		}, out.ProposedRoutes)
 	}
 
 	return out, nil

@@ -191,7 +191,7 @@ type seedRepository struct {
 
 func (r *seedRepository) UpsertSupplier(ctx context.Context, s seed.Supplier) error {
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		createdAt, err := existingSupplierCreatedAt(ctx, txn, s.SupplierID)
+		createdAt, err := supplierCreatedAt(ctx, txn, s.SupplierID)
 		if err != nil {
 			return err
 		}
@@ -214,22 +214,23 @@ func (r *seedRepository) UpsertSupplier(ctx context.Context, s seed.Supplier) er
 	return nil
 }
 
-func existingSupplierCreatedAt(
+func supplierCreatedAt(
 	ctx context.Context,
 	txn *spanner.ReadWriteTransaction,
 	supplierID string,
-) (time.Time, error) {
+) (any, error) {
 	row, err := txn.ReadRow(ctx, "Suppliers", spanner.Key{supplierID}, []string{"CreatedAt"})
 	if err != nil {
 		if errors.Is(err, spanner.ErrRowNotFound) {
-			return time.Now().UTC(), nil
+			// CommitTimestamp avoids host-vs-emulator clock skew ("timestamp in the future").
+			return spanner.CommitTimestamp, nil
 		}
-		return time.Time{}, fmt.Errorf("read supplier %s: %w", supplierID, err)
+		return nil, fmt.Errorf("read supplier %s: %w", supplierID, err)
 	}
 
 	var createdAt time.Time
 	if err := row.Columns(&createdAt); err != nil {
-		return time.Time{}, fmt.Errorf("decode supplier %s created_at: %w", supplierID, err)
+		return nil, fmt.Errorf("decode supplier %s created_at: %w", supplierID, err)
 	}
 
 	return createdAt, nil

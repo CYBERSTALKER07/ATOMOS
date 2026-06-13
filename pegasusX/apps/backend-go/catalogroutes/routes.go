@@ -28,6 +28,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Get("/v1/catalog/suppliers/search", d.Service.HandleSearchSuppliers)
 	r.Get("/v1/products", d.Service.HandleListProductsAlias)
 	r.Get("/v1/catalog/products", d.Service.HandleListProducts)
+	r.Get("/v1/catalog/products/upload-ticket", d.Service.HandleGetUploadTicket)
 	r.Get("/v1/catalog/products/{productID}", d.Service.HandleGetProduct)
 
 	auth.ProtectMutations(r, auth.MutationGuardConfig{

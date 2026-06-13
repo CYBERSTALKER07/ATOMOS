@@ -46,6 +46,7 @@ type Deps struct {
 //	POST /v1/supplier/broadcast
 //	POST /v1/supplier/replenishment/trigger
 //	GET  /v1/supplier/fleet/orders
+//	GET  /v1/supplier/fleet/live-map
 func RegisterRoutes(r chi.Router, d Deps) {
 	if d.Service == nil {
 		return
@@ -108,5 +109,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/broadcast", d.Service.HandleBroadcast)
 		gr.Post("/v1/supplier/replenishment/trigger", d.Service.HandleReplenishmentTrigger)
 		gr.Get("/v1/supplier/fleet/orders", d.Service.HandleSupplierFleetOrders)
+		gr.Get("/v1/supplier/fleet/live-map", d.Service.HandleSupplierFleetLiveMap)
 	})
 }

@@ -112,7 +112,7 @@ interface WarehouseApi {
     suspend fun createDispatchPreview(@Body body: com.google.gson.JsonElement): Response<DispatchPreview>
 
     @POST("v1/warehouse/ops/dispatch/execute")
-    suspend fun executeDispatch(@Body body: com.google.gson.JsonElement): Response<com.google.gson.JsonElement>
+    suspend fun executeDispatch(@Body body: com.google.gson.JsonElement): Response<DispatchExecuteResponse>
 
     @GET("v1/warehouse/demand/forecast")
     suspend fun getDemandForecast(
@@ -125,7 +125,15 @@ interface WarehouseApi {
     ): Response<SupplyRequestListResponse>
 
     @GET("v1/warehouse/supply-requests/{id}")
-    suspend fun getSupplyRequest(@Path("id") id: String): Response<com.google.gson.JsonElement>
+    suspend fun getSupplyRequest(@Path("id") id: String): Response<WarehouseSupplyRequest>
+
+    @GET("v1/warehouse/ops/dispatch/settings")
+    suspend fun getDispatchSettings(): Response<DispatchSettingsResponse>
+
+    @PATCH("v1/warehouse/ops/dispatch/settings")
+    suspend fun patchDispatchSettings(
+        @Body body: DispatchSettingsPatchRequest,
+    ): Response<Map<String, String>>
 
     @POST("v1/warehouse/supply-requests")
     suspend fun createSupplyRequest(
@@ -201,4 +209,9 @@ interface WarehouseApi {
         @Path("id") orderId: String,
         @Body body: WarehouseOrderMutationRequest = WarehouseOrderMutationRequest(),
     ): Response<WarehouseOrderMutationResponse>
+
+    @GET("v1/warehouse/ops/fleet/live-map")
+    suspend fun getFleetLiveMap(
+        @Query("warehouse_id") warehouseId: String? = null,
+    ): Response<WarehouseFleetLiveMapResponse>
 }

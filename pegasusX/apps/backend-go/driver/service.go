@@ -82,6 +82,7 @@ type Service struct {
 	earnings     EarningsLookup
 	depart         DepartFn
 	returnComplete ReturnCompleteFn
+	routeGeometry  RouteGeometryLookup
 
 	supplierID string
 	currency   string
@@ -114,6 +115,7 @@ type ServiceConfig struct {
 	Earnings     EarningsLookup
 	Depart          DepartFn
 	ReturnComplete  ReturnCompleteFn
+	RouteGeometry   RouteGeometryLookup
 	SupplierID   string
 	Currency     string
 	JWTSecret    string
@@ -240,6 +242,7 @@ func NewService(c ServiceConfig) *Service {
 		earnings:           c.Earnings,
 		depart:          c.Depart,
 		returnComplete:  c.ReturnComplete,
+		routeGeometry:   c.RouteGeometry,
 		supplierID:         c.SupplierID,
 		currency:           strings.ToUpper(strings.TrimSpace(c.Currency)),
 		jwtSecret:          strings.TrimSpace(c.JWTSecret),

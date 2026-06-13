@@ -265,37 +265,3 @@ func TestHandleOrdersUsesDurableAssignmentsAndLiveLocation(t *testing.T) {
 		t.Fatalf("unexpected durable order payload: %+v", order)
 	}
 }
-
-func TestHandleOrdersFallsBackToScaffoldOrders(t *testing.T) {
-	svc := NewService(ServiceConfig{Repo: &pricingTestRepo{}, SupplierID: "sup-1", Country: "UZ", Currency: "UZS"})
-	svc.orders["ord-fallback"] = SupplierOrder{
-		OrderID:    "ord-fallback",
-		RetailerID: "ret-2",
-		Status:     "AWAITING_REVIEW",
-		TotalMinor: 900,
-		Currency:   "UZS",
-		CreatedAt:  "2026-05-23T11:00:00Z",
-		UpdatedAt:  "2026-05-23T11:05:00Z",
-	}
-
-	req := httptest.NewRequest(http.MethodGet, "/v1/supplier/orders", nil)
-	rr := httptest.NewRecorder()
-
-	svc.HandleOrders(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status=%d want=%d body=%s", rr.Code, http.StatusOK, rr.Body.String())
-	}
-	var payload struct {
-		Orders []SupplierOrder `json:"orders"`
-	}
-	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	if len(payload.Orders) != 1 {
-		t.Fatalf("orders=%d want=1", len(payload.Orders))
-	}
-	if payload.Orders[0].OrderID != "ord-fallback" || payload.Orders[0].SupplierID != "sup-1" {
-		t.Fatalf("unexpected scaffold order payload: %+v", payload.Orders[0])
-	}
-}

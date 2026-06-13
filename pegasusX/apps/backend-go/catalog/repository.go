@@ -22,6 +22,7 @@ type Product struct {
 	Currency      string    `json:"currency" spanner:"Currency"`
 	StockQuantity int64     `json:"stock_quantity" spanner:"StockQuantity"`
 	Unit          string    `json:"unit" spanner:"Unit"`
+	UnitVolumeVU  float64   `json:"unit_volume_vu" spanner:"UnitVolumeVU"`
 	IsActive      bool      `json:"is_active" spanner:"IsActive"`
 	Version       int64     `json:"version" spanner:"Version"`
 	CreatedAt     time.Time `json:"created_at" spanner:"CreatedAt"`
@@ -143,7 +144,7 @@ func (r *SpannerRepository) CreateCategory(ctx context.Context, cat Category) er
 
 // ListProducts returns products for a supplier, optionally filtered by category and active status.
 func (r *SpannerRepository) ListProducts(ctx context.Context, supplierID, categoryID string, activeOnly bool) ([]Product, error) {
-	sql := "SELECT ProductId, SupplierId, CategoryId, Name, Description, ImageURL, PriceMinor, Currency, StockQuantity, Unit, IsActive, Version, CreatedAt, UpdatedAt FROM Products WHERE SupplierId = @sid"
+	sql := "SELECT ProductId, SupplierId, CategoryId, Name, Description, ImageURL, PriceMinor, Currency, StockQuantity, Unit, UnitVolumeVU, IsActive, Version, CreatedAt, UpdatedAt FROM Products WHERE SupplierId = @sid"
 	params := map[string]any{"sid": supplierID}
 	if categoryID != "" {
 		sql += " AND CategoryId = @cid"
@@ -170,7 +171,7 @@ func (r *SpannerRepository) ListProducts(ctx context.Context, supplierID, catego
 		var p Product
 		var desc, imageURL spanner.NullString
 		if err := row.Columns(&p.ProductID, &p.SupplierID, &p.CategoryID, &p.Name, &desc, &imageURL,
-			&p.PriceMinor, &p.Currency, &p.StockQuantity, &p.Unit, &p.IsActive, &p.Version,
+			&p.PriceMinor, &p.Currency, &p.StockQuantity, &p.Unit, &p.UnitVolumeVU, &p.IsActive, &p.Version,
 			&p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan product row: %w", err)
 		}
@@ -192,7 +193,7 @@ func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, catego
 	if offset < 0 {
 		offset = 0
 	}
-	sql := "SELECT ProductId, SupplierId, CategoryId, Name, Description, ImageURL, PriceMinor, Currency, StockQuantity, Unit, IsActive, Version, CreatedAt, UpdatedAt FROM Products WHERE IsActive = TRUE"
+	sql := "SELECT ProductId, SupplierId, CategoryId, Name, Description, ImageURL, PriceMinor, Currency, StockQuantity, Unit, UnitVolumeVU, IsActive, Version, CreatedAt, UpdatedAt FROM Products WHERE IsActive = TRUE"
 	params := map[string]any{"lim": limit, "off": offset}
 	if categoryID != "" {
 		sql += " AND CategoryId = @cid"
@@ -216,7 +217,7 @@ func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, catego
 		var p Product
 		var desc, imageURL spanner.NullString
 		if err := row.Columns(&p.ProductID, &p.SupplierID, &p.CategoryID, &p.Name, &desc, &imageURL,
-			&p.PriceMinor, &p.Currency, &p.StockQuantity, &p.Unit, &p.IsActive, &p.Version,
+			&p.PriceMinor, &p.Currency, &p.StockQuantity, &p.Unit, &p.UnitVolumeVU, &p.IsActive, &p.Version,
 			&p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan discoverable product row: %w", err)
 		}
@@ -231,14 +232,14 @@ func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, catego
 func (r *SpannerRepository) GetProduct(ctx context.Context, productID string) (*Product, error) {
 	row, err := r.client.Single().ReadRow(ctx, "Products", spanner.Key{productID},
 		[]string{"ProductId", "SupplierId", "CategoryId", "Name", "Description", "ImageURL",
-			"PriceMinor", "Currency", "StockQuantity", "Unit", "IsActive", "Version", "CreatedAt", "UpdatedAt"})
+			"PriceMinor", "Currency", "StockQuantity", "Unit", "UnitVolumeVU", "IsActive", "Version", "CreatedAt", "UpdatedAt"})
 	if err != nil {
 		return nil, fmt.Errorf("get product %s: %w", productID, err)
 	}
 	var p Product
 	var desc, imageURL spanner.NullString
 	if err := row.Columns(&p.ProductID, &p.SupplierID, &p.CategoryID, &p.Name, &desc, &imageURL,
-		&p.PriceMinor, &p.Currency, &p.StockQuantity, &p.Unit, &p.IsActive, &p.Version,
+		&p.PriceMinor, &p.Currency, &p.StockQuantity, &p.Unit, &p.UnitVolumeVU, &p.IsActive, &p.Version,
 		&p.CreatedAt, &p.UpdatedAt); err != nil {
 		return nil, fmt.Errorf("scan product %s: %w", productID, err)
 	}
@@ -261,6 +262,7 @@ func (r *SpannerRepository) CreateProduct(ctx context.Context, p Product) error 
 			"Currency":      p.Currency,
 			"StockQuantity": p.StockQuantity,
 			"Unit":          p.Unit,
+			"UnitVolumeVU":  normalizeUnitVolumeVU(p.UnitVolumeVU),
 			"IsActive":      p.IsActive,
 			"Version":       int64(1),
 			"CreatedAt":     spanner.CommitTimestamp,
@@ -297,6 +299,7 @@ func (r *SpannerRepository) UpdateProduct(ctx context.Context, p Product) error 
 			"Currency":      p.Currency,
 			"StockQuantity": p.StockQuantity,
 			"Unit":          p.Unit,
+			"UnitVolumeVU":  normalizeUnitVolumeVU(p.UnitVolumeVU),
 			"IsActive":      p.IsActive,
 			"Version":       currentVersion + 1,
 			"UpdatedAt":     spanner.CommitTimestamp,
@@ -379,4 +382,11 @@ func (r *SpannerRepository) SearchSuppliers(ctx context.Context, query string, l
 		out = append(out, s)
 	}
 	return out, nil
+}
+
+func normalizeUnitVolumeVU(v float64) float64 {
+	if v <= 0 {
+		return 1.0
+	}
+	return v
 }

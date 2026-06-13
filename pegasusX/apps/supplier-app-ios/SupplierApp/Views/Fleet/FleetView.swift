@@ -46,6 +46,15 @@ struct FleetView: View {
             }
             .background(SupplierTheme.background)
             .navigationTitle("Fleet")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        FleetLiveMapView()
+                    } label: {
+                        Label("Live map", systemImage: "map")
+                    }
+                }
+            }
             .task { await load() }
             .refreshable { await load(silent: true) }
             .onChange(of: segment) { _, _ in }

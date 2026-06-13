@@ -58,6 +58,56 @@ enum SupplierService {
         return resp.items
     }
 
+    static func catalogProducts() async throws -> [CatalogProduct] {
+        try await APIClient.shared.get("v1/catalog/products")
+    }
+
+    static func catalogCategories(supplierId: String? = nil) async throws -> [CatalogCategory] {
+        var query: [String: String] = [:]
+        if let supplierId, !supplierId.isEmpty {
+            query["supplier_id"] = supplierId
+        }
+        return try await APIClient.shared.get("v1/catalog/categories", query: query)
+    }
+
+    static func catalogUploadTicket(ext: String) async throws -> CatalogUploadTicket {
+        try await APIClient.shared.get("v1/catalog/products/upload-ticket", query: ["ext": ext])
+    }
+
+    static func uploadCatalogImage(data: Data, ext: String) async throws -> String {
+        let ticket = try await catalogUploadTicket(ext: ext)
+        if !ticket.uploadUrl.contains("placehold.co") {
+            var request = URLRequest(url: URL(string: ticket.uploadUrl)!)
+            request.httpMethod = "PUT"
+            request.httpBody = data
+            request.setValue(mimeType(for: ext), forHTTPHeaderField: "Content-Type")
+            let (_, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                throw URLError(.badServerResponse)
+            }
+        }
+        return ticket.imageUrl
+    }
+
+    static func createCatalogProduct(_ request: CatalogProductCreateRequest) async throws -> CatalogProduct {
+        try await APIClient.shared.post("v1/catalog/products", body: request)
+    }
+
+    static func updateCatalogProduct(
+        productId: String,
+        request: CatalogProductUpdateRequest
+    ) async throws -> CatalogProduct {
+        try await APIClient.shared.put("v1/catalog/products/\(productId)", body: request)
+    }
+
+    private static func mimeType(for ext: String) -> String {
+        switch ext.lowercased() {
+        case "png": return "image/png"
+        case "webp": return "image/webp"
+        default: return "image/jpeg"
+        }
+    }
+
     static func promotions() async throws -> [SupplierPromotion] {
         let resp: SupplierPromotionsResponse = try await APIClient.shared.get("v1/supplier/promotions")
         return resp.promotions
@@ -65,6 +115,13 @@ enum SupplierService {
 
     static func createPromotion(_ request: SupplierPromotionUpsertRequest) async throws -> SupplierPromotion {
         try await APIClient.shared.post("v1/supplier/promotions", body: request)
+    }
+
+    static func updatePromotion(
+        promotionId: String,
+        _ request: SupplierPromotionUpsertRequest
+    ) async throws -> SupplierPromotion {
+        try await APIClient.shared.patch("v1/supplier/promotions/\(promotionId)", body: request)
     }
 
     static func deactivatePromotion(promotionId: String) async throws {
@@ -93,19 +150,11 @@ enum SupplierService {
         try await APIClient.shared.post("v1/supplier/billing/setup", body: request)
     }
 
-    static func updatePricingRules(body: [String: String]) async throws -> SupplierPricingRule {
-        try await APIClient.shared.patch("v1/supplier/pricing/rules", body: body)
+    static func updatePricingRules(_ request: SupplierPricingRuleUpdateRequest) async throws -> SupplierPricingRule {
+        try await APIClient.shared.patch("v1/supplier/pricing/rules", body: request)
     }
 
     static func updateTopology(body: [String: String]) async throws -> SupplierTopologyResponse {
         try await APIClient.shared.put("v1/supplier/topology", body: body)
-    }
-
-    static func orgMembers() async throws -> [String: String] { // placeholder return type
-        try await APIClient.shared.get("v1/supplier/org/members")
-    }
-
-    static func createOrgMember(body: [String: String]) async throws {
-        try await APIClient.shared.postVoid("v1/supplier/org/members", body: body)
     }
 }
