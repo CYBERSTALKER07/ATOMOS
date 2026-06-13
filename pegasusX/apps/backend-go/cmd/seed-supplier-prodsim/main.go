@@ -4,7 +4,7 @@
 //
 // Prerequisite: run `go run ./cmd/setup` once (schema + supplier row).
 //
-// Usage (safe to re-run — resets dispatchable order bindings):
+// Usage (safe to re-run — clears orphan manifests, resets dispatchable order bindings):
 //   cd pegasusX/apps/backend-go && go run ./cmd/seed-supplier-prodsim
 package main
 
@@ -20,6 +20,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
+	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -62,6 +63,15 @@ func main() {
 	if err != nil {
 		slog.Error("ensure supplier", "err", err)
 		os.Exit(1)
+	}
+
+	removed, err := cleanupProdsimOrphanManifests(ctx, client, supplier.SupplierID, prodsimWarehouseID)
+	if err != nil {
+		slog.Error("cleanup orphan manifests", "err", err)
+		os.Exit(1)
+	}
+	if removed > 0 {
+		slog.Info("removed orphan prodsim manifests", "count", removed, "warehouse_id", prodsimWarehouseID)
 	}
 
 	pendingOrderID := prodsimPendingOrderID
@@ -261,4 +271,75 @@ func spannerClientOptions(cfg *bootstrap.Config) []option.ClientOption {
 
 func spannerDatabasePath(cfg *bootstrap.Config) string {
 	return fmt.Sprintf("projects/%s/instances/%s/databases/%s", cfg.SpannerProject, cfg.SpannerInstance, cfg.SpannerDatabase)
+}
+
+// cleanupProdsimOrphanManifests deletes non-terminal manifests at the prodsim warehouse
+// and unbinds any orders still pointing at them so re-seed restores a dispatchable loop.
+func cleanupProdsimOrphanManifests(ctx context.Context, client *spanner.Client, supplierID, warehouseID string) (int, error) {
+	supplierID = strings.TrimSpace(supplierID)
+	warehouseID = strings.TrimSpace(warehouseID)
+	if client == nil || supplierID == "" || warehouseID == "" {
+		return 0, nil
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT ManifestId
+		      FROM SupplierTruckManifests@{FORCE_INDEX=Idx_SupplierManifests_ByWarehouse}
+		      WHERE WarehouseId = @warehouseId
+		        AND SupplierId = @supplierId
+		        AND State IN ('DRAFT', 'LOADING', 'SEALED', 'DISPATCHED')`,
+		Params: map[string]any{
+			"warehouseId": warehouseID,
+			"supplierId":  supplierID,
+		},
+	}
+	iter := client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	manifestIDs := make([]string, 0)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return 0, fmt.Errorf("list prodsim orphan manifests: %w", err)
+		}
+		var manifestID string
+		if err := row.Columns(&manifestID); err != nil {
+			return 0, fmt.Errorf("scan prodsim orphan manifest: %w", err)
+		}
+		if manifestID = strings.TrimSpace(manifestID); manifestID != "" {
+			manifestIDs = append(manifestIDs, manifestID)
+		}
+	}
+	if len(manifestIDs) == 0 {
+		return 0, nil
+	}
+
+	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if _, err := txn.Update(ctx, spanner.Statement{
+			SQL: `UPDATE Orders
+			      SET ManifestId = NULL,
+			          DriverId = NULL,
+			          VehicleId = NULL,
+			          RouteId = NULL,
+			          Status = 'PENDING',
+			          UpdatedAt = PENDING_COMMIT_TIMESTAMP()
+			      WHERE ManifestId IN UNNEST(@manifestIds)`,
+			Params: map[string]any{"manifestIds": manifestIDs},
+		}); err != nil {
+			return fmt.Errorf("unbind orders from orphan manifests: %w", err)
+		}
+
+		mutations := make([]*spanner.Mutation, 0, len(manifestIDs))
+		for _, manifestID := range manifestIDs {
+			mutations = append(mutations, spanner.Delete("SupplierTruckManifests", spanner.Key{manifestID}))
+		}
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		return 0, err
+	}
+	return len(manifestIDs), nil
 }
