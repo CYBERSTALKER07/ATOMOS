@@ -3,27 +3,41 @@
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { ApiError } from "@pegasusx/api-client";
-import type { SupplierDispatchPreview } from "@pegasusx/types";
+import type { SupplierDispatchPreview, SupplierTopologyWarehouse } from "@pegasusx/types";
 import { useDispatchData } from "./use-dispatch-data";
 import { PortalSurface } from "../_components/PortalSurface";
 import DispatchPreviewMap from "@/components/DispatchPreviewMap";
 
 const api = createSupplierApi();
 
+function warehouseQuery(warehouseId: string | null): { warehouse_id?: string } {
+  return warehouseId ? { warehouse_id: warehouseId } : {};
+}
+
 export default function DispatchPage() {
   const { manifests, loading, error, refresh } = useDispatchData();
+  const [warehouses, setWarehouses] = useState<SupplierTopologyWarehouse[]>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
   const [preview, setPreview] = useState<SupplierDispatchPreview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [executing, setExecuting] = useState(false);
   const [executeError, setExecuteError] = useState<string | null>(null);
   const [executeSuccess, setExecuteSuccess] = useState<string | null>(null);
 
-  const loadPreview = useCallback(() => {
+  useEffect(() => {
     api
-      .getSupplierDispatchPreview()
+      .getSupplierTopology()
+      .then((topology) => setWarehouses(topology.warehouses.filter((w) => w.is_active)))
+      .catch(() => setWarehouses([]));
+  }, []);
+
+  const loadPreview = useCallback(() => {
+    setPreviewError(null);
+    api
+      .getSupplierDispatchPreview(warehouseQuery(selectedWarehouseId))
       .then(setPreview)
       .catch((err) => setPreviewError(err instanceof Error ? err.message : "preview_failed"));
-  }, []);
+  }, [selectedWarehouseId]);
 
   useEffect(() => {
     loadPreview();
@@ -34,7 +48,7 @@ export default function DispatchPage() {
     setExecuteError(null);
     setExecuteSuccess(null);
     try {
-      const result = await api.executeSupplierDispatch({ mode: "AUTO" });
+      const result = await api.executeSupplierDispatch({ mode: "AUTO" }, warehouseQuery(selectedWarehouseId));
       if (result.status === "dispatched") {
         const parts = [
           `Dispatch committed: ${result.manifests_created ?? 0} manifest(s), ${result.orders_assigned ?? 0} order(s).`,
@@ -61,7 +75,7 @@ export default function DispatchPage() {
     } finally {
       setExecuting(false);
     }
-  }, [loadPreview, refresh]);
+  }, [loadPreview, refresh, selectedWarehouseId]);
 
   const draft = manifests.filter((m) => m.status === "DRAFT");
   const loadingColumn = manifests.filter((m) => m.status === "LOADING");
@@ -111,6 +125,45 @@ export default function DispatchPage() {
       }
     >
       <div className="space-y-6 flex flex-col min-h-0">
+      {warehouses.length > 0 ? (
+        <div className="md-card p-4 space-y-3">
+          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Warehouse scope</p>
+          <div className="flex flex-wrap gap-2">
+            {warehouses.map((warehouse) => {
+              const selected = selectedWarehouseId === warehouse.warehouse_id;
+              return (
+                <button
+                  key={warehouse.warehouse_id}
+                  type="button"
+                  className={`md-chip h-8 px-3 ${selected ? "bg-[var(--color-md-primary-container)] text-[var(--color-md-on-primary-container)] border-transparent" : ""}`}
+                  onClick={() =>
+                    setSelectedWarehouseId((current) =>
+                      current === warehouse.warehouse_id ? null : warehouse.warehouse_id,
+                    )
+                  }
+                >
+                  {warehouse.name || warehouse.warehouse_id}
+                </button>
+              );
+            })}
+            {selectedWarehouseId ? (
+              <button
+                type="button"
+                className="md-btn md-btn-text h-8 px-2 text-sm"
+                onClick={() => setSelectedWarehouseId(null)}
+              >
+                Clear scope
+              </button>
+            ) : null}
+          </div>
+          <p className="md-typescale-body-small text-[var(--color-md-outline)]">
+            {selectedWarehouseId
+              ? "Preview and dispatch are scoped to the selected warehouse."
+              : "No warehouse selected — all supplier warehouses are included."}
+          </p>
+        </div>
+      ) : null}
+
       <div className="md-card p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Pending dispatch</p>
@@ -132,6 +185,16 @@ export default function DispatchPage() {
         ) : null}
         {executeSuccess ? (
           <p className="md-typescale-body-small text-[var(--color-md-success)] md:col-span-3">{executeSuccess}</p>
+        ) : null}
+        {preview?.optimizer_warnings && preview.optimizer_warnings.length > 0 ? (
+          <div className="md:col-span-3 rounded-lg border border-[var(--color-md-warning)] bg-[var(--color-md-surface-container-low)] p-3 space-y-1">
+            <p className="md-typescale-label-medium text-[var(--color-md-warning)]">Optimizer warnings</p>
+            <ul className="md-typescale-body-small text-[var(--color-md-on-surface)] list-disc pl-5 space-y-1">
+              {preview.optimizer_warnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </div>
         ) : null}
       </div>
 
