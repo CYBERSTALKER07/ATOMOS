@@ -68,8 +68,12 @@
       "summary": "PX5-A3 Tranche 3 landed as additive recent retailer receipt visibility: retailer/repository_spanner.go now reads bounded recent COMPLETED Orders rows ordered by updated_at, retailer/core_handlers.go now serves those snapshots as recent_receipts on GET /v1/retailer/tracking while keeping status tied to active tracking rows, derived timeline coverage now includes those completed snapshots, and retailer desktop plus retailer iOS plus retailer Android consumers now render recent completed receipt snapshots from durable row truth without claiming immutable proof history."
     },
     {
+      "date": "2026-06-11",
+      "summary": "PX5-A2 Tranches 17-21 landed manifest route geometry and operator fleet live maps: Spanner migration 20250613_supplier_manifest_route_geometry.ddl persists EncodedRoutePolyline on SupplierTruckManifests; GET /v1/fleet/route/{routeID}/geometry serves driver planned overlays with turn-by-turn and reroute; GET /v1/supplier/fleet/live-map and GET /v1/warehouse/ops/fleet/live-map power supplier-portal, warehouse-portal, supplier-app-ios, and supplier-app-android MapLibre live maps with WS-accelerated refresh. Ops runbook: docs/MIGRATION_RUNBOOK_MANIFEST_ROUTE_GEOMETRY.md. Warehouse native apps remain without live fleet map."
+    },
+    {
       "date": "2026-05-23",
-      "summary": "PX5-A2 Tranche 16 landed as truthful driver breadcrumb overlays: both driver mobile apps now retain a bounded recent history of authenticated DRIVER_LOCATION_UPDATED websocket points and render that history as a live polyline on the existing native maps, with state retention in apps/driver-app-ios/Sources/ViewModels/DriverLiveOpsViewModel.swift plus apps/driver-app-android/app/src/main/kotlin/com/pegasusx/driver/ui/DriverLiveOpsViewModel.kt and drawing in the corresponding DriverLiveLocationMap views. This remains an actual traveled-path overlay only because GET /v1/driver/manifest still exposes counts, IDs, and state but no stop coordinates or planned route geometry. Focused validation passed through clean Android diagnostics and xcodegen generate plus xcodebuild for DriverAppIOS."
+      "summary": "PX5-A2 Tranche 16 landed as truthful driver breadcrumb overlays: both driver mobile apps retain a bounded recent history of authenticated DRIVER_LOCATION_UPDATED websocket points and render that history as a live polyline. Planned route overlays are served separately via GET /v1/fleet/route/{routeID}/geometry (Tranches 17-18); GET /v1/driver/manifest still does not inline geometry."
     },
     {
       "date": "2026-05-23",

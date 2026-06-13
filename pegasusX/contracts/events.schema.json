@@ -244,6 +244,44 @@
         {
           "properties": {
             "type": {
+              "const": "FREEZE_LOCK_ACQUIRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FreezeLockAcquiredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FREEZE_LOCK_RELEASED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FreezeLockReleasedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "INVENTORY_SYNC_COMPLETE"
             }
           },
@@ -1107,6 +1145,8 @@
         "DRIVER_CREATED",
         "DRIVER_LOCATION_UPDATED",
         "FACTORY_CREATED",
+        "FREEZE_LOCK_ACQUIRED",
+        "FREEZE_LOCK_RELEASED",
         "INVENTORY_SYNC_COMPLETE",
         "MANIFEST_CANCELLED",
         "MANIFEST_COMPLETED",
@@ -1174,6 +1214,8 @@
     "DRIVER_CREATED": "UnknownEventPayload",
     "DRIVER_LOCATION_UPDATED": "UnknownEventPayload",
     "FACTORY_CREATED": "UnknownEventPayload",
+    "FREEZE_LOCK_ACQUIRED": "UnknownEventPayload",
+    "FREEZE_LOCK_RELEASED": "UnknownEventPayload",
     "INVENTORY_SYNC_COMPLETE": "UnknownEventPayload",
     "MANIFEST_CANCELLED": "UnknownEventPayload",
     "MANIFEST_COMPLETED": "UnknownEventPayload",

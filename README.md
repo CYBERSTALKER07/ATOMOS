@@ -193,21 +193,26 @@ flowchart LR
 
 ### How It Works
 
+**Warehouse admin (primary):** operator selects truck + orders → capacity check → neighborhood-aware assignment → DRAFT manifest → payloader seal → driver execution.
+
+**Optional policy:** warehouses may enable `auto_dispatch_enabled` in settings so a backend worker periodically runs the same smart-assign engine without operator confirmation.
+
 1. Signals are ingested from pending order queues, stock thresholds, and SLA windows.
 2. Eligibility filtering removes blocked entities (freeze-locked, unpaid, out-of-scope).
-3. Orders are clustered by H3 cell and adjacency ring to preserve geographic cohesion.
-4. Capacity fitting maps clusters to available drivers and vehicles using load-aware assignment.
-5. Oversized manifests are split while preserving route integrity.
+3. Orders are clustered by H3 cell and adjacency ring to preserve geographic cohesion (**neighborhood**).
+4. Capacity fitting maps clusters to available drivers and vehicles using load-aware assignment (product VU × qty vs truck `MaxVolumeVU`).
+5. Oversized manifests are split while preserving route integrity; orders with no truck space remain **undispatched** (not abandoned).
 6. Mutations are committed with outbox events in the same transaction.
 7. Fanout updates telemetry hubs and role-specific clients.
 8. Deviations and exceptions feed the next optimization cycle.
 
 ### Why This Is Different
 
-1. Automation is the default behavior, not an optional add-on.
-2. Manual selection is supported without sacrificing auditability.
-3. Dispatch decisions are evented and traceable end-to-end.
-4. Route progress is measured against actual execution, not static plan assumptions.
+1. **Manual dispatch is the default warehouse UX** — truck + order selection, not a single “auto” button.
+2. Smart assignment is assistive math (H3 + bin-pack + TSP); ai-worker is optional, not required.
+3. Manual selection is supported with capacity warnings and full auditability.
+4. Dispatch decisions are evented and traceable end-to-end.
+5. Route progress is measured against actual execution, not static plan assumptions.
 
 ## State Machines and Lifecycle Contracts
 

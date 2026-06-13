@@ -31,6 +31,7 @@ Operational runbooks and migration notes. Architecture lives in `../context/`.
 - `DRIVER_SUPPORT_PLAYBOOK.md`
 - `LIVE_TRACKING_EXPECTATIONS.md`
 - `DELIVERY_ESCALATION_POLICY.md`
+- `MIGRATION_RUNBOOK_MANIFEST_ROUTE_GEOMETRY.md` — Spanner DDL, OSRM config, backfill, fleet live-map API parity
 
 ## PX7 launch-readiness support artifacts
 
