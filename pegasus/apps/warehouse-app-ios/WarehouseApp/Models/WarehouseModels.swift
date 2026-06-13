@@ -616,46 +616,20 @@ struct Retailer: Decodable, Identifiable {
     let name: String
     let totalOrders: Int
     let totalRevenue: Int
-    let receivingWindowOpen: String
-    let receivingWindowClose: String
-
-    var receivingWindowLabel: String {
-        if !receivingWindowOpen.isEmpty && !receivingWindowClose.isEmpty {
-            return "\(receivingWindowOpen) – \(receivingWindowClose)"
-        }
-        return "Not set"
-    }
 
     enum CodingKeys: String, CodingKey {
         case retailerId = "retailer_id"
         case name
-        case storeName = "store_name"
         case totalOrders = "total_orders"
         case totalRevenue = "total_revenue"
-        case receivingWindowOpen = "receiving_window_open"
-        case receivingWindowClose = "receiving_window_close"
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         retailerId = try c.decode(String.self, forKey: .retailerId)
-        let storeName = try c.decodeIfPresent(String.self, forKey: .storeName) ?? ""
-        let legacyName = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
-        name = storeName.isEmpty ? legacyName : storeName
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
         totalOrders = try c.decodeIfPresent(Int.self, forKey: .totalOrders) ?? 0
         totalRevenue = try c.decodeIfPresent(Int.self, forKey: .totalRevenue) ?? 0
-        receivingWindowOpen = try c.decodeIfPresent(String.self, forKey: .receivingWindowOpen) ?? ""
-        receivingWindowClose = try c.decodeIfPresent(String.self, forKey: .receivingWindowClose) ?? ""
-    }
-}
-
-struct UpdateRetailerReceivingWindowRequest: Encodable {
-    let receivingWindowOpen: String
-    let receivingWindowClose: String
-
-    enum CodingKeys: String, CodingKey {
-        case receivingWindowOpen = "receiving_window_open"
-        case receivingWindowClose = "receiving_window_close"
     }
 }
 

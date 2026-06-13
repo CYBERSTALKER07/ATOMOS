@@ -2016,28 +2016,6 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		}
 		adminClient.Close()
 	}
-
-	// ── MIGRATION: Pegasus X parity — nearby factory + internal transfer lane ─
-	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
-	if err == nil {
-		parityNearbyDDL := []string{
-			"ALTER TABLE Warehouses ADD COLUMN IsNearbyFactory BOOL NOT NULL DEFAULT (false)",
-			"ALTER TABLE InternalTransferOrders ADD COLUMN LaneType STRING(20) NOT NULL DEFAULT ('TRUCK')",
-			`ALTER TABLE InternalTransferOrders ADD CONSTRAINT CHK_TransferLaneType
-				CHECK (LaneType IN ('TRUCK', 'INTERNAL'))`,
-		}
-		for _, stmt := range parityNearbyDDL {
-			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
-				Database:   dbName,
-				Statements: []string{stmt},
-			})
-			if ddlErr == nil {
-				op.Wait(ctx)
-				fmt.Println("DATABASE MIGRATION SUCCESS:", stmt[:minInt(80, len(stmt))])
-			}
-		}
-		adminClient.Close()
-	}
 }
 
 func minInt(a, b int) int {

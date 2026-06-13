@@ -85,12 +85,6 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/crm")
     suspend fun getRetailers(): Response<RetailerListResponse>
 
-    @PATCH("v1/warehouse/ops/crm/{retailerId}")
-    suspend fun updateRetailerReceivingWindow(
-        @Path("retailerId") retailerId: String,
-        @Body body: UpdateRetailerReceivingWindowRequest,
-    ): Response<Unit>
-
     // ── Returns ──
     @GET("v1/warehouse/ops/returns")
     suspend fun getReturns(): Response<ReturnListResponse>

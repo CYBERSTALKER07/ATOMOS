@@ -329,7 +329,7 @@ func (s *SupplyRequestService) HandleListSupplyRequests(w http.ResponseWriter, r
 		              RequestedDeliveryDate, TotalVolumeVU, Notes, TransferOrderId,
 		              CreatedBy, CreatedAt, UpdatedAt
 		       FROM SupplyRequests WHERE SupplierId = @scope`
-		params["scope"] = claims.ResolveSupplierID()
+		params["scope"] = claims.UserID
 	}
 
 	if state := r.URL.Query().Get("state"); state != "" {
@@ -527,7 +527,6 @@ func (s *SupplyRequestService) HandleSupplyRequestTransition(w http.ResponseWrit
 	}
 
 	var warehouseID, factoryID, supplierID string
-	var transferOrderID string
 	_, err := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "SupplyRequests",
 			spanner.Key{requestID}, []string{"State", "WarehouseId", "FactoryId", "SupplierId"})
@@ -547,26 +546,9 @@ func (s *SupplyRequestService) HandleSupplyRequestTransition(w http.ResponseWrit
 		cols := []string{"RequestId", "State", "UpdatedAt"}
 		vals := []interface{}{requestID, newState, spanner.CommitTimestamp}
 
-		if newState == "READY" {
-			nearbyCfg, nearbyErr := loadWarehouseNearbyConfig(ctx, txn, warehouseID)
-			if nearbyErr != nil {
-				return nearbyErr
-			}
-			if isInternalSupplyLane(nearbyCfg, factoryID) {
-				createdTransferID, internalErr := applyInternalTransferFromSupplyRequest(
-					ctx, txn, requestID, warehouseID, factoryID, supplierID,
-				)
-				if internalErr != nil {
-					return internalErr
-				}
-				transferOrderID = createdTransferID
-				cols = append(cols, "TransferOrderId")
-				vals = append(vals, createdTransferID)
-			} else if req.TransferOrderID != "" {
-				cols = append(cols, "TransferOrderId")
-				vals = append(vals, req.TransferOrderID)
-				transferOrderID = req.TransferOrderID
-			}
+		if req.TransferOrderID != "" && newState == "READY" {
+			cols = append(cols, "TransferOrderId")
+			vals = append(vals, req.TransferOrderID)
 		}
 
 		if err := txn.BufferWrite([]*spanner.Mutation{
@@ -621,14 +603,10 @@ func (s *SupplyRequestService) HandleSupplyRequestTransition(w http.ResponseWrit
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	resp := map[string]string{
+	json.NewEncoder(w).Encode(map[string]string{
 		"request_id": requestID,
 		"state":      newState,
-	}
-	if transferOrderID != "" {
-		resp["transfer_order_id"] = transferOrderID
-	}
-	json.NewEncoder(w).Encode(resp)
+	})
 }
 
 func supplyRequestEventTypeForState(state string) string {

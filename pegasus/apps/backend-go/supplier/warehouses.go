@@ -34,8 +34,6 @@ type CreateWarehouseRequest struct {
 	Lng              float64 `json:"lng"`
 	CoverageRadiusKm float64 `json:"coverage_radius_km"`
 	PaymentConfigID  string  `json:"payment_config_id,omitempty"`
-	IsNearbyFactory  bool    `json:"is_nearby_factory"`
-	PrimaryFactoryID string  `json:"primary_factory_id,omitempty"`
 }
 
 type UpdateWarehouseRequest struct {
@@ -47,8 +45,6 @@ type UpdateWarehouseRequest struct {
 	PaymentConfigID   *string  `json:"payment_config_id,omitempty"`
 	IsActive          *bool    `json:"is_active,omitempty"`
 	IsOnShift         *bool    `json:"is_on_shift,omitempty"`
-	IsNearbyFactory   *bool    `json:"is_nearby_factory,omitempty"`
-	PrimaryFactoryID  *string  `json:"primary_factory_id,omitempty"`
 	OperatingSchedule *string  `json:"operating_schedule,omitempty"` // JSON: {"mon":{"open":"09:00","close":"18:00"}, ...}
 	DisabledReason    *string  `json:"disabled_reason,omitempty"`
 	MaxCapacity       *int64   `json:"max_capacity,omitempty"`
@@ -69,8 +65,6 @@ type WarehouseResponse struct {
 	IsActive           bool     `json:"is_active"`
 	IsDefault          bool     `json:"is_default"`
 	IsOnShift          bool     `json:"is_on_shift"`
-	IsNearbyFactory    bool     `json:"is_nearby_factory"`
-	PrimaryFactoryID   string   `json:"primary_factory_id,omitempty"`
 	CreatedAt          string   `json:"created_at"`
 	// Aggregated stats
 	DriverCount int64 `json:"driver_count"`
@@ -204,8 +198,7 @@ func listWarehouses(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 
 	stmt := spanner.Statement{
 		SQL: `SELECT w.WarehouseId, w.Name, w.Address, w.Lat, w.Lng, w.H3Indexes,
-		             w.CoverageRadiusKm, w.PaymentConfigId, w.IsActive, w.IsDefault, w.IsOnShift,
-		             COALESCE(w.IsNearbyFactory, false), COALESCE(w.PrimaryFactoryId, ''), w.CreatedAt,
+		             w.CoverageRadiusKm, w.PaymentConfigId, w.IsActive, w.IsDefault, w.IsOnShift, w.CreatedAt,
 		             (SELECT COUNT(*) FROM Drivers d WHERE d.SupplierId = w.SupplierId AND (d.WarehouseId = w.WarehouseId OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = w.WarehouseId))) AS DriverCount,
 		             (SELECT COUNT(*) FROM Orders o
 		               WHERE o.WarehouseId = w.WarehouseId
@@ -245,7 +238,7 @@ func listWarehouses(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 
 		if err := row.Columns(&wh.WarehouseId, &wh.Name, &wh.Address, &lat, &lng,
 			&h3Indexes, &wh.CoverageRadiusKm, &paymentConfigID, &wh.IsActive, &wh.IsDefault, &wh.IsOnShift,
-			&wh.IsNearbyFactory, &wh.PrimaryFactoryID, &createdAt, &wh.DriverCount, &wh.OrderCount, &wh.StaffCount); err != nil {
+			&createdAt, &wh.DriverCount, &wh.OrderCount, &wh.StaffCount); err != nil {
 			log.Printf("[WAREHOUSE] Row parse error: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -300,8 +293,7 @@ func getWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client
 	row, err := client.Single().ReadRow(r.Context(), "Warehouses",
 		spanner.Key{warehouseID},
 		[]string{"WarehouseId", "SupplierId", "Name", "Address", "Lat", "Lng",
-			"H3Indexes", "CoverageRadiusKm", "PaymentConfigId", "IsActive", "IsDefault", "IsOnShift",
-			"IsNearbyFactory", "PrimaryFactoryId", "CreatedAt"})
+			"H3Indexes", "CoverageRadiusKm", "PaymentConfigId", "IsActive", "IsDefault", "IsOnShift", "CreatedAt"})
 	if err != nil {
 		http.Error(w, "Warehouse not found", http.StatusNotFound)
 		return
@@ -311,14 +303,11 @@ func getWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client
 	var whSupplierId string
 	var lat, lng spanner.NullFloat64
 	var paymentConfigID spanner.NullString
-	var primaryFactoryID spanner.NullString
-	var isNearby spanner.NullBool
 	var h3Indexes []string
 	var createdAt spanner.NullTime
 
 	if err := row.Columns(&wh.WarehouseId, &whSupplierId, &wh.Name, &wh.Address, &lat, &lng,
-		&h3Indexes, &wh.CoverageRadiusKm, &paymentConfigID, &wh.IsActive, &wh.IsDefault, &wh.IsOnShift,
-		&isNearby, &primaryFactoryID, &createdAt); err != nil {
+		&h3Indexes, &wh.CoverageRadiusKm, &paymentConfigID, &wh.IsActive, &wh.IsDefault, &wh.IsOnShift, &createdAt); err != nil {
 		log.Printf("[WAREHOUSE] Parse error: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -338,12 +327,6 @@ func getWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client
 	}
 	if paymentConfigID.Valid {
 		wh.PaymentConfigID = paymentConfigID.StringVal
-	}
-	if isNearby.Valid {
-		wh.IsNearbyFactory = isNearby.Bool
-	}
-	if primaryFactoryID.Valid {
-		wh.PrimaryFactoryID = primaryFactoryID.StringVal
 	}
 	wh.H3Indexes = h3Indexes
 	applyWarehouseCoverageTransportFields(&wh)
@@ -398,26 +381,18 @@ func createWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	if req.CoverageRadiusKm <= 0 {
 		req.CoverageRadiusKm = 50.0
 	}
-	if req.IsNearbyFactory && strings.TrimSpace(req.PrimaryFactoryID) == "" {
-		http.Error(w, `{"error":"primary_factory_id is required when is_nearby_factory is true"}`, http.StatusBadRequest)
-		return
-	}
 
 	warehouseID := uuid.New().String()
 	h3Cells := proximity.ComputeGridCoverage(req.Lat, req.Lng, req.CoverageRadiusKm)
 	paymentConfigID := strings.TrimSpace(req.PaymentConfigID)
 	paymentConfigRef := spanner.NullString{StringVal: paymentConfigID, Valid: paymentConfigID != ""}
-	primaryFactoryID := strings.TrimSpace(req.PrimaryFactoryID)
-	primaryFactoryRef := spanner.NullString{StringVal: primaryFactoryID, Valid: primaryFactoryID != ""}
 
 	_, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		m := spanner.Insert("Warehouses",
 			[]string{"WarehouseId", "SupplierId", "Name", "Address", "Lat", "Lng",
-				"H3Indexes", "CoverageRadiusKm", "PaymentConfigId", "IsActive", "IsDefault", "IsOnShift",
-				"IsNearbyFactory", "PrimaryFactoryId", "CreatedAt"},
+				"H3Indexes", "CoverageRadiusKm", "PaymentConfigId", "IsActive", "IsDefault", "IsOnShift", "CreatedAt"},
 			[]interface{}{warehouseID, supplierID, req.Name, req.Address, req.Lat, req.Lng,
-				h3Cells, req.CoverageRadiusKm, paymentConfigRef, true, false, true,
-				req.IsNearbyFactory, primaryFactoryRef, spanner.CommitTimestamp},
+				h3Cells, req.CoverageRadiusKm, paymentConfigRef, true, false, true, spanner.CommitTimestamp},
 		)
 		if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
 			return err
@@ -483,8 +458,6 @@ func createWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		IsActive:         true,
 		IsDefault:        false,
 		IsOnShift:        true,
-		IsNearbyFactory:  req.IsNearbyFactory,
-		PrimaryFactoryID: primaryFactoryID,
 	}
 	applyWarehouseCoverageTransportFields(&response)
 	applyWarehouseDerivedStats(&response)
@@ -625,15 +598,6 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 			cols = append(cols, "IsOnShift")
 			vals = append(vals, *req.IsOnShift)
 			newIsOnShift = *req.IsOnShift
-		}
-		if req.IsNearbyFactory != nil {
-			cols = append(cols, "IsNearbyFactory")
-			vals = append(vals, *req.IsNearbyFactory)
-		}
-		if req.PrimaryFactoryID != nil {
-			trimmed := strings.TrimSpace(*req.PrimaryFactoryID)
-			cols = append(cols, "PrimaryFactoryId")
-			vals = append(vals, spanner.NullString{StringVal: trimmed, Valid: trimmed != ""})
 		}
 		if req.OperatingSchedule != nil {
 			cols = append(cols, "OperatingSchedule")

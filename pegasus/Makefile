@@ -41,8 +41,8 @@ require-env:
 # TARGETS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-.PHONY: help env-up env-down env-status optimizer-sim-up optimizer-sim-down optimizer-sim-bootstrap spanner-init seed simulate \
-	build parity-check parity-sim parity-migrate parity-tests clean nuke full-reset dev-ip dev-devices sprint1-gate \
+.PHONY: help env-up env-down env-status optimizer-sim-up optimizer-sim-down optimizer-sim-bootstrap spanner-init seed simulate test-e2e \
+	build clean nuke full-reset dev-ip dev-devices sprint1-gate \
 	desktop-dev desktop-build desktop-build-mac desktop-build-win desktop-check desktop-clean
 
 ## ── help: Display available targets ────────────────────────────────────────
@@ -130,37 +130,12 @@ spanner-init: require-env ## Initialize Spanner emulator (instance + database + 
 ## ── seed: Run the deterministic E2E seeder ────────────────────────────────
 seed: require-env ## Seed Spanner + Redis + Kafka topics with demo data
 	@echo "═══ SEEDING: Injecting deterministic test matrix ═══"
-	cd $(BACKEND_DIR) && \
-		SPANNER_EMULATOR_HOST=$(SPANNER_EMULATOR_HOST) \
-		go run cmd/seed/main.go
+	cd $(BACKEND_DIR) && go run cmd/seed/main.go
 	@echo "═══ Seed complete ═══"
-
-## ── parity-sim: Emulator boot + schema + parity package tests ───────────
-parity-sim: require-env parity-check env-up parity-migrate parity-tests ## Docker sim + schema + backend parity tests
-
-parity-migrate: require-env ## Apply pending Spanner migrations (idempotent)
-	@echo "═══ PARITY SIM: converging schema via migrate ═══"
-	cd $(BACKEND_DIR) && SPANNER_EMULATOR_HOST=$(SPANNER_EMULATOR_HOST) go run ./cmd/migrate
-
-parity-tests: require-env ## Run parity-scoped backend package tests
-	@echo "═══ PARITY SIM: running warehouse/factory/supplier/proximity tests ═══"
-	cd $(BACKEND_DIR) && \
-		SPANNER_EMULATOR_HOST=$(SPANNER_EMULATOR_HOST) \
-		REDIS_ADDRESS=$(REDIS_ADDRESS) \
-		KAFKA_BROKER_ADDRESS=$(KAFKA_BROKER_ADDRESS) \
-		go test ./warehouse/... ./factory/... ./supplier/... ./proximity/... -count=1
-	@echo "═══ Parity sim: green ═══"
 
 ## ── build: Compile the backend ────────────────────────────────────────────
 build: ## Build the Go backend
 	cd $(BACKEND_DIR) && go build -o backend-go ./...
-
-## ── parity-check: Pegasus X local parity gate (compile + vet) ─────────────
-parity-check: require-env ## Backend compile/vet gate before prod wiring
-	@echo "═══ PARITY CHECK: backend compile + vet ═══"
-	cd $(BACKEND_DIR) && go build ./... && go vet ./...
-	cd apps/ai-worker && go build ./... && go vet ./...
-	@echo "═══ Parity gate: backend clean ═══"
 
 ## ── run-backend: Run the backend with emulator ENV vars ───────────────────
 run-backend: require-env ## Run the backend natively

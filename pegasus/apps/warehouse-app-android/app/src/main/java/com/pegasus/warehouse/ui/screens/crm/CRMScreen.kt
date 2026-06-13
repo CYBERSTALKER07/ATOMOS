@@ -11,7 +11,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasus.warehouse.data.model.Retailer
-import com.pegasus.warehouse.data.model.UpdateRetailerReceivingWindowRequest
 import com.pegasus.warehouse.data.remote.WarehouseApi
 import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -27,10 +26,6 @@ fun CRMScreen(
     var retailers by remember { mutableStateOf<List<Retailer>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var editing by remember { mutableStateOf<Retailer?>(null) }
-    var windowOpen by remember { mutableStateOf("") }
-    var windowClose by remember { mutableStateOf("") }
-    var saving by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }
 
@@ -47,60 +42,6 @@ fun CRMScreen(
     }
 
     LaunchedEffect(Unit) { load() }
-
-    if (editing != null) {
-        AlertDialog(
-            onDismissRequest = { if (!saving) editing = null },
-            title = { Text("Receiving window") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                    Text(editing!!.displayName, style = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(
-                        value = windowOpen,
-                        onValueChange = { windowOpen = it },
-                        label = { Text("Open (HH:MM)") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = windowClose,
-                        onValueChange = { windowClose = it },
-                        label = { Text("Close (HH:MM)") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = !saving,
-                    onClick = {
-                        val target = editing ?: return@TextButton
-                        saving = true
-                        scope.launch {
-                            try {
-                                val resp = api.updateRetailerReceivingWindow(
-                                    target.retailerId,
-                                    UpdateRetailerReceivingWindowRequest(windowOpen, windowClose),
-                                )
-                                if (resp.isSuccessful) {
-                                    editing = null
-                                    load()
-                                } else error = "Save failed (${resp.code()})"
-                            } catch (e: Exception) {
-                                error = e.message ?: "Network error"
-                            } finally {
-                                saving = false
-                            }
-                        }
-                    },
-                ) { Text(if (saving) "Saving…" else "Save") }
-            },
-            dismissButton = {
-                TextButton(enabled = !saving, onClick = { editing = null }) { Text("Cancel") }
-            },
-        )
-    }
 
     Scaffold(
         topBar = {
@@ -130,23 +71,15 @@ fun CRMScreen(
             ) {
                 items(retailers, key = { it.retailerId }) { r ->
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
-                            Text(r.displayName, style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                "${r.totalOrders} orders · ${fmt.format(r.totalRevenue)} UZS",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                "Receiving: ${r.receivingWindowLabel}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            TextButton(onClick = {
-                                editing = r
-                                windowOpen = r.receivingWindowOpen
-                                windowClose = r.receivingWindowClose
-                            }) { Text("Edit window") }
+                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(r.businessName, style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    "${r.totalOrders} orders · ${fmt.format(r.totalRevenue)} UZS",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 }
