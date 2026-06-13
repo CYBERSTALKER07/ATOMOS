@@ -550,50 +550,54 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 	available := make([]map[string]any, 0)
 	unavailable := make([]map[string]any, 0)
 	var solveDrivers []PortalDriver
+	sid := s.resolveDispatchSupplierID(r.Context(), whID)
 	if s.opsDrivers != nil {
 		drivers, err := s.opsDrivers(r.Context(), whID)
 		if err == nil {
 			solveDrivers = drivers
-			for _, d := range drivers {
-				entry := map[string]any{
-					"driver_id":     d.DriverID,
-					"name":          d.Name,
-					"truck_status":  d.TruckStatus,
-					"vehicle_id":    d.VehicleID,
-					"vehicle_label": d.VehicleLabel,
-					"vehicle_class": d.VehicleClass,
-					"max_volume_vu": d.MaxVolumeVU,
-				}
-				if strings.EqualFold(d.TruckStatus, "AVAILABLE") {
-					available = append(available, entry)
-				} else {
-					entry["unavailable_reason"] = d.TruckStatus
-					unavailable = append(unavailable, entry)
-				}
-			}
 		}
 	} else {
 		s.ensurePortalSeed()
 		s.mu.RLock()
 		solveDrivers = append([]PortalDriver(nil), s.drivers...)
-		for _, d := range s.drivers {
-			entry := map[string]any{
-				"driver_id":     d.DriverID,
-				"name":          d.Name,
-				"truck_status":  d.TruckStatus,
-				"vehicle_id":    d.VehicleID,
-				"vehicle_label": d.VehicleLabel,
-				"vehicle_class": d.VehicleClass,
-				"max_volume_vu": d.MaxVolumeVU,
-			}
-			if strings.EqualFold(d.TruckStatus, "AVAILABLE") {
-				available = append(available, entry)
-			} else {
-				entry["unavailable_reason"] = d.TruckStatus
-				unavailable = append(unavailable, entry)
-			}
-		}
 		s.mu.RUnlock()
+	}
+	busy := map[string]bool{}
+	if len(solveDrivers) > 0 {
+		var err error
+		busy, err = s.driversOnActiveManifests(r.Context(), sid, whID, collectWarehouseDriverIDs(solveDrivers))
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dispatch_preview_failed"})
+			return
+		}
+	}
+	for _, d := range solveDrivers {
+		entry := map[string]any{
+			"driver_id":     d.DriverID,
+			"name":          d.Name,
+			"vehicle_id":    d.VehicleID,
+			"vehicle_label": d.VehicleLabel,
+			"vehicle_class": d.VehicleClass,
+			"max_volume_vu": d.MaxVolumeVU,
+		}
+		driverID := strings.TrimSpace(d.DriverID)
+		truckStatus, _ := warehouseDriverTruckStatus(d.IsActive, busy[driverID])
+		entry["truck_status"] = truckStatus
+		isUnavailable := !d.IsActive || busy[driverID] || !strings.EqualFold(d.TruckStatus, "AVAILABLE")
+		if isUnavailable {
+			switch {
+			case !d.IsActive:
+				entry["unavailable_reason"] = "INACTIVE"
+			case busy[driverID]:
+				entry["unavailable_reason"] = truckStatus
+			default:
+				entry["truck_status"] = d.TruckStatus
+				entry["unavailable_reason"] = d.TruckStatus
+			}
+			unavailable = append(unavailable, entry)
+		} else {
+			available = append(available, entry)
+		}
 	}
 
 	response := map[string]any{
@@ -606,7 +610,8 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 	if len(dispatchRows) > 0 && len(solveDrivers) > 0 {
 		driverInputs := make([]dispatch.FleetDriverInput, 0, len(solveDrivers))
 		for _, driver := range solveDrivers {
-			if !strings.EqualFold(driver.TruckStatus, "AVAILABLE") {
+			driverID := strings.TrimSpace(driver.DriverID)
+			if driverID == "" || busy[driverID] || !driver.IsActive || !strings.EqualFold(driver.TruckStatus, "AVAILABLE") {
 				continue
 			}
 			driverInputs = append(driverInputs, dispatch.FleetDriverInput{
@@ -686,6 +691,15 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "dispatch_unavailable"})
 		return
 	}
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+
 	whID := warehouseIDFromRequest(r)
 	sid := s.resolveDispatchSupplierID(r.Context(), whID)
 
@@ -694,9 +708,9 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 		Routes        []DispatchExecuteRoute `json:"routes"`
 		ForceCapacity bool                   `json:"force_capacity"`
 	}
-	if r.Body != nil {
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		r.Body.Close()
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
 	}
 
 	out, err := s.ExecuteDispatch(r.Context(), DispatchExecuteRequest{
@@ -721,12 +735,16 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 		)
 		s.broadcastWarehouseEvent(r.Context(), whID, map[string]any{
 			"type":              "DISPATCH_COMMITTED",
+			"trace_id":          outbox.TraceIDFromContext(r.Context()),
 			"warehouse_id":      whID,
 			"manifests_created": out.ManifestsCreated,
 			"orders_assigned":   out.OrdersAssigned,
 			"optimizer_source":  out.OptimizerSource,
 			"timestamp":         s.now().UTC().Format(time.RFC3339Nano),
 		})
+	}
+	if encoded, err := json.Marshal(out); err == nil {
+		s.storeMutationReplay(r.Context(), key, body, http.StatusOK, encoded)
 	}
 	writeJSON(w, http.StatusOK, out)
 }

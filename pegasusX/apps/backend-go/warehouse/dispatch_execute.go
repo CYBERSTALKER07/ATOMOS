@@ -68,11 +68,19 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 		return out, err
 	}
 	solveDrivers = filterLockedDrivers(whID, solveDrivers, s.loadDispatchLocks(ctx, whID))
+	busy, err := s.driversOnActiveManifests(ctx, sid, whID, collectWarehouseDriverIDs(solveDrivers))
+	if err != nil {
+		return out, fmt.Errorf("active manifest drivers: %w", err)
+	}
 
 	var driverInputs []dispatch.FleetDriverInput
 	vehicleByDriver := make(map[string]string)
 	for _, driver := range solveDrivers {
-		if !strings.EqualFold(driver.TruckStatus, "AVAILABLE") {
+		driverID := strings.TrimSpace(driver.DriverID)
+		if driverID == "" || busy[driverID] {
+			continue
+		}
+		if !driver.IsActive || !strings.EqualFold(driver.TruckStatus, "AVAILABLE") {
 			continue
 		}
 		driverInputs = append(driverInputs, dispatch.FleetDriverInput{
@@ -258,8 +266,17 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 
 	store := manifest.NewStore(s.spannerClient)
 	if err := store.CommitSupplier(ctx, batch, func(buf outbox.TxnBuffer) error {
+		versions := manifest.OrderPatchVersionByID(batch.OrderPatches)
 		for _, evt := range queued {
-			if err := outbox.EmitJSON(ctx, buf, evt.aggregateType, evt.aggregateID, events.TopicMain, evt.payload); err != nil {
+			payload := evt.payload
+			if oe, ok := payload.(events.OrderEvent); ok {
+				if version, ok := versions[oe.OrderID]; ok {
+					oe.Version = version
+					oe.BaseEvent.Version = version
+					payload = oe
+				}
+			}
+			if err := outbox.EmitJSON(ctx, buf, evt.aggregateType, evt.aggregateID, events.TopicMain, payload); err != nil {
 				return err
 			}
 		}

@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -58,15 +59,21 @@ type SupplierExceptionRow struct {
 	EscalatedAt  *time.Time
 }
 
+// ErrOrderVersionConflict is returned when an OrderPatch carries ExpectedVersion
+// that does not match the stored Orders.Version row.
+var ErrOrderVersionConflict = errors.New("manifest: order version conflict")
+
 // OrderPatch updates Orders columns touched by manifest transitions.
 type OrderPatch struct {
-	OrderID    string
-	Status     string
-	ManifestID string
-	DriverID   string
-	VehicleID  string
-	RouteID    string
-	UpdatedAt  time.Time
+	OrderID         string
+	Status          string
+	ManifestID      string
+	DriverID        string
+	VehicleID       string
+	RouteID         string
+	UpdatedAt       time.Time
+	ExpectedVersion int64 // optional optimistic gate; 0 skips check
+	Version         int64 // populated by resolveOrderPatchVersions before write
 }
 
 // FactoryTruckRow is the durable projection of a factory manifest.
@@ -168,6 +175,12 @@ func (s *Store) CommitSupplierTxn(
 	batch *SupplierWriteBatch,
 	emit func(outbox.TxnBuffer) error,
 ) error {
+	if len(batch.OrderPatches) > 0 {
+		if err := resolveOrderPatchVersions(ctx, txn, batch.OrderPatches); err != nil {
+			return err
+		}
+	}
+
 	buf := &txnBuffer{}
 	if emit != nil {
 		if err := emit(buf); err != nil {
@@ -592,10 +605,56 @@ func supplierMutations(batch *SupplierWriteBatch) ([]*spanner.Mutation, error) {
 		if p.RouteID != "" {
 			row["RouteId"] = p.RouteID
 		}
+		if p.Version > 0 {
+			row["Version"] = p.Version
+		}
 		mutations = append(mutations, spanner.UpdateMap("Orders", row))
 	}
 
 	return mutations, nil
+}
+
+// OrderPatchVersionByID maps order IDs to the post-patch version assigned during commit prep.
+func OrderPatchVersionByID(patches []OrderPatch) map[string]int64 {
+	out := make(map[string]int64, len(patches))
+	for _, patch := range patches {
+		if patch.Version > 0 && patch.OrderID != "" {
+			out[patch.OrderID] = patch.Version
+		}
+	}
+	return out
+}
+
+func resolveOrderPatchVersions(ctx context.Context, txn *spanner.ReadWriteTransaction, patches []OrderPatch) error {
+	if txn == nil || len(patches) == 0 {
+		return nil
+	}
+	seen := make(map[string]int64, len(patches))
+	for i := range patches {
+		orderID := strings.TrimSpace(patches[i].OrderID)
+		if orderID == "" {
+			continue
+		}
+		if version, ok := seen[orderID]; ok {
+			patches[i].Version = version
+			continue
+		}
+		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"Version"})
+		if err != nil {
+			return fmt.Errorf("read order %s version: %w", orderID, err)
+		}
+		var stored int64
+		if err := row.Columns(&stored); err != nil {
+			return fmt.Errorf("scan order %s version: %w", orderID, err)
+		}
+		if expected := patches[i].ExpectedVersion; expected > 0 && stored != expected {
+			return fmt.Errorf("%w: order %s expected %d got %d", ErrOrderVersionConflict, orderID, expected, stored)
+		}
+		next := stored + 1
+		seen[orderID] = next
+		patches[i].Version = next
+	}
+	return nil
 }
 
 func factoryMutations(batch *FactoryWriteBatch) []*spanner.Mutation {

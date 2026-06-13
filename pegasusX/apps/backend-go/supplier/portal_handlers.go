@@ -979,12 +979,20 @@ func (s *Service) HandleVetOrder(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, ok := readMutationBody(w, r, 32*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+
 	var req vetOrderRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	req.OrderID = strings.TrimSpace(req.OrderID)
 	req.Decision = strings.ToUpper(strings.TrimSpace(req.Decision))
@@ -1040,5 +1048,10 @@ func (s *Service) HandleVetOrder(w http.ResponseWriter, r *http.Request) {
 	if s.cache != nil {
 		s.cache.Invalidate(r.Context(), supplierCacheKey(sid))
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"order": order})
+
+	response := map[string]any{"order": order}
+	if encoded, err := json.Marshal(response); err == nil {
+		s.storeMutationReplay(r.Context(), key, body, http.StatusOK, encoded)
+	}
+	writeJSON(w, http.StatusOK, response)
 }

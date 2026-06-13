@@ -29,6 +29,7 @@ type departOrderRow struct {
 	SupplierID string
 	RetailerID string
 	Status     string
+	Version    int64
 }
 
 // DepartDriver flips a driver's SEALED manifest to DISPATCHED and rolls every
@@ -80,13 +81,19 @@ func (s *Store) DepartDriver(ctx context.Context, driverID string, now time.Time
 			if !strings.EqualFold(o.Status, "LOADED") {
 				continue
 			}
+			nextVersion := o.Version + 1
 			mutations = append(mutations, spanner.UpdateMap("Orders", map[string]any{
 				"OrderId":   o.OrderID,
 				"Status":    "IN_TRANSIT",
+				"Version":   nextVersion,
 				"UpdatedAt": spanner.CommitTimestamp,
 			}))
 			if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, o.OrderID, events.TopicMain, events.OrderEvent{
-				BaseEvent:      events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: now.UTC().Format(time.RFC3339Nano)},
+				BaseEvent: events.BaseEvent{
+					Type:      events.EventOrderStatusChanged,
+					Version:   nextVersion,
+					Timestamp: now.UTC().Format(time.RFC3339Nano),
+				},
 				OrderID:        o.OrderID,
 				SupplierID:     o.SupplierID,
 				RetailerID:     o.RetailerID,
@@ -94,6 +101,7 @@ func (s *Store) DepartDriver(ctx context.Context, driverID string, now time.Time
 				ManifestID:     manifestRow.ManifestID,
 				PreviousStatus: "LOADED",
 				Status:         "IN_TRANSIT",
+				Version:        nextVersion,
 			}); err != nil {
 				return err
 			}
@@ -159,7 +167,7 @@ func readSealedManifest(ctx context.Context, txn *spanner.ReadWriteTransaction, 
 
 func readManifestOrders(ctx context.Context, txn *spanner.ReadWriteTransaction, manifestID string) ([]departOrderRow, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT o.OrderId, o.SupplierId, o.RetailerId, o.Status
+		SQL: `SELECT o.OrderId, o.SupplierId, o.RetailerId, o.Status, o.Version
 			FROM ManifestOrders mo
 			JOIN Orders o ON mo.OrderId = o.OrderId
 			WHERE mo.ManifestId = @manifestId`,
@@ -177,7 +185,7 @@ func readManifestOrders(ctx context.Context, txn *spanner.ReadWriteTransaction, 
 			return nil, fmt.Errorf("read manifest orders: %w", err)
 		}
 		var o departOrderRow
-		if err := row.Columns(&o.OrderID, &o.SupplierID, &o.RetailerID, &o.Status); err != nil {
+		if err := row.Columns(&o.OrderID, &o.SupplierID, &o.RetailerID, &o.Status, &o.Version); err != nil {
 			return nil, fmt.Errorf("scan manifest order: %w", err)
 		}
 		rows = append(rows, o)

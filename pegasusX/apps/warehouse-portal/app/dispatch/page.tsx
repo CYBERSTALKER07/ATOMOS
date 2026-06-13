@@ -141,7 +141,7 @@ export default function DispatchPage() {
           driver_id: selectedDriverId,
           order_ids: [...selectedOrderIds],
         }],
-      });
+      }, {}, crypto.randomUUID());
       if (result.status === 'capacity_exceeded' && result.capacity_warnings?.length) {
         setCapacityPrompt(result.capacity_warnings);
         return;

@@ -353,8 +353,17 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 
 		store := manifest.NewStore(s.portalSpanner)
 		if err := store.CommitSupplierTxn(ctx, txn, batch, func(buf outbox.TxnBuffer) error {
+			versions := manifest.OrderPatchVersionByID(batch.OrderPatches)
 			for _, evt := range chunkQueued {
-				if err := outbox.EmitJSON(ctx, buf, evt.aggregateType, evt.aggregateID, events.TopicMain, evt.payload); err != nil {
+				payload := evt.payload
+				if oe, ok := payload.(events.OrderEvent); ok {
+					if version, ok := versions[oe.OrderID]; ok {
+						oe.Version = version
+						oe.BaseEvent.Version = version
+						payload = oe
+					}
+				}
+				if err := outbox.EmitJSON(ctx, buf, evt.aggregateType, evt.aggregateID, events.TopicMain, payload); err != nil {
 					return err
 				}
 			}
@@ -437,6 +446,7 @@ func (s *Service) broadcastDispatchCommitted(ctx context.Context, supplierID str
 	}
 	payload, err := json.Marshal(map[string]any{
 		"type":              "DISPATCH_COMMITTED",
+		"trace_id":          outbox.TraceIDFromContext(ctx),
 		"supplier_id":       supplierID,
 		"manifests_created": result.ManifestsCreated,
 		"orders_assigned":   result.OrdersAssigned,

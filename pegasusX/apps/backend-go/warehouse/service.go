@@ -21,6 +21,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -77,6 +78,7 @@ type Service struct {
 	opsDrivers     WarehouseOpsDriversQuery
 	opsVehicles    WarehouseOpsVehiclesQuery
 	cache          *cache.Cache
+	idem           idempotency.Store
 	spannerClient  *spanner.Client
 	manifestStore  *manifest.Store
 	routeGeometryBuilder *routing.GeometryBuilder
@@ -121,6 +123,7 @@ type ServiceConfig struct {
 	OpsDrivers     WarehouseOpsDriversQuery
 	OpsVehicles    WarehouseOpsVehiclesQuery
 	Cache          *cache.Cache
+	Idem           idempotency.Store
 	Spanner              *spanner.Client
 	ManifestStore        *manifest.Store
 	RouteGeometryBuilder *routing.GeometryBuilder
@@ -195,6 +198,7 @@ func NewService(c ServiceConfig) *Service {
 		opsDrivers:       c.OpsDrivers,
 		opsVehicles:      c.OpsVehicles,
 		cache:            c.Cache,
+		idem:             c.Idem,
 		spannerClient:        c.Spanner,
 		manifestStore:        c.ManifestStore,
 		routeGeometryBuilder: c.RouteGeometryBuilder,

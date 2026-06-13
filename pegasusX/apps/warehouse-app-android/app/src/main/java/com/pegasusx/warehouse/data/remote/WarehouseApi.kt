@@ -112,7 +112,10 @@ interface WarehouseApi {
     suspend fun createDispatchPreview(@Body body: com.google.gson.JsonElement): Response<DispatchPreview>
 
     @POST("v1/warehouse/ops/dispatch/execute")
-    suspend fun executeDispatch(@Body body: com.google.gson.JsonElement): Response<DispatchExecuteResponse>
+    suspend fun executeDispatch(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: com.google.gson.JsonElement,
+    ): Response<DispatchExecuteResponse>
 
     @GET("v1/warehouse/demand/forecast")
     suspend fun getDemandForecast(

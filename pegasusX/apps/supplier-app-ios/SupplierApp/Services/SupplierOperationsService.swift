@@ -170,8 +170,8 @@ enum SupplierOperationsService {
         try await APIClient.shared.get("v1/supplier/inventory/audit")
     }
 
-    static func vetOrder(body: [String: String]) async throws {
-        try await APIClient.shared.postVoid("v1/supplier/orders/vet", body: body)
+    static func vetOrder(body: [String: String], idempotencyKey: String) async throws {
+        try await APIClient.shared.postVoid("v1/supplier/orders/vet", body: body, idempotencyKey: idempotencyKey)
     }
 
     static func aiRecommendations(status: String? = nil, limit: Int = 50) async throws -> SupplierAIRecommendationsResponse {

@@ -54,6 +54,7 @@ import type {
   SupplierOrgMemberCreateRequest,
   SupplierOrgMembersResponse,
   SupplierOrdersResponse,
+  SupplierOrder,
   SupplierFleetDriverCreateRequest,
   SupplierFleetDriversResponse,
   SupplierFleetVehicleCreateRequest,
@@ -263,10 +264,12 @@ export class ApiClient {
   }
 
   async vetSupplierOrder(
-    request: Record<string, unknown>,
-  ): Promise<void> {
-    return this.request<void>("/v1/supplier/orders/vet", "POST", {
+    request: { order_id: string; decision: string; note?: string },
+    idempotencyKey?: string,
+  ): Promise<{ order: SupplierOrder }> {
+    return this.request<{ order: SupplierOrder }>("/v1/supplier/orders/vet", "POST", {
       body: request,
+      idempotencyKey,
     });
   }
 
@@ -518,9 +521,11 @@ export class ApiClient {
   async executeWarehouseDispatch(
     request: WarehouseDispatchExecuteRequest,
     query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
   ): Promise<WarehouseDispatchExecuteResponse> {
     return this.request<WarehouseDispatchExecuteResponse>(appendQuery("/v1/warehouse/ops/dispatch/execute", query as Record<string, unknown>), "POST", {
       body: request,
+      idempotencyKey,
     });
   }
 

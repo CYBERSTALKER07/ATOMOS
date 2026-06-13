@@ -470,8 +470,15 @@ func readMutationBody(w http.ResponseWriter, r *http.Request, limit int64) ([]by
 	return body, true
 }
 
+func idempotencyKeyFromRequest(r *http.Request) string {
+	if key := strings.TrimSpace(r.Header.Get("Idempotency-Key")); key != "" {
+		return key
+	}
+	return strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
+}
+
 func (s *Service) guardMutationReplay(w http.ResponseWriter, r *http.Request, body []byte) (string, bool) {
-	key := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	key := idempotencyKeyFromRequest(r)
 	if key == "" || s.idem == nil {
 		return "", false
 	}

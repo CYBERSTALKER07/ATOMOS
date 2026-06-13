@@ -48,7 +48,10 @@ interface SupplierApi {
     ): Response<SupplierOrdersResponse>
 
     @POST("v1/supplier/orders/vet")
-    suspend fun vetOrder(@Body body: JsonElement): Response<JsonElement>
+    suspend fun vetOrder(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: JsonElement,
+    ): Response<JsonElement>
 
     @POST("v1/supplier/orders/payment-bypass")
     suspend fun issuePaymentBypass(@Body body: JsonElement): Response<JsonElement>

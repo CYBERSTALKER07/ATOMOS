@@ -728,6 +728,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		OpsDrivers:           whOpsDrivers,
 		OpsVehicles:          whOpsVehicles,
 		Cache:                cacheClient,
+		Idem:                 idemStore,
 		Spanner:              spannerClient,
 		ManifestStore:        manifestStore,
 		RouteGeometryBuilder: routeGeometryBuilder,

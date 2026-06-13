@@ -230,7 +230,7 @@ fun DispatchScreen(
                     addProperty("force_capacity", forceCapacity)
                     add("routes", routes)
                 }
-                api.executeDispatch(body)
+                api.executeDispatch(java.util.UUID.randomUUID().toString(), body)
             }.onSuccess { response ->
                 if (response.isSuccessful && response.body() != null) {
                     val result = response.body()!!

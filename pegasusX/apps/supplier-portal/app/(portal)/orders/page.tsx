@@ -99,7 +99,10 @@ export default function OrdersPage() {
   const vetOrder = async (orderId: string, decision: 'APPROVED' | 'REJECTED') => {
     setVettingId(orderId);
     try {
-      await supplierApi.vetSupplierOrder({ order_id: orderId, decision });
+      await supplierApi.vetSupplierOrder(
+        { order_id: orderId, decision },
+        crypto.randomUUID(),
+      );
       toast(`Order ${decision.toLowerCase()}`, 'success');
       await loadOrders();
     } catch (err) {
