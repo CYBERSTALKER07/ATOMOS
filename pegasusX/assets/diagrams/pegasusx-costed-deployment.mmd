@@ -1,0 +1,28 @@
+flowchart TB
+  subgraph local [Local SSMR — $0]
+    DC[docker-compose.ssmr.yml]
+    EMU[Spanner Redis Kafka emulators]
+    SSMR[make test-ssmr-infra]
+    DC --> EMU --> SSMR
+  end
+
+  subgraph staging [Staging GCP — minimal]
+    TF[terraform apply]
+    GKE[GKE Autopilot 2-3 pods]
+    SP[Spanner 1 node]
+    RD[Redis 1GB]
+    KF[Kafka trial tier]
+    CR[Cloud Run portals]
+    TF --> GKE & SP & RD & KF & CR
+  end
+
+  subgraph prod [Production — budget capped]
+    BUD[billing budget 1500 USD]
+    MON[Cloud Monitoring alerts]
+    GKE2[GKE scale 3+]
+    BUD --> MON
+    GKE2 --> MON
+  end
+
+  local -->|gates green| staging
+  staging -->|load-cert| prod

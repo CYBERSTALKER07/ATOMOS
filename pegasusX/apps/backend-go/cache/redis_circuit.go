@@ -142,3 +142,62 @@ func (c *CircuitBreakerBackend) Close() error {
 	}
 	return nil
 }
+
+type perimeterSetPrimary interface {
+	ReplaceSet(ctx context.Context, key string, members []string) error
+	SIsMember(ctx context.Context, key string, member string) (bool, error)
+	Exists(ctx context.Context, key string) (bool, error)
+}
+
+// ReplaceSet delegates perimeter set writes to the primary Redis backend.
+func (c *CircuitBreakerBackend) ReplaceSet(ctx context.Context, key string, members []string) error {
+	primary, ok := c.primary.(perimeterSetPrimary)
+	if !ok {
+		return circuit.ErrUpstreamUnavailable
+	}
+	var setErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		setErr = primary.ReplaceSet(ctx, key, members)
+		return setErr
+	})
+	if err == circuit.ErrUpstreamUnavailable {
+		return err
+	}
+	return setErr
+}
+
+// SIsMember delegates perimeter membership checks to the primary Redis backend.
+func (c *CircuitBreakerBackend) SIsMember(ctx context.Context, key string, member string) (bool, error) {
+	primary, ok := c.primary.(perimeterSetPrimary)
+	if !ok {
+		return false, circuit.ErrUpstreamUnavailable
+	}
+	var memberOK bool
+	var memberErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		memberOK, memberErr = primary.SIsMember(ctx, key, member)
+		return memberErr
+	})
+	if err == circuit.ErrUpstreamUnavailable {
+		return false, err
+	}
+	return memberOK, memberErr
+}
+
+// Exists delegates perimeter key presence checks to the primary Redis backend.
+func (c *CircuitBreakerBackend) Exists(ctx context.Context, key string) (bool, error) {
+	primary, ok := c.primary.(perimeterSetPrimary)
+	if !ok {
+		return false, circuit.ErrUpstreamUnavailable
+	}
+	var exists bool
+	var existsErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		exists, existsErr = primary.Exists(ctx, key)
+		return existsErr
+	})
+	if err == circuit.ErrUpstreamUnavailable {
+		return false, err
+	}
+	return exists, existsErr
+}

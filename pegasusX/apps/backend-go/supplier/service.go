@@ -109,15 +109,18 @@ type Profile struct {
 
 // WarehouseNode is one supplier-owned warehouse topology node.
 type WarehouseNode struct {
-	WarehouseID      string
-	Name             string
-	Lat              float64
-	Lng              float64
-	CoverageRadiusKm float64
-	IsActive         bool
-	IsOnShift        bool
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	WarehouseID           string
+	Name                  string
+	Lat                   float64
+	Lng                   float64
+	CoverageRadiusKm      float64
+	TransferMode          string
+	CoLocateWithFactoryID string
+	PrimaryFactoryID      string
+	IsActive              bool
+	IsOnShift             bool
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 // FactoryNode is one supplier-owned factory topology node.
@@ -557,6 +560,25 @@ var allowedGateways = map[string]struct{}{
 }
 
 const defaultCoverageRadiusKm = 10.0
+
+const (
+	TransferModeTruck    = "TRUCK"
+	TransferModeInternal = "INTERNAL"
+)
+
+func normalizeTransferMode(mode string) string {
+	return NormalizeTransferMode(mode)
+}
+
+// NormalizeTransferMode canonicalizes warehouse replenishment transfer mode.
+func NormalizeTransferMode(mode string) string {
+	switch strings.ToUpper(strings.TrimSpace(mode)) {
+	case TransferModeInternal, "CO_LOCATE", "COLOCATE":
+		return TransferModeInternal
+	default:
+		return TransferModeTruck
+	}
+}
 
 var ErrInvalidCredentials = errors.New("invalid_credentials")
 var ErrUserNotFound = errors.New("user_not_found")

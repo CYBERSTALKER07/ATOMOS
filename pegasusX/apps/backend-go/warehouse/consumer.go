@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	pegasuskafka "github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	kafka "github.com/segmentio/kafka-go"
 )
@@ -29,7 +30,7 @@ func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) erro
 		c.log.Warn("warehouse consumer payload parsing failed", "err", err, "topic", msg.Topic)
 		return nil
 	}
-	if envelope.Type == "SUPPLY_REQUEST_ACCEPTED" {
+	if envelope.Type == events.EventSupplyRequestAccepted {
 		return c.svc.HandleSupplyRequestAccepted(ctx, msg.Value)
 	}
 	return nil

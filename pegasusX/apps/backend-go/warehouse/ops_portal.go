@@ -1360,10 +1360,11 @@ func supplyRequestIOSPayload(req SupplyRequest) map[string]any {
 	if state == "" {
 		state = strings.TrimSpace(req.Status)
 	}
+	factoryID := strings.TrimSpace(req.FactoryID)
 	return map[string]any{
 		"request_id":      req.RequestID,
 		"warehouse_id":    req.WarehouseID,
-		"factory_id":      "fc-demo-1",
+		"factory_id":      factoryID,
 		"supplier_id":     req.SupplierID,
 		"state":           state,
 		"priority":        "NORMAL",

@@ -1,0 +1,79 @@
+%% pegasusX — system parity ecosystem (single-tenant, multi-warehouse ready)
+flowchart TB
+  classDef role fill:#f1f5f9,stroke:#334155,color:#0f172a
+  classDef backbone fill:#dbeafe,stroke:#1d4ed8,color:#0f172a
+  classDef realtime fill:#fee2e2,stroke:#dc2626,color:#0f172a
+
+  subgraph supplierRow [SUPPLIER — CEO scope]
+    SP[supplier-portal]
+    SA[supplier-app-android]
+    SI[supplier-app-ios]
+  end
+
+  subgraph whRow [WAREHOUSE_ADMIN]
+    WP[warehouse-portal]
+    WA[warehouse-app-android]
+    WI[warehouse-app-ios]
+  end
+
+  subgraph fcRow [FACTORY_ADMIN]
+    FP[factory-portal]
+    FA[factory-app-android]
+    FI[factory-app-ios]
+  end
+
+  subgraph drvRow [DRIVER]
+    DA[driver-app-android]
+    DI[driverappios]
+  end
+
+  subgraph retRow [RETAILER — thousands]
+    RD[retailer-app-desktop]
+    RA[retailer-app-android]
+    RI[retailer-app-ios]
+  end
+
+  subgraph payRow [PAYLOAD]
+    PT[payload-terminal Expo]
+    PI[payload-app-ios]
+    PA[payload-app-android]
+  end
+
+  API[backend-go chi + domain packages]
+  SPANNER[(Cloud Spanner)]
+  REDIS[(Redis + PubSub)]
+  KAFKA[Kafka TopicMain + FreezeLocks]
+  AI[ai-worker]
+
+  API --> SPANNER
+  API --> REDIS
+  API --> KAFKA
+  KAFKA --> AI
+
+  supplierRow & whRow & fcRow & drvRow & retRow & payRow --> API
+
+  WH_OPS[supply requests dispatch transfers]
+  FC_OPS[supply execute manifests loading bay]
+  DRV_OPS[telemetry routes delivery]
+  RET_OPS[catalog checkout tracking]
+  PAY_OPS[manifest load seal gate]
+
+  whRow --> WH_OPS
+  fcRow --> FC_OPS
+  drvRow --> DRV_OPS
+  retRow --> RET_OPS
+  payRow --> PAY_OPS
+
+  WH_OPS --> API
+  FC_OPS --> API
+  DRV_OPS --> API
+  RET_OPS --> API
+  PAY_OPS --> API
+
+  WS[7 WS hubs + Redis relay]
+  API --> WS
+  WS --> supplierRow & whRow & fcRow & drvRow & retRow & payRow
+
+  class supplierRow,whRow,fcRow,drvRow,retRow,payRow role
+  class API,SPANNER,REDIS,KAFKA backbone
+  class WS realtime

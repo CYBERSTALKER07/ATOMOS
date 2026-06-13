@@ -324,7 +324,7 @@ func (s *Service) ensureDemoDataLocked() {
 	if len(s.supplyRequests) == 0 {
 		now := s.now().Format(time.RFC3339Nano)
 		s.supplyRequests = []SupplyRequest{
-			{RequestID: "srq_factory_1", Status: "SUBMITTED", WarehouseID: "wh_demo_1", CreatedAt: now, UpdatedAt: now},
+			{RequestID: "srq_factory_1", Status: "SUBMITTED", WarehouseID: "wh-demo-1", CreatedAt: now, UpdatedAt: now},
 		}
 	}
 	if len(s.transfers) == 0 {
@@ -654,6 +654,18 @@ func (s *Service) broadcastFactoryEvent(ctx context.Context, eventType string, d
 	if s.factoryHub != nil {
 		s.factoryHub.Broadcast(ctx, "factory:"+s.factoryNodeID, payload)
 	}
+}
+
+func (s *Service) broadcastFactorySupplyEvent(ctx context.Context, envelope map[string]any) {
+	eventType, _ := envelope["type"].(string)
+	data, _ := envelope["data"].(map[string]any)
+	if eventType == "" {
+		return
+	}
+	if data == nil {
+		data = map[string]any{}
+	}
+	s.broadcastFactoryEvent(ctx, eventType, data)
 }
 
 func (s *Service) manifestOutboxFields(manifest ManifestRow, eventType string) events.ManifestEvent {
@@ -1655,9 +1667,21 @@ func (s *Service) HandleSupplyRequests(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	s.mu.Lock()
-	s.ensureDemoDataLocked()
-	rows := append([]SupplyRequest(nil), s.supplyRequests...)
+	var rows []SupplyRequest
+	if s.spannerClient != nil {
+		spRows, err := s.listSupplyRequestsFromSpanner(r.Context())
+		if err != nil {
+			s.log.Warn("factory supply list spanner failed; falling back to memory", "err", err)
+		} else {
+			rows = spRows
+		}
+	}
+	if len(rows) == 0 {
+		s.mu.Lock()
+		s.ensureDemoDataLocked()
+		rows = append([]SupplyRequest(nil), s.supplyRequests...)
+		s.mu.Unlock()
+	}
 	mapped := make([]map[string]any, len(rows))
 	for i := range rows {
 		row := rows[i]
@@ -1676,7 +1700,6 @@ func (s *Service) HandleSupplyRequests(w http.ResponseWriter, r *http.Request) {
 			"updated_at":        row.UpdatedAt,
 		}
 	}
-	s.mu.Unlock()
 	writeJSON(w, http.StatusOK, map[string]any{"requests": mapped})
 }
 
@@ -1702,9 +1725,43 @@ func (s *Service) HandleAcceptSupplyRequest(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	nextState := "ACKNOWLEDGED"
+	nowTS := s.now().UTC().Format(time.RFC3339Nano)
+
+	if s.spannerClient != nil {
+		rec, err := s.getSupplyRequestFromSpanner(r.Context(), requestID)
+		if err != nil {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "request_not_found"})
+			return
+		}
+		if strings.ToUpper(rec.State) != "SUBMITTED" && strings.ToUpper(rec.State) != "OPEN" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_state_transition"})
+			return
+		}
+		err = s.transitionSupplyRequestSpanner(r.Context(), requestID, nextState, func(txn outbox.TxnBuffer) error {
+			return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, requestID, events.TopicMain, events.WarehouseEvent{
+				BaseEvent:   events.BaseEvent{Type: events.EventSupplyRequestAccepted, Timestamp: nowTS},
+				RequestID:   requestID,
+				WarehouseID: rec.WarehouseID,
+				SupplierID:  rec.SupplierID,
+				FactoryID:   s.factoryNodeID,
+				Status:      nextState,
+			})
+		})
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+			return
+		}
+		s.broadcastFactorySupplyEvent(r.Context(), map[string]any{
+			"type": events.EventFactorySupplyRequestUpdate,
+			"data": map[string]any{"request_id": requestID, "state": nextState, "warehouse_id": rec.WarehouseID},
+		})
+		writeJSON(w, http.StatusOK, map[string]any{"state": nextState, "updated_at": nowTS})
+		return
+	}
+
 	s.mu.Lock()
 	s.ensureDemoDataLocked()
-
 	var req *SupplyRequest
 	for i := range s.supplyRequests {
 		if s.supplyRequests[i].RequestID == requestID {
@@ -1717,47 +1774,30 @@ func (s *Service) HandleAcceptSupplyRequest(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "request_not_found"})
 		return
 	}
-
 	if req.Status != "SUBMITTED" {
 		s.mu.Unlock()
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_state_transition"})
 		return
 	}
-
-	req.Status = "ACCEPTED"
-	req.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
-
-	payloadBytes, _ := json.Marshal(map[string]any{
-		"request_id":   requestID,
-		"warehouse_id": req.WarehouseID,
-		"factory_id":   s.factoryNodeID,
-		"supplier_id":  s.supplierID,
-		"reason":       reqBody.Reason,
-		"accepted_at":  req.UpdatedAt,
-	})
-
-	// Create Outbox Event
-	evt := outbox.Event{
-		EventID:       fmt.Sprintf("evt_%s_%d", requestID, time.Now().UnixNano()),
-		AggregateType: "SupplyRequest",
-		AggregateID:   requestID,
-		TopicName:     "SUPPLY_REQUEST_ACCEPTED",
-		Payload:       payloadBytes,
-		CreatedAt:     time.Now().UTC(),
-	}
-
+	req.Status = nextState
+	req.UpdatedAt = nowTS
 	s.mu.Unlock()
 
-	// Use durable transaction if Spanner is available, otherwise buffer
-	err := s.repo.UpdateSupplyRequestState(r.Context(), requestID, "ACCEPTED", func(txn outbox.TxnBuffer) error {
-		return txn.BufferOutbox(r.Context(), evt)
+	err := s.repo.UpdateSupplyRequestState(r.Context(), requestID, nextState, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, requestID, events.TopicMain, events.WarehouseEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventSupplyRequestAccepted, Timestamp: nowTS},
+			RequestID:   requestID,
+			WarehouseID: req.WarehouseID,
+			SupplierID:  s.supplierID,
+			FactoryID:   s.factoryNodeID,
+			Status:      nextState,
+		})
 	})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error", "detail": err.Error()})
 		return
 	}
-
-	writeJSON(w, http.StatusOK, map[string]any{"state": "ACCEPTED", "updated_at": req.UpdatedAt})
+	writeJSON(w, http.StatusOK, map[string]any{"state": nextState, "updated_at": nowTS})
 }
 
 func coalesceReason(reason, fallback string) string {

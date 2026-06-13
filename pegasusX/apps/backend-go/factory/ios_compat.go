@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 func (s *Service) iosDashboardLocked() map[string]any {
@@ -314,6 +316,62 @@ func (s *Service) HandleSupplyRequestTransition(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	nowTS := s.now().UTC().Format(time.RFC3339Nano)
+
+	if s.spannerClient != nil {
+		rec, err := s.getSupplyRequestFromSpanner(r.Context(), requestID)
+		if err != nil {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "request_not_found"})
+			return
+		}
+		if action == "FULFILL" {
+			transferID, err := s.fulfillSupplyRequestSpanner(r.Context(), requestID)
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "fulfill_failed"})
+				return
+			}
+			s.broadcastFactorySupplyEvent(r.Context(), map[string]any{
+				"type": events.EventFactorySupplyRequestUpdate,
+				"data": map[string]any{
+					"request_id":         requestID,
+					"state":              "FULFILLED",
+					"warehouse_id":       rec.WarehouseID,
+					"linked_transfer_id": transferID,
+				},
+			})
+			writeJSON(w, http.StatusOK, map[string]any{
+				"request_id":         requestID,
+				"state":              "FULFILLED",
+				"linked_transfer_id": transferID,
+				"updated_at":         nowTS,
+			})
+			return
+		}
+		err = s.transitionSupplyRequestSpanner(r.Context(), requestID, nextState, func(txn outbox.TxnBuffer) error {
+			return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, requestID, events.TopicMain, events.WarehouseEvent{
+				BaseEvent:   events.BaseEvent{Type: events.EventSupplyRequestUpdate, Timestamp: nowTS},
+				RequestID:   requestID,
+				WarehouseID: rec.WarehouseID,
+				SupplierID:  rec.SupplierID,
+				FactoryID:   s.factoryNodeID,
+				Status:      nextState,
+			})
+		})
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "transition_failed"})
+			return
+		}
+		s.broadcastFactorySupplyEvent(r.Context(), map[string]any{
+			"type": events.EventFactorySupplyRequestUpdate,
+			"data": map[string]any{"request_id": requestID, "state": nextState, "warehouse_id": rec.WarehouseID},
+		})
+		writeJSON(w, http.StatusOK, map[string]string{
+			"request_id": requestID,
+			"state":      nextState,
+		})
+		return
+	}
+
 	s.mu.Lock()
 	s.ensureDemoDataLocked()
 	idx := -1
@@ -329,7 +387,7 @@ func (s *Service) HandleSupplyRequestTransition(w http.ResponseWriter, r *http.R
 		return
 	}
 	s.supplyRequests[idx].Status = nextState
-	s.supplyRequests[idx].UpdatedAt = s.now().Format(time.RFC3339Nano)
+	s.supplyRequests[idx].UpdatedAt = nowTS
 	s.mu.Unlock()
 
 	writeJSON(w, http.StatusOK, map[string]string{

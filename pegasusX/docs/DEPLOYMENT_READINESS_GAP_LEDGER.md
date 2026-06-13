@@ -1,5 +1,7 @@
 # Deployment Readiness Gap Ledger (PX-12)
 
+> **Canonical ecosystem spec:** [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md)
+
 Last updated: 2026-06-05. Tracks production v1 closure — not full Pegasus reference parity.
 
 ## Priority legend

@@ -106,13 +106,13 @@ func TestHandleSupplyRequests_PostSeamParity(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
 		t.Fatalf("decode supply request response: %v", err)
 	}
-	if response.State != "OPEN" || response.ProjectedUnits != 12 {
+	if response.State != "SUBMITTED" || response.ProjectedUnits != 12 {
 		t.Fatalf("unexpected response payload: %+v", response)
 	}
 
 	assertWarehouseCacheDeletedKeys(t, cacheBackend.deletedKeys, warehouseSupplyRequestsKey("supplier-test", "wh-1"))
-	assertWarehouseWSMessageContainsType(t, supplierConn.messages, events.EventWarehouseSupplyRequestOpened)
-	assertWarehouseWSMessageContainsType(t, warehouseConn.messages, events.EventWarehouseSupplyRequestOpened)
+	assertWarehouseWSMessageContainsType(t, supplierConn.messages, events.EventSupplyRequestUpdate)
+	assertWarehouseWSMessageContainsType(t, warehouseConn.messages, events.EventSupplyRequestUpdate)
 }
 
 func TestHandleSupplyRequests_GetUsesRepository(t *testing.T) {
@@ -579,7 +579,7 @@ func (r *warehouseRepoSpy) DeleteLock(ctx context.Context, warehouseID, lockID s
 	}
 	return nil
 }
-func (r *warehouseRepoSpy) CreateTransfer(ctx context.Context, transferID, factoryID, supplierID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error {
+func (r *warehouseRepoSpy) CreateTransfer(ctx context.Context, transferID, factoryID, supplierID, warehouseID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 func (r *warehouseRepoSpy) GetAutoDispatch(_ context.Context, _ string) (bool, error) {

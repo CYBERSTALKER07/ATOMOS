@@ -1,0 +1,30 @@
+sequenceDiagram
+  participant S as Supplier topology
+  participant WH as Warehouse admin
+  participant API as backend-go
+  participant FC as Factory admin
+  participant PL as Payloader
+  participant D as Driver
+  participant WH2 as Warehouse receive
+
+  S->>API: PUT topology transfer_mode TRUCK or INTERNAL
+  WH->>API: POST supply-request SUBMITTED
+  API->>FC: WS SUPPLY_REQUEST_UPDATE + Kafka
+  FC->>API: PATCH ACKNOWLEDGED IN_PRODUCTION READY
+  FC->>API: PATCH FULFILL
+
+  alt INTERNAL co_locate
+    API->>API: FactoryInternalTransfer RECEIVED
+    API->>WH2: inventory credit + request FULFILLED
+    Note over PL,D: no truck manifest no driver leg
+  else TRUCK default
+    API->>API: transfer APPROVED + optional supply manifest
+    FC->>PL: load scan seal
+    PL->>D: driver gate
+    D->>WH2: execute leg telemetry
+    WH2->>API: receiveTransfer inventory credit
+  end
+
+  API->>S: dashboards stock history WS refresh
+  API->>WH: SUPPLY_REQUEST_UPDATE FULFILLED
+  API->>FC: FACTORY_SUPPLY_REQUEST_UPDATE

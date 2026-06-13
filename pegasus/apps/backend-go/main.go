@@ -553,7 +553,9 @@ func main() {
 	// motivated the extraction (see migrations/migrations.go header).
 	if os.Getenv("MIGRATE_ON_BOOT") != "false" {
 		log.Println("[boot] MIGRATE_ON_BOOT enabled — running in-process Spanner migrations")
-		migrations.Run(ctx, opts, dbName, spannerClient)
+		if err := migrations.Run(ctx, opts, dbName, spannerClient); err != nil {
+			log.Fatalf("[boot] migrations failed: %v", err)
+		}
 	} else {
 		log.Println("[boot] MIGRATE_ON_BOOT=false — skipping migrations (run cmd/migrate out-of-band)")
 	}

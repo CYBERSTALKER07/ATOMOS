@@ -97,6 +97,12 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseReplenishmentInsightE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse replenishment insight: %w", err)
 	}
+	if err := runReplenishmentSupplyChainE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("replenishment supply chain: %w", err)
+	}
+	if err := runReplenishColocateE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("replenishment colocate: %w", err)
+	}
 	if err := ensureWarehouseDispatchFleet(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch fleet: %w", err)
 	}
@@ -172,6 +178,8 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	fmt.Println("PX_E2E_CATALOG_OK")
 	fmt.Println("PX_E2E_DEVICE_TOKEN_OK")
 	fmt.Println("PX_E2E_DRIVER_EDGES_OK")
+	fmt.Println("PX_E2E_REPLENISH_OK")
+	fmt.Println("PX_E2E_REPLENISH_COLOCATE_OK")
 	return nil
 }
 
@@ -1198,6 +1206,165 @@ func runFactoryManifestLifecycleE2E(ctx context.Context, client *http.Client, ba
 	return nil
 }
 
+func runReplenishmentSupplyChainE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config) error {
+	whID := demoWarehouseID()
+	createURL := fmt.Sprintf("%s/v1/warehouse/supply-requests?warehouse_id=%s&start_date=2026-06-14&days=3", base, whID)
+	status, respBody, _, err := clientPost(ctx, client, createURL, nil, cookie, "ssmr-replen-create")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated {
+		return fmt.Errorf("warehouse supply create status %d body %s", status, string(respBody))
+	}
+	var created struct {
+		RequestID string `json:"request_id"`
+		State     string `json:"state"`
+	}
+	if err := json.Unmarshal(respBody, &created); err != nil {
+		return fmt.Errorf("decode warehouse supply create: %w", err)
+	}
+	if created.RequestID == "" {
+		return fmt.Errorf("warehouse supply create missing request_id: %s", string(respBody))
+	}
+	if state := strings.ToUpper(strings.TrimSpace(created.State)); state != "SUBMITTED" {
+		return fmt.Errorf("warehouse supply create expected SUBMITTED got %s", created.State)
+	}
+
+	ackBody, _ := json.Marshal(map[string]string{"action": "ACKNOWLEDGE"})
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/factory/supply-requests/"+created.RequestID, ackBody, cookie, "ssmr-replen-ack-"+created.RequestID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("factory supply acknowledge status %d body %s", status, string(respBody))
+	}
+
+	fulfillBody, _ := json.Marshal(map[string]string{"action": "FULFILL"})
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/factory/supply-requests/"+created.RequestID, fulfillBody, cookie, "ssmr-replen-fulfill-"+created.RequestID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("factory supply fulfill status %d body %s", status, string(respBody))
+	}
+	var fulfillResp struct {
+		State            string `json:"state"`
+		LinkedTransferID string `json:"linked_transfer_id"`
+	}
+	if err := json.Unmarshal(respBody, &fulfillResp); err != nil {
+		return fmt.Errorf("decode factory supply fulfill: %w", err)
+	}
+	if strings.ToUpper(strings.TrimSpace(fulfillResp.State)) != "FULFILLED" {
+		return fmt.Errorf("factory supply fulfill expected FULFILLED got %s", fulfillResp.State)
+	}
+	if fulfillResp.LinkedTransferID == "" {
+		return fmt.Errorf("factory supply fulfill missing linked_transfer_id: %s", string(respBody))
+	}
+
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/warehouse/transfers/"+fulfillResp.LinkedTransferID+"/receive", nil, cookie, "ssmr-replen-receive-"+fulfillResp.LinkedTransferID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse transfer receive status %d body %s", status, string(respBody))
+	}
+	_ = cfg
+	return nil
+}
+
+func runReplenishColocateE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config) error {
+	if err := putSupplierTopologyColocate(ctx, client, base, cookie, cfg); err != nil {
+		return err
+	}
+	whID := demoWarehouseID()
+	createURL := fmt.Sprintf("%s/v1/warehouse/supply-requests?warehouse_id=%s&start_date=2026-06-14&days=1", base, whID)
+	status, respBody, _, err := clientPost(ctx, client, createURL, nil, cookie, "ssmr-colocate-create")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated {
+		return fmt.Errorf("colocate supply create status %d body %s", status, string(respBody))
+	}
+	var created struct {
+		RequestID    string `json:"request_id"`
+		TransferMode string `json:"transfer_mode"`
+	}
+	if err := json.Unmarshal(respBody, &created); err != nil {
+		return fmt.Errorf("decode colocate supply create: %w", err)
+	}
+	if strings.ToUpper(strings.TrimSpace(created.TransferMode)) != "INTERNAL" {
+		return fmt.Errorf("colocate supply expected INTERNAL transfer_mode got %q", created.TransferMode)
+	}
+
+	fulfillBody, _ := json.Marshal(map[string]string{"action": "FULFILL"})
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/factory/supply-requests/"+created.RequestID, fulfillBody, cookie, "ssmr-colocate-fulfill-"+created.RequestID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("colocate fulfill status %d body %s", status, string(respBody))
+	}
+	var fulfillResp struct {
+		State            string `json:"state"`
+		LinkedTransferID string `json:"linked_transfer_id"`
+	}
+	if err := json.Unmarshal(respBody, &fulfillResp); err != nil {
+		return fmt.Errorf("decode colocate fulfill: %w", err)
+	}
+	if strings.ToUpper(strings.TrimSpace(fulfillResp.State)) != "FULFILLED" || fulfillResp.LinkedTransferID == "" {
+		return fmt.Errorf("colocate fulfill invalid response: %s", string(respBody))
+	}
+
+	invURL := base + "/v1/warehouse/ops/inventory?warehouse_id=" + whID
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, invURL, nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("colocate inventory status %d body %s", status, string(respBody))
+	}
+	if !strings.Contains(string(respBody), "replenishment-bulk-vu") {
+		return fmt.Errorf("colocate inventory missing replenishment-bulk-vu: %s", string(respBody))
+	}
+	return nil
+}
+
+func putSupplierTopologyColocate(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config) error {
+	factoryID := demoFactoryID()
+	body, _ := json.Marshal(map[string]any{
+		"warehouses": []map[string]any{
+			{
+				"warehouse_id":             demoWarehouseID(),
+				"name":                     "SSMR Co-locate WH",
+				"lat":                      cfg.DeliveryZoneCenterLat,
+				"lng":                      cfg.DeliveryZoneCenterLng,
+				"coverage_radius_km":       cfg.DeliveryZoneRadiusKm,
+				"transfer_mode":            "INTERNAL",
+				"co_locate_with_factory_id": factoryID,
+				"is_active":                true,
+				"is_on_shift":              true,
+			},
+		},
+		"factories": []map[string]any{
+			{
+				"factory_id": factoryID,
+				"name":       "SSMR Factory",
+				"lat":        cfg.DeliveryZoneCenterLat + 0.01,
+				"lng":        cfg.DeliveryZoneCenterLng + 0.01,
+				"is_active":  true,
+			},
+		},
+	})
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPut, base+"/v1/supplier/topology", body, cookie, "ssmr-topology-colocate")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("colocate topology status %d body %s", status, string(respBody))
+	}
+	return nil
+}
+
 func runFactorySupplyRequestE2E(ctx context.Context, client *http.Client, base, cookie string) error {
 	status, respBody, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/factory/supply-requests", nil, cookie, "")
 	if err != nil {
@@ -1218,14 +1385,20 @@ func runFactorySupplyRequestE2E(ctx context.Context, client *http.Client, base, 
 	if len(listResp.Requests) == 0 {
 		return fmt.Errorf("factory supply-requests empty: %s", string(respBody))
 	}
-	requestID := listResp.Requests[0].RequestID
-	state := strings.ToUpper(strings.TrimSpace(listResp.Requests[0].State))
-	if state == "ACKNOWLEDGED" {
-		fmt.Println("PX_E2E_FACTORY_SUPPLY_REQUEST_OK")
-		return nil
+
+	var requestID string
+	for _, req := range listResp.Requests {
+		state := strings.ToUpper(strings.TrimSpace(req.State))
+		switch state {
+		case "ACKNOWLEDGED", "FULFILLED", "RECEIVED":
+			fmt.Println("PX_E2E_FACTORY_SUPPLY_REQUEST_OK")
+			return nil
+		case "SUBMITTED":
+			requestID = req.RequestID
+		}
 	}
-	if state != "SUBMITTED" {
-		return fmt.Errorf("factory supply-request unexpected state %s", state)
+	if requestID == "" {
+		return fmt.Errorf("factory supply-request no actionable state in list: %s", string(respBody))
 	}
 	patchBody, _ := json.Marshal(map[string]string{"action": "ACKNOWLEDGE"})
 	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/factory/supply-requests/"+requestID, patchBody, cookie, "ssmr-factory-supply-"+requestID)

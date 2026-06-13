@@ -79,6 +79,9 @@ type WarehouseEvent struct {
 	BaseEvent
 	WarehouseID       string `json:"warehouse_id"`
 	SupplierID        string `json:"supplier_id"`
+	FactoryID         string `json:"factory_id,omitempty"`
+	TransferMode      string `json:"transfer_mode,omitempty"`
+	LinkedTransferID  string `json:"linked_transfer_id,omitempty"`
 	TransferID        string `json:"transfer_id,omitempty"`
 	LockID            string `json:"lock_id,omitempty"`
 	RequestID         string `json:"request_id,omitempty"`

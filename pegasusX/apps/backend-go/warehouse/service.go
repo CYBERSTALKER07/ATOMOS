@@ -158,6 +158,9 @@ type SupplyRequest struct {
 	RequestID                string `json:"request_id"`
 	SupplierID               string `json:"supplier_id,omitempty"`
 	WarehouseID              string `json:"warehouse_id,omitempty"`
+	FactoryID                string `json:"factory_id,omitempty"`
+	TransferMode             string `json:"transfer_mode,omitempty"`
+	LinkedTransferID         string `json:"linked_transfer_id,omitempty"`
 	Status                   string `json:"status"`
 	State                    string `json:"state,omitempty"`
 	RequestedBy              string `json:"requested_by,omitempty"`
@@ -368,13 +371,22 @@ func (s *Service) handleCreateSupplyRequest(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	topology, err := s.resolveWarehouseSupplyContext(r.Context(), warehouseID)
+	if err != nil {
+		s.log.Warn("warehouse supply topology resolve failed", "warehouse_id", warehouseID, "err", err)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "warehouse_topology_unconfigured"})
+		return
+	}
+
 	nowTS := s.now().UTC().Format(time.RFC3339Nano)
 	req := SupplyRequest{
 		RequestID:                uuid.NewString(),
 		SupplierID:               s.supplierID,
 		WarehouseID:              warehouseID,
-		Status:                   "OPEN",
-		State:                    "OPEN",
+		FactoryID:                topology.FactoryID,
+		TransferMode:             topology.TransferMode,
+		Status:                   "SUBMITTED",
+		State:                    "SUBMITTED",
 		RequestedBy:              requestedBy,
 		CoverageStartDate:        start.Format("2006-01-02"),
 		CoverageDays:             days,
@@ -390,6 +402,8 @@ func (s *Service) handleCreateSupplyRequest(w http.ResponseWriter, r *http.Reque
 		RequestID:   req.RequestID,
 		SupplierID:  s.supplierID,
 		WarehouseID: req.WarehouseID,
+		FactoryID:   req.FactoryID,
+		TransferMode: req.TransferMode,
 		Status:      req.Status,
 		Projected:   req.ProjectedUnits,
 		Committed:   req.CommittedUnits,
@@ -410,9 +424,9 @@ func (s *Service) handleCreateSupplyRequest(w http.ResponseWriter, r *http.Reque
 		s.cache.Invalidate(r.Context(), warehouseSupplyRequestsKey(s.supplierID, warehouseID))
 	}
 
-	s.broadcastWarehouseEvent(r.Context(), warehouseID, eventPayload)
+	s.broadcastSupplyRequestUpdate(r.Context(), warehouseID, req)
 	s.log.Info(
-		"warehouse supply request opened",
+		"warehouse supply request submitted",
 		"supplier_id", s.supplierID,
 		"warehouse_id", warehouseID,
 		"request_id", req.RequestID,
@@ -442,35 +456,20 @@ func (s *Service) HandleSupplyRequestAccepted(ctx context.Context, payloadBytes 
 		warehouseID = "wh-1"
 	}
 
-	status := "ACCEPTED"
-	// Proximity Threshold Engine
-	// If the distance is close (e.g., threshold check), we can auto-ship the stock to SHIPPED status.
-	// We use the service's fallbackDepot coordinates and compare against a mock factory coordinate.
-	distanceKm := mockFactoryDistanceKm(s.fallbackDepotLat, s.fallbackDepotLng)
-	if distanceKm < 50.0 {
-		status = "SHIPPED"
-		s.log.Info("proximity threshold met: auto-shipping supply request", "request_id", requestID, "distance_km", distanceKm)
+	status := "ACKNOWLEDGED"
+	if strings.TrimSpace(payload.Status) != "" {
+		status = strings.ToUpper(strings.TrimSpace(payload.Status))
 	}
 
 	err := s.repo.UpdateSupplyRequestStatus(ctx, requestID, status, func(txn outbox.TxnBuffer) error {
-		// Emit WAREHOUSE_SUPPLY_SHIPPED if shipped
-		if status == "SHIPPED" {
-			evtPayload, _ := json.Marshal(map[string]any{
-				"request_id":   requestID,
-				"warehouse_id": warehouseID,
-				"status":       status,
-				"shipped_at":   time.Now().UTC().Format(time.RFC3339Nano),
-			})
-			return txn.BufferOutbox(ctx, outbox.Event{
-				EventID:       fmt.Sprintf("evt_shipped_%s_%d", requestID, time.Now().UnixNano()),
-				AggregateType: events.AggregateWarehouse,
-				AggregateID:   requestID,
-				TopicName:     "WAREHOUSE_SUPPLY_SHIPPED",
-				Payload:       evtPayload,
-				CreatedAt:     time.Now().UTC(),
-			})
-		}
-		return nil
+		return outbox.EmitJSON(ctx, txn, events.AggregateWarehouse, requestID, events.TopicMain, events.WarehouseEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventSupplyRequestUpdate, Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
+			RequestID:   requestID,
+			WarehouseID: warehouseID,
+			SupplierID:  s.supplierID,
+			FactoryID:   payload.FactoryID,
+			Status:      status,
+		})
 	})
 	if err != nil {
 		s.log.Error("failed to update supply request status", "request_id", requestID, "err", err)
@@ -480,14 +479,15 @@ func (s *Service) HandleSupplyRequestAccepted(ctx context.Context, payloadBytes 
 	if s.cache != nil {
 		s.cache.Invalidate(ctx, warehouseSupplyRequestsKey(s.supplierID, warehouseID))
 	}
-	s.broadcastWarehouseEvent(ctx, warehouseID, payload)
+	s.broadcastSupplyRequestUpdate(ctx, warehouseID, SupplyRequest{
+		RequestID:   requestID,
+		WarehouseID: warehouseID,
+		SupplierID:  s.supplierID,
+		FactoryID:   payload.FactoryID,
+		Status:      status,
+		State:       status,
+	})
 	return nil
-}
-
-func mockFactoryDistanceKm(lat, lng float64) float64 {
-	// Simple mock returning a static distance for testing proximity engine.
-	// In production, Haversine between factory and warehouse lat/lng would be used.
-	return 25.0 // Will trigger auto-ship
 }
 
 // HandleDispatchLocks serves GET /v1/warehouse/dispatch-locks.
@@ -550,9 +550,10 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 		}
 		nowTS := s.now().Format(time.RFC3339Nano)
 		claims, _ := auth.FromContext(r.Context())
-		warehouseID := strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
-		if warehouseID == "" {
-			warehouseID = strings.TrimSpace(claims.HomeNodeID)
+		warehouseID, whErr := s.effectiveWarehouseID(r.Context(), r)
+		if whErr != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "resolve_warehouse_scope_failed"})
+			return
 		}
 		lockType := strings.TrimSpace(payload.LockType)
 		if lockType == "" {
@@ -602,9 +603,10 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 		}
 
 		claims, _ := auth.FromContext(r.Context())
-		warehouseID := strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
-		if warehouseID == "" {
-			warehouseID = strings.TrimSpace(claims.HomeNodeID)
+		warehouseID, whErr := s.effectiveWarehouseID(r.Context(), r)
+		if whErr != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "resolve_warehouse_scope_failed"})
+			return
 		}
 
 		var released DispatchLock
@@ -671,6 +673,26 @@ func (s *Service) broadcastWarehouseEvent(ctx context.Context, warehouseID strin
 	if s.warehouseHub != nil && warehouseID != "" {
 		s.warehouseHub.Broadcast(ctx, "warehouse:"+warehouseID, raw)
 	}
+}
+
+func (s *Service) broadcastSupplyRequestUpdate(ctx context.Context, warehouseID string, req SupplyRequest) {
+	state := strings.TrimSpace(req.State)
+	if state == "" {
+		state = strings.TrimSpace(req.Status)
+	}
+	s.broadcastWarehouseEvent(ctx, warehouseID, map[string]any{
+		"type":      events.EventSupplyRequestUpdate,
+		"timestamp": s.now().UTC().Format(time.RFC3339Nano),
+		"data": map[string]any{
+			"request_id":         req.RequestID,
+			"warehouse_id":       req.WarehouseID,
+			"factory_id":         req.FactoryID,
+			"supplier_id":        req.SupplierID,
+			"state":              state,
+			"transfer_mode":      req.TransferMode,
+			"linked_transfer_id": req.LinkedTransferID,
+		},
+	})
 }
 
 func (s *Service) snapshotSupplyRequestForecast(ctx context.Context, warehouseID string, start time.Time, days int) (int64, int64, int64, error) {

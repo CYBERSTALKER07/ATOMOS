@@ -32,7 +32,13 @@ import (
 // Caller controls invocation policy:
 //   - main.go invokes when MIGRATE_ON_BOOT != "false" (default-on for dev).
 //   - cmd/migrate invokes unconditionally as a one-shot job (production).
-func Run(ctx context.Context, opts []option.ClientOption, dbName string, spannerClient *spanner.Client) {
+//
+// Returns a non-nil error when Spanner infrastructure is missing or a DDL
+// statement fails for a reason other than an already-applied schema object.
+func Run(ctx context.Context, opts []option.ClientOption, dbName string, spannerClient *spanner.Client) error {
+	if err := Preflight(ctx, opts, dbName); err != nil {
+		return err
+	}
 	var err error
 	_ = err
 
@@ -220,8 +226,8 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		if ddlErr == nil {
 			op.Wait(ctx)
 			fmt.Println("DATABASE MIGRATION SUCCESS: AIPredictions table forged.")
-		} else {
-			fmt.Printf("DDL migration skipped (table may already exist): %v\n", ddlErr)
+		} else if !IsBenignDDLConflict(ddlErr) {
+			return fmt.Errorf("ddl migration AIPredictions: %w", ddlErr)
 		}
 		adminClient.Close()
 	}
@@ -281,8 +287,8 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		if ddlErr == nil {
 			op.Wait(ctx)
 			fmt.Println("DATABASE MIGRATION SUCCESS: SupplierInventory table forged.")
-		} else {
-			fmt.Printf("DDL migration skipped (SupplierInventory may already exist): %v\n", ddlErr)
+		} else if !IsBenignDDLConflict(ddlErr) {
+			return fmt.Errorf("ddl migration SupplierInventory: %w", ddlErr)
 		}
 		adminClient.Close()
 	}
@@ -311,8 +317,8 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		if ddlErr == nil {
 			op.Wait(ctx)
 			fmt.Println("DATABASE MIGRATION SUCCESS: InventoryAuditLog table forged.")
-		} else {
-			fmt.Printf("DDL migration skipped (InventoryAuditLog may already exist): %v\n", ddlErr)
+		} else if !IsBenignDDLConflict(ddlErr) {
+			return fmt.Errorf("ddl migration InventoryAuditLog: %w", ddlErr)
 		}
 		adminClient.Close()
 	}
@@ -339,8 +345,8 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		if ddlErr == nil {
 			op.Wait(ctx)
 			fmt.Println("DATABASE MIGRATION SUCCESS: SupplierReturns table forged.")
-		} else {
-			fmt.Printf("DDL migration skipped (SupplierReturns may already exist): %v\n", ddlErr)
+		} else if !IsBenignDDLConflict(ddlErr) {
+			return fmt.Errorf("ddl migration SupplierReturns: %w", ddlErr)
 		}
 		adminClient.Close()
 	}
@@ -419,8 +425,8 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		if ddlErr == nil {
 			op.Wait(ctx)
 			fmt.Println("DATABASE MIGRATION SUCCESS: GlobalPayTransactionId column added to MasterInvoices.")
-		} else {
-			fmt.Printf("DDL migration skipped (GlobalPayTransactionId may already exist): %v\n", ddlErr)
+		} else if !IsBenignDDLConflict(ddlErr) {
+			return fmt.Errorf("ddl migration GlobalPayTransactionId: %w", ddlErr)
 		}
 		adminClient.Close()
 	}
@@ -1008,10 +1014,7 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 	}
 
 	// ── BACKFILL: H3Index for retailer/factory rows created before the H3 migration ────────────
-	// Runs once per boot, a no-op after the first successful pass (all rows
-	// already have H3Index populated). Uses h3-go/v4 at resolution 7 to emit
-	// 15-char lowercase hex cell IDs compatible with h3-js on the frontend.
-	backfillH3Indexes(ctx, spannerClient)
+	// Deferred to end of Run() so DDL convergence completes first.
 
 	// ── MIGRATION: Address-as-Label — AddressVerified flag ──────────────────────
 	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
@@ -2016,6 +2019,8 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		}
 		adminClient.Close()
 	}
+
+	return backfillH3Indexes(ctx, spannerClient)
 }
 
 func minInt(a, b int) int {

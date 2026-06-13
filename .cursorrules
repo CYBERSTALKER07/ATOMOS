@@ -109,6 +109,7 @@ This is a distributed monorepo. Respect the actual local structure.
 - **`pegasus/` is the ONLY canonical source tree.** All code, shared packages, infra, operational files (`docker-compose.yml`, `Makefile`, `firebase.json`, `cors.json`, `E2E_TEST_PROTOCOL.md`), and patent dossier live inside it.
 - **Do NOT recreate a root-level `apps/`, `packages/`, `infra/`, or `patent-dossier/` directory.** Prior duplicates have been removed; any reappearance is drift and must be deleted, not merged.
 - All paths in commands, workflows, and docs must use the `pegasus/` prefix when referenced from the repo root.
+- **`pegasusX/`** is the single-tenant delivery tree (SSMR, PX12 launch). Canonical ecosystem spec: `pegasusX/docs/FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`. Do not merge pegasusX into `pegasus/` or vice versa without explicit Boss directive.
 
 ### Canonical App Paths
 - **Backend (Go 1.22+)**: `pegasus/apps/backend-go`

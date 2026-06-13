@@ -83,7 +83,13 @@ func (r *SpannerRepository) RunTx(ctx context.Context, fn func(ctx context.Conte
 
 func (r *SpannerRepository) UpdateSupplyRequestState(ctx context.Context, requestID, state string, emit func(outbox.TxnBuffer) error) error {
 	return r.RunTx(ctx, func(ctx context.Context, tx FactoryTx) error {
-		// Just a placeholder since the service directly updates state.
+		if spTx, ok := tx.(*spannerFactoryTx); ok && spTx.txn != nil {
+			return spTx.txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{
+				"RequestId": requestID,
+				"State":     state,
+				"UpdatedAt": spanner.CommitTimestamp,
+			})})
+		}
 		return nil
 	}, emit)
 }

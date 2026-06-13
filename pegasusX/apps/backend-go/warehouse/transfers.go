@@ -74,7 +74,7 @@ func (s *Service) HandleEmergencyTransfer(w http.ResponseWriter, r *http.Request
 	}
 
 	transferID := uuid.NewString()
-	err = s.repo.CreateTransfer(ctx, transferID, factoryID, supplierID, req.TotalVolumeVU, func(txn outbox.TxnBuffer) error {
+	err = s.repo.CreateTransfer(ctx, transferID, factoryID, supplierID, whID, req.TotalVolumeVU, func(txn outbox.TxnBuffer) error {
 		payload := events.WarehouseEvent{
 			BaseEvent:   events.BaseEvent{Type: events.EventWarehouseTransferCreated},
 			TransferID:  transferID,
@@ -174,7 +174,7 @@ func (s *Service) HandleForceReceive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transferID := uuid.NewString()
-	err = s.repo.CreateTransfer(ctx, transferID, factoryID, supplierID, req.TotalVolumeVU, nil)
+	err = s.repo.CreateTransfer(ctx, transferID, factoryID, supplierID, whID, req.TotalVolumeVU, nil)
 	if err == nil {
 		err = s.repo.UpdateTransferState(ctx, transferID, supplierID, "RECEIVED", func(txn outbox.TxnBuffer) error {
 			payload := events.WarehouseEvent{

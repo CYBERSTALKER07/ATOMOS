@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
@@ -28,7 +29,7 @@ type Repository interface {
 	GetLocks(ctx context.Context, warehouseID string) (map[string]DispatchLock, error)
 	UpsertLock(ctx context.Context, warehouseID string, lock DispatchLock, emit func(outbox.TxnBuffer) error) error
 	DeleteLock(ctx context.Context, warehouseID, lockID string, emit func(outbox.TxnBuffer) error) error
-	CreateTransfer(ctx context.Context, transferID, factoryID, supplierID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error
+	CreateTransfer(ctx context.Context, transferID, factoryID, supplierID, warehouseID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error
 	UpdateTransferState(ctx context.Context, transferID, supplierID, newState string, emit func(outbox.TxnBuffer) error) error
 }
 
@@ -71,7 +72,8 @@ func (r *SpannerRepository) ListSupplyRequests(ctx context.Context, warehouseID 
 	}
 
 	stmt := spanner.Statement{
-		SQL: `SELECT RequestId, WarehouseId, State, RequestedBy, CoverageStartDate, CoverageDays, ProjectedUnits, CommittedUnits, PendingConfirmationUnits, CreatedAt, UpdatedAt
+		SQL: `SELECT RequestId, WarehouseId, State, RequestedBy, CoverageStartDate, CoverageDays, ProjectedUnits, CommittedUnits, PendingConfirmationUnits,
+		             COALESCE(FactoryId, ''), COALESCE(TransferMode, 'TRUCK'), COALESCE(LinkedTransferId, ''), CreatedAt, UpdatedAt
 			FROM WarehouseSupplyRequests@{FORCE_INDEX=Idx_WarehouseSupplyRequests_ByWarehouseUpdated}
 			WHERE WarehouseId = @warehouseId
 			ORDER BY UpdatedAt DESC
@@ -105,6 +107,9 @@ func (r *SpannerRepository) ListSupplyRequests(ctx context.Context, warehouseID 
 			projectedUnits           int64
 			committedUnits           int64
 			pendingConfirmationUnits int64
+			factoryID                string
+			transferMode             string
+			linkedTransferID         string
 			createdAt                time.Time
 			updatedAt                time.Time
 		)
@@ -118,6 +123,9 @@ func (r *SpannerRepository) ListSupplyRequests(ctx context.Context, warehouseID 
 			&projectedUnits,
 			&committedUnits,
 			&pendingConfirmationUnits,
+			&factoryID,
+			&transferMode,
+			&linkedTransferID,
 			&createdAt,
 			&updatedAt,
 		); err != nil {
@@ -127,6 +135,9 @@ func (r *SpannerRepository) ListSupplyRequests(ctx context.Context, warehouseID 
 		requests = append(requests, SupplyRequest{
 			RequestID:                requestID,
 			WarehouseID:              rowWarehouseID,
+			FactoryID:                factoryID,
+			TransferMode:             transferMode,
+			LinkedTransferID:         linkedTransferID,
 			State:                    state,
 			Status:                   state,
 			RequestedBy:              strings.TrimSpace(requestedBy.StringVal),
@@ -163,7 +174,7 @@ func (r *SpannerRepository) CreateSupplyRequest(ctx context.Context, req SupplyR
 		state = strings.TrimSpace(req.Status)
 	}
 	if state == "" {
-		state = "OPEN"
+		state = "SUBMITTED"
 	}
 
 	buf := &spannerTxnBuffer{}
@@ -179,6 +190,8 @@ func (r *SpannerRepository) CreateSupplyRequest(ctx context.Context, req SupplyR
 			"SupplierId":               req.SupplierID,
 			"WarehouseId":              req.WarehouseID,
 			"State":                    state,
+			"FactoryId":                nullableWarehouseString(req.FactoryID),
+			"TransferMode":             nullableWarehouseString(req.TransferMode),
 			"RequestedBy":              nullableWarehouseString(req.RequestedBy),
 			"CoverageStartDate":        req.CoverageStartDate,
 			"CoverageDays":             int64(req.CoverageDays),
@@ -409,7 +422,7 @@ func (m *inMemoryRepository) UpsertLock(ctx context.Context, warehouseID string,
 func (m *inMemoryRepository) DeleteLock(ctx context.Context, warehouseID, lockID string, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
-func (m *inMemoryRepository) CreateTransfer(ctx context.Context, transferID, factoryID, supplierID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error {
+func (m *inMemoryRepository) CreateTransfer(ctx context.Context, transferID, factoryID, supplierID, warehouseID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 func (m *inMemoryRepository) UpdateTransferState(ctx context.Context, transferID, supplierID, newState string, emit func(outbox.TxnBuffer) error) error {
@@ -536,9 +549,10 @@ func (r *SpannerRepository) UpsertLock(ctx context.Context, warehouseID string, 
 }
 
 func (r *SpannerRepository) DeleteLock(ctx context.Context, warehouseID, lockID string, emit func(outbox.TxnBuffer) error) error {
+	_ = warehouseID
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		muts := []*spanner.Mutation{
-			spanner.Delete("WarehouseDispatchLocks", spanner.Key{warehouseID, lockID}),
+			spanner.Delete("WarehouseDispatchLocks", spanner.Key{lockID}),
 		}
 		if emit != nil {
 			buf := &spannerTxnBuffer{}
@@ -552,7 +566,7 @@ func (r *SpannerRepository) DeleteLock(ctx context.Context, warehouseID, lockID 
 	return err
 }
 
-func (r *SpannerRepository) CreateTransfer(ctx context.Context, transferID, factoryID, supplierID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error {
+func (r *SpannerRepository) CreateTransfer(ctx context.Context, transferID, factoryID, supplierID, warehouseID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error {
 	row := map[string]any{
 		"TransferId":    transferID,
 		"FactoryId":     factoryID,
@@ -561,6 +575,9 @@ func (r *SpannerRepository) CreateTransfer(ctx context.Context, transferID, fact
 		"TotalVolumeVU": totalVolumeVU,
 		"CreatedAt":     spanner.CommitTimestamp,
 		"UpdatedAt":     spanner.CommitTimestamp,
+	}
+	if wh := strings.TrimSpace(warehouseID); wh != "" {
+		row["WarehouseId"] = wh
 	}
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		muts := []*spanner.Mutation{spanner.InsertOrUpdateMap("FactoryInternalTransfers", row)}
@@ -578,13 +595,20 @@ func (r *SpannerRepository) CreateTransfer(ctx context.Context, transferID, fact
 
 func (r *SpannerRepository) UpdateTransferState(ctx context.Context, transferID, supplierID, newState string, emit func(outbox.TxnBuffer) error) error {
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		row, err := txn.ReadRow(ctx, "FactoryInternalTransfers", spanner.Key{transferID}, []string{"TransferId", "SupplierId", "State"})
+		row, err := txn.ReadRow(ctx, "FactoryInternalTransfers", spanner.Key{transferID},
+			[]string{"TransferId", "SupplierId", "State", "WarehouseId", "TotalVolumeVU"})
 		if err != nil {
 			return err
 		}
 		var id, supID, state string
-		if err := row.Columns(&id, &supID, &state); err != nil {
+		var warehouseCol spanner.NullString
+		var totalVolume float64
+		if err := row.Columns(&id, &supID, &state, &warehouseCol, &totalVolume); err != nil {
 			return err
+		}
+		warehouseID := ""
+		if warehouseCol.Valid {
+			warehouseID = strings.TrimSpace(warehouseCol.StringVal)
 		}
 		if supplierID != "" && supID != supplierID {
 			return fmt.Errorf("transfer_forbidden")
@@ -596,6 +620,15 @@ func (r *SpannerRepository) UpdateTransferState(ctx context.Context, transferID,
 				"State":      newState,
 				"UpdatedAt":  spanner.CommitTimestamp,
 			}),
+		}
+		if strings.EqualFold(newState, "RECEIVED") && !strings.EqualFold(state, "RECEIVED") && strings.TrimSpace(warehouseID) != "" {
+			units := int64(totalVolume)
+			if units <= 0 {
+				units = 1
+			}
+			if err := inventory.CreditBulkVUInTxn(ctx, txn, warehouseID, supID, units); err != nil {
+				return err
+			}
 		}
 		if emit != nil {
 			buf := &spannerTxnBuffer{}

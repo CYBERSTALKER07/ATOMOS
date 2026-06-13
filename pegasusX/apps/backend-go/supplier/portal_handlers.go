@@ -156,13 +156,15 @@ type supplierPricingRuleUpdateRequest struct {
 }
 
 type topologyWarehouseInput struct {
-	WarehouseID      string   `json:"warehouse_id,omitempty"`
-	Name             string   `json:"name"`
-	Lat              float64  `json:"lat"`
-	Lng              float64  `json:"lng"`
-	CoverageRadiusKm *float64 `json:"coverage_radius_km,omitempty"`
-	IsActive         *bool    `json:"is_active,omitempty"`
-	IsOnShift        *bool    `json:"is_on_shift,omitempty"`
+	WarehouseID           string   `json:"warehouse_id,omitempty"`
+	Name                  string   `json:"name"`
+	Lat                   float64  `json:"lat"`
+	Lng                   float64  `json:"lng"`
+	CoverageRadiusKm      *float64 `json:"coverage_radius_km,omitempty"`
+	IsActive              *bool    `json:"is_active,omitempty"`
+	IsOnShift             *bool    `json:"is_on_shift,omitempty"`
+	TransferMode          string   `json:"transfer_mode,omitempty"`
+	CoLocateWithFactoryID string   `json:"co_locate_with_factory_id,omitempty"`
 }
 
 type topologyFactoryInput struct {
@@ -421,13 +423,15 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 		}
 
 		topology.Warehouses = append(topology.Warehouses, WarehouseNode{
-			WarehouseID:      strings.TrimSpace(wh.WarehouseID),
-			Name:             name,
-			Lat:              wh.Lat,
-			Lng:              wh.Lng,
-			CoverageRadiusKm: coverage,
-			IsActive:         isActive,
-			IsOnShift:        isOnShift,
+			WarehouseID:           strings.TrimSpace(wh.WarehouseID),
+			Name:                  name,
+			Lat:                   wh.Lat,
+			Lng:                   wh.Lng,
+			CoverageRadiusKm:      coverage,
+			TransferMode:          normalizeTransferMode(wh.TransferMode),
+			CoLocateWithFactoryID: strings.TrimSpace(wh.CoLocateWithFactoryID),
+			IsActive:              isActive,
+			IsOnShift:             isOnShift,
 		})
 	}
 

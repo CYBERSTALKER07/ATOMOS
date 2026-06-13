@@ -312,7 +312,8 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 	result := SupplierTopology{}
 
 	warehouseStmt := spanner.Statement{
-		SQL: `SELECT WarehouseId, Name, Lat, Lng, CoverageRadiusKm, IsActive, IsOnShift, CreatedAt, UpdatedAt
+		SQL: `SELECT WarehouseId, Name, Lat, Lng, CoverageRadiusKm, IsActive, IsOnShift,
+		      TransferMode, CoLocateWithFactoryId, PrimaryFactoryId, CreatedAt, UpdatedAt
 		      FROM Warehouses
 		      WHERE SupplierId = @supplierId
 		      ORDER BY WarehouseId`,
@@ -331,6 +332,7 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 
 		var node WarehouseNode
 		var lat, lng, coverage spanner.NullFloat64
+		var transferMode, coLocate, primaryFactory spanner.NullString
 		if err := row.Columns(
 			&node.WarehouseID,
 			&node.Name,
@@ -339,6 +341,9 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 			&coverage,
 			&node.IsActive,
 			&node.IsOnShift,
+			&transferMode,
+			&coLocate,
+			&primaryFactory,
 			&node.CreatedAt,
 			&node.UpdatedAt,
 		); err != nil {
@@ -352,6 +357,17 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		}
 		if coverage.Valid {
 			node.CoverageRadiusKm = coverage.Float64
+		}
+		if transferMode.Valid {
+			node.TransferMode = normalizeTransferMode(transferMode.StringVal)
+		} else {
+			node.TransferMode = TransferModeTruck
+		}
+		if coLocate.Valid {
+			node.CoLocateWithFactoryID = coLocate.StringVal
+		}
+		if primaryFactory.Valid {
+			node.PrimaryFactoryID = primaryFactory.StringVal
 		}
 		result.Warehouses = append(result.Warehouses, node)
 	}
@@ -849,10 +865,14 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 				"Lat":              nullableFloat(wh.Lat),
 				"Lng":              nullableFloat(wh.Lng),
 				"CoverageRadiusKm": coverage,
+				"TransferMode":     normalizeTransferMode(wh.TransferMode),
 				"IsActive":         wh.IsActive,
 				"IsOnShift":        wh.IsOnShift,
 				"CreatedAt":        createdAt,
 				"UpdatedAt":        now,
+			}
+			if coLocate := strings.TrimSpace(wh.CoLocateWithFactoryID); coLocate != "" {
+				row["CoLocateWithFactoryId"] = coLocate
 			}
 			if primaryFactoryID != "" {
 				row["PrimaryFactoryId"] = primaryFactoryID

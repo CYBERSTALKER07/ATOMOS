@@ -216,6 +216,8 @@ CREATE TABLE Warehouses (
   CoverageRadiusKm   FLOAT64       NOT NULL,
   PrimaryFactoryId   STRING(36),
   SecondaryFactoryId STRING(36),
+  TransferMode       STRING(10)    NOT NULL DEFAULT ('TRUCK'),
+  CoLocateWithFactoryId STRING(36),
   IsActive           BOOL          NOT NULL,
   IsOnShift          BOOL          NOT NULL,
   RegionId           STRING(36),
@@ -253,6 +255,9 @@ CREATE TABLE WarehouseSupplyRequests (
   ProjectedUnits              INT64         NOT NULL,
   CommittedUnits              INT64         NOT NULL,
   PendingConfirmationUnits    INT64         NOT NULL,
+  FactoryId                   STRING(36),
+  TransferMode                STRING(10),
+  LinkedTransferId            STRING(36),
   CreatedAt                   TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt                   TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (RequestId);
@@ -626,6 +631,9 @@ CREATE TABLE FactoryInternalTransfers (
   VehicleId       STRING(36),
   ReassignDepth   INT64       NOT NULL DEFAULT (0),
   ExceptionCount  INT64       NOT NULL DEFAULT (0),
+  SupplyRequestId STRING(36),
+  WarehouseId     STRING(36),
+  TransferMode    STRING(10),
   CreatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (TransferId);

@@ -2,7 +2,8 @@
 
 Operational checklist for Boss sign-off on production v1 role rows. Pair with [`PX12_ROLE_ROW_QA.md`](./PX12_ROLE_ROW_QA.md).
 
-Capability reference: [`ROLE_ROW_PARITY_MATRIX.md`](../ROLE_ROW_PARITY_MATRIX.md).
+Capability reference: [`ROLE_ROW_PARITY_MATRIX.md`](../ROLE_ROW_PARITY_MATRIX.md).  
+Ecosystem master spec: [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](../FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md).
 
 ---
 
@@ -138,7 +139,7 @@ Record any deviation (staging secrets, Boss GCP) in the sign-off sheet.
 ## PX12-I — WAREHOUSE
 
 **Clients:** `warehouse-portal`, `warehouse-app-android`, `warehouse-app-ios`  
-**Automated proof:** `PX_E2E_WAREHOUSE_OK` (dispatch preview + lock acquire/release)
+**Automated proof:** `PX_E2E_WAREHOUSE_OK` (dispatch preview + lock acquire/release); replenishment chain: `PX_E2E_REPLENISH_OK`, `PX_E2E_REPLENISH_COLOCATE_OK`
 
 ### Portal checks (P1-03)
 
@@ -148,7 +149,9 @@ Record any deviation (staging secrets, Boss GCP) in the sign-off sheet.
 | I2 | `/orders` | Order list with state filter |
 | I3 | `/dispatch` | Dispatch preview returns `preview_ready` or labeled empty |
 | I4 | `/dispatch-locks` | List; acquire + release on test order |
-| I5 | `/supply-requests` | Supply request feed |
+| I5 | `/supply-requests` | Supply request feed; create → SUBMITTED state |
+| I5b | Replenishment E2E (SSMR) | `PX_E2E_REPLENISH_OK`: WH create → factory ACK → FULFILL → WH receive |
+| I5c | Co-locate E2E (SSMR) | `PX_E2E_REPLENISH_COLOCATE_OK`: topology `transfer_mode=INTERNAL` → fulfill auto-credits inventory |
 | I6 | `/treasury` | Financials or fallback ops financials |
 | I7 | `/demand-forecast` | Replenishment insights → product rows |
 

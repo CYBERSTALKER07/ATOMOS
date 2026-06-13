@@ -2,6 +2,7 @@ package migrations
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"backend-go/proximity"
@@ -11,19 +12,23 @@ import (
 )
 
 // backfillH3Indexes populates the H3Index column on Retailers and Factories
-// for rows created before the Geo-Spatial Sovereignty migration. It is
-// idempotent — subsequent boots see an empty candidate set and exit immediately.
-//
-// Retailers/Factories derive H3Index from their own Lat/Lng.
-func backfillH3Indexes(ctx context.Context, sc *spanner.Client) {
+// for rows created before the Geo-Spatial Sovereignty migration.
+func backfillH3Indexes(ctx context.Context, sc *spanner.Client) error {
 	if sc == nil {
-		return
+		return nil
 	}
-	n1 := backfillRetailerH3(ctx, sc)
-	n2 := backfillFactoryH3(ctx, sc)
+	n1, err := backfillRetailerH3(ctx, sc)
+	if err != nil {
+		return err
+	}
+	n2, err := backfillFactoryH3(ctx, sc)
+	if err != nil {
+		return err
+	}
 	if n1+n2 > 0 {
 		log.Printf("[H3-BACKFILL] retailers=%d factories=%d", n1, n2)
 	}
+	return nil
 }
 
 type h3BackfillUpdate struct {
@@ -31,7 +36,7 @@ type h3BackfillUpdate struct {
 	h3Index string
 }
 
-func backfillRetailerH3(ctx context.Context, sc *spanner.Client) int {
+func backfillRetailerH3(ctx context.Context, sc *spanner.Client) (int, error) {
 	iter := sc.Single().Query(ctx, spanner.Statement{
 		SQL: `SELECT RetailerId, Latitude, Longitude FROM Retailers
 		      WHERE (H3Index IS NULL OR H3Index = '')
@@ -46,8 +51,11 @@ func backfillRetailerH3(ctx context.Context, sc *spanner.Client) int {
 			break
 		}
 		if err != nil {
+			if IsInfrastructureNotFound(err) {
+				return 0, fmt.Errorf("h3 backfill retailers: %w", err)
+			}
 			log.Printf("[H3-BACKFILL] retailer scan error: %v", err)
-			return len(updates)
+			return len(updates), nil
 		}
 		var id string
 		var lat, lng spanner.NullFloat64
@@ -66,7 +74,7 @@ func backfillRetailerH3(ctx context.Context, sc *spanner.Client) int {
 	return applyH3Updates(ctx, sc, "Retailers", "RetailerId", updates)
 }
 
-func backfillFactoryH3(ctx context.Context, sc *spanner.Client) int {
+func backfillFactoryH3(ctx context.Context, sc *spanner.Client) (int, error) {
 	iter := sc.Single().Query(ctx, spanner.Statement{
 		SQL: `SELECT FactoryId, Lat, Lng FROM Factories
 		      WHERE (H3Index IS NULL OR H3Index = '')
@@ -81,8 +89,11 @@ func backfillFactoryH3(ctx context.Context, sc *spanner.Client) int {
 			break
 		}
 		if err != nil {
+			if IsInfrastructureNotFound(err) {
+				return 0, fmt.Errorf("h3 backfill factories: %w", err)
+			}
 			log.Printf("[H3-BACKFILL] factory scan error: %v", err)
-			return len(updates)
+			return len(updates), nil
 		}
 		var id string
 		var lat, lng spanner.NullFloat64
@@ -101,9 +112,7 @@ func backfillFactoryH3(ctx context.Context, sc *spanner.Client) int {
 	return applyH3Updates(ctx, sc, "Factories", "FactoryId", updates)
 }
 
-// applyH3Updates writes H3Index values back in batches of 500 to stay under
-// Spanner's mutation limit.
-func applyH3Updates(ctx context.Context, sc *spanner.Client, table, pkCol string, updates []h3BackfillUpdate) int {
+func applyH3Updates(ctx context.Context, sc *spanner.Client, table, pkCol string, updates []h3BackfillUpdate) (int, error) {
 	const batchSize = 500
 	for i := 0; i < len(updates); i += batchSize {
 		end := i + batchSize
@@ -119,9 +128,12 @@ func applyH3Updates(ctx context.Context, sc *spanner.Client, table, pkCol string
 		if _, err := sc.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			return txn.BufferWrite(muts)
 		}); err != nil {
+			if IsInfrastructureNotFound(err) {
+				return i, fmt.Errorf("h3 backfill %s: %w", table, err)
+			}
 			log.Printf("[H3-BACKFILL] %s batch [%d:%d] error: %v", table, i, end, err)
-			return i
+			return i, nil
 		}
 	}
-	return len(updates)
+	return len(updates), nil
 }

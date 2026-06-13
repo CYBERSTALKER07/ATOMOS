@@ -85,6 +85,10 @@ func main() {
 		go app.OrderEventConsumer.Start(ctx)
 		slog.Info("order event consumer started")
 	}
+	if app.WarehouseEventConsumer != nil {
+		go app.WarehouseEventConsumer.Start(ctx)
+		slog.Info("warehouse event consumer started")
+	}
 	if app.WarehouseService != nil {
 		go warehouse.StartAutoDispatchWorker(ctx, app.WarehouseService, warehouse.AutoDispatchWorkerConfig{})
 		slog.Info("warehouse auto-dispatch worker started")

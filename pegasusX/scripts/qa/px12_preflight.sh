@@ -44,7 +44,11 @@ run_gate "parity-contract-full" make parity-contract-full
 run_gate "gap-hunter-gate" make gap-hunter-gate
 run_gate "validate-launch-readiness" make validate-launch-readiness
 
-optional_gate "test-ssmr-infra" make test-ssmr-infra
+if [[ "${PX12_SKIP_SSMR:-}" == "1" ]]; then
+	optional_gate "test-ssmr-infra" make test-ssmr-infra
+else
+	run_gate "test-ssmr-infra" make test-ssmr-infra
+fi
 
 printf '\n--- PX12 preflight summary ---\n'
 printf 'PASS: %s  FAIL: %s  SKIP: %s\n' "$PASS" "$FAIL" "$SKIP"

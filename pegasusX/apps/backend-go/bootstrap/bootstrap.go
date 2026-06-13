@@ -826,7 +826,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				Handler:   order.NewEventConsumer(orderSvc, log).HandleEvent,
 				DLQWriter: dlqWriter,
 			})
-			warehouseEventConsumer := kafka.NewConsumer(kafka.ConsumerDeps{
+			warehouseEventConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
 				GroupID:   "void-warehouse-mutator",
 				Topic:     cfg.KafkaTopicMain,

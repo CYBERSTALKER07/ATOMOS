@@ -2,6 +2,11 @@
 
 Operational runbooks and migration notes. Architecture lives in `../context/`.
 
+## Canonical system spec
+
+- **`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`** — living architect/product spec: role contracts, replenishment + co-locate flows, comms matrix, verification gates, PX-ECO tracker, infra budget
+- **`CLOUD_BUDGET_MODEL.md`** — full-GCP-minimal cost table and Terraform budget wiring
+
 ## B02 supplier bootstrap support artifacts
 
 - `SUPPLIER_ONBOARDING_SOP.md`

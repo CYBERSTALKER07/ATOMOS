@@ -1,5 +1,7 @@
 # Pegasus X — Backend Ecosystem Readiness
 
+> **Canonical ecosystem spec:** [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md) · **Cost model:** [`CLOUD_BUDGET_MODEL.md`](./CLOUD_BUDGET_MODEL.md)
+
 This document is the handoff checklist for Boss: backend-first readiness before cloud cutover and frontend wiring. Canonical tree: `pegasusX/`.
 
 ## Architecture (runtime)
@@ -53,7 +55,7 @@ cd pegasusX/apps/backend-go && go test ./...
 cd pegasusX && make test-ssmr-infra
 ```
 
-E2E markers when green: `PX_E2E_ORDER_OK`, `PX_E2E_PAYMENT_OK`, `PX_E2E_WAREHOUSE_OK`, `PX_E2E_FACTORY_OK`, `PX_E2E_DELIVERY_OK`, `PX_E2E_TELEMETRY_OK`, `PX_E2E_PAYLOAD_OK` (umbrella; sub-markers `PX_E2E_PAYLOAD_MANIFEST_LIFECYCLE_OK`, `PX_E2E_PAYLOAD_REASSIGN_OK`, `PX_E2E_PAYLOAD_DRIVER_GATE_OK`, `PX_E2E_PAYLOAD_DEVICE_TOKEN_OK` — payloader login → manifest lifecycle → driver gate/detail → recommend/apply reassign → fleet reassign → manifest-exceptions → payloader device-token), `PX_E2E_SHOP_CLOSED_OK` (assign → ARRIVED → driver report → retailer `OPEN_NOW`), `__SSMR_OK__`.
+E2E markers when green: `PX_E2E_ORDER_OK`, `PX_E2E_PAYMENT_OK`, `PX_E2E_WAREHOUSE_OK`, `PX_E2E_FACTORY_OK`, `PX_E2E_DELIVERY_OK`, `PX_E2E_TELEMETRY_OK`, `PX_E2E_PAYLOAD_OK` (umbrella; sub-markers `PX_E2E_PAYLOAD_MANIFEST_LIFECYCLE_OK`, `PX_E2E_PAYLOAD_REASSIGN_OK`, `PX_E2E_PAYLOAD_DRIVER_GATE_OK`, `PX_E2E_PAYLOAD_DEVICE_TOKEN_OK` — payloader login → manifest lifecycle → driver gate/detail → recommend/apply reassign → fleet reassign → manifest-exceptions → payloader device-token), `PX_E2E_SHOP_CLOSED_OK` (assign → ARRIVED → driver report → retailer `OPEN_NOW`), `PX_E2E_REPLENISH_OK`, `PX_E2E_REPLENISH_COLOCATE_OK`, `__SSMR_OK__`.
 
 ## Environment (SSMR / local)
 

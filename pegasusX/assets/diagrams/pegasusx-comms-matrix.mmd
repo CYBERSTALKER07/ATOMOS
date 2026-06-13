@@ -1,0 +1,36 @@
+flowchart LR
+  subgraph producers [HTTP producers]
+    WH[warehouse handlers]
+    FC[factory handlers]
+    OR[order handlers]
+    PY[payment webhooks]
+    DV[driver telemetry]
+  end
+
+  subgraph durable [Durable path]
+    OB[outbox EmitJSON]
+    KF[Kafka TopicMain]
+    ND[notification_dispatcher]
+  end
+
+  subgraph realtime [Realtime]
+    WS7[7 WS hubs]
+    FCM[FCM push]
+  end
+
+  subgraph consumers [Consumers]
+    OC[order mutator PAYMENT_CLEARED]
+    WC[warehouse mutator SUPPLY_REQUEST_ACCEPTED]
+    AI[ai-worker ORDER_CREATED]
+  end
+
+  WH & FC & OR & PY --> OB
+  OB --> KF
+  KF --> ND & OC & WC & AI
+  ND --> WS7 & FCM
+  DV --> WS7
+  WH & FC & OR -.->|best-effort local| WS7
+
+  FL[TopicFreezeLocks]
+  WH --> FL
+  FL -.->|v2 ai-worker| AI

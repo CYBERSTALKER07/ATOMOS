@@ -16,6 +16,7 @@ import (
 	"cloud.google.com/go/spanner/admin/database/apiv1/databasepb"
 	instance "cloud.google.com/go/spanner/admin/instance/apiv1"
 	"cloud.google.com/go/spanner/admin/instance/apiv1/instancepb"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
 	"google.golang.org/api/option"
@@ -171,15 +172,20 @@ func ensureSeedSupplier(ctx context.Context, cfg *bootstrap.Config) error {
 	defer client.Close()
 
 	repo := &seedRepository{client: client}
-	if _, err := seed.EnsureSupplier(
+	supplier, err := seed.EnsureSupplier(
 		ctx,
 		repo,
 		cfg.SeedSupplierName,
 		cfg.SeedSupplierCountry,
 		cfg.SeedSupplierCurrency,
 		slog.Default(),
-	); err != nil {
+	)
+	if err != nil {
 		return fmt.Errorf("seed supplier row: %w", err)
+	}
+
+	if err := auth.EnsureDemoScopeLinks(ctx, client, supplier.SupplierID); err != nil {
+		return fmt.Errorf("ensure demo scope links: %w", err)
 	}
 
 	return nil
@@ -295,14 +301,29 @@ func applyDDLStatements(
 			Statements: []string{statement},
 		})
 		if err != nil {
-			continue
+			if isBenignDDLConflict(err) {
+				continue
+			}
+			return fmt.Errorf("update ddl for %q: %w", truncateStatement(statement), err)
 		}
 		if err := op.Wait(ctx); err != nil {
-			return fmt.Errorf("apply statement %q: %w", statement, err)
+			if isBenignDDLConflict(err) {
+				continue
+			}
+			return fmt.Errorf("apply statement %q: %w", truncateStatement(statement), err)
 		}
 	}
 
 	return nil
+}
+
+func truncateStatement(statement string) string {
+	const max = 120
+	trimmed := strings.TrimSpace(statement)
+	if len(trimmed) <= max {
+		return trimmed
+	}
+	return trimmed[:max] + "..."
 }
 
 func spannerClientOptions(cfg *bootstrap.Config) []option.ClientOption {

@@ -79,8 +79,12 @@ func TestSpannerStore_AppendFetchMarkPublished_Integration(t *testing.T) {
 func newSpannerIntegrationClient(t *testing.T, ctx context.Context) *spanner.Client {
 	t.Helper()
 
+	requireSpanner := strings.TrimSpace(os.Getenv("PARITY_REQUIRE_SPANNER")) == "1"
 	emulatorHost := strings.TrimSpace(os.Getenv("SPANNER_EMULATOR_HOST"))
 	if emulatorHost == "" {
+		if requireSpanner {
+			t.Fatal("PARITY_REQUIRE_SPANNER=1 but SPANNER_EMULATOR_HOST is unset")
+		}
 		t.Skip("SPANNER_EMULATOR_HOST not set; skipping integration test")
 	}
 
@@ -97,11 +101,17 @@ func newSpannerIntegrationClient(t *testing.T, ctx context.Context) *spanner.Cli
 		option.WithGRPCDialOption(grpc.WithInsecure()),
 	)
 	if err != nil {
+		if requireSpanner {
+			t.Fatalf("spanner emulator database unavailable (%s): %v", dbPath, err)
+		}
 		t.Skipf("spanner emulator database unavailable (%s): %v", dbPath, err)
 	}
 
 	if err := ensureOutboxTableExists(ctx, client); err != nil {
 		client.Close()
+		if requireSpanner {
+			t.Fatalf("OutboxEvents not ready in emulator database (%s): %v", dbPath, err)
+		}
 		t.Skipf("OutboxEvents not ready in emulator database (%s): %v", dbPath, err)
 	}
 

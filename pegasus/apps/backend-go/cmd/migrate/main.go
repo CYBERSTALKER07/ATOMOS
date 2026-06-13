@@ -50,6 +50,8 @@ func main() {
 	defer app.Close()
 
 	log.Println("[migrate] running migrations")
-	migrations.Run(ctx, app.SpannerClientOpts, app.SpannerDBName, app.Spanner)
+	if err := migrations.Run(ctx, app.SpannerClientOpts, app.SpannerDBName, app.Spanner); err != nil {
+		log.Fatalf("[migrate] failed: %v", err)
+	}
 	log.Println("[migrate] done — migrations idempotent, safe to re-run")
 }
