@@ -279,10 +279,26 @@ data class DailyMetric(
 @Serializable
 data class Retailer(
     @SerialName("retailer_id") val retailerId: String,
-    @SerialName("business_name") val businessName: String = "",
+    @SerialName("store_name") val storeName: String = "",
     @SerialName("total_orders") val totalOrders: Int = 0,
     @SerialName("total_revenue") val totalRevenue: Long = 0,
     @SerialName("last_order_date") val lastOrderDate: String = "",
+    @SerialName("receiving_window_open") val receivingWindowOpen: String = "",
+    @SerialName("receiving_window_close") val receivingWindowClose: String = "",
+) {
+    val displayName: String get() = storeName.ifBlank { "Retailer" }
+    val receivingWindowLabel: String
+        get() = if (receivingWindowOpen.isNotBlank() && receivingWindowClose.isNotBlank()) {
+            "$receivingWindowOpen – $receivingWindowClose"
+        } else {
+            "Not set"
+        }
+}
+
+@Serializable
+data class UpdateRetailerReceivingWindowRequest(
+    @SerialName("receiving_window_open") val receivingWindowOpen: String,
+    @SerialName("receiving_window_close") val receivingWindowClose: String,
 )
 
 @Serializable

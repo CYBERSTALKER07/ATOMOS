@@ -87,6 +87,20 @@ enum WarehouseService {
         try await api.get("v1/warehouse/ops/crm")
     }
 
+    static func updateRetailerReceivingWindow(
+        retailerId: String,
+        open: String,
+        close: String
+    ) async throws {
+        try await api.patchVoid(
+            "v1/warehouse/ops/crm/\(retailerId)",
+            body: UpdateRetailerReceivingWindowRequest(
+                receivingWindowOpen: open,
+                receivingWindowClose: close
+            )
+        )
+    }
+
     // MARK: - Returns
     static func returns() async throws -> ReturnListResponse {
         try await api.get("v1/warehouse/ops/returns")

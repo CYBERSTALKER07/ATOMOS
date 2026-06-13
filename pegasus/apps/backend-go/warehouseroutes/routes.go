@@ -177,6 +177,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/warehouse/ops/manifests", whOps(warehouse.HandleOpsManifests(d.Spanner)))
 	r.HandleFunc("/v1/warehouse/ops/analytics", whOps(warehouse.HandleOpsAnalytics(d.Spanner)))
 	r.HandleFunc("/v1/warehouse/ops/crm", whOps(warehouse.HandleOpsCRM(d.Spanner)))
+	r.HandleFunc("/v1/warehouse/ops/crm/*", whOps(warehouse.HandleOpsCRMRetailer(d.Spanner)))
 	r.HandleFunc("/v1/warehouse/ops/returns", whOps(warehouse.HandleOpsReturns(d.Spanner)))
 	r.HandleFunc("/v1/warehouse/ops/treasury", whOps(warehouse.HandleOpsTreasury(d.Spanner)))
 	r.HandleFunc("/v1/warehouse/ops/financials", whOps(warehouse.HandleWarehouseFinancials(d.Spanner)))

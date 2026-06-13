@@ -12,6 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasus.warehouse.data.model.AnalyticsData
+import com.pegasus.warehouse.data.model.ImportAnomalyQueue
+import com.pegasus.warehouse.data.model.ImportFreshness
 import com.pegasus.warehouse.data.remote.WarehouseApi
 import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -92,6 +94,12 @@ fun AnalyticsScreen(
                         KpiCard("Anomaly Rows", data!!.importAnomalyQueue.openRows30d.toString(), Modifier.weight(1f))
                     }
                 }
+                item {
+                    ImportFreshnessCard(data!!.importFreshness, fmt)
+                }
+                item {
+                    ImportAnomalyCard(data!!.importAnomalyQueue, fmt)
+                }
                 // Top products
                 item {
                     Spacer(Modifier.height(PegasusSpacing.sm))
@@ -107,6 +115,49 @@ fun AnalyticsScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ImportFreshnessCard(freshness: ImportFreshness, fmt: NumberFormat) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+            Text("Import Freshness", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
+                DetailMetric("SKUs Updated (30d)", fmt.format(freshness.appliedSkus30d), Modifier.weight(1f))
+                DetailMetric("Qty Delta (30d)", fmt.format(freshness.quantityDelta30d), Modifier.weight(1f))
+            }
+            val lastApplied = freshness.lastAppliedAt.ifBlank { "No imports applied yet" }
+            val session = freshness.lastSessionId.ifBlank { "N/A" }
+            Text("Last session: $session • $lastApplied", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun ImportAnomalyCard(queue: ImportAnomalyQueue, fmt: NumberFormat) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+            Text("Import Anomaly Queue", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
+                DetailMetric("Open Rows (30d)", fmt.format(queue.openRows30d), Modifier.weight(1f))
+                DetailMetric("Affected Sessions", fmt.format(queue.affectedSessions30d), Modifier.weight(1f))
+            }
+            val lastDetected = queue.lastDetectedAt.ifBlank { "No anomalies detected" }
+            val session = queue.lastSessionId.ifBlank { "N/A" }
+            Text("Last session: $session • $lastDetected", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (queue.lastDetail.isNotBlank()) {
+                Text(queue.lastDetail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailMetric(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.titleMedium)
     }
 }
 

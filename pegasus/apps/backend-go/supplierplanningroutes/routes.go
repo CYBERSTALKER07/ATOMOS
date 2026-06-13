@@ -15,6 +15,7 @@ import (
 	"backend-go/factory"
 	"backend-go/proximity"
 	"backend-go/supplier"
+	"backend-go/warehouse"
 )
 
 // Middleware is the handler-wrap contract supplied by the caller.
@@ -26,6 +27,7 @@ type Deps struct {
 	Cache            *cachepkg.Cache
 	NetworkOptimizer *factory.NetworkOptimizerService
 	SupplyLanes      *factory.SupplyLanesService
+	SupplyRequests   *warehouse.SupplyRequestService
 	KillSwitch       *factory.KillSwitchService
 	PullMatrix       *factory.PullMatrixService
 	PredictivePush   *factory.PredictivePushService
@@ -54,6 +56,8 @@ type Deps struct {
 //	POST /v1/supplier/replenishment/predictive-push    — manual predictive push trigger
 //	GET /v1/supplier/warehouses/territory-preview      — territory preview
 //	POST /v1/supplier/warehouses/apply-territory       — territory reassignment
+//	GET /v1/supplier/supply-requests                   — supplier-wide supply request list
+//	GET /v1/supplier/supply-requests/history           — enriched supply request audit
 func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	idem := d.Idempotency
@@ -97,6 +101,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierRole, log(withRegionScope(proximity.HandlePreviewTerritories(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/warehouses/apply-territory",
 		auth.RequireRole(supplierRole, log(withRegionScope(idem(proximity.HandleApplyTerritory(d.Spanner, d.IsDispatchLocked))))))
+	if d.SupplyRequests != nil {
+		r.HandleFunc("/v1/supplier/supply-requests/history",
+			auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleSupplyRequestHistory(d.Spanner)))))
+		r.HandleFunc("/v1/supplier/supply-requests",
+			auth.RequireRole(supplierRole, log(withRegionScope(d.SupplyRequests.HandleListSupplyRequests))))
+	}
 }
 
 func networkModeHandler(service *factory.NetworkOptimizerService) http.HandlerFunc {

@@ -1291,6 +1291,13 @@ CREATE INDEX Idx_Insights_ByStatus ON ReplenishmentInsights(Status);
 -- ── LINK WAREHOUSES TO FACTORIES ─────────────────────────────────────────────
 ALTER TABLE Warehouses ADD COLUMN PrimaryFactoryId STRING(36);
 ALTER TABLE Warehouses ADD COLUMN SecondaryFactoryId STRING(36);
+ALTER TABLE Warehouses ADD COLUMN IsNearbyFactory BOOL NOT NULL DEFAULT (false);
+
+-- ── INTERNAL TRANSFER LANE TYPE ─────────────────────────────────────────────
+-- TRUCK: factory→warehouse via manifest/driver. INTERNAL: co-located, no truck.
+ALTER TABLE InternalTransferOrders ADD COLUMN LaneType STRING(20) NOT NULL DEFAULT ('TRUCK');
+ALTER TABLE InternalTransferOrders ADD CONSTRAINT CHK_TransferLaneType
+    CHECK (LaneType IN ('TRUCK', 'INTERNAL'));
 
 -- ══════════════════════════════════════════════════════════════════════════════
 -- PHASE G: GEO-SPATIAL SOVEREIGNTY — H3 Index on Retailers & Factories

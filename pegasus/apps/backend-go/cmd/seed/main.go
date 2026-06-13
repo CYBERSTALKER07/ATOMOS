@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/option"
+	"config"
 )
 
 // CanonicalMatrix defines the immutable test state
@@ -32,41 +34,45 @@ var CanonicalMatrix = struct {
 
 func main() {
 	ctx := context.Background()
-	db := "projects/v-o-i-d/instances/dev-instance/databases/atomos"
-	client, err := spanner.NewClient(ctx, db, option.WithEndpoint("localhost:9010"), option.WithoutAuthentication())
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("config load failed: %v", err)
+	}
+
+	emulatorHost := os.Getenv("SPANNER_EMULATOR_HOST")
+	if emulatorHost == "" {
+		emulatorHost = "localhost:9010"
+	}
+	db := fmt.Sprintf("projects/%s/instances/%s/databases/%s",
+		cfg.SpannerProject, cfg.SpannerInstance, cfg.SpannerDatabase)
+
+	client, err := spanner.NewClient(ctx, db,
+		option.WithEndpoint(emulatorHost),
+		option.WithoutAuthentication(),
+	)
 	if err != nil {
 		log.Fatalf("Failed to connect to Spanner: %v", err)
 	}
 	defer client.Close()
 
 	_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		// 1. Seed Retailers
 		for _, r := range CanonicalMatrix.Retailers {
-			m := spanner.InsertOrUpdateMap("Retailers", r)
-			if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+			if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("Retailers", r)}); err != nil {
 				return err
 			}
 		}
-
-		// 2. Seed Suppliers
 		for _, s := range CanonicalMatrix.Suppliers {
-			m := spanner.InsertOrUpdateMap("Suppliers", s)
-			if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+			if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("Suppliers", s)}); err != nil {
 				return err
 			}
 		}
-
-		// 3. Seed Products (SKUs)
 		for _, p := range CanonicalMatrix.Products {
-			m := spanner.InsertOrUpdateMap("SupplierProducts", p)
-			if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+			if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("SupplierProducts", p)}); err != nil {
 				return err
 			}
 		}
-
 		return nil
 	})
-
 	if err != nil {
 		log.Fatalf("Seeding failed: %v", err)
 	}

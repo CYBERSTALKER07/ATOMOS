@@ -61,7 +61,7 @@ export function middleware(request: NextRequest) {
     const globalOnlyPrefixes = [
       '/ledger', '/reconciliation', '/treasury', '/kyc',
       '/configuration', '/dlq', '/dashboard',
-      '/admin/', '/supplier/factories', '/supplier/supply-lanes',
+      '/admin/', '/supplier/factories', '/supplier/supply-lanes', '/supplier/supply-requests',
       '/supplier/warehouses', '/supplier/payment-config',
       '/supplier/settings', '/supplier/org',
     ];
@@ -76,7 +76,7 @@ export function middleware(request: NextRequest) {
       // Global sovereignty (same as NODE_ADMIN)
       '/ledger', '/reconciliation', '/treasury', '/kyc',
       '/configuration', '/dlq', '/dashboard',
-      '/admin/', '/supplier/factories', '/supplier/supply-lanes',
+      '/admin/', '/supplier/factories', '/supplier/supply-lanes', '/supplier/supply-requests',
       '/supplier/warehouses', '/supplier/payment-config',
       '/supplier/settings', '/supplier/org',
       // Warehouse/logistics operations
@@ -118,6 +118,7 @@ export const config = {
     '/supplier/country-overrides/:path*',
     '/supplier/factories/:path*',
     '/supplier/supply-lanes/:path*',
+    '/supplier/supply-requests/:path*',
     '/supplier/warehouses/:path*',
     '/supplier/payment-config/:path*',
     '/supplier/settings/:path*',

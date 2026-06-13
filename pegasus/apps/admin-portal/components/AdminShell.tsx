@@ -61,6 +61,7 @@ const NAV: NavSection[] = [
       { href: '/supplier/factories', icon: 'factory', label: 'Factories', globalOnly: true },
       { href: '/supplier/geo-report', icon: 'global', label: 'Coverage Map', globalOnly: true },
       { href: '/supplier/supply-lanes', icon: 'fleet', label: 'Supply Lanes', globalOnly: true },
+      { href: '/supplier/supply-requests', icon: 'warehouse', label: 'Supply Requests', globalOnly: true },
       { href: '/supplier/staff', icon: 'warehouse', label: 'Warehouse Staff', factoryHidden: true },
       { href: '/supplier/org', icon: 'supplier', label: 'Org Members', globalOnly: true },
       { href: '/supplier/onboarding', icon: 'kyc', label: 'Onboarding' },

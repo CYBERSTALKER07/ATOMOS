@@ -21,6 +21,8 @@ export default function WarehouseForm({ onSuccess, onCancel }: Props) {
   const [lng, setLng] = useState(0);
   const [radius, setRadius] = useState('50');
   const [isDefault, setIsDefault] = useState(false);
+  const [isNearbyFactory, setIsNearbyFactory] = useState(false);
+  const [primaryFactoryId, setPrimaryFactoryId] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,6 +36,10 @@ export default function WarehouseForm({ onSuccess, onCancel }: Props) {
     e.preventDefault();
     if (!name.trim()) { setError('Name is required'); return; }
     if (lat === 0 && lng === 0) { setError('Click the map to place the warehouse pin'); return; }
+    if (isNearbyFactory && !primaryFactoryId.trim()) {
+      setError('Primary factory ID is required for nearby-factory warehouses');
+      return;
+    }
 
     setSaving(true);
     setError('');
@@ -45,6 +51,8 @@ export default function WarehouseForm({ onSuccess, onCancel }: Props) {
         lng,
         coverage_radius_km: parseFloat(radius) || 50,
         is_default: isDefault,
+        is_nearby_factory: isNearbyFactory,
+        primary_factory_id: isNearbyFactory ? primaryFactoryId.trim() : undefined,
       };
       const res = await apiFetch('/v1/supplier/warehouses', {
         method: 'POST',
@@ -115,6 +123,34 @@ export default function WarehouseForm({ onSuccess, onCancel }: Props) {
           style={{ ...fieldStyle, '--tw-ring-color': 'var(--accent)' } as React.CSSProperties}
         />
       </div>
+
+      <label className="flex items-center gap-3 cursor-pointer py-1">
+        <div
+          onClick={() => setIsNearbyFactory(!isNearbyFactory)}
+          className="w-5 h-5 rounded flex items-center justify-center transition-colors"
+          style={{
+            background: isNearbyFactory ? 'var(--accent)' : 'transparent',
+            border: isNearbyFactory ? 'none' : '2px solid var(--border)',
+          }}
+        >
+          {isNearbyFactory && <Icon name="verified" size={14} className="text-white" />}
+        </div>
+        <span className="md-typescale-body-medium">Co-located with primary factory (internal transfer lane)</span>
+      </label>
+
+      {isNearbyFactory && (
+        <div className="space-y-1.5">
+          <label className="md-typescale-label-medium" style={{ color: 'var(--muted)' }}>Primary Factory ID *</label>
+          <input
+            type="text"
+            value={primaryFactoryId}
+            onChange={e => setPrimaryFactoryId(e.target.value)}
+            placeholder="Factory UUID"
+            className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-offset-0"
+            style={{ ...fieldStyle, '--tw-ring-color': 'var(--accent)' } as React.CSSProperties}
+          />
+        </div>
+      )}
 
       <label className="flex items-center gap-3 cursor-pointer py-1">
         <div

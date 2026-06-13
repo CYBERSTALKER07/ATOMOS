@@ -48,18 +48,11 @@ struct AnalyticsView: View {
                             AnalyticsKpiCard(title: "Anomaly Rows (30d)", value: "\(data.importAnomalyQueue.openRows30d)", icon: "exclamationmark.triangle", index: 5)
                         }
 
-                        if !data.importAnomalyQueue.lastDetail.isEmpty {
-                            VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-                                Text("Latest anomaly")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Text(data.importAnomalyQueue.lastDetail)
-                                    .font(.footnote)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .labCard()
+                        ImportFreshnessDetailCard(freshness: data.importFreshness)
                             .staggeredAppear(index: 6)
-                        }
+
+                        ImportAnomalyDetailCard(queue: data.importAnomalyQueue)
+                            .staggeredAppear(index: 7)
 
                         // Top products
                         if !data.topProducts.isEmpty {
@@ -76,7 +69,7 @@ struct AnalyticsView: View {
                                             .foregroundStyle(.secondary)
                                     }
                                     .labCard()
-                                    .staggeredAppear(index: index + 7)
+                                    .staggeredAppear(index: index + 8)
                                 }
                             }
                         }
@@ -108,6 +101,81 @@ struct AnalyticsView: View {
             }
             loading = false
         }
+    }
+}
+
+private struct ImportFreshnessDetailCard: View {
+    let freshness: ImportFreshness
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
+            Text("Import Freshness")
+                .font(.headline)
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("SKUs Updated (30d)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("\(freshness.appliedSkus30d)")
+                        .font(.title3.bold())
+                }
+                Spacer()
+                VStack(alignment: .leading) {
+                    Text("Quantity Delta (30d)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("\(freshness.quantityDelta30d)")
+                        .font(.title3.bold())
+                }
+            }
+            let session = freshness.lastSessionId.isEmpty ? "N/A" : freshness.lastSessionId
+            let applied = freshness.lastAppliedAt.isEmpty ? "No imports applied yet" : freshness.lastAppliedAt
+            Text("Last session: \(session) • \(applied)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .labCard()
+    }
+}
+
+private struct ImportAnomalyDetailCard: View {
+    let queue: ImportAnomalyQueue
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
+            Text("Import Anomaly Queue")
+                .font(.headline)
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Open Rows (30d)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("\(queue.openRows30d)")
+                        .font(.title3.bold())
+                }
+                Spacer()
+                VStack(alignment: .leading) {
+                    Text("Affected Sessions (30d)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("\(queue.affectedSessions30d)")
+                        .font(.title3.bold())
+                }
+            }
+            let session = queue.lastSessionId.isEmpty ? "N/A" : queue.lastSessionId
+            let detected = queue.lastDetectedAt.isEmpty ? "No anomalies detected" : queue.lastDetectedAt
+            Text("Last session: \(session) • \(detected)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if !queue.lastDetail.isEmpty {
+                Text(queue.lastDetail)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .labCard()
     }
 }
 

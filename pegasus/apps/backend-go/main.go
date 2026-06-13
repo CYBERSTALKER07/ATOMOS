@@ -891,6 +891,7 @@ func main() {
 		Cache:            app.Cache,
 		NetworkOptimizer: networkOptSvc,
 		SupplyLanes:      supplyLaneSvc,
+		SupplyRequests:   supplyReqSvc,
 		KillSwitch:       killSwitchSvc,
 		PullMatrix:       pullMatrixSvc,
 		PredictivePush:   predictivePushSvc,

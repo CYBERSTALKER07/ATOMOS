@@ -4,6 +4,10 @@ struct CRMView: View {
     @State private var retailers: [Retailer] = []
     @State private var loading = true
     @State private var error: String?
+    @State private var editing: Retailer?
+    @State private var windowOpen = ""
+    @State private var windowClose = ""
+    @State private var saving = false
 
     var body: some View {
         NavigationStack {
@@ -23,19 +27,30 @@ struct CRMView: View {
                     ContentUnavailableView("No Retailers", systemImage: "storefront", description: Text("No retailer relationships"))
                 } else {
                     List(retailers) { retailer in
-                        HStack {
-                            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                                Text(retailer.name)
-                                    .font(.headline)
+                        VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                    Text(retailer.name)
+                                        .font(.headline)
+                                    Text("Receiving: \(retailer.receivingWindowLabel)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
+                                    Text("\(retailer.totalOrders) orders")
+                                        .font(.caption)
+                                    Text("\(retailer.totalRevenue.formatted()) UZS")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
-                                Text("\(retailer.totalOrders) orders")
-                                    .font(.caption)
-                                Text("\(retailer.totalRevenue.formatted()) UZS")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                            Button("Edit window") {
+                                editing = retailer
+                                windowOpen = retailer.receivingWindowOpen
+                                windowClose = retailer.receivingWindowClose
                             }
+                            .font(.caption)
                         }
                     }
                     .listStyle(.insetGrouped)
@@ -50,6 +65,29 @@ struct CRMView: View {
             }
             .task { load() }
             .refreshable { load() }
+            .sheet(item: $editing) { retailer in
+                NavigationStack {
+                    Form {
+                        Section(retailer.name) {
+                            TextField("Open (HH:MM)", text: $windowOpen)
+                            TextField("Close (HH:MM)", text: $windowClose)
+                        }
+                    }
+                    .navigationTitle("Receiving window")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { editing = nil }
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(saving ? "Saving…" : "Save") {
+                                save(retailerId: retailer.retailerId)
+                            }
+                            .disabled(saving)
+                        }
+                    }
+                }
+                .presentationDetents([.medium])
+            }
         }
     }
 
@@ -66,4 +104,24 @@ struct CRMView: View {
             loading = false
         }
     }
+
+    private func save(retailerId: String) {
+        saving = true
+        Task {
+            do {
+                try await WarehouseService.updateRetailerReceivingWindow(
+                    retailerId: retailerId,
+                    open: windowOpen,
+                    close: windowClose
+                )
+                editing = nil
+                load()
+            } catch {
+                self.error = error.localizedDescription
+            }
+            saving = false
+        }
+    }
 }
+
+extension Retailer: Hashable {}

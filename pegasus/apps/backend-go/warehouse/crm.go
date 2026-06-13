@@ -16,14 +16,18 @@ import (
 // Warehouse-scoped view of retailers who order from this warehouse.
 
 type CRMRetailer struct {
-	RetailerID    string `json:"retailer_id"`
-	StoreName     string `json:"store_name"`
-	ContactName   string `json:"contact_name,omitempty"`
-	Phone         string `json:"phone,omitempty"`
-	TotalOrders   int64  `json:"total_orders"`
-	TotalRevenue  int64  `json:"total_revenue"`
-	LastOrderDate string `json:"last_order_date,omitempty"`
-	Address       string `json:"address,omitempty"`
+	RetailerID             string  `json:"retailer_id"`
+	StoreName              string  `json:"store_name"`
+	ContactName            string  `json:"contact_name,omitempty"`
+	Phone                  string  `json:"phone,omitempty"`
+	TotalOrders            int64   `json:"total_orders"`
+	TotalRevenue           int64   `json:"total_revenue"`
+	LastOrderDate          string  `json:"last_order_date,omitempty"`
+	Address                string  `json:"address,omitempty"`
+	ReceivingWindowOpen    string  `json:"receiving_window_open,omitempty"`
+	ReceivingWindowClose   string  `json:"receiving_window_close,omitempty"`
+	AccessType             string  `json:"access_type,omitempty"`
+	StorageCeilingHeightCM float64 `json:"storage_ceiling_height_cm,omitempty"`
 }
 
 // HandleOpsCRM — GET for /v1/warehouse/ops/crm
@@ -45,14 +49,19 @@ func HandleOpsCRM(spannerClient *spanner.Client) http.HandlerFunc {
 		             COUNT(o.OrderId) as total_orders,
 		             COALESCE(SUM(CASE WHEN o.State = 'COMPLETED' THEN o.TotalAmount ELSE 0 END), 0) as revenue,
 		             MAX(o.CreatedAt) as last_order,
-		             COALESCE(rt.Address, '')
+		             COALESCE(rt.Address, ''),
+		             COALESCE(rt.ReceivingWindowOpen, ''),
+		             COALESCE(rt.ReceivingWindowClose, ''),
+		             COALESCE(rt.AccessType, ''),
+		             COALESCE(rt.StorageCeilingHeightCM, 0)
 	      FROM Orders o
 	      JOIN Retailers rt ON o.RetailerId = rt.RetailerId
 	      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
 	        AND o.State IN ('PENDING','LOADED','IN_TRANSIT','ARRIVED','COMPLETED','EN_ROUTE')`
 		params := map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID}
 		sql, params = auth.AppendRegionFilter(r.Context(), sql, params, "rt")
-		sql += ` GROUP BY rt.RetailerId, rt.StoreName, rt.ContactName, rt.Phone, rt.Address
+		sql += ` GROUP BY rt.RetailerId, rt.StoreName, rt.ContactName, rt.Phone, rt.Address,
+	               rt.ReceivingWindowOpen, rt.ReceivingWindowClose, rt.AccessType, rt.StorageCeilingHeightCM
 	      ORDER BY total_orders DESC
 	      LIMIT 200`
 		stmt := spanner.Statement{SQL: sql, Params: params}
@@ -74,7 +83,8 @@ func HandleOpsCRM(spannerClient *spanner.Client) http.HandlerFunc {
 			var c CRMRetailer
 			var lastOrder spanner.NullTime
 			if err := row.Columns(&c.RetailerID, &c.StoreName, &c.ContactName,
-				&c.Phone, &c.TotalOrders, &c.TotalRevenue, &lastOrder, &c.Address); err != nil {
+				&c.Phone, &c.TotalOrders, &c.TotalRevenue, &lastOrder, &c.Address,
+				&c.ReceivingWindowOpen, &c.ReceivingWindowClose, &c.AccessType, &c.StorageCeilingHeightCM); err != nil {
 				log.Printf("[WH CRM] parse: %v", err)
 				continue
 			}
