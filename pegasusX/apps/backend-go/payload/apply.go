@@ -39,9 +39,18 @@ func (s *Service) apply(
 		}
 
 		s.mu.Lock()
-		s.manifests = manifests
-		s.manifestOrders = manifestOrders
-		s.exceptions = exceptions
+		if len(manifests) > 0 {
+			s.manifests = manifests
+			s.exceptions = exceptions
+			for _, m := range manifests {
+				if orders, ok := manifestOrders[m.ManifestID]; ok && len(orders) > 0 {
+					s.manifestOrders[m.ManifestID] = orders
+				}
+			}
+		} else if len(s.manifests) == 0 {
+			s.manifestOrders = manifestOrders
+			s.exceptions = exceptions
+		}
 		s.mu.Unlock()
 
 		if err := mutate(); err != nil {

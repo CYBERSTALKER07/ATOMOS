@@ -69,8 +69,11 @@ func (s *Store) DepartDriver(ctx context.Context, driverID string, now time.Time
 		}
 
 		buf := &txnBuffer{}
-		mutations := []*spanner.Mutation{spanner.InsertOrUpdateMap("SupplierTruckManifests", map[string]any{
+		mutations := []*spanner.Mutation{spanner.UpdateMap("SupplierTruckManifests", map[string]any{
 			"ManifestId":   manifestRow.ManifestID,
+			"SupplierId":   manifestRow.SupplierID,
+			"DriverId":     manifestRow.DriverID,
+			"TruckId":      manifestRow.TruckID,
 			"State":        "DISPATCHED",
 			"DispatchedAt": now.UTC(),
 			"UpdatedAt":    spanner.CommitTimestamp,
@@ -143,7 +146,8 @@ func (s *Store) DepartDriver(ctx context.Context, driverID string, now time.Time
 
 func readSealedManifest(ctx context.Context, txn *spanner.ReadWriteTransaction, driverID string) (SupplierTruckRow, bool, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT ManifestId, SupplierId, COALESCE(WarehouseId, '') AS WarehouseId, COALESCE(RouteId, '') AS RouteId
+		SQL: `SELECT ManifestId, SupplierId, COALESCE(WarehouseId, '') AS WarehouseId, COALESCE(RouteId, '') AS RouteId,
+			DriverId, TruckId
 			FROM SupplierTruckManifests
 			WHERE DriverId = @driverId AND State = 'SEALED'
 			ORDER BY SealedAt DESC LIMIT 1`,
@@ -159,7 +163,7 @@ func readSealedManifest(ctx context.Context, txn *spanner.ReadWriteTransaction, 
 		return SupplierTruckRow{}, false, fmt.Errorf("read sealed manifest: %w", err)
 	}
 	var m SupplierTruckRow
-	if err := row.Columns(&m.ManifestID, &m.SupplierID, &m.WarehouseID, &m.RouteID); err != nil {
+	if err := row.Columns(&m.ManifestID, &m.SupplierID, &m.WarehouseID, &m.RouteID, &m.DriverID, &m.TruckID); err != nil {
 		return SupplierTruckRow{}, false, fmt.Errorf("scan sealed manifest: %w", err)
 	}
 	return m, true, nil
@@ -238,8 +242,11 @@ func (s *Store) ReturnDriver(ctx context.Context, driverID string, now time.Time
 		}
 
 		buf := &txnBuffer{}
-		mutations := []*spanner.Mutation{spanner.InsertOrUpdateMap("SupplierTruckManifests", map[string]any{
+		mutations := []*spanner.Mutation{spanner.UpdateMap("SupplierTruckManifests", map[string]any{
 			"ManifestId":  manifestRow.ManifestID,
+			"SupplierId":  manifestRow.SupplierID,
+			"DriverId":    manifestRow.DriverID,
+			"TruckId":     manifestRow.TruckID,
 			"State":       "COMPLETED",
 			"CompletedAt": now.UTC(),
 			"UpdatedAt":   spanner.CommitTimestamp,
@@ -290,7 +297,8 @@ func (s *Store) ReturnDriver(ctx context.Context, driverID string, now time.Time
 // readDispatchedManifest reads the most recent DISPATCHED manifest for a driver.
 func readDispatchedManifest(ctx context.Context, txn *spanner.ReadWriteTransaction, driverID string) (SupplierTruckRow, bool, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT ManifestId, SupplierId, COALESCE(WarehouseId, '') AS WarehouseId, COALESCE(RouteId, '') AS RouteId
+		SQL: `SELECT ManifestId, SupplierId, COALESCE(WarehouseId, '') AS WarehouseId, COALESCE(RouteId, '') AS RouteId,
+			DriverId, TruckId
 			FROM SupplierTruckManifests
 			WHERE DriverId = @driverId AND State = 'DISPATCHED'
 			ORDER BY DispatchedAt DESC LIMIT 1`,
@@ -306,7 +314,7 @@ func readDispatchedManifest(ctx context.Context, txn *spanner.ReadWriteTransacti
 		return SupplierTruckRow{}, false, fmt.Errorf("read dispatched manifest: %w", err)
 	}
 	var m SupplierTruckRow
-	if err := row.Columns(&m.ManifestID, &m.SupplierID, &m.WarehouseID, &m.RouteID); err != nil {
+	if err := row.Columns(&m.ManifestID, &m.SupplierID, &m.WarehouseID, &m.RouteID, &m.DriverID, &m.TruckID); err != nil {
 		return SupplierTruckRow{}, false, fmt.Errorf("scan dispatched manifest: %w", err)
 	}
 	return m, true, nil

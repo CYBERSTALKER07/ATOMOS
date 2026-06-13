@@ -554,6 +554,13 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	if factoryNodeID == "" {
 		factoryNodeID = "factory-demo-1"
 	}
+	warehouseNodeID := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_ID"))
+	if warehouseNodeID == "" {
+		warehouseNodeID = strings.TrimSpace(os.Getenv("SSMR_SMOKE_WAREHOUSE_ID"))
+	}
+	if warehouseNodeID == "" {
+		warehouseNodeID = "wh-demo-1"
+	}
 
 	var driverRepo driver.Repository
 	var factoryRepo factory.Repository
@@ -564,7 +571,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	driverRepo = driver.NewSpannerRepository(spannerClient)
 	factoryRepo = factory.NewSpannerRepository(spannerClient, supplierSeed.SupplierID, factoryNodeID)
-	payloadRepo = payload.NewSpannerRepository(spannerClient, supplierSeed.SupplierID)
+	payloadRepo = payload.NewSpannerRepository(spannerClient, supplierSeed.SupplierID, warehouseNodeID)
 	log.Info("factory and payload repositories enabled", "backend", "spanner")
 
 	factorySvc := factory.NewService(factory.ServiceConfig{

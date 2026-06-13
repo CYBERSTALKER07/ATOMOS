@@ -160,7 +160,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runDriverEdgesContractE2E(ctx, client, base, cfg, supplierID); err != nil {
 		return fmt.Errorf("driver edges contract: %w", err)
 	}
-	if err := runDeliveryEdgeCasesE2E(ctx, client, base, cfg, retailerToken, supplierID, cookie); err != nil {
+	if err := runDeliveryEdgeCasesE2E(ctx, client, base, cfg, retailerToken, supplierID, cookie, h3Cell); err != nil {
 		return fmt.Errorf("delivery edge cases: %w", err)
 	}
 
@@ -594,7 +594,7 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 	}
 	fmt.Println("PX_E2E_PAYLOAD_DRIVER_DEPART_OK")
 
-	if err := assertDriverManifestDetail(ctx, client, base, cfg, supplierID, driverID, manifestID); err != nil {
+	if err := assertDriverManifestDetail(ctx, client, base, cfg, supplierID, driverID, manifestID, "DISPATCHED"); err != nil {
 		return fmt.Errorf("driver manifest detail: %w", err)
 	}
 
@@ -744,7 +744,7 @@ func assertDriverManifestGate(ctx context.Context, client *http.Client, base str
 	return nil
 }
 
-func assertDriverManifestDetail(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID, driverID, manifestID string) error {
+func assertDriverManifestDetail(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID, driverID, manifestID, wantState string) error {
 	if strings.TrimSpace(driverID) == "" {
 		driverID = envOr("PAYLOAD_DEMO_DRIVER_ID", "drv_payload_1")
 	}
@@ -785,8 +785,11 @@ func assertDriverManifestDetail(ctx context.Context, client *http.Client, base s
 	if body.ManifestID != manifestID {
 		return fmt.Errorf("expected manifest_id %s, got %s", manifestID, body.ManifestID)
 	}
-	if body.Manifest.State != "SEALED" {
-		return fmt.Errorf("expected SEALED manifest, got %q", body.Manifest.State)
+	if wantState == "" {
+		wantState = "SEALED"
+	}
+	if body.Manifest.State != wantState {
+		return fmt.Errorf("expected %s manifest, got %q", wantState, body.Manifest.State)
 	}
 	if body.StopCount < 1 || len(body.Transfers) < 1 {
 		return fmt.Errorf("expected stops/transfers on detail, got stop=%d transfers=%d", body.StopCount, len(body.Transfers))
@@ -2275,8 +2278,7 @@ func runClientPolicyE2E(ctx context.Context, client *http.Client, base string) e
 	return nil
 }
 
-func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, retailerToken, supplierID, cookie string) error {
-	h3Cell := "872120000ffffff"
+func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, retailerToken, supplierID, cookie, h3Cell string) error {
 	orderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
 	if err != nil {
 		return fmt.Errorf("create: %w", err)
@@ -2289,33 +2291,62 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 		return fmt.Errorf("webhook: %w", err)
 	}
 
-	// Dispatch order (assign to driver)
-	if err := runWarehouseDispatchLock(ctx, client, base, cookie, orderID); err != nil {
-		return fmt.Errorf("dispatch: %w", err)
-	}
-
-	time.Sleep(500 * time.Millisecond)
-
 	driverID := envOr("SSMR_SMOKE_DRIVER_ID", "ssmr-driver-1")
-	driverToken, _ := auth.Issue(auth.Claims{
-		Subject:    driverID,
-		Role:       auth.RoleDriver,
+	adminToken, err := auth.Issue(auth.Claims{
+		Subject:    "ssmr-supplier-admin",
+		Role:       auth.RoleAdmin,
 		SupplierID: supplierID,
-	}, auth.IssueOptions{Secret: cfg.JWTSecret, Issuer: cfg.JWTIssuer, TTL: 30 * time.Minute})
-
-	// Driver accepts delivery and moves to transit
-	acceptReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/accept", strings.NewReader(`{"order_id":"`+orderID+`"}`))
-	acceptReq.Header.Set("Authorization", "Bearer "+driverToken)
-	acceptReq.Header.Set("Content-Type", "application/json")
-	if resp, err := client.Do(acceptReq); err == nil {
-		resp.Body.Close()
+	}, auth.IssueOptions{
+		Secret: cfg.JWTSecret,
+		Issuer: cfg.JWTIssuer,
+		TTL:    30 * time.Minute,
+	})
+	if err != nil {
+		return fmt.Errorf("issue admin jwt: %w", err)
+	}
+	assignBody, _ := json.Marshal(map[string]any{
+		"driver_id": driverID,
+		"route_id":  "route-ssmr-delivery-edge",
+	})
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/orders/"+orderID+"/assign", assignBody, adminToken, "")
+	if err != nil {
+		return fmt.Errorf("assign: %w", err)
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("assign order status %d body %s", status, string(respBody))
+	}
+	for _, next := range []string{"LOADED", "IN_TRANSIT"} {
+		patchBody, _ := json.Marshal(map[string]string{"status": next})
+		status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/order/"+orderID+"/status", patchBody, adminToken, "")
+		if err != nil {
+			return err
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("order status %s: %d body %s", next, status, string(respBody))
+		}
 	}
 
-	transitReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/transit", strings.NewReader(`{"order_id":"`+orderID+`"}`))
-	transitReq.Header.Set("Authorization", "Bearer "+driverToken)
-	transitReq.Header.Set("Content-Type", "application/json")
-	if resp, err := client.Do(transitReq); err == nil {
-		resp.Body.Close()
+	driverToken, err := auth.Issue(auth.Claims{
+		Subject:      driverID,
+		Role:         auth.RoleDriver,
+		SupplierID:   supplierID,
+		HomeNodeType: auth.HomeNodeWarehouse,
+		HomeNodeID:   envOr("SSMR_SMOKE_WAREHOUSE_ID", "ssmr-warehouse-1"),
+	}, auth.IssueOptions{
+		Secret: cfg.JWTSecret,
+		Issuer: cfg.JWTIssuer,
+		TTL:    30 * time.Minute,
+	})
+	if err != nil {
+		return fmt.Errorf("issue driver jwt: %w", err)
+	}
+	arriveBody, _ := json.Marshal(map[string]string{"order_id": orderID})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/arrive", arriveBody, driverToken, "")
+	if err != nil {
+		return fmt.Errorf("delivery arrive: %w", err)
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("delivery arrive status %d body %s", status, string(respBody))
 	}
 
 	// QR flow: Retailer gets payload
@@ -2330,12 +2361,17 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 		return fmt.Errorf("qr payload status %d", qrResp.StatusCode)
 	}
 	var qrData struct {
-		Payload string `json:"qr_payload"`
+		Token string `json:"qr_token"`
 	}
-	json.NewDecoder(qrResp.Body).Decode(&qrData)
+	if err := json.NewDecoder(qrResp.Body).Decode(&qrData); err != nil {
+		return fmt.Errorf("decode qr payload: %w", err)
+	}
+	if strings.TrimSpace(qrData.Token) == "" {
+		return fmt.Errorf("qr payload missing qr_token")
+	}
 
 	// QR flow: Driver validates token (no state transition)
-	validatePayload := `{"order_id":"` + orderID + `","scanned_token":"` + qrData.Payload + `"}`
+	validatePayload := `{"order_id":"` + orderID + `","scanned_token":"` + qrData.Token + `"}`
 	validateReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/order/validate-qr", strings.NewReader(validatePayload))
 	validateReq.Header.Set("Authorization", "Bearer "+driverToken)
 	validateReq.Header.Set("Content-Type", "application/json")
@@ -2349,23 +2385,8 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 		return fmt.Errorf("validate qr status %d: %s", validateResp.StatusCode, string(body))
 	}
 
-	// QR flow: Driver scans QR
-	scanPayload := `{"qr_payload":"` + qrData.Payload + `"}`
-	scanReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/scan-qr", strings.NewReader(scanPayload))
-	scanReq.Header.Set("Authorization", "Bearer "+driverToken)
-	scanReq.Header.Set("Content-Type", "application/json")
-	scanResp, err := client.Do(scanReq)
-	if err != nil {
-		return fmt.Errorf("scan qr request: %w", err)
-	}
-	defer scanResp.Body.Close()
-	if scanResp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(scanResp.Body)
-		return fmt.Errorf("scan qr status %d: %s", scanResp.StatusCode, string(body))
-	}
-
-	// Damaged goods report
-	dmgPayload := `{"order_id":"` + orderID + `","damaged_items":[{"sku":"prod-milk-1l","quantity":1}],"reason":"Broken bottle"}`
+	// Damaged goods report (must run before scan-qr transitions to AWAITING_PAYMENT)
+	dmgPayload := `{"order_id":"` + orderID + `","damaged_items":[{"sku":"SSMR-SKU-1","quantity":1}],"reason":"Broken bottle"}`
 	dmgReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/report-damage", strings.NewReader(dmgPayload))
 	dmgReq.Header.Set("Authorization", "Bearer "+driverToken)
 	dmgReq.Header.Set("Content-Type", "application/json")
@@ -2377,6 +2398,21 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 	if dmgResp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(dmgResp.Body)
 		return fmt.Errorf("report damage status %d: %s", dmgResp.StatusCode, string(body))
+	}
+
+	// QR flow: Driver scans QR
+	scanPayload := `{"order_id":"` + orderID + `","qr_token":"` + qrData.Token + `"}`
+	scanReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/scan-qr", strings.NewReader(scanPayload))
+	scanReq.Header.Set("Authorization", "Bearer "+driverToken)
+	scanReq.Header.Set("Content-Type", "application/json")
+	scanResp, err := client.Do(scanReq)
+	if err != nil {
+		return fmt.Errorf("scan qr request: %w", err)
+	}
+	defer scanResp.Body.Close()
+	if scanResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(scanResp.Body)
+		return fmt.Errorf("scan qr status %d: %s", scanResp.StatusCode, string(body))
 	}
 
 	// Retailer selects cash (driver-only completion path)
@@ -2401,9 +2437,13 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 		return fmt.Errorf("confirm cash expected PENDING_CASH_COLLECTION, got %s", cashSelect.State)
 	}
 
-	// Driver collects cash and completes order
-	collectPayload := `{"order_id":"` + orderID + `","latitude":41.31,"longitude":69.24}`
-	collectReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/order/collect-cash", strings.NewReader(collectPayload))
+	// Driver collects cash and completes order (coords must match order delivery point)
+	collectBody, _ := json.Marshal(map[string]any{
+		"order_id":  orderID,
+		"latitude":  cfg.DeliveryZoneCenterLat,
+		"longitude": cfg.DeliveryZoneCenterLng,
+	})
+	collectReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/order/collect-cash", bytes.NewReader(collectBody))
 	collectReq.Header.Set("Authorization", "Bearer "+driverToken)
 	collectReq.Header.Set("Content-Type", "application/json")
 	collectReq.Header.Set("Idempotency-Key", "ssmr-collect-cash-"+orderID)
