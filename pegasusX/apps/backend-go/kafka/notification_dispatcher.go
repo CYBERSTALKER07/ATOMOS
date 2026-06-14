@@ -107,6 +107,8 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleSyncEvent(ctx, msg.Value, traceID)
 	case events.EventPromotionChanged:
 		return d.handlePromotionChanged(ctx, msg.Value, traceID)
+	case events.EventRetailerPriceOverride:
+		return d.handleRetailerPriceOverride(ctx, msg.Value, traceID)
 	case events.EventCommandDispatched, events.EventCommandReceived, events.EventCommandSettled:
 		return d.handleCommandEvent(ctx, msg.Value, traceID)
 	case events.EventSystemAppOutdated:
@@ -263,6 +265,28 @@ func (d *NotificationDispatcher) handleShopClosedEvent(ctx context.Context, payl
 	}
 	d.fanOrderParties(ctx, e.SupplierID, e.RetailerID, e.DriverID, payload)
 	slog.DebugContext(ctx, "fanned out shop closed event", "event_type", e.Type, "order_id", e.OrderID)
+	return nil
+}
+
+func (d *NotificationDispatcher) handleRetailerPriceOverride(ctx context.Context, payload []byte, traceID string) error {
+	var e events.RetailerPriceOverrideEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode retailer price override event: %w", err)
+	}
+	aggregateID := strings.TrimSpace(e.OverrideID)
+	if aggregateID == "" {
+		aggregateID = e.RetailerID + ":" + e.ProductID
+	}
+	if d.dropFanout(events.EventRetailerPriceOverride, traceID, aggregateID) {
+		return nil
+	}
+	d.broadcastRetailer(ctx, e.RetailerID, payload)
+	slog.DebugContext(ctx, "fanned out retailer price override",
+		"override_id", e.OverrideID,
+		"retailer_id", e.RetailerID,
+		"product_id", e.ProductID,
+		"action", e.Action,
+	)
 	return nil
 }
 

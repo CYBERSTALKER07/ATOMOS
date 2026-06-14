@@ -15,7 +15,9 @@ import type {
   ReconciliationMismatchResponse,
   RetailerActiveFulfillmentResponse,
   RetailerPendingPaymentsResponse,
-  RetailerPricingRuleResponse,
+  CreateRetailerPriceOverrideRequest,
+  CreateRetailerPriceOverrideResponse,
+  RetailerPriceOverridesResponse,
   RetailerSupplierPreference,
   RetailerTrackingResponse,
   SettlementAuthorityQuery,
@@ -263,6 +265,37 @@ export class ApiClient {
 
   async getSupplierPricingRule(): Promise<SupplierPricingRule> {
     return this.request<SupplierPricingRule>("/v1/supplier/pricing/rules", "GET");
+  }
+
+  async listRetailerPriceOverrides(params?: {
+    retailer_id?: string;
+    product_id?: string;
+  }): Promise<RetailerPriceOverridesResponse> {
+    const query = new URLSearchParams();
+    if (params?.retailer_id) query.set("retailer_id", params.retailer_id);
+    if (params?.product_id) query.set("product_id", params.product_id);
+    const suffix = query.toString();
+    const path = suffix
+      ? `/v1/supplier/pricing/retailer-overrides?${suffix}`
+      : "/v1/supplier/pricing/retailer-overrides";
+    return this.request<RetailerPriceOverridesResponse>(path, "GET");
+  }
+
+  async createRetailerPriceOverride(
+    request: CreateRetailerPriceOverrideRequest,
+  ): Promise<CreateRetailerPriceOverrideResponse> {
+    return this.request<CreateRetailerPriceOverrideResponse>(
+      "/v1/supplier/pricing/retailer-overrides",
+      "POST",
+      { body: request },
+    );
+  }
+
+  async deleteRetailerPriceOverride(overrideId: string): Promise<{ status: string; override_id: string }> {
+    return this.request<{ status: string; override_id: string }>(
+      `/v1/supplier/pricing/retailer-overrides/${overrideId}`,
+      "DELETE",
+    );
   }
 
   async listSupplierPromotions(): Promise<SupplierPromotionsResponse> {

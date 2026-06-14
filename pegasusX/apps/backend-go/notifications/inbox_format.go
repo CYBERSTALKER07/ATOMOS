@@ -125,6 +125,11 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 		if json.Unmarshal(payload, &e) == nil && e.VehicleID != "" {
 			return FormatVehicleCreated(e.VehicleID, e.HomeNodeID)
 		}
+	case events.EventRetailerPriceOverride:
+		var e events.RetailerPriceOverrideEvent
+		if json.Unmarshal(payload, &e) == nil && e.RetailerID != "" {
+			return FormatRetailerPriceOverride(e.ProductID, e.PriceMinor, "UZS", strings.EqualFold(e.Action, "CREATED"))
+		}
 	}
 
 	var generic struct {

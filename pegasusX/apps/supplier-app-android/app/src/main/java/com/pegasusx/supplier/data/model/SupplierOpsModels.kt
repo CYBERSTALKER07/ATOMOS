@@ -112,6 +112,45 @@ data class SupplierPricingRule(
 )
 
 @Serializable
+data class RetailerPriceOverride(
+    @SerialName("override_id") val overrideId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("product_id") val productId: String = "",
+    val price: Long = 0,
+    @SerialName("set_by") val setBy: String = "",
+    @SerialName("set_by_role") val setByRole: String = "",
+    @SerialName("is_active") val isActive: Boolean = true,
+    val notes: String? = null,
+    @SerialName("expires_at") val expiresAt: String? = null,
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class RetailerPriceOverridesResponse(
+    val overrides: List<RetailerPriceOverride> = emptyList(),
+    val total: Int = 0,
+)
+
+@Serializable
+data class CreateRetailerPriceOverrideRequest(
+    @SerialName("retailer_id") val retailerId: String,
+    @SerialName("product_id") val productId: String,
+    val price: Long,
+    val notes: String? = null,
+    @SerialName("expires_at") val expiresAt: String? = null,
+)
+
+@Serializable
+data class CreateRetailerPriceOverrideResponse(
+    val status: String = "",
+    @SerialName("override_id") val overrideId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("product_id") val productId: String = "",
+    val price: Long = 0,
+)
+
+@Serializable
 data class SupplierTopologyWarehouse(
     @SerialName("warehouse_id") val warehouseId: String,
     val name: String = "",

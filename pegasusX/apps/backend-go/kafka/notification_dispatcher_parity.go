@@ -124,7 +124,7 @@ func (d *NotificationDispatcher) dispatchParityEvent(ctx context.Context, eventT
 	// Warehouse / catalog parity.
 	case "WAREHOUSE_SPATIAL_UPDATED", "WAREHOUSE_STATUS_CHANGED":
 		return d.handleWarehouseEntityEvent(ctx, payload, traceID)
-	case "OUT_OF_STOCK", "RETAILER_PRICE_OVERRIDE":
+	case "OUT_OF_STOCK":
 		return d.handleCatalogEvent(ctx, payload, traceID)
 
 	// Supplier onboarding parity aliases.

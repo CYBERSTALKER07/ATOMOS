@@ -132,7 +132,7 @@ For each role, list its apps (all must stay in sync per doctrine). For each app/
 - **Cross-sync obligations:** Supplier WS room for nearly everything; must see warehouse dispatch actions, factory manifest progress, payload seals, driver telemetry, retailer orders. Outbox events consumed by dispatcher for notifications to other roles.
 - **E2E criteria:** Full ops spine visible + actionable; live map animated; dispatch preview/execute (with capacity); exceptions (shopclosed/negotiate) resolvable; treasury live; WS + Kafka fanout verified in SSMR; `PX_E2E_ORDER_OK` etc. umbrella.
 - **Current status:** Phases 0–4 **E2E_SSMR_GREEN** on portal primary surface (see `context/SUPPLIER_PHASE.md` SP0–SP4).
-- **Phase:** Supplier portal row v1 complete for scoped phases. Native analytics/import handoff and SP4-02 pricing overrides remain deferred.
+- **Phase:** Supplier portal row v1 complete for scoped phases. SP4-02 retailer pricing overrides **E2E_SSMR_GREEN**. Full import session wizard (GCS upload / AI mapping / approve-apply) remains future work.
 
 #### supplier-app-android + supplier-app-ios (native ops slice)
 - **Depends on:** Subset of above — fleet/orders/manifests/exceptions/shopclosed/negotiate/dispatch-preview/activity/ledger/replenish-trigger + profile + ws.
@@ -246,7 +246,7 @@ Phases are **vertical clusters**. Each phase = backend E2E (SSMR first) + all af
 ---
 
 ## 4. Gaps Identified in Current Audit (2026-06-14)
-- **Real functional gaps (non-scaffold):** SP4-02 retailer pricing overrides **DEFERRED**. Full import session wizard (GCS upload / AI mapping / approve-apply) remains future work — direct CSV import now writes staging rows.
+- **Real functional gaps (non-scaffold):** Full import session wizard (GCS upload / AI mapping / approve-apply) remains future work — direct CSV import now writes staging rows.
 - **Scaffold comments:** Expected and documented (bootstrap + domain repos). Not bugs — dev/SSMR path. Strict mode + cloud cutover removes them.
 - **UI/TO DOs in clients:** Mostly dev conveniences (recaptcha TODOs in web logins, Firebase SPM comments in retailer iOS) — non-blocking for core flows.
 - **Intentional v1 deltas (P2, do not close unless Boss directs):** Supplier portal depth vs full pegasus ~59 (some ops portal-only); no Rust sidecar; thinner native vs portal for supplier; FCM mainly driver+retailer; payme/click scaffolds.

@@ -112,7 +112,27 @@ func (s *Service) enrichProductsForRetailer(ctx context.Context, retailerID stri
 			}
 			promosBySupplier[p.SupplierID] = promos
 		}
-		offer := promotion.CatalogOffer(now, retailerID, p.ProductID, p.CategoryID, p.PriceMinor, promos)
+		listPrice := p.PriceMinor
+		isOverride := false
+		if s.promotions != nil && retailerID != "" {
+			resolved, overridden, err := s.promotions.ResolveListPrice(ctx, p.SupplierID, retailerID, p.ProductID, p.PriceMinor)
+			if err != nil {
+				return nil, fmt.Errorf("resolve retailer price override: %w", err)
+			}
+			listPrice = resolved
+			isOverride = overridden
+		}
+		var offer promotion.ProductOffer
+		if isOverride && listPrice < p.PriceMinor {
+			sale := listPrice
+			offer = promotion.ProductOffer{
+				ProductID:      p.ProductID,
+				ListPriceMinor: p.PriceMinor,
+				SalePriceMinor: &sale,
+			}
+		} else {
+			offer = promotion.CatalogOffer(now, retailerID, p.ProductID, p.CategoryID, listPrice, promos)
+		}
 		out[i] = RetailerProduct{Product: p, Offer: &offer}
 	}
 	return out, nil

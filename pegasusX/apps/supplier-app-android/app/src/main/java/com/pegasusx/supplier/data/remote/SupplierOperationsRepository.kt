@@ -62,6 +62,18 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun updatePricingRules(body: JsonElement): Response<SupplierPricingRule> =
         api.updatePricingRules(body)
 
+    suspend fun listRetailerPriceOverrides(
+        retailerId: String? = null,
+        productId: String? = null,
+    ): Response<RetailerPriceOverridesResponse> = api.listRetailerPriceOverrides(retailerId, productId)
+
+    suspend fun createRetailerPriceOverride(
+        body: CreateRetailerPriceOverrideRequest,
+    ): Response<CreateRetailerPriceOverrideResponse> = api.createRetailerPriceOverride(body)
+
+    suspend fun deleteRetailerPriceOverride(overrideId: String): Response<JsonElement> =
+        api.deleteRetailerPriceOverride(overrideId)
+
     suspend fun getDashboard(): Response<SupplierDashboard> = api.getDashboard()
 
     suspend fun getTopology(): Response<SupplierTopologyResponse> = api.getTopology()

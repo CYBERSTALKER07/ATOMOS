@@ -1,6 +1,9 @@
 package notifications
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // FormattedNotification is the output of a Format* function — pure data,
 // zero side effects. Transport decides how to deliver it.
@@ -231,6 +234,35 @@ func FormatVehicleCreated(vehicleID, homeNodeID string) FormattedNotification {
 		Title:    "Vehicle Added",
 		Body:     body,
 		DeepLink: "/org-fleet",
+		Priority: "normal",
+	}
+}
+
+// FormatRetailerPriceOverride produces retailer inbox copy for custom pricing changes.
+func FormatRetailerPriceOverride(productID string, priceMinor int64, currency string, created bool) FormattedNotification {
+	label := strings.TrimSpace(productID)
+	if len(label) > 8 {
+		label = label[:8]
+	}
+	if label == "" {
+		label = "product"
+	}
+	if created {
+		body := fmt.Sprintf("Custom price set for %s", label)
+		if priceMinor > 0 && strings.TrimSpace(currency) != "" {
+			body = fmt.Sprintf("Custom price %d %s set for %s", priceMinor, currency, label)
+		}
+		return FormattedNotification{
+			Title:    "Custom pricing applied",
+			Body:     body,
+			DeepLink: "/catalog",
+			Priority: "normal",
+		}
+	}
+	return FormattedNotification{
+		Title:    "Custom pricing removed",
+		Body:     fmt.Sprintf("Standard pricing restored for %s", label),
+		DeepLink: "/catalog",
 		Priority: "normal",
 	}
 }

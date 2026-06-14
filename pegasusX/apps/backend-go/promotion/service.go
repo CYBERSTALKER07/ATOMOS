@@ -54,7 +54,7 @@ func (s *Service) ActiveForSupplier(ctx context.Context, supplierID string) ([]P
 
 // QuoteCheckout prices cart lines with server-authoritative promotions.
 func (s *Service) QuoteCheckout(ctx context.Context, supplierID, retailerID string, lines []LineInput) (QuoteResult, error) {
-	lines, err := s.enrichLines(ctx, lines)
+	lines, err := s.enrichLines(ctx, supplierID, retailerID, lines)
 	if err != nil {
 		return QuoteResult{}, err
 	}
@@ -65,7 +65,22 @@ func (s *Service) QuoteCheckout(ctx context.Context, supplierID, retailerID stri
 	return ApplyQuote(s.now(), supplierID, retailerID, lines, promotions)
 }
 
-func (s *Service) enrichLines(ctx context.Context, lines []LineInput) ([]LineInput, error) {
+// ResolveListPrice applies an active per-retailer override when present.
+func (s *Service) ResolveListPrice(ctx context.Context, supplierID, retailerID, productID string, listPrice int64) (int64, bool, error) {
+	if s.repo == nil || retailerID == "" || productID == "" {
+		return listPrice, false, nil
+	}
+	overrides, err := s.repo.LookupActivePriceOverrides(ctx, supplierID, retailerID, []string{productID}, s.now())
+	if err != nil {
+		return listPrice, false, err
+	}
+	if price, ok := overrides[productID]; ok && price > 0 {
+		return price, true, nil
+	}
+	return listPrice, false, nil
+}
+
+func (s *Service) enrichLines(ctx context.Context, supplierID, retailerID string, lines []LineInput) ([]LineInput, error) {
 	if s.repo == nil || len(lines) == 0 {
 		return lines, nil
 	}
@@ -83,6 +98,10 @@ func (s *Service) enrichLines(ctx context.Context, lines []LineInput) ([]LineInp
 	if err != nil {
 		return nil, err
 	}
+	overrides, err := s.repo.LookupActivePriceOverrides(ctx, supplierID, retailerID, ids, s.now())
+	if err != nil {
+		return nil, err
+	}
 	out := make([]LineInput, len(lines))
 	for i, line := range lines {
 		out[i] = line
@@ -91,6 +110,10 @@ func (s *Service) enrichLines(ctx context.Context, lines []LineInput) ([]LineInp
 		}
 		if listPrice, ok := listPrices[line.ProductID]; ok && listPrice > 0 {
 			out[i].UnitPrice = listPrice
+		}
+		if overridePrice, ok := overrides[line.ProductID]; ok && overridePrice > 0 {
+			out[i].UnitPrice = overridePrice
+			out[i].PriceIsOverride = true
 		}
 	}
 	return out, nil

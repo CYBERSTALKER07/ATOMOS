@@ -44,11 +44,12 @@ type Promotion struct {
 
 // LineInput is one checkout or quote line before promotion application.
 type LineInput struct {
-	ProductID  string `json:"product_id"`
-	CategoryID string `json:"category_id"`
-	Quantity   int64  `json:"quantity"`
-	UnitPrice  int64  `json:"unit_price_minor"`
-	Currency   string `json:"currency"`
+	ProductID       string `json:"product_id"`
+	CategoryID      string `json:"category_id"`
+	Quantity        int64  `json:"quantity"`
+	UnitPrice       int64  `json:"unit_price_minor"`
+	Currency        string `json:"currency"`
+	PriceIsOverride bool   `json:"-"`
 }
 
 // QuotedLine is a priced line after the best applicable promotion is chosen.

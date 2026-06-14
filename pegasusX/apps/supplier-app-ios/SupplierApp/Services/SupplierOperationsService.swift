@@ -109,6 +109,30 @@ enum SupplierOperationsService {
         try await APIClient.shared.get("v1/supplier/pricing/rules")
     }
 
+    static func listRetailerPriceOverrides(
+        retailerId: String? = nil,
+        productId: String? = nil
+    ) async throws -> RetailerPriceOverridesResponse {
+        var query: [String: String] = [:]
+        if let retailerId, !retailerId.isEmpty {
+            query["retailer_id"] = retailerId
+        }
+        if let productId, !productId.isEmpty {
+            query["product_id"] = productId
+        }
+        return try await APIClient.shared.get("v1/supplier/pricing/retailer-overrides", query: query)
+    }
+
+    static func createRetailerPriceOverride(
+        _ request: CreateRetailerPriceOverrideRequest
+    ) async throws -> CreateRetailerPriceOverrideResponse {
+        try await APIClient.shared.post("v1/supplier/pricing/retailer-overrides", body: request)
+    }
+
+    static func deleteRetailerPriceOverride(overrideId: String) async throws {
+        try await APIClient.shared.deleteVoid("v1/supplier/pricing/retailer-overrides/\(overrideId)")
+    }
+
     static func topology() async throws -> SupplierTopologyResponse {
         try await APIClient.shared.get("v1/supplier/topology")
     }

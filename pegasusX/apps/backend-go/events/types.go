@@ -274,6 +274,19 @@ type PromotionEvent struct {
 	Action        string   `json:"action"`
 }
 
+// RetailerPriceOverrideEvent signals per-retailer absolute price create or deactivate.
+type RetailerPriceOverrideEvent struct {
+	BaseEvent
+	OverrideID string `json:"override_id"`
+	SupplierID string `json:"supplier_id"`
+	RetailerID string `json:"retailer_id"`
+	ProductID  string `json:"product_id"`
+	PriceMinor int64  `json:"price_minor"`
+	Action     string `json:"action"`
+	SetBy      string `json:"set_by"`
+	SetByRole  string `json:"set_by_role"`
+}
+
 // SyncEvent handles catalog and inventory syncing.
 type SyncEvent struct {
 	BaseEvent

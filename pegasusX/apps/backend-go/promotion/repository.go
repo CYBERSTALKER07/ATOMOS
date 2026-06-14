@@ -21,6 +21,7 @@ type Repository interface {
 	SetActive(ctx context.Context, supplierID, promotionID string, isActive bool, version int64, emit func(*spannerTxnBuffer) error) error
 	LookupProductCategories(ctx context.Context, productIDs []string) (map[string]string, error)
 	LookupListPrices(ctx context.Context, productIDs []string) (map[string]int64, error)
+	LookupActivePriceOverrides(ctx context.Context, supplierID, retailerID string, productIDs []string, now time.Time) (map[string]int64, error)
 }
 
 // SpannerRepository implements Repository.
@@ -321,6 +322,48 @@ func (r *SpannerRepository) LookupListPrices(ctx context.Context, productIDs []s
 		var price int64
 		if err := row.Columns(&productID, &price); err != nil {
 			return nil, err
+		}
+		out[productID] = price
+	}
+	return out, nil
+}
+
+// LookupActivePriceOverrides returns effective override prices keyed by product id.
+func (r *SpannerRepository) LookupActivePriceOverrides(
+	ctx context.Context,
+	supplierID, retailerID string,
+	productIDs []string,
+	now time.Time,
+) (map[string]int64, error) {
+	if r == nil || r.client == nil || supplierID == "" || retailerID == "" || len(productIDs) == 0 {
+		return map[string]int64{}, nil
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT ProductId, OverridePrice, ExpiresAt
+		      FROM RetailerPricingOverrides
+		      WHERE SupplierId = @sid AND RetailerId = @rid AND ProductId IN UNNEST(@ids)
+		        AND IsActive = true`,
+		Params: map[string]any{"sid": supplierID, "rid": retailerID, "ids": productIDs},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	out := make(map[string]int64, len(productIDs))
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("lookup retailer price overrides: %w", err)
+		}
+		var productID string
+		var price int64
+		var expiresAt spanner.NullTime
+		if err := row.Columns(&productID, &price, &expiresAt); err != nil {
+			return nil, err
+		}
+		if expiresAt.Valid && !expiresAt.Time.After(now) {
+			continue
 		}
 		out[productID] = price
 	}

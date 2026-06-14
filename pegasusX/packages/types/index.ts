@@ -701,6 +701,42 @@ export interface SupplierPricingRuleUpdateRequest {
   currency?: Iso4217;
 }
 
+export interface RetailerPriceOverride {
+  override_id: string;
+  supplier_id: SupplierId;
+  retailer_id: RetailerId;
+  product_id: string;
+  price: number;
+  set_by: string;
+  set_by_role: string;
+  is_active: boolean;
+  notes?: string;
+  expires_at?: string;
+  created_at: string;
+}
+
+export interface RetailerPriceOverridesResponse {
+  overrides: RetailerPriceOverride[];
+  total: number;
+}
+
+export interface CreateRetailerPriceOverrideRequest {
+  retailer_id: RetailerId;
+  product_id: string;
+  sku_id?: string;
+  price: number;
+  notes?: string;
+  expires_at?: string;
+}
+
+export interface CreateRetailerPriceOverrideResponse {
+  status: string;
+  override_id: string;
+  retailer_id: RetailerId;
+  product_id: string;
+  price: number;
+}
+
 export type SupplierPromotionScopeType = "PRODUCT" | "CATEGORY" | "ALL_PRODUCTS";
 export type SupplierPromotionRetailerScope = "ALL" | "ALLOWLIST";
 
@@ -1219,6 +1255,7 @@ export type EventType =
   | "SHOP_CLOSED_RESPONSE"
   | "CART_SYNC_UPDATED"
   | "PROMOTION_CHANGED"
+  | "RETAILER_PRICE_OVERRIDE"
   | "INVENTORY_SYNC_COMPLETE"
   | "COMMAND_DISPATCHED"
   | "COMMAND_RECEIVED"

@@ -209,6 +209,72 @@ struct SupplierPricingRuleUpdateRequest: Encodable {
     }
 }
 
+struct RetailerPriceOverride: Decodable, Identifiable {
+    var id: String { overrideId }
+    let overrideId: String
+    let supplierId: String
+    let retailerId: String
+    let productId: String
+    let price: Int
+    let setBy: String
+    let setByRole: String
+    let isActive: Bool
+    let notes: String?
+    let expiresAt: String?
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case overrideId = "override_id"
+        case supplierId = "supplier_id"
+        case retailerId = "retailer_id"
+        case productId = "product_id"
+        case price
+        case setBy = "set_by"
+        case setByRole = "set_by_role"
+        case isActive = "is_active"
+        case notes
+        case expiresAt = "expires_at"
+        case createdAt = "created_at"
+    }
+}
+
+struct RetailerPriceOverridesResponse: Decodable {
+    let overrides: [RetailerPriceOverride]
+    let total: Int
+}
+
+struct CreateRetailerPriceOverrideRequest: Encodable {
+    let retailerId: String
+    let productId: String
+    let price: Int
+    let notes: String?
+    let expiresAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case retailerId = "retailer_id"
+        case productId = "product_id"
+        case price
+        case notes
+        case expiresAt = "expires_at"
+    }
+}
+
+struct CreateRetailerPriceOverrideResponse: Decodable {
+    let status: String
+    let overrideId: String
+    let retailerId: String
+    let productId: String
+    let price: Int
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case overrideId = "override_id"
+        case retailerId = "retailer_id"
+        case productId = "product_id"
+        case price
+    }
+}
+
 struct SupplierTopologyWarehouse: Decodable, Identifiable {
     var id: String { warehouseId }
     let warehouseId: String

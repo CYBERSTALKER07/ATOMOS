@@ -158,6 +158,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := assertSupplierPortalAPIs(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("supplier portal apis: %w", err)
 	}
+	if err := runRetailerPricingOverrideE2E(ctx, client, base, cookie, supplierID, retailerID, retailerToken); err != nil {
+		return fmt.Errorf("retailer pricing override: %w", err)
+	}
 	if err := runSupplierIntelligenceE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("supplier intelligence: %w", err)
 	}
@@ -934,6 +937,102 @@ func runSupplierAnalyticsE2E(ctx context.Context, client *http.Client, base, coo
 		}
 	}
 	fmt.Println("PX_E2E_SUPPLIER_ANALYTICS_OK")
+	return nil
+}
+
+func runRetailerPricingOverrideE2E(
+	ctx context.Context,
+	client *http.Client,
+	base, cookie, supplierID, retailerID, retailerToken string,
+) error {
+	const overridePrice = int64(42000)
+	productID := envOr("SSMR_SMOKE_SKU", "SSMR-SKU-1")
+
+	createBody, _ := json.Marshal(map[string]any{
+		"retailer_id": retailerID,
+		"product_id": productID,
+		"price":      overridePrice,
+		"notes":      "SSMR override",
+	})
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/pricing/retailer-overrides", createBody, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated {
+		return fmt.Errorf("create retailer override status %d body %s", status, string(respBody))
+	}
+	var created struct {
+		OverrideID string `json:"override_id"`
+		Price      int64  `json:"price"`
+	}
+	if err := json.Unmarshal(respBody, &created); err != nil {
+		return err
+	}
+	if created.OverrideID == "" || created.Price != overridePrice {
+		return fmt.Errorf("create retailer override invalid response: %s", string(respBody))
+	}
+
+	listURL := base + "/v1/supplier/pricing/retailer-overrides?retailer_id=" + retailerID + "&product_id=" + productID
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, listURL, nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("list retailer overrides status %d body %s", status, string(respBody))
+	}
+	var listed struct {
+		Overrides []struct {
+			OverrideID string `json:"override_id"`
+			Price      int64  `json:"price"`
+		} `json:"overrides"`
+		Total int `json:"total"`
+	}
+	if err := json.Unmarshal(respBody, &listed); err != nil {
+		return err
+	}
+	if listed.Total < 1 || len(listed.Overrides) == 0 || listed.Overrides[0].Price != overridePrice {
+		return fmt.Errorf("list retailer overrides missing active row: %s", string(respBody))
+	}
+
+	quoteBody, _ := json.Marshal(map[string]any{
+		"supplier_id": supplierID,
+		"lines": []map[string]any{
+			{"product_id": productID, "quantity": 1, "unit_price_minor": 50000, "currency": "UZS"},
+		},
+	})
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/retailer/checkout/quote", quoteBody, retailerToken, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("checkout quote status %d body %s", status, string(respBody))
+	}
+	var quote struct {
+		Lines []struct {
+			UnitPrice int64 `json:"unit_price_minor"`
+		} `json:"lines"`
+	}
+	if err := json.Unmarshal(respBody, &quote); err != nil {
+		return err
+	}
+	if len(quote.Lines) == 0 || quote.Lines[0].UnitPrice != overridePrice {
+		return fmt.Errorf("checkout quote did not apply override: %s", string(respBody))
+	}
+
+	if err := assertInboxContainsEvent(ctx, client, base, retailerToken, events.EventRetailerPriceOverride); err != nil {
+		return fmt.Errorf("retailer inbox after override: %w", err)
+	}
+
+	deleteURL := base + "/v1/supplier/pricing/retailer-overrides/" + created.OverrideID
+	status, respBody, _, err = clientDo(ctx, client, http.MethodDelete, deleteURL, nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("delete retailer override status %d body %s", status, string(respBody))
+	}
+
+	fmt.Println("PX_E2E_RETAILER_PRICING_OVERRIDE_OK")
 	return nil
 }
 

@@ -203,6 +203,22 @@ interface SupplierApi {
     @PATCH("v1/supplier/pricing/rules")
     suspend fun updatePricingRules(@Body body: JsonElement): Response<SupplierPricingRule>
 
+    @GET("v1/supplier/pricing/retailer-overrides")
+    suspend fun listRetailerPriceOverrides(
+        @Query("retailer_id") retailerId: String? = null,
+        @Query("product_id") productId: String? = null,
+    ): Response<RetailerPriceOverridesResponse>
+
+    @POST("v1/supplier/pricing/retailer-overrides")
+    suspend fun createRetailerPriceOverride(
+        @Body body: CreateRetailerPriceOverrideRequest,
+    ): Response<CreateRetailerPriceOverrideResponse>
+
+    @DELETE("v1/supplier/pricing/retailer-overrides/{overrideId}")
+    suspend fun deleteRetailerPriceOverride(
+        @Path("overrideId") overrideId: String,
+    ): Response<JsonElement>
+
     @GET("v1/supplier/topology")
     suspend fun getTopology(): Response<SupplierTopologyResponse>
 

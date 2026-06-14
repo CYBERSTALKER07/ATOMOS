@@ -75,6 +75,19 @@ func ApplyQuote(
 	discountTotal := int64(0)
 
 	for _, line := range lines {
+		if line.PriceIsOverride {
+			lineTotal := line.UnitPrice * line.Quantity
+			total += lineTotal
+			quoted = append(quoted, QuotedLine{
+				ProductID:     line.ProductID,
+				Quantity:      line.Quantity,
+				ListUnitPrice: line.UnitPrice,
+				UnitPrice:     line.UnitPrice,
+				LineTotal:     lineTotal,
+				Currency:      line.Currency,
+			})
+			continue
+		}
 		best, unit := PickBestPromotion(
 			now,
 			retailerID,

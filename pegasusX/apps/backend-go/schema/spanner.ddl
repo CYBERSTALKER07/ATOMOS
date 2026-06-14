@@ -65,6 +65,26 @@ CREATE TABLE SupplierPricingRules (
 
 CREATE INDEX Idx_SupplierPricingRules_ByUpdatedAt ON SupplierPricingRules(UpdatedAt DESC);
 
+-- Per-retailer absolute price overrides (most specific pricing tier).
+-- Resolution order: RetailerPricingOverride -> promotions -> catalog list price.
+CREATE TABLE RetailerPricingOverrides (
+  OverrideId     STRING(36)  NOT NULL,
+  SupplierId     STRING(36)  NOT NULL,
+  RetailerId     STRING(36)  NOT NULL,
+  ProductId      STRING(36)  NOT NULL,
+  OverridePrice  INT64       NOT NULL,
+  SetBy          STRING(128) NOT NULL,
+  SetByRole      STRING(32)  NOT NULL,
+  IsActive       BOOL        NOT NULL,
+  Notes          STRING(MAX),
+  CreatedAt      TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt      TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ExpiresAt      TIMESTAMP,
+) PRIMARY KEY (OverrideId);
+
+CREATE INDEX Idx_PricingOverrides_ByRetailer ON RetailerPricingOverrides(SupplierId, RetailerId, ProductId, IsActive);
+CREATE INDEX Idx_PricingOverrides_BySupplier ON RetailerPricingOverrides(SupplierId, IsActive, CreatedAt DESC);
+
 CREATE TABLE SupplierPromotions (
   PromotionId         STRING(36)    NOT NULL,
   SupplierId          STRING(36)    NOT NULL,

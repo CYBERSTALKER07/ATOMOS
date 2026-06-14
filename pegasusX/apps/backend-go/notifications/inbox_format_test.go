@@ -86,3 +86,20 @@ func TestFormatFromEvent_ManifestOrderException(t *testing.T) {
 		t.Fatalf("deep_link=%q", got.DeepLink)
 	}
 }
+
+func TestFormatFromEvent_RetailerPriceOverride(t *testing.T) {
+	payload, _ := json.Marshal(map[string]any{
+		"type":        events.EventRetailerPriceOverride,
+		"retailer_id": "ret-1",
+		"product_id":  "SSMR-SKU-1",
+		"price_minor": 42000,
+		"action":      "CREATED",
+	})
+	got := FormatFromEvent(events.EventRetailerPriceOverride, payload)
+	if got.Title != "Custom pricing applied" {
+		t.Fatalf("title=%q", got.Title)
+	}
+	if got.DeepLink != "/catalog" {
+		t.Fatalf("deep_link=%q", got.DeepLink)
+	}
+}
