@@ -11,6 +11,7 @@ struct OrgFleetView: View {
     @State private var showDriverSheet = false
     @State private var showVehicleSheet = false
     @State private var showOrgSheet = false
+    @State private var memberActionId: String?
 
     var body: some View {
         Group {
@@ -116,7 +117,18 @@ struct OrgFleetView: View {
                 List(orgMembers) { member in
                     VStack(alignment: .leading) {
                         Text(member.name).font(.headline)
-                        Text("\(member.supplierRole) · \(member.phone)").font(.caption).foregroundStyle(.secondary)
+                        Text("\(member.supplierRole) · \(member.phone) · \(member.isActive ? "Active" : "Inactive")")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        if member.isActive {
+                            Button(role: .destructive) {
+                                Task { await deactivateMember(member.userId) }
+                            } label: {
+                                Text("Deactivate")
+                            }
+                            .disabled(memberActionId == member.userId)
+                        }
                     }
                 }
             }
@@ -144,6 +156,16 @@ struct OrgFleetView: View {
             drivers = try await driverResp
             vehicles = try await vehicleResp
             orgMembers = try await orgResp
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    private func deactivateMember(_ userId: String) async {
+        memberActionId = userId
+        defer { memberActionId = nil }
+        do {
+            orgMembers = try await SupplierOperationsService.deactivateOrgMember(userId, idempotencyKey: UUID().uuidString)
         } catch {
             self.error = error.localizedDescription
         }

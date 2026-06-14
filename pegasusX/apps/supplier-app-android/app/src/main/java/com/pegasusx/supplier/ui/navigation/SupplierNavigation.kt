@@ -37,6 +37,8 @@ import com.pegasusx.supplier.ui.screens.exceptions.ExceptionsScreen
 // NegotiationsScreen removed — quantity negotiation disabled ecosystem-wide.
 import com.pegasusx.supplier.ui.screens.exceptions.ShopClosedScreen
 import com.pegasusx.supplier.ui.screens.fleet.FleetOrdersScreen
+import com.pegasusx.supplier.ui.screens.manifests.ManifestDetailScreen
+import com.pegasusx.supplier.ui.screens.manifests.ManifestExceptionsScreen
 import com.pegasusx.supplier.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.supplier.ui.screens.more.MoreScreen
 import com.pegasusx.supplier.ui.screens.operations.OperationsScreen
@@ -79,6 +81,10 @@ object SupplierRoutes {
     const val SHOP_CLOSED = "shop_closed"
     const val NEGOTIATIONS = "negotiations"
     const val MANIFESTS = "manifests"
+    const val MANIFEST_DETAIL = "manifest_detail/{manifestId}"
+    const val MANIFEST_EXCEPTIONS = "manifest_exceptions"
+
+    fun manifestDetail(manifestId: String) = "manifest_detail/$manifestId"
     const val DISPATCH_PREVIEW = "dispatch_preview"
     const val ACTIVITY = "activity"
     const val FLEET_ORDERS = "fleet_orders"
@@ -259,7 +265,36 @@ fun SupplierNavigation(
             // Quantity negotiation disabled ecosystem-wide.
             // composable(SupplierRoutes.NEGOTIATIONS) { ... }
             composable(SupplierRoutes.MANIFESTS) {
-                key(refreshEpoch) { ManifestsScreen(ops) { navController.popBackStack() } }
+                key(refreshEpoch) {
+                    ManifestsScreen(
+                        ops = ops,
+                        onBack = { navController.popBackStack() },
+                        onOpenManifest = { manifestId -> navController.navigate(SupplierRoutes.manifestDetail(manifestId)) },
+                        onOpenGateExceptions = { navController.navigate(SupplierRoutes.MANIFEST_EXCEPTIONS) },
+                    )
+                }
+            }
+            composable(
+                SupplierRoutes.MANIFEST_DETAIL,
+                arguments = listOf(navArgument("manifestId") { type = NavType.StringType }),
+            ) { entry ->
+                val manifestId = entry.arguments?.getString("manifestId").orEmpty()
+                key(refreshEpoch) {
+                    ManifestDetailScreen(
+                        manifestId = manifestId,
+                        ops = ops,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+            }
+            composable(SupplierRoutes.MANIFEST_EXCEPTIONS) {
+                key(refreshEpoch) {
+                    ManifestExceptionsScreen(
+                        ops = ops,
+                        onBack = { navController.popBackStack() },
+                        onOpenManifest = { manifestId -> navController.navigate(SupplierRoutes.manifestDetail(manifestId)) },
+                    )
+                }
             }
             composable(SupplierRoutes.DISPATCH_PREVIEW) {
                 key(refreshEpoch) { DispatchPreviewScreen(ops) { navController.popBackStack() } }

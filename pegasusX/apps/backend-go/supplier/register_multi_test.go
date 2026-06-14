@@ -45,6 +45,9 @@ func (r *countingSupplierRepo) ListOrgMembers(context.Context, string) ([]Suppli
 func (r *countingSupplierRepo) CreateOrgMember(context.Context, CreateOrgMemberParams, func(outbox.TxnBuffer) error) error {
 	return nil
 }
+func (r *countingSupplierRepo) UpdateOrgMember(context.Context, string, string, UpdateOrgMemberPatch, func(outbox.TxnBuffer) error) error {
+	return nil
+}
 func (r *countingSupplierRepo) ListFleetDrivers(context.Context, string) ([]SupplierFleetDriver, error) {
 	return nil, nil
 }

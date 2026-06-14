@@ -88,3 +88,12 @@ func (s *Service) Upsert(ctx context.Context, l Level) error {
 	}
 	return nil
 }
+
+// FindByWarehouseProduct resolves an inventory row for import upserts.
+func (s *Service) FindByWarehouseProduct(ctx context.Context, warehouseID, productID string) (*Level, error) {
+	level, err := s.repo.GetByWarehouseProduct(ctx, warehouseID, productID)
+	if err != nil {
+		return nil, fmt.Errorf("find inventory by warehouse product: %w", err)
+	}
+	return level, nil
+}

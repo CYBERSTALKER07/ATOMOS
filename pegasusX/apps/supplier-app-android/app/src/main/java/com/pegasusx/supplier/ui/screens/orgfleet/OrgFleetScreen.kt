@@ -36,6 +36,7 @@ fun OrgFleetScreen(
     var showDriverDialog by remember { mutableStateOf(false) }
     var showVehicleDialog by remember { mutableStateOf(false) }
     var showOrgDialog by remember { mutableStateOf(false) }
+    var memberActionId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     fun reload() {
@@ -104,7 +105,21 @@ fun OrgFleetScreen(
                 when (tab) {
                     0 -> DriverRoster(drivers, topology)
                     1 -> VehicleRoster(vehicles, topology)
-                    else -> OrgRoster(orgMembers)
+                    else -> OrgRoster(
+                        members = orgMembers,
+                        actionId = memberActionId,
+                        onDeactivate = { userId ->
+                            scope.launch {
+                                memberActionId = userId
+                                try {
+                                    val resp = ops.deactivateOrgMember(userId, UUID.randomUUID().toString())
+                                    if (resp.isSuccessful) orgMembers = resp.body()?.items.orEmpty()
+                                } finally {
+                                    memberActionId = null
+                                }
+                            }
+                        },
+                    )
                 }
             }
         }
@@ -190,7 +205,11 @@ private fun VehicleRoster(vehicles: List<FleetVehicle>, topology: SupplierTopolo
 }
 
 @Composable
-private fun OrgRoster(members: List<SupplierOrgMember>) {
+private fun OrgRoster(
+    members: List<SupplierOrgMember>,
+    onDeactivate: (String) -> Unit,
+    actionId: String?,
+) {
     if (members.isEmpty()) {
         SupplierStatePane(SupplierStateKind.Empty, "No org members", "Create warehouse, factory, or payload staff.")
         return
@@ -199,7 +218,17 @@ private fun OrgRoster(members: List<SupplierOrgMember>) {
         items(members, key = { it.userId }) { member ->
             ListItem(
                 headlineContent = { Text(member.name) },
-                supportingContent = { Text("${member.supplierRole} · ${member.phone}") },
+                supportingContent = {
+                    Text("${member.supplierRole} · ${member.phone} · ${if (member.isActive) "Active" else "Inactive"}")
+                },
+                trailingContent = {
+                    if (member.isActive) {
+                        TextButton(
+                            enabled = actionId != member.userId,
+                            onClick = { onDeactivate(member.userId) },
+                        ) { Text("Deactivate") }
+                    }
+                },
             )
         }
     }

@@ -54,6 +54,9 @@ export default function ExceptionsPage() {
         <Link href={"/exceptions/early-complete" as Route} className="text-[var(--color-md-primary)] underline">
           Early route complete
         </Link>
+        <Link href="/manifest-exceptions" className="text-[var(--color-md-primary)] underline">
+          Manifest gate exceptions
+        </Link>
         <Link href={"/operations" as Route} className="text-[var(--color-md-primary)] underline">
           Operations
         </Link>

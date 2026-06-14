@@ -112,6 +112,9 @@ func (r *SpannerRepository) GetByWarehouseProduct(ctx context.Context, warehouse
 	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
+	if err == iterator.Done {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("get inventory for warehouse %s product %s: %w", warehouseID, productID, err)
 	}

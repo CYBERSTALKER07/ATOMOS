@@ -50,6 +50,7 @@ type Repository interface {
 	ReplaceTopology(ctx context.Context, supplierID string, topology SupplierTopology, emit func(outbox.TxnBuffer) error) error
 	ListOrgMembers(ctx context.Context, supplierID string) ([]SupplierOrgMember, error)
 	CreateOrgMember(ctx context.Context, member CreateOrgMemberParams, emit func(outbox.TxnBuffer) error) error
+	UpdateOrgMember(ctx context.Context, supplierID, userID string, patch UpdateOrgMemberPatch, emit func(outbox.TxnBuffer) error) error
 	ListFleetDrivers(ctx context.Context, supplierID string) ([]SupplierFleetDriver, error)
 	CreateFleetDriver(ctx context.Context, driver CreateFleetDriverParams, emit func(outbox.TxnBuffer) error) error
 	ListFleetVehicles(ctx context.Context, supplierID string) ([]SupplierFleetVehicle, error)
@@ -65,6 +66,7 @@ type SupplierAuthRecord struct {
 	SupplierID   string
 	Phone        string
 	PasswordHash string
+	IsRegistered bool
 	IsConfigured bool
 }
 
@@ -109,29 +111,29 @@ type Profile struct {
 
 // WarehouseNode is one supplier-owned warehouse topology node.
 type WarehouseNode struct {
-	WarehouseID           string
-	Name                  string
-	Lat                   float64
-	Lng                   float64
-	CoverageRadiusKm      float64
-	TransferMode          string
-	CoLocateWithFactoryID string
-	PrimaryFactoryID      string
-	IsActive              bool
-	IsOnShift             bool
-	CreatedAt             time.Time
-	UpdatedAt             time.Time
+	WarehouseID           string    `json:"warehouse_id"`
+	Name                  string    `json:"name"`
+	Lat                   float64   `json:"lat"`
+	Lng                   float64   `json:"lng"`
+	CoverageRadiusKm      float64   `json:"coverage_radius_km"`
+	TransferMode          string    `json:"transfer_mode,omitempty"`
+	CoLocateWithFactoryID string    `json:"co_locate_with_factory_id,omitempty"`
+	PrimaryFactoryID      string    `json:"primary_factory_id,omitempty"`
+	IsActive              bool      `json:"is_active"`
+	IsOnShift             bool      `json:"is_on_shift"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
 }
 
 // FactoryNode is one supplier-owned factory topology node.
 type FactoryNode struct {
-	FactoryID string
-	Name      string
-	Lat       float64
-	Lng       float64
-	IsActive  bool
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	FactoryID string    `json:"factory_id"`
+	Name      string    `json:"name"`
+	Lat       float64   `json:"lat"`
+	Lng       float64   `json:"lng"`
+	IsActive  bool      `json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // SupplierTopology is the warehouse/factory graph for one supplier.
@@ -156,6 +158,8 @@ type SupplierPricingRule struct {
 type InventoryServicer interface {
 	ListBySupplier(ctx context.Context, supplierID string) ([]InventoryLevelView, error)
 	AdjustStock(ctx context.Context, inventoryID string, delta int64, expectedVersion int64) error
+	FindByWarehouseProduct(ctx context.Context, warehouseID, productID string) (string, bool, error)
+	UpsertLevel(ctx context.Context, level InventoryLevelUpsert) error
 }
 
 // InventoryLevelView is the read model consumed by the supplier inventory UI.
@@ -168,6 +172,18 @@ type InventoryLevelView struct {
 	QuantityReserved int64  `json:"quantity_reserved"`
 	ReorderThreshold int64  `json:"reorder_threshold"`
 	Version          int64  `json:"version"`
+}
+
+// InventoryLevelUpsert is the write model for inventory import and seed paths.
+type InventoryLevelUpsert struct {
+	InventoryID      string
+	ProductID        string
+	WarehouseID      string
+	SupplierID       string
+	QuantityOnHand   int64
+	QuantityReserved int64
+	ReorderThreshold int64
+	Version          int64
 }
 
 // EarningsLookup resolves the supplier finance compatibility contract from a
@@ -337,6 +353,7 @@ type RegisterRequest struct {
 type RegisterResponse struct {
 	SupplierID   string `json:"supplier_id"`
 	LegalName    string `json:"legal_name"`
+	IsRegistered bool   `json:"is_registered"`
 	IsConfigured bool   `json:"is_configured"`
 	NextStep     string `json:"next_step"`
 	Token        string `json:"token,omitempty"`
@@ -351,6 +368,7 @@ type LoginRequest struct {
 // LoginResponse is the login confirmation payload.
 type LoginResponse struct {
 	SupplierID   string `json:"supplier_id"`
+	IsRegistered bool   `json:"is_registered"`
 	IsConfigured bool   `json:"is_configured"`
 	NextStep     string `json:"next_step"`
 	Token        string `json:"token,omitempty"`
@@ -470,7 +488,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		current.Categories = []string{"Diapers"}
 	}
 	
-	current.IsRegistered = true
+	current.IsRegistered = req.registrationComplete()
 	current.RegisteredAt = now
 	current.UpdatedAt = now
 
@@ -499,11 +517,20 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		"legal_name", current.LegalName,
 		"country", current.Country,
 	)
+	nextStep := "/setup/business"
+	if current.IsRegistered {
+		if current.IsConfigured {
+			nextStep = "/dashboard"
+		} else {
+			nextStep = "/setup/billing"
+		}
+	}
 	return RegisterResponse{
 		SupplierID:   targetSupplierID,
 		LegalName:    current.LegalName,
+		IsRegistered: current.IsRegistered,
 		IsConfigured: current.IsConfigured,
-		NextStep:     "/setup/billing",
+		NextStep:     nextStep,
 	}, nil
 }
 
@@ -523,11 +550,14 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (LoginResponse, e
 		return LoginResponse{}, ErrInvalidCredentials
 	}
 	nextStep := "/"
-	if !rec.IsConfigured {
+	if !rec.IsRegistered {
+		nextStep = "/setup/business"
+	} else if !rec.IsConfigured {
 		nextStep = "/setup/billing"
 	}
 	return LoginResponse{
 		SupplierID:   rec.SupplierID,
+		IsRegistered: rec.IsRegistered,
 		IsConfigured: rec.IsConfigured,
 		NextStep:     nextStep,
 	}, nil
@@ -682,7 +712,7 @@ func (s *Service) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		case err != nil:
 			s.log.Warn("idempotency guard failed", "err", err)
 		case hit:
-			s.replaySession(w, rec, false)
+			s.replaySession(w, rec, false, false)
 			return
 		}
 	}
@@ -704,7 +734,7 @@ func (s *Service) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := s.writeSessionCookie(w, resp.SupplierID, resp.IsConfigured)
+	token, err := s.writeSessionCookie(w, resp.SupplierID, resp.IsRegistered, resp.IsConfigured)
 	if err != nil {
 		s.log.Warn("session cookie issue failed", "err", err)
 	}
@@ -750,7 +780,7 @@ func (s *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := s.writeSessionCookie(w, resp.SupplierID, resp.IsConfigured)
+	token, err := s.writeSessionCookie(w, resp.SupplierID, resp.IsRegistered, resp.IsConfigured)
 	if err != nil {
 		s.log.Warn("session cookie issue failed", "err", err)
 	}
@@ -787,7 +817,7 @@ func (s *Service) HandleConfigureBilling(w http.ResponseWriter, r *http.Request)
 		case err != nil:
 			s.log.Warn("idempotency guard failed", "err", err)
 		case hit:
-			s.replaySession(w, rec, true)
+			s.replaySession(w, rec, true, true)
 			return
 		}
 	}
@@ -803,7 +833,7 @@ func (s *Service) HandleConfigureBilling(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		return
 	}
-	if _, err := s.writeSessionCookie(w, resp.SupplierID, true); err != nil {
+	if _, err := s.writeSessionCookie(w, resp.SupplierID, true, true); err != nil {
 		s.log.Warn("session cookie reissue failed", "err", err)
 	}
 	respBytes, _ := json.Marshal(resp)
@@ -821,7 +851,7 @@ func (s *Service) HandleConfigureBilling(w http.ResponseWriter, r *http.Request)
 }
 
 // writeSessionCookie issues the supplier-portal session JWT.
-func (s *Service) writeSessionCookie(w http.ResponseWriter, supplierID string, isConfigured bool) (string, error) {
+func (s *Service) writeSessionCookie(w http.ResponseWriter, supplierID string, isRegistered, isConfigured bool) (string, error) {
 	supplierID = strings.TrimSpace(supplierID)
 	if supplierID == "" {
 		supplierID = s.supplierID
@@ -830,6 +860,7 @@ func (s *Service) writeSessionCookie(w http.ResponseWriter, supplierID string, i
 		Subject:      supplierID,
 		Role:         auth.RoleAdmin,
 		SupplierID:   supplierID,
+		IsRegistered: isRegistered,
 		IsConfigured: isConfigured,
 	}, auth.IssueOptions{
 		Secret: s.jwtSecret,
@@ -846,8 +877,8 @@ func (s *Service) writeSessionCookie(w http.ResponseWriter, supplierID string, i
 
 // replaySession returns an idempotency-stored response but also reissues the
 // session cookie so the replay-caller still ends up authenticated.
-func (s *Service) replaySession(w http.ResponseWriter, rec idempotency.Record, isConfigured bool) {
-	_, _ = s.writeSessionCookie(w, s.supplierID, isConfigured)
+func (s *Service) replaySession(w http.ResponseWriter, rec idempotency.Record, isRegistered, isConfigured bool) {
+	_, _ = s.writeSessionCookie(w, s.supplierID, isRegistered, isConfigured)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(rec.StatusCode)
 	_, _ = w.Write(rec.Response)

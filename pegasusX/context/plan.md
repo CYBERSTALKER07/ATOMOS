@@ -1,6 +1,10 @@
 # pegasusX Enterprise Execution Plan
 
-Last updated: 2026-06-04
+Last updated: 2026-06-14 (synced with Vegetable Plan creation)
+
+**See also (granular per-backend-feature + per-role/app breakdown with UI replication targets, cross-sync obligations, and phase mapping):** `VEGETABLE_PLAN.md` in this directory. It is the "VeggieTales" / feature-by-feature ledger Boss requested. Read it together with this file before any phase work. All status updates must propagate to both.
+
+**Supplier role execution ledger:** `SUPPLIER_PHASE.md` — phased tracker for supplier-portal + native apps (start here when Boss says "supplier").
 
 ## Plan Authority
 1. This file is the canonical phased execution roadmap for `pegasusX/`.

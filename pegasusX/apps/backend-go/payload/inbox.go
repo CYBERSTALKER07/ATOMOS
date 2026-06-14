@@ -8,12 +8,12 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 )
 
-func payloaderIDFromRequest(r *http.Request) string {
+func inboxRecipientID(r *http.Request) string {
 	claims, ok := auth.FromContext(r.Context())
-	if !ok || claims.Subject == "" {
+	if !ok {
 		return ""
 	}
-	return claims.Subject
+	return notifications.RecipientIDFromClaims(claims)
 }
 
 // HandleUserNotifications serves GET /v1/user/notifications for PAYLOAD role clients.
@@ -22,7 +22,7 @@ func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	recipientID := payloaderIDFromRequest(r)
+	recipientID := inboxRecipientID(r)
 	if recipientID == "" {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
@@ -56,7 +56,7 @@ func (s *Service) HandleMarkNotificationsRead(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	recipientID := payloaderIDFromRequest(r)
+	recipientID := inboxRecipientID(r)
 	if recipientID == "" {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return

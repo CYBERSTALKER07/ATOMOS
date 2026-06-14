@@ -124,6 +124,7 @@ export interface SupplierRegisterRequest {
 export interface SupplierRegisterResponse {
   supplier_id: SupplierId;
   legal_name: string;
+  is_registered: boolean;
   is_configured: boolean;
   next_step: string;
   token?: string;
@@ -136,6 +137,7 @@ export interface SupplierLoginRequest {
 
 export interface SupplierLoginResponse {
   supplier_id: SupplierId;
+  is_registered: boolean;
   is_configured: boolean;
   next_step: string;
   token?: string;
@@ -160,6 +162,74 @@ export interface SupplierDashboardResponse {
   fleet_vu_total?: number;
   recent_manifests?: SupplierManifestRow[];
   activity_events?: SupplierActivityEvent[];
+}
+
+export interface SupplierAnalyticsVelocityPoint {
+  date: string;
+  orders_created: number;
+  orders_completed: number;
+}
+
+export interface SupplierAnalyticsVelocityResponse {
+  period_days: number;
+  points: SupplierAnalyticsVelocityPoint[];
+  generated_at: string;
+}
+
+export interface SupplierAnalyticsRevenuePoint {
+  date: string;
+  revenue_minor: number;
+}
+
+export interface SupplierAnalyticsRevenueResponse {
+  currency: string;
+  total_minor: number;
+  series: SupplierAnalyticsRevenuePoint[];
+  generated_at: string;
+}
+
+export interface SupplierDemandSummaryItem {
+  sku_id: string;
+  product_name: string;
+  total_qty: number;
+  retailer_count: number;
+}
+
+export interface SupplierDemandSummaryResponse {
+  total_retailers: number;
+  total_pallets: number;
+  total_value: number;
+  prediction_count: number;
+  items: SupplierDemandSummaryItem[];
+  generated_at: string;
+}
+
+export interface SupplierDemandHistoryPoint {
+  date: string;
+  predicted: number;
+  actual: number;
+  predicted_qty: number;
+  actual_qty: number;
+}
+
+export interface SupplierDemandUpcomingRow {
+  date: string;
+  retailer_name: string;
+  sku_id: string;
+  product_name: string;
+  predicted_qty: number;
+}
+
+export interface SupplierDemandHistoryResponse {
+  time_series: SupplierDemandHistoryPoint[];
+  upcoming: SupplierDemandUpcomingRow[];
+}
+
+export interface SupplierInventoryImportResult {
+  applied: number;
+  skipped: number;
+  errors?: string[];
+  updated_at: string;
 }
 
 export interface SupplierManifestRow {
@@ -211,6 +281,55 @@ export interface SupplierExceptionRow {
 
 export interface SupplierExceptionsResponse {
   exceptions: SupplierExceptionRow[];
+}
+
+export interface SupplierManifestExceptionRow {
+  exception_id: string;
+  manifest_id: string;
+  order_id: string;
+  reason: string;
+  metadata?: string;
+  attempt_count: number;
+  escalated: boolean;
+  created_at: string;
+}
+
+export interface SupplierManifestExceptionsResponse {
+  exceptions: SupplierManifestExceptionRow[];
+}
+
+export interface SupplierManifestOrderWire {
+  order_id: string;
+  retailer_id?: string;
+  amount: number;
+  state: string;
+  status: string;
+  route_id?: string;
+  warehouse_id?: string;
+}
+
+export interface SupplierManifestDetail extends SupplierManifestRow {
+  orders?: SupplierManifestOrderWire[];
+  overflow_count?: number;
+  sealed_at?: string;
+  dispatched_at?: string;
+  created_at?: string;
+  region_code?: string;
+}
+
+export interface SupplierManifestInjectOrderRequest {
+  order_id: string;
+  volume_vu?: number;
+}
+
+export interface SupplierManifestSealResponse {
+  status: string;
+  manifest_id: string;
+  state: string;
+  sealed_at?: string;
+  stop_count?: number;
+  volume_vu?: number;
+  max_vu?: number;
 }
 
 export interface ShopClosedAttemptRow {
@@ -339,6 +458,20 @@ export interface WarehouseFleetLiveMapResponse {
   fetched_at: string;
 }
 
+export interface SupplierBusinessSetupRequest {
+  taxId: string;
+  registrationNumber?: string;
+  headquartersAddress: string;
+  city: string;
+  postalCode?: string;
+}
+
+export interface SupplierBusinessSetupResponse {
+  supplier_id: SupplierId;
+  is_registered: boolean;
+  next_step: string;
+}
+
 export interface SupplierBillingSetupRequest {
   bankName: string;
   accountHolder: string;
@@ -396,6 +529,8 @@ export interface SupplierTopologyWarehouseInput {
   coverage_radius_km?: number;
   is_active?: boolean;
   is_on_shift?: boolean;
+  transfer_mode?: "TRUCK" | "INTERNAL";
+  co_locate_with_factory_id?: FactoryId;
 }
 
 export interface SupplierTopologyFactoryInput {
@@ -419,8 +554,23 @@ export interface SupplierTopologyWarehouse {
   coverage_radius_km: number;
   is_active: boolean;
   is_on_shift: boolean;
+  transfer_mode?: "TRUCK" | "INTERNAL";
+  co_locate_with_factory_id?: FactoryId;
+  primary_factory_id?: FactoryId;
   created_at: string;
   updated_at: string;
+}
+
+export interface SupplierInventoryRow {
+  sku_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price_minor: number;
+  currency: string;
+}
+
+export interface SupplierInventoryResponse {
+  items: SupplierInventoryRow[];
 }
 
 export interface SupplierTopologyFactory {
@@ -446,6 +596,14 @@ export interface SupplierOrgMemberCreateRequest {
   phone: string;
   password: string;
   supplier_role: Role;
+  assigned_warehouse_id?: WarehouseId;
+  assigned_factory_id?: FactoryId;
+  is_active?: boolean;
+}
+
+export interface SupplierOrgMemberUpdateRequest {
+  name?: string;
+  supplier_role?: Role;
   assigned_warehouse_id?: WarehouseId;
   assigned_factory_id?: FactoryId;
   is_active?: boolean;

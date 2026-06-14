@@ -44,6 +44,7 @@ type Claims struct {
 	SupplierRole Role         // FACTORY_ADMIN | WAREHOUSE_ADMIN when Role==ADMIN derivative
 	HomeNodeType HomeNodeType // WAREHOUSE | FACTORY when applicable
 	HomeNodeID   string
+	IsRegistered bool // supplier completed business/tax onboarding
 	IsConfigured bool // supplier completed billing setup
 	PhoneNumber  string
 	TraceID      string

@@ -1,5 +1,6 @@
 package com.pegasusx.supplier.ui.screens.manifests
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,7 +19,12 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ManifestsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
+fun ManifestsScreen(
+    ops: SupplierOperationsRepository,
+    onBack: () -> Unit,
+    onOpenManifest: (String) -> Unit = {},
+    onOpenGateExceptions: () -> Unit = {},
+) {
     var rows by remember { mutableStateOf<List<SupplierManifestRow>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -51,6 +57,9 @@ fun ManifestsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    TextButton(onClick = onOpenGateExceptions) { Text("Gate") }
+                },
             )
         },
     ) { padding ->
@@ -76,7 +85,11 @@ fun ManifestsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
                 items(rows, key = { it.manifestId }) { row ->
-                    ElevatedCard(Modifier.fillMaxWidth()) {
+                    ElevatedCard(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenManifest(row.manifestId) },
+                    ) {
                         Column(Modifier.padding(PegasusSpacing.lg)) {
                             Text(row.manifestId, style = MaterialTheme.typography.titleMedium)
                             Text("${row.status} · ${row.state}", style = MaterialTheme.typography.bodyMedium)

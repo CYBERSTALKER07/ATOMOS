@@ -99,6 +99,11 @@ export default function PortalInventoryPage() {
           )
         }
       />
+      <p className="mb-4 md-typescale-body-medium">
+        <a href="/inventory/import" className="text-[var(--color-md-primary)] underline">
+          Import CSV
+        </a>
+      </p>
       <div className="md-card overflow-x-auto">
         <table className="min-w-full text-left">
           <thead className="border-b border-[var(--color-md-outline-variant)]">

@@ -46,6 +46,7 @@ type jwtPayload struct {
 	SupplierRole string `json:"supplier_role,omitempty"`
 	HomeNodeType string `json:"home_node_type,omitempty"`
 	HomeNodeID   string `json:"home_node_id,omitempty"`
+	IsRegistered bool   `json:"is_registered"`
 	IsConfigured bool   `json:"is_configured"`
 }
 
@@ -72,6 +73,7 @@ func Issue(c Claims, opts IssueOptions) (string, error) {
 		SupplierRole: string(c.SupplierRole),
 		HomeNodeType: string(c.HomeNodeType),
 		HomeNodeID:   c.HomeNodeID,
+		IsRegistered: c.IsRegistered,
 		IsConfigured: c.IsConfigured,
 	})
 	head := b64(h) + "." + b64(p)
@@ -107,6 +109,7 @@ func Parse(token, secret string) (Claims, error) {
 		SupplierRole: Role(p.SupplierRole),
 		HomeNodeType: HomeNodeType(p.HomeNodeType),
 		HomeNodeID:   p.HomeNodeID,
+		IsRegistered: p.IsRegistered,
 		IsConfigured: p.IsConfigured,
 	}, nil
 }

@@ -146,6 +146,22 @@ final class APIClient: Sendable {
         _ = try await executeVoid(request)
     }
 
+    func delete<T: Decodable>(
+        _ path: String,
+        idempotencyKey: String? = nil,
+        authenticated: Bool = true
+    ) async throws -> T {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "DELETE"
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
+        }
+        if authenticated {
+            await attachToken(&request)
+        }
+        return try await execute(request)
+    }
+
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {

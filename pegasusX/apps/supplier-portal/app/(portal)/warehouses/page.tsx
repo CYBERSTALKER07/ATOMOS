@@ -1,7 +1,7 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ApiClient } from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierTopologyWarehouse } from "@pegasusx/types";
 import { PortalSurface } from "../_components/PortalSurface";
@@ -30,6 +30,11 @@ export default function WarehousesPage() {
       empty={warehouses.length === 0}
       emptyMessage="No warehouses configured. Add nodes on the topology surface."
     >
+      <div className="mb-4">
+        <Link href="/topology" className="md-btn md-btn-tonal md-typescale-label-large px-4 py-2 inline-flex">
+          Edit topology
+        </Link>
+      </div>
       <ul className="md-card divide-y divide-[var(--color-md-outline-variant)]">
         {warehouses.map((w) => (
           <li key={w.warehouse_id || w.name} className="p-4 md-typescale-body-medium">

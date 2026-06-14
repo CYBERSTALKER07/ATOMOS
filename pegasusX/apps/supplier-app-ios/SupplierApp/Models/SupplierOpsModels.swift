@@ -66,6 +66,86 @@ struct SupplierManifestsResponse: Decodable {
     let manifests: [SupplierManifestRow]
 }
 
+struct SupplierManifestOrderWire: Decodable, Identifiable {
+    var id: String { orderId }
+    let orderId: String
+    let retailerId: String?
+    let amount: Int64
+    let state: String
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case retailerId = "retailer_id"
+        case amount, state, status
+    }
+}
+
+struct SupplierManifestDetail: Decodable {
+    let manifestId: String
+    let status: String
+    let state: String
+    let ordersCount: Int
+    let driverId: String?
+    let driverName: String
+    let vehiclePlate: String?
+    let totalVu: Int64
+    let totalVolumeVu: Double?
+    let maxVolumeVu: Double?
+    let updatedAt: String
+    let orders: [SupplierManifestOrderWire]
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case status, state
+        case ordersCount = "orders_count"
+        case driverId = "driver_id"
+        case driverName = "driver_name"
+        case vehiclePlate = "vehicle_plate"
+        case totalVu = "total_vu"
+        case totalVolumeVu = "total_volume_vu"
+        case maxVolumeVu = "max_volume_vu"
+        case updatedAt = "updated_at"
+        case orders
+    }
+}
+
+struct SupplierManifestExceptionRow: Decodable, Identifiable {
+    var id: String { exceptionId }
+    let exceptionId: String
+    let manifestId: String
+    let orderId: String
+    let reason: String
+    let metadata: String?
+    let attemptCount: Int64
+    let escalated: Bool
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case exceptionId = "exception_id"
+        case manifestId = "manifest_id"
+        case orderId = "order_id"
+        case reason, metadata
+        case attemptCount = "attempt_count"
+        case escalated
+        case createdAt = "created_at"
+    }
+}
+
+struct SupplierManifestExceptionsResponse: Decodable {
+    let exceptions: [SupplierManifestExceptionRow]
+}
+
+struct SupplierManifestInjectOrderRequest: Encodable {
+    let orderId: String
+    let volumeVu: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case volumeVu = "volume_vu"
+    }
+}
+
 // MARK: - Dispatch
 
 struct SupplierDispatchPreview: Decodable {
@@ -135,10 +215,33 @@ struct SupplierTopologyWarehouse: Decodable, Identifiable {
     let name: String
     let lat: Double
     let lng: Double
+    let coverageRadiusKm: Double
+    let isActive: Bool
+    let isOnShift: Bool
+    let transferMode: String?
+    let coLocateWithFactoryId: String?
 
     enum CodingKeys: String, CodingKey {
         case warehouseId = "warehouse_id"
         case name, lat, lng
+        case coverageRadiusKm = "coverage_radius_km"
+        case isActive = "is_active"
+        case isOnShift = "is_on_shift"
+        case transferMode = "transfer_mode"
+        case coLocateWithFactoryId = "co_locate_with_factory_id"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        warehouseId = try container.decode(String.self, forKey: .warehouseId)
+        name = try container.decode(String.self, forKey: .name)
+        lat = try container.decode(Double.self, forKey: .lat)
+        lng = try container.decode(Double.self, forKey: .lng)
+        coverageRadiusKm = try container.decodeIfPresent(Double.self, forKey: .coverageRadiusKm) ?? 50
+        isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
+        isOnShift = try container.decodeIfPresent(Bool.self, forKey: .isOnShift) ?? true
+        transferMode = try container.decodeIfPresent(String.self, forKey: .transferMode)
+        coLocateWithFactoryId = try container.decodeIfPresent(String.self, forKey: .coLocateWithFactoryId)
     }
 }
 
@@ -148,11 +251,61 @@ struct SupplierTopologyFactory: Decodable, Identifiable {
     let name: String
     let lat: Double
     let lng: Double
+    let isActive: Bool
 
     enum CodingKeys: String, CodingKey {
         case factoryId = "factory_id"
         case name, lat, lng
+        case isActive = "is_active"
     }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        factoryId = try container.decode(String.self, forKey: .factoryId)
+        name = try container.decode(String.self, forKey: .name)
+        lat = try container.decode(Double.self, forKey: .lat)
+        lng = try container.decode(Double.self, forKey: .lng)
+        isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
+    }
+}
+
+struct SupplierTopologyWarehouseInput: Encodable {
+    let warehouseId: String?
+    let name: String
+    let lat: Double
+    let lng: Double
+    let coverageRadiusKm: Double?
+    let isActive: Bool?
+    let isOnShift: Bool?
+    let transferMode: String?
+
+    enum CodingKeys: String, CodingKey {
+        case warehouseId = "warehouse_id"
+        case name, lat, lng
+        case coverageRadiusKm = "coverage_radius_km"
+        case isActive = "is_active"
+        case isOnShift = "is_on_shift"
+        case transferMode = "transfer_mode"
+    }
+}
+
+struct SupplierTopologyFactoryInput: Encodable {
+    let factoryId: String?
+    let name: String
+    let lat: Double
+    let lng: Double
+    let isActive: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case factoryId = "factory_id"
+        case name, lat, lng
+        case isActive = "is_active"
+    }
+}
+
+struct SupplierTopologyUpdateRequest: Encodable {
+    let warehouses: [SupplierTopologyWarehouseInput]
+    let factories: [SupplierTopologyFactoryInput]
 }
 
 struct SupplierTopologyResponse: Decodable {
@@ -726,6 +879,7 @@ struct SupplierOrgMember: Decodable, Identifiable {
     let supplierRole: String
     let assignedWarehouseId: String?
     let assignedFactoryId: String?
+    let isActive: Bool
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
@@ -733,6 +887,7 @@ struct SupplierOrgMember: Decodable, Identifiable {
         case supplierRole = "supplier_role"
         case assignedWarehouseId = "assigned_warehouse_id"
         case assignedFactoryId = "assigned_factory_id"
+        case isActive = "is_active"
     }
 }
 
@@ -754,6 +909,22 @@ struct SupplierOrgMemberCreateRequest: Encodable {
         case supplierRole = "supplier_role"
         case assignedWarehouseId = "assigned_warehouse_id"
         case assignedFactoryId = "assigned_factory_id"
+    }
+}
+
+struct SupplierOrgMemberUpdateRequest: Encodable {
+    let name: String?
+    let supplierRole: String?
+    let assignedWarehouseId: String?
+    let assignedFactoryId: String?
+    let isActive: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case supplierRole = "supplier_role"
+        case assignedWarehouseId = "assigned_warehouse_id"
+        case assignedFactoryId = "assigned_factory_id"
+        case isActive = "is_active"
     }
 }
 

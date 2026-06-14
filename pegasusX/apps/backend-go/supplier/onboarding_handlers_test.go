@@ -52,6 +52,31 @@ func (r *onboardingTestRepo) CreateOrgMember(_ context.Context, member CreateOrg
 	return nil
 }
 
+func (r *onboardingTestRepo) UpdateOrgMember(_ context.Context, supplierID, userID string, patch UpdateOrgMemberPatch, _ func(outbox.TxnBuffer) error) error {
+	for i := range r.members {
+		if r.members[i].UserID != userID || r.members[i].SupplierID != supplierID {
+			continue
+		}
+		if patch.Name != nil {
+			r.members[i].Name = *patch.Name
+		}
+		if patch.SupplierRole != nil {
+			r.members[i].SupplierRole = *patch.SupplierRole
+		}
+		if patch.AssignedWarehouseID != nil {
+			r.members[i].AssignedWarehouseID = *patch.AssignedWarehouseID
+		}
+		if patch.AssignedFactoryID != nil {
+			r.members[i].AssignedFactoryID = *patch.AssignedFactoryID
+		}
+		if patch.IsActive != nil {
+			r.members[i].IsActive = *patch.IsActive
+		}
+		return nil
+	}
+	return errOrgMemberNotFound
+}
+
 func (r *onboardingTestRepo) ListFleetDrivers(_ context.Context, _ string) ([]SupplierFleetDriver, error) {
 	out := make([]SupplierFleetDriver, len(r.drivers))
 	copy(out, r.drivers)

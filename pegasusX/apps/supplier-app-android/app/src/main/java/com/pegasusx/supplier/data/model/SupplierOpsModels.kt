@@ -44,6 +44,54 @@ data class SupplierManifestsResponse(
 )
 
 @Serializable
+data class SupplierManifestOrderWire(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("retailer_id") val retailerId: String? = null,
+    val amount: Long = 0,
+    val state: String = "",
+    val status: String = "",
+)
+
+@Serializable
+data class SupplierManifestDetail(
+    @SerialName("manifest_id") val manifestId: String,
+    val status: String = "",
+    val state: String = "",
+    @SerialName("orders_count") val ordersCount: Int = 0,
+    @SerialName("driver_id") val driverId: String? = null,
+    @SerialName("driver_name") val driverName: String = "",
+    @SerialName("vehicle_plate") val vehiclePlate: String? = null,
+    @SerialName("total_vu") val totalVu: Long = 0,
+    @SerialName("total_volume_vu") val totalVolumeVu: Double = 0.0,
+    @SerialName("max_volume_vu") val maxVolumeVu: Double = 0.0,
+    @SerialName("updated_at") val updatedAt: String = "",
+    val orders: List<SupplierManifestOrderWire> = emptyList(),
+)
+
+@Serializable
+data class SupplierManifestExceptionRow(
+    @SerialName("exception_id") val exceptionId: String,
+    @SerialName("manifest_id") val manifestId: String,
+    @SerialName("order_id") val orderId: String,
+    val reason: String = "",
+    val metadata: String? = null,
+    @SerialName("attempt_count") val attemptCount: Long = 0,
+    val escalated: Boolean = false,
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class SupplierManifestExceptionsResponse(
+    val exceptions: List<SupplierManifestExceptionRow> = emptyList(),
+)
+
+@Serializable
+data class SupplierManifestInjectOrderRequest(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("volume_vu") val volumeVu: Int? = null,
+)
+
+@Serializable
 data class SupplierDispatchPreview(
     @SerialName("undispatched_orders") val undispatchedOrders: List<JsonElement> = emptyList(),
     @SerialName("available_drivers") val availableDrivers: List<JsonElement> = emptyList(),
@@ -69,6 +117,11 @@ data class SupplierTopologyWarehouse(
     val name: String = "",
     val lat: Double = 0.0,
     val lng: Double = 0.0,
+    @SerialName("coverage_radius_km") val coverageRadiusKm: Double = 50.0,
+    @SerialName("is_active") val isActive: Boolean = true,
+    @SerialName("is_on_shift") val isOnShift: Boolean = true,
+    @SerialName("transfer_mode") val transferMode: String = "TRUCK",
+    @SerialName("co_locate_with_factory_id") val coLocateWithFactoryId: String? = null,
 )
 
 @Serializable
@@ -77,6 +130,35 @@ data class SupplierTopologyFactory(
     val name: String = "",
     val lat: Double = 0.0,
     val lng: Double = 0.0,
+    @SerialName("is_active") val isActive: Boolean = true,
+)
+
+@Serializable
+data class SupplierTopologyWarehouseInput(
+    @SerialName("warehouse_id") val warehouseId: String? = null,
+    val name: String,
+    val lat: Double,
+    val lng: Double,
+    @SerialName("coverage_radius_km") val coverageRadiusKm: Double? = null,
+    @SerialName("is_active") val isActive: Boolean? = null,
+    @SerialName("is_on_shift") val isOnShift: Boolean? = null,
+    @SerialName("transfer_mode") val transferMode: String? = null,
+    @SerialName("co_locate_with_factory_id") val coLocateWithFactoryId: String? = null,
+)
+
+@Serializable
+data class SupplierTopologyFactoryInput(
+    @SerialName("factory_id") val factoryId: String? = null,
+    val name: String,
+    val lat: Double,
+    val lng: Double,
+    @SerialName("is_active") val isActive: Boolean? = null,
+)
+
+@Serializable
+data class SupplierTopologyUpdateRequest(
+    val warehouses: List<SupplierTopologyWarehouseInput>,
+    val factories: List<SupplierTopologyFactoryInput>,
 )
 
 @Serializable
@@ -395,6 +477,7 @@ data class SupplierOrgMember(
     @SerialName("supplier_role") val supplierRole: String = "",
     @SerialName("assigned_warehouse_id") val assignedWarehouseId: String? = null,
     @SerialName("assigned_factory_id") val assignedFactoryId: String? = null,
+    @SerialName("is_active") val isActive: Boolean = true,
 )
 
 @Serializable
@@ -412,6 +495,15 @@ data class SupplierOrgMemberCreateRequest(
     @SerialName("supplier_role") val supplierRole: String,
     @SerialName("assigned_warehouse_id") val assignedWarehouseId: String? = null,
     @SerialName("assigned_factory_id") val assignedFactoryId: String? = null,
+)
+
+@Serializable
+data class SupplierOrgMemberUpdateRequest(
+    val name: String? = null,
+    @SerialName("supplier_role") val supplierRole: String? = null,
+    @SerialName("assigned_warehouse_id") val assignedWarehouseId: String? = null,
+    @SerialName("assigned_factory_id") val assignedFactoryId: String? = null,
+    @SerialName("is_active") val isActive: Boolean? = null,
 )
 
 @Serializable

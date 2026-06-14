@@ -941,6 +941,30 @@ func (a *inventoryAdapter) AdjustStock(ctx context.Context, inventoryID string, 
 	return a.svc.AdjustStock(ctx, inventoryID, delta, expectedVersion)
 }
 
+func (a *inventoryAdapter) FindByWarehouseProduct(ctx context.Context, warehouseID, productID string) (string, bool, error) {
+	level, err := a.svc.FindByWarehouseProduct(ctx, warehouseID, productID)
+	if err != nil {
+		return "", false, err
+	}
+	if level == nil {
+		return "", false, nil
+	}
+	return level.InventoryID, true, nil
+}
+
+func (a *inventoryAdapter) UpsertLevel(ctx context.Context, level supplier.InventoryLevelUpsert) error {
+	return a.svc.Upsert(ctx, inventory.Level{
+		InventoryID:      level.InventoryID,
+		ProductID:        level.ProductID,
+		WarehouseID:      level.WarehouseID,
+		SupplierID:       level.SupplierID,
+		QuantityOnHand:   level.QuantityOnHand,
+		QuantityReserved: level.QuantityReserved,
+		ReorderThreshold: level.ReorderThreshold,
+		Version:          level.Version,
+	})
+}
+
 // driverOrderListQuery returns a DriverOrderQuery backed by stale Spanner reads.
 func driverOrderListQuery(client *spanner.Client) driver.DriverOrderQuery {
 	return func(ctx context.Context, driverID string) ([]driver.DriverOrderView, error) {
@@ -2327,6 +2351,7 @@ func (r *inMemorySupplierRepo) UpdateProfile(ctx context.Context, p supplier.Pro
 			SupplierID:   p.SupplierID,
 			Phone:        strings.TrimSpace(p.Phone),
 			PasswordHash: p.AuthPasswordHash,
+			IsRegistered: p.IsRegistered,
 			IsConfigured: p.IsConfigured,
 		}
 	}
@@ -2402,6 +2427,52 @@ func (r *inMemorySupplierRepo) CreateOrgMember(ctx context.Context, member suppl
 		CreatedAt:           member.CreatedAt,
 		UpdatedAt:           member.UpdatedAt,
 	})
+	return nil
+}
+
+func (r *inMemorySupplierRepo) UpdateOrgMember(ctx context.Context, supplierID, userID string, patch supplier.UpdateOrgMemberPatch, emit func(outbox.TxnBuffer) error) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	rows := r.orgMembersBySupp[supplierID]
+	found := false
+	for i := range rows {
+		if rows[i].UserID != userID {
+			continue
+		}
+		found = true
+		if patch.Name != nil {
+			rows[i].Name = *patch.Name
+		}
+		if patch.SupplierRole != nil {
+			rows[i].SupplierRole = *patch.SupplierRole
+		}
+		if patch.AssignedWarehouseID != nil {
+			rows[i].AssignedWarehouseID = *patch.AssignedWarehouseID
+		}
+		if patch.AssignedFactoryID != nil {
+			rows[i].AssignedFactoryID = *patch.AssignedFactoryID
+		}
+		if patch.IsActive != nil {
+			rows[i].IsActive = *patch.IsActive
+		}
+		rows[i].UpdatedAt = time.Now().UTC()
+		r.orgMembersBySupp[supplierID][i] = rows[i]
+		break
+	}
+	if !found {
+		return fmt.Errorf("supplier_org_member_not_found")
+	}
+	if emit != nil {
+		txn := &inMemoryTxnBuffer{}
+		if err := emit(txn); err != nil {
+			return err
+		}
+		if r.outboxAppender != nil {
+			if err := r.outboxAppender.Append(ctx, txn.events); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 

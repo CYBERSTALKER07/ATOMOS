@@ -2,8 +2,10 @@ package supplier
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
@@ -103,6 +105,91 @@ func (r *SpannerRepository) CreateOrgMember(ctx context.Context, member CreateOr
 	})
 	if err != nil {
 		return fmt.Errorf("create supplier org member transaction: %w", err)
+	}
+	return nil
+}
+
+func (r *SpannerRepository) UpdateOrgMember(ctx context.Context, supplierID, userID string, patch UpdateOrgMemberPatch, emit func(outbox.TxnBuffer) error) error {
+	if r == nil || r.client == nil {
+		return fmt.Errorf("spanner supplier repository: nil client")
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	userID = strings.TrimSpace(userID)
+	if supplierID == "" || userID == "" {
+		return fmt.Errorf("update org member: supplier_id and user_id required")
+	}
+	if patch.isEmpty() {
+		return fmt.Errorf("update org member: empty patch")
+	}
+
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		var memberSupplierID string
+		row, err := txn.ReadRow(ctx, "SupplierUsers", spanner.Key{userID}, []string{"SupplierId"})
+		if err != nil {
+			if errors.Is(err, spanner.ErrRowNotFound) {
+				return errOrgMemberNotFound
+			}
+			return fmt.Errorf("read supplier org member: %w", err)
+		}
+		if err := row.Columns(&memberSupplierID); err != nil {
+			return fmt.Errorf("scan supplier org member: %w", err)
+		}
+		if memberSupplierID != supplierID {
+			return errOrgMemberNotFound
+		}
+
+		cols := []string{"UserId"}
+		vals := []any{userID}
+		now := time.Now().UTC()
+
+		if patch.Name != nil {
+			cols = append(cols, "Name")
+			vals = append(vals, *patch.Name)
+		}
+		if patch.SupplierRole != nil {
+			cols = append(cols, "SupplierRole")
+			vals = append(vals, string(*patch.SupplierRole))
+		}
+		if patch.AssignedWarehouseID != nil {
+			cols = append(cols, "AssignedWarehouseId")
+			vals = append(vals, nullableString(*patch.AssignedWarehouseID))
+		}
+		if patch.AssignedFactoryID != nil {
+			cols = append(cols, "AssignedFactoryId")
+			vals = append(vals, nullableString(*patch.AssignedFactoryID))
+		}
+		if patch.IsActive != nil {
+			cols = append(cols, "IsActive")
+			vals = append(vals, *patch.IsActive)
+		}
+		cols = append(cols, "UpdatedAt")
+		vals = append(vals, now)
+
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
+		mutations := []*spanner.Mutation{spanner.Update("SupplierUsers", cols, vals)}
+		for _, event := range buf.events {
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
+				"EventId":       event.EventID,
+				"AggregateType": event.AggregateType,
+				"AggregateId":   event.AggregateID,
+				"TopicName":     event.TopicName,
+				"Payload":       event.Payload,
+				"CreatedAt":     event.CreatedAt.UTC(),
+				"PublishedAt":   nil,
+			}))
+		}
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		if errors.Is(err, errOrgMemberNotFound) {
+			return err
+		}
+		return fmt.Errorf("update supplier org member transaction: %w", err)
 	}
 	return nil
 }

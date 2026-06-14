@@ -1,14 +1,39 @@
 package com.pegasusx.supplier.ui.screens.network
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.pegasusx.supplier.data.model.SupplierTopologyFactoryInput
 import com.pegasusx.supplier.data.model.SupplierTopologyResponse
+import com.pegasusx.supplier.data.model.SupplierTopologyUpdateRequest
+import com.pegasusx.supplier.data.model.SupplierTopologyWarehouseInput
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierStateKind
@@ -16,13 +41,62 @@ import com.pegasusx.supplier.ui.components.SupplierStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
+private data class WarehouseDraft(
+    val key: String,
+    val warehouseId: String?,
+    val name: String,
+    val lat: String,
+    val lng: String,
+    val coverageRadiusKm: String,
+)
+
+private data class FactoryDraft(
+    val key: String,
+    val factoryId: String?,
+    val name: String,
+    val lat: String,
+    val lng: String,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
     var topology by remember { mutableStateOf<SupplierTopologyResponse?>(null) }
     var loading by remember { mutableStateOf(true) }
+    var saving by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    val warehouseDrafts = remember { mutableStateListOf<WarehouseDraft>() }
+    val factoryDrafts = remember { mutableStateListOf<FactoryDraft>() }
     val scope = rememberCoroutineScope()
+
+    fun applyDrafts(data: SupplierTopologyResponse) {
+        warehouseDrafts.clear()
+        factoryDrafts.clear()
+        data.warehouses.forEachIndexed { index, node ->
+            warehouseDrafts.add(
+                WarehouseDraft(
+                    key = node.warehouseId.ifEmpty { "wh-$index" },
+                    warehouseId = node.warehouseId.takeIf { it.isNotBlank() },
+                    name = node.name,
+                    lat = node.lat.toString(),
+                    lng = node.lng.toString(),
+                    coverageRadiusKm = node.coverageRadiusKm.toString(),
+                ),
+            )
+        }
+        data.factories.forEachIndexed { index, node ->
+            factoryDrafts.add(
+                FactoryDraft(
+                    key = node.factoryId.ifEmpty { "fc-$index" },
+                    factoryId = node.factoryId.takeIf { it.isNotBlank() },
+                    name = node.name,
+                    lat = node.lat.toString(),
+                    lng = node.lng.toString(),
+                ),
+            )
+        }
+    }
 
     fun load() {
         scope.launch {
@@ -30,12 +104,66 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             error = null
             try {
                 val resp = ops.getTopology()
-                if (resp.isSuccessful) topology = resp.body()
-                else error = "Failed (${resp.code()})"
+                if (resp.isSuccessful) {
+                    val body = resp.body()
+                    topology = body
+                    if (body != null) applyDrafts(body)
+                } else {
+                    error = "Failed (${resp.code()})"
+                }
             } catch (e: Exception) {
                 error = e.message
             } finally {
                 loading = false
+            }
+        }
+    }
+
+    fun save() {
+        scope.launch {
+            saving = true
+            error = null
+            try {
+                if (warehouseDrafts.isEmpty()) {
+                    error = "At least one warehouse is required"
+                    return@launch
+                }
+                val request = SupplierTopologyUpdateRequest(
+                    warehouses = warehouseDrafts.map { draft ->
+                        SupplierTopologyWarehouseInput(
+                            warehouseId = draft.warehouseId,
+                            name = draft.name.trim(),
+                            lat = draft.lat.toDoubleOrNull() ?: throw IllegalArgumentException("Invalid latitude"),
+                            lng = draft.lng.toDoubleOrNull() ?: throw IllegalArgumentException("Invalid longitude"),
+                            coverageRadiusKm = draft.coverageRadiusKm.toDoubleOrNull() ?: 50.0,
+                            isActive = true,
+                            isOnShift = true,
+                            transferMode = "TRUCK",
+                        )
+                    },
+                    factories = factoryDrafts.map { draft ->
+                        SupplierTopologyFactoryInput(
+                            factoryId = draft.factoryId,
+                            name = draft.name.trim(),
+                            lat = draft.lat.toDoubleOrNull() ?: throw IllegalArgumentException("Invalid latitude"),
+                            lng = draft.lng.toDoubleOrNull() ?: throw IllegalArgumentException("Invalid longitude"),
+                            isActive = true,
+                        )
+                    },
+                )
+                val resp = ops.updateTopology(request)
+                if (resp.isSuccessful) {
+                    val body = resp.body()
+                    topology = body
+                    if (body != null) applyDrafts(body)
+                    editing = false
+                } else {
+                    error = "Save failed (${resp.code()})"
+                }
+            } catch (e: Exception) {
+                error = e.message ?: "save_failed"
+            } finally {
+                saving = false
             }
         }
     }
@@ -51,13 +179,27 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    if (!loading && error == null) {
+                        if (editing) {
+                            TextButton(enabled = !saving, onClick = {
+                                topology?.let { applyDrafts(it) }
+                                editing = false
+                            }) { Text("Cancel") }
+                            TextButton(enabled = !saving, onClick = { save() }) {
+                                Text(if (saving) "Saving…" else "Save")
+                            }
+                        } else {
+                            TextButton(onClick = { editing = true }) { Text("Edit") }
+                        }
+                    }
+                },
             )
         },
     ) { padding ->
-        val data = topology
         when {
             loading -> SupplierLoadingState("Loading topology…", "Node topology")
-            error != null -> SupplierStatePane(
+            error != null && topology == null -> SupplierStatePane(
                 kind = SupplierStateKind.Error,
                 headline = "Topology unavailable",
                 body = error!!,
@@ -65,28 +207,121 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            data == null || (data.warehouses.isEmpty() && data.factories.isEmpty()) -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
-                headline = "No nodes",
-                body = "No warehouses or factories configured.",
-                modifier = Modifier.padding(padding),
-            )
-            else -> LazyColumn(
+            editing -> LazyColumn(
                 modifier = Modifier.padding(padding).fillMaxSize(),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
-                item { SectionLabel("Warehouses (${data.warehouses.size})") }
-                items(data.warehouses, key = { it.warehouseId }) { node ->
-                    NodeCard(node.name, node.lat, node.lng)
+                if (error != null) {
+                    item { Text(error!!, color = MaterialTheme.colorScheme.error) }
                 }
-                item { SectionLabel("Factories (${data.factories.size})") }
-                items(data.factories, key = { it.factoryId }) { node ->
-                    NodeCard(node.name, node.lat, node.lng)
+                item { SectionLabel("Warehouses") }
+                items(warehouseDrafts, key = { it.key }) { draft ->
+                    ElevatedCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                            DraftField("Name", draft.name) { value ->
+                                val index = warehouseDrafts.indexOfFirst { it.key == draft.key }
+                                if (index >= 0) warehouseDrafts[index] = draft.copy(name = value)
+                            }
+                            DraftField("Latitude", draft.lat) { value ->
+                                val index = warehouseDrafts.indexOfFirst { it.key == draft.key }
+                                if (index >= 0) warehouseDrafts[index] = draft.copy(lat = value)
+                            }
+                            DraftField("Longitude", draft.lng) { value ->
+                                val index = warehouseDrafts.indexOfFirst { it.key == draft.key }
+                                if (index >= 0) warehouseDrafts[index] = draft.copy(lng = value)
+                            }
+                            DraftField("Coverage km", draft.coverageRadiusKm) { value ->
+                                val index = warehouseDrafts.indexOfFirst { it.key == draft.key }
+                                if (index >= 0) warehouseDrafts[index] = draft.copy(coverageRadiusKm = value)
+                            }
+                        }
+                    }
+                }
+                item {
+                    Button(onClick = {
+                        warehouseDrafts.add(
+                            WarehouseDraft(
+                                key = "new-wh-${System.currentTimeMillis()}",
+                                warehouseId = null,
+                                name = "Warehouse ${warehouseDrafts.size + 1}",
+                                lat = "41.2995",
+                                lng = "69.2401",
+                                coverageRadiusKm = "50",
+                            ),
+                        )
+                    }) { Text("Add warehouse") }
+                }
+                item { SectionLabel("Factories") }
+                items(factoryDrafts, key = { it.key }) { draft ->
+                    ElevatedCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                            DraftField("Name", draft.name) { value ->
+                                val index = factoryDrafts.indexOfFirst { it.key == draft.key }
+                                if (index >= 0) factoryDrafts[index] = draft.copy(name = value)
+                            }
+                            DraftField("Latitude", draft.lat) { value ->
+                                val index = factoryDrafts.indexOfFirst { it.key == draft.key }
+                                if (index >= 0) factoryDrafts[index] = draft.copy(lat = value)
+                            }
+                            DraftField("Longitude", draft.lng) { value ->
+                                val index = factoryDrafts.indexOfFirst { it.key == draft.key }
+                                if (index >= 0) factoryDrafts[index] = draft.copy(lng = value)
+                            }
+                        }
+                    }
+                }
+                item {
+                    Button(onClick = {
+                        factoryDrafts.add(
+                            FactoryDraft(
+                                key = "new-fc-${System.currentTimeMillis()}",
+                                factoryId = null,
+                                name = "Factory ${factoryDrafts.size + 1}",
+                                lat = "41.3111",
+                                lng = "69.2797",
+                            ),
+                        )
+                    }) { Text("Add factory") }
+                }
+            }
+            topology == null || (topology!!.warehouses.isEmpty() && topology!!.factories.isEmpty()) -> SupplierStatePane(
+                kind = SupplierStateKind.Empty,
+                headline = "No nodes",
+                body = "No warehouses or factories configured.",
+                modifier = Modifier.padding(padding),
+                actionLabel = "Configure",
+                onAction = { editing = true },
+            )
+            else -> {
+                val data = topology!!
+                LazyColumn(
+                    modifier = Modifier.padding(padding).fillMaxSize(),
+                    contentPadding = PaddingValues(PegasusSpacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                ) {
+                    item { SectionLabel("Warehouses (${data.warehouses.size})") }
+                    items(data.warehouses, key = { it.warehouseId }) { node ->
+                        NodeCard(node.name, node.lat, node.lng, "${node.coverageRadiusKm} km coverage")
+                    }
+                    item { SectionLabel("Factories (${data.factories.size})") }
+                    items(data.factories, key = { it.factoryId }) { node ->
+                        NodeCard(node.name, node.lat, node.lng, if (node.isActive) "Active" else "Inactive")
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun DraftField(label: String, value: String, onValueChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -95,7 +330,7 @@ private fun SectionLabel(title: String) {
 }
 
 @Composable
-private fun NodeCard(name: String, lat: Double, lng: Double) {
+private fun NodeCard(name: String, lat: Double, lng: Double, meta: String) {
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(PegasusSpacing.lg)) {
             Text(name.ifEmpty { "Unnamed node" }, style = MaterialTheme.typography.titleMedium)
@@ -104,6 +339,7 @@ private fun NodeCard(name: String, lat: Double, lng: Double) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
+            Text(meta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
         }
     }
 }

@@ -143,6 +143,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := assertSupplierPortalAPIs(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("supplier portal apis: %w", err)
 	}
+	if err := runSupplierIntelligenceE2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("supplier intelligence: %w", err)
+	}
 	if err := runFactoryOps(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("factory ops: %w", err)
 	}
@@ -882,6 +885,64 @@ func assertSupplierPortalAPIs(ctx context.Context, client *http.Client, base, co
 			return fmt.Errorf("GET %s status %d body %s", url, status, string(body))
 		}
 	}
+	return nil
+}
+
+func runSupplierIntelligenceE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	if err := runSupplierAnalyticsE2E(ctx, client, base, cookie); err != nil {
+		return err
+	}
+	if err := runSupplierInventoryImportE2E(ctx, client, base, cookie); err != nil {
+		return err
+	}
+	return nil
+}
+
+func runSupplierAnalyticsE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	checks := []string{
+		base + "/v1/supplier/analytics/velocity",
+		base + "/v1/supplier/analytics/revenue",
+		base + "/v1/supplier/analytics/demand/today",
+		base + "/v1/supplier/analytics/demand/history",
+	}
+	for _, url := range checks {
+		status, body, _, err := clientDo(ctx, client, http.MethodGet, url, nil, cookie, "")
+		if err != nil {
+			return err
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("GET %s status %d body %s", url, status, string(body))
+		}
+	}
+	fmt.Println("PX_E2E_SUPPLIER_ANALYTICS_OK")
+	return nil
+}
+
+func runSupplierInventoryImportE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	csvBody := fmt.Sprintf(
+		"product_id,warehouse_id,quantity_on_hand,reorder_threshold\nSSMR-SKU-1,%s,50,5\n",
+		demoWarehouseID(),
+	)
+	status, respBody, _, err := clientDoContentType(
+		ctx, client, http.MethodPost, base+"/v1/supplier/inventory/import",
+		[]byte(csvBody), "text/csv", cookie, "ssmr-supplier-inventory-import",
+	)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("supplier inventory import status %d body %s", status, string(respBody))
+	}
+	var result struct {
+		Applied int `json:"applied"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return fmt.Errorf("decode supplier inventory import: %w", err)
+	}
+	if result.Applied < 1 {
+		return fmt.Errorf("supplier inventory import applied=%d body %s", result.Applied, string(respBody))
+	}
+	fmt.Println("PX_E2E_SUPPLIER_INVENTORY_IMPORT_OK")
 	return nil
 }
 
@@ -2385,6 +2446,14 @@ func retryAfterSeconds(hdrs http.Header, fallback int) time.Duration {
 }
 
 func clientDo(ctx context.Context, client *http.Client, method, url string, body []byte, bearerOrCookie, idempotencyKey string) (int, []byte, http.Header, error) {
+	contentType := "application/json"
+	if body == nil {
+		contentType = ""
+	}
+	return clientDoContentType(ctx, client, method, url, body, contentType, bearerOrCookie, idempotencyKey)
+}
+
+func clientDoContentType(ctx context.Context, client *http.Client, method, url string, body []byte, contentType, bearerOrCookie, idempotencyKey string) (int, []byte, http.Header, error) {
 	var reader io.Reader
 	if body != nil {
 		reader = bytes.NewReader(body)
@@ -2393,8 +2462,8 @@ func clientDo(ctx context.Context, client *http.Client, method, url string, body
 	if err != nil {
 		return 0, nil, nil, err
 	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+	if body != nil && strings.TrimSpace(contentType) != "" {
+		req.Header.Set("Content-Type", contentType)
 	}
 	if idempotencyKey != "" {
 		req.Header.Set("Idempotency-Key", idempotencyKey)

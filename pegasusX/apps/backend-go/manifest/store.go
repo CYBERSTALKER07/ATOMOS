@@ -260,6 +260,69 @@ func (s *Store) ListSupplierManifests(ctx context.Context, supplierID string) ([
 	return rows, nil
 }
 
+// ListSupplierManifestExceptions returns loading-gate exceptions for one supplier.
+func (s *Store) ListSupplierManifestExceptions(ctx context.Context, supplierID string, limit int) ([]SupplierExceptionRow, error) {
+	if s == nil || s.client == nil {
+		return nil, fmt.Errorf("manifest store: nil client")
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	if supplierID == "" {
+		return nil, fmt.Errorf("manifest store: supplier id required")
+	}
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT ExceptionId, OrderId, ManifestId, SupplierId, Reason, Metadata, AttemptCount, EscalatedAt, CreatedAt
+		      FROM ManifestExceptions@{FORCE_INDEX=Idx_ManifestExceptions_BySupplier}
+		      WHERE SupplierId = @supplierId
+		      ORDER BY CreatedAt DESC
+		      LIMIT @limit`,
+		Params: map[string]any{
+			"supplierId": supplierID,
+			"limit":      int64(limit),
+		},
+	}
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	defer iter.Stop()
+
+	rows := make([]SupplierExceptionRow, 0)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return rows, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("list supplier manifest exceptions: %w", err)
+		}
+
+		var parsed SupplierExceptionRow
+		var metadata spanner.NullString
+		var escalatedAt spanner.NullTime
+		if err := row.Columns(
+			&parsed.ExceptionID,
+			&parsed.OrderID,
+			&parsed.ManifestID,
+			&parsed.SupplierID,
+			&parsed.Reason,
+			&metadata,
+			&parsed.AttemptCount,
+			&escalatedAt,
+			&parsed.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan supplier manifest exception: %w", err)
+		}
+		if metadata.Valid {
+			parsed.Metadata = metadata.StringVal
+		}
+		if escalatedAt.Valid {
+			parsed.EscalatedAt = &escalatedAt.Time
+		}
+		rows = append(rows, parsed)
+	}
+}
+
 // DriversOnActiveManifests returns driver IDs that already hold an open manifest.
 // Active means DRAFT, LOADING, SEALED, or DISPATCHED — drivers are not re-dispatched until COMPLETED.
 func (s *Store) DriversOnActiveManifests(ctx context.Context, supplierID, warehouseID string, driverIDs []string) (map[string]bool, error) {

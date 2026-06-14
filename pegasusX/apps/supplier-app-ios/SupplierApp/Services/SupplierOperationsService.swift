@@ -41,6 +41,48 @@ enum SupplierOperationsService {
         return resp.manifests
     }
 
+    static func manifestDetail(_ manifestId: String) async throws -> SupplierManifestDetail {
+        try await APIClient.shared.get("v1/supplier/manifests/\(manifestId)")
+    }
+
+    static func startManifestLoading(_ manifestId: String, idempotencyKey: String) async throws {
+        try await APIClient.shared.postVoid(
+            "v1/supplier/manifests/\(manifestId)/start-loading",
+            body: [String: String](),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func injectManifestOrder(
+        _ manifestId: String,
+        request: SupplierManifestInjectOrderRequest,
+        idempotencyKey: String
+    ) async throws {
+        try await APIClient.shared.postVoid(
+            "v1/supplier/manifests/\(manifestId)/inject-order",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func sealManifest(_ manifestId: String, idempotencyKey: String) async throws {
+        try await APIClient.shared.postVoid(
+            "v1/supplier/manifests/\(manifestId)/seal",
+            body: [String: String](),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func manifestExceptions(escalatedOnly: Bool = false) async throws -> [SupplierManifestExceptionRow] {
+        var query: [String: String] = [:]
+        if escalatedOnly { query["escalated"] = "true" }
+        let resp: SupplierManifestExceptionsResponse = try await APIClient.shared.get(
+            "v1/supplier/manifest-exceptions",
+            query: query
+        )
+        return resp.exceptions
+    }
+
     static func dispatchPreview(warehouseId: String? = nil) async throws -> SupplierDispatchPreview {
         var query: [String: String] = [:]
         if let warehouseId, !warehouseId.isEmpty { query["warehouse_id"] = warehouseId }
@@ -69,6 +111,10 @@ enum SupplierOperationsService {
 
     static func topology() async throws -> SupplierTopologyResponse {
         try await APIClient.shared.get("v1/supplier/topology")
+    }
+
+    static func updateTopology(_ request: SupplierTopologyUpdateRequest) async throws -> SupplierTopologyResponse {
+        try await APIClient.shared.put("v1/supplier/topology", body: request)
     }
 
     static func supplyLanes() async throws -> [SupplierSupplyLaneRow] {
@@ -133,6 +179,14 @@ enum SupplierOperationsService {
         let resp: SupplierOrgMembersResponse = try await APIClient.shared.post(
             "v1/supplier/org/members",
             body: request,
+            idempotencyKey: idempotencyKey
+        )
+        return resp.items
+    }
+
+    static func deactivateOrgMember(_ userId: String, idempotencyKey: String) async throws -> [SupplierOrgMember] {
+        let resp: SupplierOrgMembersResponse = try await APIClient.shared.delete(
+            "v1/supplier/org/members/\(userId)",
             idempotencyKey: idempotencyKey
         )
         return resp.items

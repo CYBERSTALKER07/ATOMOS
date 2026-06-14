@@ -1,7 +1,7 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ApiClient } from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierTopologyFactory } from "@pegasusx/types";
 import { PortalSurface } from "../_components/PortalSurface";
@@ -30,6 +30,11 @@ export default function FactoriesPage() {
       empty={factories.length === 0}
       emptyMessage="No factories configured. Add nodes on the topology surface."
     >
+      <div className="mb-4">
+        <Link href="/topology" className="md-btn md-btn-tonal md-typescale-label-large px-4 py-2 inline-flex">
+          Edit topology
+        </Link>
+      </div>
       <ul className="md-card divide-y divide-[var(--color-md-outline-variant)]">
         {factories.map((f) => (
           <li key={f.factory_id || f.name} className="p-4 md-typescale-body-medium">

@@ -9,6 +9,18 @@ import { PortalSurface } from "../_components/PortalSurface";
 
 const api = createSupplierApi();
 
+function formatMoney(order: SupplierOrder) {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: order.currency,
+      maximumFractionDigits: 2,
+    }).format(order.total_minor / 100);
+  } catch {
+    return `${order.total_minor} ${order.currency}`;
+  }
+}
+
 export default function ReturnsPage() {
   const [orders, setOrders] = useState<SupplierOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,13 +46,21 @@ export default function ReturnsPage() {
       <ul className="md-card divide-y divide-[var(--color-md-outline-variant)]">
         {orders.map((order) => (
           <li key={order.order_id} className="p-4 md-typescale-body-medium">
-            <div className="font-mono text-[var(--color-md-primary)]">{order.order_id}</div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="font-mono text-[var(--color-md-primary)]">{order.order_id}</div>
+              <Link href={`/orders?filter=CANCELLED`} className="text-[var(--color-md-primary)] underline md-typescale-label-large">
+                Open in orders
+              </Link>
+            </div>
             <div className="flex items-center gap-2 mt-1">
               <StatusBadge state={order.status} />
               {order.decision ? (
                 <span className="text-[var(--color-md-outline)]">{order.decision}</span>
               ) : null}
             </div>
+            <p className="mt-2 text-[var(--color-md-outline)]">
+              Retailer {order.retailer_id} · {formatMoney(order)} · updated {order.updated_at}
+            </p>
             {order.note ? <p className="mt-2">{order.note}</p> : null}
           </li>
         ))}

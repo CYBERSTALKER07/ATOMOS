@@ -22,6 +22,8 @@ import type {
   SettlementAuthorityResponse,
   SupplierBillingSetupRequest,
   SupplierBillingSetupResponse,
+  SupplierBusinessSetupRequest,
+  SupplierBusinessSetupResponse,
   SupplierConfigureRequest,
   SupplierConfigureResponse,
   SupplierDashboardResponse,
@@ -42,16 +44,26 @@ import type {
   SupplierLoginRequest,
   SupplierLoginResponse,
   SupplierManifestsResponse,
+  SupplierManifestDetail,
+  SupplierManifestExceptionsResponse,
+  SupplierManifestInjectOrderRequest,
+  SupplierManifestSealResponse,
   SupplierSupplyLanesResponse,
   SupplierAIRecommendationDecisionRequest,
   SupplierAIRecommendationDecisionResponse,
   SupplierAIRecommendationsQuery,
   SupplierActivityResponse,
   SupplierAIRecommendationsResponse,
+  SupplierAnalyticsVelocityResponse,
+  SupplierAnalyticsRevenueResponse,
+  SupplierDemandSummaryResponse,
+  SupplierDemandHistoryResponse,
+  SupplierInventoryImportResult,
   SupplierDispatchPreview,
   SupplierDispatchExecuteRequest,
   SupplierDispatchExecuteResponse,
   SupplierOrgMemberCreateRequest,
+  SupplierOrgMemberUpdateRequest,
   SupplierOrgMembersResponse,
   SupplierOrdersResponse,
   SupplierOrder,
@@ -68,6 +80,7 @@ import type {
   SupplierPromotionsResponse,
   SupplierRegisterRequest,
   SupplierRegisterResponse,
+  SupplierInventoryResponse,
   SupplierTopologyResponse,
   SupplierTopologyUpdateRequest,
   WarehouseDispatchLock,
@@ -104,6 +117,7 @@ export interface ApiClientConfig {
 
 interface RequestOptions {
   body?: unknown;
+  rawBody?: string;
   idempotencyKey?: string;
   requiresAuth?: boolean;
   headers?: HeadersInit;
@@ -156,10 +170,12 @@ export class ApiClient {
   }
 
   async setupSupplierBusiness(
-    request: Record<string, unknown>,
-  ): Promise<void> {
-    return this.request<void>("/v1/supplier/business/setup", "POST", {
+    request: SupplierBusinessSetupRequest,
+    idempotencyKey?: string,
+  ): Promise<SupplierBusinessSetupResponse> {
+    return this.request<SupplierBusinessSetupResponse>("/v1/supplier/business/setup", "POST", {
       body: request,
+      idempotencyKey,
     });
   }
 
@@ -179,6 +195,10 @@ export class ApiClient {
     return this.request<SupplierTopologyResponse>("/v1/supplier/topology", "PUT", { body: request });
   }
 
+  async getSupplierInventory(): Promise<SupplierInventoryResponse> {
+    return this.request<SupplierInventoryResponse>("/v1/supplier/inventory", "GET");
+  }
+
   async getSupplierOrgMembers(): Promise<SupplierOrgMembersResponse> {
     return this.request<SupplierOrgMembersResponse>("/v1/supplier/org/members", "GET");
   }
@@ -189,6 +209,26 @@ export class ApiClient {
   ): Promise<SupplierOrgMembersResponse> {
     return this.request<SupplierOrgMembersResponse>("/v1/supplier/org/members", "POST", {
       body: request,
+      idempotencyKey,
+    });
+  }
+
+  async updateSupplierOrgMember(
+    userId: string,
+    request: SupplierOrgMemberUpdateRequest,
+    idempotencyKey: string,
+  ): Promise<SupplierOrgMembersResponse> {
+    return this.request<SupplierOrgMembersResponse>(`/v1/supplier/org/members/${encodeURIComponent(userId)}`, "PATCH", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async deactivateSupplierOrgMember(
+    userId: string,
+    idempotencyKey: string,
+  ): Promise<SupplierOrgMembersResponse> {
+    return this.request<SupplierOrgMembersResponse>(`/v1/supplier/org/members/${encodeURIComponent(userId)}`, "DELETE", {
       idempotencyKey,
     });
   }
@@ -310,6 +350,33 @@ export class ApiClient {
     return this.request<SupplierDashboardResponse>("/v1/supplier/dashboard", "GET");
   }
 
+  async getSupplierAnalyticsVelocity(): Promise<SupplierAnalyticsVelocityResponse> {
+    return this.request<SupplierAnalyticsVelocityResponse>("/v1/supplier/analytics/velocity", "GET");
+  }
+
+  async getSupplierAnalyticsRevenue(): Promise<SupplierAnalyticsRevenueResponse> {
+    return this.request<SupplierAnalyticsRevenueResponse>("/v1/supplier/analytics/revenue", "GET");
+  }
+
+  async getSupplierDemandToday(): Promise<SupplierDemandSummaryResponse> {
+    return this.request<SupplierDemandSummaryResponse>("/v1/supplier/analytics/demand/today", "GET");
+  }
+
+  async getSupplierDemandHistory(): Promise<SupplierDemandHistoryResponse> {
+    return this.request<SupplierDemandHistoryResponse>("/v1/supplier/analytics/demand/history", "GET");
+  }
+
+  async importSupplierInventoryCSV(
+    csvBody: string,
+    idempotencyKey: string,
+  ): Promise<SupplierInventoryImportResult> {
+    return this.request<SupplierInventoryImportResult>("/v1/supplier/inventory/import", "POST", {
+      rawBody: csvBody,
+      idempotencyKey,
+      headers: { "Content-Type": "text/csv" },
+    });
+  }
+
   async updateSupplierInventory(
     request: Record<string, unknown>,
   ): Promise<void> {
@@ -324,6 +391,40 @@ export class ApiClient {
 
   async getSupplierManifests(): Promise<SupplierManifestsResponse> {
     return this.request<SupplierManifestsResponse>("/v1/supplier/manifests", "GET");
+  }
+
+  async getSupplierManifestDetail(manifestId: string): Promise<SupplierManifestDetail> {
+    return this.request<SupplierManifestDetail>(`/v1/supplier/manifests/${encodeURIComponent(manifestId)}`, "GET");
+  }
+
+  async startSupplierManifestLoading(manifestId: string, idempotencyKey: string): Promise<{ status?: string; manifest_id?: string; state?: string }> {
+    return this.request(`/v1/supplier/manifests/${encodeURIComponent(manifestId)}/start-loading`, "POST", {
+      idempotencyKey,
+    });
+  }
+
+  async injectSupplierManifestOrder(
+    manifestId: string,
+    request: SupplierManifestInjectOrderRequest,
+    idempotencyKey: string,
+  ): Promise<{ status?: string; manifest_id?: string; order_id?: string }> {
+    return this.request(`/v1/supplier/manifests/${encodeURIComponent(manifestId)}/inject-order`, "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async sealSupplierManifest(manifestId: string, idempotencyKey: string): Promise<SupplierManifestSealResponse> {
+    return this.request<SupplierManifestSealResponse>(`/v1/supplier/manifests/${encodeURIComponent(manifestId)}/seal`, "POST", {
+      idempotencyKey,
+    });
+  }
+
+  async getSupplierManifestExceptions(params?: { escalated?: boolean }): Promise<SupplierManifestExceptionsResponse> {
+    const query = new URLSearchParams();
+    if (params?.escalated) query.set("escalated", "true");
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return this.request<SupplierManifestExceptionsResponse>(`/v1/supplier/manifest-exceptions${suffix}`, "GET");
   }
 
   async getSupplierSupplyLanes(): Promise<SupplierSupplyLanesResponse> {
@@ -730,14 +831,16 @@ export class ApiClient {
   ): Promise<TResponse> {
     const fetchImpl = this.config.fetchImpl ?? fetch;
     const requiresAuth = options.requiresAuth ?? true;
-    const headers = this.buildHeaders(options.headers, requiresAuth, options.idempotencyKey);
+    const headers = this.buildHeaders(options.headers, requiresAuth, options.idempotencyKey, options.rawBody !== undefined);
 
     const init: RequestInit = {
       method,
       headers,
       credentials: "include",
     };
-    if (options.body !== undefined) {
+    if (options.rawBody !== undefined) {
+      init.body = options.rawBody;
+    } else if (options.body !== undefined) {
       init.body = JSON.stringify(options.body);
     }
 
@@ -751,9 +854,11 @@ export class ApiClient {
     return payload as TResponse;
   }
 
-  private buildHeaders(extra: HeadersInit | undefined, requiresAuth: boolean, idempotencyKey: string | undefined): Headers {
+  private buildHeaders(extra: HeadersInit | undefined, requiresAuth: boolean, idempotencyKey: string | undefined, hasRawBody: boolean): Headers {
     const headers = new Headers(extra);
-    headers.set("Content-Type", "application/json");
+    if (!hasRawBody) {
+      headers.set("Content-Type", "application/json");
+    }
 
     if (requiresAuth && this.config.getAuthToken) {
       const token = this.config.getAuthToken();

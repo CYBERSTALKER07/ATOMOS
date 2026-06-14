@@ -88,7 +88,7 @@ export default function RegisterPage() {
       if (data.token) {
         persistSession(data.token);
       }
-      window.location.href = "/setup/billing";
+      window.location.href = "/setup/business";
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : String(err));
     } finally {

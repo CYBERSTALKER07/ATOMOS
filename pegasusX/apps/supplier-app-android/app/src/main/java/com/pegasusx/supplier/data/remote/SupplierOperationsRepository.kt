@@ -28,6 +28,24 @@ class SupplierOperationsRepository @Inject constructor(
 
     suspend fun getManifests(): Response<SupplierManifestsResponse> = api.getManifests()
 
+    suspend fun getManifestDetail(manifestId: String): Response<SupplierManifestDetail> =
+        api.getManifestDetail(manifestId)
+
+    suspend fun startManifestLoading(manifestId: String, idempotencyKey: String): Response<JsonElement> =
+        api.startManifestLoading(manifestId, idempotencyKey)
+
+    suspend fun injectManifestOrder(
+        manifestId: String,
+        body: SupplierManifestInjectOrderRequest,
+        idempotencyKey: String,
+    ): Response<JsonElement> = api.injectManifestOrder(manifestId, idempotencyKey, body)
+
+    suspend fun sealManifest(manifestId: String, idempotencyKey: String): Response<JsonElement> =
+        api.sealManifest(manifestId, idempotencyKey)
+
+    suspend fun getManifestExceptions(escalated: Boolean = false): Response<SupplierManifestExceptionsResponse> =
+        api.getManifestExceptions(if (escalated) true else null)
+
     suspend fun getDispatchPreview(warehouseId: String? = null): Response<SupplierDispatchPreview> =
         api.getDispatchPreview(warehouseId)
 
@@ -47,6 +65,9 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun getDashboard(): Response<SupplierDashboard> = api.getDashboard()
 
     suspend fun getTopology(): Response<SupplierTopologyResponse> = api.getTopology()
+
+    suspend fun updateTopology(body: SupplierTopologyUpdateRequest): Response<SupplierTopologyResponse> =
+        api.updateTopology(body)
 
     suspend fun getSupplyLanes(): Response<SupplierSupplyLanesResponse> = api.getSupplyLanes()
 
@@ -84,6 +105,17 @@ class SupplierOperationsRepository @Inject constructor(
         body: SupplierOrgMemberCreateRequest,
         idempotencyKey: String,
     ): Response<SupplierOrgMembersResponse> = api.createOrgMember(idempotencyKey, body)
+
+    suspend fun updateOrgMember(
+        userId: String,
+        body: SupplierOrgMemberUpdateRequest,
+        idempotencyKey: String,
+    ): Response<SupplierOrgMembersResponse> = api.updateOrgMember(userId, idempotencyKey, body)
+
+    suspend fun deactivateOrgMember(
+        userId: String,
+        idempotencyKey: String,
+    ): Response<SupplierOrgMembersResponse> = api.deactivateOrgMember(userId, idempotencyKey)
 
     suspend fun approveEarlyComplete(
         driverId: String,

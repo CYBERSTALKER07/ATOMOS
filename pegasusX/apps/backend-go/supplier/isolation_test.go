@@ -43,6 +43,9 @@ func (r *dualSupplierRepo) ListOrgMembers(context.Context, string) ([]SupplierOr
 func (r *dualSupplierRepo) CreateOrgMember(context.Context, CreateOrgMemberParams, func(outbox.TxnBuffer) error) error {
 	return nil
 }
+func (r *dualSupplierRepo) UpdateOrgMember(context.Context, string, string, UpdateOrgMemberPatch, func(outbox.TxnBuffer) error) error {
+	return nil
+}
 func (r *dualSupplierRepo) ListFleetDrivers(context.Context, string) ([]SupplierFleetDriver, error) {
 	return nil, nil
 }
@@ -118,8 +121,8 @@ func TestHandleTopologyGet_IsolatesByJWTSupplierID(t *testing.T) {
 		t.Fatal("expected warehouses for supplier-b")
 	}
 	first, _ := warehouses[0].(map[string]any)
-	name, _ := first["Name"].(string)
+	name, _ := first["name"].(string)
 	if name != "WH supplier-b" {
-		t.Fatalf("warehouse Name=%v want WH supplier-b", first["Name"])
+		t.Fatalf("warehouse name=%v want WH supplier-b", first["name"])
 	}
 }

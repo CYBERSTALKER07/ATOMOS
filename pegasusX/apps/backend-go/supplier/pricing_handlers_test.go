@@ -51,6 +51,10 @@ func (r *pricingTestRepo) CreateOrgMember(_ context.Context, _ CreateOrgMemberPa
 	return nil
 }
 
+func (r *pricingTestRepo) UpdateOrgMember(_ context.Context, _, _ string, _ UpdateOrgMemberPatch, _ func(outbox.TxnBuffer) error) error {
+	return nil
+}
+
 func (r *pricingTestRepo) ListFleetDrivers(_ context.Context, _ string) ([]SupplierFleetDriver, error) {
 	return nil, nil
 }

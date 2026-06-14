@@ -80,6 +80,18 @@ type SupplierExceptionRow struct {
 	UpdatedAt  string `json:"updated_at"`
 }
 
+// SupplierManifestExceptionRow is a manifest loading-gate exception from ManifestExceptions.
+type SupplierManifestExceptionRow struct {
+	ExceptionID  string `json:"exception_id"`
+	ManifestID   string `json:"manifest_id"`
+	OrderID      string `json:"order_id"`
+	Reason       string `json:"reason"`
+	Metadata     string `json:"metadata,omitempty"`
+	AttemptCount int64  `json:"attempt_count"`
+	Escalated    bool   `json:"escalated"`
+	CreatedAt    string `json:"created_at"`
+}
+
 type supplierDashboardDetail struct {
 	supplierDashboardResponse
 	OrdersByStatus         map[string]int          `json:"orders_by_status"`
@@ -181,6 +193,23 @@ func (s *Service) HandleExceptions(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.log.WarnContext(r.Context(), "supplier exceptions load failed", "supplier_id", sid, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_exceptions_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"exceptions": rows})
+}
+
+// HandleManifestExceptions serves GET /v1/supplier/manifest-exceptions.
+func (s *Service) HandleManifestExceptions(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	sid := s.scopedSupplierID(r)
+	escalatedOnly := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("escalated")), "true")
+	rows, err := s.listSupplierManifestExceptions(r.Context(), sid, escalatedOnly)
+	if err != nil {
+		s.log.WarnContext(r.Context(), "supplier manifest exceptions load failed", "supplier_id", sid, "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_manifest_exceptions_failed"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"exceptions": rows})
@@ -453,6 +482,39 @@ func (s *Service) listSupplierExceptions(ctx context.Context, supplierID string)
 	sort.Slice(rows, func(i, j int) bool { return rows[i].UpdatedAt > rows[j].UpdatedAt })
 	if len(rows) > 100 {
 		rows = rows[:100]
+	}
+	return rows, nil
+}
+
+func (s *Service) listSupplierManifestExceptions(ctx context.Context, supplierID string, escalatedOnly bool) ([]SupplierManifestExceptionRow, error) {
+	store := s.manifestStore
+	if store == nil && s.portalSpanner != nil {
+		store = manifest.NewStore(s.portalSpanner)
+	}
+	if store == nil {
+		return []SupplierManifestExceptionRow{}, nil
+	}
+
+	raw, err := store.ListSupplierManifestExceptions(ctx, supplierID, 200)
+	if err != nil {
+		return nil, err
+	}
+
+	rows := make([]SupplierManifestExceptionRow, 0, len(raw))
+	for _, row := range raw {
+		if escalatedOnly && row.EscalatedAt == nil {
+			continue
+		}
+		rows = append(rows, SupplierManifestExceptionRow{
+			ExceptionID:  row.ExceptionID,
+			ManifestID:   row.ManifestID,
+			OrderID:      row.OrderID,
+			Reason:       row.Reason,
+			Metadata:     row.Metadata,
+			AttemptCount: row.AttemptCount,
+			Escalated:    row.EscalatedAt != nil,
+			CreatedAt:    row.CreatedAt.UTC().Format(time.RFC3339Nano),
+		})
 	}
 	return rows, nil
 }

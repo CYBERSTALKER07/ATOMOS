@@ -39,6 +39,19 @@ interface SupplierApi {
         @Body body: SupplierOrgMemberCreateRequest,
     ): Response<SupplierOrgMembersResponse>
 
+    @PATCH("v1/supplier/org/members/{userId}")
+    suspend fun updateOrgMember(
+        @Path("userId") userId: String,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+        @Body body: SupplierOrgMemberUpdateRequest,
+    ): Response<SupplierOrgMembersResponse>
+
+    @DELETE("v1/supplier/org/members/{userId}")
+    suspend fun deactivateOrgMember(
+        @Path("userId") userId: String,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<SupplierOrgMembersResponse>
+
     @GET("v1/supplier/orders")
     suspend fun getOrders(
         @Query("status") status: String? = null,
@@ -145,6 +158,33 @@ interface SupplierApi {
     @GET("v1/supplier/manifests")
     suspend fun getManifests(): Response<SupplierManifestsResponse>
 
+    @GET("v1/supplier/manifests/{manifestId}")
+    suspend fun getManifestDetail(@Path("manifestId") manifestId: String): Response<SupplierManifestDetail>
+
+    @POST("v1/supplier/manifests/{manifestId}/start-loading")
+    suspend fun startManifestLoading(
+        @Path("manifestId") manifestId: String,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<JsonElement>
+
+    @POST("v1/supplier/manifests/{manifestId}/inject-order")
+    suspend fun injectManifestOrder(
+        @Path("manifestId") manifestId: String,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+        @Body body: SupplierManifestInjectOrderRequest,
+    ): Response<JsonElement>
+
+    @POST("v1/supplier/manifests/{manifestId}/seal")
+    suspend fun sealManifest(
+        @Path("manifestId") manifestId: String,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<JsonElement>
+
+    @GET("v1/supplier/manifest-exceptions")
+    suspend fun getManifestExceptions(
+        @Query("escalated") escalated: Boolean? = null,
+    ): Response<SupplierManifestExceptionsResponse>
+
     @GET("v1/supplier/dispatch/preview")
     suspend fun getDispatchPreview(@Query("warehouse_id") warehouseId: String? = null): Response<SupplierDispatchPreview>
 
@@ -167,7 +207,7 @@ interface SupplierApi {
     suspend fun getTopology(): Response<SupplierTopologyResponse>
 
     @PUT("v1/supplier/topology")
-    suspend fun updateTopology(@Body body: JsonElement): Response<SupplierTopologyResponse>
+    suspend fun updateTopology(@Body body: SupplierTopologyUpdateRequest): Response<SupplierTopologyResponse>
 
     @GET("v1/supplier/supply-lanes")
     suspend fun getSupplyLanes(): Response<SupplierSupplyLanesResponse>
