@@ -15,3 +15,13 @@ func TestHandleWarehouseFleetLiveMap_methodNotAllowed(t *testing.T) {
 		t.Fatalf("status=%d want=%d", rec.Code, http.StatusMethodNotAllowed)
 	}
 }
+
+func TestHandleWarehouseFleetLiveMap_missingWarehouseID(t *testing.T) {
+	svc := NewService(ServiceConfig{})
+	req := httptest.NewRequest(http.MethodGet, "/v1/warehouse/ops/fleet/live-map", nil)
+	rec := httptest.NewRecorder()
+	svc.HandleWarehouseFleetLiveMap(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want=%d", rec.Code, http.StatusBadRequest)
+	}
+}

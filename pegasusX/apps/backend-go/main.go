@@ -93,6 +93,10 @@ func main() {
 		go warehouse.StartAutoDispatchWorker(ctx, app.WarehouseService, warehouse.AutoDispatchWorkerConfig{})
 		slog.Info("warehouse auto-dispatch worker started")
 	}
+	if app.ReplenishmentEngine != nil && os.Getenv("REPLENISHMENT_CRON_DISABLED") != "1" {
+		app.ReplenishmentEngine.StartCron(ctx)
+		slog.Info("replenishment engine cron started")
+	}
 
 	// Phase 1/2 Integration: Kafka Analytics Stream Processor
 	streamProcessor := kafka.NewAnalyticsStreamProcessor()

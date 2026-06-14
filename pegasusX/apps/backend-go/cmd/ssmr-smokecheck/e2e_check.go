@@ -117,6 +117,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("warehouse dispatch execute: %w", err)
 	}
+	if err := runWarehouseFleetLiveMapE2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("warehouse fleet live map: %w", err)
+	}
 	if err := runWarehouseDispatchLock(ctx, client, base, cookie, orderID); err != nil {
 		return fmt.Errorf("warehouse dispatch lock: %w", err)
 	}
@@ -194,6 +197,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	fmt.Println("PX_E2E_REPLENISH_OK")
 	fmt.Println("PX_E2E_REPLENISH_COLOCATE_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_FLEET_MGMT_OK")
+	fmt.Println("PX_E2E_WAREHOUSE_FLEET_LIVE_MAP_OK")
 	fmt.Println("PX_E2E_DISPATCH_CAPACITY_OK")
 	fmt.Println("PX_E2E_PAYLOAD_SEAL_FLOWS_OK")
 	fmt.Println("PX_E2E_REASSIGN_FLOWS_OK")
@@ -1202,6 +1206,34 @@ func runWarehouseReplenishmentInsightE2E(ctx context.Context, client *http.Clien
 		return fmt.Errorf("replenishment insight approve status %d body %s", status, string(respBody))
 	}
 	fmt.Println("PX_E2E_WAREHOUSE_REPLENISHMENT_OK")
+	return nil
+}
+
+func runWarehouseFleetLiveMapE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	whID := demoWarehouseID()
+	url := base + "/v1/warehouse/ops/fleet/live-map?warehouse_id=" + whID
+	status, respBody, _, err := clientDo(ctx, client, http.MethodGet, url, nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse fleet live map status %d body %s", status, string(respBody))
+	}
+	var liveMap struct {
+		Routes      []json.RawMessage `json:"routes"`
+		WarehouseID string            `json:"warehouse_id"`
+		FetchedAt   string            `json:"fetched_at"`
+	}
+	if err := json.Unmarshal(respBody, &liveMap); err != nil {
+		return fmt.Errorf("decode warehouse fleet live map: %w", err)
+	}
+	if strings.TrimSpace(liveMap.WarehouseID) != whID {
+		return fmt.Errorf("warehouse fleet live map warehouse_id=%q want %q", liveMap.WarehouseID, whID)
+	}
+	if strings.TrimSpace(liveMap.FetchedAt) == "" {
+		return fmt.Errorf("warehouse fleet live map missing fetched_at")
+	}
+	fmt.Println("PX_E2E_WAREHOUSE_FLEET_LIVE_MAP_OK")
 	return nil
 }
 

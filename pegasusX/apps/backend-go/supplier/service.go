@@ -29,6 +29,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -229,8 +230,9 @@ type Service struct {
 	portalSupplierHub      *ws.Hub
 	optimizerClient   *optimizerclient.Client
 	planCounters      *plan.SourceCounters
-	fallbackDepotLat  float64
-	fallbackDepotLng  float64
+	fallbackDepotLat      float64
+	fallbackDepotLng      float64
+	replenishmentEngine   *replenishment.Engine
 }
 
 const supplierWebSocketSessionTTL = 10 * time.Minute

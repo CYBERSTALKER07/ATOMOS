@@ -40,6 +40,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
+	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
 	"github.com/pegasusx/pegasusx/apps/backend-go/storage"
@@ -156,6 +157,7 @@ type App struct {
 	Spanner                *spanner.Client
 	OptimizerClient        *optimizerclient.Client
 	DispatchPlanCounters   *plan.SourceCounters
+	ReplenishmentEngine    *replenishment.Engine
 	cleanup                []func()
 	// Spanner *spanner.Client (added when the Spanner client lands)
 	// Kafka   *kafka.SyncWriter
@@ -538,15 +540,21 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	dispatchCounters := &plan.SourceCounters{}
 
+	var replenishmentEngine *replenishment.Engine
+	if spannerClient != nil {
+		replenishmentEngine = replenishment.NewEngine(spannerClient, log)
+	}
+
 	supplierSvc.SetPortalOps(supplier.PortalOpsConfig{
 		Spanner:              spannerClient,
 		ManifestStore:        manifestStore,
 		RouteGeometryBuilder: routeGeometryBuilder,
 		SupplierHub:          supplierHub,
-		OptimizerClient:  optimizerCli,
-		PlanCounters:     dispatchCounters,
-		FallbackDepotLat: cfg.DeliveryZoneCenterLat,
-		FallbackDepotLng: cfg.DeliveryZoneCenterLng,
+		OptimizerClient:      optimizerCli,
+		PlanCounters:         dispatchCounters,
+		FallbackDepotLat:     cfg.DeliveryZoneCenterLat,
+		FallbackDepotLng:     cfg.DeliveryZoneCenterLng,
+		ReplenishmentEngine:  replenishmentEngine,
 	})
 	retailerSvc.SetOrderLifecycle(orderSvc)
 
@@ -907,6 +915,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Spanner:                spannerClient,
 		OptimizerClient:        optimizerCli,
 		DispatchPlanCounters:   dispatchCounters,
+		ReplenishmentEngine:    replenishmentEngine,
 		cleanup:                cleanup,
 	}, nil
 }

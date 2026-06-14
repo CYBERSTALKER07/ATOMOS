@@ -16,6 +16,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"google.golang.org/api/iterator"
@@ -29,8 +30,9 @@ type PortalOpsConfig struct {
 	SupplierHub          *ws.Hub
 	OptimizerClient      *optimizerclient.Client
 	PlanCounters         *plan.SourceCounters
-	FallbackDepotLat     float64
-	FallbackDepotLng     float64
+	FallbackDepotLat      float64
+	FallbackDepotLng      float64
+	ReplenishmentEngine   *replenishment.Engine
 }
 
 // SetPortalOps attaches cross-cutting deps used by supplier admin-parity handlers.
@@ -43,6 +45,7 @@ func (s *Service) SetPortalOps(cfg PortalOpsConfig) {
 	s.planCounters = cfg.PlanCounters
 	s.fallbackDepotLat = cfg.FallbackDepotLat
 	s.fallbackDepotLng = cfg.FallbackDepotLng
+	s.replenishmentEngine = cfg.ReplenishmentEngine
 }
 
 // EmpathyAdoption is the supplier-scoped empathy metrics snapshot.
@@ -180,6 +183,16 @@ func (s *Service) HandleReplenishmentTrigger(w http.ResponseWriter, r *http.Requ
 
 	sid := s.scopedSupplierID(r)
 	ctx := r.Context()
+
+	var cycleResult replenishment.CycleResult
+	if s.replenishmentEngine != nil {
+		var cycleErr error
+		cycleResult, cycleErr = s.replenishmentEngine.RunForSupplier(ctx, sid)
+		if cycleErr != nil {
+			s.log.WarnContext(ctx, "replenishment engine cycle failed", "supplier_id", sid, "err", cycleErr)
+		}
+	}
+
 	topology, err := s.repo.GetTopology(ctx, sid)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "topology_load_failed"})
@@ -257,9 +270,12 @@ func (s *Service) HandleReplenishmentTrigger(w http.ResponseWriter, r *http.Requ
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":       "triggered",
-		"request_id":   requestID,
-		"warehouse_id": warehouseID,
+		"status":              "triggered",
+		"request_id":          requestID,
+		"warehouse_id":        warehouseID,
+		"insights_generated":  cycleResult.InsightsGenerated,
+		"transfers_created":   cycleResult.TransfersCreated,
+		"warehouses_scanned":  cycleResult.WarehousesScanned,
 	})
 }
 
