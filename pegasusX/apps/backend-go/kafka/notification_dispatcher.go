@@ -23,6 +23,7 @@ type DispatcherDeps struct {
 	FactoryHub   *ws.Hub
 	PayloadHub   *ws.Hub
 	Push         *notifications.PushBridge
+	Inbox        *notifications.Service
 }
 
 // NotificationDispatcher consumes generic events from Kafka and routes
@@ -426,18 +427,24 @@ func (d *NotificationDispatcher) fanOrderParties(ctx context.Context, supplierID
 }
 
 func (d *NotificationDispatcher) broadcastSupplier(ctx context.Context, supplierID string, payload []byte) {
-	if supplierID == "" || d.deps.SupplierHub == nil {
+	if supplierID == "" {
 		return
 	}
-	d.deps.SupplierHub.Broadcast(ctx, "supplier:"+supplierID, payload)
+	if d.deps.SupplierHub != nil {
+		d.deps.SupplierHub.Broadcast(ctx, "supplier:"+supplierID, payload)
+	}
+	d.persistInbox(ctx, supplierID, "ADMIN", payload)
 }
 
 func (d *NotificationDispatcher) broadcastRetailer(ctx context.Context, retailerID string, payload []byte) {
-	if retailerID == "" || d.deps.RetailerHub == nil {
+	if retailerID == "" {
 		return
 	}
-	d.deps.RetailerHub.Broadcast(ctx, "retailer:"+retailerID, payload)
+	if d.deps.RetailerHub != nil {
+		d.deps.RetailerHub.Broadcast(ctx, "retailer:"+retailerID, payload)
+	}
 	d.pushFCM(ctx, retailerID, "RETAILER", payload)
+	d.persistInbox(ctx, retailerID, "RETAILER", payload)
 }
 
 func (d *NotificationDispatcher) broadcastRetailerPromoSupplier(ctx context.Context, supplierID string, payload []byte) {
@@ -448,11 +455,14 @@ func (d *NotificationDispatcher) broadcastRetailerPromoSupplier(ctx context.Cont
 }
 
 func (d *NotificationDispatcher) broadcastDriver(ctx context.Context, driverID string, payload []byte) {
-	if driverID == "" || d.deps.DriverHub == nil {
+	if driverID == "" {
 		return
 	}
-	d.deps.DriverHub.Broadcast(ctx, "driver:"+driverID, payload)
+	if d.deps.DriverHub != nil {
+		d.deps.DriverHub.Broadcast(ctx, "driver:"+driverID, payload)
+	}
 	d.pushFCM(ctx, driverID, "DRIVER", payload)
+	d.persistInbox(ctx, driverID, "DRIVER", payload)
 }
 
 func (d *NotificationDispatcher) pushFCM(ctx context.Context, actorID, actorRole string, payload []byte) {
@@ -482,8 +492,11 @@ func (d *NotificationDispatcher) broadcastFactory(ctx context.Context, factoryID
 }
 
 func (d *NotificationDispatcher) broadcastPayload(ctx context.Context, supplierID string, payload []byte) {
-	if supplierID == "" || d.deps.PayloadHub == nil {
+	if supplierID == "" {
 		return
 	}
-	d.deps.PayloadHub.Broadcast(ctx, "payload:"+supplierID, payload)
+	if d.deps.PayloadHub != nil {
+		d.deps.PayloadHub.Broadcast(ctx, "payload:"+supplierID, payload)
+	}
+	d.persistInbox(ctx, supplierID, "PAYLOAD", payload)
 }

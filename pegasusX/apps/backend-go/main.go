@@ -184,10 +184,11 @@ func main() {
 		FirebaseVerifier:    firebaseVerifier,
 	})
 	supplierroutes.RegisterRoutes(r, supplierroutes.Deps{
-		Service:      app.SupplierService,
-		OrderService: app.OrderService,
-		JWTSecret:    cfg.JWTSecret,
-		Spanner:      app.Spanner,
+		Service:           app.SupplierService,
+		OrderService:      app.OrderService,
+		NotificationInbox: app.NotificationInbox,
+		JWTSecret:         cfg.JWTSecret,
+		Spanner:           app.Spanner,
 	})
 	promotionroutes.RegisterRoutes(r, promotionroutes.Deps{
 		Service:   app.PromotionService,

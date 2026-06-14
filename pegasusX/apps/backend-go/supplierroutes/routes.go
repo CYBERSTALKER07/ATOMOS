@@ -6,16 +6,18 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 )
 
 // Deps is the narrow dependency contract for this routes package.
 type Deps struct {
-	Service      *supplier.Service
-	OrderService *order.Service
-	JWTSecret    string
-	Spanner      *spanner.Client
+	Service          *supplier.Service
+	OrderService     *order.Service
+	NotificationInbox *notifications.InboxHandlers
+	JWTSecret        string
+	Spanner          *spanner.Client
 }
 
 // RegisterRoutes mounts:
@@ -119,5 +121,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/replenishment/trigger", d.Service.HandleReplenishmentTrigger)
 		gr.Get("/v1/supplier/fleet/orders", d.Service.HandleSupplierFleetOrders)
 		gr.Get("/v1/supplier/fleet/live-map", d.Service.HandleSupplierFleetLiveMap)
+		if d.NotificationInbox != nil {
+			gr.Get("/v1/user/notifications", d.NotificationInbox.HandleList)
+			gr.Post("/v1/user/notifications/read", d.NotificationInbox.HandleMarkRead)
+		}
 	})
 }

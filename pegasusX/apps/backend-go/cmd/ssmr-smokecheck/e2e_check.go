@@ -120,6 +120,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseFleetLiveMapE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse fleet live map: %w", err)
 	}
+	if err := runNotificationInboxE2E(ctx, client, base, cookie, retailerToken); err != nil {
+		return fmt.Errorf("notification inbox: %w", err)
+	}
 	if err := runWarehouseDispatchLock(ctx, client, base, cookie, orderID); err != nil {
 		return fmt.Errorf("warehouse dispatch lock: %w", err)
 	}
@@ -198,6 +201,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	fmt.Println("PX_E2E_REPLENISH_COLOCATE_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_FLEET_MGMT_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_FLEET_LIVE_MAP_OK")
+	fmt.Println("PX_E2E_NOTIFICATION_INBOX_OK")
 	fmt.Println("PX_E2E_DISPATCH_CAPACITY_OK")
 	fmt.Println("PX_E2E_PAYLOAD_SEAL_FLOWS_OK")
 	fmt.Println("PX_E2E_REASSIGN_FLOWS_OK")
@@ -1234,6 +1238,44 @@ func runWarehouseFleetLiveMapE2E(ctx context.Context, client *http.Client, base,
 		return fmt.Errorf("warehouse fleet live map missing fetched_at")
 	}
 	fmt.Println("PX_E2E_WAREHOUSE_FLEET_LIVE_MAP_OK")
+	return nil
+}
+
+func runNotificationInboxE2E(ctx context.Context, client *http.Client, base, supplierCookie, retailerToken string) error {
+	deadline := time.Now().Add(12 * time.Second)
+	for time.Now().Before(deadline) {
+		if err := assertInboxHasRows(ctx, client, base, supplierCookie, "supplier"); err == nil {
+			if retailerToken != "" {
+				if err := assertInboxHasRows(ctx, client, base, retailerToken, "retailer"); err != nil {
+					time.Sleep(400 * time.Millisecond)
+					continue
+				}
+			}
+			fmt.Println("PX_E2E_NOTIFICATION_INBOX_OK")
+			return nil
+		}
+		time.Sleep(400 * time.Millisecond)
+	}
+	return fmt.Errorf("notification inbox empty after kafka fanout window")
+}
+
+func assertInboxHasRows(ctx context.Context, client *http.Client, base, authToken, label string) error {
+	status, respBody, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/user/notifications?limit=10", nil, authToken, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("%s inbox status %d body %s", label, status, string(respBody))
+	}
+	var inbox struct {
+		Notifications []json.RawMessage `json:"notifications"`
+	}
+	if err := json.Unmarshal(respBody, &inbox); err != nil {
+		return fmt.Errorf("decode %s inbox: %w", label, err)
+	}
+	if len(inbox.Notifications) == 0 {
+		return fmt.Errorf("%s inbox empty", label)
+	}
 	return nil
 }
 

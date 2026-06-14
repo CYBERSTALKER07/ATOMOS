@@ -104,7 +104,7 @@ This is the "list of all the features in the backend" that apps/roles depend on.
 - Cache invalidate post-commit (Redis Pub/Sub).
 - Client policy / version gating / SYSTEM_APP_OUTDATED / safe deferral.
 - FCM/APNs for driver + retailer.
-- Status: core `implemented` (PX9-D, PX11-B/C, PX12-C2 etc.); ai-worker TopicFreezeLocks consumer + full durable notification inbox `TODO` (PX-ECO-012/014).
+- Status: core `implemented` (PX9-D, PX11-B/C, PX12-C2 etc.); **durable notification inbox WIRED** (`kafka/notification_inbox.go` + `persistInbox` on dispatcher fanout; supplier `supplierroutes` + existing driver/retailer/payload GET routes); SSMR `PX_E2E_NOTIFICATION_INBOX_OK`. Remaining: ai-worker TopicFreezeLocks consumer (`TODO` PX-ECO-012/014).
 
 ### 1.11 Cross-Cutting (Scaffold vs Durable, Single-Tenant, Infra)
 - Scaffold in-memory fallbacks (bootstrap + per-domain) for SSMR/dev; strict `REQUIRE_INFRA_ADAPTERS=true` forces Spanner/Redis/Kafka.
@@ -246,7 +246,7 @@ Phases are **vertical clusters**. Each phase = backend E2E (SSMR first) + all af
 
 ### Subsequent Phases (example order; adjust live):
 - Analytics/Insights/Treasury depth (native + portal) + AI recs consumer wiring.
-- Full ai-worker consumers (TopicFreezeLocks, any remaining) + notification inbox surfaces.
+- Full ai-worker consumers (TopicFreezeLocks, any remaining). ~~notification inbox surfaces~~ **WIRED** (dispatcher persist + SSMR `PX_E2E_NOTIFICATION_INBOX_OK`).
 - Platform/client-policy + version gating + safe update deferral across all native + web (if not 100%).
 - Exception depth (more supplier native panels if gaps) + broadcast/payment-bypass (portal-only).
 - Performance/hardening/observability cutover prep (load certs, chaos, DR).
@@ -265,7 +265,7 @@ Phases are **vertical clusters**. Each phase = backend E2E (SSMR first) + all af
 ---
 
 ## 4. Gaps Identified in Current Audit (2026-06-14)
-- **Real functional gaps (non-scaffold):** Replenishment insights durability + native actions; ai-worker freeze-lock consumer + notification inbox; some deeper factory/warehouse analytics native; full cross-client for the dispatch capacity + multi-truck seal work that is currently in flight.
+- **Real functional gaps (non-scaffold):** Replenishment insights durability + native actions (**WH1–WH2 WIRED**); ai-worker freeze-lock consumer; some deeper factory/warehouse analytics native; full cross-client for the dispatch capacity + multi-truck seal work that is currently in flight. ~~notification inbox~~ **WIRED** (dispatcher → Spanner `Notifications` + supplier inbox routes).
 - **Scaffold comments:** Expected and documented (bootstrap + domain repos). Not bugs — dev/SSMR path. Strict mode + cloud cutover removes them.
 - **UI/TO DOs in clients:** Mostly dev conveniences (recaptcha TODOs in web logins, Firebase SPM comments in retailer iOS) — non-blocking for core flows.
 - **Intentional v1 deltas (P2, do not close unless Boss directs):** Supplier portal depth vs full pegasus ~59 (some ops portal-only); no Rust sidecar; thinner native vs portal for supplier; FCM mainly driver+retailer; payme/click scaffolds.

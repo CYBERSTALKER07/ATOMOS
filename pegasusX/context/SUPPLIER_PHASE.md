@@ -102,4 +102,15 @@ cd pegasusX && make parity-contract-full
 4. ~~Phase 3 staff/org lifecycle + notification inbox fix~~ — **done this session**
 5. ~~Phase 4 intelligence & catalog depth (analytics, CSV import)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_ANALYTICS_OK`, `PX_E2E_SUPPLIER_INVENTORY_IMPORT_OK`)
 6. ~~SSMR / parity verification~~ — **green** (`make test-ssmr-infra`, `make parity-contract-full`)
-7. **Cross-role next** — notification inbox persistence, factory/warehouse analytics native depth, or Boss-picked role row per `VEGETABLE_PLAN.md` §3 (warehouse WH1–WH3 **WIRED** in `WAREHOUSE_PHASE.md`)
+7. **Cross-role next** — factory/warehouse analytics native depth, or Boss-picked role row per `VEGETABLE_PLAN.md` §3 (warehouse WH1–WH3 **WIRED**; notification inbox persistence **WIRED** — `PX_E2E_NOTIFICATION_INBOX_OK`)
+
+---
+
+## Cross-role — Notification inbox persistence (WIRED)
+
+| ID | Feature | Backend | Portal / clients | Status |
+|----|---------|---------|------------------|--------|
+| NI-01 | Dispatcher → Spanner inbox | `kafka/notification_inbox.go` `persistInbox`; `ShouldPersistInboxEvent` skips telemetry | — | **WIRED** |
+| NI-02 | Supplier inbox routes | `supplierroutes` GET/POST `/v1/user/notifications` | `useNotifications.ts` | **WIRED** |
+| NI-03 | Retailer / driver / payload read paths | existing `retailerroutes` / `driverroutes` / `payloaderroutes` | native inbox screens | **WIRED** (read; rows now populate) |
+| NI-04 | SSMR | `runNotificationInboxE2E` polls supplier + retailer inbox after order flow | — | **E2E_SSMR_GREEN** (`PX_E2E_NOTIFICATION_INBOX_OK`) |

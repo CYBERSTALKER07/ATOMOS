@@ -126,6 +126,7 @@ type App struct {
 	PromotionAudience      *promotion.AudienceResolver
 	InventoryService       *inventory.Service
 	NotificationService    *notifications.Service
+	NotificationInbox      *notifications.InboxHandlers
 	SupplierService        *supplier.Service
 	RetailerService        *retailer.Service
 	RetailerProximity      *retailer.RetailerProximityService
@@ -430,10 +431,12 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 
 	var notifSvc *notifications.Service
+	var notifInbox *notifications.InboxHandlers
 	var notifAdapter *notificationReaderAdapter
 	if spannerClient != nil {
 		notifRepo := notifications.NewSpannerRepository(spannerClient)
 		notifSvc = notifications.NewService(notifRepo, cacheClient, log)
+		notifInbox = &notifications.InboxHandlers{Service: notifSvc, Log: log}
 		notifAdapter = &notificationReaderAdapter{svc: notifSvc}
 		log.Info("notification service enabled", "backend", "spanner")
 	}
@@ -822,13 +825,14 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			)
 		} else {
 			dispatcher := kafka.NewNotificationDispatcher(kafka.DispatcherDeps{
-				RetailerHub:       retailerHub,
-				SupplierHub:       supplierHub,
-				DriverHub:         driverHub,
-				WarehouseHub:      warehouseHub,
-				FactoryHub:        factoryHub,
-				PayloadHub:        payloadHub,
-				Push: pushBridge,
+				RetailerHub:  retailerHub,
+				SupplierHub:  supplierHub,
+				DriverHub:    driverHub,
+				WarehouseHub: warehouseHub,
+				FactoryHub:   factoryHub,
+				PayloadHub:   payloadHub,
+				Push:         pushBridge,
+				Inbox:        notifSvc,
 			})
 			notificationConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
@@ -885,6 +889,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		PromotionAudience:      promotionAudience,
 		InventoryService:       inventorySvc,
 		NotificationService:    notifSvc,
+		NotificationInbox:      notifInbox,
 		SupplierService:        supplierSvc,
 		RetailerService:        retailerSvc,
 		DriverService:          driverSvc,
