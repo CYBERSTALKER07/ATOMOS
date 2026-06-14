@@ -171,6 +171,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runSupplierIntelligenceE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("supplier intelligence: %w", err)
 	}
+	if err := runSupplierOperationsE2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("supplier operations: %w", err)
+	}
 	if err := runFactoryOps(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("factory ops: %w", err)
 	}
@@ -944,6 +947,28 @@ func runSupplierAnalyticsE2E(ctx context.Context, client *http.Client, base, coo
 		}
 	}
 	fmt.Println("PX_E2E_SUPPLIER_ANALYTICS_OK")
+	return nil
+}
+
+func runSupplierOperationsE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	status, body, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/supplier/empathy/adoption", nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("GET empathy/adoption status %d body %s", status, string(body))
+	}
+
+	broadcastPayload := []byte(`{"title":"SSMR ops","body":"broadcast smoke","role":"ALL"}`)
+	status, body, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/broadcast", broadcastPayload, cookie, "application/json")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("POST broadcast status %d body %s", status, string(body))
+	}
+
+	fmt.Println("PX_E2E_SUPPLIER_OPERATIONS_OK")
 	return nil
 }
 

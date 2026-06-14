@@ -36,7 +36,7 @@ enum SupplierPortalFeature: String, CaseIterable, Identifiable {
         case .chargebacks:
             "Chargeback review and treasury actions are managed on the supplier portal."
         case .paymentBypass:
-            "Payment bypass and broadcast controls are portal-only in v1."
+            "Payment bypass is available in Operations on native and web."
         }
     }
 }

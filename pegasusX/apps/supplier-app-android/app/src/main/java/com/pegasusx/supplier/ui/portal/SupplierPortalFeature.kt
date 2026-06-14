@@ -50,7 +50,7 @@ enum class SupplierPortalFeature(
             REGISTER -> "Supplier registration runs on the supplier web portal."
             BUSINESS_SETUP -> "Business profile setup is completed on the supplier web portal."
             CHARGEBACKS -> "Chargeback review and treasury actions are managed on the supplier portal."
-            PAYMENT_BYPASS -> "Payment bypass and broadcast controls are portal-only in v1."
+            PAYMENT_BYPASS -> "Payment bypass is available in Operations on native and web."
         }
 
     companion object {
