@@ -30,6 +30,7 @@
 | PX-FREEZE-02 | Producer emits entity scope | `warehouse/service.go` `emitDispatchLockAcquireOutbox` | **WIRED** |
 | PX-FREEZE-03 | ai-worker consumer | `apps/ai-worker/freeze_registry.go` + `TopicFreezeLocks` reader | **WIRED** |
 | PX-FREEZE-04 | ORDER_CREATED guard | `handleOrderCreated` skips synthesis when frozen | **WIRED** |
+| PX-FREEZE-05 | SSMR topic provision | `infra/docker-compose.ssmr.yml` kafka-init + `KAFKA_TOPIC_FREEZE_LOCKS` + `ssmr-smokecheck kafka` expected set | **CLOSED** |
 
 ---
 

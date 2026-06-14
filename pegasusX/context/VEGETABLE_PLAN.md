@@ -104,7 +104,7 @@ This is the "list of all the features in the backend" that apps/roles depend on.
 - Cache invalidate post-commit (Redis Pub/Sub).
 - Client policy / version gating / SYSTEM_APP_OUTDATED / safe deferral.
 - FCM/APNs for driver + retailer.
-- Status: core `implemented` (PX9-D, PX11-B/C, PX12-C2 etc.); **durable notification inbox WIRED**; **ai-worker TopicFreezeLocks consumer WIRED** (`apps/ai-worker/freeze_registry.go`). Remaining: deeper native analytics screens (P2 UI freeze).
+- Status: core `implemented` (PX9-D, PX11-B/C, PX12-C2 etc.); **durable notification inbox E2E_SSMR_GREEN** (unified `/v1/user/notifications` mount + strong Spanner reads); **ai-worker TopicFreezeLocks consumer WIRED** (`apps/ai-worker/freeze_registry.go`); **SSMR kafka-init provisions `pegasusx-freeze-locks`** (2026-06-15). Remaining: deeper native analytics screens (P2 UI freeze).
 
 ### 1.11 Cross-Cutting (Scaffold vs Durable, Single-Tenant, Infra)
 - Scaffold in-memory fallbacks (bootstrap + per-domain) for SSMR/dev; strict `REQUIRE_INFRA_ADAPTERS=true` forces Spanner/Redis/Kafka.

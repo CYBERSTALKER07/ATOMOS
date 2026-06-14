@@ -350,6 +350,7 @@ func expectedTopics(cfg *bootstrap.Config) []string {
 		envOr("KAFKA_TOPIC_SPATIAL", "ssmr.events.spatial"),
 		envOr("KAFKA_TOPIC_REALTIME", "ssmr.events.realtime"),
 		envOr("KAFKA_TOPIC_WEBHOOKS", "ssmr.events.webhooks"),
+		envOr("KAFKA_TOPIC_FREEZE_LOCKS", "pegasusx-freeze-locks"),
 	}
 	out := make([]string, 0, len(topics))
 	for _, topic := range topics {
