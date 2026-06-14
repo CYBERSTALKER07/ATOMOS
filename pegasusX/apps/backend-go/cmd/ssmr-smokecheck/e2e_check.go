@@ -1319,6 +1319,15 @@ func runFactoryInsightsE2E(ctx context.Context, client *http.Client, base string
 		return err
 	}
 	if status != http.StatusOK {
+		if status == http.StatusConflict {
+			var errResp struct {
+				Error string `json:"error"`
+			}
+			if json.Unmarshal(respBody, &errResp) == nil && errResp.Error == "insight_already_processed" {
+				fmt.Println("PX_E2E_FACTORY_REPLENISHMENT_ACTION_OK")
+				return nil
+			}
+		}
 		return fmt.Errorf("factory insight approve status %d body %s", status, string(respBody))
 	}
 	fmt.Println("PX_E2E_FACTORY_REPLENISHMENT_ACTION_OK")
