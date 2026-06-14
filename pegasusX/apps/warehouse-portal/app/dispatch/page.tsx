@@ -397,6 +397,11 @@ export default function DispatchPage() {
                 {capacityPrompt.map(warning => (
                   <li key={warning.driver_id} className="font-mono text-xs">
                     {formatVU(warning.loaded_vu)} VU loaded / {formatVU(warning.effective_max_vu)} VU effective max
+                    {warning.suggested_unselect_order_ids?.length ? (
+                      <div className="mt-1 text-(--muted)">
+                        Suggested unselect: {warning.suggested_unselect_order_ids.join(', ')}
+                      </div>
+                    ) : null}
                   </li>
                 ))}
               </ul>

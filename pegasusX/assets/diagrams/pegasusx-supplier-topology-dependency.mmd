@@ -1,0 +1,27 @@
+flowchart TB
+  subgraph supplierRow [SUPPLIER_ROOT]
+    Reg[Register_and_Billing]
+    Topo[Create_Warehouse_Factory]
+    Oversight[Fleet_Map_Analytics_Audit_Read]
+  end
+  subgraph whRow [WAREHOUSE_ADMIN]
+    Fleet[Drivers_Trucks_Assign]
+    Dispatch[Auto_Manual_Dispatch]
+    Ops[Supply_Transfers_Orders]
+  end
+  subgraph payRow [PAYLOAD]
+    Seal[Per_Truck_Seal_and_Aggregate]
+    Reassign[Recommend_and_Apply_Reassign]
+  end
+  subgraph drvRow [DRIVER]
+    Exec[Route_Telemetry_Complete]
+  end
+  Reg --> Topo
+  Topo --> Fleet
+  Topo --> Ops
+  Dispatch --> Seal
+  Seal --> Exec
+  Reassign --> Exec
+  Oversight -.->|read_only| Fleet
+  Oversight -.->|read_only| Dispatch
+  Oversight -.->|read_only| Seal

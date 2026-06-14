@@ -130,8 +130,9 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 		return out, nil
 	}
 
+	var capacityWarnings []DispatchCapacityWarning
 	if strings.ToUpper(req.Mode) == "MANUAL" {
-		capacityWarnings := manualCapacityWarnings(assignment.Routes)
+		capacityWarnings = manualCapacityWarnings(assignment.Routes)
 		if len(capacityWarnings) > 0 {
 			out.CapacityWarnings = capacityWarnings
 			if !req.ForceCapacity {
@@ -280,6 +281,23 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 				return err
 			}
 		}
+		if req.ForceCapacity && len(capacityWarnings) > 0 {
+			if auditBuf, ok := buf.(outbox.TxnAuditBuffer); ok {
+				actorID := warehouseActorID(ctx)
+				for _, warning := range capacityWarnings {
+					if err := outbox.WriteAudit(ctx, auditBuf, sid, actorID, "WAREHOUSE_ADMIN", "DISPATCH_CAPACITY_OVERRIDE", "DispatchRoute", warning.DriverID, map[string]any{
+						"warehouse_id":                 whID,
+						"loaded_vu":                      warning.LoadedVU,
+						"max_volume_vu":                  warning.MaxVolumeVU,
+						"effective_max_vu":               warning.EffectiveMaxVU,
+						"excess_vu":                      warning.ExcessVU,
+						"suggested_unselect_order_ids": warning.SuggestedUnselectOrderIDs,
+					}); err != nil {
+						return err
+					}
+				}
+			}
+		}
 		return nil
 	}); err != nil {
 		return out, fmt.Errorf("commit dispatch: %w", err)
@@ -423,11 +441,14 @@ func manualCapacityWarnings(routes []dispatch.DispatchRoute) []DispatchCapacityW
 		if route.LoadedVolume <= effective {
 			continue
 		}
+		suggested, excess := dispatch.SuggestOrdersToUnselect(route)
 		warnings = append(warnings, DispatchCapacityWarning{
-			DriverID:      route.DriverID,
-			LoadedVU:      route.LoadedVolume,
-			MaxVolumeVU:   maxVU,
-			EffectiveMaxVU: effective,
+			DriverID:                  route.DriverID,
+			LoadedVU:                  route.LoadedVolume,
+			MaxVolumeVU:               maxVU,
+			EffectiveMaxVU:            effective,
+			ExcessVU:                  excess,
+			SuggestedUnselectOrderIDs: suggested,
 		})
 	}
 	return warnings

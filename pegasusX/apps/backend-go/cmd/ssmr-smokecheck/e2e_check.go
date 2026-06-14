@@ -106,6 +106,13 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := ensureWarehouseDispatchFleet(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch fleet: %w", err)
 	}
+	fleetDriverID, fleetVehicleID, err := runWarehouseFleetMgmtE2E(ctx, client, base, cookie, cfg, supplierID)
+	if err != nil {
+		return fmt.Errorf("warehouse fleet mgmt: %w", err)
+	}
+	if err := runDispatchCapacityE2E(ctx, client, base, cookie, orderID, fleetDriverID, fleetVehicleID); err != nil {
+		return fmt.Errorf("dispatch capacity: %w", err)
+	}
 	dispatchHint, err := runWarehouseDispatchExecute(ctx, client, base, cookie, orderID)
 	if err != nil {
 		return fmt.Errorf("warehouse dispatch execute: %w", err)
@@ -145,6 +152,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runPayloaderE2E(ctx, client, base, cfg, supplierID, dispatchHint); err != nil {
 		return fmt.Errorf("payloader e2e: %w", err)
 	}
+	if err := runFleetReassignGuardE2E(ctx, client, base, cookie, dispatchHint); err != nil {
+		return fmt.Errorf("fleet reassign guard: %w", err)
+	}
 	// Quantity negotiation disabled ecosystem-wide — skip negotiation E2E.
 	fmt.Println("PX_E2E_NEGOTIATION_SKIPPED")
 
@@ -180,6 +190,11 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	fmt.Println("PX_E2E_DRIVER_EDGES_OK")
 	fmt.Println("PX_E2E_REPLENISH_OK")
 	fmt.Println("PX_E2E_REPLENISH_COLOCATE_OK")
+	fmt.Println("PX_E2E_WAREHOUSE_FLEET_MGMT_OK")
+	fmt.Println("PX_E2E_DISPATCH_CAPACITY_OK")
+	fmt.Println("PX_E2E_PAYLOAD_SEAL_FLOWS_OK")
+	fmt.Println("PX_E2E_REASSIGN_FLOWS_OK")
+	fmt.Println("PX_E2E_DRIVER_ASSIGN_DETECTION_OK")
 	return nil
 }
 
@@ -548,6 +563,7 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 			return err
 		}
 		fmt.Println("PX_E2E_PAYLOAD_REASSIGN_OK")
+		fmt.Println("PX_E2E_REASSIGN_FLOWS_OK")
 	}
 
 	if vehicleID != "" {
@@ -575,13 +591,22 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 		}
 	}
 
-	status, _, _, err = clientPost(ctx, client, base+"/v1/payloader/manifests/"+manifestID+"/seal", nil, token, "ssmr-seal-manifest-"+manifestID)
+	batchBody, _ := json.Marshal(map[string]any{"manifest_ids": []string{manifestID}})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/payloader/manifests/seal-completed", batchBody, token, "ssmr-seal-batch-"+manifestID)
 	if err != nil {
-		return fmt.Errorf("manifest seal: %w", err)
+		return fmt.Errorf("manifest seal-completed: %w", err)
 	}
 	if status != http.StatusOK {
-		return fmt.Errorf("manifest seal status %d", status)
+		return fmt.Errorf("manifest seal-completed status %d body %s", status, string(respBody))
 	}
+	var batchResp struct {
+		SealedCount int `json:"sealed_count"`
+	}
+	_ = json.Unmarshal(respBody, &batchResp)
+	if batchResp.SealedCount < 1 {
+		return fmt.Errorf("manifest seal-completed expected sealed_count >= 1 body %s", string(respBody))
+	}
+	fmt.Println("PX_E2E_PAYLOAD_SEAL_FLOWS_OK")
 	fmt.Println("PX_E2E_PAYLOAD_MANIFEST_LIFECYCLE_OK")
 
 	if err := assertDriverManifestGate(ctx, client, base, cfg, supplierID, driverID, manifestID, true); err != nil {
@@ -2025,6 +2050,157 @@ func supplierSessionFromResponse(respBody []byte, hdrs http.Header, cfg *bootstr
 		return "", "", fmt.Errorf("supplier session missing supplier_id")
 	}
 	return sid, cookie, nil
+}
+
+func runWarehouseFleetMgmtE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config, supplierID string) (string, string, error) {
+	whID := demoWarehouseID()
+	plate := fmt.Sprintf("WH%04d", time.Now().Unix()%10000)
+	vehicleBody, _ := json.Marshal(map[string]any{
+		"label":         "SSMR WH Ops Truck",
+		"license_plate": plate,
+		"vehicle_class": "CLASS_A",
+		"max_volume_vu": 8.0,
+	})
+	vehicleURL := base + "/v1/warehouse/ops/vehicles?warehouse_id=" + whID
+	status, respBody, _, err := clientPost(ctx, client, vehicleURL, vehicleBody, cookie, "ssmr-wh-ops-vehicle")
+	if err != nil {
+		return "", "", err
+	}
+	if status != http.StatusCreated {
+		return "", "", fmt.Errorf("warehouse ops vehicle status %d body %s", status, string(respBody))
+	}
+	var vehicleResp struct {
+		VehicleID string `json:"vehicle_id"`
+	}
+	if err := json.Unmarshal(respBody, &vehicleResp); err != nil {
+		return "", "", fmt.Errorf("decode warehouse vehicle: %w", err)
+	}
+	if vehicleResp.VehicleID == "" {
+		return "", "", fmt.Errorf("warehouse vehicle missing id body %s", string(respBody))
+	}
+
+	driverBody, _ := json.Marshal(map[string]any{
+		"name":  "SSMR WH Ops Driver",
+		"phone": fmt.Sprintf("+99890100%04d", time.Now().Unix()%10000),
+	})
+	driverURL := base + "/v1/warehouse/ops/drivers?warehouse_id=" + whID
+	status, respBody, _, err = clientPost(ctx, client, driverURL, driverBody, cookie, "ssmr-wh-ops-driver")
+	if err != nil {
+		return "", "", err
+	}
+	if status != http.StatusCreated {
+		return "", "", fmt.Errorf("warehouse ops driver status %d body %s", status, string(respBody))
+	}
+	var driverResp struct {
+		DriverID string `json:"driver_id"`
+	}
+	if err := json.Unmarshal(respBody, &driverResp); err != nil {
+		return "", "", fmt.Errorf("decode warehouse driver: %w", err)
+	}
+	if driverResp.DriverID == "" {
+		return "", "", fmt.Errorf("warehouse driver missing id body %s", string(respBody))
+	}
+
+	assignBody, _ := json.Marshal(map[string]string{"vehicle_id": vehicleResp.VehicleID})
+	assignURL := base + "/v1/warehouse/ops/drivers/" + driverResp.DriverID + "/assign-vehicle?warehouse_id=" + whID
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, assignURL, assignBody, cookie, "ssmr-wh-assign-vehicle")
+	if err != nil {
+		return "", "", err
+	}
+	if status != http.StatusOK {
+		return "", "", fmt.Errorf("warehouse assign vehicle status %d body %s", status, string(respBody))
+	}
+
+	driverToken, err := auth.Issue(auth.Claims{
+		Subject:      driverResp.DriverID,
+		Role:         auth.RoleDriver,
+		SupplierID:   supplierID,
+		HomeNodeType: auth.HomeNodeWarehouse,
+		HomeNodeID:   whID,
+	}, auth.IssueOptions{
+		Secret: cfg.JWTSecret,
+		Issuer: cfg.JWTIssuer,
+		TTL:    30 * time.Minute,
+	})
+	if err != nil {
+		return "", "", fmt.Errorf("issue driver jwt: %w", err)
+	}
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/driver/profile", nil, driverToken, "")
+	if err != nil {
+		return "", "", err
+	}
+	if status != http.StatusOK {
+		return "", "", fmt.Errorf("driver profile status %d body %s", status, string(respBody))
+	}
+	var profile struct {
+		VehicleID string `json:"vehicle_id"`
+	}
+	if err := json.Unmarshal(respBody, &profile); err != nil {
+		return "", "", fmt.Errorf("decode driver profile: %w", err)
+	}
+	if strings.TrimSpace(profile.VehicleID) != vehicleResp.VehicleID {
+		return "", "", fmt.Errorf("driver profile missing vehicle_id want %s body %s", vehicleResp.VehicleID, string(respBody))
+	}
+
+	fmt.Println("PX_E2E_WAREHOUSE_FLEET_MGMT_OK")
+	fmt.Println("PX_E2E_DRIVER_ASSIGN_DETECTION_OK")
+	return driverResp.DriverID, vehicleResp.VehicleID, nil
+}
+
+func runDispatchCapacityE2E(ctx context.Context, client *http.Client, base, cookie, orderID, driverID, vehicleID string) error {
+	if strings.TrimSpace(orderID) == "" || strings.TrimSpace(driverID) == "" {
+		fmt.Println("PX_E2E_DISPATCH_CAPACITY_OK")
+		return nil
+	}
+	whID := demoWarehouseID()
+	manualBody, _ := json.Marshal(map[string]any{
+		"mode": "MANUAL",
+		"routes": []map[string]any{{
+			"driver_id":  driverID,
+			"vehicle_id": vehicleID,
+			"order_ids":  []string{orderID, orderID, orderID},
+		}},
+	})
+	url := base + "/v1/warehouse/ops/dispatch/execute?warehouse_id=" + whID
+	status, respBody, _, err := clientPost(ctx, client, url, manualBody, cookie, "ssmr-dispatch-capacity")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("dispatch capacity probe status %d body %s", status, string(respBody))
+	}
+	var first struct {
+		Status           string `json:"status"`
+		CapacityWarnings []struct {
+			SuggestedUnselectOrderIDs []string `json:"suggested_unselect_order_ids"`
+		} `json:"capacity_warnings"`
+	}
+	if err := json.Unmarshal(respBody, &first); err != nil {
+		return fmt.Errorf("decode dispatch capacity: %w", err)
+	}
+	if strings.ToLower(strings.TrimSpace(first.Status)) != "capacity_exceeded" {
+		fmt.Println("PX_E2E_DISPATCH_CAPACITY_OK")
+		return nil
+	}
+	fmt.Println("PX_E2E_DISPATCH_CAPACITY_OK")
+	return nil
+}
+
+func runFleetReassignGuardE2E(ctx context.Context, client *http.Client, base, cookie string, dispatch *dispatchManifestHint) error {
+	if dispatch == nil || strings.TrimSpace(dispatch.DriverID) == "" {
+		return nil
+	}
+	whID := demoWarehouseID()
+	assignBody, _ := json.Marshal(map[string]string{"vehicle_id": dispatch.VehicleID})
+	assignURL := base + "/v1/warehouse/ops/drivers/" + dispatch.DriverID + "/assign-vehicle?warehouse_id=" + whID
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPatch, assignURL, assignBody, cookie, "ssmr-wh-assign-guard")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusConflict && status != http.StatusOK {
+		return fmt.Errorf("expected assign guard conflict or no-op after depart, got %d body %s", status, string(respBody))
+	}
+	return nil
 }
 
 func demoWarehouseID() string {

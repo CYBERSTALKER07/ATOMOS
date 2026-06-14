@@ -1990,6 +1990,8 @@ export interface WarehouseDispatchCapacityWarning {
   loaded_vu: number;
   max_volume_vu: number;
   effective_max_vu: number;
+  excess_vu?: number;
+  suggested_unselect_order_ids?: string[];
 }
 
 export interface WarehouseDispatchExecuteRoute {

@@ -35,6 +35,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/payloader/manifests/{manifestID}/start-loading", d.Service.HandleStartLoading)
 		rr.Post("/v1/payloader/manifests/{manifestID}/inject-order", d.Service.HandleInjectOrder)
 		rr.Post("/v1/payloader/manifests/{manifestID}/seal", d.Service.HandleSealManifest)
+		rr.Post("/v1/payloader/manifests/seal-completed", d.Service.HandleSealCompletedManifests)
 		rr.Post("/v1/payload/manifest-exception", d.Service.HandleManifestException)
 		rr.Get("/v1/payloader/manifest-exceptions", d.Service.HandleManifestExceptions)
 		rr.Post("/v1/payloader/recommend-reassign", d.Service.HandleRecommendReassign)

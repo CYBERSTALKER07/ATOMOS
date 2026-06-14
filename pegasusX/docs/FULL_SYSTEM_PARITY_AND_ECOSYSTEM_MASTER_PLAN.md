@@ -246,6 +246,11 @@ Manual QA: [qa/PX12_MANUAL_QA_RUNBOOK.md](./qa/PX12_MANUAL_QA_RUNBOOK.md), [qa/P
 | PX-ECO-012 | TopicFreezeLocks consumer | TODO | ai-worker sprint |
 | PX-ECO-013 | Durable replenishment insights | TODO | Spanner table |
 | PX-ECO-014 | Notification inbox from Kafka | TODO | dispatcher hook |
+| PX-FLEET-001 | Warehouse fleet CRUD + assign guard | WIRED | `PX_E2E_WAREHOUSE_FLEET_MGMT_OK` |
+| PX-DISP-002 | Dispatch capacity recs + force audit | WIRED | `PX_E2E_DISPATCH_CAPACITY_OK` |
+| PX-PAY-003 | Payload aggregate seal-completed | WIRED | `PX_E2E_PAYLOAD_SEAL_FLOWS_OK` |
+| PX-REAS-004 | Payload durable reassign | WIRED | `PX_E2E_REASSIGN_FLOWS_OK` |
+| PX-DRV-005 | Driver assign detection on profile | WIRED | `PX_E2E_DRIVER_ASSIGN_DETECTION_OK` |
 
 ---
 

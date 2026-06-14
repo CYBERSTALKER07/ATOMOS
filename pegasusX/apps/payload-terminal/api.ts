@@ -60,6 +60,21 @@ export const PayloadTerminalApi = {
         return res.json();
     },
 
+    sealCompletedManifests: async (token: string, manifestIds: string[], idempotencyKey?: string) => {
+        const headers: Record<string, string> = {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        };
+        if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+        const res = await fetch(`${API_BASE}/v1/payloader/manifests/seal-completed`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ manifest_ids: manifestIds }),
+        });
+        if (!res.ok) throw new Error('Failed to seal completed manifests');
+        return res.json();
+    },
+
     // ── Payloader Additions ──────────────────────────────────────────────────
     getManifestExceptions: async (token: string, limit: number = 50, offset: number = 0) => {
         const res = await fetch(`${API_BASE}/v1/payloader/manifest-exceptions?limit=${limit}&offset=${offset}`, {

@@ -1422,6 +1422,99 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleSealCompletedManifests serves POST /v1/payloader/manifests/seal-completed.
+func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	var req struct {
+		ManifestIDs []string `json:"manifest_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	defer r.Body.Close()
+
+	results := make([]map[string]any, 0, len(req.ManifestIDs))
+	sealedCount := 0
+	for _, manifestID := range req.ManifestIDs {
+		manifestID = strings.TrimSpace(manifestID)
+		if manifestID == "" {
+			continue
+		}
+		var manifest ManifestRow
+		err := s.apply(r.Context(), func() error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.ensureDemoDataLocked()
+			var sealErr error
+			manifest, sealErr = s.sealManifestLocked(manifestID)
+			return sealErr
+		}, func(txn outbox.TxnBuffer) error {
+			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
+				BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
+				ManifestID: manifestID,
+				SupplierID: s.supplierID,
+				State:      payloadManifestStateSealed,
+				RouteID:    routeIDForManifest(manifest),
+				DriverID:   manifest.DriverID,
+				VehicleID:  manifest.VehicleID,
+				OrderCount: manifest.StopCount,
+			})
+		})
+		switch {
+		case err == http.ErrMissingFile:
+			results = append(results, map[string]any{"manifest_id": manifestID, "status": "not_found"})
+		case err == http.ErrBodyNotAllowed:
+			results = append(results, map[string]any{"manifest_id": manifestID, "status": "not_sealable"})
+		case err != nil:
+			results = append(results, map[string]any{"manifest_id": manifestID, "status": "seal_failed"})
+		default:
+			sealedCount++
+			if s.manifestStore != nil {
+				if geomErr := s.manifestStore.PersistRouteGeometryForManifest(r.Context(), manifestID, "manifest_sealed"); geomErr != nil {
+					s.log.WarnContext(r.Context(), "manifest route geometry persist failed",
+						"manifest_id", manifestID, "err", geomErr)
+				}
+			}
+			s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID))
+			s.broadcastPayloadEvent(r.Context(), events.EventManifestSealed, map[string]any{
+				"manifest_id": manifestID,
+				"state":       payloadManifestStateSealed,
+				"route_id":    routeIDForManifest(manifest),
+				"driver_id":   manifest.DriverID,
+				"vehicle_id":  manifest.VehicleID,
+				"order_count": manifest.StopCount,
+				"updated_at":  manifest.UpdatedAt,
+			})
+			if manifest.DriverID != "" {
+				s.broadcastDriverEvent(r.Context(), manifest.DriverID, map[string]any{
+					"type":        "MANIFEST_DISPATCHED",
+					"driver_id":   manifest.DriverID,
+					"manifest_id": manifestID,
+					"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
+				})
+			}
+			results = append(results, map[string]any{
+				"manifest_id": manifestID,
+				"status":      "sealed",
+				"state":       manifest.State,
+				"sealed_at":   manifest.SealedAt,
+				"driver_id":   manifest.DriverID,
+				"vehicle_id":  manifest.VehicleID,
+			})
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":       "batch_seal_complete",
+		"sealed_count": sealedCount,
+		"results":      results,
+	})
+}
+
 // HandleSealManifest serves POST /v1/payloader/manifests/{manifestID}/seal.
 func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

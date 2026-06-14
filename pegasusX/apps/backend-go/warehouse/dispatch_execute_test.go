@@ -44,12 +44,19 @@ func TestManualCapacityWarnings_FlagsOverload(t *testing.T) {
 		DriverID:     "drv-1",
 		MaxVolume:    100,
 		LoadedVolume: 96,
+		Orders: []dispatch.GeoOrder{
+			{OrderID: "ord-heavy", Volume: 60},
+			{OrderID: "ord-light", Volume: 36},
+		},
 	}})
 	if len(warnings) != 1 {
 		t.Fatalf("warnings = %#v want 1 overload", warnings)
 	}
 	if warnings[0].EffectiveMaxVU != 95 {
 		t.Fatalf("effective max = %v want 95", warnings[0].EffectiveMaxVU)
+	}
+	if len(warnings[0].SuggestedUnselectOrderIDs) == 0 {
+		t.Fatalf("expected suggested unselect ids, got %#v", warnings[0])
 	}
 }
 

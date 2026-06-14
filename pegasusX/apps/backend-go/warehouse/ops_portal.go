@@ -3,6 +3,7 @@ package warehouse
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -666,10 +667,12 @@ type DispatchExecuteResult struct {
 }
 
 type DispatchCapacityWarning struct {
-	DriverID       string  `json:"driver_id"`
-	LoadedVU       float64 `json:"loaded_vu"`
-	MaxVolumeVU    float64 `json:"max_volume_vu"`
-	EffectiveMaxVU float64 `json:"effective_max_vu"`
+	DriverID                  string   `json:"driver_id"`
+	LoadedVU                  float64  `json:"loaded_vu"`
+	MaxVolumeVU               float64  `json:"max_volume_vu"`
+	EffectiveMaxVU            float64  `json:"effective_max_vu"`
+	ExcessVU                  float64  `json:"excess_vu,omitempty"`
+	SuggestedUnselectOrderIDs []string `json:"suggested_unselect_order_ids,omitempty"`
 }
 
 type DispatchExecuteRoute struct {
@@ -847,11 +850,16 @@ func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 
 		if s.spannerClient != nil {
 			now := s.now().UTC()
-			m := spanner.Insert("Drivers",
-				[]string{"DriverId", "Name", "Phone", "PinHash", "SupplierId", "HomeNodeType", "HomeNodeId", "IsActive", "CreatedAt", "UpdatedAt"},
-				[]any{driverID, strings.TrimSpace(req.Name), strings.TrimSpace(req.Phone), "4321", s.supplierID, "WAREHOUSE", warehouseIDFromRequest(r), true, now, now},
-			)
-			if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+			whID := warehouseIDFromRequest(r)
+			if err := s.createOpsDriverSpanner(r.Context(), opsDriverCreateParams{
+				DriverID:    driverID,
+				Name:        strings.TrimSpace(req.Name),
+				Phone:       strings.TrimSpace(req.Phone),
+				PinHash:     "4321",
+				SupplierID:  strings.TrimSpace(s.supplierID),
+				WarehouseID: whID,
+				CreatedAt:   now,
+			}); err != nil {
 				s.log.ErrorContext(r.Context(), "failed to create driver", "err", err)
 				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_driver"})
 				return
@@ -896,6 +904,11 @@ func (s *Service) handleAssignVehicle(w http.ResponseWriter, r *http.Request, dr
 	whID := warehouseIDFromRequest(r)
 	if s.spannerClient != nil {
 		if err := s.persistDriverVehicleAssignment(r.Context(), whID, driverID, vehicleID); err != nil {
+			var fleetErr *FleetMutationError
+			if errors.As(err, &fleetErr) {
+				writeJSON(w, fleetErr.StatusCode, map[string]string{"error": fleetErr.Code, "message": fleetErr.Message})
+				return
+			}
 			if strings.Contains(err.Error(), "driver_not_found") {
 				writeJSON(w, http.StatusNotFound, map[string]string{"error": "driver_not_found"})
 				return
@@ -926,18 +939,55 @@ func (s *Service) persistDriverVehicleAssignment(ctx context.Context, warehouseI
 	if s.spannerClient == nil {
 		return fmt.Errorf("spanner_not_configured")
 	}
+	sid := strings.TrimSpace(s.supplierID)
 	now := s.now().UTC()
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		row, err := txn.ReadRow(ctx, "Drivers", spanner.Key{driverID}, []string{"HomeNodeType", "HomeNodeId"})
+		state, err := readDriverAssignmentState(ctx, txn, sid, warehouseID, driverID)
 		if err != nil {
-			return fmt.Errorf("driver_not_found: %w", err)
-		}
-		var homeNodeType, homeNodeID string
-		if err := row.Columns(&homeNodeType, &homeNodeID); err != nil {
+			if errors.Is(err, errDriverNotFound) {
+				return fmt.Errorf("driver_not_found")
+			}
 			return err
 		}
-		if warehouseID != "" && (!strings.EqualFold(homeNodeType, "WAREHOUSE") || homeNodeID != warehouseID) {
-			return fmt.Errorf("driver_not_found")
+		activeDriverOrders, err := countActiveOrdersForDriver(ctx, txn, driverID)
+		if err != nil {
+			return err
+		}
+		if err := driverAssignmentGuard(state, activeDriverOrders); err != nil {
+			return err
+		}
+		if vehicleID != "" {
+			if activeVehicleOrders, err := countActiveOrdersForVehicle(ctx, txn, vehicleID); err != nil {
+				return err
+			} else if activeVehicleOrders > 0 {
+				return &FleetMutationError{
+					StatusCode: http.StatusConflict,
+					Code:       "vehicle_active_orders",
+					Message:    fmt.Sprintf("vehicle %s has active orders and cannot be reassigned", vehicleID),
+				}
+			}
+			conflict, err := readDriverByVehicle(ctx, txn, sid, warehouseID, vehicleID, driverID)
+			if err != nil {
+				return err
+			}
+			if conflict != nil {
+				conflictOrders, err := countActiveOrdersForDriver(ctx, txn, conflict.DriverID)
+				if err != nil {
+					return err
+				}
+				if guardErr := driverAssignmentGuard(*conflict, conflictOrders); guardErr != nil {
+					return &FleetMutationError{
+						StatusCode: http.StatusConflict,
+						Code:       "vehicle_driver_active",
+						Message:    fmt.Sprintf("vehicle %s is assigned to active driver %s", vehicleID, conflict.DriverID),
+					}
+				}
+			}
+		}
+
+		homeNodeID := state.HomeNodeID
+		if homeNodeID == "" {
+			homeNodeID = warehouseID
 		}
 
 		mutations := []*spanner.Mutation{
@@ -1004,9 +1054,10 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"vehicles": vehicles})
 	case http.MethodPost:
 		var req struct {
-			Label        string `json:"label"`
-			LicensePlate string `json:"license_plate"`
-			VehicleClass string `json:"vehicle_class"`
+			Label        string  `json:"label"`
+			LicensePlate string  `json:"license_plate"`
+			VehicleClass string  `json:"vehicle_class"`
+			MaxVolumeVU  float64 `json:"max_volume_vu"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -1017,11 +1068,18 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 
 		if s.spannerClient != nil {
 			now := s.now().UTC()
-			m := spanner.Insert("Vehicles",
-				[]string{"VehicleId", "Label", "LicensePlate", "VehicleClass", "SupplierId", "HomeNodeType", "HomeNodeId", "IsActive", "MaxVolumeVU", "CreatedAt", "UpdatedAt"},
-				[]any{vehicleID, strings.TrimSpace(req.Label), strings.TrimSpace(req.LicensePlate), strings.TrimSpace(req.VehicleClass), s.supplierID, "WAREHOUSE", warehouseIDFromRequest(r), true, 150.0, now, now},
-			)
-			if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+			whID := warehouseIDFromRequest(r)
+			maxVU := resolveVehicleMaxVU(req.VehicleClass, req.MaxVolumeVU)
+			if err := s.createOpsVehicleSpanner(r.Context(), opsVehicleCreateParams{
+				VehicleID:    vehicleID,
+				Label:        strings.TrimSpace(req.Label),
+				LicensePlate: strings.TrimSpace(req.LicensePlate),
+				VehicleClass: strings.TrimSpace(req.VehicleClass),
+				MaxVolumeVU:  maxVU,
+				SupplierID:   strings.TrimSpace(s.supplierID),
+				WarehouseID:  whID,
+				CreatedAt:    now,
+			}); err != nil {
 				s.log.ErrorContext(r.Context(), "failed to create vehicle", "err", err)
 				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_vehicle"})
 				return
@@ -1044,6 +1102,7 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 			"label":         req.Label,
 			"license_plate": req.LicensePlate,
 			"vehicle_class": req.VehicleClass,
+			"max_volume_vu": resolveVehicleMaxVU(req.VehicleClass, req.MaxVolumeVU),
 			"is_active":     true,
 		})
 	default:

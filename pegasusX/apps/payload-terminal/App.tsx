@@ -940,17 +940,22 @@ export default function App() {
     if (!manifestId || !token) return;
     setIsSealingManifest(true);
     try {
-      const data = await PayloadTerminalApi.supplierSealManifest(
+      const data = await PayloadTerminalApi.sealCompletedManifests(
         token,
-        manifestId,
+        [manifestId],
         buildPayloadIdempotencyKey('supplier-seal-manifest', manifestId),
       );
+      const sealed = Array.isArray(data.results)
+        ? data.results.find((row: { manifest_id?: string; status?: string }) => row.manifest_id === manifestId && row.status === 'sealed')
+        : null;
       setManifestState('SEALED');
       setAllSealed(true);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast(
         tx('payload.alert.manifest_sealed_title'),
-        `${data.stop_count} stops sealed. ${data.volume_vu?.toFixed(1)}/${data.max_vu?.toFixed(1)} VU. Route finalized.`,
+        sealed
+          ? `Manifest sealed (${data.sealed_count ?? 1} truck(s)). Route finalized.`
+          : `${data.sealed_count ?? 0} truck(s) sealed. Route finalized.`,
         'success',
         3600
       );

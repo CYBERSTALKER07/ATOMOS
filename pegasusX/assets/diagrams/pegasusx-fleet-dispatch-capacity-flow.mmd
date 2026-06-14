@@ -1,0 +1,21 @@
+sequenceDiagram
+  participant WH as WarehouseAdmin
+  participant API as backend_go
+  participant Opt as ai_worker_OR_tools
+  participant DB as Spanner
+  participant PL as PayloadTerminal
+
+  WH->>API: POST dispatch_execute MANUAL routes
+  API->>DB: fetch orders drivers vehicles VU
+  API->>API: binpack aggregate capacity TetrisBuffer
+  alt capacity exceeded
+    API-->>WH: capacity_exceeded warnings suggested_unselect
+    WH->>API: POST force_capacity true
+    API->>DB: commit manifests audit DISPATCH_CAPACITY_OVERRIDE
+  else within capacity
+    API->>Opt: optional optimize preview geometry
+    API->>DB: manifests orders outbox ROUTE_CREATED
+    API-->>WH: dispatched
+  end
+  PL->>API: list trucks manifests
+  PL->>API: seal per truck or seal-completed batch

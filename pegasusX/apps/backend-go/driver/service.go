@@ -62,6 +62,16 @@ type DriverOrderQuery func(ctx context.Context, driverID string) ([]DriverOrderV
 // DriverOrderGetQuery retrieves a single order by ID from Spanner.
 type DriverOrderGetQuery func(ctx context.Context, orderID string) (DriverOrderView, bool, error)
 
+// DriverProfileSnapshot is the durable driver row slice exposed on profile.
+type DriverProfileSnapshot struct {
+	VehicleID   string
+	TruckStatus string
+	RouteID     string
+}
+
+// DriverProfileLookup reads durable driver assignment fields from Spanner.
+type DriverProfileLookup func(ctx context.Context, driverID string) (DriverProfileSnapshot, bool, error)
+
 // ManifestDeliveryTokenLookup resolves persisted delivery tokens for manifest orders.
 type ManifestDeliveryTokenLookup func(ctx context.Context, orderIDs []string) map[string]string
 
@@ -83,6 +93,7 @@ type Service struct {
 	depart         DepartFn
 	returnComplete ReturnCompleteFn
 	routeGeometry  RouteGeometryLookup
+	profileLookup  DriverProfileLookup
 
 	supplierID string
 	currency   string
@@ -116,6 +127,7 @@ type ServiceConfig struct {
 	Depart          DepartFn
 	ReturnComplete  ReturnCompleteFn
 	RouteGeometry   RouteGeometryLookup
+	ProfileLookup   DriverProfileLookup
 	SupplierID   string
 	Currency     string
 	JWTSecret    string
@@ -243,6 +255,7 @@ func NewService(c ServiceConfig) *Service {
 		depart:          c.Depart,
 		returnComplete:  c.ReturnComplete,
 		routeGeometry:   c.RouteGeometry,
+		profileLookup:   c.ProfileLookup,
 		supplierID:         c.SupplierID,
 		currency:           strings.ToUpper(strings.TrimSpace(c.Currency)),
 		jwtSecret:          strings.TrimSpace(c.JWTSecret),
@@ -271,13 +284,27 @@ func (s *Service) HandleProfile(w http.ResponseWriter, r *http.Request) {
 	s.mu.RLock()
 	onShift := s.availability[driverID]
 	s.mu.RUnlock()
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"driver_id":      driverID,
 		"home_node_type": claims.HomeNodeType,
 		"home_node_id":   claims.HomeNodeID,
 		"on_shift":       onShift,
 		"updated_at":     s.now().Format(time.RFC3339Nano),
-	})
+	}
+	if s.profileLookup != nil {
+		if snap, ok, err := s.profileLookup(r.Context(), driverID); err == nil && ok {
+			if strings.TrimSpace(snap.VehicleID) != "" {
+				resp["vehicle_id"] = strings.TrimSpace(snap.VehicleID)
+			}
+			if strings.TrimSpace(snap.TruckStatus) != "" {
+				resp["truck_status"] = strings.TrimSpace(snap.TruckStatus)
+			}
+			if strings.TrimSpace(snap.RouteID) != "" {
+				resp["route_id"] = strings.TrimSpace(snap.RouteID)
+			}
+		}
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleHistory serves GET /v1/driver/history.

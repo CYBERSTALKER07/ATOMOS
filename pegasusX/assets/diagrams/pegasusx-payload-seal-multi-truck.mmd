@@ -1,0 +1,9 @@
+stateDiagram-v2
+  [*] --> TruckList: post_dispatch
+  TruckList --> TruckDetail: select_truck
+  TruckDetail --> ItemsSealed: mark_items_sealed
+  ItemsSealed --> TruckSealed: seal_complete_one_truck
+  TruckSealed --> TruckList: next_truck
+  TruckList --> AggregateSeal: N_trucks_ready_M_active
+  AggregateSeal --> DriversActive: POST seal-completed subset
+  DriversActive --> [*]: WS Kafka notify driver supplier warehouse

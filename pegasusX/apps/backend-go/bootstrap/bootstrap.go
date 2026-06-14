@@ -606,12 +606,14 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	factorySvc.WarmManifestCache(ctx)
 	var driverOrderList driver.DriverOrderQuery
 	var driverOrderGet driver.DriverOrderGetQuery
+	var driverProfileLookup driver.DriverProfileLookup
 	var driverRouteGeometry driver.RouteGeometryLookup
 	var driverDepart driver.DepartFn
 	var driverReturnComplete driver.ReturnCompleteFn
 	if spannerClient != nil {
 		driverOrderList = driverOrderListQuery(spannerClient)
 		driverOrderGet = driverOrderGetQuery(spannerClient)
+		driverProfileLookup = driverProfileLookupQuery(spannerClient)
 		driverRouteGeometry = driverRouteGeometryQuery(spannerClient, routeGeometryBuilder)
 		driverDepart = func(ctx context.Context, driverID string) (driver.DepartResult, bool, error) {
 			departed, ok, err := manifestStore.DepartDriver(ctx, driverID, time.Now().UTC())
@@ -642,6 +644,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		NotifSvc:       notifAdapter,
 		OrderList:      driverOrderList,
 		OrderGet:       driverOrderGet,
+		ProfileLookup:  driverProfileLookup,
 		RouteGeometry:  driverRouteGeometry,
 		Depart:         driverDepart,
 		ReturnComplete: driverReturnComplete,
@@ -989,6 +992,23 @@ func driverOrderListQuery(client *spanner.Client) driver.DriverOrderQuery {
 			orders = []driver.DriverOrderView{}
 		}
 		return orders, nil
+	}
+}
+
+func driverProfileLookupQuery(client *spanner.Client) driver.DriverProfileLookup {
+	return func(ctx context.Context, driverID string) (driver.DriverProfileSnapshot, bool, error) {
+		row, err := client.Single().ReadRow(ctx, "Drivers", spanner.Key{driverID},
+			[]string{"VehicleId"})
+		if err != nil {
+			return driver.DriverProfileSnapshot{}, false, nil
+		}
+		var vehicleID spanner.NullString
+		if err := row.Columns(&vehicleID); err != nil {
+			return driver.DriverProfileSnapshot{}, false, err
+		}
+		return driver.DriverProfileSnapshot{
+			VehicleID: strings.TrimSpace(vehicleID.StringVal),
+		}, true, nil
 	}
 }
 
