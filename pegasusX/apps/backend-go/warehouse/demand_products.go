@@ -165,6 +165,7 @@ func (s *Service) productDemandFromSpanner(ctx context.Context, warehouseID stri
 	if err != nil {
 		return nil, err
 	}
+	insightByProduct := s.replenishmentInsightsByProduct(ctx, warehouseID)
 	products, err := s.activeProductsBySupplier(ctx, supplierID)
 	if err != nil {
 		return nil, err
@@ -174,23 +175,37 @@ func (s *Service) productDemandFromSpanner(ctx context.Context, warehouseID stri
 	for _, product := range products {
 		stock := stockMap[product.ProductID]
 		burn := 0.0
-		if stock > 0 {
-			burn = 1.0
-		}
 		daysOut := 999.0
-		if burn > 0 {
+		recommended := int64(0)
+		priority := "NORMAL"
+
+		if insight, ok := insightByProduct[product.ProductID]; ok {
+			stock = insight.CurrentStock
+			burn = insight.AvgDailyVelocity
+			recommended = insight.ReorderQuantity
+			daysOut = float64(insight.DaysUntilStockout)
+			switch strings.ToUpper(insight.Urgency) {
+			case "CRITICAL", "HIGH":
+				priority = "CRITICAL"
+			case "URGENT", "WARNING":
+				priority = "URGENT"
+			}
+		} else if stock > 0 {
+			burn = 1.0
 			daysOut = float64(stock) / burn
 		}
-		deficit := int64(math.Ceil(burn*float64(forecastDays))) - stock
-		recommended := int64(0)
-		if deficit > 0 {
-			recommended = int64(math.Ceil(float64(deficit) * 1.2))
+		if recommended == 0 && burn > 0 {
+			deficit := int64(math.Ceil(burn*float64(forecastDays))) - stock
+			if deficit > 0 {
+				recommended = int64(math.Ceil(float64(deficit) * 1.2))
+			}
 		}
-		priority := "NORMAL"
-		if daysOut < 2 {
-			priority = "CRITICAL"
-		} else if daysOut < 5 {
-			priority = "URGENT"
+		if priority == "NORMAL" {
+			if daysOut < 2 {
+				priority = "CRITICAL"
+			} else if daysOut < 5 {
+				priority = "URGENT"
+			}
 		}
 		if recommended == 0 && priority == "NORMAL" {
 			continue

@@ -642,6 +642,28 @@ CREATE INDEX Idx_FactoryTransfers_ByFactoryId ON FactoryInternalTransfers(Factor
 CREATE INDEX Idx_FactoryTransfers_BySupplierId ON FactoryInternalTransfers(SupplierId);
 CREATE INDEX Idx_FactoryTransfers_ByManifestId ON FactoryInternalTransfers(ManifestId);
 
+-- Predictive / threshold-based replenishment recommendations per warehouse SKU.
+CREATE TABLE ReplenishmentInsights (
+  InsightId         STRING(36)  NOT NULL,
+  WarehouseId       STRING(36)  NOT NULL,
+  ProductId         STRING(36)  NOT NULL,
+  SupplierId        STRING(36)  NOT NULL,
+  CurrentStock      INT64       NOT NULL DEFAULT (0),
+  DailyBurnRate     FLOAT64     NOT NULL DEFAULT (0),
+  TimeToEmptyDays   FLOAT64     NOT NULL DEFAULT (0),
+  SuggestedQuantity INT64       NOT NULL DEFAULT (0),
+  UrgencyLevel      STRING(20)  NOT NULL DEFAULT ('STABLE'),
+  ReasonCode        STRING(30)  NOT NULL DEFAULT ('LOW_STOCK'),
+  Status            STRING(20)  NOT NULL DEFAULT ('PENDING'),
+  TargetFactoryId   STRING(36),
+  DemandBreakdown   STRING(MAX),
+  CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (InsightId);
+
+CREATE INDEX Idx_Insights_ByWarehouse ON ReplenishmentInsights(WarehouseId);
+CREATE INDEX Idx_Insights_BySupplierId ON ReplenishmentInsights(SupplierId);
+CREATE INDEX Idx_Insights_ByStatus ON ReplenishmentInsights(Status);
+
 -- Client version policy (per role / platform / release channel).
 CREATE TABLE ClientVersionPolicies (
   Role               STRING(20)  NOT NULL,

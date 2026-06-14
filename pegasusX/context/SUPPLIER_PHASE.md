@@ -102,4 +102,4 @@ cd pegasusX && make parity-contract-full
 4. ~~Phase 3 staff/org lifecycle + notification inbox fix~~ — **done this session**
 5. ~~Phase 4 intelligence & catalog depth (analytics, CSV import)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_ANALYTICS_OK`, `PX_E2E_SUPPLIER_INVENTORY_IMPORT_OK`)
 6. ~~SSMR / parity verification~~ — **green** (`make test-ssmr-infra`, `make parity-contract-full`)
-7. **Cross-role next** — per `VEGETABLE_PLAN.md` §3: warehouse replenishment durability, notification inbox persistence, or Boss-picked role row
+7. **Cross-role next** — per `VEGETABLE_PLAN.md` §3: **warehouse replenishment engine** (auto-generate insights), notification inbox persistence, or Boss-picked role row

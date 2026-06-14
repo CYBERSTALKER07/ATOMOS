@@ -154,8 +154,8 @@ For each role, list its apps (all must stay in sync per doctrine). For each app/
 - **UI/Layout from pegasus ref:** WarehouseShell / KPI dashboard grid (not always Bento); PageChrome + desk-table / dense ops tables for orders/dispatch/manifests/supply-requests/dispatch-locks/transfers; order detail mutation panel (`/orders/[id]`); transfer action panel (pegasusX-only under Operations). Replicate good patterns (chrome, headers) from pegasus warehouse-portal. Enhance pegasusX ui-kit.
 - **Cross-sync:** Warehouse room; interacts with factory (supply), payload (via manifests), driver (assign/execution), supplier (oversight). Supply WS + Kafka consumers. Dispatch locks freeze AI.
 - **E2E criteria:** Supply full state machine + WS; dispatch lock + capacity + execute end-to-end with fleet map updates + driver notification; transfers receive + inventory; order mutations visible to retailer/driver; `PX_E2E_WAREHOUSE_*` + replenishment markers.
-- **Status:** Portal + ops `WIRED`/`E2E` (PX4-A1, PX12-I, recent fleet/dispatch work `IN_PROGRESS`). Replenishment insights + dispatch settings durability advancing.
-- **Phase:** Dispatch/Fleet hardening (current); Replenishment durability next.
+- **Status:** Portal + ops `WIRED`/`E2E` (PX4-A1, PX12-I). **Replenishment insights durability (2026-06-14):** Spanner-backed `ReplenishmentInsights` + approve/dismiss — see `context/WAREHOUSE_PHASE.md` WH1-*.
+- **Phase:** Replenishment engine auto-generation next; native fleet live map deferred.
 
 #### warehouse-app-android + warehouse-app-ios
 - **Depends on:** Same core ops slice (supply, dispatch, fleet map, transfers, order mutations, insights).

@@ -1201,6 +1201,7 @@ func runWarehouseReplenishmentInsightE2E(ctx context.Context, client *http.Clien
 	if status != http.StatusOK {
 		return fmt.Errorf("replenishment insight approve status %d body %s", status, string(respBody))
 	}
+	fmt.Println("PX_E2E_WAREHOUSE_REPLENISHMENT_OK")
 	return nil
 }
 
