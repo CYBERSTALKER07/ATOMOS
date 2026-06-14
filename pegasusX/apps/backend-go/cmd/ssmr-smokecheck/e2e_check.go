@@ -3330,6 +3330,30 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 		return fmt.Errorf("scan qr status %d: %s", scanResp.StatusCode, string(body))
 	}
 
+	// Payment bypass while order is AWAITING_PAYMENT (after scan-qr, before cash selection).
+	bypassPayload := []byte(`{"order_id":"` + orderID + `","reason":"SSMR smoke"}`)
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/orders/payment-bypass", bypassPayload, cookie, "application/json")
+	if err != nil {
+		return fmt.Errorf("payment bypass: %w", err)
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("payment bypass status %d body %s", status, string(respBody))
+	}
+	var bypassResp struct {
+		BypassToken string `json:"bypass_token"`
+		OrderID     string `json:"order_id"`
+	}
+	if err := json.Unmarshal(respBody, &bypassResp); err != nil {
+		return fmt.Errorf("decode payment bypass: %w", err)
+	}
+	if strings.TrimSpace(bypassResp.BypassToken) == "" {
+		return fmt.Errorf("payment bypass missing bypass_token body %s", string(respBody))
+	}
+	if bypassResp.OrderID != orderID {
+		return fmt.Errorf("payment bypass order_id mismatch got %s want %s", bypassResp.OrderID, orderID)
+	}
+	fmt.Println("PX_E2E_SUPPLIER_PAYMENT_BYPASS_OK")
+
 	// Retailer selects cash (driver-only completion path)
 	cashPayload := `{"order_id":"` + orderID + `"}`
 	cashReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/confirm-cash", strings.NewReader(cashPayload))

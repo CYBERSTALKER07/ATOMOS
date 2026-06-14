@@ -131,7 +131,7 @@ For each role, list its apps (all must stay in sync per doctrine). For each app/
 - **UI/Layout/Design targets from pegasus ref (replicate/maintain in pegasusX/packages/ui-kit + this app):** BentoGrid (components/BentoGrid.tsx) for dashboard anchor/stat/list/control cells; SupplierShell / split auth + circle stepper; PageChrome / desk-page for ops lists (orders, fleet, dispatch, manifests, exceptions, treasury); M3 tokens via globals.css + ui-kit (no @material/web); dense tables/kanban, org-fleet map, sparklines. Flat URLs (intentional single-tenant). See parity-ledger for 2026-06 parity claims.
 - **Cross-sync obligations:** Supplier WS room for nearly everything; must see warehouse dispatch actions, factory manifest progress, payload seals, driver telemetry, retailer orders. Outbox events consumed by dispatcher for notifications to other roles.
 - **E2E criteria:** Full ops spine visible + actionable; live map animated; dispatch preview/execute (with capacity); exceptions (shopclosed/negotiate) resolvable; treasury live; WS + Kafka fanout verified in SSMR; `PX_E2E_ORDER_OK` etc. umbrella.
-- **Current status:** Phases 0–4 **E2E_SSMR_GREEN** on portal primary surface (see `context/SUPPLIER_PHASE.md` SP0–SP4).
+- **Current status:** Phases 0–5 **E2E_SSMR_GREEN** on portal + native ops slice (see `context/SUPPLIER_PHASE.md` SP0–SP5).
 - **Phase:** Supplier portal row v1 complete for scoped phases. SP4-03 import session wizard **E2E_SSMR_GREEN** (sync `/ingest` + async GCS/local worker via `INVENTORY_IMPORT_UPLOADED`; `PX_E2E_SUPPLIER_IMPORT_WIZARD_OK`, `PX_E2E_SUPPLIER_IMPORT_ASYNC_OK`).
 
 #### supplier-app-android + supplier-app-ios (native ops slice)
@@ -216,7 +216,10 @@ For each role, list its apps (all must stay in sync per doctrine). For each app/
 
 Phases are **vertical clusters**. Each phase = backend E2E (SSMR first) + all affected role apps/clients updated together + full verification + status marks in this doc + main plan + ledgers.
 
-**Current Active (as of 2026-06-14):** Platform depth + exception wiring (post core ops spine green).
+**Current Active (as of 2026-06-14):** Cross-role depth after supplier SP0–SP5 green (Boss-picked role row).
+
+### Phase Closed / Supplier SP5 (Analytics / Treasury / Operations depth) — **E2E_SSMR_GREEN**
+- **Status:** Closed. Native analytics KPIs, portal treasury hub snapshot, operations broadcast/bypass on portal + Android/iOS; `PX_E2E_SUPPLIER_OPERATIONS_OK`, `PX_E2E_SUPPLIER_PAYMENT_BYPASS_OK`.
 
 ### Phase Closed / PX-DISP-FLEET-2026-06 (Dispatch Capacity, Fleet Guards/Ops, Payload Multi-Seal) — **E2E_SSMR_GREEN**
 - **Status:** Closed. SSMR markers `PX_E2E_DISPATCH_CAPACITY_OK`, `PX_E2E_WAREHOUSE_FLEET_MGMT_OK`, `PX_E2E_PAYLOAD_SEAL_FLOWS_OK` green; capacity recs, fleet guards, multi-truck seal paths wired.
@@ -226,10 +229,11 @@ Phases are **vertical clusters**. Each phase = backend E2E (SSMR first) + all af
 - **Status:** Closed. WH1–WH2 replenishment durability, `PX_E2E_REPLENISH_OK`, `PX_E2E_REPLENISH_COLOCATE_OK`, `PX_E2E_WAREHOUSE_REPLENISHMENT_OK` green.
 
 ### Subsequent Phases (example order; adjust live):
-- Analytics/Insights/Treasury depth (native + portal) + AI recs consumer wiring.
+- ~~Analytics/Insights/Treasury depth (supplier native + portal)~~ — **E2E_SSMR_GREEN** (SP5).
+- ~~Exception depth (supplier broadcast/payment-bypass)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_OPERATIONS_OK`, `PX_E2E_SUPPLIER_PAYMENT_BYPASS_OK`).
+- AI recs consumer wiring + remaining native analytics depth (factory/warehouse if gaps).
 - Full ai-worker consumers (TopicFreezeLocks, any remaining). ~~notification inbox surfaces~~ **WIRED**. ~~TopicFreezeLocks consumer~~ **WIRED** (see `FACTORY_PHASE.md` PX-FREEZE-*).
 - Platform/client-policy + version gating + safe update deferral across all native + web (if not 100%).
-- Exception depth (more supplier native panels if gaps) + broadcast/payment-bypass (portal-only).
 - Performance/hardening/observability cutover prep (load certs, chaos, DR).
 - Any "Candidates" approved by Boss (see below).
 

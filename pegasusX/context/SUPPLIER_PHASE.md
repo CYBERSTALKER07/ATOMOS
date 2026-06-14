@@ -82,7 +82,7 @@
 |----|---------|---------|--------|--------|--------|
 | SP5-01 | Native analytics depth | `/v1/supplier/analytics/*` | `/analytics` (reference) | `AnalyticsScreen` / `AnalyticsView` | **WIRED** |
 | SP5-02 | Treasury hub depth | earnings + settlement authority | `/treasury` live KPI snapshot | Android/iOS treasury screens (existing) | **WIRED** |
-| SP5-03 | Operations / exceptions | empathy, broadcast, replenishment, payment-bypass | `/operations` polished | `OperationsScreen` / `OperationsView` | **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_OPERATIONS_OK`) |
+| SP5-03 | Operations / exceptions | empathy, broadcast, replenishment, payment-bypass | `/operations` polished | `OperationsScreen` / `OperationsView` | **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_OPERATIONS_OK`, `PX_E2E_SUPPLIER_PAYMENT_BYPASS_OK`) |
 
 ---
 
@@ -111,7 +111,7 @@ cd pegasusX && make parity-contract-full
 3. ~~Phase 2 manifest actions + manifest-exceptions~~ — **done**
 4. ~~Phase 3 staff/org lifecycle + notification inbox fix~~ — **done this session**
 5. ~~Phase 4 intelligence & catalog depth (analytics, CSV import, retailer pricing overrides, import session wizard + async worker)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_ANALYTICS_OK`, `PX_E2E_SUPPLIER_INVENTORY_IMPORT_OK`, `PX_E2E_SUPPLIER_IMPORT_WIZARD_OK`, `PX_E2E_SUPPLIER_IMPORT_ASYNC_OK`, `PX_E2E_RETAILER_PRICING_OVERRIDE_OK`)
-6. ~~Phase 5 cross-cutting depth (native analytics, treasury hub KPIs, operations broadcast/bypass)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_OPERATIONS_OK`)
+6. ~~Phase 5 cross-cutting depth (native analytics, treasury hub KPIs, operations broadcast/bypass)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_OPERATIONS_OK`, `PX_E2E_SUPPLIER_PAYMENT_BYPASS_OK`)
 7. ~~SSMR / parity verification~~ — **green** (`make test-ssmr-infra`, `make parity-contract-full`)
 8. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3
 
