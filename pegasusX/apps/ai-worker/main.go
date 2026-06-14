@@ -232,6 +232,18 @@ func main() {
 	})
 	defer reader.Close()
 
+	freezeReader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:        brokers,
+		GroupID:        aiWorkerConsumerName + "-freeze",
+		Topic:          events.TopicFreezeLocks,
+		MinBytes:       1e3,
+		MaxBytes:       10e6,
+		CommitInterval: time.Second,
+		StartOffset:    kafka.LastOffset,
+	})
+	defer freezeReader.Close()
+
+	frozen := newFreezeRegistry()
 	metrics := newConsumerLagMetrics()
 	workerHTTPPort := aiWorkerHTTPPort(os.Getenv)
 	var healthy atomic.Bool
@@ -239,7 +251,7 @@ func main() {
 	healthy.Store(true)
 	monitoringServer := newMonitoringServer(":"+workerHTTPPort, &healthy, &ready, metrics, cfg.InternalAPIKey, logger)
 
-	slog.Info("ai-worker starting", "topic", events.TopicMain, "brokers", brokers, "health_port", workerHTTPPort)
+	slog.Info("ai-worker starting", "topic", events.TopicMain, "freeze_topic", events.TopicFreezeLocks, "brokers", brokers, "health_port", workerHTTPPort)
 
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(runtime.GOMAXPROCS(0) * 2)
@@ -274,7 +286,7 @@ func main() {
 					}
 				}()
 
-				if err := processMessage(gCtx, msg, spannerClient); err != nil {
+				if err := processMessage(gCtx, msg, spannerClient, frozen); err != nil {
 					slog.Error("failed to process message", "err", err, "topic", msg.Topic, "partition", msg.Partition, "offset", msg.Offset)
 				}
 
@@ -283,6 +295,25 @@ func main() {
 				}
 				return nil
 			})
+		}
+	})
+
+	g.Go(func() error {
+		for {
+			m, err := freezeReader.FetchMessage(gCtx)
+			if err != nil {
+				if gCtx.Err() != nil {
+					return nil
+				}
+				slog.Error("failed to fetch freeze message", "err", err)
+				time.Sleep(250 * time.Millisecond)
+				continue
+			}
+			metrics.observe(aiWorkerConsumerName+"-freeze", m)
+			frozen.applyPayload(m.Value)
+			if err := freezeReader.CommitMessages(context.Background(), m); err != nil {
+				slog.Error("failed to commit freeze message", "err", err, "partition", m.Partition, "offset", m.Offset)
+			}
 		}
 	})
 
@@ -317,7 +348,7 @@ func main() {
 	slog.Info("ai-worker shutdown complete")
 }
 
-func processMessage(ctx context.Context, msg kafka.Message, spannerClient *spanner.Client) error {
+func processMessage(ctx context.Context, msg kafka.Message, spannerClient *spanner.Client, frozen *freezeRegistry) error {
 	var env EventEnvelope
 	if err := json.Unmarshal(msg.Value, &env); err != nil {
 		slog.Warn("failed to parse event envelope", "err", err, "body", string(msg.Value))
@@ -329,7 +360,7 @@ func processMessage(ctx context.Context, msg kafka.Message, spannerClient *spann
 
 	switch env.Type {
 	case events.EventOrderCreated:
-		return handleOrderCreated(ctx, logger, msg.Value, spannerClient)
+		return handleOrderCreated(ctx, logger, msg.Value, spannerClient, frozen)
 	default:
 		logger.Debug("unhandled event type")
 	}
@@ -337,7 +368,7 @@ func processMessage(ctx context.Context, msg kafka.Message, spannerClient *spann
 	return nil
 }
 
-func handleOrderCreated(ctx context.Context, logger *slog.Logger, payload []byte, cl *spanner.Client) error {
+func handleOrderCreated(ctx context.Context, logger *slog.Logger, payload []byte, cl *spanner.Client, frozen *freezeRegistry) error {
 	var data OrderCreatedData
 	if err := json.Unmarshal(payload, &data); err != nil {
 		logger.Warn("failed to parse order_created data", "err", err)
@@ -346,6 +377,15 @@ func handleOrderCreated(ctx context.Context, logger *slog.Logger, payload []byte
 
 	if data.OrderID == "" {
 		return nil // skip invalid
+	}
+	if frozen != nil {
+		if frozen.isFrozen("ORDER", data.OrderID) || frozen.isFrozen("WAREHOUSE", data.WarehouseID) {
+			logger.Info("freeze-locked, skipping ai synthesis",
+				"order_id", data.OrderID,
+				"warehouse_id", data.WarehouseID,
+			)
+			return nil
+		}
 	}
 	ctx = outbox.WithTraceID(ctx, data.TraceID)
 	if data.OrderSource != "" && data.OrderSource != string(order.OrderSourceManual) {

@@ -106,6 +106,9 @@ type DispatchLockEvent struct {
 	FactoryID   string `json:"factory_id,omitempty"`
 	LockType    string `json:"lock_type"`
 	LockedBy    string `json:"locked_by"`
+	EntityType  string `json:"entity_type,omitempty"`
+	EntityID    string `json:"entity_id,omitempty"`
+	TTLSeconds  int64  `json:"ttl_seconds,omitempty"`
 }
 
 // DriverEvent handles driver creation and updates.

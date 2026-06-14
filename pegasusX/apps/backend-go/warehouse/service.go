@@ -578,7 +578,7 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := s.repo.UpsertLock(r.Context(), warehouseID, lock, func(txn outbox.TxnBuffer) error {
-			return emitDispatchLockAcquireOutbox(r.Context(), txn, lock.LockID, eventPayload, lockType, warehouseID, claims.Subject, nowTS)
+			return emitDispatchLockAcquireOutbox(r.Context(), txn, lock.LockID, eventPayload, lock, lockType, warehouseID, claims.Subject, nowTS)
 		}); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_dispatch_lock_failed"})
 			return
@@ -630,7 +630,7 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 				RequestedBy: claims.Subject,
 				RequestID:   released.EntityID,
 			}
-			return emitDispatchLockReleaseOutbox(r.Context(), txn, lockID, eventPayload, releasedLockType, warehouseID, claims.Subject)
+			return emitDispatchLockReleaseOutbox(r.Context(), txn, lockID, eventPayload, released, releasedLockType, warehouseID, claims.Subject)
 		}); err != nil {
 			if errors.Is(err, errDispatchLockNotFound) {
 				writeJSON(w, http.StatusNotFound, map[string]string{"error": "dispatch_lock_not_found"})
@@ -880,7 +880,9 @@ func decodeDispatchLockType(reason string) string {
 	return "MANUAL_DISPATCH"
 }
 
-func emitDispatchLockAcquireOutbox(ctx context.Context, txn outbox.TxnBuffer, lockID string, warehouseEvent events.WarehouseEvent, lockType, warehouseID, lockedBy, timestamp string) error {
+const defaultFreezeLockTTLSeconds int64 = 300
+
+func emitDispatchLockAcquireOutbox(ctx context.Context, txn outbox.TxnBuffer, lockID string, warehouseEvent events.WarehouseEvent, lock DispatchLock, lockType, warehouseID, lockedBy, timestamp string) error {
 	if err := outbox.EmitJSON(ctx, txn, events.AggregateWarehouse, lockID, events.TopicMain, warehouseEvent); err != nil {
 		return err
 	}
@@ -894,6 +896,9 @@ func emitDispatchLockAcquireOutbox(ctx context.Context, txn outbox.TxnBuffer, lo
 		WarehouseID: warehouseID,
 		LockType:    lockType,
 		LockedBy:    lockedBy,
+		EntityType:  strings.TrimSpace(lock.EntityType),
+		EntityID:    strings.TrimSpace(lock.EntityID),
+		TTLSeconds:  defaultFreezeLockTTLSeconds,
 	}
 	if err := outbox.EmitJSON(ctx, txn, "DispatchLock", lockID, events.TopicFreezeLocks, freeze); err != nil {
 		return err
@@ -901,7 +906,7 @@ func emitDispatchLockAcquireOutbox(ctx context.Context, txn outbox.TxnBuffer, lo
 	return outbox.EmitJSON(ctx, txn, "DispatchLock", lockID, events.TopicMain, freeze)
 }
 
-func emitDispatchLockReleaseOutbox(ctx context.Context, txn outbox.TxnBuffer, lockID string, warehouseEvent events.WarehouseEvent, lockType, warehouseID, lockedBy string) error {
+func emitDispatchLockReleaseOutbox(ctx context.Context, txn outbox.TxnBuffer, lockID string, warehouseEvent events.WarehouseEvent, lock DispatchLock, lockType, warehouseID, lockedBy string) error {
 	if err := outbox.EmitJSON(ctx, txn, events.AggregateWarehouse, lockID, events.TopicMain, warehouseEvent); err != nil {
 		return err
 	}
@@ -915,6 +920,8 @@ func emitDispatchLockReleaseOutbox(ctx context.Context, txn outbox.TxnBuffer, lo
 		WarehouseID: warehouseID,
 		LockType:    lockType,
 		LockedBy:    lockedBy,
+		EntityType:  strings.TrimSpace(lock.EntityType),
+		EntityID:    strings.TrimSpace(lock.EntityID),
 	}
 	if err := outbox.EmitJSON(ctx, txn, "DispatchLock", lockID, events.TopicFreezeLocks, freeze); err != nil {
 		return err

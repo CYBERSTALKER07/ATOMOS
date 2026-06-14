@@ -711,6 +711,22 @@ func (s *Service) HandleAnalyticsOverview(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	if s.spannerClient != nil {
+		overview, err := s.loadAnalyticsOverview(r.Context())
+		if err == nil {
+			writeJSON(w, http.StatusOK, map[string]any{
+				"daily_activity":     overview.DailyActivity,
+				"transfers_total":    overview.TransfersTotal,
+				"manifests_active":   overview.ManifestsActive,
+				"exception_queue":    overview.ExceptionQueue,
+				"avg_lead_time_mins": overview.AvgLeadTimeMins,
+			})
+			return
+		}
+		if s.log != nil {
+			s.log.WarnContext(r.Context(), "factory analytics spanner read failed, using memory fallback", "err", err)
+		}
+	}
 	s.mu.RLock()
 	transfers := len(s.transfers)
 	manifests := len(s.manifests)

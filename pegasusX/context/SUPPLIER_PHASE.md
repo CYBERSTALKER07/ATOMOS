@@ -102,7 +102,7 @@ cd pegasusX && make parity-contract-full
 4. ~~Phase 3 staff/org lifecycle + notification inbox fix~~ — **done this session**
 5. ~~Phase 4 intelligence & catalog depth (analytics, CSV import)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_ANALYTICS_OK`, `PX_E2E_SUPPLIER_INVENTORY_IMPORT_OK`)
 6. ~~SSMR / parity verification~~ — **green** (`make test-ssmr-infra`, `make parity-contract-full`)
-7. **Cross-role next** — factory/warehouse analytics native depth, or Boss-picked role row per `VEGETABLE_PLAN.md` §3 (warehouse WH1–WH3 **WIRED**; notification inbox persistence **WIRED** — `PX_E2E_NOTIFICATION_INBOX_OK`)
+7. **Cross-role next** — warehouse native analytics depth audit, factory/warehouse native analytics screens (P2 UI), or Boss-picked role row per `VEGETABLE_PLAN.md` §3 (warehouse WH1–WH3 **WIRED**; notification inbox **WIRED**; freeze locks **WIRED** — `FACTORY_PHASE.md`)
 
 ---
 

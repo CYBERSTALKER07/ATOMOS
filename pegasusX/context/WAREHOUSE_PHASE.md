@@ -69,4 +69,4 @@ cd pegasusX && make parity-contract-full
 1. ~~Replenishment insights durability~~ — WH-1
 2. ~~Replenishment engine~~ — WH-2
 3. ~~Native fleet live map~~ — **WH-3 verified this session** (implementation pre-existed; SSMR marker + ledger closed)
-4. **Cross-role next** — factory/warehouse analytics native depth, or Boss-picked role row per `VEGETABLE_PLAN.md` §3 (notification inbox persistence **WIRED** — see `SUPPLIER_PHASE.md` NI-01–NI-04)
+4. **Cross-role next** — warehouse native analytics depth audit, factory/warehouse native analytics screens (P2 UI), or Boss-picked role row per `VEGETABLE_PLAN.md` §3 (notification inbox **WIRED** — `SUPPLIER_PHASE.md` NI-*; freeze locks **WIRED** — `FACTORY_PHASE.md` PX-FREEZE-*)
