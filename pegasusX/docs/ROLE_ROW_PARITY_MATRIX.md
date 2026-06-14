@@ -81,8 +81,8 @@ cd pegasusX && make backend-build
 | ID | Capability | Owner row | Backend | Clients | E2E marker |
 |----|------------|-----------|---------|---------|------------|
 | PX-FLEET-001 | Warehouse driver+vehicle CRUD, assign/re-sign, active-route guard | WAREHOUSE_ADMIN | `warehouse/ops_portal.go`, `warehouse/fleet_guards.go`, `warehouse/fleet_ops.go` | warehouse-portal `/drivers`, native ops | `PX_E2E_WAREHOUSE_FLEET_MGMT_OK` |
-| PX-DISP-002 | Manual dispatch capacity warnings + suggested unselect + force audit | WAREHOUSE_ADMIN | `warehouse/dispatch_execute.go`, `dispatch/capacity_recommend.go` | warehouse-portal `/dispatch` | `PX_E2E_DISPATCH_CAPACITY_OK` |
-| PX-PAY-003 | Per-truck seal + aggregate `seal-completed` batch | PAYLOAD | `payload/service.go`, `payloaderroutes` | payload-terminal + tablet apps | `PX_E2E_PAYLOAD_SEAL_FLOWS_OK` |
+| PX-DISP-002 | Manual dispatch capacity warnings + suggested unselect + force audit | WAREHOUSE_ADMIN | `warehouse/dispatch_execute.go`, `dispatch/capacity_recommend.go` | warehouse-portal + warehouse Android/iOS dispatch | `PX_E2E_DISPATCH_CAPACITY_OK` |
+| PX-PAY-003 | Per-truck seal + aggregate `seal-completed` batch | PAYLOAD | `payload/service.go`, `payloaderroutes` | payload-terminal + payload Android/iOS tablet apps | `PX_E2E_PAYLOAD_SEAL_FLOWS_OK` |
 | PX-REAS-004 | Durable payload reassign + recommend | PAYLOAD | `payload/service.go` | payload-terminal | `PX_E2E_REASSIGN_FLOWS_OK` |
 | PX-DRV-005 | Driver profile `vehicle_id` + WS assign detection | DRIVER | `driver/service.go`, bootstrap profile lookup | driver Android/iOS profile VM | `PX_E2E_DRIVER_ASSIGN_DETECTION_OK` |
 

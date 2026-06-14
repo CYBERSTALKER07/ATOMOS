@@ -256,6 +256,12 @@ private fun WorkflowLaunchCard(
                 actionLabel = "Open insights",
                 onClick = { onNavigate(FactoryRoutes.INSIGHTS) },
             )
+            WorkflowLaunchRow(
+                title = "Analytics overview",
+                supporting = "Factory throughput, active manifests, exception queue, and lead time.",
+                actionLabel = "Open analytics",
+                onClick = { onNavigate(FactoryRoutes.ANALYTICS) },
+            )
         }
     }
 }

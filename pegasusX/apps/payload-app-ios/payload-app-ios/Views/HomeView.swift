@@ -249,6 +249,20 @@ private struct TruckSidebar: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                if viewModel.batchReadyManifestIds.count > 1 {
+                    Section {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("\(viewModel.batchReadyManifestIds.count) trucks ready to finalize")
+                                .font(.subheadline.weight(.semibold))
+                            Button(viewModel.batchSealing ? "Finalizing…" : "Seal all trucks") {
+                                Task { await viewModel.finalizeBatchSeal() }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(viewModel.batchSealing)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
                 List(viewModel.trucks, selection: Binding(
                     get: { viewModel.selectedTruckId },
                     set: { id in if let id { Task { await viewModel.selectTruck(id) } } }

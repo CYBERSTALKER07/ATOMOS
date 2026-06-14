@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.DemandForecastDay
 import com.pegasusx.warehouse.data.model.DemandForecastProduct
 import com.pegasusx.warehouse.data.model.DemandForecastResponse
+import com.pegasusx.warehouse.data.model.DemandForecastSources
+import com.pegasusx.warehouse.data.model.ReplenishmentInsight
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -79,7 +81,17 @@ fun DemandForecastScreen(
             try {
                 val resp = api.getDemandForecast(days = horizon)
                 if (resp.isSuccessful && resp.body() != null) {
-                    forecast = resp.body()!!
+                    var body = resp.body()!!
+                    if (body.products.isEmpty()) {
+                        val insightsResp = api.getReplenishmentInsights()
+                        if (insightsResp.isSuccessful) {
+                            val rows = insightsResp.body()?.resolved().orEmpty()
+                            if (rows.isNotEmpty()) {
+                                body = demandForecastFromInsights(rows, horizon)
+                            }
+                        }
+                    }
+                    forecast = body
                 } else {
                     error = "Failed to load (${resp.code()})"
                 }
@@ -435,3 +447,35 @@ private fun formatGeneratedAt(raw: String): String = runCatching {
         .withZone(ZoneId.systemDefault())
         .format(instant)
 }.getOrDefault(raw)
+
+private fun demandForecastFromInsights(
+    insights: List<ReplenishmentInsight>,
+    horizon: Int,
+): DemandForecastResponse {
+    val products = insights.map { insight ->
+        DemandForecastProduct(
+            productId = insight.productId,
+            productName = insight.productName,
+            currentStock = insight.currentStock,
+            recommendedQty = insight.reorderQuantity,
+            daysUntilStockout = insight.daysUntilStockout.toDouble(),
+            priority = mapInsightPriority(insight.urgency),
+            unit = "VU",
+            sources = DemandForecastSources(burnRate = insight.avgDailyVelocity),
+        )
+    }
+    return DemandForecastResponse(
+        forecastDays = horizon,
+        products = products,
+        generatedAt = insights.firstOrNull()?.createdAt,
+    )
+}
+
+private fun mapInsightPriority(urgency: String): String {
+    val u = urgency.uppercase(Locale.US)
+    return when {
+        u == "CRITICAL" || u == "HIGH" -> "CRITICAL"
+        u == "URGENT" || u == "MEDIUM" -> "URGENT"
+        else -> "NORMAL"
+    }
+}

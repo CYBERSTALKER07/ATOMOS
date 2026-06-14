@@ -13,8 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"google.golang.org/api/iterator"
 )
 
 // dispatchManifestHint carries warehouse dispatch execute output into the payloader journey.
@@ -97,6 +100,12 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseReplenishmentInsightE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse replenishment insight: %w", err)
 	}
+	if err := runSupplierInventoryImportE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("supplier inventory import (staging substrate): %w", err)
+	}
+	if err := runWarehouseAnalyticsE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("warehouse analytics: %w", err)
+	}
 	if err := runReplenishmentSupplyChainE2E(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("replenishment supply chain: %w", err)
 	}
@@ -140,7 +149,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := replayGlobalPayWebhook(ctx, client, base, cfg, shopClosedSessionID, shopClosedOrderID); err != nil {
 		return fmt.Errorf("shop closed webhook: %w", err)
 	}
-	if err := runShopClosedE2E(ctx, client, base, cfg, supplierID, retailerToken, shopClosedOrderID); err != nil {
+	if err := runShopClosedE2E(ctx, client, base, cfg, supplierID, retailerToken, shopClosedOrderID, cookie); err != nil {
 		return fmt.Errorf("shop closed e2e: %w", err)
 	}
 	if err := runWarehouseTransferActionsE2E(ctx, client, base, cookie); err != nil {
@@ -188,6 +197,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	fmt.Println("PX_E2E_WAREHOUSE_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_DISPATCH_SETTINGS_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_REPLENISHMENT_OK")
+	fmt.Println("PX_E2E_WAREHOUSE_ANALYTICS_OK")
 	fmt.Println("PX_E2E_FACTORY_OK")
 	fmt.Println("PX_E2E_FACTORY_ANALYTICS_OK")
 	fmt.Println("PX_E2E_DELIVERY_OK")
@@ -400,7 +410,7 @@ func runNegotiationE2E(ctx context.Context, client *http.Client, base string, cf
 	return nil
 }
 
-func runShopClosedE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID, retailerToken, orderID string) error {
+func runShopClosedE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID, retailerToken, orderID, supplierCookie string) error {
 	driverID := envOr("SSMR_SMOKE_DRIVER_ID", "ssmr-driver-1")
 	adminToken, err := auth.Issue(auth.Claims{
 		Subject:    "ssmr-supplier-admin",
@@ -471,6 +481,13 @@ func runShopClosedE2E(ctx context.Context, client *http.Client, base string, cfg
 	}
 	if status != http.StatusOK {
 		return fmt.Errorf("shop closed report status %d body %s", status, string(respBody))
+	}
+	inboxAuth := strings.TrimSpace(supplierCookie)
+	if inboxAuth == "" {
+		inboxAuth = adminToken
+	}
+	if err := assertInboxContainsEvent(ctx, client, base, inboxAuth, events.EventShopClosed); err != nil {
+		return fmt.Errorf("shop closed inbox: %w", err)
 	}
 
 	responseBody, _ := json.Marshal(map[string]string{
@@ -897,13 +914,7 @@ func assertSupplierPortalAPIs(ctx context.Context, client *http.Client, base, co
 }
 
 func runSupplierIntelligenceE2E(ctx context.Context, client *http.Client, base, cookie string) error {
-	if err := runSupplierAnalyticsE2E(ctx, client, base, cookie); err != nil {
-		return err
-	}
-	if err := runSupplierInventoryImportE2E(ctx, client, base, cookie); err != nil {
-		return err
-	}
-	return nil
+	return runSupplierAnalyticsE2E(ctx, client, base, cookie)
 }
 
 func runSupplierAnalyticsE2E(ctx context.Context, client *http.Client, base, cookie string) error {
@@ -926,10 +937,10 @@ func runSupplierAnalyticsE2E(ctx context.Context, client *http.Client, base, coo
 	return nil
 }
 
-func runSupplierInventoryImportE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+func runSupplierInventoryImportE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config) error {
 	csvBody := fmt.Sprintf(
-		"product_id,warehouse_id,quantity_on_hand,reorder_threshold\nSSMR-SKU-1,%s,50,5\n",
-		demoWarehouseID(),
+		"product_id,warehouse_id,quantity_on_hand,reorder_threshold\nSSMR-SKU-1,%s,50,5\nSSMR-SKU-BAD,%s,10,1\n",
+		demoWarehouseID(), demoWarehouseID(),
 	)
 	status, respBody, _, err := clientDoContentType(
 		ctx, client, http.MethodPost, base+"/v1/supplier/inventory/import",
@@ -942,7 +953,9 @@ func runSupplierInventoryImportE2E(ctx context.Context, client *http.Client, bas
 		return fmt.Errorf("supplier inventory import status %d body %s", status, string(respBody))
 	}
 	var result struct {
-		Applied int `json:"applied"`
+		SessionID string `json:"session_id"`
+		Applied   int    `json:"applied"`
+		Skipped   int    `json:"skipped"`
 	}
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return fmt.Errorf("decode supplier inventory import: %w", err)
@@ -950,8 +963,162 @@ func runSupplierInventoryImportE2E(ctx context.Context, client *http.Client, bas
 	if result.Applied < 1 {
 		return fmt.Errorf("supplier inventory import applied=%d body %s", result.Applied, string(respBody))
 	}
+	if result.Skipped < 1 {
+		return fmt.Errorf("supplier inventory import skipped=%d want >=1 (anomaly row) body %s", result.Skipped, string(respBody))
+	}
+	if strings.TrimSpace(result.SessionID) == "" {
+		return fmt.Errorf("supplier inventory import missing session_id body %s", string(respBody))
+	}
+	supplierID := supplierIDFromJWT(cookie, cfg.JWTSecret)
+	if err := assertSupplierImportStagingRows(ctx, cfg, supplierID, result.SessionID, demoWarehouseID()); err != nil {
+		return fmt.Errorf("supplier import staging rows: %w", err)
+	}
 	fmt.Println("PX_E2E_SUPPLIER_INVENTORY_IMPORT_OK")
 	return nil
+}
+
+func assertSupplierImportStagingRows(ctx context.Context, cfg *bootstrap.Config, supplierID, sessionID, warehouseID string) error {
+	client, err := spanner.NewClient(ctx, spannerDatabasePath(cfg), spannerClientOptions(cfg)...)
+	if err != nil {
+		return fmt.Errorf("new spanner client: %w", err)
+	}
+	defer client.Close()
+
+	stmt := spanner.Statement{
+		SQL: `SELECT row_index, raw_data, validation_errors
+		      FROM SupplierImportStagedRows
+		      WHERE supplier_id = @supplierId
+		        AND session_id = @sessionId
+		        AND validation_errors IS NOT NULL
+		        AND ARRAY_LENGTH(validation_errors) > 0`,
+		Params: map[string]any{
+			"supplierId": supplierID,
+			"sessionId":  sessionID,
+		},
+	}
+	iter := client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	anomalyRows := 0
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("query staged rows: %w", err)
+		}
+		var rowIndex int64
+		var raw spanner.NullJSON
+		var validationErrors []string
+		if err := row.Columns(&rowIndex, &raw, &validationErrors); err != nil {
+			return fmt.Errorf("decode staged row: %w", err)
+		}
+		if len(validationErrors) == 0 {
+			continue
+		}
+		rawMap := importStagingJSONMap(raw)
+		rowWarehouse := strings.TrimSpace(stagingJSONString(rawMap, "warehouse_id"))
+		if rowWarehouse != "" && rowWarehouse != warehouseID {
+			continue
+		}
+		anomalyRows++
+	}
+	if anomalyRows < 1 {
+		return fmt.Errorf("want >=1 staged anomaly row for warehouse %s supplier %s session %s", warehouseID, supplierID, sessionID)
+	}
+	return nil
+}
+
+func importStagingJSONMap(value spanner.NullJSON) map[string]any {
+	if !value.Valid || value.Value == nil {
+		return nil
+	}
+	if mapped, ok := value.Value.(map[string]any); ok {
+		return mapped
+	}
+	encoded, err := json.Marshal(value.Value)
+	if err != nil {
+		return nil
+	}
+	decoded := make(map[string]any)
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		return nil
+	}
+	return decoded
+}
+
+func stagingJSONString(values map[string]any, key string) string {
+	if values == nil {
+		return ""
+	}
+	raw, ok := values[key]
+	if !ok || raw == nil {
+		return ""
+	}
+	if value, ok := raw.(string); ok {
+		return value
+	}
+	return strings.TrimSpace(fmt.Sprint(raw))
+}
+
+func countWarehouseImportAnomalyRows(ctx context.Context, cfg *bootstrap.Config, supplierID, warehouseID string) (int64, error) {
+	supplierID = strings.TrimSpace(supplierID)
+	if supplierID == "" {
+		return 0, fmt.Errorf("supplier_id required")
+	}
+	client, err := spanner.NewClient(ctx, spannerDatabasePath(cfg), spannerClientOptions(cfg)...)
+	if err != nil {
+		return 0, fmt.Errorf("new spanner client: %w", err)
+	}
+	defer client.Close()
+
+	startAt := time.Now().UTC().AddDate(0, 0, -30).Truncate(24 * time.Hour)
+	stmt := spanner.Statement{
+		SQL: `SELECT session_id, raw_data, cleaned_data, validation_errors
+		      FROM SupplierImportStagedRows
+		      WHERE supplier_id = @supplierId
+		        AND created_at >= @startAt
+		        AND validation_errors IS NOT NULL
+		        AND ARRAY_LENGTH(validation_errors) > 0
+		      ORDER BY updated_at DESC
+		      LIMIT 5000`,
+		Params: map[string]any{
+			"supplierId": supplierID,
+			"startAt":    startAt,
+		},
+	}
+	iter := client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	var openRows int64
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return 0, fmt.Errorf("query import anomalies: %w", err)
+		}
+		var sessionID string
+		var raw spanner.NullJSON
+		var cleaned spanner.NullJSON
+		var validationErrors []string
+		if err := row.Columns(&sessionID, &raw, &cleaned, &validationErrors); err != nil {
+			return 0, fmt.Errorf("decode import anomaly row: %w", err)
+		}
+		rawMap := importStagingJSONMap(raw)
+		cleanedMap := importStagingJSONMap(cleaned)
+		rowWarehouse := strings.TrimSpace(stagingJSONString(cleanedMap, "warehouse_id"))
+		if rowWarehouse == "" {
+			rowWarehouse = strings.TrimSpace(stagingJSONString(rawMap, "warehouse_id"))
+		}
+		if rowWarehouse != "" && rowWarehouse != warehouseID {
+			continue
+		}
+		openRows++
+	}
+	return openRows, nil
 }
 
 func runWarehouseDispatchLock(ctx context.Context, client *http.Client, base, cookie, orderID string) error {
@@ -1213,6 +1380,54 @@ func runWarehouseReplenishmentInsightE2E(ctx context.Context, client *http.Clien
 	return nil
 }
 
+func runWarehouseAnalyticsE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config) error {
+	supplierID := supplierIDFromJWT(cookie, cfg.JWTSecret)
+	if count, err := countWarehouseImportAnomalyRows(ctx, cfg, supplierID, demoWarehouseID()); err != nil {
+		return fmt.Errorf("warehouse import anomaly projection: %w", err)
+	} else if count < 1 {
+		return fmt.Errorf("warehouse import anomaly projection want >=1 got %d supplier=%s warehouse=%s", count, supplierID, demoWarehouseID())
+	}
+	for _, period := range []string{"7d", "30d"} {
+		url := base + "/v1/warehouse/ops/analytics?period=" + period + "&warehouse_id=" + demoWarehouseID()
+		status, respBody, _, err := clientDo(ctx, client, http.MethodGet, url, nil, cookie, "")
+		if err != nil {
+			return err
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("warehouse analytics %s status %d body %s", period, status, string(respBody))
+		}
+		var overview struct {
+			Period           string `json:"period"`
+			TotalOrders      int64  `json:"total_orders"`
+			DailyBreakdown   []struct {
+				Date string `json:"date"`
+			} `json:"daily_breakdown"`
+			ImportFreshness struct {
+				AppliedRows30d   int64  `json:"applied_rows_30d"`
+				AppliedSkus30d   int64  `json:"applied_skus_30d"`
+				QuantityDelta30d int64  `json:"quantity_delta_30d"`
+				LastSessionID    string `json:"last_session_id"`
+				LastAppliedAt    string `json:"last_applied_at"`
+			} `json:"import_freshness"`
+			ImportAnomalyQueue struct {
+				OpenRows30d         int64  `json:"open_rows_30d"`
+				AffectedSessions30d int64  `json:"affected_sessions_30d"`
+				LastSessionID       string `json:"last_session_id"`
+				LastDetectedAt      string `json:"last_detected_at"`
+				LastDetail          string `json:"last_detail"`
+			} `json:"import_anomaly_queue"`
+		}
+		if err := json.Unmarshal(respBody, &overview); err != nil {
+			return fmt.Errorf("decode warehouse analytics %s: %w", period, err)
+		}
+		if overview.Period != period {
+			return fmt.Errorf("warehouse analytics period mismatch want %s got %s", period, overview.Period)
+		}
+	}
+	fmt.Println("PX_E2E_WAREHOUSE_ANALYTICS_OK")
+	return nil
+}
+
 func runWarehouseFleetLiveMapE2E(ctx context.Context, client *http.Client, base, cookie string) error {
 	whID := demoWarehouseID()
 	url := base + "/v1/warehouse/ops/fleet/live-map?warehouse_id=" + whID
@@ -1242,19 +1457,29 @@ func runWarehouseFleetLiveMapE2E(ctx context.Context, client *http.Client, base,
 }
 
 func runNotificationInboxE2E(ctx context.Context, client *http.Client, base, supplierCookie, retailerToken string) error {
-	deadline := time.Now().Add(12 * time.Second)
+	deadline := time.Now().Add(30 * time.Second)
+	var lastSupplierErr, lastRetailerErr error
 	for time.Now().Before(deadline) {
-		if err := assertInboxHasRows(ctx, client, base, supplierCookie, "supplier"); err == nil {
-			if retailerToken != "" {
-				if err := assertInboxHasRows(ctx, client, base, retailerToken, "retailer"); err != nil {
-					time.Sleep(400 * time.Millisecond)
-					continue
-				}
-			}
-			fmt.Println("PX_E2E_NOTIFICATION_INBOX_OK")
-			return nil
+		lastSupplierErr = assertInboxHasRows(ctx, client, base, supplierCookie, "supplier")
+		if lastSupplierErr != nil {
+			time.Sleep(400 * time.Millisecond)
+			continue
 		}
-		time.Sleep(400 * time.Millisecond)
+		if retailerToken != "" {
+			lastRetailerErr = assertInboxHasRows(ctx, client, base, retailerToken, "retailer")
+			if lastRetailerErr != nil {
+				time.Sleep(400 * time.Millisecond)
+				continue
+			}
+		}
+		fmt.Println("PX_E2E_NOTIFICATION_INBOX_OK")
+		return nil
+	}
+	if lastSupplierErr != nil {
+		return fmt.Errorf("supplier inbox not ready after kafka fanout window: %w", lastSupplierErr)
+	}
+	if retailerToken != "" && lastRetailerErr != nil {
+		return fmt.Errorf("retailer inbox not ready after kafka fanout window: %w", lastRetailerErr)
 	}
 	return fmt.Errorf("notification inbox empty after kafka fanout window")
 }
@@ -1277,6 +1502,41 @@ func assertInboxHasRows(ctx context.Context, client *http.Client, base, authToke
 		return fmt.Errorf("%s inbox empty", label)
 	}
 	return nil
+}
+
+func assertInboxContainsEvent(ctx context.Context, client *http.Client, base, authToken, wantType string) error {
+	deadline := time.Now().Add(30 * time.Second)
+	var lastTypes []string
+	for time.Now().Before(deadline) {
+		status, respBody, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/user/notifications?limit=25", nil, authToken, "")
+		if err != nil {
+			return err
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("inbox status %d body %s", status, string(respBody))
+		}
+		var inbox struct {
+			Notifications []struct {
+				Type  string `json:"type"`
+				Title string `json:"title"`
+			} `json:"notifications"`
+		}
+		if err := json.Unmarshal(respBody, &inbox); err != nil {
+			return fmt.Errorf("decode inbox: %w", err)
+		}
+		lastTypes = lastTypes[:0]
+		for _, row := range inbox.Notifications {
+			if row.Type == wantType {
+				return nil
+			}
+			lastTypes = append(lastTypes, row.Type)
+		}
+		time.Sleep(400 * time.Millisecond)
+	}
+	if len(lastTypes) == 0 {
+		return fmt.Errorf("inbox missing event type %s (no rows)", wantType)
+	}
+	return fmt.Errorf("inbox missing event type %s (saw %d rows: %s)", wantType, len(lastTypes), strings.Join(lastTypes, ", "))
 }
 
 func runFactoryManifestLifecycleE2E(ctx context.Context, client *http.Client, base, cookie string) error {
@@ -1346,6 +1606,11 @@ func runFactoryManifestLifecycleE2E(ctx context.Context, client *http.Client, ba
 		}
 		if strings.ToUpper(strings.TrimSpace(transitionResp.State)) != step.wantTo {
 			return fmt.Errorf("factory manifest %s expected state %s got %s body %s", step.action, step.wantTo, transitionResp.State, string(respBody))
+		}
+		if step.action == "seal" {
+			if err := assertInboxContainsEvent(ctx, client, base, cookie, events.EventManifestSealed); err != nil {
+				return fmt.Errorf("manifest sealed inbox: %w", err)
+			}
 		}
 	}
 
@@ -2314,9 +2579,12 @@ func runDispatchCapacityE2E(ctx context.Context, client *http.Client, base, cook
 	if err := json.Unmarshal(respBody, &first); err != nil {
 		return fmt.Errorf("decode dispatch capacity: %w", err)
 	}
-	if strings.ToLower(strings.TrimSpace(first.Status)) != "capacity_exceeded" {
-		fmt.Println("PX_E2E_DISPATCH_CAPACITY_OK")
-		return nil
+	if strings.ToLower(strings.TrimSpace(first.Status)) == "capacity_exceeded" {
+		for _, warning := range first.CapacityWarnings {
+			if len(warning.SuggestedUnselectOrderIDs) == 0 {
+				return fmt.Errorf("capacity_exceeded missing suggested_unselect_order_ids")
+			}
+		}
 	}
 	fmt.Println("PX_E2E_DISPATCH_CAPACITY_OK")
 	return nil
@@ -2858,7 +3126,7 @@ func runShopClosedSmokeCheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := replayGlobalPayWebhook(ctx, client, base, cfg, sessionID, orderID); err != nil {
 		return fmt.Errorf("webhook: %w", err)
 	}
-	if err := runShopClosedE2E(ctx, client, base, cfg, supplierID, retailerToken, orderID); err != nil {
+	if err := runShopClosedE2E(ctx, client, base, cfg, supplierID, retailerToken, orderID, cookie); err != nil {
 		return err
 	}
 	fmt.Println("PX_E2E_SHOP_CLOSED_OK")

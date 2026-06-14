@@ -243,9 +243,9 @@ Manual QA: [qa/PX12_MANUAL_QA_RUNBOOK.md](./qa/PX12_MANUAL_QA_RUNBOOK.md), [qa/P
 | PX-ECO-009 | Warehouse Kafka consumer | WIRED | consumer started |
 | PX-ECO-010 | Factory supply Spanner (not demo L1) | WIRED | factory list from Spanner |
 | PX-ECO-011 | Transfer receive → inventory | WIRED | receive credits VU |
-| PX-ECO-012 | TopicFreezeLocks consumer | TODO | ai-worker sprint |
-| PX-ECO-013 | Durable replenishment insights | TODO | Spanner table |
-| PX-ECO-014 | Notification inbox from Kafka | TODO | dispatcher hook |
+| PX-ECO-012 | TopicFreezeLocks consumer | WIRED | `apps/ai-worker/freeze_registry.go` |
+| PX-ECO-013 | Durable replenishment insights | WIRED | `ReplenishmentInsights` Spanner + WH1 |
+| PX-ECO-014 | Notification inbox from Kafka | WIRED | `kafka/notification_inbox.go` |
 | PX-FLEET-001 | Warehouse fleet CRUD + assign guard | WIRED | `PX_E2E_WAREHOUSE_FLEET_MGMT_OK` |
 | PX-DISP-002 | Dispatch capacity recs + force audit | WIRED | `PX_E2E_DISPATCH_CAPACITY_OK` |
 | PX-PAY-003 | Payload aggregate seal-completed | WIRED | `PX_E2E_PAYLOAD_SEAL_FLOWS_OK` |
@@ -272,7 +272,6 @@ Manual QA: [qa/PX12_MANUAL_QA_RUNBOOK.md](./qa/PX12_MANUAL_QA_RUNBOOK.md), [qa/P
 - Supplier portal ~26 routes vs Pegasus ~59 (P2).
 - No Rust optimizer sidecar (P2).
 - Supplier native: broadcast/payment-bypass portal-only.
-- Factory analytics native screen missing (P3).
 - FCM: driver + retailer only.
 
 ---

@@ -40,6 +40,46 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 				Priority: "high",
 			}
 		}
+	case events.EventManifestDraftCreated:
+		var e events.ManifestEvent
+		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
+			return FormatManifestDraftCreated(e.ManifestID)
+		}
+	case events.EventManifestLoadingStarted:
+		var e events.ManifestEvent
+		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
+			return FormatManifestLoadingStarted(e.ManifestID, e.DriverID)
+		}
+	case events.EventManifestSealed:
+		var e events.ManifestEvent
+		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
+			return FormatManifestSealed(e.ManifestID)
+		}
+	case events.EventManifestOrderInjected:
+		var e events.ManifestEvent
+		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
+			return FormatManifestOrderInjected(e.ManifestID, e.OrderID)
+		}
+	case events.EventManifestOrderException:
+		var e events.ManifestEvent
+		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
+			return FormatManifestOrderException(e.ManifestID, e.OrderID, e.Reason)
+		}
+	case events.EventManifestDLQEscalation:
+		var e events.ManifestEvent
+		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
+			return FormatManifestDLQEscalation(e.ManifestID, e.Reason)
+		}
+	case events.EventManifestRebalanced:
+		var e events.ManifestEvent
+		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
+			return FormatManifestRebalanced(e.ManifestID, e.FromManifestID, e.ToManifestID)
+		}
+	case events.EventManifestCancelled:
+		var e events.ManifestEvent
+		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
+			return FormatManifestCancelled(e.ManifestID, e.Reason)
+		}
 	case events.EventManifestDispatched:
 		var e events.ManifestEvent
 		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
@@ -48,12 +88,42 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 	case events.EventManifestCompleted:
 		var e events.ManifestEvent
 		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
-			return FormatManifestCompleted(e.ManifestID, 0)
+			return FormatManifestCompleted(e.ManifestID, e.OrderCount)
 		}
 	case events.EventPaymentCleared, events.EventPaymentRequired, "PAYMENT_SETTLED":
 		var e events.FinanceEvent
 		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
 			return FormatPaymentReceived(e.OrderID, 0, "")
+		}
+	case events.EventShopClosed:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormatShopClosed(e.OrderID, e.DriverID)
+		}
+	case events.EventShopClosedEscalated:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormatShopClosedEscalated(e.OrderID)
+		}
+	case events.EventShopClosedResolved:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormatShopClosedResolved(e.OrderID, e.Resolution)
+		}
+	case events.EventShopClosedResponse:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormatShopClosedResponse(e.OrderID, e.Response)
+		}
+	case events.EventDriverCreated:
+		var e events.DriverEvent
+		if json.Unmarshal(payload, &e) == nil && e.DriverID != "" {
+			return FormatDriverCreated(e.DriverID, e.HomeNodeID)
+		}
+	case events.EventVehicleCreated:
+		var e events.VehicleEvent
+		if json.Unmarshal(payload, &e) == nil && e.VehicleID != "" {
+			return FormatVehicleCreated(e.VehicleID, e.HomeNodeID)
 		}
 	}
 

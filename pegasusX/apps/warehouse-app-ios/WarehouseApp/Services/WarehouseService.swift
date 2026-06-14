@@ -82,7 +82,7 @@ enum WarehouseService {
     }
 
     // MARK: - Analytics
-    static func analytics(period: String = "7d") async throws -> AnalyticsData {
+    static func analytics(period: String = "30d") async throws -> AnalyticsData {
         try await api.get("v1/warehouse/ops/analytics", query: ["period": period])
     }
 

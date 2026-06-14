@@ -13,7 +13,10 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 const (
@@ -31,6 +34,7 @@ type inventoryImportRow struct {
 }
 
 type inventoryImportResult struct {
+	SessionID string   `json:"session_id,omitempty"`
 	Applied   int      `json:"applied"`
 	Skipped   int      `json:"skipped"`
 	Errors    []string `json:"errors,omitempty"`
@@ -79,18 +83,42 @@ func (s *Service) HandleInventoryImport(w http.ResponseWriter, r *http.Request) 
 	warehouseIDs := warehouseIDSet(topology)
 
 	result := inventoryImportResult{UpdatedAt: s.now().UTC().Format(time.RFC3339Nano)}
+	staging := make([]inventoryImportStagingEntry, 0, len(rows))
 	for i, row := range rows {
+		raw := inventoryImportStagingRaw(row)
+		entry := inventoryImportStagingEntry{
+			RowIndex: int64(i + 1),
+			RawData:  raw,
+		}
 		if _, ok := warehouseIDs[row.WarehouseID]; !ok {
+			entry.ValidationErrors = []string{"warehouse_not_in_topology"}
 			result.Skipped++
 			result.Errors = append(result.Errors, fmt.Sprintf("row %d: warehouse_not_in_topology", i+2))
+			staging = append(staging, entry)
+			continue
+		}
+		if err := s.validateImportedProduct(r.Context(), sid, row.ProductID); err != nil {
+			entry.ValidationErrors = []string{err.Error()}
+			result.Skipped++
+			result.Errors = append(result.Errors, fmt.Sprintf("row %d: %s", i+2, err.Error()))
+			staging = append(staging, entry)
 			continue
 		}
 		if err := s.upsertImportedInventoryRow(r.Context(), sid, row); err != nil {
+			entry.ValidationErrors = []string{err.Error()}
 			result.Skipped++
 			result.Errors = append(result.Errors, fmt.Sprintf("row %d: %s", i+2, err.Error()))
+			staging = append(staging, entry)
 			continue
 		}
+		entry.CleanedData = raw
 		result.Applied++
+		staging = append(staging, entry)
+	}
+	if sessionID, err := s.persistInventoryImportStaging(r.Context(), sid, staging, result.Applied, result.Skipped); err != nil {
+		s.log.WarnContext(r.Context(), "inventory import staging persist failed", "err", err, "supplier_id", sid)
+	} else if sessionID != "" {
+		result.SessionID = sessionID
 	}
 	if s.cache != nil {
 		s.cache.Invalidate(r.Context(), "supplier:inventory:"+sid)
@@ -124,6 +152,54 @@ func (s *Service) upsertImportedInventoryRow(ctx context.Context, supplierID str
 		ReorderThreshold: row.ReorderThreshold,
 		Version:          1,
 	})
+}
+
+func (s *Service) validateImportedProduct(ctx context.Context, supplierID, productID string) error {
+	if s.portalSpanner == nil {
+		return nil
+	}
+	row, err := s.portalSpanner.Single().ReadRow(ctx, "Products", spanner.Key{productID}, []string{"SupplierId", "IsActive"})
+	if err != nil {
+		if spanner.ErrCode(err) == codes.NotFound {
+			return s.validateImportedProductInventoryFallback(ctx, supplierID, productID)
+		}
+		return fmt.Errorf("load product: %w", err)
+	}
+	var productSupplier string
+	var isActive bool
+	if err := row.Columns(&productSupplier, &isActive); err != nil {
+		return fmt.Errorf("decode product: %w", err)
+	}
+	if strings.TrimSpace(productSupplier) != strings.TrimSpace(supplierID) {
+		return errors.New("product_supplier_mismatch")
+	}
+	if !isActive {
+		return errors.New("product_inactive")
+	}
+	return nil
+}
+
+func (s *Service) validateImportedProductInventoryFallback(ctx context.Context, supplierID, productID string) error {
+	stmt := spanner.Statement{
+		SQL: `SELECT 1
+		      FROM SupplierInventoryV2
+		      WHERE SupplierId = @supplierId AND ProductId = @productId
+		      LIMIT 1`,
+		Params: map[string]any{
+			"supplierId": supplierID,
+			"productId":  productID,
+		},
+	}
+	iter := s.portalSpanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	_, err := iter.Next()
+	if err == iterator.Done {
+		return errors.New("product_not_found")
+	}
+	if err != nil {
+		return fmt.Errorf("load inventory product: %w", err)
+	}
+	return nil
 }
 
 func warehouseIDSet(topology SupplierTopology) map[string]struct{} {

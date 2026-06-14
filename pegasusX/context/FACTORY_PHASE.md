@@ -13,11 +13,12 @@
 
 | ID | Feature | Backend | Portal | Android | iOS | Status |
 |----|---------|---------|--------|---------|-----|--------|
-| FA1-01 | Spanner analytics overview | `factory/analytics_spanner.go` → `GET /v1/factory/analytics/overview` | `/analytics` | API client exists; dedicated screen deferred | `FactoryService.analyticsOverview` | **WIRED** (backend) |
+| FA1-01 | Spanner analytics overview | `factory/analytics_spanner.go` → `GET /v1/factory/analytics/overview` | `/analytics` | `AnalyticsScreen` | `AnalyticsView` | **WIRED** |
 | FA1-02 | Replenishment insights (shared path) | `warehouseroutes` + `RequireReplenishmentInsightsScope` | `/insights` | `InsightsScreen` | `InsightsView` | **E2E_SSMR_GREEN** (`PX_E2E_FACTORY_INSIGHTS_OK`) |
 | FA1-03 | SSMR analytics marker | `runFactoryAnalyticsOverviewE2E` | — | — | — | **E2E_SSMR_GREEN** (`PX_E2E_FACTORY_ANALYTICS_OK`) |
+| FA1-04 | Native analytics DTO alignment | wire contract | — | `FactoryAnalyticsOverview` | `FactoryAnalyticsOverview` | **WIRED** |
 
-**Exit:** Factory analytics overview reads Spanner when infra is live; in-memory fallback only when Spanner read fails. Native dedicated analytics screens remain P2 (UI freeze — API already exposed on Android/iOS).
+**Exit:** Factory analytics overview reads Spanner when infra is live; native Android/iOS render KPI overview from dashboard workflow launch (parity with portal `/analytics`).
 
 ---
 
@@ -46,4 +47,5 @@ cd pegasusX && make test-ssmr-infra   # PX_E2E_FACTORY_ANALYTICS_OK, PX_E2E_FACT
 
 1. ~~Analytics Spanner overview~~ — FA-1 backend
 2. ~~ai-worker TopicFreezeLocks consumer~~ — PX-FREEZE-01–04
-3. **Cross-role next** — warehouse native analytics depth parity audit, factory/warehouse native analytics screens (P2 UI), or Boss-picked role row per `VEGETABLE_PLAN.md` §3
+3. ~~Factory native analytics screens + DTO alignment~~ — FA1-04
+4. **Cross-role next** — full import session wizard or Boss-picked role row per `VEGETABLE_PLAN.md` §3

@@ -57,13 +57,13 @@ This is the "list of all the features in the backend" that apps/roles depend on.
 - Supply requests (warehouse SUBMITTED → factory ACK → IN_PRODUCTION → READY → FULFILL; co-locate auto).
 - Transfers (truck path manifest; internal auto-receive + inventory credit).
 - Replenishment insights (durable, not demo).
-- Status: core `WIRED`/`E2E` (PX12-C1 etc.); replenishment insights durability + full native wiring `IN_PROGRESS`/`TODO` per master plan (PX-ECO-013).
+- Status: core `WIRED`/`E2E` (PX12-C1 etc.); replenishment insights durability **WIRED** (WH1–WH2).
 
 ### 1.4 Fleet (Drivers, Vehicles, Assign, Guards)
 - CRUD drivers/vehicles (supplier + node-admin scopes).
 - Assign to home node / active routes.
 - Fleet guards (active-route, capacity, home-node enforcement).
-- Status: recent hardening (fleet_guards.go, fleet_ops.go, ops_portal) — `IN_PROGRESS` per current session git. Many `WIRED` (PX-FLEET-001).
+- Status: recent hardening — `E2E_SSMR_GREEN` (`PX-FLEET-001`).
 
 ### 1.5 Dispatch, Capacity, Execute, Locks (Warehouse Ops Core)
 - Dispatch preview (geo-batch H3 + Tetris capacity fit).
@@ -71,7 +71,7 @@ This is the "list of all the features in the backend" that apps/roles depend on.
 - Dispatch lock (freeze for manual ops vs AI).
 - Execute (manifest split, assignment, outbox).
 - Dispatch settings (tunable).
-- Status: capacity + execute recent work (dispatch_execute.go, capacity_recommend*) — `IN_PROGRESS`. Preview/locks `E2E_SSMR_GREEN` in prior (PX-DISP-002).
+- Status: capacity + execute `E2E_SSMR_GREEN` (`PX-DISP-002`). Preview/locks `E2E_SSMR_GREEN`.
 
 ### 1.6 Telemetry, Live Maps, Tracking
 - Driver location POST → TelemetryHub (driver + supplier rooms).
@@ -84,7 +84,7 @@ This is the "list of all the features in the backend" that apps/roles depend on.
 - Payload: list/detail, start-loading, inject order, seal multi-truck, exceptions, reassign (recommend + durable apply).
 - Driver manifest gate (pre-seal block).
 - Device tokens + policy.
-- Status: durability landed (PX9-B); payload seal/reassign multi-truck recent (payload/service.go changes) — `IN_PROGRESS`/`WIRED` advancing to `E2E`. Full role row (factory+payload+supplier+driver+warehouse) required.
+- Status: durability `E2E_SSMR_GREEN` (PX9-B, PX-PAY-003); multi-truck seal `PX_E2E_PAYLOAD_SEAL_FLOWS_OK`.
 
 ### 1.8 Payment, Ledger, Treasury, Webhooks
 - Checkout unified (card/cash), sessions, webhooks (signature-first + idempotency), chargeback/reversal.
@@ -207,7 +207,7 @@ For each role, list its apps (all must stay in sync per doctrine). For each app/
 - **UI/Layout from pegasus ref:** PayloadTerminal Expo + tablet natives. pegasusX audits: byte-identical themes/components except data-layer scoping (`/v1/payloader/*`) + adaptive polish (iPad split column, Android ListDetailPaneScaffold auto-open). Replicate/maintain the good adaptive + state panels. pegasusX packages for shared.
 - **Cross-sync:** Payload room + factory (manifest control) + supplier + warehouse + driver gate. MANIFEST_* events critical. Seal batch affects fleet/driver.
 - **E2E criteria:** Login → manifest list/detail → loading/inject/seal (multi-truck) → dispatch → complete; reassign recommend+apply durable; exceptions; driver gate; device token; `PX_E2E_PAYLOAD_OK` + sub-markers (LIFECYCLE, REASSIGN, DRIVER_GATE, DEVICE_TOKEN, SEAL_FLOWS).
-- **Status:** Lifecycle + reassign + seal flows `WIRED`/`E2E` advancing (PX4-A3, PX9-B, PX-PAY-003, PX-REAS-004, recent multi-truck seal work `IN_PROGRESS`). Role-row parity closed.
+- **Status:** Lifecycle + reassign + seal flows `WIRED`/`E2E` advancing (PX4-A3, PX9-B, PX-PAY-003, PX-REAS-004). PX-PAY-003 tablet apps now use `seal-completed` + multi-truck batch finalize.
 - **Phase:** Any manifest/payload change moves the entire payload row + factory + supplier oversight + driver gate consumers.
 
 ---
@@ -216,33 +216,14 @@ For each role, list its apps (all must stay in sync per doctrine). For each app/
 
 Phases are **vertical clusters**. Each phase = backend E2E (SSMR first) + all affected role apps/clients updated together + full verification + status marks in this doc + main plan + ledgers.
 
-**Current Active (as of session start + git):** Dispatch & Fleet Capacity/Ops/Payload Seal Hardening.
+**Current Active (as of 2026-06-14):** Platform depth + exception wiring (post core ops spine green).
 
-### Phase Current / PX-DISP-FLEET-2026-06 (Dispatch Capacity, Fleet Guards/Ops, Payload Multi-Seal)
-- **Why now:** User's edits (capacity_recommend.go + _test, fleet_guards/ops, dispatch_execute, payload service, warehouse ops_portal + dispatch page, types, diagrams) are exactly this. Must close E2E.
-- **Backend first:** Complete capacity recs + guards + execute paths (outbox, freeze locks, H3/geo, capacity math, audit trail). Payload seal per-truck + batch aggregate + reassign durable. Tests.
-- **Affected surfaces (must move together):** 
-  - Backend (dispatch/, warehouse/fleet_*/dispatch_*, payload/, warehouse/ops_portal, events, kafka if new consumers).
-  - warehouse-portal (/dispatch + capacity UI, fleet pages).
-  - warehouse-app-android + warehouse-app-ios (dispatch/fleet ops surfaces).
-  - supplier-portal (dispatch oversight, fleet live, capacity audit views).
-  - supplier native apps (ops slice if dispatch/fleet visible).
-  - factory-portal/native (if manifest-adjacent).
-  - payload row (seal flows, reassign).
-  - driver row (assign detection, manifest gate impact).
-  - packages/{types,api-client,ui-kit} for contracts/components.
-- **Sync obligations:** New capacity events? Freeze lock usage. WS telemetry + supplier/warehouse rooms. Outbox for assignments. Cache invalidates.
-- **Verification:** `make test-ssmr-infra` (new `PX_E2E_DISPATCH_CAPACITY_OK`, `PX_E2E_WAREHOUSE_FLEET_MGMT_OK`, `PX_E2E_PAYLOAD_SEAL_FLOWS_OK` etc.); parity-contract-full; gap-hunter; manual role-row QA for dispatch/fleet/payload.
-- **Status update:** Mark items in 1.4/1.5/1.7 + affected app sections `E2E_SSMR_GREEN`. Update diagrams (fleet-dispatch-capacity, payload-seal-multi-truck).
-- **Single-tenant note:** Capacity math simplified (no global multi-supplier contention); always one supplier's fleet.
-- **Exit:** All role-row clients show consistent capacity warnings, fleet guards prevent bad assigns, multi-truck seal works with driver gate + supplier visibility. No 501s on shipped paths.
+### Phase Closed / PX-DISP-FLEET-2026-06 (Dispatch Capacity, Fleet Guards/Ops, Payload Multi-Seal) — **E2E_SSMR_GREEN**
+- **Status:** Closed. SSMR markers `PX_E2E_DISPATCH_CAPACITY_OK`, `PX_E2E_WAREHOUSE_FLEET_MGMT_OK`, `PX_E2E_PAYLOAD_SEAL_FLOWS_OK` green; capacity recs, fleet guards, multi-truck seal paths wired.
+- **Exit met:** Role-row clients show capacity warnings; fleet guards block bad assigns; multi-truck seal works with driver gate + supplier visibility.
 
-### Phase Next: Replenishment + Supply + Transfers + Insights Durability (PX-REPLEN-2026-06)
-- Backend: durable replenishment insights (Spanner not demo), full supply state machine + WS/Kafka, transfer receive → inventory credit (already partial), co-locate auto path.
-- All surfaces: warehouse row (supply + insights + transfers), factory row (supply queue + fulfill + transfers), supplier (replenish trigger + oversight + lanes), payload if loading manifests from fulfill.
-- Sync: SUPPLY_REQUEST_* , WAREHOUSE_TRANSFER_*, outbox, WS.
-- E2E markers: `PX_E2E_REPLENISH_OK`, `PX_E2E_REPLENISH_COLOCATE_OK`, `PX_E2E_WAREHOUSE_REPLENISHMENT_OK`.
-- Status target: move `IN_PROGRESS`/`TODO` items to green.
+### Phase Closed / PX-REPLEN-2026-06 (Replenishment + Supply + Transfers + Insights Durability) — **E2E_SSMR_GREEN**
+- **Status:** Closed. WH1–WH2 replenishment durability, `PX_E2E_REPLENISH_OK`, `PX_E2E_REPLENISH_COLOCATE_OK`, `PX_E2E_WAREHOUSE_REPLENISHMENT_OK` green.
 
 ### Subsequent Phases (example order; adjust live):
 - Analytics/Insights/Treasury depth (native + portal) + AI recs consumer wiring.
@@ -265,7 +246,7 @@ Phases are **vertical clusters**. Each phase = backend E2E (SSMR first) + all af
 ---
 
 ## 4. Gaps Identified in Current Audit (2026-06-14)
-- **Real functional gaps (non-scaffold):** Replenishment insights durability + native actions (**WH1–WH2 WIRED**); ~~ai-worker freeze-lock consumer~~ **WIRED**; factory analytics Spanner overview (**FA1-01 WIRED**); some deeper factory/warehouse analytics **native screens** (P2); full cross-client for dispatch capacity + multi-truck seal work in flight. ~~notification inbox~~ **WIRED**.
+- **Real functional gaps (non-scaffold):** SP4-02 retailer pricing overrides **DEFERRED**. Full import session wizard (GCS upload / AI mapping / approve-apply) remains future work — direct CSV import now writes staging rows.
 - **Scaffold comments:** Expected and documented (bootstrap + domain repos). Not bugs — dev/SSMR path. Strict mode + cloud cutover removes them.
 - **UI/TO DOs in clients:** Mostly dev conveniences (recaptcha TODOs in web logins, Firebase SPM comments in retailer iOS) — non-blocking for core flows.
 - **Intentional v1 deltas (P2, do not close unless Boss directs):** Supplier portal depth vs full pegasus ~59 (some ops portal-only); no Rust sidecar; thinner native vs portal for supplier; FCM mainly driver+retailer; payme/click scaffolds.

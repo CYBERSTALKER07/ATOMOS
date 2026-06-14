@@ -147,6 +147,21 @@ final class APIClient: @unchecked Sendable {
         return try await post("v1/supplier/manifests/\(manifestId)/seal", body: [String: String](), idempotencyKey: key)
     }
 
+    func sealCompletedManifests(manifestIds: [String]) async throws -> SealCompletedManifestsResponse {
+        let ids = Array(Set(manifestIds.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }))
+        guard !ids.isEmpty else { throw APIError.httpError(400) }
+        let key = deterministicIdempotencyKey(action: "seal_completed", entityId: ids.sorted().joined(separator: ","))
+        return try await post(
+            "v1/payloader/manifests/seal-completed",
+            body: SealCompletedManifestsRequest(manifestIds: ids),
+            idempotencyKey: key
+        )
+    }
+
+    func loadingManifests() async throws -> ManifestsResponse {
+        try await supplierManifests(state: "LOADING")
+    }
+
     func supplierInjectOrder(manifestId: String, orderId: String) async throws -> StatusResponse {
         let payload = ["order_id": orderId]
         let key = deterministicIdempotencyKey(action: "supplier_inject", entityId: "\(manifestId)_\(orderId)")

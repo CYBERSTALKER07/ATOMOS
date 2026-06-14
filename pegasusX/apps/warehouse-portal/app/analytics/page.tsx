@@ -167,20 +167,29 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Daily Revenue Chart */}
-      {dailySeries.length > 0 && (
-        <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
-          <h2 className="text-sm font-semibold mb-4">Daily Revenue</h2>
+      <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
+        <h2 className="text-sm font-semibold mb-4">Daily Revenue</h2>
+        {dailySeries.length > 0 ? (
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={dailySeries}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="var(--muted)" />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 11 }}
+                stroke="var(--muted)"
+                tickFormatter={(value: string) => (value.length >= 10 ? value.slice(5, 10) : value)}
+              />
               <YAxis tick={{ fontSize: 11 }} stroke="var(--muted)" />
-              <Tooltip />
+              <Tooltip formatter={(value: number) => [`${fmtCurrency(value)} UZS`, 'Revenue']} />
               <Bar dataKey="revenue" fill="var(--accent)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-[var(--muted)] py-8 text-center">
+            No completed-order revenue in this period. Daily breakdown populates from Spanner `daily_breakdown`.
+          </p>
+        )}
+      </div>
 
       {/* Top Products */}
       {d.top_products.length > 0 && (

@@ -392,6 +392,8 @@ data class DispatchCapacityWarning(
     @SerialName("loaded_vu") val loadedVu: Double = 0.0,
     @SerialName("max_volume_vu") val maxVolumeVu: Double = 0.0,
     @SerialName("effective_max_vu") val effectiveMaxVu: Double = 0.0,
+    @SerialName("excess_vu") val excessVu: Double = 0.0,
+    @SerialName("suggested_unselect_order_ids") val suggestedUnselectOrderIds: List<String> = emptyList(),
 )
 
 @Serializable

@@ -23,6 +23,10 @@ struct DispatchView: View {
     @State private var showCapacityDialog = false
     @State private var capacityWarnings: [DispatchCapacityWarning] = []
 
+    private var capacitySuggestedUnselect: [String] {
+        Array(Set(capacityWarnings.flatMap(\.suggestedUnselectOrderIds)))
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -74,11 +78,24 @@ struct DispatchView: View {
                 Button("Dispatch anyway", role: .destructive) {
                     Task { await runManualDispatch(forceCapacity: true) }
                 }
+                if !capacitySuggestedUnselect.isEmpty {
+                    Button("Apply suggestion") {
+                        selectedOrderIds.subtract(capacitySuggestedUnselect)
+                        showCapacityDialog = false
+                    }
+                }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text(capacityWarnings.map {
-                    String(format: "%.1f VU loaded / %.1f VU effective max", $0.loadedVu, $0.effectiveMaxVu)
-                }.joined(separator: "\n"))
+                Text(capacityWarnings.map { warning in
+                    var lines = [String(format: "%.1f VU loaded / %.1f VU effective max", warning.loadedVu, warning.effectiveMaxVu)]
+                    if warning.excessVu > 0 {
+                        lines.append(String(format: "Excess: %.1f VU", warning.excessVu))
+                    }
+                    if !warning.suggestedUnselectOrderIds.isEmpty {
+                        lines.append("Suggested unselect: \(warning.suggestedUnselectOrderIds.map { String($0.prefix(8)) }.joined(separator: ", "))")
+                    }
+                    return lines.joined(separator: "\n")
+                }.joined(separator: "\n\n"))
             }
             .sheet(isPresented: $showCreateSupplyRequest) {
                 CreateSupplyRequestSheet { factoryId, priority, notes in

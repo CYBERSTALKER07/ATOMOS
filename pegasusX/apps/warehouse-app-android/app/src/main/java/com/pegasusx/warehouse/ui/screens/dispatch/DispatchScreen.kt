@@ -690,11 +690,33 @@ fun DispatchScreen(
                 Column {
                     Text("Selected orders exceed the truck effective capacity (95% buffer).")
                     capacityWarnings.forEach { warning ->
-                        Text(
-                            "${"%.1f".format(warning.loadedVu)} VU loaded / ${"%.1f".format(warning.effectiveMaxVu)} VU max",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = PegasusSpacing.sm),
-                        )
+                        Column(modifier = Modifier.padding(top = PegasusSpacing.sm)) {
+                            Text(
+                                "${"%.1f".format(warning.loadedVu)} VU loaded / ${"%.1f".format(warning.effectiveMaxVu)} VU max",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            if (warning.excessVu > 0) {
+                                Text(
+                                    "Excess: ${"%.1f".format(warning.excessVu)} VU",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                            if (warning.suggestedUnselectOrderIds.isNotEmpty()) {
+                                Text(
+                                    "Suggested unselect: ${warning.suggestedUnselectOrderIds.joinToString { it.take(8) }}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                    val suggestedIds = capacityWarnings.flatMap { it.suggestedUnselectOrderIds }.toSet()
+                    if (suggestedIds.isNotEmpty()) {
+                        TextButton(onClick = {
+                            selectedOrderIds = selectedOrderIds - suggestedIds
+                            showCapacityDialog = false
+                        }) { Text("Apply suggestion") }
                     }
                 }
             },

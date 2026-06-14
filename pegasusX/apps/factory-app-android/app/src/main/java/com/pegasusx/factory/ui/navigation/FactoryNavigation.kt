@@ -30,6 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.TokenHolder
+import com.pegasusx.factory.ui.screens.analytics.AnalyticsScreen
 import com.pegasusx.factory.ui.screens.auth.LoginScreen
 import com.pegasusx.factory.ui.screens.dashboard.DashboardScreen
 import com.pegasusx.factory.ui.screens.fleet.FleetScreen
@@ -56,6 +57,7 @@ object FactoryRoutes {
     const val FLEET = "fleet"
     const val STAFF = "staff"
     const val INSIGHTS = "insights"
+    const val ANALYTICS = "analytics"
     const val SUPPLY_REQUESTS = "supply_requests"
     const val PAYLOAD_OVERRIDE = "payload_override"
     const val MANIFEST_EXCEPTIONS = "manifest_exceptions"
@@ -251,6 +253,13 @@ fun FactoryNavigation(
 
             composable(FactoryRoutes.INSIGHTS) {
                 InsightsScreen(
+                    api = api,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(FactoryRoutes.ANALYTICS) {
+                AnalyticsScreen(
                     api = api,
                     onBack = { navController.popBackStack() },
                 )

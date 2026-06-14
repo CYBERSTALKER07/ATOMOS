@@ -6,6 +6,7 @@ struct DashboardView: View {
     let onOpenPayloadOverride: () -> Void
     @State private var showManifestExceptions = false
     @State private var showManifests = false
+    @State private var showAnalytics = false
     @State private var realtimeClient = FactoryRealtimeClient()
     @State private var stats = DashboardStats.empty
     @State private var loading = true
@@ -35,7 +36,8 @@ struct DashboardView: View {
                             onOpenSupplyRequests: onOpenSupplyRequests,
                             onOpenPayloadOverride: onOpenPayloadOverride,
                             onOpenManifestExceptions: { showManifestExceptions = true },
-                            onOpenManifests: { showManifests = true }
+                            onOpenManifests: { showManifests = true },
+                            onOpenAnalytics: { showAnalytics = true }
                         )
                         Text("Operations at a glance")
                             .font(.headline)
@@ -102,6 +104,11 @@ struct DashboardView: View {
             .sheet(isPresented: $showManifests) {
                 ManifestsView()
             }
+            .sheet(isPresented: $showAnalytics) {
+                NavigationStack {
+                    AnalyticsView()
+                }
+            }
         }
     }
 
@@ -136,6 +143,7 @@ private struct WorkflowLaunchCard: View {
     let onOpenPayloadOverride: () -> Void
     let onOpenManifestExceptions: () -> Void
     let onOpenManifests: () -> Void
+    let onOpenAnalytics: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
@@ -176,6 +184,12 @@ private struct WorkflowLaunchCard: View {
                 supporting: "Review transfers removed from manifests and DLQ escalations.",
                 actionLabel: "Open exceptions",
                 onTap: onOpenManifestExceptions
+            )
+            WorkflowLaunchRow(
+                title: "Analytics overview",
+                supporting: "Factory throughput, active manifests, exception queue, and lead time.",
+                actionLabel: "Open analytics",
+                onTap: onOpenAnalytics
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)

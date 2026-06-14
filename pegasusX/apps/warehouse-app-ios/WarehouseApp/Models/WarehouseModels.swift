@@ -445,6 +445,28 @@ struct ManifestListResponse: Decodable {
 
 // MARK: - Analytics
 
+struct DailyMetric: Decodable, Identifiable {
+    var id: String { date }
+    let date: String
+    let revenue: Int
+    let orders: Int
+    let completed: Int
+
+    enum CodingKeys: String, CodingKey {
+        case date
+        case revenue
+        case orders
+        case completed
+    }
+
+    init(date: String = "", revenue: Int = 0, orders: Int = 0, completed: Int = 0) {
+        self.date = date
+        self.revenue = revenue
+        self.orders = orders
+        self.completed = completed
+    }
+}
+
 struct AnalyticsData: Decodable {
     let period: String
     let totalOrders: Int
@@ -454,8 +476,14 @@ struct AnalyticsData: Decodable {
     let avgOrderValue: Double
     let fleetUtilizationPct: Double
     let topProducts: [TopProduct]
+    let dailyBreakdown: [DailyMetric]
+    let daily: [DailyMetric]
     let importFreshness: ImportFreshness
     let importAnomalyQueue: ImportAnomalyQueue
+
+    var chartDaily: [DailyMetric] {
+        dailyBreakdown.isEmpty ? daily : dailyBreakdown
+    }
 
     enum CodingKeys: String, CodingKey {
         case period
@@ -467,6 +495,8 @@ struct AnalyticsData: Decodable {
         case fleetUtilization = "fleet_utilization"
         case fleetUtilizationPct = "fleet_utilization_pct"
         case topProducts = "top_products"
+        case dailyBreakdown = "daily_breakdown"
+        case daily
         case importFreshness = "import_freshness"
         case importAnomalyQueue = "import_anomaly_queue"
     }
@@ -483,6 +513,8 @@ struct AnalyticsData: Decodable {
         let fleetUtilizationPctLegacy = try c.decodeIfPresent(Double.self, forKey: .fleetUtilizationPct) ?? 0
         fleetUtilizationPct = fleetUtilization.utilizationPct > 0 ? fleetUtilization.utilizationPct : fleetUtilizationPctLegacy
         topProducts = try c.decodeIfPresent([TopProduct].self, forKey: .topProducts) ?? []
+        dailyBreakdown = try c.decodeIfPresent([DailyMetric].self, forKey: .dailyBreakdown) ?? []
+        daily = try c.decodeIfPresent([DailyMetric].self, forKey: .daily) ?? []
         importFreshness = try c.decodeIfPresent(ImportFreshness.self, forKey: .importFreshness) ?? .empty
         importAnomalyQueue = try c.decodeIfPresent(ImportAnomalyQueue.self, forKey: .importAnomalyQueue) ?? .empty
     }
@@ -496,6 +528,8 @@ struct AnalyticsData: Decodable {
         avgOrderValue: 0,
         fleetUtilizationPct: 0,
         topProducts: [],
+        dailyBreakdown: [],
+        daily: [],
         importFreshness: .empty,
         importAnomalyQueue: .empty
     )
@@ -509,6 +543,8 @@ struct AnalyticsData: Decodable {
         avgOrderValue: Double,
         fleetUtilizationPct: Double,
         topProducts: [TopProduct],
+        dailyBreakdown: [DailyMetric],
+        daily: [DailyMetric],
         importFreshness: ImportFreshness,
         importAnomalyQueue: ImportAnomalyQueue
     ) {
@@ -520,6 +556,8 @@ struct AnalyticsData: Decodable {
         self.avgOrderValue = avgOrderValue
         self.fleetUtilizationPct = fleetUtilizationPct
         self.topProducts = topProducts
+        self.dailyBreakdown = dailyBreakdown
+        self.daily = daily
         self.importFreshness = importFreshness
         self.importAnomalyQueue = importAnomalyQueue
     }
@@ -915,12 +953,26 @@ struct DispatchCapacityWarning: Decodable {
     let loadedVu: Double
     let maxVolumeVu: Double
     let effectiveMaxVu: Double
+    let excessVu: Double
+    let suggestedUnselectOrderIds: [String]
 
     enum CodingKeys: String, CodingKey {
         case driverId = "driver_id"
         case loadedVu = "loaded_vu"
         case maxVolumeVu = "max_volume_vu"
         case effectiveMaxVu = "effective_max_vu"
+        case excessVu = "excess_vu"
+        case suggestedUnselectOrderIds = "suggested_unselect_order_ids"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        driverId = try c.decodeIfPresent(String.self, forKey: .driverId) ?? ""
+        loadedVu = try c.decodeIfPresent(Double.self, forKey: .loadedVu) ?? 0
+        maxVolumeVu = try c.decodeIfPresent(Double.self, forKey: .maxVolumeVu) ?? 0
+        effectiveMaxVu = try c.decodeIfPresent(Double.self, forKey: .effectiveMaxVu) ?? 0
+        excessVu = try c.decodeIfPresent(Double.self, forKey: .excessVu) ?? 0
+        suggestedUnselectOrderIds = try c.decodeIfPresent([String].self, forKey: .suggestedUnselectOrderIds) ?? []
     }
 }
 

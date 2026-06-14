@@ -31,6 +31,22 @@ data class DashboardStats(
     @SerialName("critical_insights") val criticalInsights: Int = 0,
 )
 
+// mirror of backend-go/factory HandleAnalyticsOverview + packages/types FactoryAnalyticsOverviewResponse
+@Serializable
+data class FactoryAnalyticsDayBucket(
+    val date: String = "",
+    val transfers: Long = 0,
+)
+
+@Serializable
+data class FactoryAnalyticsOverview(
+    @SerialName("daily_activity") val dailyActivity: List<FactoryAnalyticsDayBucket> = emptyList(),
+    @SerialName("transfers_total") val transfersTotal: Long = 0,
+    @SerialName("manifests_active") val manifestsActive: Long = 0,
+    @SerialName("exception_queue") val exceptionQueue: Long = 0,
+    @SerialName("avg_lead_time_mins") val avgLeadTimeMins: Double = 0.0,
+)
+
 // ── Transfers ──
 @Serializable
 data class Transfer(

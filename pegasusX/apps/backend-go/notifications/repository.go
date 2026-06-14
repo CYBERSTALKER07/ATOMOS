@@ -90,7 +90,7 @@ func (r *SpannerRepository) ListByRecipient(ctx context.Context, recipientID str
 	}
 	stmt := spanner.Statement{
 		SQL: `SELECT NotificationId, RecipientId, RecipientRole, EventType, Title, Body, DeepLink, IsRead, CreatedAt
-			FROM Notifications@{FORCE_INDEX=Idx_Notifications_ByRecipientCreated}
+			FROM Notifications
 			WHERE RecipientId = @rid
 			ORDER BY CreatedAt DESC
 			LIMIT @lim OFFSET @off`,
@@ -100,7 +100,7 @@ func (r *SpannerRepository) ListByRecipient(ctx context.Context, recipientID str
 			"off": int64(offset),
 		},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(5*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	var notifs []Notification
@@ -185,10 +185,10 @@ func (r *SpannerRepository) MarkAllRead(ctx context.Context, recipientID string)
 // UnreadCount returns the count of unread notifications for a recipient.
 func (r *SpannerRepository) UnreadCount(ctx context.Context, recipientID string) (int64, error) {
 	stmt := spanner.Statement{
-		SQL:    "SELECT COUNT(*) FROM Notifications@{FORCE_INDEX=Idx_Notifications_ByRecipientUnread} WHERE RecipientId = @rid AND IsRead = FALSE",
+		SQL:    "SELECT COUNT(*) FROM Notifications WHERE RecipientId = @rid AND IsRead = FALSE",
 		Params: map[string]any{"rid": recipientID},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(5*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err != nil {

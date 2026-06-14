@@ -83,6 +83,11 @@ data class HomeUiState(
     val showExceptionsPanel: Boolean = false,
     val loadingExceptions: Boolean = false,
     val manifestExceptions: List<ManifestExceptionRow> = emptyList(),
+    /** Per-truck sealed order ids so multi-truck batch seal survives truck switches. */
+    val sealedOrdersByTruck: Map<String, Set<String>> = emptyMap(),
+    /** LOADING manifests with every order sealed — eligible for seal-completed batch. */
+    val batchReadyManifestIds: List<String> = emptyList(),
+    val batchSealing: Boolean = false,
     val error: String? = null,
 )
 
@@ -249,6 +254,14 @@ class HomeViewModel @Inject constructor(
     fun selectTruck(truckId: String) {
         if (_state.value.selectedTruckId == truckId && _state.value.manifest != null) return
         cancelCountdown()
+        val previousTruckId = _state.value.selectedTruckId
+        val sealedSnapshot = _state.value.sealedOrderIds
+        val sealedByTruck = if (previousTruckId != null && sealedSnapshot.isNotEmpty()) {
+            _state.value.sealedOrdersByTruck + (previousTruckId to sealedSnapshot)
+        } else {
+            _state.value.sealedOrdersByTruck
+        }
+        val restoredSealed = sealedByTruck[truckId].orEmpty()
         _state.update {
             it.copy(
                 selectedTruckId = truckId,
@@ -256,13 +269,15 @@ class HomeViewModel @Inject constructor(
                 orders = emptyList(),
                 selectedOrderId = null,
                 checkedItems = emptySet(),
-                sealedOrderIds = emptySet(),
+                sealedOrderIds = restoredSealed,
+                sealedOrdersByTruck = sealedByTruck,
                 dispatchCodes = emptyMap(),
                 postSealOrderId = null,
                 postSealCountdown = 0,
                 loadingManifest = true,
                 loadingOrders = true,
                 manifestSealed = false,
+                batchReadyManifestIds = emptyList(),
                 error = null,
             )
         }
@@ -283,6 +298,65 @@ class HomeViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e -> _state.update { it.copy(loadingOrders = false, error = e.message ?: "Failed to load orders") } }
+        }
+        refreshBatchReadyManifests()
+    }
+
+    fun refreshBatchReadyManifests() {
+        viewModelScope.launch {
+            val snapshot = _state.value
+            val truckId = snapshot.selectedTruckId ?: return@launch
+            val sealedByTruck = snapshot.sealedOrdersByTruck.toMutableMap()
+            if (snapshot.sealedOrderIds.isNotEmpty()) {
+                sealedByTruck[truckId] = snapshot.sealedOrderIds
+            }
+            val loading = runCatching { repository.loadLoadingManifests() }.getOrElse { return@launch }
+            val ready = mutableListOf<String>()
+            for (manifest in loading) {
+                val manifestTruckId = manifest.truckId ?: continue
+                val orders = if (manifestTruckId == truckId) {
+                    snapshot.orders
+                } else {
+                    runCatching { repository.loadOrders(manifestTruckId) }.getOrElse { continue }
+                }
+                val sealed = if (manifestTruckId == truckId) {
+                    snapshot.sealedOrderIds
+                } else {
+                    sealedByTruck[manifestTruckId].orEmpty()
+                }
+                if (orders.isNotEmpty() && orders.all { it.orderId in sealed }) {
+                    ready.add(manifest.manifestId)
+                }
+            }
+            _state.update {
+                it.copy(
+                    batchReadyManifestIds = ready.distinct(),
+                    sealedOrdersByTruck = sealedByTruck,
+                )
+            }
+        }
+    }
+
+    fun finalizeBatchSeal() {
+        val manifestIds = _state.value.batchReadyManifestIds
+        if (manifestIds.size < 2 || _state.value.batchSealing) return
+        _state.update { it.copy(batchSealing = true, error = null) }
+        viewModelScope.launch {
+            runCatching { repository.sealCompletedManifests(manifestIds) }
+                .onSuccess {
+                    _state.update {
+                        it.copy(
+                            batchSealing = false,
+                            manifestSealed = true,
+                            batchReadyManifestIds = emptyList(),
+                            sealedOrdersByTruck = emptyMap(),
+                            manifest = it.manifest?.copy(state = "SEALED"),
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(batchSealing = false, error = e.message ?: "Batch seal failed") }
+                }
         }
     }
 
@@ -309,6 +383,7 @@ class HomeViewModel @Inject constructor(
                 }
                 .onFailure { e -> _state.update { it.copy(loadingOrders = false, error = e.message ?: "Failed to load orders") } }
         }
+        refreshBatchReadyManifests()
     }
 
     // ── Per-order checklist + seal ──────────────────────────────────────────
@@ -352,6 +427,7 @@ class HomeViewModel @Inject constructor(
                         )
                     }
                     startCountdown()
+                    refreshBatchReadyManifests()
                 }
                 .onFailure { e ->
                     _state.update { it.copy(sealingOrderId = null, error = e.message ?: "Seal failed") }
@@ -425,16 +501,22 @@ class HomeViewModel @Inject constructor(
     fun sealManifest() {
         val manifestId = _state.value.manifest?.manifestId ?: return
         if (_state.value.sealingManifest) return
+        val batchIds = _state.value.batchReadyManifestIds
+        val manifestIds = if (batchIds.size > 1 && manifestId in batchIds) batchIds else listOf(manifestId)
         _state.update { it.copy(sealingManifest = true, error = null) }
         viewModelScope.launch {
-            runCatching { repository.sealManifest(manifestId) }
-                .onSuccess {
+            runCatching { repository.sealCompletedManifests(manifestIds) }
+                .onSuccess { resp ->
                     _state.update {
                         it.copy(
                             sealingManifest = false,
                             manifestSealed = true,
+                            batchReadyManifestIds = if (manifestIds.size > 1) emptyList() else it.batchReadyManifestIds,
                             manifest = it.manifest?.copy(state = "SEALED"),
                         )
+                    }
+                    if (manifestIds.size > 1) {
+                        refreshBatchReadyManifests()
                     }
                 }
                 .onFailure { e ->

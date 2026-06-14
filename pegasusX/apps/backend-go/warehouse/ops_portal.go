@@ -1287,6 +1287,18 @@ func (s *Service) HandleOpsAnalytics(w http.ResponseWriter, r *http.Request) {
 		period = "7d"
 	}
 
+	if s.spannerClient != nil {
+		supplierID := s.resolveAnalyticsSupplierID(r)
+		payload, err := s.loadOpsAnalytics(r.Context(), whID, period, supplierID)
+		if err == nil {
+			writeJSON(w, http.StatusOK, payload)
+			return
+		}
+		if s.log != nil {
+			s.log.WarnContext(r.Context(), "warehouse analytics spanner read failed, using fallback", "warehouse_id", whID, "err", err)
+		}
+	}
+
 	var totalOrders, completedOrders, cancelledOrders int64
 	var totalRevenue int64
 	if s.analyticsQuery != nil {
@@ -1296,14 +1308,14 @@ func (s *Service) HandleOpsAnalytics(w http.ResponseWriter, r *http.Request) {
 			completedOrders = counts.CompletedOrders
 			cancelledOrders = counts.CancelledOrders
 			totalRevenue = counts.TotalRevenue
-		} else {
+		} else if s.log != nil {
 			s.log.WarnContext(r.Context(), "warehouse analytics query failed", "err", err, "warehouse_id", whID)
 		}
 	}
 
 	var avgOrderValue float64
-	if totalOrders > 0 {
-		avgOrderValue = float64(totalRevenue) / float64(totalOrders)
+	if completedOrders > 0 {
+		avgOrderValue = float64(totalRevenue) / float64(completedOrders)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{

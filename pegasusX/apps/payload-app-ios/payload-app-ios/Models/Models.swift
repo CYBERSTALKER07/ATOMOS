@@ -110,6 +110,31 @@ struct SealManifestResponse: Decodable {
     let maxVu: Double?
 }
 
+struct SealCompletedManifestsRequest: Encodable {
+    let manifestIds: [String]
+    enum CodingKeys: String, CodingKey { case manifestIds = "manifest_ids" }
+}
+
+struct SealCompletedManifestsResponse: Decodable {
+    let status: String?
+    let sealedCount: Int?
+    let results: [SealCompletedManifestResult]?
+    enum CodingKeys: String, CodingKey {
+        case status
+        case sealedCount = "sealed_count"
+        case results
+    }
+}
+
+struct SealCompletedManifestResult: Decodable {
+    let manifestId: String?
+    let status: String?
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case status
+    }
+}
+
 struct ManifestExceptionRequest: Encodable {
     let manifestId: String
     let orderId: String

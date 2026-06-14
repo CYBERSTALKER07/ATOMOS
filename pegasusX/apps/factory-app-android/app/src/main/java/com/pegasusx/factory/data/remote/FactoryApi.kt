@@ -31,7 +31,7 @@ interface FactoryApi {
     suspend fun getFactoryAnalyticsOverview(
         @Query("from") from: String? = null,
         @Query("to") to: String? = null,
-    ): Response<JsonElement>
+    ): Response<FactoryAnalyticsOverview>
 
     // ── Transfers ──
     @GET("v1/factory/transfers")

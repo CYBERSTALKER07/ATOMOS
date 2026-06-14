@@ -19,6 +19,8 @@ import com.pegasus.payload.data.model.NotificationsResponse
 import com.pegasus.payload.data.model.QueuedAction
 import com.pegasus.payload.data.model.RecommendReassignRequest
 import com.pegasus.payload.data.model.RecommendReassignResponse
+import com.pegasus.payload.data.model.SealCompletedManifestsRequest
+import com.pegasus.payload.data.model.SealCompletedManifestsResponse
 import com.pegasus.payload.data.model.SealManifestResponse
 import com.pegasus.payload.data.model.SealOrderRequest
 import com.pegasus.payload.data.model.SealOrderResponse
@@ -78,11 +80,25 @@ class PayloadRepository @Inject constructor(
             idempotencyKey = deterministicIdempotencyKey("payload-seal", orderId),
         )
 
-    suspend fun sealManifest(manifestId: String): SealManifestResponse =
-        api.supplierSealManifest(
-            manifestId = manifestId,
-            idempotencyKey = deterministicIdempotencyKey("supplier-seal-manifest", manifestId),
+    suspend fun loadLoadingManifests(): List<Manifest> =
+        api.supplierManifests(state = "LOADING").manifests
+
+    suspend fun sealCompletedManifests(manifestIds: List<String>): SealCompletedManifestsResponse {
+        val ids = manifestIds.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        require(ids.isNotEmpty()) { "manifest_ids required" }
+        return api.sealCompletedManifests(
+            req = SealCompletedManifestsRequest(manifestIds = ids),
+            idempotencyKey = deterministicIdempotencyKey("seal-completed", ids.sorted().joinToString(",")),
         )
+    }
+
+    suspend fun sealManifest(manifestId: String): SealManifestResponse {
+        val batch = sealCompletedManifests(listOf(manifestId))
+        return SealManifestResponse(
+            status = batch.status,
+            stopCount = batch.sealedCount,
+        )
+    }
 
     // ── Phase 5 ──────────────────────────────────────────────────────────────
 

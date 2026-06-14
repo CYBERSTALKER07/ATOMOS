@@ -750,6 +750,54 @@ func warehouseIDFromRequest(r *http.Request) string {
 	return warehouseID
 }
 
+func (s *Service) analyticsSupplierID(ctx context.Context) string {
+	if claims, ok := auth.FromContext(ctx); ok {
+		if supplierID := strings.TrimSpace(claims.SupplierID); supplierID != "" {
+			return supplierID
+		}
+		if supplierID := strings.TrimSpace(claims.Subject); supplierID != "" {
+			return supplierID
+		}
+	}
+	if supplierID, ok := auth.ResolveSupplierID(ctx); ok {
+		if trimmed := strings.TrimSpace(supplierID); trimmed != "" {
+			return trimmed
+		}
+	}
+	return strings.TrimSpace(s.supplierID)
+}
+
+func (s *Service) resolveAnalyticsSupplierID(r *http.Request) string {
+	if r != nil {
+		if supplierID := s.analyticsSupplierID(r.Context()); supplierID != "" {
+			return supplierID
+		}
+		if s.jwtSecret != "" {
+			if cookie, err := r.Cookie(auth.CookieName); err == nil && strings.TrimSpace(cookie.Value) != "" {
+				if claims, err := auth.Parse(cookie.Value, s.jwtSecret); err == nil {
+					if supplierID := strings.TrimSpace(claims.SupplierID); supplierID != "" {
+						return supplierID
+					}
+					if supplierID := strings.TrimSpace(claims.Subject); supplierID != "" {
+						return supplierID
+					}
+				}
+			}
+			if token := auth.BearerToken(r); token != "" {
+				if claims, err := auth.Parse(token, s.jwtSecret); err == nil {
+					if supplierID := strings.TrimSpace(claims.SupplierID); supplierID != "" {
+						return supplierID
+					}
+					if supplierID := strings.TrimSpace(claims.Subject); supplierID != "" {
+						return supplierID
+					}
+				}
+			}
+		}
+	}
+	return strings.TrimSpace(s.supplierID)
+}
+
 // effectiveWarehouseID resolves warehouse scope for transfer mutations. Supplier
 // ADMIN (portal cookie) may omit warehouse_id when the tenant has a default warehouse.
 func (s *Service) effectiveWarehouseID(ctx context.Context, r *http.Request) (string, error) {

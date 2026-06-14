@@ -34,17 +34,19 @@ struct ReplenishmentView: View {
                             .font(.caption)
                         Text("Days until stockout: \(insight.daysUntilStockout)")
                             .font(.caption)
-                        HStack {
-                            Button("Approve") {
-                                runAction(insightId: insight.id, action: "approve")
+                        if insight.status.uppercased() == "OPEN" {
+                            HStack {
+                                Button("Approve") {
+                                    runAction(insightId: insight.id, action: "approve")
+                                }
+                                .disabled(actingId == insight.id)
+                                Button("Dismiss", role: .destructive) {
+                                    runAction(insightId: insight.id, action: "dismiss")
+                                }
+                                .disabled(actingId == insight.id)
                             }
-                            .disabled(actingId == insight.id)
-                            Button("Dismiss", role: .destructive) {
-                                runAction(insightId: insight.id, action: "dismiss")
-                            }
-                            .disabled(actingId == insight.id)
+                            .buttonStyle(.bordered)
                         }
-                        .buttonStyle(.bordered)
                     }
                     .padding(.vertical, LabTheme.spacingXS)
                 }
@@ -94,8 +96,12 @@ struct ReplenishmentView: View {
         actingId = insightId
         Task {
             do {
-                _ = try await WarehouseService.replenishmentInsightAction(insightId: insightId, action: action)
-                statusMessage = action == "approve" ? "Insight approved" : "Insight dismissed"
+                let response = try await WarehouseService.replenishmentInsightAction(insightId: insightId, action: action)
+                if action == "approve", let transferId = response.transferId, !transferId.isEmpty {
+                    statusMessage = "Approved — transfer \(String(transferId.prefix(8)))"
+                } else {
+                    statusMessage = action == "approve" ? "Insight approved" : "Insight dismissed"
+                }
                 load()
             } catch {
                 statusMessage = error.localizedDescription

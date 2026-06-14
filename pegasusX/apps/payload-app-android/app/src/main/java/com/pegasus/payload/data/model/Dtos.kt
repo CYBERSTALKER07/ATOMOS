@@ -105,6 +105,24 @@ data class SealManifestResponse(
     @SerialName("max_vu") val maxVu: Double = 0.0,
 )
 
+@Serializable
+data class SealCompletedManifestsRequest(
+    @SerialName("manifest_ids") val manifestIds: List<String>,
+)
+
+@Serializable
+data class SealCompletedManifestsResponse(
+    val status: String = "",
+    @SerialName("sealed_count") val sealedCount: Int = 0,
+    val results: List<SealCompletedManifestResult> = emptyList(),
+)
+
+@Serializable
+data class SealCompletedManifestResult(
+    @SerialName("manifest_id") val manifestId: String = "",
+    val status: String = "",
+)
+
 // ─── Exception ───────────────────────────────────────────────────────────────
 
 @Serializable

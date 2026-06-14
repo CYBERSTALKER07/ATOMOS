@@ -565,10 +565,11 @@ func (r *SpannerRepository) GetAuthByPhone(ctx context.Context, phone string) (S
 	}
 	stmt := spanner.Statement{
 		SQL: `SELECT su.UserId, su.SupplierId, su.Phone, su.PasswordHash,
-                     COALESCE(s.IsRegistered, false), COALESCE(s.IsConfigured, false)
+                     COALESCE(sp.IsRegistered, false), COALESCE(s.IsConfigured, false)
               FROM SupplierUsers@{FORCE_INDEX=Idx_SupplierUsers_ByPhone} su
+              LEFT JOIN SupplierProfiles sp ON su.SupplierId = sp.SupplierId
               LEFT JOIN Suppliers s ON su.SupplierId = s.SupplierId
-		WHERE su.Phone = @phone AND su.IsActive = true AND su.SupplierRole = 'ADMIN'
+              WHERE su.Phone = @phone AND su.IsActive = true AND su.SupplierRole = 'ADMIN'
               LIMIT 1`,
 		Params: map[string]any{"phone": trimmedPhone},
 	}

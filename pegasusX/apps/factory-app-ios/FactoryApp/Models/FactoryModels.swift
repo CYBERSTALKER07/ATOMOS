@@ -626,33 +626,26 @@ struct FactoryProfile: Decodable {
 
 struct FactoryAnalyticsDayBucket: Decodable {
     let date: String
-    let transfersCreated: Int
-    let transfersShipped: Int
-    let unitsProduced: Double
+    let transfers: Int64
 
     enum CodingKeys: String, CodingKey {
         case date
-        case transfersCreated = "transfers_created"
-        case transfersShipped = "transfers_shipped"
-        case unitsProduced = "units_produced"
+        case transfers
     }
-}
-
-struct FactoryAnalyticsStateBucket: Decodable {
-    let state: String
-    let count: Int
 }
 
 struct FactoryAnalyticsOverview: Decodable {
     let dailyActivity: [FactoryAnalyticsDayBucket]
-    let transfersByState: [FactoryAnalyticsStateBucket]
-    let totalTransfers: Int
+    let transfersTotal: Int64
+    let manifestsActive: Int64
+    let exceptionQueue: Int64
     let avgLeadTimeMins: Double
 
     enum CodingKeys: String, CodingKey {
         case dailyActivity = "daily_activity"
-        case transfersByState = "transfers_by_state"
-        case totalTransfers = "total_transfers"
+        case transfersTotal = "transfers_total"
+        case manifestsActive = "manifests_active"
+        case exceptionQueue = "exception_queue"
         case avgLeadTimeMins = "avg_lead_time_mins"
     }
 }

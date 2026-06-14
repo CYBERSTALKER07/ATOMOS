@@ -72,6 +72,9 @@ final class HomeViewModel {
     var showExceptionsPanel = false
     private(set) var loadingExceptions = false
     private(set) var manifestExceptions: [ManifestExceptionRow] = []
+    private var sealedOrdersByTruck: [String: Set<String>] = [:]
+    private(set) var batchReadyManifestIds: [String] = []
+    private(set) var batchSealing = false
 
     private let api: APIClient
     private let ws: WebSocketClient
@@ -117,20 +120,25 @@ final class HomeViewModel {
     func selectTruck(_ truckId: String) async {
         if selectedTruckId == truckId, manifest != nil { return }
         cancelCountdown()
+        if let previous = selectedTruckId, !sealedOrderIds.isEmpty {
+            sealedOrdersByTruck[previous] = sealedOrderIds
+        }
         selectedTruckId = truckId
         manifest = nil
         orders = []
         selectedOrderId = nil
         checkedItems = []
-        sealedOrderIds = []
+        sealedOrderIds = sealedOrdersByTruck[truckId] ?? []
         dispatchCodes = [:]
         postSealOrderId = nil
         postSealCountdown = 0
         manifestSealed = false
+        batchReadyManifestIds = []
         error = nil
 
         await loadManifest(for: truckId)
         await loadOrders(for: truckId)
+        await refreshBatchReadyManifests()
     }
 
     func refreshManifest() async {
@@ -142,6 +150,50 @@ final class HomeViewModel {
         error = nil
         await loadManifest(for: truckId)
         await loadOrders(for: truckId)
+        await refreshBatchReadyManifests()
+    }
+
+    func refreshBatchReadyManifests() async {
+        guard let truckId = selectedTruckId else { return }
+        if !sealedOrderIds.isEmpty {
+            sealedOrdersByTruck[truckId] = sealedOrderIds
+        }
+        do {
+            let loading = try await api.loadingManifests().manifests
+            var ready: [String] = []
+            for item in loading {
+                guard let manifestTruckId = item.truckId else { continue }
+                let truckOrders: [LiveOrder]
+                if manifestTruckId == truckId {
+                    truckOrders = orders
+                } else {
+                    truckOrders = try await api.orders(vehicleId: manifestTruckId, state: "LOADED")
+                }
+                let sealed = manifestTruckId == truckId ? sealedOrderIds : (sealedOrdersByTruck[manifestTruckId] ?? [])
+                if !truckOrders.isEmpty, truckOrders.allSatisfy({ sealed.contains($0.orderId) }) {
+                    ready.append(item.manifestId)
+                }
+            }
+            batchReadyManifestIds = Array(Set(ready))
+        } catch {
+            self.error = describe(error)
+        }
+    }
+
+    func finalizeBatchSeal() async {
+        guard batchReadyManifestIds.count > 1, !batchSealing else { return }
+        batchSealing = true
+        error = nil
+        defer { batchSealing = false }
+        do {
+            _ = try await api.sealCompletedManifests(manifestIds: batchReadyManifestIds)
+            manifestSealed = true
+            batchReadyManifestIds = []
+            sealedOrdersByTruck = [:]
+            manifest = manifest.map { mutateState($0, to: "SEALED") }
+        } catch {
+            self.error = describe(error)
+        }
     }
 
     private func loadManifest(for truckId: String) async {
@@ -207,6 +259,7 @@ final class HomeViewModel {
             postSealOrderId = orderId
             postSealCountdown = 60
             startCountdown()
+            await refreshBatchReadyManifests()
         } catch {
             self.error = describe(error)
         }
@@ -266,9 +319,17 @@ final class HomeViewModel {
         error = nil
         defer { sealingManifest = false }
         do {
-            _ = try await api.supplierSealManifest(manifestId: id)
+            let manifestIds = batchReadyManifestIds.count > 1 && batchReadyManifestIds.contains(id)
+                ? batchReadyManifestIds
+                : [id]
+            _ = try await api.sealCompletedManifests(manifestIds: manifestIds)
             manifestSealed = true
+            if manifestIds.count > 1 {
+                batchReadyManifestIds = []
+                sealedOrdersByTruck = [:]
+            }
             manifest = manifest.map { mutateState($0, to: "SEALED") }
+            await refreshBatchReadyManifests()
         } catch {
             self.error = describe(error)
         }
@@ -289,6 +350,8 @@ final class HomeViewModel {
         postSealCountdown = 0
         manifestSealed = false
         error = nil
+        sealedOrdersByTruck = [:]
+        batchReadyManifestIds = []
         await refreshTrucks()
     }
 

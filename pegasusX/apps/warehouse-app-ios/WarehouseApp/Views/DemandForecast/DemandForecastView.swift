@@ -172,13 +172,51 @@ struct DemandForecastView: View {
         error = nil
         Task {
             do {
-                forecast = try await WarehouseService.demandForecast(days: horizon)
+                var body = try await WarehouseService.demandForecast(days: horizon)
+                if body.products.isEmpty {
+                    let insights = try await WarehouseService.replenishmentInsights()
+                    let rows = insights.rows
+                    if !rows.isEmpty {
+                        body = demandForecastFromInsights(rows, horizon: horizon)
+                    }
+                }
+                forecast = body
             } catch {
                 self.error = error.localizedDescription
             }
             loading = false
         }
     }
+}
+
+private func demandForecastFromInsights(_ insights: [ReplenishmentInsight], horizon: Int) -> DemandForecastResponse {
+    let products = insights.map { insight in
+        let urgency = insight.urgency.uppercased()
+        let priority: String
+        if urgency == "CRITICAL" || urgency == "HIGH" {
+            priority = "CRITICAL"
+        } else if urgency == "URGENT" || urgency == "MEDIUM" {
+            priority = "URGENT"
+        } else {
+            priority = "NORMAL"
+        }
+        return DemandForecastProduct(
+            productId: insight.productId,
+            productName: insight.productName,
+            currentStock: insight.currentStock,
+            recommendedQty: insight.reorderQuantity,
+            daysUntilStockout: Double(insight.daysUntilStockout),
+            priority: priority,
+            unit: "VU",
+            sources: DemandForecastSources(burnRate: insight.avgDailyVelocity)
+        )
+    }
+    return DemandForecastResponse(
+        warehouseId: insights.first?.warehouseId ?? "",
+        forecastDays: horizon,
+        generatedAt: insights.first?.createdAt,
+        products: products
+    )
 }
 
 private struct ForecastSummaryCard: View {

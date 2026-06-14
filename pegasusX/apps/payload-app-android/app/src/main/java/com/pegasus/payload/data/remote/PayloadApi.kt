@@ -17,6 +17,8 @@ import com.pegasus.payload.data.model.MissingItemsRequest
 import com.pegasus.payload.data.model.NotificationsResponse
 import com.pegasus.payload.data.model.RecommendReassignRequest
 import com.pegasus.payload.data.model.RecommendReassignResponse
+import com.pegasus.payload.data.model.SealCompletedManifestsRequest
+import com.pegasus.payload.data.model.SealCompletedManifestsResponse
 import com.pegasus.payload.data.model.SealManifestResponse
 import com.pegasus.payload.data.model.SealOrderRequest
 import com.pegasus.payload.data.model.SealOrderResponse
@@ -79,6 +81,12 @@ interface PayloadApi {
         @Path("id") manifestId: String,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): StatusResponse
+
+    @POST("v1/payloader/manifests/seal-completed")
+    suspend fun sealCompletedManifests(
+        @Body req: SealCompletedManifestsRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): SealCompletedManifestsResponse
 
     @POST("v1/payloader/manifests/{id}/seal")
     suspend fun sealManifest(

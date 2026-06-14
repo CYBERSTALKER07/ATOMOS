@@ -49,7 +49,13 @@ fun ReplenishmentScreen(
             try {
                 val resp = opsRepository.replenishmentInsightAction(insightId, action)
                 if (resp.isSuccessful) {
-                    statusMessage = if (action == "approve") "Insight approved" else "Insight dismissed"
+                    val transferID = resp.body()?.transferId
+                    statusMessage = when {
+                        action == "approve" && !transferID.isNullOrBlank() ->
+                            "Approved — transfer ${transferID.take(8)}"
+                        action == "approve" -> "Insight approved"
+                        else -> "Insight dismissed"
+                    }
                     load()
                 } else {
                     statusMessage = "Action failed (${resp.code()})"
@@ -136,9 +142,11 @@ private fun InsightCard(
             Text("${insight.urgency} · ${insight.status}", style = MaterialTheme.typography.bodySmall)
             Text("Stock: ${insight.currentStock} · Reorder: ${insight.reorderQuantity}")
             Text("Days until stockout: ${insight.daysUntilStockout}")
-            Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                Button(onClick = onApprove, enabled = !busy) { Text("Approve") }
-                OutlinedButton(onClick = onDismiss, enabled = !busy) { Text("Dismiss") }
+            if (insight.status.equals("OPEN", ignoreCase = true)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                    Button(onClick = onApprove, enabled = !busy) { Text("Approve") }
+                    OutlinedButton(onClick = onDismiss, enabled = !busy) { Text("Dismiss") }
+                }
             }
         }
     }

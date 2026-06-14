@@ -204,6 +204,9 @@ fun HomeScreen(
                         selectedTruckId = state.selectedTruckId,
                         loading = state.loadingTrucks,
                         error = state.error,
+                        batchReadyCount = state.batchReadyManifestIds.size,
+                        batchSealing = state.batchSealing,
+                        onFinalizeBatch = viewModel::finalizeBatchSeal,
                         onSelect = { id ->
                             viewModel.selectTruck(id)
                             navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, id)
@@ -476,6 +479,9 @@ private fun TruckListPane(
     selectedTruckId: String?,
     loading: Boolean,
     error: String?,
+    batchReadyCount: Int,
+    batchSealing: Boolean,
+    onFinalizeBatch: () -> Unit,
     onSelect: (String) -> Unit,
 ) {
     Surface(
@@ -492,6 +498,27 @@ private fun TruckListPane(
                 )
             }
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (batchReadyCount > 1) {
+                ElevatedCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "$batchReadyCount trucks ready to finalize",
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Button(
+                            onClick = onFinalizeBatch,
+                            enabled = !batchSealing,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(if (batchSealing) "Finalizing…" else "Seal all trucks")
+                        }
+                    }
+                }
+            }
             if (error != null) {
                 Text(
                     error,

@@ -4,7 +4,7 @@ struct AnalyticsView: View {
     @State private var data = AnalyticsData.empty
     @State private var loading = true
     @State private var error: String?
-    @State private var period = "7d"
+    @State private var period = "30d"
 
     private let columns = [
         GridItem(.flexible(), spacing: LabTheme.spacingMD),
@@ -45,20 +45,59 @@ struct AnalyticsView: View {
                         // Import health
                         LazyVGrid(columns: columns, spacing: LabTheme.spacingMD) {
                             AnalyticsKpiCard(title: "Imported Rows (30d)", value: "\(data.importFreshness.appliedRows30d)", icon: "tray.and.arrow.down", index: 4)
-                            AnalyticsKpiCard(title: "Anomaly Rows (30d)", value: "\(data.importAnomalyQueue.openRows30d)", icon: "exclamationmark.triangle", index: 5)
+                            AnalyticsKpiCard(title: "Imported SKUs (30d)", value: "\(data.importFreshness.appliedSkus30d)", icon: "cube.box", index: 5)
+                            AnalyticsKpiCard(title: "Qty Delta (30d)", value: "\(data.importFreshness.quantityDelta30d)", icon: "plusminus", index: 6)
+                            AnalyticsKpiCard(title: "Anomaly Rows (30d)", value: "\(data.importAnomalyQueue.openRows30d)", icon: "exclamationmark.triangle", index: 7)
+                            AnalyticsKpiCard(title: "Anomaly Sessions", value: "\(data.importAnomalyQueue.affectedSessions30d)", icon: "tray.full", index: 8)
                         }
 
-                        if !data.importAnomalyQueue.lastDetail.isEmpty {
+                        if !data.importFreshness.lastSessionId.isEmpty || !data.importFreshness.lastAppliedAt.isEmpty {
+                            VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
+                                Text("Last import")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                if !data.importFreshness.lastSessionId.isEmpty {
+                                    Text("Session: \(data.importFreshness.lastSessionId)")
+                                        .font(.footnote)
+                                }
+                                if !data.importFreshness.lastAppliedAt.isEmpty {
+                                    Text(data.importFreshness.lastAppliedAt)
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .labCard()
+                            .staggeredAppear(index: 9)
+                        }
+
+                        if !data.importAnomalyQueue.lastDetail.isEmpty || !data.importAnomalyQueue.lastSessionId.isEmpty {
                             VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
                                 Text("Latest anomaly")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                                Text(data.importAnomalyQueue.lastDetail)
-                                    .font(.footnote)
+                                if !data.importAnomalyQueue.lastSessionId.isEmpty {
+                                    Text("Session: \(data.importAnomalyQueue.lastSessionId)")
+                                        .font(.footnote)
+                                }
+                                if !data.importAnomalyQueue.lastDetectedAt.isEmpty {
+                                    Text(data.importAnomalyQueue.lastDetectedAt)
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                }
+                                if !data.importAnomalyQueue.lastDetail.isEmpty {
+                                    Text(data.importAnomalyQueue.lastDetail)
+                                        .font(.footnote)
+                                }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .labCard()
-                            .staggeredAppear(index: 6)
+                            .staggeredAppear(index: 10)
+                        }
+
+                        if !data.chartDaily.isEmpty {
+                            DailyRevenueChart(daily: data.chartDaily)
+                                .staggeredAppear(index: 11)
                         }
 
                         // Top products
@@ -108,6 +147,46 @@ struct AnalyticsView: View {
             }
             loading = false
         }
+    }
+}
+
+private struct DailyRevenueChart: View {
+    let daily: [DailyMetric]
+
+    private var maxRevenue: Int {
+        max(daily.map(\.revenue).max() ?? 1, 1)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
+            Text("Daily Revenue")
+                .font(.title3.bold())
+            HStack(alignment: .bottom, spacing: 4) {
+                ForEach(daily) { day in
+                    VStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: LabTheme.radiusSM)
+                            .fill(Color.accentColor)
+                            .frame(
+                                maxWidth: .infinity,
+                                minHeight: 4,
+                                idealHeight: CGFloat(day.revenue) / CGFloat(maxRevenue) * 96,
+                                maxHeight: 96
+                            )
+                        Text(String(day.date.suffix(5)))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 120, alignment: .bottom)
+            if let peak = daily.map(\.revenue).max() {
+                Text("Peak day: \(peak.formatted()) UZS")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .labCard()
     }
 }
 

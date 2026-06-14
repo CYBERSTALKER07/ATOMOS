@@ -247,6 +247,15 @@ func main() {
 			},
 		},
 	)
+	// Role-row *routes packages each mount /v1/user/notifications with role-specific
+	// middleware; chi keeps only the last registration. Mount once here so every
+	// authenticated role (supplier cookie, retailer/driver Bearer) resolves via
+	// RecipientIDFromClaims after Kafka inbox persistence.
+	if app.NotificationInbox != nil {
+		inbox := app.NotificationInbox
+		r.Get("/v1/user/notifications", inbox.HandleList)
+		r.Post("/v1/user/notifications/read", inbox.HandleMarkRead)
+	}
 
 	// Global Pay local simulator — only mounted when GLOBAL_PAY_ENV != "production".
 	// Provides a browser UI for end-to-end payment testing without hitting the real gateway.

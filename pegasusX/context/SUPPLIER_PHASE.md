@@ -71,7 +71,7 @@
 |----|---------|---------|--------|--------|--------|
 | SP4-01 | Analytics / demand forecast | `/v1/supplier/analytics/*` | `/analytics` + `/analytics/demand` | — | **E2E_SSMR_GREEN** |
 | SP4-02 | Retailer pricing overrides | pegasus-only | — | — | **DEFERRED** |
-| SP4-03 | Inventory CSV import | `POST /v1/supplier/inventory/import` | `/inventory/import` | — | **E2E_SSMR_GREEN** |
+| SP4-03 | Inventory CSV import + staging | `POST /v1/supplier/inventory/import` + `inventory_import_staging.go` | `/inventory/import` | — | **E2E_SSMR_GREEN** — feeds warehouse `import_anomaly_queue` |
 | SP4-04 | Products vs catalog canonical | `/v1/catalog/products` | `/catalog` | — | **WIRED** |
 
 ---
@@ -102,7 +102,7 @@ cd pegasusX && make parity-contract-full
 4. ~~Phase 3 staff/org lifecycle + notification inbox fix~~ — **done this session**
 5. ~~Phase 4 intelligence & catalog depth (analytics, CSV import)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_ANALYTICS_OK`, `PX_E2E_SUPPLIER_INVENTORY_IMPORT_OK`)
 6. ~~SSMR / parity verification~~ — **green** (`make test-ssmr-infra`, `make parity-contract-full`)
-7. **Cross-role next** — warehouse native analytics depth audit, factory/warehouse native analytics screens (P2 UI), or Boss-picked role row per `VEGETABLE_PLAN.md` §3 (warehouse WH1–WH3 **WIRED**; notification inbox **WIRED**; freeze locks **WIRED** — `FACTORY_PHASE.md`)
+7. **Cross-role next** — full session wizard (GCS upload / mapping / approve) or Boss-picked role row per `VEGETABLE_PLAN.md` §3
 
 ---
 
@@ -114,3 +114,7 @@ cd pegasusX && make parity-contract-full
 | NI-02 | Supplier inbox routes | `supplierroutes` GET/POST `/v1/user/notifications` | `useNotifications.ts` | **WIRED** |
 | NI-03 | Retailer / driver / payload read paths | existing `retailerroutes` / `driverroutes` / `payloaderroutes` | native inbox screens | **WIRED** (read; rows now populate) |
 | NI-04 | SSMR | `runNotificationInboxE2E` polls supplier + retailer inbox after order flow | — | **E2E_SSMR_GREEN** (`PX_E2E_NOTIFICATION_INBOX_OK`) |
+| NI-05 | ShopClosed + fleet inbox copy | `notifications/formatter.go` + `inbox_format.go` explicit cases | supplier portal inbox | native inbox read paths | **WIRED** | `inbox_format_test`; SSMR asserts `SHOP_CLOSED` row after report |
+| NI-06 | Manifest lifecycle inbox copy | `formatter.go` + `inbox_format.go` for all 10 `MANIFEST_*` events | supplier portal inbox | native inbox read paths | **WIRED** | `inbox_format_test`; SSMR asserts `MANIFEST_SEALED` after factory seal |
+
+**Note:** `notification_dispatcher.go` already fans out `SHOP_CLOSED*` and `DRIVER_CREATED` to WS + inbox — NI-05 adds operator-grade titles/deep links (not a new consumer). NI-06 covers remaining manifest lifecycle events (`MANIFEST_DRAFT_CREATED` through `MANIFEST_COMPLETED`) with `/manifests/{id}` or `/manifest-exceptions` deep links.
