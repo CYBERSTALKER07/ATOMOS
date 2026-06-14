@@ -206,6 +206,8 @@ log_step "Asserting isolated Kafka topics and round-trip message flow"
 run_go_smokecheck kafka
 
 log_step "Running end-to-end supplier→retailer→order→tracking flow"
+mkdir -p "$REPO_ROOT/.ssmr/import-uploads"
+export SSMR_IMPORT_LOCAL_ROOT="$REPO_ROOT/.ssmr/import-uploads"
 run_go_smokecheck e2e
 
 log_step "SSMR smoke-check completed successfully"

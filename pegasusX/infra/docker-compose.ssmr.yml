@@ -67,6 +67,7 @@ services:
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_REALTIME}" --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_WEBHOOKS}" --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_FREEZE_LOCKS}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_INVENTORY_IMPORT}" --partitions 3 --replication-factor 1
     restart: "no"
 
   kafka-ui:
@@ -150,6 +151,7 @@ services:
     working_dir: /workspace/pegasusX
     volumes:
       - ..:/workspace/pegasusX
+      - ../.ssmr/import-uploads:/data/import-uploads
       - pegasusx-ssmr-go-mod:/root/go/pkg/mod
       - pegasusx-ssmr-go-build:/root/.cache/go-build
     env_file:
@@ -160,6 +162,7 @@ services:
       KAFKA_BROKERS: kafka:29092
       HEALTH_PORT: 8081
       INTERNAL_API_KEY: dev-internal-key
+      IMPORT_LOCAL_FILE_ROOT: /data/import-uploads
     ports:
       - "8181:8081"
     command:

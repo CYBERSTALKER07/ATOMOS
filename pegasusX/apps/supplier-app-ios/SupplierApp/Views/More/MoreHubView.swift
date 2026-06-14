@@ -64,9 +64,6 @@ struct MoreHubView: View {
                 NavigationLink { ReconciliationView() } label: {
                     Label("Reconciliation", systemImage: "scalemass")
                 }
-                NavigationLink { PortalHandoffView(feature: .paymentBypass) } label: {
-                    Label("Portal operations", systemImage: "desktopcomputer")
-                }
                 NavigationLink { OperationsView() } label: {
                     Label("Operations", systemImage: "wrench.and.screwdriver")
                 }

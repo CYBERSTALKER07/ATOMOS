@@ -9,15 +9,18 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
 // Deps is the narrow dependency contract for this routes package.
 type Deps struct {
-	Service          *supplier.Service
-	OrderService     *order.Service
+	Service           *supplier.Service
+	OrderService      *order.Service
 	NotificationInbox *notifications.InboxHandlers
-	JWTSecret        string
-	Spanner          *spanner.Client
+	JWTSecret         string
+	Spanner           *spanner.Client
+	SupplierHub       *ws.Hub
+	WarehouseHub      *ws.Hub
 }
 
 // RegisterRoutes mounts:
@@ -100,6 +103,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/inventory", d.Service.HandleInventory)
 		gr.Patch("/v1/supplier/inventory", d.Service.HandleInventory)
 		gr.Post("/v1/supplier/inventory/import", d.Service.HandleInventoryImport)
+		supplier.RegisterImportRoutes(gr, supplier.ImportRoutesDeps{
+			Spanner:      d.Spanner,
+			Service:      d.Service,
+			SupplierHub:  d.SupplierHub,
+			WarehouseHub: d.WarehouseHub,
+		})
 		gr.Get("/v1/supplier/inventory/audit", d.Service.HandleInventoryAudit)
 		gr.Get("/v1/supplier/analytics/velocity", d.Service.HandleAnalyticsVelocity)
 		gr.Get("/v1/supplier/analytics/revenue", d.Service.HandleAnalyticsRevenue)

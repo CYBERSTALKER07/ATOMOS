@@ -12,6 +12,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
@@ -351,6 +352,7 @@ func expectedTopics(cfg *bootstrap.Config) []string {
 		envOr("KAFKA_TOPIC_REALTIME", "ssmr.events.realtime"),
 		envOr("KAFKA_TOPIC_WEBHOOKS", "ssmr.events.webhooks"),
 		envOr("KAFKA_TOPIC_FREEZE_LOCKS", "pegasusx-freeze-locks"),
+		envOr("KAFKA_TOPIC_INVENTORY_IMPORT", events.TopicInventoryImportEvents),
 	}
 	out := make([]string, 0, len(topics))
 	for _, topic := range topics {

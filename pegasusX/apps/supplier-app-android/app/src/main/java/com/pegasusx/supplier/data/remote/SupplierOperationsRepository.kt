@@ -159,4 +159,22 @@ class SupplierOperationsRepository @Inject constructor(
 
     suspend fun triggerReplenishment(): Response<SupplierReplenishmentTriggerResponse> =
         api.triggerReplenishment()
+
+    suspend fun getAnalyticsVelocity(): Response<SupplierAnalyticsVelocityResponse> =
+        api.getAnalyticsVelocity()
+
+    suspend fun getAnalyticsRevenue(): Response<SupplierAnalyticsRevenueResponse> =
+        api.getAnalyticsRevenue()
+
+    suspend fun getDemandToday(): Response<SupplierDemandSummaryResponse> =
+        api.getDemandToday()
+
+    suspend fun getEmpathyAdoption(): Response<SupplierEmpathyAdoption> =
+        api.getEmpathyAdoption()
+
+    suspend fun postBroadcast(body: SupplierBroadcastRequest): Response<SupplierBroadcastResponse> =
+        api.postBroadcast(body)
+
+    suspend fun issuePaymentBypass(body: PaymentBypassRequest): Response<PaymentBypassResponse> =
+        api.issuePaymentBypass(body)
 }

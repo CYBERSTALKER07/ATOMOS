@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -102,6 +103,12 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	}
 	if err := runSupplierInventoryImportE2E(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("supplier inventory import (staging substrate): %w", err)
+	}
+	if err := runSupplierImportWizardE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("supplier import session wizard: %w", err)
+	}
+	if err := runSupplierImportAsyncE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("supplier import async worker: %w", err)
 	}
 	if err := runWarehouseAnalyticsE2E(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("warehouse analytics: %w", err)
@@ -1073,6 +1080,193 @@ func runSupplierInventoryImportE2E(ctx context.Context, client *http.Client, bas
 		return fmt.Errorf("supplier import staging rows: %w", err)
 	}
 	fmt.Println("PX_E2E_SUPPLIER_INVENTORY_IMPORT_OK")
+	return nil
+}
+
+func runSupplierImportWizardE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config) error {
+	csvBody := fmt.Sprintf(
+		"product_id,warehouse_id,quantity_on_hand,reorder_threshold\nSSMR-SKU-1,%s,75,8\n",
+		demoWarehouseID(),
+	)
+	createBody, _ := json.Marshal(map[string]any{
+		"file_name":       "ssmr-wizard.csv",
+		"file_size_bytes": len(csvBody),
+	})
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/inventory/imports", createBody, cookie, "ssmr-import-wizard-create")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated {
+		return fmt.Errorf("import session create status %d body %s", status, string(respBody))
+	}
+	var created struct {
+		SessionID string `json:"session_id"`
+	}
+	if err := json.Unmarshal(respBody, &created); err != nil {
+		return fmt.Errorf("decode import session create: %w", err)
+	}
+	if strings.TrimSpace(created.SessionID) == "" {
+		return fmt.Errorf("import session create missing session_id body %s", string(respBody))
+	}
+
+	ingestURL := base + "/v1/supplier/inventory/imports/" + created.SessionID + "/ingest"
+	status, respBody, _, err = clientDoContentType(ctx, client, http.MethodPost, ingestURL, []byte(csvBody), "text/csv", cookie, "ssmr-import-wizard-ingest")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("import session ingest status %d body %s", status, string(respBody))
+	}
+
+	approveURL := base + "/v1/supplier/inventory/imports/" + created.SessionID + "/approve"
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, approveURL, nil, cookie, "ssmr-import-wizard-approve")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusAccepted {
+		return fmt.Errorf("import session approve status %d body %s", status, string(respBody))
+	}
+
+	applyURL := base + "/v1/supplier/inventory/imports/" + created.SessionID + "/apply"
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, applyURL, nil, cookie, "ssmr-import-wizard-apply")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("import session apply status %d body %s", status, string(respBody))
+	}
+	var applied struct {
+		AppliedRows int64 `json:"applied_rows"`
+		Status      string `json:"status"`
+	}
+	if err := json.Unmarshal(respBody, &applied); err != nil {
+		return fmt.Errorf("decode import session apply: %w", err)
+	}
+	if applied.AppliedRows < 1 {
+		return fmt.Errorf("import wizard applied_rows=%d body %s", applied.AppliedRows, string(respBody))
+	}
+	if strings.ToUpper(strings.TrimSpace(applied.Status)) != "APPLIED" {
+		return fmt.Errorf("import wizard status=%q body %s", applied.Status, string(respBody))
+	}
+
+	fmt.Println("PX_E2E_SUPPLIER_IMPORT_WIZARD_OK")
+	return nil
+}
+
+func importLocalUploadRoot() string {
+	if root := strings.TrimSpace(os.Getenv("SSMR_IMPORT_LOCAL_ROOT")); root != "" {
+		return root
+	}
+	return ".ssmr/import-uploads"
+}
+
+func runSupplierImportAsyncE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config) error {
+	csvBody := fmt.Sprintf(
+		"product_id,warehouse_id,quantity_on_hand,reorder_threshold\nSSMR-SKU-1,%s,82,9\n",
+		demoWarehouseID(),
+	)
+	createBody, _ := json.Marshal(map[string]any{
+		"file_name":       "ssmr-async.csv",
+		"file_size_bytes": len(csvBody),
+	})
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/inventory/imports", createBody, cookie, "ssmr-import-async-create")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated {
+		return fmt.Errorf("import async create status %d body %s", status, string(respBody))
+	}
+	var created struct {
+		SessionID string `json:"session_id"`
+		GCSPath   string `json:"gcs_path"`
+	}
+	if err := json.Unmarshal(respBody, &created); err != nil {
+		return fmt.Errorf("decode import async create: %w", err)
+	}
+	if strings.TrimSpace(created.SessionID) == "" || strings.TrimSpace(created.GCSPath) == "" {
+		return fmt.Errorf("import async create missing session_id/gcs_path body %s", string(respBody))
+	}
+
+	localPath := filepath.Join(importLocalUploadRoot(), filepath.FromSlash(created.GCSPath))
+	if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
+		return fmt.Errorf("mkdir import upload root: %w", err)
+	}
+	if err := os.WriteFile(localPath, []byte(csvBody), 0o644); err != nil {
+		return fmt.Errorf("write local import object: %w", err)
+	}
+
+	uploadedBody, _ := json.Marshal(map[string]string{"gcs_path": created.GCSPath})
+	uploadedURL := base + "/v1/supplier/inventory/imports/" + created.SessionID + "/uploaded"
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, uploadedURL, uploadedBody, cookie, "ssmr-import-async-uploaded")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusAccepted {
+		return fmt.Errorf("import async uploaded status %d body %s", status, string(respBody))
+	}
+
+	deadline := time.Now().Add(45 * time.Second)
+	var sessionStatus string
+	for time.Now().Before(deadline) {
+		getURL := base + "/v1/supplier/inventory/imports/" + created.SessionID
+		status, respBody, _, err = clientDo(ctx, client, http.MethodGet, getURL, nil, cookie, "ssmr-import-async-poll")
+		if err != nil {
+			return err
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("import async poll status %d body %s", status, string(respBody))
+		}
+		var session struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(respBody, &session); err != nil {
+			return fmt.Errorf("decode import async session: %w", err)
+		}
+		sessionStatus = strings.ToUpper(strings.TrimSpace(session.Status))
+		if sessionStatus == "DISCOVERED" || sessionStatus == "MAPPING_REQUIRED" {
+			break
+		}
+		if sessionStatus == "FAILED" {
+			return fmt.Errorf("import async session failed body %s", string(respBody))
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if sessionStatus != "DISCOVERED" && sessionStatus != "MAPPING_REQUIRED" {
+		return fmt.Errorf("import async discovery timed out status=%q", sessionStatus)
+	}
+
+	approveURL := base + "/v1/supplier/inventory/imports/" + created.SessionID + "/approve"
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, approveURL, nil, cookie, "ssmr-import-async-approve")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusAccepted {
+		return fmt.Errorf("import async approve status %d body %s", status, string(respBody))
+	}
+
+	applyURL := base + "/v1/supplier/inventory/imports/" + created.SessionID + "/apply"
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, applyURL, nil, cookie, "ssmr-import-async-apply")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("import async apply status %d body %s", status, string(respBody))
+	}
+	var applied struct {
+		AppliedRows int64  `json:"applied_rows"`
+		Status      string `json:"status"`
+	}
+	if err := json.Unmarshal(respBody, &applied); err != nil {
+		return fmt.Errorf("decode import async apply: %w", err)
+	}
+	if applied.AppliedRows < 1 {
+		return fmt.Errorf("import async applied_rows=%d body %s", applied.AppliedRows, string(respBody))
+	}
+	if strings.ToUpper(strings.TrimSpace(applied.Status)) != "APPLIED" {
+		return fmt.Errorf("import async status=%q body %s", applied.Status, string(respBody))
+	}
+
+	fmt.Println("PX_E2E_SUPPLIER_IMPORT_ASYNC_OK")
 	return nil
 }
 

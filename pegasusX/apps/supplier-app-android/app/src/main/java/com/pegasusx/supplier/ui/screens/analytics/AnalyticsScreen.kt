@@ -11,7 +11,10 @@ import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -20,21 +23,51 @@ fun AnalyticsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     var pendingOrders by remember { mutableIntStateOf(0) }
     var inventorySKUs by remember { mutableIntStateOf(0) }
+    var revenueTotal by remember { mutableStateOf<String?>(null) }
+    var predictionCount by remember { mutableIntStateOf(0) }
+    var forecastUnits by remember { mutableIntStateOf(0) }
+    var velocityCreated by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
+    val fmt = remember { NumberFormat.getInstance(Locale.getDefault()) }
+
+    fun formatMinor(minor: Long, currency: String): String {
+        val major = minor / 100.0
+        return "${fmt.format(major)} $currency"
+    }
 
     fun load() {
         scope.launch {
             loading = true
             error = null
             try {
-                val resp = ops.getDashboard()
-                if (resp.isSuccessful) {
-                    resp.body()?.let {
-                        pendingOrders = it.pendingOrders
-                        inventorySKUs = it.inventorySKUs
-                    }
-                } else {
-                    error = "Failed (${resp.code()})"
+                val dashDeferred = async { ops.getDashboard() }
+                val revenueDeferred = async { ops.getAnalyticsRevenue() }
+                val demandDeferred = async { ops.getDemandToday() }
+                val velocityDeferred = async { ops.getAnalyticsVelocity() }
+
+                val dashResp = dashDeferred.await()
+                val revenueResp = revenueDeferred.await()
+                val demandResp = demandDeferred.await()
+                val velocityResp = velocityDeferred.await()
+
+                if (!dashResp.isSuccessful || !revenueResp.isSuccessful || !demandResp.isSuccessful || !velocityResp.isSuccessful) {
+                    error = "Failed to load analytics authority"
+                    return@launch
+                }
+
+                dashResp.body()?.let {
+                    pendingOrders = it.pendingOrders
+                    inventorySKUs = it.inventorySKUs
+                }
+                revenueResp.body()?.let {
+                    revenueTotal = formatMinor(it.totalMinor, it.currency)
+                }
+                demandResp.body()?.let {
+                    predictionCount = it.predictionCount
+                    forecastUnits = it.totalPallets
+                }
+                velocityResp.body()?.let { velocity ->
+                    velocityCreated = velocity.points.sumOf { point -> point.ordersCreated }
                 }
             } catch (e: Exception) {
                 error = e.message
@@ -59,7 +92,7 @@ fun AnalyticsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading analytics…", "Operational KPIs")
+            loading -> SupplierLoadingState("Loading analytics…", "Velocity, revenue, and demand")
             error != null -> SupplierStatePane(
                 kind = SupplierStateKind.Error,
                 headline = "Analytics unavailable",
@@ -72,13 +105,15 @@ fun AnalyticsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 modifier = Modifier.padding(padding).padding(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
+                Text("Intelligence", style = MaterialTheme.typography.titleMedium)
+                AnalyticsKpi("30-day revenue", revenueTotal ?: "—")
+                AnalyticsKpi("Demand predictions", predictionCount.toString())
+                AnalyticsKpi("Forecast units (24h)", forecastUnits.toString())
+                AnalyticsKpi("Orders created (velocity window)", velocityCreated.toString())
+                HorizontalDivider()
+                Text("Operational snapshot", style = MaterialTheme.typography.titleMedium)
                 AnalyticsKpi("Pending orders", pendingOrders.toString())
                 AnalyticsKpi("Inventory SKUs", inventorySKUs.toString())
-                Text(
-                    "KPIs sourced from supplier dashboard authority.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.outline,
-                )
             }
         }
     }

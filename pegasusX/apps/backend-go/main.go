@@ -189,6 +189,8 @@ func main() {
 		NotificationInbox: app.NotificationInbox,
 		JWTSecret:         cfg.JWTSecret,
 		Spanner:           app.Spanner,
+		SupplierHub:       app.SupplierHub,
+		WarehouseHub:      app.WarehouseHub,
 	})
 	promotionroutes.RegisterRoutes(r, promotionroutes.Deps{
 		Service:   app.PromotionService,

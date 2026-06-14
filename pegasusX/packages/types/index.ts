@@ -226,10 +226,65 @@ export interface SupplierDemandHistoryResponse {
 }
 
 export interface SupplierInventoryImportResult {
+  session_id?: string;
   applied: number;
   skipped: number;
   errors?: string[];
   updated_at: string;
+}
+
+export interface SupplierImportSessionCreateResponse {
+  session_id: string;
+  status: string;
+  file_name: string;
+  upload_url?: string;
+  gcs_path?: string;
+  content_type?: string;
+}
+
+export interface SupplierImportSession {
+  session_id: string;
+  supplier_id?: string;
+  status: string;
+  file_name: string;
+  total_rows?: number;
+  error_summary?: unknown;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SupplierImportMappingCandidate {
+  source_column: string;
+  target_field: string;
+  confidence: number;
+  reason?: string;
+}
+
+export interface SupplierImportMappingResponse {
+  session_id: string;
+  mapping_json?: {
+    mappings?: SupplierImportMappingCandidate[];
+    anomalies?: unknown[];
+    model?: string;
+  };
+}
+
+export interface SupplierImportIngestResponse {
+  session_id: string;
+  status: string;
+  rows_staged: number;
+  valid_rows?: number;
+  invalid_rows?: number;
+  suggested_mappings?: number;
+}
+
+export interface SupplierImportApplyResponse {
+  session_id: string;
+  status: string;
+  applied_rows: number;
+  affected_warehouses: number;
+  created_products?: number;
+  idempotent?: boolean;
 }
 
 export interface SupplierManifestRow {

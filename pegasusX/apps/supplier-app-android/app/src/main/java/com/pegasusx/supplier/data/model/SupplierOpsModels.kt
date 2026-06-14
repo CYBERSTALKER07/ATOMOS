@@ -357,6 +357,78 @@ data class SupplierReplenishmentTriggerResponse(
 )
 
 @Serializable
+data class SupplierAnalyticsVelocityPoint(
+    val date: String = "",
+    @SerialName("orders_created") val ordersCreated: Int = 0,
+    @SerialName("orders_completed") val ordersCompleted: Int = 0,
+)
+
+@Serializable
+data class SupplierAnalyticsVelocityResponse(
+    @SerialName("period_days") val periodDays: Int = 0,
+    val points: List<SupplierAnalyticsVelocityPoint> = emptyList(),
+    @SerialName("generated_at") val generatedAt: String = "",
+)
+
+@Serializable
+data class SupplierAnalyticsRevenuePoint(
+    val date: String = "",
+    @SerialName("revenue_minor") val revenueMinor: Long = 0,
+)
+
+@Serializable
+data class SupplierAnalyticsRevenueResponse(
+    val currency: String = "",
+    @SerialName("total_minor") val totalMinor: Long = 0,
+    val series: List<SupplierAnalyticsRevenuePoint> = emptyList(),
+    @SerialName("generated_at") val generatedAt: String = "",
+)
+
+@Serializable
+data class SupplierDemandSummaryResponse(
+    @SerialName("total_retailers") val totalRetailers: Int = 0,
+    @SerialName("total_pallets") val totalPallets: Int = 0,
+    @SerialName("total_value") val totalValue: Long = 0,
+    @SerialName("prediction_count") val predictionCount: Int = 0,
+    @SerialName("generated_at") val generatedAt: String = "",
+)
+
+@Serializable
+data class SupplierEmpathyAdoption(
+    @SerialName("total_predictions") val totalPredictions: Long = 0,
+    @SerialName("predictions_dormant") val predictionsDormant: Long = 0,
+    @SerialName("predictions_waiting") val predictionsWaiting: Long = 0,
+    @SerialName("predictions_fired") val predictionsFired: Long = 0,
+    @SerialName("predictions_rejected") val predictionsRejected: Long = 0,
+)
+
+@Serializable
+data class SupplierBroadcastRequest(
+    val title: String,
+    val body: String,
+    val role: String = "ALL",
+)
+
+@Serializable
+data class SupplierBroadcastResponse(
+    val status: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+)
+
+@Serializable
+data class PaymentBypassRequest(
+    @SerialName("order_id") val orderId: String,
+    val reason: String = "",
+)
+
+@Serializable
+data class PaymentBypassResponse(
+    val status: String = "",
+    @SerialName("bypass_token") val bypassToken: String = "",
+    @SerialName("order_id") val orderId: String = "",
+)
+
+@Serializable
 data class PaymentLedgerEntry(
     @SerialName("ledger_entry_id") val ledgerEntryId: String,
     @SerialName("order_id") val orderId: String? = null,

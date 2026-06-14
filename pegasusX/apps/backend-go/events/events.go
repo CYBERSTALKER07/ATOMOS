@@ -21,6 +21,8 @@ var (
 	TopicMain = topicFromEnv("KAFKA_TOPIC_MAIN", DefaultTopicMain)
 	// TopicFreezeLocks carries AI-worker freeze-lock signals for manual dispatch.
 	TopicFreezeLocks = topicFromEnv("KAFKA_TOPIC_FREEZE_LOCKS", "pegasusx-freeze-locks")
+	// TopicInventoryImportEvents carries supplier bulk-import session lifecycle events.
+	TopicInventoryImportEvents = topicFromEnv("KAFKA_TOPIC_INVENTORY_IMPORT", "pegasusx-inventory-import")
 )
 
 // EventType constants. Add new types here, in events.schema.json, and in
@@ -85,6 +87,8 @@ const (
 	EventNegotiationResolved       = "NEGOTIATION_RESOLVED"
 	EventCartSyncUpdated           = "CART_SYNC_UPDATED"
 	EventInventorySyncComplete     = "INVENTORY_SYNC_COMPLETE"
+	EventInventoryImportUploaded   = "INVENTORY_IMPORT_UPLOADED"
+	EventInventoryImportStatusUpdate = "INVENTORY_IMPORT_STATUS_UPDATE"
 	EventPromotionChanged          = "PROMOTION_CHANGED"
 	EventRetailerPriceOverride     = "RETAILER_PRICE_OVERRIDE"
 	EventCommandDispatched         = "COMMAND_DISPATCHED"

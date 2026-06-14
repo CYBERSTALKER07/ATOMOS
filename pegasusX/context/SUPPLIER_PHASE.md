@@ -71,7 +71,7 @@
 |----|---------|---------|--------|--------|--------|
 | SP4-01 | Analytics / demand forecast | `/v1/supplier/analytics/*` | `/analytics` + `/analytics/demand` | — | **E2E_SSMR_GREEN** |
 | SP4-02 | Retailer pricing overrides | `GET/POST/DELETE /v1/supplier/pricing/retailer-overrides` + promotion quote resolution | portal handoff | Android + iOS API-ready | **E2E_SSMR_GREEN** (`PX_E2E_RETAILER_PRICING_OVERRIDE_OK`) |
-| SP4-03 | Inventory CSV import + staging | `POST /v1/supplier/inventory/import` + `inventory_import_staging.go` | `/inventory/import` | — | **E2E_SSMR_GREEN** — feeds warehouse `import_anomaly_queue` |
+| SP4-03 | Inventory CSV import + staging | `POST /v1/supplier/inventory/import` + session wizard + async worker | `/inventory/import` wizard | — | **E2E_SSMR_GREEN** — direct CSV + sync wizard (`PX_E2E_SUPPLIER_IMPORT_WIZARD_OK`) + async upload (`PX_E2E_SUPPLIER_IMPORT_ASYNC_OK`) |
 | SP4-04 | Products vs catalog canonical | `/v1/catalog/products` | `/catalog` | — | **WIRED** |
 
 ---
@@ -100,9 +100,9 @@ cd pegasusX && make parity-contract-full
 2. ~~Phase 1 topology editor~~ — **done**
 3. ~~Phase 2 manifest actions + manifest-exceptions~~ — **done**
 4. ~~Phase 3 staff/org lifecycle + notification inbox fix~~ — **done this session**
-5. ~~Phase 4 intelligence & catalog depth (analytics, CSV import, retailer pricing overrides)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_ANALYTICS_OK`, `PX_E2E_SUPPLIER_INVENTORY_IMPORT_OK`, `PX_E2E_RETAILER_PRICING_OVERRIDE_OK`)
+5. ~~Phase 4 intelligence & catalog depth (analytics, CSV import, retailer pricing overrides, import session wizard + async worker)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_ANALYTICS_OK`, `PX_E2E_SUPPLIER_INVENTORY_IMPORT_OK`, `PX_E2E_SUPPLIER_IMPORT_WIZARD_OK`, `PX_E2E_SUPPLIER_IMPORT_ASYNC_OK`, `PX_E2E_RETAILER_PRICING_OVERRIDE_OK`)
 6. ~~SSMR / parity verification~~ — **green** (`make test-ssmr-infra`, `make parity-contract-full`)
-7. **Cross-role next** — full session wizard (GCS upload / mapping / approve) or Boss-picked role row per `VEGETABLE_PLAN.md` §3
+7. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3
 
 ---
 

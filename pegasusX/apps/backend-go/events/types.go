@@ -287,6 +287,16 @@ type RetailerPriceOverrideEvent struct {
 	SetByRole  string `json:"set_by_role"`
 }
 
+// InventoryImportEvent signals supplier bulk-import session lifecycle transitions.
+type InventoryImportEvent struct {
+	BaseEvent
+	SessionID         string `json:"session_id"`
+	SupplierID        string `json:"supplier_id"`
+	GCSPath           string `json:"gcs_path,omitempty"`
+	Status            string `json:"status,omitempty"`
+	SuggestedMappings int    `json:"suggested_mappings,omitempty"`
+}
+
 // SyncEvent handles catalog and inventory syncing.
 type SyncEvent struct {
 	BaseEvent

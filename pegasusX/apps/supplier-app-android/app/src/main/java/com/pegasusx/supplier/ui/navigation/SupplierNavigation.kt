@@ -249,7 +249,7 @@ fun SupplierNavigation(
                     onProfile = { navController.navigate(SupplierRoutes.PROFILE) },
                     onBilling = { navController.navigate(SupplierRoutes.portalHandoff(SupplierPortalFeature.BUSINESS_SETUP)) },
                     onChargebacks = { navController.navigate(SupplierRoutes.portalHandoff(SupplierPortalFeature.CHARGEBACKS)) },
-                    onPaymentBypass = { navController.navigate(SupplierRoutes.portalHandoff(SupplierPortalFeature.PAYMENT_BYPASS)) },
+                    onPaymentBypass = { navController.navigate(SupplierRoutes.OPERATIONS) },
                     onSignOut = {
                         TokenHolder.clear()
                         sessionEpoch++

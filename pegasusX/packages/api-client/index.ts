@@ -61,6 +61,11 @@ import type {
   SupplierDemandSummaryResponse,
   SupplierDemandHistoryResponse,
   SupplierInventoryImportResult,
+  SupplierImportApplyResponse,
+  SupplierImportIngestResponse,
+  SupplierImportMappingResponse,
+  SupplierImportSession,
+  SupplierImportSessionCreateResponse,
   SupplierDispatchPreview,
   SupplierDispatchExecuteRequest,
   SupplierDispatchExecuteResponse,
@@ -408,6 +413,67 @@ export class ApiClient {
       idempotencyKey,
       headers: { "Content-Type": "text/csv" },
     });
+  }
+
+  async createSupplierImportSession(
+    fileName: string,
+    fileSizeBytes: number,
+    idempotencyKey: string,
+  ): Promise<SupplierImportSessionCreateResponse> {
+    return this.request<SupplierImportSessionCreateResponse>("/v1/supplier/inventory/imports", "POST", {
+      body: { file_name: fileName, file_size_bytes: fileSizeBytes },
+      idempotencyKey,
+    });
+  }
+
+  async ingestSupplierImportSession(
+    sessionId: string,
+    csvBody: string,
+    idempotencyKey: string,
+  ): Promise<SupplierImportIngestResponse> {
+    return this.request<SupplierImportIngestResponse>(
+      `/v1/supplier/inventory/imports/${encodeURIComponent(sessionId)}/ingest`,
+      "POST",
+      {
+        rawBody: csvBody,
+        idempotencyKey,
+        headers: { "Content-Type": "text/csv" },
+      },
+    );
+  }
+
+  async getSupplierImportSession(sessionId: string): Promise<SupplierImportSession> {
+    return this.request<SupplierImportSession>(
+      `/v1/supplier/inventory/imports/${encodeURIComponent(sessionId)}`,
+      "GET",
+    );
+  }
+
+  async getSupplierImportMapping(sessionId: string): Promise<SupplierImportMappingResponse> {
+    return this.request<SupplierImportMappingResponse>(
+      `/v1/supplier/inventory/imports/${encodeURIComponent(sessionId)}/mapping`,
+      "GET",
+    );
+  }
+
+  async approveSupplierImportSession(
+    sessionId: string,
+    idempotencyKey: string,
+  ): Promise<{ session_id: string; status: string }> {
+    return this.request(`/v1/supplier/inventory/imports/${encodeURIComponent(sessionId)}/approve`, "POST", {
+      idempotencyKey,
+    });
+  }
+
+  async applySupplierImportSession(
+    sessionId: string,
+    idempotencyKey: string,
+  ): Promise<SupplierImportApplyResponse> {
+    return this.request<SupplierImportApplyResponse>(
+      `/v1/supplier/inventory/imports/${encodeURIComponent(sessionId)}/apply`,
+      "POST",
+      { idempotencyKey },
+    );
   }
 
   async updateSupplierInventory(

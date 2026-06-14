@@ -271,8 +271,20 @@ enum SupplierOperationsService {
         )
     }
 
-    static func issuePaymentBypass(body: [String: String]) async throws {
-        try await APIClient.shared.postVoid("v1/supplier/orders/payment-bypass", body: body)
+    static func analyticsVelocity() async throws -> SupplierAnalyticsVelocityResponse {
+        try await APIClient.shared.get("v1/supplier/analytics/velocity")
+    }
+
+    static func analyticsRevenue() async throws -> SupplierAnalyticsRevenueResponse {
+        try await APIClient.shared.get("v1/supplier/analytics/revenue")
+    }
+
+    static func demandToday() async throws -> SupplierDemandSummaryResponse {
+        try await APIClient.shared.get("v1/supplier/analytics/demand/today")
+    }
+
+    static func issuePaymentBypass(_ request: PaymentBypassRequest) async throws -> PaymentBypassResponse {
+        try await APIClient.shared.post("v1/supplier/orders/payment-bypass", body: request)
     }
 
     static func approveEarlyComplete(driverId: String) async throws {
@@ -284,11 +296,11 @@ enum SupplierOperationsService {
         )
     }
 
-    static func empathyAdoption() async throws -> [String: String] { // placeholder
+    static func empathyAdoption() async throws -> SupplierEmpathyAdoption {
         try await APIClient.shared.get("v1/supplier/empathy/adoption")
     }
 
-    static func broadcast(body: [String: String]) async throws {
-        try await APIClient.shared.postVoid("v1/supplier/broadcast", body: body)
+    static func broadcast(_ request: SupplierBroadcastRequest) async throws -> SupplierBroadcastResponse {
+        try await APIClient.shared.post("v1/supplier/broadcast", body: request)
     }
 }

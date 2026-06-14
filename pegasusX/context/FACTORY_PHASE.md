@@ -49,4 +49,5 @@ cd pegasusX && make test-ssmr-infra   # PX_E2E_FACTORY_ANALYTICS_OK, PX_E2E_FACT
 1. ~~Analytics Spanner overview~~ — FA-1 backend
 2. ~~ai-worker TopicFreezeLocks consumer~~ — PX-FREEZE-01–04
 3. ~~Factory native analytics screens + DTO alignment~~ — FA1-04
-4. **Cross-role next** — full import session wizard or Boss-picked role row per `VEGETABLE_PLAN.md` §3
+4. ~~Import session wizard + async ai-worker consumer~~ — `apps/ai-worker/import_worker.go` + `PX_E2E_SUPPLIER_IMPORT_ASYNC_OK`
+5. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3

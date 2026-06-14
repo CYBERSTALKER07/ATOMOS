@@ -1001,3 +1001,125 @@ struct ApproveEarlyCompleteRequest: Encodable {
         case driverId = "driver_id"
     }
 }
+
+// MARK: - Analytics
+
+struct SupplierAnalyticsVelocityPoint: Decodable {
+    let date: String
+    let ordersCreated: Int
+    let ordersCompleted: Int
+
+    enum CodingKeys: String, CodingKey {
+        case date
+        case ordersCreated = "orders_created"
+        case ordersCompleted = "orders_completed"
+    }
+}
+
+struct SupplierAnalyticsVelocityResponse: Decodable {
+    let periodDays: Int
+    let points: [SupplierAnalyticsVelocityPoint]
+    let generatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case periodDays = "period_days"
+        case points
+        case generatedAt = "generated_at"
+    }
+}
+
+struct SupplierAnalyticsRevenueResponse: Decodable {
+    let currency: String
+    let totalMinor: Int64
+    let series: [SupplierAnalyticsRevenuePoint]
+    let generatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case currency
+        case totalMinor = "total_minor"
+        case series
+        case generatedAt = "generated_at"
+    }
+}
+
+struct SupplierAnalyticsRevenuePoint: Decodable {
+    let date: String
+    let revenueMinor: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case date
+        case revenueMinor = "revenue_minor"
+    }
+}
+
+struct SupplierDemandSummaryResponse: Decodable {
+    let totalRetailers: Int
+    let totalPallets: Int
+    let totalValue: Int64
+    let predictionCount: Int
+    let generatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case totalRetailers = "total_retailers"
+        case totalPallets = "total_pallets"
+        case totalValue = "total_value"
+        case predictionCount = "prediction_count"
+        case generatedAt = "generated_at"
+    }
+}
+
+// MARK: - Operations
+
+struct SupplierEmpathyAdoption: Decodable {
+    let totalPredictions: Int64
+    let predictionsDormant: Int64
+    let predictionsWaiting: Int64
+    let predictionsFired: Int64
+    let predictionsRejected: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case totalPredictions = "total_predictions"
+        case predictionsDormant = "predictions_dormant"
+        case predictionsWaiting = "predictions_waiting"
+        case predictionsFired = "predictions_fired"
+        case predictionsRejected = "predictions_rejected"
+    }
+}
+
+struct SupplierBroadcastRequest: Encodable {
+    let title: String
+    let body: String
+    let role: String
+}
+
+struct SupplierBroadcastResponse: Decodable {
+    let status: String
+    let supplierId: String
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case supplierId = "supplier_id"
+    }
+}
+
+struct PaymentBypassRequest: Encodable {
+    let orderId: String
+    let reason: String
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case reason
+    }
+}
+
+struct PaymentBypassResponse: Decodable {
+    let status: String
+    let bypassToken: String
+    let orderId: String
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case bypassToken = "bypass_token"
+        case orderId = "order_id"
+    }
+}

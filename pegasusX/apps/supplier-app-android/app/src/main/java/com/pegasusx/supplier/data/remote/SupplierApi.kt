@@ -67,7 +67,16 @@ interface SupplierApi {
     ): Response<JsonElement>
 
     @POST("v1/supplier/orders/payment-bypass")
-    suspend fun issuePaymentBypass(@Body body: JsonElement): Response<JsonElement>
+    suspend fun issuePaymentBypass(@Body body: PaymentBypassRequest): Response<PaymentBypassResponse>
+
+    @GET("v1/supplier/analytics/velocity")
+    suspend fun getAnalyticsVelocity(): Response<SupplierAnalyticsVelocityResponse>
+
+    @GET("v1/supplier/analytics/revenue")
+    suspend fun getAnalyticsRevenue(): Response<SupplierAnalyticsRevenueResponse>
+
+    @GET("v1/supplier/analytics/demand/today")
+    suspend fun getDemandToday(): Response<SupplierDemandSummaryResponse>
 
     @POST("v1/supplier/route/approve-early-complete")
     suspend fun approveEarlyComplete(
@@ -244,10 +253,10 @@ interface SupplierApi {
     ): Response<SupplierAIRecommendationDecisionResponse>
 
     @GET("v1/supplier/empathy/adoption")
-    suspend fun getEmpathyAdoption(): Response<JsonElement>
+    suspend fun getEmpathyAdoption(): Response<SupplierEmpathyAdoption>
 
     @POST("v1/supplier/broadcast")
-    suspend fun postBroadcast(@Body body: JsonElement): Response<JsonElement>
+    suspend fun postBroadcast(@Body body: SupplierBroadcastRequest): Response<SupplierBroadcastResponse>
 
     @GET("v1/supplier/ws-session")
     suspend fun getWsSession(): Response<SupplierWsSessionResponse>

@@ -30,6 +30,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	contract "github.com/pegasusx/pegasusx/packages/optimizer-contract"
 )
 
@@ -251,10 +252,28 @@ func main() {
 	healthy.Store(true)
 	monitoringServer := newMonitoringServer(":"+workerHTTPPort, &healthy, &ready, metrics, cfg.InternalAPIKey, logger)
 
-	slog.Info("ai-worker starting", "topic", events.TopicMain, "freeze_topic", events.TopicFreezeLocks, "brokers", brokers, "health_port", workerHTTPPort)
+	slog.Info("ai-worker starting",
+		"topic", events.TopicMain,
+		"freeze_topic", events.TopicFreezeLocks,
+		"import_topic", events.TopicInventoryImportEvents,
+		"brokers", brokers,
+		"health_port", workerHTTPPort,
+	)
 
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(runtime.GOMAXPROCS(0) * 2)
+
+	importRepo := supplier.NewImportRepository(spannerClient)
+	if importOpener, importOpenerErr := supplier.NewImportObjectOpenerFromEnv(ctx); importOpenerErr != nil {
+		slog.Warn("inventory import worker disabled", "err", importOpenerErr)
+	} else if importRuntime := newInventoryImportRuntime(brokers, importRepo, importOpener, logger); importRuntime != nil {
+		g.Go(func() error {
+			defer importRuntime.Close()
+			defer importOpener.Close()
+			importRuntime.Run(gCtx, metrics)
+			return nil
+		})
+	}
 
 	g.Go(func() error {
 		if err := monitoringServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
