@@ -76,6 +76,10 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 		return fmt.Errorf("issue retailer jwt: %w", err)
 	}
 
+	if err := runRetailerReceivingWindowE2E(ctx, client, base, retailerToken); err != nil {
+		return fmt.Errorf("retailer receiving window: %w", err)
+	}
+
 	orderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
 	if err != nil {
 		return fmt.Errorf("order create: %w", err)
@@ -969,6 +973,38 @@ func runSupplierOperationsE2E(ctx context.Context, client *http.Client, base, co
 	}
 
 	fmt.Println("PX_E2E_SUPPLIER_OPERATIONS_OK")
+	return nil
+}
+
+func runRetailerReceivingWindowE2E(ctx context.Context, client *http.Client, base, retailerToken string) error {
+	updateBody := []byte(`{"receiving_window_open":"10:30","receiving_window_close":"19:45"}`)
+	status, body, _, err := clientDo(ctx, client, http.MethodPut, base+"/v1/retailer/profile", updateBody, retailerToken, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("PUT retailer/profile status %d body %s", status, string(body))
+	}
+
+	status, body, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/retailer/profile", nil, retailerToken, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("GET retailer/profile status %d body %s", status, string(body))
+	}
+	var profile map[string]any
+	if err := json.Unmarshal(body, &profile); err != nil {
+		return fmt.Errorf("decode retailer profile: %w", err)
+	}
+	if profile["receiving_window_open"] != "10:30" {
+		return fmt.Errorf("receiving_window_open=%v want 10:30", profile["receiving_window_open"])
+	}
+	if profile["receiving_window_close"] != "19:45" {
+		return fmt.Errorf("receiving_window_close=%v want 19:45", profile["receiving_window_close"])
+	}
+
+	fmt.Println("PX_E2E_RETAILER_RECEIVING_WINDOW_OK")
 	return nil
 }
 

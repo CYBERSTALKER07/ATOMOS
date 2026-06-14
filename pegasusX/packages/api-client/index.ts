@@ -15,6 +15,8 @@ import type {
   ReconciliationMismatchResponse,
   RetailerActiveFulfillmentResponse,
   RetailerPendingPaymentsResponse,
+  RetailerProfileResponse,
+  RetailerProfileUpdateRequest,
   CreateRetailerPriceOverrideRequest,
   CreateRetailerPriceOverrideResponse,
   RetailerPriceOverridesResponse,
@@ -635,6 +637,14 @@ export class ApiClient {
 
   async getRetailerPricingRule(): Promise<RetailerPricingRuleResponse> {
     return this.request<RetailerPricingRuleResponse>("/v1/retailer/pricing/rules", "GET");
+  }
+
+  async getRetailerProfile(): Promise<RetailerProfileResponse> {
+    return this.request<RetailerProfileResponse>("/v1/retailer/profile", "GET");
+  }
+
+  async updateRetailerProfile(request: RetailerProfileUpdateRequest): Promise<RetailerProfileResponse> {
+    return this.request<RetailerProfileResponse>("/v1/retailer/profile", "PUT", { body: request });
   }
 
   async getRetailerTracking(): Promise<RetailerTrackingResponse> {

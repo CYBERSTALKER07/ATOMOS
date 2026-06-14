@@ -33,6 +33,10 @@ import { apiFetch } from "../../../lib/auth";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import type { AutoOrderSettings, RetailerProfile } from "../../../lib/types";
+import {
+  normalizeReceivingWindow,
+  validateReceivingWindowField,
+} from "../../../lib/receiving-window";
 
 function getBrowserStorage(): Storage | null {
   if (
@@ -50,23 +54,6 @@ type ProfileFieldErrors = {
   receivingWindowOpen?: string;
   receivingWindowClose?: string;
 };
-
-function normalizeReceivingWindow(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  const match = /^([01]?\d|2[0-3]):([0-5]?\d)$/.exec(trimmed);
-  if (!match) return trimmed;
-  return `${match[1].padStart(2, "0")}:${match[2].padStart(2, "0")}`;
-}
-
-function validateReceivingWindowField(value: string): string | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(normalizeReceivingWindow(trimmed))) {
-    return "Use 24-hour HH:MM format (e.g. 09:00).";
-  }
-  return undefined;
-}
 
 type SaveBanner = {
   kind: "success" | "error";
@@ -399,7 +386,12 @@ export default function SettingsPage() {
       profileReceivingWindowOpen,
       profileReceivingWindowClose,
     );
-    if (validation.name || validation.company) {
+    if (
+      validation.name ||
+      validation.company ||
+      validation.receivingWindowOpen ||
+      validation.receivingWindowClose
+    ) {
       setProfileErrors(validation);
       setSaveBanner({
         kind: "error",

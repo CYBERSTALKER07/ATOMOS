@@ -1334,6 +1334,35 @@ export interface RetailerRegistered {
   lng: number;
 }
 
+export interface RetailerProfileResponse {
+  retailer_id: RetailerId;
+  id: RetailerId;
+  supplier_id?: SupplierId;
+  name: string;
+  company?: string;
+  phone?: string;
+  location?: string;
+  country_code?: string;
+  status?: string;
+  h3_cell?: H3Cell;
+  lat?: number;
+  lng?: number;
+  receiving_window_open?: string;
+  receiving_window_close?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RetailerProfileUpdateRequest {
+  name?: string;
+  company?: string;
+  phone?: string;
+  location?: string;
+  country_code?: string;
+  receiving_window_open?: string;
+  receiving_window_close?: string;
+}
+
 export interface DriverCreated extends HomeNode {
   driver_id: DriverId;
   supplier_id: SupplierId;

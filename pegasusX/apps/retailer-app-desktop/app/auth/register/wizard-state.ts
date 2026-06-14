@@ -76,25 +76,10 @@ export const STEP_LABELS: Record<StepId, string> = {
   profile: "Store Profile",
 };
 
-export function normalizeReceivingWindow(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  const match = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
-  if (!match) return trimmed;
-  const hour = Number.parseInt(match[1], 10);
-  const minute = Number.parseInt(match[2], 10);
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return trimmed;
-  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-}
-
-export function validateReceivingWindowField(value: string): string | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(normalizeReceivingWindow(trimmed))) {
-    return "Use HH:MM (24-hour)";
-  }
-  return undefined;
-}
+export {
+  normalizeReceivingWindow,
+  validateReceivingWindowField,
+} from "../../../lib/receiving-window";
 
 export function validateIdentity(s: IdentityStep): Record<string, string> {
   const e: Record<string, string> = {};

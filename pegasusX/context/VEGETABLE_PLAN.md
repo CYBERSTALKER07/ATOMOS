@@ -196,7 +196,7 @@ For each role, list its apps (all must stay in sync per doctrine). For each app/
 - **UI/Layout from pegasus ref:** Desktop procurement (richest); mobile catalog-first + tracking. Replicate browse chips (Categories/All/Suppliers), flat grid, search, connect-vendor sheet, receiving window editors, unified checkout. pegasusX parity-ledger notes desktop + mobile catalog/supplier parity closed (2026-06). Use pegasusX ui-kit for web; native platform for mobile.
 - **Cross-sync:** Retailer room; supplier sees orders/exceptions; driver/shopclosed negotiation; payment webhooks settle orders visible to supplier.
 - **E2E criteria:** Reg → catalog → my-suppliers → checkout (card/cash) → tracking → receive/confirm; shopclosed flow; receiving windows respected; `PX_E2E_CATALOG_OK`, order/payment markers.
-- **Status:** Register/order/tracking/catalog suppliers/auto-order `E2E` (PX2, PX12-G/B3). Desktop richest; mobile thinner but closed for v1 per ledgers.
+- **Status:** Register/order/tracking/catalog suppliers/auto-order `E2E` (PX2, PX12-G/B3). Desktop richest; mobile thinner but closed for v1 per ledgers. **Receiving window edit** on desktop `/settings` + native profile screens — **E2E_SSMR_GREEN** (`PX_E2E_RETAILER_RECEIVING_WINDOW_OK`; see `context/RETAILER_PHASE.md` RT1).
 - **Phase:** Order/catalog/payment adjacent; receiving windows already cross (desktop + mobile).
 
 ### 2.6 PAYLOAD Role
