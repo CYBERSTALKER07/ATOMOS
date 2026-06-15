@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { reconcileSession } from '@pegasusx/api-client';
 import { clearStoredToken, getStoredToken, isTauri, storeToken } from '@/lib/bridge';
+import { notifyWarehouseSessionReconciled } from '@/lib/warehouse-reconnect';
 
 const API = (
   process.env.NEXT_PUBLIC_API_URL ||
@@ -151,6 +153,7 @@ export function subscribeWarehouseWS(options: {
   let socket: WebSocket | null = null;
   let reconnectTimer: number | null = null;
   let reconnectAttempt = 0;
+  let hasConnectedOnce = false;
   let disposed = false;
 
   const clearReconnect = () => {
@@ -176,8 +179,18 @@ export function subscribeWarehouseWS(options: {
       socket = ws;
 
       socket.onopen = () => {
+        const wasReconnect = hasConnectedOnce;
+        hasConnectedOnce = true;
         reconnectAttempt = 0;
         options.onStatusChange?.('live');
+        if (wasReconnect) {
+          void reconcileSession({
+            role: 'warehouse',
+            baseUrl: API,
+            getAuthToken: () => readTokenFromCookie() || null,
+            fetchImpl: apiFetch,
+          }).then(() => notifyWarehouseSessionReconciled());
+        }
       };
 
       socket.onmessage = (event) => {

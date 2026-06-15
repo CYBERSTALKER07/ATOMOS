@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { reconnectDelayMs } from '@pegasusx/api-client';
 import { readTokenFromCookie, supplierFetch } from './auth';
+import { runSupplierSessionReconcile } from './session-reconcile';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 const SUPPLIER_NOTIFICATIONS_WS_PATH = '/v1/ws/supplier';
@@ -83,6 +84,7 @@ export function useNotifications() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const reconnectAttempt = useRef(0);
+  const hasConnectedOnce = useRef(false);
   const disposedRef = useRef(false);
 
   const fetchAllInboxPages = useCallback(async (signal?: AbortSignal) => {
@@ -178,8 +180,13 @@ export function useNotifications() {
 
     ws.onopen = () => {
       if (disposedRef.current) return;
+      const wasReconnect = hasConnectedOnce.current;
+      hasConnectedOnce.current = true;
       reconnectAttempt.current = 0;
       void fetchInbox();
+      if (wasReconnect) {
+        void runSupplierSessionReconcile();
+      }
     };
 
     ws.onmessage = (event) => {

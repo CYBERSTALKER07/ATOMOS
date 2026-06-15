@@ -478,8 +478,36 @@ data class PendingMutationEntity(
     @PrimaryKey val id: String,          // UUID generated client-side
     val endpoint: String,                 // e.g. "v1/order/deliver"
     val payloadJson: String,              // serialized request body
-    val idempotencyKey: String,           // UUID sent as Idempotency-Key header
+    val idempotencyKey: String,           // deterministic Idempotency-Key header
     val createdAt: Long = System.currentTimeMillis()
+)
+
+@Serializable
+data class SyncBatchRequest(
+    @SerialName("driver_id") val driverId: String,
+    val deliveries: List<SyncBatchDelivery>,
+)
+
+@Serializable
+data class SyncBatchDelivery(
+    @SerialName("order_id") val orderId: String,
+    val signature: String,
+    val timestamp: Double,
+    val status: String,
+)
+
+@Serializable
+data class SyncBatchResponse(
+    val status: String = "",
+    val processed: List<String> = emptyList(),
+    val skipped: Int = 0,
+)
+
+@Serializable
+data class OfflineDeliveryPayload(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("scanned_token") val scannedToken: String,
+    val signature: String,
 )
 
 @Serializable

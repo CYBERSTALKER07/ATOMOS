@@ -6,20 +6,20 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.pegasusx.driver.data.local.PendingMutationDao
-import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.model.DeliverySubmitRequest
+import com.pegasusx.driver.data.model.OfflineDeliveryPayload
+import com.pegasusx.driver.data.model.SyncBatchDelivery
+import com.pegasusx.driver.data.model.SyncBatchRequest
+import com.pegasusx.driver.data.remote.DriverApi
+import com.pegasusx.driver.data.remote.TokenHolder
+import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.serialization.json.Json
 
 /**
  * Drains the pending_mutations Room table when network reconnects.
- * Enqueued with a NetworkType.CONNECTED constraint so it only fires online.
- *
- * For each mutation:
- *  - POST to the stored endpoint with the original payload + Idempotency-Key header
- *  - On 200/409 (success or idempotent duplicate) → delete from Room
- *  - On 5xx / network error → leave in queue for the next retry cycle
+ * Offline verifier deliveries prefer POST /v1/sync/batch; legacy rows fall back to direct deliver.
  */
 @HiltWorker
 class OfflineSyncWorker @AssistedInject constructor(
@@ -41,43 +41,109 @@ class OfflineSyncWorker @AssistedInject constructor(
 
         Log.d(TAG, "Draining ${pending.size} queued mutation(s)")
 
+        val deliverMutations = pending.filter { it.endpoint == "v1/order/deliver" }
+        val otherMutations = pending.filter { it.endpoint != "v1/order/deliver" }
+
         var failures = 0
-        for (mutation in pending) {
-            try {
-                when (mutation.endpoint) {
-                    "v1/order/deliver" -> {
-                        val req = json.decodeFromString<DeliverySubmitRequest>(mutation.payloadJson)
-                        api.submitDelivery(req, idempotencyKey = mutation.idempotencyKey)
-                    }
-                    else -> {
-                        Log.w(TAG, "Unknown endpoint: ${mutation.endpoint}, skipping")
-                        continue
-                    }
-                }
-                // Success — purge from queue
-                pendingDao.deleteById(mutation.id)
-                Log.d(TAG, "Synced mutation ${mutation.id} → ${mutation.endpoint}")
-            } catch (e: retrofit2.HttpException) {
-                if (e.code() == 409) {
-                    // Idempotent duplicate — safe to discard
-                    pendingDao.deleteById(mutation.id)
-                    Log.d(TAG, "409 idempotent duplicate for ${mutation.id}, purged")
-                } else if (e.code() in 500..599) {
-                    // Server error — retry later
-                    failures++
-                    Log.w(TAG, "Server error ${e.code()} for ${mutation.id}, will retry")
-                } else {
-                    // 4xx (except 409) — discard to prevent infinite retries
-                    pendingDao.deleteById(mutation.id)
-                    Log.w(TAG, "Client error ${e.code()} for ${mutation.id}, discarded")
-                }
-            } catch (e: Exception) {
-                // Network still down or unexpected failure — retry
-                failures++
-                Log.e(TAG, "Failed to sync ${mutation.id}: ${e.message}")
-            }
+
+        if (deliverMutations.isNotEmpty()) {
+            val batchFailures = syncDeliveries(deliverMutations)
+            failures += batchFailures
+        }
+
+        for (mutation in otherMutations) {
+            Log.w(TAG, "Unknown endpoint: ${mutation.endpoint}, skipping")
+            pendingDao.deleteById(mutation.id)
         }
 
         return if (failures > 0) Result.retry() else Result.success()
+    }
+
+    private suspend fun syncDeliveries(mutations: List<com.pegasusx.driver.data.model.PendingMutationEntity>): Int {
+        val driverId = TokenHolder.userId?.takeIf { it.isNotBlank() } ?: return mutations.size
+
+        val parsed = mutations.mapNotNull { mutation ->
+            val offline = runCatching {
+                json.decodeFromString<OfflineDeliveryPayload>(mutation.payloadJson)
+            }.getOrNull()
+            if (offline != null) {
+                mutation to offline
+            } else {
+                val legacy = runCatching {
+                    json.decodeFromString<DeliverySubmitRequest>(mutation.payloadJson)
+                }.getOrNull() ?: return@mapNotNull null
+                mutation to OfflineDeliveryPayload(
+                    orderId = legacy.orderId,
+                    scannedToken = legacy.scannedToken,
+                    signature = legacy.scannedToken,
+                )
+            }
+        }
+
+        if (parsed.isEmpty()) return mutations.size
+
+        val batchDeliveries = parsed.map { (_, payload) ->
+            SyncBatchDelivery(
+                orderId = payload.orderId,
+                signature = payload.signature,
+                timestamp = System.currentTimeMillis() / 1000.0,
+                status = "DELIVERED",
+            )
+        }
+
+        return try {
+            val result = api.syncBatch(
+                SyncBatchRequest(
+                    driverId = driverId,
+                    deliveries = batchDeliveries,
+                ),
+            )
+            val processed = result.processed.toSet()
+            for ((mutation, payload) in parsed) {
+                if (payload.orderId in processed) {
+                    pendingDao.deleteById(mutation.id)
+                    Log.d(TAG, "Batch synced ${payload.orderId}")
+                }
+            }
+            val remaining = parsed.count { (mutation, payload) ->
+                payload.orderId !in processed && pendingDao.getAll().any { it.id == mutation.id }
+            }
+            if (remaining > 0) flushDirectDeliveries(parsed.filter { it.first.id !in processed.map { m -> m } })
+            remaining
+        } catch (e: retrofit2.HttpException) {
+            if (e.code() in 500..599) mutations.size else flushDirectDeliveries(parsed)
+        } catch (e: Exception) {
+            Log.e(TAG, "Batch sync failed: ${e.message}")
+            flushDirectDeliveries(parsed)
+        }
+    }
+
+    private suspend fun flushDirectDeliveries(
+        parsed: List<Pair<com.pegasusx.driver.data.model.PendingMutationEntity, OfflineDeliveryPayload>>,
+    ): Int {
+        var failures = 0
+        for ((mutation, payload) in parsed) {
+            try {
+                api.submitDelivery(
+                    DeliverySubmitRequest(
+                        orderId = payload.orderId,
+                        scannedToken = payload.scannedToken,
+                    ),
+                    idempotencyKey = mutation.idempotencyKey.ifBlank {
+                        DriverIdempotencyKeys.deliver(payload.orderId)
+                    },
+                )
+                pendingDao.deleteById(mutation.id)
+            } catch (e: retrofit2.HttpException) {
+                when (e.code()) {
+                    409 -> pendingDao.deleteById(mutation.id)
+                    in 500..599 -> failures++
+                    else -> pendingDao.deleteById(mutation.id)
+                }
+            } catch (e: Exception) {
+                failures++
+            }
+        }
+        return failures
     }
 }

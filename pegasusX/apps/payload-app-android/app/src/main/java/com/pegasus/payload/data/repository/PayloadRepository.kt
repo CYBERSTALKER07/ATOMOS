@@ -53,6 +53,26 @@ class PayloadRepository @Inject constructor(
     private fun deterministicIdempotencyKey(action: String, entityId: String): String =
         "payload-$action-$entityId"
 
+    /** Parallel refetch of authoritative payload snapshots after WS reconnect. */
+    suspend fun reconcileSession(baseUrl: String) {
+        val token = secureStore.token ?: return
+        val endpoints = listOf(
+            "/v1/payloader/trucks",
+            "/v1/payloader/manifests",
+        )
+        for (endpoint in endpoints) {
+            runCatching {
+                okHttp.newCall(
+                    Request.Builder()
+                        .url("${baseUrl.trimEnd('/')}$endpoint")
+                        .header("Authorization", "Bearer $token")
+                        .get()
+                        .build(),
+                ).execute().use { /* drain */ }
+            }
+        }
+    }
+
     suspend fun loadTrucks(): List<Truck> = api.trucks()
 
     /** Draft OR currently-loading manifest for the selected truck, or null. */

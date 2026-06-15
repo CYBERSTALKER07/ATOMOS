@@ -11,6 +11,7 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import com.pegasusx.driver.data.model.CollectCashRequest
 import com.pegasusx.driver.data.model.SplitPaymentPayload
 import com.pegasusx.driver.data.remote.DriverApi
+import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -113,7 +114,7 @@ class CashCollectionViewModel @Inject constructor(
                         latitude = location.latitude,
                         longitude = location.longitude
                     ),
-                    idempotencyKey = "driver-collect-cash-$orderId"
+                    idempotencyKey = DriverIdempotencyKeys.collectCash(orderId),
                 )
                 _state.update {
                     it.copy(isCompleting = false, completed = true, distanceM = resp.distanceM)

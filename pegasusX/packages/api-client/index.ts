@@ -128,9 +128,32 @@ export {
   retailerCheckoutKey,
   supplierDispatchKey,
   warehouseDispatchKey,
+  warehouseOrderDelayKey,
+  warehouseOrderRejectKey,
+  warehouseOrderOverflowKey,
+  warehouseDispatchLockAcquireKey,
+  warehouseDispatchLockReleaseKey,
+  payloadStartLoadingKey,
+  payloadSupplierStartLoadingKey,
   payloadSealKey,
+  payloadOrderSealKey,
   payloadInjectKey,
+  payloadSupplierInjectKey,
+  payloadSealCompletedKey,
+  payloadSupplierSealManifestKey,
   supplierManifestSealKey,
+  supplierManifestStartLoadingKey,
+  supplierManifestInjectKey,
+  supplierVetOrderKey,
+  supplierImportCreateKey,
+  supplierImportIngestKey,
+  supplierImportApproveKey,
+  supplierImportApplyKey,
+  supplierBroadcastKey,
+  supplierPaymentBypassKey,
+  warehouseEmergencyTransferKey,
+  warehouseForceReceiveKey,
+  warehouseReceiveTransferKey,
 } from "./idempotency";
 export {
   SESSION_RECONCILE_ENDPOINTS,
@@ -598,16 +621,28 @@ export class ApiClient {
     throw new Error("quantity_negotiation_disabled");
   }
 
-  async issueSupplierPaymentBypass(request: PaymentBypassRequest): Promise<PaymentBypassResponse> {
-    return this.request<PaymentBypassResponse>("/v1/supplier/orders/payment-bypass", "POST", { body: request });
+  async issueSupplierPaymentBypass(
+    request: PaymentBypassRequest,
+    idempotencyKey: string,
+  ): Promise<PaymentBypassResponse> {
+    return this.request<PaymentBypassResponse>("/v1/supplier/orders/payment-bypass", "POST", {
+      body: request,
+      idempotencyKey,
+    });
   }
 
   async getSupplierEmpathyAdoption(): Promise<SupplierEmpathyAdoption> {
     return this.request<SupplierEmpathyAdoption>("/v1/supplier/empathy/adoption", "GET");
   }
 
-  async postSupplierBroadcast(request: SupplierBroadcastRequest): Promise<SupplierBroadcastResponse> {
-    return this.request<SupplierBroadcastResponse>("/v1/supplier/broadcast", "POST", { body: request });
+  async postSupplierBroadcast(
+    request: SupplierBroadcastRequest,
+    idempotencyKey: string,
+  ): Promise<SupplierBroadcastResponse> {
+    return this.request<SupplierBroadcastResponse>("/v1/supplier/broadcast", "POST", {
+      body: request,
+      idempotencyKey,
+    });
   }
 
   async triggerSupplierReplenishment(): Promise<SupplierReplenishmentTriggerResponse> {
@@ -752,7 +787,7 @@ export class ApiClient {
   async executeWarehouseDispatch(
     request: WarehouseDispatchExecuteRequest,
     query: { warehouse_id?: string } = {},
-    idempotencyKey?: string,
+    idempotencyKey: string,
   ): Promise<WarehouseDispatchExecuteResponse> {
     return this.request<WarehouseDispatchExecuteResponse>(appendQuery("/v1/warehouse/ops/dispatch/execute", query as Record<string, unknown>), "POST", {
       body: request,
@@ -793,47 +828,56 @@ export class ApiClient {
   async acquireWarehouseDispatchLock(
     request: WarehouseDispatchLockAcquireRequest,
     query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
   ): Promise<WarehouseDispatchLock> {
     return this.request<WarehouseDispatchLock>(appendQuery("/v1/warehouse/dispatch-lock", query as Record<string, unknown>), "POST", {
       body: request,
+      idempotencyKey,
     });
   }
 
   async releaseWarehouseDispatchLock(
     query: { warehouse_id?: string; lock_id: string },
+    idempotencyKey?: string,
   ): Promise<WarehouseDispatchLockReleaseResponse> {
-    return this.request<WarehouseDispatchLockReleaseResponse>(appendQuery("/v1/warehouse/dispatch-lock", query as Record<string, unknown>), "DELETE");
+    return this.request<WarehouseDispatchLockReleaseResponse>(appendQuery("/v1/warehouse/dispatch-lock", query as Record<string, unknown>), "DELETE", {
+      idempotencyKey,
+    });
   }
 
   async postWarehouseEmergencyTransfer(
     request: WarehouseEmergencyTransferRequest,
     query: { warehouse_id?: string } = {},
+    idempotencyKey: string,
   ): Promise<WarehouseTransferMutationResponse> {
     return this.request<WarehouseTransferMutationResponse>(
       appendQuery("/v1/warehouse/transfers/emergency", query as Record<string, unknown>),
       "POST",
-      { body: request },
+      { body: request, idempotencyKey },
     );
   }
 
   async postWarehouseForceReceive(
     request: WarehouseForceReceiveRequest,
     query: { warehouse_id?: string } = {},
+    idempotencyKey: string,
   ): Promise<WarehouseTransferMutationResponse> {
     return this.request<WarehouseTransferMutationResponse>(
       appendQuery("/v1/warehouse/transfers/force-receive", query as Record<string, unknown>),
       "POST",
-      { body: request },
+      { body: request, idempotencyKey },
     );
   }
 
   async postWarehouseReceiveTransfer(
     transferId: string,
     query: { warehouse_id?: string } = {},
+    idempotencyKey: string,
   ): Promise<WarehouseTransferMutationResponse> {
     return this.request<WarehouseTransferMutationResponse>(
-      appendQuery(`/v1/warehouse/transfers/${transferId}/receive`, query as Record<string, unknown>),
+      appendQuery(`/v1/warehouse/transfers/${encodeURIComponent(transferId)}/receive`, query as Record<string, unknown>),
       "POST",
+      { idempotencyKey },
     );
   }
 
@@ -890,11 +934,12 @@ export class ApiClient {
     orderId: string,
     request: WarehouseOrderMutationRequest = {},
     query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
   ): Promise<WarehouseOrderMutationResponse> {
     return this.request<WarehouseOrderMutationResponse>(
       appendQuery(`/v1/warehouse/ops/orders/${orderId}/delay`, query as Record<string, unknown>),
       "POST",
-      { body: request },
+      { body: request, idempotencyKey },
     );
   }
 
@@ -902,11 +947,12 @@ export class ApiClient {
     orderId: string,
     request: WarehouseOrderMutationRequest,
     query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
   ): Promise<WarehouseOrderMutationResponse> {
     return this.request<WarehouseOrderMutationResponse>(
       appendQuery(`/v1/warehouse/ops/orders/${orderId}/reject`, query as Record<string, unknown>),
       "POST",
-      { body: request },
+      { body: request, idempotencyKey },
     );
   }
 
@@ -914,11 +960,12 @@ export class ApiClient {
     orderId: string,
     request: WarehouseOrderMutationRequest = {},
     query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
   ): Promise<WarehouseOrderMutationResponse> {
     return this.request<WarehouseOrderMutationResponse>(
       appendQuery(`/v1/warehouse/ops/orders/${orderId}/overflow`, query as Record<string, unknown>),
       "POST",
-      { body: request },
+      { body: request, idempotencyKey },
     );
   }
 

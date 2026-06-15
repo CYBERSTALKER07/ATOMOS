@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
+import { SUPPLIER_DISPATCH_REFRESH_EVENTS } from "@/lib/supplier-ws-events";
+import { useSupplierWsRefresh } from "@/lib/use-supplier-ws-refresh";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 
 export interface ManifestData {
   id: string;
@@ -65,6 +68,20 @@ export function useDispatchData() {
     }, 30_000);
     return () => clearInterval(interval);
   }, [refresh]);
+
+  useSupplierWsRefresh(
+    () => {
+      void refresh();
+    },
+    {
+      eventTypes: SUPPLIER_DISPATCH_REFRESH_EVENTS,
+      debounceMs: 500,
+    },
+  );
+
+  useSupplierSessionReconcile(() => {
+    void refresh();
+  });
 
   return { manifests, setManifests, loading, error, refresh };
 }

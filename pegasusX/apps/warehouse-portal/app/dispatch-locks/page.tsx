@@ -5,6 +5,8 @@ import { useStableCallback } from '@/lib/useStableCallback';
 import { ApiError } from '@pegasusx/api-client';
 import { subscribeWarehouseWS, type WarehouseSocketStatus } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';
+import { warehouseOps } from '@/lib/warehouse-ops';
+import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -63,13 +65,18 @@ export default function DispatchLocksPage() {
     });
   }, [handleWarehouseLiveEvent]);
 
+  useWarehouseSessionReconcile(() => {
+    void loadLocks();
+  });
+
   async function handleAcquire() {
     try {
-      await warehouseApi.acquireWarehouseDispatchLock({
-        entity_type: 'WAREHOUSE',
-        entity_id: 'warehouse-scope',
-        reason: 'manual_dispatch',
-      });
+      await warehouseOps.acquireDispatchLock(
+        'warehouse-scope',
+        'WAREHOUSE',
+        'warehouse-scope',
+        'manual_dispatch',
+      );
       toast('Dispatch lock acquired', 'success');
       void loadLocks();
     } catch (err) {
@@ -80,7 +87,7 @@ export default function DispatchLocksPage() {
   async function handleRelease(lockId: string) {
     setReleasing(lockId);
     try {
-      await warehouseApi.releaseWarehouseDispatchLock({ lock_id: lockId });
+      await warehouseOps.releaseDispatchLock(lockId);
       toast('Lock released', 'success');
       void loadLocks();
     } catch (err) {

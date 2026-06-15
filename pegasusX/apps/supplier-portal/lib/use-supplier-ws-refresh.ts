@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { supplierApiBaseUrl, supplierFetch } from "@/lib/auth";
 import { reconnectDelayMs, retryAfterSecondsFromResponse } from "@pegasusx/api-client";
+import { runSupplierSessionReconcile } from "@/lib/session-reconcile";
 import { parseSupplierWsEventType } from "@/lib/supplier-ws-events";
 
 interface SupplierWebSocketSessionResponse {
@@ -40,6 +41,7 @@ export function useSupplierWsRefresh(
     let signalTimer: number | undefined;
     let attempts = 0;
     let pendingRetryAfterSeconds: number | undefined;
+    let hasConnectedOnce = false;
 
     const clearTimers = () => {
       if (reconnectTimer !== undefined) {
@@ -107,6 +109,10 @@ export function useSupplierWsRefresh(
 
         socket.onopen = () => {
           attempts = 0;
+          if (hasConnectedOnce) {
+            void runSupplierSessionReconcile();
+          }
+          hasConnectedOnce = true;
         };
 
         socket.onmessage = (event) => {

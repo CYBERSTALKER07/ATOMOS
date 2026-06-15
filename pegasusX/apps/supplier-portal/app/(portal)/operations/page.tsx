@@ -2,15 +2,23 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ApiError } from "@pegasusx/api-client";
+import { ApiError, supplierBroadcastKey, supplierPaymentBypassKey } from "@pegasusx/api-client";
 import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
 import { PageSection } from "@/components/PageSection";
 import { createSupplierApi } from "@/lib/api";
+import { decodeJwtPayload, readTokenFromCookie } from "@/lib/auth";
 import { PortalSurface } from "../_components/PortalSurface";
 import { errorToMessage } from "../../payments/_shared/finance";
 
 const api = createSupplierApi();
 const broadcastRoles = ["ALL", "DRIVER", "RETAILER", "PAYLOAD"] as const;
+
+function supplierScopeId(): string {
+  const token = readTokenFromCookie();
+  if (!token) return "supplier";
+  const claims = decodeJwtPayload(token);
+  return typeof claims?.supplier_id === "string" ? claims.supplier_id : "supplier";
+}
 
 export default function OperationsPage() {
   const [empathy, setEmpathy] = useState<Awaited<ReturnType<typeof api.getSupplierEmpathyAdoption>> | null>(null);
@@ -45,7 +53,12 @@ export default function OperationsPage() {
     setError(null);
     setBroadcasting(true);
     try {
-      const resp = await api.postSupplierBroadcast({ title: title.trim(), body: body.trim(), role: broadcastRole });
+      const trimmedTitle = title.trim();
+      const trimmedBody = body.trim();
+      const resp = await api.postSupplierBroadcast(
+        { title: trimmedTitle, body: trimmedBody, role: broadcastRole },
+        supplierBroadcastKey(supplierScopeId(), broadcastRole, trimmedTitle, trimmedBody),
+      );
       setMessage(`Broadcast sent to supplier room (${resp.supplier_id}).`);
       setTitle("");
       setBody("");
@@ -81,10 +94,13 @@ export default function OperationsPage() {
     setBypassToken(null);
     setBypassing(true);
     try {
-      const resp = await api.issueSupplierPaymentBypass({
-        order_id: trimmed,
-        reason: bypassReason.trim() || undefined,
-      });
+      const resp = await api.issueSupplierPaymentBypass(
+        {
+          order_id: trimmed,
+          reason: bypassReason.trim() || undefined,
+        },
+        supplierPaymentBypassKey(trimmed, bypassReason.trim()),
+      );
       setBypassToken(resp.bypass_token);
       setMessage(`Bypass token issued for ${resp.order_id}.`);
       setConfirmBypass(false);

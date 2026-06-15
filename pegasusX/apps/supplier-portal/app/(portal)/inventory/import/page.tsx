@@ -2,16 +2,30 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { ApiError } from "@pegasusx/api-client";
+import {
+  ApiError,
+  supplierImportApplyKey,
+  supplierImportApproveKey,
+  supplierImportCreateKey,
+  supplierImportIngestKey,
+} from "@pegasusx/api-client";
 import type {
   SupplierImportApplyResponse,
   SupplierImportMappingCandidate,
   SupplierImportSession,
 } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
+import { decodeJwtPayload, readTokenFromCookie } from "@/lib/auth";
 import { PortalSurface } from "../../_components/PortalSurface";
 
 const api = createSupplierApi();
+
+function supplierScopeId(): string {
+  const token = readTokenFromCookie();
+  if (!token) return "supplier";
+  const claims = decodeJwtPayload(token);
+  return typeof claims?.supplier_id === "string" ? claims.supplier_id : "supplier";
+}
 
 type WizardStep = "upload" | "mapping" | "review" | "done";
 
@@ -50,8 +64,17 @@ export default function InventoryImportPage() {
         throw new Error("csv_required");
       }
       const bytes = new TextEncoder().encode(body).length;
-      const created = await api.createSupplierImportSession(fileName, bytes, crypto.randomUUID());
-      const ingested = await api.ingestSupplierImportSession(created.session_id, body, crypto.randomUUID());
+      const scopeId = supplierScopeId();
+      const created = await api.createSupplierImportSession(
+        fileName,
+        bytes,
+        supplierImportCreateKey(scopeId, fileName, bytes),
+      );
+      const ingested = await api.ingestSupplierImportSession(
+        created.session_id,
+        body,
+        supplierImportIngestKey(created.session_id, body),
+      );
       const loaded = await api.getSupplierImportSession(created.session_id);
       const mapping = await api.getSupplierImportMapping(created.session_id);
       setSession({ ...loaded, status: ingested.status || loaded.status });
@@ -69,7 +92,10 @@ export default function InventoryImportPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await api.approveSupplierImportSession(session.session_id, crypto.randomUUID());
+      await api.approveSupplierImportSession(
+        session.session_id,
+        supplierImportApproveKey(session.session_id),
+      );
       const refreshed = await api.getSupplierImportSession(session.session_id);
       setSession(refreshed);
       setStep("review");
@@ -85,7 +111,10 @@ export default function InventoryImportPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const result = await api.applySupplierImportSession(session.session_id, crypto.randomUUID());
+      const result = await api.applySupplierImportSession(
+        session.session_id,
+        supplierImportApplyKey(session.session_id),
+      );
       setApplyResult(result);
       const refreshed = await api.getSupplierImportSession(session.session_id);
       setSession(refreshed);

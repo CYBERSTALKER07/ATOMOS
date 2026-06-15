@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { createWarehouseApi } from '@/lib/api';
 import { subscribeWarehouseWS } from '@/lib/auth';
 import { parseWarehouseWsEventType, WAREHOUSE_FLEET_LIVE_REFRESH_EVENTS } from '@/lib/fleet-ws-events';
+import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
 
 const api = createWarehouseApi();
 
@@ -60,6 +61,10 @@ export function useWarehouseFleetLiveMap(pollMs = 15_000) {
       unsubscribe();
     };
   }, [refresh]);
+
+  useWarehouseSessionReconcile(() => {
+    void refresh(true);
+  });
 
   return { routes, loading, error, fetchedAt, refresh };
 }

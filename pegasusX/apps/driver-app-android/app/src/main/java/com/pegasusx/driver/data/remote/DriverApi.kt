@@ -31,6 +31,8 @@ import com.pegasusx.driver.data.model.RouteManifest
 import com.pegasusx.driver.data.model.RouteReorderResponse
 import com.pegasusx.driver.data.model.SplitPaymentPayload
 import com.pegasusx.driver.data.model.SplitPaymentResponse
+import com.pegasusx.driver.data.model.SyncBatchRequest
+import com.pegasusx.driver.data.model.SyncBatchResponse
 import com.pegasusx.driver.data.model.UpdateOrderDuringDeliveryRequest
 import com.pegasusx.driver.data.model.UpdateOrderDuringDeliveryResponse
 import com.pegasusx.driver.data.model.ValidateQRRequest
@@ -243,4 +245,8 @@ interface DriverApi {
     // Dynamic Delivery Edge Handling (in-delivery updates)
     @POST("v1/delivery/update-order-during-delivery")
     suspend fun updateOrderDuringDelivery(@Body body: UpdateOrderDuringDeliveryRequest): UpdateOrderDuringDeliveryResponse
+
+    /** Offline delivery batch upload — preferred path for verifier-queued deliveries. */
+    @POST("v1/sync/batch")
+    suspend fun syncBatch(@Body request: SyncBatchRequest): SyncBatchResponse
 }

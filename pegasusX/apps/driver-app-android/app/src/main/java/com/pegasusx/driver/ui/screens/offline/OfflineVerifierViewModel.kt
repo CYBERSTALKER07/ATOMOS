@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.pegasusx.driver.data.local.PendingMutationDao
 import com.pegasusx.driver.data.local.RouteManifestDao
 import com.pegasusx.driver.data.model.DeliverySubmitRequest
+import com.pegasusx.driver.data.model.OfflineDeliveryPayload
 import com.pegasusx.driver.data.model.PendingMutationEntity
 import com.pegasusx.driver.data.model.RouteManifestEntity
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.services.OfflineSyncScheduler
+import com.pegasusx.driver.util.DriverIdempotencyKeys
 import com.pegasusx.driver.util.sha256Hex
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -245,17 +247,18 @@ class OfflineVerifierViewModel @Inject constructor(
     }
 
     private suspend fun enqueueOfflineDelivery(orderId: String, scannedToken: String) {
-        val mutationId = UUID.randomUUID().toString()
-        val payload = DeliverySubmitRequest(
+        val signature = sha256Hex(scannedToken)
+        val payload = OfflineDeliveryPayload(
             orderId = orderId,
             scannedToken = scannedToken,
+            signature = signature,
         )
         pendingMutationDao.insert(
             PendingMutationEntity(
-                id = mutationId,
+                id = orderId,
                 endpoint = "v1/order/deliver",
                 payloadJson = json.encodeToString(payload),
-                idempotencyKey = mutationId,
+                idempotencyKey = DriverIdempotencyKeys.deliver(orderId),
             ),
         )
         OfflineSyncScheduler.enqueue(appContext)

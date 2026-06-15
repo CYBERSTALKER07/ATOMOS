@@ -8,8 +8,12 @@ import type {
   WarehouseDispatchProposedRoute,
   WarehouseUnavailableDispatchDriver,
 } from '@pegasusx/types';
-import { ApiError } from '@pegasusx/api-client';
+import { ApiError, warehouseDispatchKey } from '@pegasusx/api-client';
 import { warehouseApi } from '@/lib/warehouse-api';
+import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
+import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
+import { WAREHOUSE_DISPATCH_REFRESH_EVENTS, parseWarehouseWsEventType } from '@/lib/fleet-ws-events';
+import { subscribeWarehouseWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import DispatchPreviewMap from '@/components/DispatchPreviewMap';
 import FleetLiveMapPanel from '@/components/FleetLiveMapPanel';
@@ -54,8 +58,13 @@ export default function DispatchPage() {
   const [selectedDriverId, setSelectedDriverId] = useState('');
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [capacityPrompt, setCapacityPrompt] = useState<WarehouseDispatchCapacityWarning[] | null>(null);
+  const [warehouseId, setWarehouseId] = useState(() => warehouseHomeNodeId() || 'warehouse');
 
   const load = useCallback(async () => {
+    const scopedWarehouseId = warehouseHomeNodeId();
+    if (scopedWarehouseId) {
+      setWarehouseId(scopedWarehouseId);
+    }
     setLoadError(null);
     try {
       const data = await warehouseApi.previewWarehouseDispatch();
@@ -86,6 +95,39 @@ export default function DispatchPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    let signalTimer: number | undefined;
+    const unsubscribe = subscribeWarehouseWS({
+      onMessage: (payload) => {
+        const eventType = parseWarehouseWsEventType(payload);
+        if (!eventType || !WAREHOUSE_DISPATCH_REFRESH_EVENTS.has(eventType)) {
+          return;
+        }
+        if (signalTimer !== undefined) {
+          window.clearTimeout(signalTimer);
+        }
+        signalTimer = window.setTimeout(() => {
+          void load();
+        }, 500);
+      },
+    });
+    return () => {
+      if (signalTimer !== undefined) {
+        window.clearTimeout(signalTimer);
+      }
+      unsubscribe();
+    };
+  }, [load]);
+
+  useWarehouseSessionReconcile(() => {
+    void load();
+    if (executing) {
+      setExecuting(false);
+      setExecuteError(null);
+      setExecuteSuccess('Connection restored — dispatch board refreshed from server.');
+    }
+  });
 
   const selectedDriver = useMemo(
     () => drivers.find(driver => driver.driver_id === selectedDriverId),
@@ -137,6 +179,15 @@ export default function DispatchPage() {
     setExecuteError(null);
     setExecuteSuccess(null);
     try {
+      const routeFingerprint = JSON.stringify({
+        mode: 'MANUAL',
+        force_capacity: forceCapacity,
+        routes: [{
+          driver_id: selectedDriverId,
+          order_ids: [...selectedOrderIds].sort(),
+        }],
+      });
+      const idempotencyKey = warehouseDispatchKey(warehouseId, selectedDriverId, routeFingerprint);
       const result = await warehouseApi.executeWarehouseDispatch({
         mode: 'MANUAL',
         force_capacity: forceCapacity,
@@ -144,7 +195,10 @@ export default function DispatchPage() {
           driver_id: selectedDriverId,
           order_ids: [...selectedOrderIds],
         }],
-      }, {}, crypto.randomUUID());
+      }, {}, idempotencyKey);
+      if (result.warehouse_id) {
+        setWarehouseId(result.warehouse_id);
+      }
       if (result.status === 'capacity_exceeded' && result.capacity_warnings?.length) {
         setCapacityPrompt(result.capacity_warnings);
         return;
@@ -167,7 +221,7 @@ export default function DispatchPage() {
     } finally {
       setExecuting(false);
     }
-  }, [load, selectedDriverId, selectedOrderIds]);
+  }, [load, selectedDriverId, selectedOrderIds, warehouseId]);
 
   const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
   const canDispatch = Boolean(selectedDriverId) && selectedOrderIds.size > 0 && !restricted;

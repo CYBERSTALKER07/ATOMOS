@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 
-import { ApiError } from '@pegasusx/api-client';
+import { ApiError, supplierVetOrderKey } from '@pegasusx/api-client';
 import { createSupplierApi } from '@/lib/api';
 import { downloadCsv } from '@/lib/csv';
 import { ListToolbar } from '@/components/ListToolbar';
@@ -101,7 +101,7 @@ export default function OrdersPage() {
     try {
       await supplierApi.vetSupplierOrder(
         { order_id: orderId, decision },
-        crypto.randomUUID(),
+        supplierVetOrderKey(orderId, decision),
       );
       toast(`Order ${decision.toLowerCase()}`, 'success');
       await loadOrders();

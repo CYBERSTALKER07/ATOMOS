@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.pegasusx.driver.data.model.CompleteOrderRequest
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
+import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,7 +67,7 @@ class PaymentWaitingViewModel @Inject constructor(
             try {
                 api.completeOrder(
                     request = CompleteOrderRequest(orderId = orderId),
-                    idempotencyKey = "driver-complete-order-$orderId"
+                    idempotencyKey = DriverIdempotencyKeys.complete(orderId),
                 )
                 _state.update { it.copy(isCompleting = false, completed = true) }
             } catch (e: Exception) {

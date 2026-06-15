@@ -92,6 +92,10 @@ final class HomeViewModel {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.online = self.ws.online
+                await self.reconcileSession()
+                self.recoverInFlightMutations()
+                await self.refreshTrucks()
+                await self.refreshManifest()
                 await self.loadNotifications()
                 await self.flushQueue()
             }
@@ -610,6 +614,22 @@ final class HomeViewModel {
 
     private func nowIso() -> String {
         ISO8601DateFormatter().string(from: Date())
+    }
+
+    private func reconcileSession() async {
+        _ = try? await api.trucks()
+        _ = try? await api.supplierManifests(state: "DRAFT")
+        _ = try? await api.loadingManifests()
+    }
+
+    private func recoverInFlightMutations() {
+        let hadInFlight = startingLoading || sealingManifest || injectingOrder
+        startingLoading = false
+        sealingManifest = false
+        injectingOrder = false
+        if hadInFlight {
+            syncCompleteMessage = "Connection restored — loading workflow refreshed from server."
+        }
     }
 
     private func flushQueue() async {

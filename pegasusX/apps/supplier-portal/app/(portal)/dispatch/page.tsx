@@ -6,6 +6,8 @@ import { createSupplierApi } from "@/lib/api";
 import { ApiError, supplierDispatchKey } from "@pegasusx/api-client";
 import type { SupplierDispatchPreview, SupplierTopologyWarehouse } from "@pegasusx/types";
 import { useDispatchData, type ManifestData } from "./use-dispatch-data";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
+import { setSupplierReconcileScope } from "@/lib/supplier-reconnect";
 import { PortalSurface } from "../_components/PortalSurface";
 import DispatchPreviewMap from "@/components/DispatchPreviewMap";
 import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
@@ -47,6 +49,13 @@ export default function DispatchPage() {
     loadPreview();
   }, [loadPreview]);
 
+  useEffect(() => {
+    const scope = warehouseQuery(selectedWarehouseId);
+    setSupplierReconcileScope(
+      scope.warehouse_id ? { warehouse_id: scope.warehouse_id } : {},
+    );
+  }, [selectedWarehouseId]);
+
   const runAutoDispatch = useCallback(async () => {
     setExecuting(true);
     setExecuteError(null);
@@ -84,6 +93,16 @@ export default function DispatchPage() {
       setExecuting(false);
     }
   }, [loadPreview, preview, refresh, selectedWarehouseId]);
+
+  useSupplierSessionReconcile(() => {
+    loadPreview();
+    void refresh();
+    if (executing) {
+      setExecuting(false);
+      setExecuteError(null);
+      setExecuteSuccess("Connection restored — dispatch queue refreshed from server.");
+    }
+  });
 
   const draft = useMemo(() => filterManifests(manifests.filter((m) => m.status === "DRAFT"), searchQuery), [manifests, searchQuery]);
   const loadingColumn = useMemo(

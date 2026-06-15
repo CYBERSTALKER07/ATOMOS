@@ -10,6 +10,7 @@ import com.pegasusx.driver.data.model.ConfirmOffloadResponse
 import com.pegasusx.driver.data.model.OrderLineItem
 import com.pegasusx.driver.data.model.RejectionReason
 import com.pegasusx.driver.data.remote.DriverApi
+import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -147,7 +148,7 @@ class OffloadReviewViewModel @Inject constructor(
                 // Now confirm offload
                 val response = api.confirmOffload(
                     request = ConfirmOffloadRequest(orderId = orderId),
-                    idempotencyKey = "driver-confirm-offload-$orderId"
+                    idempotencyKey = DriverIdempotencyKeys.offload(orderId),
                 )
                 _state.update { it.copy(isSubmitting = false, offloadResult = response) }
             } catch (e: Exception) {

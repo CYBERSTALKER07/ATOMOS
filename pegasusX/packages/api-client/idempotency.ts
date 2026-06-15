@@ -45,14 +45,129 @@ export function warehouseDispatchKey(
   return `warehouse-dispatch:${warehouseId}:${actorId}:${stableHash(routeFingerprint)}`;
 }
 
+export function warehouseOrderDelayKey(orderId: string): string {
+  return `warehouse-order-delay:${orderId}`;
+}
+
+export function warehouseOrderRejectKey(orderId: string, reason: string): string {
+  return `warehouse-order-reject:${orderId}:${stableHash(reason)}`;
+}
+
+export function warehouseOrderOverflowKey(orderId: string): string {
+  return `warehouse-order-overflow:${orderId}`;
+}
+
+export function warehouseDispatchLockAcquireKey(
+  warehouseId: string,
+  entityType: string,
+  entityId: string,
+): string {
+  return `warehouse-dispatch-lock-acquire:${warehouseId}:${entityType}:${entityId}`;
+}
+
+export function warehouseDispatchLockReleaseKey(lockId: string): string {
+  return `warehouse-dispatch-lock-release:${lockId}`;
+}
+
+export function payloadStartLoadingKey(manifestId: string): string {
+  return `payload-start-loading-${manifestId}`;
+}
+
+export function payloadSupplierStartLoadingKey(manifestId: string): string {
+  return `payload-supplier-start-loading-${manifestId}`;
+}
+
 export function payloadSealKey(manifestId: string, payloaderId: string): string {
-  return `payload-seal:${payloaderId}:${manifestId}`;
+  return `payload-seal-${payloaderId}-${manifestId}`;
+}
+
+export function payloadOrderSealKey(orderId: string): string {
+  return `payload-payload-seal-${orderId}`;
 }
 
 export function payloadInjectKey(manifestId: string, orderId: string): string {
-  return `payload-inject:${manifestId}:${orderId}`;
+  return `payload-payloader_inject-${manifestId}_${orderId}`;
+}
+
+export function payloadSupplierInjectKey(manifestId: string, orderId: string): string {
+  return `payload-supplier-inject-order-${manifestId}-${orderId}`;
+}
+
+export function payloadSealCompletedKey(manifestIds: string[]): string {
+  const sorted = [...manifestIds].map((id) => id.trim()).filter(Boolean).sort();
+  return `payload-seal-completed-${sorted.join(",")}`;
+}
+
+export function payloadSupplierSealManifestKey(manifestId: string): string {
+  return `payload-supplier-seal-manifest-${manifestId}`;
 }
 
 export function supplierManifestSealKey(manifestId: string, supplierId: string): string {
   return `supplier-manifest-seal:${supplierId}:${manifestId}`;
+}
+
+export function supplierManifestStartLoadingKey(manifestId: string): string {
+  return `supplier-start-loading:${manifestId}`;
+}
+
+export function supplierManifestInjectKey(manifestId: string, orderId: string): string {
+  return `supplier-inject-order:${manifestId}:${orderId}`;
+}
+
+export function supplierVetOrderKey(orderId: string, decision: string): string {
+  return `supplier-vet-order:${orderId}:${decision.toUpperCase()}`;
+}
+
+export function supplierImportCreateKey(
+  scopeId: string,
+  fileName: string,
+  fileSizeBytes: number,
+): string {
+  return `supplier-import-create:${scopeId}:${stableHash(`${fileName}:${fileSizeBytes}`)}`;
+}
+
+export function supplierImportIngestKey(sessionId: string, csvBody: string): string {
+  return `supplier-import-ingest:${sessionId}:${stableHash(csvBody)}`;
+}
+
+export function supplierImportApproveKey(sessionId: string): string {
+  return `supplier-import-approve:${sessionId}`;
+}
+
+export function supplierImportApplyKey(sessionId: string): string {
+  return `supplier-import-apply:${sessionId}`;
+}
+
+export function supplierBroadcastKey(
+  scopeId: string,
+  role: string,
+  title: string,
+  body: string,
+): string {
+  return `supplier-broadcast:${scopeId}:${stableHash(`${role}:${title}:${body}`)}`;
+}
+
+export function supplierPaymentBypassKey(orderId: string, reason: string): string {
+  return `supplier-payment-bypass:${orderId}:${stableHash(reason)}`;
+}
+
+export function warehouseEmergencyTransferKey(
+  warehouseId: string,
+  volumeVu: number,
+  notes?: string,
+): string {
+  return `warehouse-emergency-transfer:${warehouseId}:${volumeVu}:${stableHash(notes ?? "")}`;
+}
+
+export function warehouseForceReceiveKey(
+  warehouseId: string,
+  volumeVu: number,
+  notes?: string,
+  factoryId?: string,
+): string {
+  return `warehouse-force-receive:${warehouseId}:${factoryId ?? ""}:${volumeVu}:${stableHash(notes ?? "")}`;
+}
+
+export function warehouseReceiveTransferKey(transferId: string): string {
+  return `warehouse-receive-transfer:${transferId}`;
 }

@@ -9,6 +9,7 @@ import { PageChrome } from '@/components/PageChrome';
 import { useToast } from '@/components/Toast';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseOps } from '@/lib/warehouse-ops';
+import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
 
 interface OrderDetail {
   order_id: string;
@@ -49,6 +50,13 @@ export default function OrderDetailPage() {
   }, [orderId, router, toast]);
 
   useEffect(() => { load(); }, [load]);
+
+  useWarehouseSessionReconcile(() => {
+    void load();
+    if (acting) {
+      setActing(false);
+    }
+  });
 
   const state = (order?.state ?? order?.status ?? '').toUpperCase();
   const canDelay = state === 'PENDING' || state === 'LOADED';

@@ -17,6 +17,7 @@ import * as Updates from 'expo-updates';
 import { buildManifest, type LiveOrder, type ManifestItem } from './utils/manifest';
 import { PayloadTerminalApi } from './api';
 import { authFetch, clearPayloaderSession, savePayloaderSession, setTokenRefreshListener } from './authSession';
+import { reconcilePayloadSession } from './session-reconcile';
 import { defaultLocale, type Locale } from '../../packages/i18n/locales';
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -242,6 +243,7 @@ export default function App() {
   const [loadingExceptions, setLoadingExceptions] = useState(false);
   const [liveSyncRevision, setLiveSyncRevision] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
+  const wsHasConnectedOnceRef = useRef(false);
   const [clientPolicyMessage, setClientPolicyMessage] = useState<string | null>(null);
 
   // Re-dispatch state
@@ -444,8 +446,17 @@ export default function App() {
       ws.onopen = () => {
         reconnectAttempt = 0;
         setIsOnline(true);
-        // Flush offline queue on reconnect
-        flushOfflineQueue();
+        const wasReconnect = wsHasConnectedOnceRef.current;
+        wsHasConnectedOnceRef.current = true;
+        void (async () => {
+          if (wasReconnect) {
+            await reconcilePayloadSession();
+            setIsStartingLoad(false);
+            setIsSealingManifest(false);
+            setIsInjecting(false);
+          }
+          await flushOfflineQueue();
+        })();
       };
       ws.onmessage = (event) => {
         try {
@@ -481,6 +492,7 @@ export default function App() {
       clearTimeout(reconnectTimer);
       wsRef.current?.close();
       wsRef.current = null;
+      wsHasConnectedOnceRef.current = false;
     };
   }, [token, fetchNotifications]);
 

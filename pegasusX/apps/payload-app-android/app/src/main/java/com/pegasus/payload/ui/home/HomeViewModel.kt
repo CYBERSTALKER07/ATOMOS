@@ -169,8 +169,14 @@ class HomeViewModel @Inject constructor(
             .launchInVm()
         webSocket.onReconnect
             .onEach {
-                loadNotifications()
-                flushQueueAndNotify()
+                viewModelScope.launch {
+                    runCatching { repository.reconcileSession(BuildConfig.API_BASE_URL) }
+                    recoverInFlightMutations()
+                    refreshTrucks()
+                    refreshManifest()
+                    loadNotifications()
+                    flushQueueAndNotify()
+                }
             }
             .launchInVm()
         webSocket.frames
@@ -259,6 +265,21 @@ class HomeViewModel @Inject constructor(
                     syncCompleteMessage = if (sent > 0) "Synced $sent queued action${if (sent == 1) "" else "s"}." else it.syncCompleteMessage,
                 )
             }
+        }
+    }
+
+    private fun recoverInFlightMutations() {
+        _state.update {
+            it.copy(
+                startingLoading = false,
+                sealingManifest = false,
+                injectingOrder = false,
+                syncCompleteMessage = if (it.startingLoading || it.sealingManifest || it.injectingOrder) {
+                    "Connection restored — loading workflow refreshed from server."
+                } else {
+                    it.syncCompleteMessage
+                },
+            )
         }
     }
 

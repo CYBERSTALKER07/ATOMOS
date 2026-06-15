@@ -8,6 +8,17 @@ export const WAREHOUSE_FLEET_LIVE_REFRESH_EVENTS = new Set([
   'ORDER_ASSIGNED',
 ]);
 
+/** Dispatch board + lock surfaces. */
+export const WAREHOUSE_DISPATCH_REFRESH_EVENTS = new Set([
+  'DISPATCH_COMMITTED',
+  'DISPATCH_LOCK_CHANGE',
+  'MANIFEST_CREATED',
+  'MANIFEST_SEALED',
+  'MANIFEST_DISPATCHED',
+  'ORDER_ASSIGNED',
+  'ORDER_STATUS_CHANGED',
+]);
+
 export function parseWarehouseWsEventType(raw: unknown): string | null {
   if (typeof raw !== 'string' || raw.trim() === '') {
     return null;

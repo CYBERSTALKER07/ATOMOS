@@ -639,6 +639,14 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, err := readLimitedBody(r, 8*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	manifestID := manifestIDParam(r)
 	if manifestID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_required"})
@@ -647,7 +655,7 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 
 	var manifest ManifestRow
 	now := ""
-	err := s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -711,12 +719,15 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 		"updated_at":  now,
 	})
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":      "loading_started",
 		"manifest_id": manifestID,
 		"state":       payloadManifestStateLoading,
 		"updated_at":  now,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleInjectOrder serves POST /v1/payloader/manifests/{manifestID}/inject-order.

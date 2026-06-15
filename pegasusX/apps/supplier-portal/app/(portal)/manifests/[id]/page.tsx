@@ -5,15 +5,17 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
+import {
+  supplierManifestInjectKey,
+  supplierManifestSealKey,
+  supplierManifestStartLoadingKey,
+} from "@pegasusx/api-client";
 import type { SupplierManifestDetail } from "@pegasusx/types";
 import StatusBadge from "@/components/StatusBadge";
 import { PortalSurface } from "../../_components/PortalSurface";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 
 const api = createSupplierApi();
-
-function idempotencyKey(prefix: string, manifestId: string, extra = ""): string {
-  return `${prefix}:${manifestId}:${extra || crypto.randomUUID()}`;
-}
 
 export default function ManifestDetailPage() {
   const params = useParams<{ id: string }>();
@@ -38,6 +40,14 @@ export default function ManifestDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useSupplierSessionReconcile(() => {
+    load();
+    if (busy) {
+      setBusy(null);
+      setActionError(null);
+    }
+  });
 
   const runAction = async (label: string, action: () => Promise<void>) => {
     setBusy(label);
@@ -88,7 +98,10 @@ export default function ManifestDetailPage() {
                 disabled={busy !== null}
                 onClick={() =>
                   void runAction("start_loading", async () => {
-                    await api.startSupplierManifestLoading(manifestId, idempotencyKey("start-loading", manifestId));
+                    await api.startSupplierManifestLoading(
+                      manifestId,
+                      supplierManifestStartLoadingKey(manifestId),
+                    );
                   })
                 }
               >
@@ -117,7 +130,7 @@ export default function ManifestDetailPage() {
                         await api.injectSupplierManifestOrder(
                           manifestId,
                           { order_id: orderId },
-                          idempotencyKey("inject-order", manifestId, orderId),
+                          supplierManifestInjectKey(manifestId, orderId),
                         );
                         setInjectOrderId("");
                       })
@@ -132,8 +145,11 @@ export default function ManifestDetailPage() {
                   disabled={busy !== null}
                   onClick={() =>
                     void runAction("seal", async () => {
-                      await api.sealSupplierManifest(manifestId, idempotencyKey("seal", manifestId));
-                    })
+                    await api.sealSupplierManifest(
+                      manifestId,
+                      supplierManifestSealKey(manifestId, "supplier"),
+                    );
+                  })
                   }
                 >
                   {busy === "seal" ? "Sealing…" : "Seal manifest"}
