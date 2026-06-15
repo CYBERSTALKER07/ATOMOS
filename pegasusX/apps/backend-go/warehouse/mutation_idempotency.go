@@ -66,6 +66,13 @@ func (s *Service) storeMutationReplay(ctx context.Context, key string, body []by
 	}, 24*time.Hour)
 }
 
+func (s *Service) releaseMutationReplay(ctx context.Context, key string) {
+	if key == "" || s.idem == nil {
+		return
+	}
+	_ = s.idem.Release(ctx, key)
+}
+
 func sha256Hex(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])

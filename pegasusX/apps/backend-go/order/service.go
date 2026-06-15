@@ -1789,6 +1789,12 @@ func (s *Service) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req CreateRequest
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -1813,6 +1819,7 @@ func (s *Service) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusCreated, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusCreated, respBytes)
 }
 
@@ -2112,6 +2119,12 @@ func (s *Service) HandleMarkArrived(w http.ResponseWriter, r *http.Request) {
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req struct {
 		OrderID string `json:"order_id"`
@@ -2128,6 +2141,7 @@ func (s *Service) HandleMarkArrived(w http.ResponseWriter, r *http.Request) {
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
@@ -2152,6 +2166,12 @@ func (s *Service) HandleSubmitDelivery(w http.ResponseWriter, r *http.Request) {
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req DeliverySubmitRequest
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -2166,6 +2186,7 @@ func (s *Service) HandleSubmitDelivery(w http.ResponseWriter, r *http.Request) {
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
@@ -2189,6 +2210,12 @@ func (s *Service) HandleConfirmOffload(w http.ResponseWriter, r *http.Request) {
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req ConfirmOffloadRequest
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -2203,6 +2230,7 @@ func (s *Service) HandleConfirmOffload(w http.ResponseWriter, r *http.Request) {
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
@@ -2226,6 +2254,12 @@ func (s *Service) HandleCompleteOrder(w http.ResponseWriter, r *http.Request) {
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req CompleteOrderRequest
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -2240,6 +2274,7 @@ func (s *Service) HandleCompleteOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
@@ -2263,6 +2298,12 @@ func (s *Service) HandleCollectCash(w http.ResponseWriter, r *http.Request) {
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req CollectCashRequest
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -2277,6 +2318,7 @@ func (s *Service) HandleCollectCash(w http.ResponseWriter, r *http.Request) {
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
@@ -2940,6 +2982,12 @@ func (s *Service) HandleRetailerConfirmCash(w http.ResponseWriter, r *http.Reque
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req struct {
 		OrderID string `json:"order_id"`
@@ -3008,6 +3056,7 @@ func (s *Service) HandleRetailerConfirmCash(w http.ResponseWriter, r *http.Reque
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 

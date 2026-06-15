@@ -74,9 +74,11 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 	defer r.Body.Close()
 
 	// Idempotency guard (API flavor): same key + same body → replay; different body → 409.
-	if key := strings.TrimSpace(r.Header.Get("Idempotency-Key")); key != "" && s.idem != nil {
+	idemKey := idempotencyKeyFromRequest(r)
+	idemCommitted := false
+	if idemKey != "" && s.idem != nil {
 		hash := sha256Hex(body)
-		rec, hit, err := idempotency.Guard(r.Context(), s.idem, key, hash)
+		rec, hit, err := idempotency.Guard(r.Context(), s.idem, idemKey, hash)
 		switch {
 		case errors.Is(err, idempotency.ErrConflict):
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "idempotency_key_payload_mismatch"})
@@ -89,6 +91,11 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 			_, _ = w.Write(rec.Response)
 			return
 		}
+		defer func() {
+			if !idemCommitted {
+				_ = s.idem.Release(r.Context(), idemKey)
+			}
+		}()
 	}
 
 	sid := s.scopedSupplierID(r)
@@ -103,13 +110,14 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 
 	resultBytes, _ := json.Marshal(result)
 
-	if key := strings.TrimSpace(r.Header.Get("Idempotency-Key")); key != "" && s.idem != nil {
-		_ = s.idem.Save(r.Context(), key, idempotency.Record{
+	if idemKey != "" && s.idem != nil {
+		_ = s.idem.Save(r.Context(), idemKey, idempotency.Record{
 			BodyHash:   sha256Hex(body),
 			StatusCode: http.StatusOK,
 			Response:   resultBytes,
 			StoredAt:   time.Now().UTC(),
 		}, 24*time.Hour)
+		idemCommitted = true
 	}
 
 	if s.cache != nil {

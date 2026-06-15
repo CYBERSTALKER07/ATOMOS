@@ -29,6 +29,12 @@ func (s *Service) HandleRetailerCancel(w http.ResponseWriter, r *http.Request) {
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req struct {
 		OrderID    string `json:"order_id"`
@@ -82,6 +88,7 @@ func (s *Service) HandleRetailerCancel(w http.ResponseWriter, r *http.Request) {
 		"event_type":      resp.EventType,
 	}
 	respBytes, _ := json.Marshal(out)
-	writeJSONBytes(w, http.StatusOK, respBytes)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }

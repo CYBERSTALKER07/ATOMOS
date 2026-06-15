@@ -285,24 +285,41 @@ func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"inventory": items, "items": items})
 	case http.MethodPatch:
-		var body struct {
+		body, ok := readMutationBody(w, r, 64*1024)
+		if !ok {
+			return
+		}
+		key, handled := s.guardMutationReplay(w, r, body)
+		if handled {
+			return
+		}
+		idemCommitted := false
+		defer func() {
+			if !idemCommitted {
+				s.releaseMutationReplay(r.Context(), key)
+			}
+		}()
+
+		var patchBody struct {
 			ProductID string `json:"product_id"`
 			Quantity  int64  `json:"quantity"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := json.Unmarshal(body, &patchBody); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
-		defer r.Body.Close()
-		err := s.repo.UpdateInventoryQuantity(r.Context(), whID, body.ProductID, body.Quantity, func(buf outbox.TxnBuffer) error {
-			// omit event emission for simple patch if none is required
+		err := s.repo.UpdateInventoryQuantity(r.Context(), whID, patchBody.ProductID, patchBody.Quantity, func(buf outbox.TxnBuffer) error {
 			return nil
 		})
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_update_inventory"})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
+		resp := map[string]string{"status": "updated"}
+		respBytes, _ := json.Marshal(resp)
+		s.storeMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+		idemCommitted = true
+		writeJSON(w, http.StatusOK, resp)
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
@@ -837,15 +854,29 @@ func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 		s.mu.RUnlock()
 		writeJSON(w, http.StatusOK, map[string]any{"drivers": drivers})
 	case http.MethodPost:
+		body, ok := readMutationBody(w, r, 64*1024)
+		if !ok {
+			return
+		}
+		key, handled := s.guardMutationReplay(w, r, body)
+		if handled {
+			return
+		}
+		idemCommitted := false
+		defer func() {
+			if !idemCommitted {
+				s.releaseMutationReplay(r.Context(), key)
+			}
+		}()
+
 		var req struct {
 			Name  string `json:"name"`
 			Phone string `json:"phone"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.Unmarshal(body, &req); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
-		defer r.Body.Close()
 		driverID := "drv-" + uuid.NewString()[:8]
 
 		if s.spannerClient != nil {
@@ -877,10 +908,14 @@ func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 			s.mu.Unlock()
 		}
 
-		writeJSON(w, http.StatusCreated, map[string]any{
+		resp := map[string]any{
 			"driver_id": driverID,
 			"pin":       "4321",
-		})
+		}
+		respBytes, _ := json.Marshal(resp)
+		s.storeMutationReplay(r.Context(), key, body, http.StatusCreated, respBytes)
+		idemCommitted = true
+		writeJSON(w, http.StatusCreated, resp)
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
@@ -891,14 +926,28 @@ func (s *Service) handleAssignVehicle(w http.ResponseWriter, r *http.Request, dr
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), key)
+		}
+	}()
+
 	var req struct {
 		VehicleID string `json:"vehicle_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	vehicleID := strings.TrimSpace(req.VehicleID)
 	whID := warehouseIDFromRequest(r)
@@ -917,7 +966,11 @@ func (s *Service) handleAssignVehicle(w http.ResponseWriter, r *http.Request, dr
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "assign_vehicle_failed"})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"status": "assigned", "driver_id": driverID, "vehicle_id": vehicleID})
+		resp := map[string]string{"status": "assigned", "driver_id": driverID, "vehicle_id": vehicleID}
+		respBytes, _ := json.Marshal(resp)
+		s.storeMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+		idemCommitted = true
+		writeJSON(w, http.StatusOK, resp)
 		return
 	}
 
@@ -929,7 +982,11 @@ func (s *Service) handleAssignVehicle(w http.ResponseWriter, r *http.Request, dr
 			continue
 		}
 		s.drivers[i].VehicleID = vehicleID
-		writeJSON(w, http.StatusOK, map[string]string{"status": "assigned", "driver_id": driverID})
+		resp := map[string]string{"status": "assigned", "driver_id": driverID, "vehicle_id": vehicleID}
+		respBytes, _ := json.Marshal(resp)
+		s.storeMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+		idemCommitted = true
+		writeJSON(w, http.StatusOK, resp)
 		return
 	}
 	writeJSON(w, http.StatusNotFound, map[string]string{"error": "driver_not_found"})
@@ -1053,17 +1110,31 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 		s.mu.RUnlock()
 		writeJSON(w, http.StatusOK, map[string]any{"vehicles": vehicles})
 	case http.MethodPost:
+		body, ok := readMutationBody(w, r, 64*1024)
+		if !ok {
+			return
+		}
+		key, handled := s.guardMutationReplay(w, r, body)
+		if handled {
+			return
+		}
+		idemCommitted := false
+		defer func() {
+			if !idemCommitted {
+				s.releaseMutationReplay(r.Context(), key)
+			}
+		}()
+
 		var req struct {
 			Label        string  `json:"label"`
 			LicensePlate string  `json:"license_plate"`
 			VehicleClass string  `json:"vehicle_class"`
 			MaxVolumeVU  float64 `json:"max_volume_vu"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.Unmarshal(body, &req); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
-		defer r.Body.Close()
 		vehicleID := "veh-" + uuid.NewString()[:8]
 
 		if s.spannerClient != nil {
@@ -1097,14 +1168,18 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 			s.mu.Unlock()
 		}
 
-		writeJSON(w, http.StatusCreated, map[string]any{
+		resp := map[string]any{
 			"vehicle_id":    vehicleID,
 			"label":         req.Label,
 			"license_plate": req.LicensePlate,
 			"vehicle_class": req.VehicleClass,
 			"max_volume_vu": resolveVehicleMaxVU(req.VehicleClass, req.MaxVolumeVU),
 			"is_active":     true,
-		})
+		}
+		respBytes, _ := json.Marshal(resp)
+		s.storeMutationReplay(r.Context(), key, body, http.StatusCreated, respBytes)
+		idemCommitted = true
+		writeJSON(w, http.StatusCreated, resp)
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
@@ -1177,16 +1252,30 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method == http.MethodPost {
+		body, ok := readMutationBody(w, r, 64*1024)
+		if !ok {
+			return
+		}
+		key, handled := s.guardMutationReplay(w, r, body)
+		if handled {
+			return
+		}
+		idemCommitted := false
+		defer func() {
+			if !idemCommitted {
+				s.releaseMutationReplay(r.Context(), key)
+			}
+		}()
+
 		var req struct {
 			Name  string `json:"name"`
 			Phone string `json:"phone"`
 			Role  string `json:"role"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.Unmarshal(body, &req); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
-		defer r.Body.Close()
 		staffID := "stf-" + uuid.NewString()[:8]
 
 		if s.spannerClient != nil {
@@ -1207,7 +1296,11 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 			s.mu.Unlock()
 		}
 
-		writeJSON(w, http.StatusCreated, map[string]any{"staff_id": staffID, "pin": "5678"})
+		resp := map[string]any{"staff_id": staffID, "pin": "5678"}
+		respBytes, _ := json.Marshal(resp)
+		s.storeMutationReplay(r.Context(), key, body, http.StatusCreated, respBytes)
+		idemCommitted = true
+		writeJSON(w, http.StatusCreated, resp)
 		return
 	}
 	writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})

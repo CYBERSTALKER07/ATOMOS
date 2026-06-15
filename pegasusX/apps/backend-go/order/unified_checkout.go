@@ -109,6 +109,12 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req UnifiedCheckoutRequest
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -138,6 +144,7 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusCreated, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusCreated, respBytes)
 }
 

@@ -54,6 +54,12 @@ func (s *Service) HandleSyncBatch(w http.ResponseWriter, r *http.Request) {
 	if s.guardIdempotency(w, r, bodyBytes) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req SyncBatchRequest
 	if err := json.Unmarshal(bodyBytes, &req); err != nil {
@@ -93,6 +99,7 @@ func (s *Service) HandleSyncBatch(w http.ResponseWriter, r *http.Request) {
 	}
 	respBytes, _ := json.Marshal(result)
 	s.saveIdempotency(r.Context(), r, bodyBytes, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
