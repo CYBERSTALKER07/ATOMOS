@@ -25,6 +25,7 @@ import com.pegasusx.warehouse.ui.components.WarehouseStateKind
 import com.pegasusx.warehouse.ui.components.WarehouseStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
 
 private val DRIVER_UNAVAILABLE_REASON_LABELS = mapOf(
@@ -51,6 +52,16 @@ fun DriversScreen(
     var assigningDriverId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    WarehouseReconnectRecoveryEffect(
+        realtimeSignals = realtimeSignals,
+        isBusy = { assigningDriverId != null },
+    ) { hadInFlight ->
+        if (hadInFlight) {
+            assigningDriverId = null
+            scope.launch { snackbarHostState.showSnackbar(WAREHOUSE_RECONNECT_RECOVERY_HINT) }
+        }
+    }
 
     fun load() {
         loading = true; error = null
@@ -191,7 +202,11 @@ fun DriversScreen(
                 assigningDriverId = assignDriver!!.driverId
                 scope.launch {
                     try {
-                        val resp = api.assignDriverVehicle(assignDriver!!.driverId, AssignVehicleRequest(vehicleId = vehicleId))
+                        val resp = api.assignDriverVehicle(
+                            assignDriver!!.driverId,
+                            AssignVehicleRequest(vehicleId = vehicleId),
+                            WarehouseIdempotencyKeys.assignDriverVehicle(assignDriver!!.driverId, vehicleId),
+                        )
                         if (resp.isSuccessful) {
                             assignDriver = null
                             load()
@@ -310,7 +325,10 @@ private fun CreateDriverDialog(
                     submitting = true; error = null
                     scope.launch {
                         try {
-                            val resp = api.createDriver(CreateDriverRequest(name = name, phone = phone))
+                            val resp = api.createDriver(
+                                CreateDriverRequest(name = name, phone = phone),
+                                WarehouseIdempotencyKeys.createDriver(phone),
+                            )
                             if (resp.isSuccessful && resp.body() != null) onCreated(resp.body()!!.pin)
                             else error = "Failed (${resp.code()})"
                         } catch (e: Exception) { error = e.message ?: "Error" }

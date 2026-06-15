@@ -157,6 +157,12 @@ func (s *Service) HandleBypassOffload(w http.ResponseWriter, r *http.Request) {
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req struct {
 		OrderID     string `json:"order_id"`
@@ -187,6 +193,7 @@ func (s *Service) HandleBypassOffload(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]string{"status": "AWAITING_PAYMENT"}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 

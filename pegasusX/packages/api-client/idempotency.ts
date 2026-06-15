@@ -301,6 +301,30 @@ export function warehouseReceiveTransferKey(transferId: string): string {
   return `warehouse-receive-transfer:${transferId}`;
 }
 
+export function warehouseCreateDriverKey(warehouseId: string, phone: string): string {
+  return `warehouse-create-driver:${warehouseId}:${stableHash(phone)}`;
+}
+
+export function warehouseCreateStaffKey(warehouseId: string, phone: string): string {
+  return `warehouse-create-staff:${warehouseId}:${stableHash(phone)}`;
+}
+
+export function warehouseCreateVehicleKey(warehouseId: string, licensePlate: string): string {
+  return `warehouse-create-vehicle:${warehouseId}:${stableHash(licensePlate)}`;
+}
+
+export function warehouseAdjustInventoryKey(warehouseId: string, productId: string, quantity: number): string {
+  return `warehouse-adjust-inventory:${warehouseId}:${productId}:${quantity}`;
+}
+
+export function warehouseAssignDriverVehicleKey(
+  warehouseId: string,
+  driverId: string,
+  vehicleId: string,
+): string {
+  return `warehouse-assign-driver-vehicle:${warehouseId}:${driverId}:${vehicleId || "none"}`;
+}
+
 export function factoryManifestStartLoadingKey(manifestId: string): string {
   return `factory-start-loading:${manifestId}`;
 }

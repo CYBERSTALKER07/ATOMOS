@@ -220,6 +220,12 @@ func (s *Service) HandleWarehouseMarkDelayed(w http.ResponseWriter, r *http.Requ
 	if s.guardIdempotency(w, r, bodyBytes) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 	var body warehouseOrderMutationRequest
 	_ = json.Unmarshal(bodyBytes, &body)
 
@@ -230,6 +236,7 @@ func (s *Service) HandleWarehouseMarkDelayed(w http.ResponseWriter, r *http.Requ
 	resp := map[string]string{"order_id": orderID, "status": string(StatusDelayed)}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, bodyBytes, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
@@ -253,6 +260,12 @@ func (s *Service) HandleWarehouseRejectOrder(w http.ResponseWriter, r *http.Requ
 	if s.guardIdempotency(w, r, bodyBytes) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 	var body warehouseOrderMutationRequest
 	if err := json.Unmarshal(bodyBytes, &body); err != nil || strings.TrimSpace(body.Reason) == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "reason required"})
@@ -266,6 +279,7 @@ func (s *Service) HandleWarehouseRejectOrder(w http.ResponseWriter, r *http.Requ
 	resp := map[string]string{"order_id": orderID, "status": "cancelled_by_origin"}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, bodyBytes, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
@@ -289,6 +303,12 @@ func (s *Service) HandleWarehousePayloadOverflow(w http.ResponseWriter, r *http.
 	if s.guardIdempotency(w, r, bodyBytes) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 	var body warehouseOrderMutationRequest
 	_ = json.Unmarshal(bodyBytes, &body)
 
@@ -299,6 +319,7 @@ func (s *Service) HandleWarehousePayloadOverflow(w http.ResponseWriter, r *http.
 	resp := map[string]string{"order_id": orderID, "status": string(StatusPending)}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, bodyBytes, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 

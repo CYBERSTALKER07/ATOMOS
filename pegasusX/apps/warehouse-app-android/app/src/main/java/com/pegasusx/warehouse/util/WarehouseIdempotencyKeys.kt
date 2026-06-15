@@ -29,4 +29,19 @@ object WarehouseIdempotencyKeys {
     }
 
     fun dispatchLockRelease(lockId: String): String = "warehouse-dispatch-lock-release:$lockId"
+
+    fun createDriver(phone: String): String =
+        "warehouse-create-driver:${warehouseId()}:${stableHash(phone)}"
+
+    fun createStaff(phone: String): String =
+        "warehouse-create-staff:${warehouseId()}:${stableHash(phone)}"
+
+    fun createVehicle(licensePlate: String): String =
+        "warehouse-create-vehicle:${warehouseId()}:${stableHash(licensePlate)}"
+
+    fun adjustInventory(productId: String, quantity: Int): String =
+        "warehouse-adjust-inventory:${warehouseId()}:$productId:$quantity"
+
+    fun assignDriverVehicle(driverId: String, vehicleId: String?): String =
+        "warehouse-assign-driver-vehicle:${warehouseId()}:$driverId:${vehicleId?.takeIf { it.isNotBlank() } ?: "none"}"
 }

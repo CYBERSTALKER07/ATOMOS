@@ -18,6 +18,7 @@ import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
 import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
+import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -168,7 +169,10 @@ private fun CreateStaffDialog(
                     submitting = true; error = null
                     scope.launch {
                         try {
-                            val resp = api.createStaff(CreateStaffRequest(name = name, phone = phone, role = role))
+                            val resp = api.createStaff(
+                                CreateStaffRequest(name = name, phone = phone, role = role),
+                                WarehouseIdempotencyKeys.createStaff(phone),
+                            )
                             if (resp.isSuccessful && resp.body() != null) onCreated(resp.body()!!.pin)
                             else error = "Failed (${resp.code()})"
                         } catch (e: Exception) { error = e.message ?: "Error" }

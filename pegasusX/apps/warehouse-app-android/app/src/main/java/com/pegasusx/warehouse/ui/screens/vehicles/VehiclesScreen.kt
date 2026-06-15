@@ -24,6 +24,7 @@ import com.pegasusx.warehouse.ui.components.WarehouseStateKind
 import com.pegasusx.warehouse.ui.components.WarehouseStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
 
 private val VEHICLE_CLASSES = listOf("CLASS_A" to "50 VU", "CLASS_B" to "150 VU", "CLASS_C" to "400 VU")
@@ -250,7 +251,10 @@ private fun CreateVehicleDialog(
                     submitting = true; error = null
                     scope.launch {
                         try {
-                            val resp = api.createVehicle(CreateVehicleRequest(label = label, licensePlate = plate, vehicleClass = selectedClass))
+                            val resp = api.createVehicle(
+                                CreateVehicleRequest(label = label, licensePlate = plate, vehicleClass = selectedClass),
+                                WarehouseIdempotencyKeys.createVehicle(plate),
+                            )
                             if (resp.isSuccessful) onCreated()
                             else error = "Failed (${resp.code()})"
                         } catch (e: Exception) { error = e.message ?: "Error" }

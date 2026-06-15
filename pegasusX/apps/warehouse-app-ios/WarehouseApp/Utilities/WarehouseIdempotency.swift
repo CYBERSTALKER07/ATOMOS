@@ -34,6 +34,27 @@ enum WarehouseIdempotency {
         "warehouse-receive-transfer:\(transferId)"
     }
 
+    static func createDriver(phone: String) -> String {
+        "warehouse-create-driver:\(warehouseId()):\(stableHash(phone))"
+    }
+
+    static func createStaff(phone: String) -> String {
+        "warehouse-create-staff:\(warehouseId()):\(stableHash(phone))"
+    }
+
+    static func createVehicle(licensePlate: String) -> String {
+        "warehouse-create-vehicle:\(warehouseId()):\(stableHash(licensePlate))"
+    }
+
+    static func adjustInventory(productId: String, quantity: Int) -> String {
+        "warehouse-adjust-inventory:\(warehouseId()):\(productId):\(quantity)"
+    }
+
+    static func assignDriverVehicle(driverId: String, vehicleId: String?) -> String {
+        let vid = vehicleId?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? vehicleId! : "none"
+        return "warehouse-assign-driver-vehicle:\(warehouseId()):\(driverId):\(vid)"
+    }
+
     static func dispatchLockAcquire(entityType: String = "WAREHOUSE", entityId: String? = nil) -> String {
         let wh: String
         if let entityId, !entityId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

@@ -34,13 +34,18 @@ enum WarehouseService {
     }
 
     static func createDriver(name: String, phone: String) async throws -> CreateDriverResponse {
-        try await api.post("v1/warehouse/ops/drivers", body: CreateDriverRequest(name: name, phone: phone))
+        try await api.post(
+            "v1/warehouse/ops/drivers",
+            body: CreateDriverRequest(name: name, phone: phone),
+            idempotencyKey: WarehouseIdempotency.createDriver(phone: phone)
+        )
     }
 
     static func assignDriver(driverId: String, vehicleId: String?) async throws -> AssignDriverVehicleResponse {
         try await api.patch(
             "v1/warehouse/ops/drivers/\(driverId)/assign-vehicle",
-            body: AssignDriverVehicleRequest(vehicleId: vehicleId)
+            body: AssignDriverVehicleRequest(vehicleId: vehicleId),
+            idempotencyKey: WarehouseIdempotency.assignDriverVehicle(driverId: driverId, vehicleId: vehicleId)
         )
     }
 
@@ -50,7 +55,11 @@ enum WarehouseService {
     }
 
     static func createVehicle(label: String, licensePlate: String, vehicleClass: String) async throws -> Vehicle {
-        try await api.post("v1/warehouse/ops/vehicles", body: CreateVehicleRequest(label: label, licensePlate: licensePlate, vehicleClass: vehicleClass))
+        try await api.post(
+            "v1/warehouse/ops/vehicles",
+            body: CreateVehicleRequest(label: label, licensePlate: licensePlate, vehicleClass: vehicleClass),
+            idempotencyKey: WarehouseIdempotency.createVehicle(licensePlate: licensePlate)
+        )
     }
 
     static func updateVehicleAvailability(vehicleId: String, isActive: Bool, unavailableReason: String? = nil) async throws -> VehicleMutationResponse {
@@ -68,7 +77,11 @@ enum WarehouseService {
     }
 
     static func adjustInventory(productId: String, quantity: Int) async throws {
-        try await api.patchVoid("v1/warehouse/ops/inventory", body: InventoryAdjustRequest(productId: productId, quantity: quantity))
+        try await api.patchVoid(
+            "v1/warehouse/ops/inventory",
+            body: InventoryAdjustRequest(productId: productId, quantity: quantity),
+            idempotencyKey: WarehouseIdempotency.adjustInventory(productId: productId, quantity: quantity)
+        )
     }
 
     // MARK: - Products
@@ -179,7 +192,11 @@ enum WarehouseService {
     }
 
     static func createStaff(name: String, phone: String, role: String) async throws -> CreateStaffResponse {
-        try await api.post("v1/warehouse/ops/staff", body: CreateStaffRequest(name: name, phone: phone, role: role))
+        try await api.post(
+            "v1/warehouse/ops/staff",
+            body: CreateStaffRequest(name: name, phone: phone, role: role),
+            idempotencyKey: WarehouseIdempotency.createStaff(phone: phone)
+        )
     }
 
     // MARK: - Payment Config

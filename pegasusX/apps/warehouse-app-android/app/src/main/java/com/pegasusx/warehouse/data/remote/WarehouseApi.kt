@@ -36,12 +36,16 @@ interface WarehouseApi {
     suspend fun getDrivers(): Response<DriverListResponse>
 
     @POST("v1/warehouse/ops/drivers")
-    suspend fun createDriver(@Body body: CreateDriverRequest): Response<CreateDriverResponse>
+    suspend fun createDriver(
+        @Body body: CreateDriverRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<CreateDriverResponse>
 
     @PATCH("v1/warehouse/ops/drivers/{id}/assign-vehicle")
     suspend fun assignDriverVehicle(
         @Path("id") id: String,
         @Body body: AssignVehicleRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<AssignVehicleResponse>
 
     // ── Vehicles ──
@@ -49,7 +53,10 @@ interface WarehouseApi {
     suspend fun getVehicles(): Response<VehicleListResponse>
 
     @POST("v1/warehouse/ops/vehicles")
-    suspend fun createVehicle(@Body body: CreateVehicleRequest): Response<Vehicle>
+    suspend fun createVehicle(
+        @Body body: CreateVehicleRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<Vehicle>
 
     @PATCH("v1/warehouse/ops/vehicles/{id}")
     suspend fun updateVehicle(
@@ -65,7 +72,10 @@ interface WarehouseApi {
     ): Response<InventoryListResponse>
 
     @PATCH("v1/warehouse/ops/inventory")
-    suspend fun adjustInventory(@Body body: InventoryAdjustRequest): Response<Unit>
+    suspend fun adjustInventory(
+        @Body body: InventoryAdjustRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<Unit>
 
     // ── Products ──
     @GET("v1/warehouse/ops/products")
@@ -169,7 +179,10 @@ interface WarehouseApi {
     suspend fun getStaff(): Response<StaffListResponse>
 
     @POST("v1/warehouse/ops/staff")
-    suspend fun createStaff(@Body body: CreateStaffRequest): Response<CreateStaffResponse>
+    suspend fun createStaff(
+        @Body body: CreateStaffRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<CreateStaffResponse>
 
     // ── Payment Config ──
     @GET("v1/warehouse/ops/payment-config")

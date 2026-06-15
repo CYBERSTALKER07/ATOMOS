@@ -18,6 +18,7 @@ import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
 import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
+import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -164,7 +165,10 @@ private fun AdjustDialog(
                     submitting = true; error = null
                     scope.launch {
                         try {
-                            val resp = api.adjustInventory(InventoryAdjustRequest(productId = item.productId, quantity = q))
+                            val resp = api.adjustInventory(
+                                InventoryAdjustRequest(productId = item.productId, quantity = q),
+                                WarehouseIdempotencyKeys.adjustInventory(item.productId, q),
+                            )
                             if (resp.isSuccessful) onAdjusted()
                             else error = "Failed (${resp.code()})"
                         } catch (e: Exception) { error = e.message ?: "Error" }

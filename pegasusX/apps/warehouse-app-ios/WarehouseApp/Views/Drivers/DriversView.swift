@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct DriversView: View {
+    @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var drivers: [Driver] = []
     @State private var vehicles: [Vehicle] = []
     @State private var loading = true
@@ -87,6 +88,13 @@ struct DriversView: View {
             }
             .task { load() }
             .refreshable { load() }
+            .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+                if updatingDriverId != nil {
+                    updatingDriverId = nil
+                    error = "Connection restored — verify assignment status before retrying."
+                }
+                load()
+            }
             .sheet(isPresented: $showCreate) {
                 CreateDriverSheet { pin in
                     createdPin = pin
