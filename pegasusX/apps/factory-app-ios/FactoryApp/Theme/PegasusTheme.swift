@@ -17,6 +17,25 @@ enum LabTheme {
     static let warning = Color.orange
     static let live = Color.green
 
+    /// Maps transfer/manifest/ops status strings to semantic badge tints.
+    static func statusTint(for status: String) -> Color {
+        switch status.uppercased() {
+        case "COMPLETED", "DONE", "ACTIVE", "APPROVED", "SEALED", "DISPATCHED", "RECEIVED",
+             "FULFILLED", "READY", "AVAILABLE", "ON_SHIFT", "ONSHIFT":
+            return success
+        case "PENDING", "LOADING", "IN_TRANSIT", "IN_PRODUCTION", "OPEN", "SUBMITTED",
+             "ACKNOWLEDGED", "DRAFT", "STANDARD", "NORMAL":
+            return warning
+        case "CANCELLED", "REJECTED", "FAILED", "EXCEPTION", "CRITICAL", "URGENT", "OFFLINE":
+            return destructive
+        default:
+            return secondaryLabel
+        }
+    }
+
+    /// Keeps dense ops tables readable on iPad without stretching edge-to-edge.
+    static let readableMaxWidth: CGFloat = 960
+
     // MARK: - Spacing
     static let spacingXS: CGFloat = 4
     static let spacingSM: CGFloat = 8
@@ -53,6 +72,11 @@ struct LabCardModifier: ViewModifier {
 extension View {
     func labCard() -> some View {
         modifier(LabCardModifier())
+    }
+
+    func labReadableWidth() -> some View {
+        frame(maxWidth: LabTheme.readableMaxWidth)
+            .frame(maxWidth: .infinity)
     }
 }
 

@@ -11,38 +11,36 @@ struct ManifestsView: View {
         NavigationSplitView {
             Group {
                 if loading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    FactoryLoadingView(
+                        title: "Loading manifests",
+                        message: "Fetching outbound manifest lifecycle states."
+                    )
                 } else if let error {
-                    ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") { Task { await load() } }
+                    FactoryErrorView(message: error) {
+                        Task { await load() }
                     }
                 } else if manifests.isEmpty {
-                    ContentUnavailableView("No Manifests", systemImage: "list.clipboard", description: Text("Dispatch transfers to create a manifest draft."))
+                    FactoryStateView(
+                        kind: .empty,
+                        headline: "No manifests",
+                        message: "Dispatch transfers to create a manifest draft."
+                    )
                 } else {
                     List(selection: $selectedManifestID) {
-                        ForEach(manifests) { manifest in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(manifest.id)
-                                    .font(.footnote.monospaced())
-                                HStack {
-                                    Text(manifest.state).font(.caption.bold())
-                                    Spacer()
-                                    Text("\(Int(manifest.totalVolumeVU)) VU")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                if let next = ManifestLifecycleAction.next(for: manifest.state) {
-                                    Text(next.label)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
+                        Section {
+                            FactorySectionHeader(
+                                title: "Outbound manifests",
+                                subtitle: "\(manifests.count) manifests in the factory queue"
+                            )
+                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                            .listRowBackground(Color.clear)
+                        }
+
+                        Section {
+                            ForEach(manifests) { manifest in
+                                ManifestRow(manifest: manifest)
+                                    .tag(manifest.id)
                             }
-                            .tag(manifest.id)
                         }
                     }
                     .listStyle(.plain)
@@ -85,5 +83,32 @@ struct ManifestsView: View {
             self.error = error.localizedDescription
         }
         loading = false
+    }
+}
+
+private struct ManifestRow: View {
+    let manifest: Manifest
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
+            Text(manifest.truckPlate.isEmpty ? String(manifest.truckId.prefix(8)) : manifest.truckPlate)
+                .font(.subheadline.bold())
+            Text("Manifest \(manifest.id.prefix(8))")
+                .font(.footnote.monospaced())
+                .foregroundStyle(.secondary)
+            HStack {
+                FactoryStatusBadge(text: manifest.state)
+                Spacer()
+                Text("\(Int(manifest.totalVolumeVU)) VU")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let next = ManifestLifecycleAction.next(for: manifest.state) {
+                Text(next.label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, LabTheme.spacingXS)
     }
 }

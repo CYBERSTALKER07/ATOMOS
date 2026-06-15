@@ -10,45 +10,51 @@ struct FleetView: View {
         NavigationStack {
             Group {
                 if loading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    FactoryLoadingView(
+                        title: "Loading fleet",
+                        message: "Fetching registered vehicles and assignment status."
+                    )
                 } else if let error {
-                    ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") { load() }
-                    }
+                    FactoryErrorView(message: error, retry: load)
                 } else if vehicles.isEmpty {
-                    ContentUnavailableView("No Vehicles", systemImage: "truck.box", description: Text("No vehicles registered"))
+                    FactoryStateView(
+                        kind: .empty,
+                        headline: "No vehicles",
+                        message: "No vehicles are registered for this factory yet."
+                    )
                 } else {
                     List {
-                        ForEach(Array(vehicles.enumerated()), id: \.element.id) { index, vehicle in
-                            HStack(spacing: LabTheme.spacingLG) {
-                                Image(systemName: "truck.box")
-                                    .font(.title2)
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 32)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(vehicle.plateNumber)
-                                        .font(.subheadline.bold())
-                                    Text(vehicle.driverName.isEmpty ? "Unassigned" : vehicle.driverName)
-                                        .font(.caption)
+                        Section {
+                            FactorySectionHeader(
+                                title: "Fleet roster",
+                                subtitle: "\(vehicles.count) vehicles on record"
+                            )
+                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                            .listRowBackground(Color.clear)
+                        }
+
+                        Section {
+                            ForEach(Array(vehicles.enumerated()), id: \.element.id) { index, vehicle in
+                                HStack(spacing: LabTheme.spacingLG) {
+                                    Image(systemName: "truck.box")
+                                        .font(.title2)
                                         .foregroundStyle(.secondary)
-                                    Text("\(Int(vehicle.capacityKg))kg · \(Int(vehicle.capacityL))L")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .frame(width: 32)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(vehicle.plateNumber)
+                                            .font(.subheadline.bold())
+                                        Text(vehicle.driverName.isEmpty ? "Unassigned" : vehicle.driverName)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        Text("\(Int(vehicle.capacityKg))kg · \(Int(vehicle.capacityL))L")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    FactoryStatusBadge(text: vehicle.status)
                                 }
-                                Spacer()
-                                Text(vehicle.status)
-                                    .font(.caption2.bold())
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
-                                    .background(.quaternary)
-                                    .clipShape(Capsule())
+                                .staggeredAppear(index: index)
                             }
-                            .staggeredAppear(index: index)
                         }
                     }
                     .listStyle(.plain)
@@ -58,9 +64,8 @@ struct FleetView: View {
             .navigationTitle("Fleet")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { load() } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
+                    Button("Refresh", systemImage: "arrow.clockwise", action: load)
+                        .labelStyle(.iconOnly)
                 }
             }
             .task { load() }

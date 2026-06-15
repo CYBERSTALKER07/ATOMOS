@@ -1,7 +1,7 @@
 # pegasusX DRIVER Role — Phased Execution Ledger
 
 **Scope:** pegasusX only · **Parent plan:** `VEGETABLE_PLAN.md` §2.4  
-**Last updated:** 2026-06-15 (DR-7/8/9 driver cross-client parity batch).
+**Last updated:** 2026-06-15 (DR-10A Android deep UI pass).
 
 ## Status model
 
@@ -49,6 +49,44 @@
 
 ---
 
+## Phase DR-10 — Deep native UI/UX parity (iOS)
+
+| ID | Feature | Android | iOS | Status |
+|----|---------|---------|-----|--------|
+| DR10-01 | Shared KPI / status / section primitives | — (iOS-only batch) | `KpiTile`, `DriverStatusBadge`, `DriverSectionHeader` | **WIRED** |
+| DR10-02 | Theme tokens (`statusTint`, `readableMaxWidth`) | — | `LabTheme` + `labReadableWidth()` | **WIRED** |
+| DR10-03 | Home KPI grid + section headers | pre-existing DR-9 | `HomeView` — `KpiTile` today summary, `DriverSectionHeader`, `DriverEmptyView` recent | **WIRED** |
+| DR10-04 | Manifest list polish | — | `MissionListCard` — `DriverStatusBadge`, `DriverLoadingView` / `DriverEmptyView` | **WIRED** |
+| DR10-05 | Rides manifest + seal gate banner | — | `RidesListView` — `DriverStatusBadge` awaiting-seal, shared state views | **WIRED** |
+| DR10-06 | GPS error banner polish | — | `GPSErrorBanner` — tactical destructive chrome | **WIRED** |
+| DR10-07 | Telemetry badge | — | `TelemetryBadge` (pre-existing, verified on `FleetMapView`) | **WIRED** |
+| DR10-08 | PIN login tactical UI | `LoginScreen` Material | `LoginView` — PIN dots, AUTHENTICATE CTA, `DriverStateCard` error | **WIRED** |
+| DR10-09 | Notification inbox polish | — | `DriverNotificationInboxView` — shared state views, `DriverStatusBadge` unread | **WIRED** |
+| DR10-10 | Loading/error/empty panes | — | `DriverLoadingView` / `DriverErrorView` / `DriverEmptyView` | **WIRED** |
+
+**UI audit vs pegasus reference:** pegasusX iOS matches pegasus `HomeView` / `FleetMapView` / `MissionListCard` workflow and is ahead on client-policy banner (DR-9), device-token registration on login, manifest seal gate, navigation cues, and live socket observers. DR-10 extracts inline KPI/section/status patterns into shared primitives aligned with payload PL-5 / warehouse WH-11 / supplier SP-7 discipline.
+
+**Exit:** Primary driver ops screens use shared components; no new SSMR markers (UI-only parity).
+
+---
+
+## Phase DR-10A — Deep native UI/UX parity (Android)
+
+| ID | Feature | Android | iOS | Status |
+|----|---------|---------|-----|--------|
+| DR10A-01 | Shared UI kit (`DriverUiComponents`, `DriverState`) | KPI tiles, status chips, section titles, GPS banner, connection strip | — | **WIRED** |
+| DR10A-02 | Home KPI + state panes | `DriverTodayKpiCard`, `DriverLoadingState`, recent empty via `DriverStatePane` | pre-existing DR-10 | **WIRED** |
+| DR10A-03 | Manifest workflow | shimmer loading, empty pane, `IconButton` refresh on header | — | **WIRED** |
+| DR10A-04 | Map + delivery flow | `DriverGpsBanner` (permission + cash collection GPS errors), map empty pane | — | **WIRED** |
+| DR10A-05 | Notifications + PIN auth | `DriverStatePane` / `DriverLoadingState` on inbox; compact auth failure on login | pre-existing DR-10 | **WIRED** |
+| DR10A-06 | Correction screen | `DriverSectionTitle`, empathetic loading/error panes | — | **WIRED** |
+
+**UI audit vs pegasus reference:** pegasus `driver-app-android` matches pegasusX on Home/manifest ride cards, transit control, and notification inbox scaffolding; pegasusX is ahead on `WsConnectionPill`, client-policy banner (DR-9), offline verify/cash-collection resume, and FCM registration. DR-10A aligns pegasusX Android with supplier SP-7 / payload PL-5A discipline (shared primitives, empathetic loading/empty copy, semantic status chips, GPS banner, manifest refresh).
+
+**Exit:** Primary driver Android workflow surfaces share M3 discipline with cross-role native patterns. UI-only — no new SSMR markers.
+
+---
+
 ## Verification
 
 ```bash
@@ -63,4 +101,6 @@ cd pegasusX && make test-ssmr-infra   # PX_E2E_DRIVER_* markers
 ## Next execution batch
 
 1. ~~DR-7/8/9 cross-client parity batch~~ — **CLOSED** (2026-06-15)
-2. **Cross-role next** — platform hardening or Boss-picked row per `VEGETABLE_PLAN.md` §3
+2. ~~DR-10 iOS deep UI/UX parity~~ — **CLOSED** (2026-06-15): shared primitives, tactical PIN login, GPS banner polish — see DR-10 table
+3. ~~DR-10A Android deep UI/UX parity~~ — **CLOSED** (2026-06-15): shared `DriverUiComponents` / `DriverState`, HomeScreen + manifest + map + delivery flow — see DR-10A table
+4. **Cross-role next** — platform hardening or Boss-picked row per `VEGETABLE_PLAN.md` §3

@@ -57,17 +57,15 @@ struct RidesListView: View {
 
                 // LEO: Ghost Stop Prevention banner
                 if vm.awaitingSeal {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("AWAITING PAYLOAD SEAL")
-                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                            .tracking(1)
+                    VStack(alignment: .leading, spacing: LabTheme.s8) {
+                        DriverStatusBadge(text: "AWAITING_SEAL", tint: LabTheme.destructive, large: true)
                         Text("Manifest is \(vm.manifestState ?? "not sealed"). Payloader must complete loading and seal before you can depart.")
-                            .font(.subheadline)
+                            .font(.system(size: 13, weight: .medium))
                     }
                     .foregroundStyle(.white)
-                    .padding(16)
+                    .padding(LabTheme.s16)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(LabTheme.destructive, in: RoundedRectangle(cornerRadius: 12))
+                    .background(LabTheme.destructive, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius))
                     .padding(.horizontal, LabTheme.s16)
                     .padding(.bottom, 8)
                 }
@@ -262,7 +260,7 @@ struct RidesListView: View {
     // MARK: - Loading
 
     private var loadingView: some View {
-        DriverLoadingStateCard(
+        DriverLoadingView(
             title: "Loading routes",
             message: "Checking manifest state, sequence, and delivery assignments."
         )
@@ -274,7 +272,7 @@ struct RidesListView: View {
     // MARK: - Empty
 
     private var emptyView: some View {
-        DriverStateCard(
+        DriverEmptyView(
             icon: "road.lanes",
             title: "No upcoming rides",
             message: "Pull to refresh or check back later."

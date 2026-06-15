@@ -11,14 +11,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.pegasusx.factory.data.model.DispatchRequest
 import com.pegasusx.factory.data.model.Transfer
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
+import com.pegasusx.factory.ui.components.FactoryInlineEmptyState
 import com.pegasusx.factory.ui.components.FactoryLoadingState
+import com.pegasusx.factory.ui.components.FactoryMetricTile
+import com.pegasusx.factory.ui.components.FactorySectionHeader
 import com.pegasusx.factory.ui.components.FactoryStateKind
 import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasusx.factory.ui.components.FactoryStatusChip
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -76,7 +79,16 @@ fun LoadingBayScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Loading Bay") },
+                title = {
+                    Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                        Text("Loading Bay")
+                        Text(
+                            text = "Approved, loading, and dispatched queues",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 },
@@ -145,25 +157,25 @@ fun LoadingBayScreen(
                         dispatchedCount = dispatched.size,
                     )
                 }
-                item { BayHeader("Ready for Loading", approved.size) }
+                item { FactorySectionHeader(title = "Ready for Loading", count = approved.size) }
                 if (approved.isEmpty()) {
-                    item { EmptyBayState("No approved transfers are waiting at the bay.") }
+                    item { FactoryInlineEmptyState("No approved transfers are waiting at the bay.") }
                 } else {
                     items(approved, key = { it.id }) { transfer ->
                         TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
                     }
                 }
-                item { BayHeader("Now Loading", loadingState.size) }
+                item { FactorySectionHeader(title = "Now Loading", count = loadingState.size) }
                 if (loadingState.isEmpty()) {
-                    item { EmptyBayState("Nothing is actively loading right now.") }
+                    item { FactoryInlineEmptyState("Nothing is actively loading right now.") }
                 } else {
                     items(loadingState, key = { it.id }) { transfer ->
                         TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
                     }
                 }
-                item { BayHeader("Dispatched", dispatched.size) }
+                item { FactorySectionHeader(title = "Dispatched", count = dispatched.size) }
                 if (dispatched.isEmpty()) {
-                    item { EmptyBayState("No transfers have been dispatched in the current view.") }
+                    item { FactoryInlineEmptyState("No transfers have been dispatched in the current view.") }
                 } else {
                     items(dispatched, key = { it.id }) { transfer ->
                         TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
@@ -171,21 +183,6 @@ fun LoadingBayScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun BayHeader(title: String, count: Int) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(top = PegasusSpacing.sm),
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Spacer(Modifier.width(PegasusSpacing.sm))
-        Badge { Text("$count") }
     }
 }
 
@@ -218,28 +215,20 @@ private fun TransferCard(transfer: Transfer, onClick: () -> Unit) {
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
                 ) {
-                    MetaPill(
-                        text = transfer.state,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                    MetaPill(
-                        text = transfer.priority.ifBlank { "STANDARD" },
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    FactoryStatusChip(status = transfer.state)
+                    FactoryStatusChip(status = transfer.priority.ifBlank { "STANDARD" })
                 }
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
-                BayMetric(
+                FactoryMetricTile(
                     label = "Items",
                     value = transfer.totalItems.toString(),
                     modifier = Modifier.weight(1f),
                 )
-                BayMetric(
+                FactoryMetricTile(
                     label = "Volume",
                     value = "${String.format("%.0f", transfer.totalVolumeL)}L",
                     modifier = Modifier.weight(1f),
@@ -278,70 +267,10 @@ private fun BayOverviewCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
-                BayMetric("Ready", readyCount.toString(), Modifier.weight(1f))
-                BayMetric("Loading", loadingCount.toString(), Modifier.weight(1f))
-                BayMetric("Out", dispatchedCount.toString(), Modifier.weight(1f))
+                FactoryMetricTile("Ready", readyCount.toString(), Modifier.weight(1f))
+                FactoryMetricTile("Loading", loadingCount.toString(), Modifier.weight(1f))
+                FactoryMetricTile("Out", dispatchedCount.toString(), Modifier.weight(1f))
             }
         }
-    }
-}
-
-@Composable
-private fun BayMetric(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-    ) {
-        Column(
-            modifier = Modifier.padding(PegasusSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
-        ) {
-            Text(value, style = MaterialTheme.typography.titleLarge)
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun EmptyBayState(message: String) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(PegasusSpacing.lg),
-        )
-    }
-}
-
-@Composable
-private fun MetaPill(
-    text: String,
-    containerColor: androidx.compose.ui.graphics.Color,
-    contentColor: androidx.compose.ui.graphics.Color,
-) {
-    Surface(
-        shape = MaterialTheme.shapes.small,
-        color = containerColor,
-        contentColor = contentColor,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = PegasusSpacing.sm, vertical = PegasusSpacing.xs),
-        )
     }
 }

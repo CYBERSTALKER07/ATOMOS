@@ -5,25 +5,31 @@
 
 import SwiftUI
 
-/// Red banner displayed at the top when GPS is unavailable or permission denied.
+/// Tactical banner when GPS is unavailable or permission denied.
 struct GPSErrorBanner: View {
     let message: String
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: LabTheme.s12) {
             Image(systemName: "location.slash.fill")
-                .font(.subheadline.weight(.semibold))
+                .font(.system(size: 14, weight: .bold))
 
-            Text(message)
-                .font(.caption.weight(.medium))
-                .lineLimit(2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("GPS_UNAVAILABLE")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.2)
+                Text(message)
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(2)
+            }
 
-            Spacer()
+            Spacer(minLength: 0)
         }
         .foregroundStyle(.white)
         .padding(.horizontal, LabTheme.s16)
-        .padding(.vertical, 10)
-        .background(Color.black.gradient)
+        .padding(.vertical, LabTheme.s12)
+        .background(LabTheme.destructive.gradient, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous))
+        .padding(.horizontal, LabTheme.s16)
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 }
@@ -33,4 +39,5 @@ struct GPSErrorBanner: View {
         GPSErrorBanner(message: "Location permission denied. Enable in Settings.")
         Spacer()
     }
+    .background(LabTheme.bg)
 }

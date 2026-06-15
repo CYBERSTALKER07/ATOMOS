@@ -132,25 +132,21 @@ struct DriverNotificationInboxView: View {
         NavigationStack {
             Group {
                 if vm.isLoading {
-                    DriverLoadingStateCard(
+                    DriverLoadingView(
                         title: "Loading notifications",
                         message: "Checking route, payment, and dispatch updates."
                     )
-                    .padding(.horizontal, LabTheme.s16)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error = vm.errorMessage, vm.items.isEmpty {
-                    DriverStateCard(
-                        icon: "wifi.exclamationmark",
+                    DriverErrorView(
                         title: "Couldn't load notifications",
                         message: error,
-                        actionTitle: "Retry"
-                    ) {
-                        Task { await vm.load() }
-                    }
+                        retry: { Task { await vm.load() } }
+                    )
                     .padding(.horizontal, LabTheme.s16)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if vm.items.isEmpty {
-                    DriverStateCard(
+                    DriverEmptyView(
                         icon: "bell.slash",
                         title: "No notifications yet",
                         message: "Dispatch updates will appear here."
@@ -208,29 +204,25 @@ private struct DriverNotifRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(notification.title)
-                        .font(.subheadline)
-                        .fontWeight(notification.isUnread ? .semibold : .regular)
-                        .foregroundStyle(notification.isUnread ? .primary : .secondary)
+                        .font(.system(size: 13, weight: notification.isUnread ? .bold : .medium))
+                        .foregroundStyle(notification.isUnread ? LabTheme.fg : LabTheme.fgSecondary)
                         .lineLimit(1)
 
                     Spacer()
 
+                    if notification.isUnread {
+                        DriverStatusBadge(text: "NEW", tint: LabTheme.transit)
+                    }
+
                     Text(timeAgo)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(LabTheme.fgTertiary)
                 }
 
                 Text(notification.body)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(LabTheme.fgSecondary)
                     .lineLimit(2)
-            }
-
-            if notification.isUnread {
-                Circle()
-                    .fill(.blue)
-                    .frame(width: 8, height: 8)
-                    .padding(.top, 4)
             }
         }
         .padding(.vertical, 4)

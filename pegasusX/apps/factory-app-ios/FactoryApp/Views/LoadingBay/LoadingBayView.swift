@@ -15,23 +15,19 @@ struct LoadingBayView: View {
         NavigationStack {
             Group {
                 if loading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    FactoryLoadingState(
+                        title: "Loading loading bay",
+                        message: "Fetching approved, loading, and dispatched transfers at the bay."
+                    )
                 } else if let error {
-                    ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") {
-                            Task { await load() }
-                        }
+                    FactoryErrorView(message: error) {
+                        Task { await load() }
                     }
                 } else if transfers.isEmpty {
-                    ContentUnavailableView(
-                        "No Transfers",
-                        systemImage: "shippingbox",
-                        description: Text("No transfers are active in the loading bay right now.")
+                    FactoryStateView(
+                        kind: .empty,
+                        headline: "No transfers at the bay",
+                        message: "No transfers are active in the loading bay right now."
                     )
                 } else {
                     ScrollView {
@@ -61,6 +57,7 @@ struct LoadingBayView: View {
                                 emptyMessage: "No transfers have been dispatched in the current view."
                             )
                         }
+                        .labReadableWidth()
                         .padding()
                     }
                 }
@@ -140,16 +137,7 @@ private struct BaySection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
-            HStack {
-                Text(title)
-                    .font(.headline)
-                Spacer()
-                Text("\(count)")
-                    .font(.footnote.bold())
-                    .padding(.horizontal, LabTheme.spacingSM)
-                    .padding(.vertical, LabTheme.spacingXS)
-                    .background(.quaternary, in: Capsule())
-            }
+            FactorySectionHeader(title: title, count: count)
 
             if transfers.isEmpty {
                 Text(emptyMessage)
@@ -229,8 +217,11 @@ private struct BayTransferCard: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
-                    TransferTag(text: transfer.state)
-                    TransferTag(text: transfer.priority.isEmpty ? "STANDARD" : transfer.priority, emphasized: false)
+                    FactoryStatusBadge(text: transfer.state)
+                    FactoryStatusBadge(
+                        text: transfer.priority.isEmpty ? "STANDARD" : transfer.priority,
+                        emphasized: false
+                    )
                 }
             }
 
@@ -258,19 +249,6 @@ private struct BayTransferMetric: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(LabTheme.spacingMD)
         .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
-    }
-}
-
-private struct TransferTag: View {
-    let text: String
-    var emphasized = true
-
-    var body: some View {
-        Text(text)
-            .font(.footnote.bold())
-            .padding(.horizontal, LabTheme.spacingSM)
-            .padding(.vertical, LabTheme.spacingXS)
-            .background(emphasized ? LabTheme.fill : LabTheme.tertiaryBackground, in: Capsule())
     }
 }
 
@@ -637,11 +615,7 @@ private struct OverrideTransferCard: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Text(transfer.state)
-                    .font(.footnote.bold())
-                    .padding(.horizontal, LabTheme.spacingSM)
-                    .padding(.vertical, LabTheme.spacingXS)
-                    .background(LabTheme.fill, in: Capsule())
+                FactoryStatusBadge(text: transfer.state)
             }
 
             HStack(spacing: LabTheme.spacingSM) {

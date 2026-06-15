@@ -7,8 +7,11 @@ import { downloadCsv } from '@/lib/csv';
 import { usePagination } from '@/lib/use-pagination';
 import { ListToolbar } from '@/components/ListToolbar';
 import Icon from '@/components/Icon';
-import FactoryPageState from '@/components/FactoryPageState';
 import PageTransition from '@/components/PageTransition';
+import { PageChrome } from '@/components/PageChrome';
+import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
+import { PageSection } from '@/components/PageSection';
+import EmptyState from '@/components/EmptyState';
 import { motion } from 'framer-motion';
 
 interface Transfer {
@@ -132,112 +135,94 @@ export default function TransfersPage() {
   );
 
   return (
-    <PageTransition className="space-y-6 p-6 md:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Transfer coordination</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--foreground)]">Transfers</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-            Review warehouse destination movements, filter by state, and open a transfer when it needs action from the factory floor.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/transfers/create"
-            className="button--primary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
-          >
-            <Icon name="add" size={16} /> Create transfer
-          </Link>
-          <button onClick={() => load()} className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium">
-            <Icon name="refresh" size={16} /> Refresh
-          </button>
-        </div>
-      </div>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: 'Visible transfers', value: transfers.length, helper: stateFilter === 'ALL' ? 'Across the full pipeline' : `Filtered to ${stateFilter}` },
-          { label: 'Approved', value: approvedCount, helper: 'Waiting to enter loading' },
-          { label: 'In flight', value: inFlightCount, helper: 'Loading, dispatched, or in transit' },
-          { label: 'High priority', value: highPriorityCount, helper: 'Require close operator attention' },
-        ].map((card) => (
-          <div key={card.label} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-5">
-            <p className="text-sm font-medium text-[var(--muted)]">{card.label}</p>
-            <div className="mt-4 text-3xl font-semibold tracking-tight text-[var(--foreground)] tabular-nums">{card.value}</div>
-            <p className="mt-2 text-sm text-[var(--muted)]">{card.helper}</p>
-          </div>
-        ))}
-      </section>
-
-      <section className="rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Transfer filter</p>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--foreground)]">Pipeline view</h2>
-          </div>
-          <div className="rounded-full bg-[var(--surface)] px-4 py-2 text-sm text-[var(--muted)]">
-            Total volume: <span className="font-semibold text-[var(--foreground)]">{totalVolume.toFixed(1)} m³</span>
-          </div>
-        </div>
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          {STATE_FILTERS.map((filter) => (
-            <button
-              key={filter}
-              onClick={() => setStateFilter(filter)}
-              className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition-colors ${
-                stateFilter === filter
-                  ? 'border-transparent bg-[var(--accent)] text-[var(--accent-foreground)]'
-                  : 'border-[var(--border)] bg-transparent text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--foreground)]'
-              }`}
+    <PageTransition>
+      <PageChrome
+        title="Transfers"
+        description="Review warehouse destination movements, filter by state, and open a transfer when it needs action from the factory floor."
+        loading={loading}
+        skeletonVariant="table"
+        error={error && transfers.length === 0 ? error : null}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/transfers/create"
+              className="button--primary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
             >
-              {filter}
+              <Icon name="add" size={16} /> Create transfer
+            </Link>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
+            >
+              <Icon name="refresh" size={16} /> Refresh
             </button>
-          ))}
-        </div>
-      </section>
+          </div>
+        }
+      >
+        <KpiStatGrid columns={4}>
+          <KpiStatCard
+            label="Visible transfers"
+            value={transfers.length}
+            sub={stateFilter === 'ALL' ? 'Across the full pipeline' : `Filtered to ${stateFilter}`}
+          />
+          <KpiStatCard label="Approved" value={approvedCount} sub="Waiting to enter loading" />
+          <KpiStatCard label="In flight" value={inFlightCount} sub="Loading, dispatched, or in transit" />
+          <KpiStatCard label="High priority" value={highPriorityCount} sub="Require close operator attention" />
+        </KpiStatGrid>
 
-      {loading ? (
-        <FactoryPageState
-          kind="loading"
-          skeleton={
-            <div className="space-y-2">
-              {Array.from({ length: 6 }).map((_, index) => <div key={index} className="md-skeleton md-skeleton-row" />)}
-            </div>
+        <PageSection
+          title="Pipeline view"
+          description="Filter by transfer state. Total volume reflects the current view."
+          className="mt-6"
+          actions={
+            <span className="rounded-full px-4 py-2 text-sm" style={{ background: 'var(--desk-surface-subtle)', color: 'var(--desk-text-secondary)' }}>
+              Total volume: <span className="font-semibold" style={{ color: 'var(--desk-text-primary)' }}>{totalVolume.toFixed(1)} m³</span>
+            </span>
           }
-        />
-      ) : error && transfers.length === 0 ? (
-        <FactoryPageState
-          kind="error"
-          headline="Unable to load transfers"
-          body={error}
-          actionLabel="Retry"
-          onAction={() => void load()}
-        />
-      ) : transfers.length === 0 ? (
-        <FactoryPageState
-          kind={stateFilter === 'ALL' ? 'empty' : 'no-results'}
-          imageUrl="/images/empty-production-line.png"
-          headline={stateFilter === 'ALL' ? 'No transfers found' : 'No transfers match this filter'}
-          body={
-            stateFilter === 'ALL'
-              ? 'Wait for the next warehouse request cycle to create new transfer work.'
-              : `There are no ${stateFilter.toLowerCase()} transfers in the current pipeline view.`
-          }
-          actionLabel={stateFilter === 'ALL' ? undefined : 'Clear Filter'}
-          onAction={stateFilter === 'ALL' ? undefined : () => setStateFilter('ALL')}
-        />
-      ) : (
-        <>
-        <ListToolbar
-          page={page}
-          pageCount={pageCount}
-          totalLabel={`${transfers.length} transfers`}
-          onPrev={prev}
-          onNext={next}
-          onExport={exportCsv}
-        />
-        <section className="overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--background)]">
+        >
+          <div className="flex flex-wrap gap-2">
+            {STATE_FILTERS.map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setStateFilter(filter)}
+                className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition-colors ${
+                  stateFilter === filter
+                    ? 'border-transparent bg-[var(--accent)] text-[var(--accent-foreground)]'
+                    : 'border-[var(--border)] bg-transparent text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--foreground)]'
+                }`}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+        </PageSection>
+
+        {transfers.length === 0 ? (
+          <EmptyState
+            variant={stateFilter === 'ALL' ? 'no-data' : 'no-results'}
+            imageUrl="/images/empty-production-line.png"
+            headline={stateFilter === 'ALL' ? 'No transfers found' : 'No transfers match this filter'}
+            body={
+              stateFilter === 'ALL'
+                ? 'Wait for the next warehouse request cycle to create new transfer work.'
+                : `There are no ${stateFilter.toLowerCase()} transfers in the current pipeline view.`
+            }
+            action={stateFilter === 'ALL' ? undefined : 'Clear filter'}
+            onAction={stateFilter === 'ALL' ? undefined : () => setStateFilter('ALL')}
+          />
+        ) : (
+          <>
+            <ListToolbar
+              page={page}
+              pageCount={pageCount}
+              totalLabel={`${transfers.length} transfers`}
+              onPrev={prev}
+              onNext={next}
+              onExport={exportCsv}
+            />
+            <section className="overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--background)]">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[880px] text-sm">
               <thead>
@@ -308,8 +293,9 @@ export default function TransfersPage() {
             </table>
           </div>
         </section>
-        </>
-      )}
+          </>
+        )}
+      </PageChrome>
     </PageTransition>
   );
 }

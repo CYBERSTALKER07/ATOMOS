@@ -1,7 +1,7 @@
 # pegasusX FACTORY_ADMIN Role — Phased Execution Ledger
 
 **Scope:** pegasusX only · **Parent plan:** `VEGETABLE_PLAN.md` §2.3  
-**Last updated:** 2026-06-15 (FA-10 shell/dashboard parity batch).
+**Last updated:** 2026-06-15 (FA-11P portal deep component parity).
 
 ## Status model
 
@@ -81,6 +81,63 @@
 
 ---
 
+## Phase FA-11 — Deep native UI/UX parity (iOS)
+
+| ID | Feature | Portal | Android | iOS | Status |
+|----|---------|--------|---------|-----|--------|
+| FA11-01 | Shared KPI / list / status primitives | — | — (iOS-only batch) | `KpiTile`, `FactoryStatusBadge`, `FactorySectionHeader` | **WIRED** |
+| FA11-02 | Theme tokens (`statusTint`, `readableMaxWidth`) | — | — | `LabTheme` + `labReadableWidth()` | **WIRED** |
+| FA11-03 | Dashboard KPI grid + workflow chrome | pre-existing FA-10 | pre-existing | `DashboardView` — adaptive `KpiTile`, section header, `FactoryErrorView` | **WIRED** |
+| FA11-04 | Transfers list status badges + states | — | — | `TransferListView` — `FactoryStatusBadge`, empathetic loading/empty | **WIRED** |
+| FA11-05 | Loading bay sections + badges | — | — | `LoadingBayView` — `FactorySectionHeader`, `FactoryStatusBadge`, bay states | **WIRED** |
+| FA11-06 | Manifests list polish | — | — | `ManifestsView` — section header, semantic badges, refresh toolbar | **WIRED** |
+| FA11-07 | Analytics KPI grid | pre-existing FA-1 | pre-existing | `AnalyticsView` — `KpiTile`, alert chips, section headers | **WIRED** |
+| FA11-08 | Fleet + staff roster badges | — | — | `FleetView`, `StaffView` — `FactoryStatusBadge`, refresh toolbars | **WIRED** |
+| FA11-09 | Loading/error/empty states | — | — | `FactoryLoadingView` / `FactoryErrorView` + existing `FactoryStateView` | **WIRED** |
+
+**UI audit vs pegasus reference:** pegasus `factory-app-ios` is thinner (no manifests/analytics/insights sheets, raw `ProgressView` loading, plain status capsules). pegasusX iOS is ahead on ops depth (FA-10 workflow rows, notification inbox, client-policy). FA-11 aligns pegasusX iOS with supplier SP-7 / warehouse WH-11 discipline (shared primitives, semantic tints, refresh toolbars, empathetic loading copy).
+
+**Exit:** Primary factory iOS ops screens share SwiftUI component discipline; UI-only — no new SSMR markers.
+
+---
+
+## Phase FA-11A — Deep native UI/UX parity (Android)
+
+| ID | Feature | Portal | Android | iOS | Status |
+|----|---------|--------|---------|-----|--------|
+| FA11A-01 | Shared UI kit (`FactoryUiComponents`, `FactoryState`) | — | KPI tiles, metric tiles, status chips, list cards, section titles, loading/error/empty panes | pre-existing FA-10 | **WIRED** |
+| FA11A-02 | Dashboard KPI grid + hero metrics | pre-existing FA-10 | `DashboardScreen` — `FactoryKpiTile`, `FactoryMetricTile`, 160dp adaptive grid | pre-existing FA-10 | **WIRED** |
+| FA11A-03 | Transfers pipeline | — | `TransferListScreen` — state panes, `FactoryStatusChip`, `FactoryMetricTile` | — | **WIRED** |
+| FA11A-04 | Loading bay queues | — | `LoadingBayScreen` — `FactorySectionHeader`, `FactoryInlineEmptyState`, shared chips/metrics | — | **WIRED** |
+| FA11A-05 | Manifest list | pre-existing | `ManifestListScreen` — `FactoryOpsListCard`, summary card | pre-existing | **WIRED** |
+| FA11A-06 | Analytics overview | pre-existing FA-1 | `AnalyticsScreen` — `FactoryKpiTile` grid, `FactorySectionTitle` | pre-existing FA-1 | **WIRED** |
+| FA11A-07 | Fleet + staff rosters | — | `FleetScreen`, `StaffScreen` — summary KPI rows, `FactoryOpsListCard` | — | **WIRED** |
+
+**UI audit vs pegasus reference:** pegasus `factory-app-android` matches pegasusX on transfer/loading-bay/fleet/staff workflow and state panes; pegasusX is ahead on manifests, analytics, gate exceptions, notification inbox, and client-policy banner (FA-7/8/9/10). FA-11A aligns pegasusX Android with supplier SP-7 / warehouse WH-11A discipline (shared primitives, 160dp adaptive grids, `IconButton` refresh, empathetic loading copy, semantic status chips).
+
+**Exit:** Primary factory Android ops screens share M3 discipline with supplier/warehouse native patterns. UI-only — no new SSMR markers.
+
+---
+
+## Phase FA-11P — Deep factory-portal UI/UX (portal)
+
+| ID | Feature | pegasus ref | pegasusX portal | Status |
+|----|---------|-------------|-----------------|--------|
+| FA11P-01 | `PageChrome` skeleton + `EmptyState` | `Skeleton.tsx`, `EmptyState.tsx` | `PageChrome` variants (`dashboard`/`table`/`form`) | **WIRED** |
+| FA11P-02 | KPI tile structure (`KpiStatCard`, `PageSection`) | desk KPI grid | `KpiStatCard.tsx`, `PageSection.tsx` | **WIRED** |
+| FA11P-03 | Transfers pipeline KPI + filter section | transfers table layout | `PageChrome` + `KpiStatGrid` + `PageSection` | **WIRED** |
+| FA11P-04 | Loading bay kanban + bay KPIs | loading-bay kanban | `PageChrome` + `KpiStatGrid` + `PageSection` columns | **WIRED** |
+| FA11P-05 | Manifests lifecycle table | — (pegasusX-only page) | KPI summary + `PageSection` pipeline table | **WIRED** |
+| FA11P-06 | Gate exceptions inbox + DLQ KPIs | — (pegasusX-only page) | `PageChrome` + runtime banner + `KpiStatGrid` | **WIRED** |
+| FA11P-07 | Analytics overview KPI grid | — (pegasusX-only page) | `PageChrome` + `KpiStatGrid` + exceptions CTA | **WIRED** |
+| FA11P-08 | Supply requests queue + transitions | supply-requests table | `PageChrome` + `KpiStatGrid` + `PageSection` | **WIRED** |
+
+**FA-11P audit gaps (intentional / blocked):** Dashboard hero/action-card layout (pegasusX ahead post FA-10); pegasus ref lacks manifests/analytics/gate-exceptions nav (pegasusX additive); fleet/staff/insights/payload-override still on legacy inline headers; Firebase OTP login (FA9 deferred); `daily_activity` chart depth (API returns array, no chart component yet).
+
+**Exit:** Component-level desk tokens, skeleton loaders, KPI structure, and section headers on transfers, loading bay, manifests, gate exceptions, analytics, and supply. UI-only — no new SSMR.
+
+---
+
 ## Verification
 
 ```bash
@@ -100,4 +157,7 @@ cd pegasusX && make test-ssmr-infra   # PX_E2E_FACTORY_* markers
 4. ~~Import session wizard + async ai-worker consumer~~ — supplier row
 5. ~~FA-7/8/9 cross-client parity batch~~ — **CLOSED** (2026-06-15)
 6. ~~FA-10 shell/dashboard UX parity~~ — **CLOSED** (2026-06-15)
-7. **Cross-role next** — DRIVER row per `VEGETABLE_PLAN.md` §3
+7. ~~FA-11 iOS deep UI/UX parity~~ — **CLOSED** (2026-06-15)
+8. ~~FA-11A Android deep UI/UX parity~~ — **CLOSED** (2026-06-15)
+9. ~~FA-11P portal deep UI/UX (component-level)~~ — **CLOSED** (2026-06-15)
+10. **Cross-role next** — DRIVER row per `VEGETABLE_PLAN.md` §3

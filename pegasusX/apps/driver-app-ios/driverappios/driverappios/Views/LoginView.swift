@@ -22,72 +22,63 @@ struct LoginView: View {
             LabTheme.bg.ignoresSafeArea()
 
             ScrollView {
-                VStack(spacing: 0) {
-                    Spacer().frame(height: 100)
+                VStack(spacing: LabTheme.s24) {
+                    Spacer().frame(height: 72)
 
-                    // Logo
-                    Image(systemName: "shippingbox.fill")
-                        .font(.system(size: 56, weight: .medium))
-                        .foregroundStyle(LabTheme.fg)
-                        .padding(.bottom, 16)
+                    VStack(spacing: LabTheme.s8) {
+                        Image(systemName: "shippingbox.fill")
+                            .font(.system(size: 48, weight: .medium))
+                            .foregroundStyle(LabTheme.fg)
+                        Text("PEGASUS DRIVER")
+                            .font(.system(size: 12, weight: .black, design: .monospaced))
+                            .foregroundStyle(LabTheme.fgSecondary)
+                            .tracking(2)
+                        Text("TERMINAL ACCESS")
+                            .font(.system(size: 28, weight: .black, design: .monospaced))
+                            .foregroundStyle(LabTheme.fg)
+                        Text("Sign in with fleet phone and 6-digit PIN.")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(LabTheme.fgSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.bottom, LabTheme.s8)
 
-                    Text("Pegasus")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(LabTheme.fg)
-
-                    Text("Driver Terminal")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(LabTheme.fgSecondary)
-                        .padding(.bottom, 48)
-
-                    // Fields
-                    VStack(spacing: 16) {
-                        // Phone
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Phone Number")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(LabTheme.fgSecondary)
-
-                            HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: LabTheme.s16) {
+                        VStack(alignment: .leading, spacing: LabTheme.s8) {
+                            Text("PHONE")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .foregroundStyle(LabTheme.fgTertiary)
+                            HStack(spacing: LabTheme.s12) {
                                 Image(systemName: "phone.fill")
                                     .font(.system(size: 14))
                                     .foregroundStyle(LabTheme.fgTertiary)
-
-                                TextField("+998 XX XXX XX XX", text: $phone)
+                                TextField("+998 …", text: $phone)
                                     .keyboardType(.phonePad)
                                     .textContentType(.telephoneNumber)
                                     .focused($focusedField, equals: .phone)
-                                    .font(.system(size: 16, weight: .medium, design: .monospaced))
+                                    .font(.system(size: 18, weight: .bold, design: .monospaced))
                                     .foregroundStyle(LabTheme.fg)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(LabTheme.card)
-                            )
+                            .padding(LabTheme.s16)
+                            .background(LabTheme.card, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous))
                             .overlay {
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous)
                                     .stroke(
-                                        focusedField == .phone
-                                            ? LabTheme.fg.opacity(0.3)
-                                            : LabTheme.separator,
+                                        focusedField == .phone ? LabTheme.fg.opacity(0.3) : LabTheme.separator,
                                         lineWidth: 0.5
                                     )
                             }
+                            .disabled(isLoading)
                         }
 
-                        // PIN
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("PIN")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(LabTheme.fgSecondary)
-
-                            HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: LabTheme.s8) {
+                            Text("6-DIGIT PIN")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .foregroundStyle(LabTheme.fgTertiary)
+                            HStack(spacing: LabTheme.s12) {
                                 Image(systemName: "lock.fill")
                                     .font(.system(size: 14))
                                     .foregroundStyle(LabTheme.fgTertiary)
-
                                 Group {
                                     if pinVisible {
                                         TextField("••••••", text: $pin)
@@ -96,13 +87,13 @@ struct LoginView: View {
                                     }
                                 }
                                 .keyboardType(.numberPad)
+                                .textContentType(.oneTimeCode)
                                 .focused($focusedField, equals: .pin)
-                                .font(.system(size: 16, weight: .medium, design: .monospaced))
+                                .font(.system(size: 24, weight: .black, design: .monospaced))
                                 .foregroundStyle(LabTheme.fg)
                                 .onChange(of: pin) { _, newValue in
                                     if newValue.count > 6 { pin = String(newValue.prefix(6)) }
                                 }
-
                                 Button {
                                     pinVisible.toggle()
                                 } label: {
@@ -112,85 +103,73 @@ struct LoginView: View {
                                 }
                                 .accessibilityLabel(pinVisible ? "Hide PIN" : "Show PIN")
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(LabTheme.card)
-                            )
+                            .padding(LabTheme.s16)
+                            .background(LabTheme.card, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous))
                             .overlay {
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous)
                                     .stroke(
-                                        focusedField == .pin
-                                            ? LabTheme.fg.opacity(0.3)
-                                            : LabTheme.separator,
+                                        focusedField == .pin ? LabTheme.fg.opacity(0.3) : LabTheme.separator,
                                         lineWidth: 0.5
                                     )
                             }
+                            .disabled(isLoading)
+
+                            PinDots(filled: pin.count)
                         }
                     }
-                    .padding(.horizontal, 32)
+                    .padding(LabTheme.s20)
+                    .labCard()
 
-                    // Error
                     if let error {
-                        Text(error)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(LabTheme.destructive)
-                            .multilineTextAlignment(.center)
-                            .padding(.top, 12)
-                            .padding(.horizontal, 32)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        DriverStateCard(
+                            icon: "exclamationmark.triangle.fill",
+                            title: "LOGIN_FAILED",
+                            message: error
+                        )
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                     }
 
-                    Spacer().frame(height: 32)
-
-                    // Login button
                     Button {
                         doLogin()
                     } label: {
-                        HStack(spacing: 8) {
+                        HStack(spacing: LabTheme.s12) {
                             if isLoading {
                                 ProgressView()
                                     .tint(LabTheme.buttonFg)
-                                    .scaleEffect(0.8)
                             } else {
-                                Text("Sign In")
-                                    .font(.system(size: 16, weight: .bold))
+                                Image(systemName: "lock.shield.fill")
+                                Text("AUTHENTICATE")
+                                    .font(.system(size: 16, weight: .black, design: .monospaced))
                             }
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
+                        .frame(maxWidth: .infinity, minHeight: 52)
                         .foregroundStyle(LabTheme.buttonFg)
                         .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(isFormValid
-                                    ? LabTheme.fg
-                                    : LabTheme.fg.opacity(0.3))
+                            isFormValid ? LabTheme.fg : LabTheme.fg.opacity(0.3),
+                            in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous)
                         )
                     }
                     .disabled(isLoading || !isFormValid)
-                    .padding(.horizontal, 32)
                     .buttonStyle(.pressable)
 
                     Spacer()
                 }
+                .padding(.horizontal, LabTheme.s32)
+                .labReadableWidth()
             }
         }
         .animation(Anim.snappy, value: error)
         .onSubmit { doLogin() }
+        .onAppear { focusedField = .phone }
     }
-
-    // MARK: - Validation
 
     private var isFormValid: Bool {
-        phone.count >= 5 && !pin.isEmpty
+        phone.trimmingCharacters(in: .whitespaces).count >= 5 && pin.count == 6
     }
-
-    // MARK: - Login
 
     private func doLogin() {
         guard isFormValid else {
-            error = "Phone and PIN are required"
+            error = "Phone and 6-digit PIN are required"
             return
         }
         focusedField = nil
@@ -235,6 +214,23 @@ struct LoginView: View {
             }
             await MainActor.run { isLoading = false }
         }
+    }
+}
+
+private struct PinDots: View {
+    let filled: Int
+
+    var body: some View {
+        HStack(spacing: LabTheme.s12) {
+            ForEach(0..<6, id: \.self) { index in
+                Circle()
+                    .fill(index < filled ? LabTheme.fg : LabTheme.fgTertiary.opacity(0.25))
+                    .frame(width: 10, height: 10)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, LabTheme.s4)
+        .accessibilityLabel("\(filled) of 6 PIN digits entered")
     }
 }
 

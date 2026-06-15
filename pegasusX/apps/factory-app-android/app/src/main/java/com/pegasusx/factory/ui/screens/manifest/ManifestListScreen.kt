@@ -1,10 +1,8 @@
 package com.pegasusx.factory.ui.screens.manifest
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,11 +28,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
 import com.pegasusx.factory.data.model.Manifest
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasusx.factory.ui.components.FactoryLoadingState
+import com.pegasusx.factory.ui.components.FactoryOpsListCard
+import com.pegasusx.factory.ui.components.FactorySectionTitle
 import com.pegasusx.factory.ui.components.FactoryStateKind
 import com.pegasusx.factory.ui.components.FactoryStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
@@ -86,7 +85,16 @@ fun ManifestListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Manifests") },
+                title = {
+                    Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                        Text("Manifests")
+                        Text(
+                            text = "Draft through dispatch lifecycle",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -125,37 +133,50 @@ fun ManifestListScreen(
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
+                item {
+                    ManifestListSummary(count = manifests.size)
+                }
+                item {
+                    FactorySectionTitle(title = "Manifest pipeline")
+                }
                 items(manifests, key = { it.id }) { manifest ->
                     val next = nextManifestLifecycleStep(manifest.state)
-                    ElevatedCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onManifestClick(manifest.id) },
-                        colors = CardDefaults.elevatedCardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        ),
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(PegasusSpacing.lg),
-                            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
-                        ) {
-                            Text(manifest.id, style = MaterialTheme.typography.titleSmall, fontFamily = FontFamily.Monospace)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(manifest.state, style = MaterialTheme.typography.labelLarge)
-                                Text("${manifest.totalVolumeVU.toInt()} VU", style = MaterialTheme.typography.bodySmall)
-                            }
-                            Text(
-                                text = next?.label ?: "Terminal state",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
+                    FactoryOpsListCard(
+                        headline = manifest.id.take(12),
+                        supporting = buildString {
+                            append("${manifest.totalVolumeVU.toInt()} VU")
+                            next?.let { append(" · Next: ${it.label}") } ?: append(" · Terminal state")
+                        },
+                        status = manifest.state,
+                        onClick = { onManifestClick(manifest.id) },
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ManifestListSummary(count: Int) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
+        ) {
+            Text(
+                text = "$count manifests in pipeline",
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                text = "Advance manifests through draft, loading, sealed, dispatched, and completed.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

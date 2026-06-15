@@ -1,11 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import FactoryPageState from '@/components/FactoryPageState';
+import { PageChrome } from '@/components/PageChrome';
+import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
+import { PageSection } from '@/components/PageSection';
+import EmptyState from '@/components/EmptyState';
 import { nextManifestLifecycleAction } from '@/lib/manifest-lifecycle';
 
 interface ManifestRow {
@@ -66,66 +69,89 @@ export default function ManifestsPage() {
     return unsubscribe;
   }, [load]);
 
-  return (
-    <PageTransition className="space-y-6 p-6 md:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--foreground)]">Manifests</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-            LEO loading gate — advance manifests through draft, loading, sealed, dispatched, and completed states.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
-        >
-          <Icon name="refresh" size={16} /> Refresh
-        </button>
-      </div>
+  const activeCount = useMemo(
+    () => manifests.filter((m) => ['DRAFT', 'LOADING', 'SEALED'].includes(m.state)).length,
+    [manifests],
+  );
+  const dispatchedCount = useMemo(
+    () => manifests.filter((m) => m.state === 'DISPATCHED').length,
+    [manifests],
+  );
+  const completedCount = useMemo(
+    () => manifests.filter((m) => m.state === 'COMPLETED').length,
+    [manifests],
+  );
 
-      {loading ? (
-        <FactoryPageState kind="loading" title="Manifests" subtitle="Loading manifest pipeline." />
-      ) : error ? (
-        <FactoryPageState kind="error" headline="Unable to load manifests" body={error} actionLabel="Retry" onAction={() => void load()} />
-      ) : manifests.length === 0 ? (
-        <FactoryPageState kind="empty" headline="No manifests" body="Dispatch transfers or create a manifest to begin the loading gate workflow." />
-      ) : (
-        <div className="md-card md-elevation-1 md-shape-md overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr style={{ background: 'var(--color-md-surface-container)' }}>
-                {['Manifest', 'State', 'Transfers', 'Volume (VU)', 'Next step', ''].map((h) => (
-                  <th key={h} className="md-typescale-label-small px-4 py-3 text-left" style={{ color: 'var(--color-md-on-surface-variant)' }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {manifests.map((manifest) => {
-                const next = nextManifestLifecycleAction(manifest.state);
-                return (
-                  <tr key={manifest.manifest_id} className="border-t" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
-                    <td className="md-typescale-body-small px-4 py-3 font-mono">{manifest.manifest_id}</td>
-                    <td className="px-4 py-3">
-                      <span className={`status-chip ${stateClass(manifest.state)}`}>{manifest.state}</span>
-                    </td>
-                    <td className="md-typescale-body-small px-4 py-3">{manifest.transfer_count ?? '—'}</td>
-                    <td className="md-typescale-body-small px-4 py-3">{manifest.total_volume_vu ?? '—'}</td>
-                    <td className="md-typescale-body-small px-4 py-3">{next?.label ?? '—'}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Link href={`/manifests/${manifest.manifest_id}`} className="md-btn md-btn-tonal md-typescale-label-large px-4 py-2">
-                        Open
-                      </Link>
-                    </td>
+  return (
+    <PageTransition>
+      <PageChrome
+        title="Manifests"
+        description="LEO loading gate — advance manifests through draft, loading, sealed, dispatched, and completed states."
+        loading={loading}
+        skeletonVariant="table"
+        error={error}
+        actions={
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
+          >
+            <Icon name="refresh" size={16} /> Refresh
+          </button>
+        }
+      >
+        <KpiStatGrid columns={4}>
+          <KpiStatCard label="Total manifests" value={manifests.length} sub="Visible in pipeline" />
+          <KpiStatCard label="Active gate" value={activeCount} sub="Draft, loading, or sealed" />
+          <KpiStatCard label="Dispatched" value={dispatchedCount} sub="Outbound this cycle" />
+          <KpiStatCard label="Completed" value={completedCount} sub="Fully closed manifests" />
+        </KpiStatGrid>
+
+        {manifests.length === 0 ? (
+          <EmptyState
+            variant="no-data"
+            headline="No manifests"
+            body="Dispatch transfers or create a manifest to begin the loading gate workflow."
+          />
+        ) : (
+          <PageSection title="Manifest pipeline" description="Open a row to advance lifecycle actions." className="mt-6">
+            <div className="overflow-x-auto -mx-5 px-5">
+              <table className="desk-table w-full text-sm">
+                <thead>
+                  <tr className="border-b" style={{ borderColor: 'var(--desk-border)' }}>
+                    {['Manifest', 'State', 'Transfers', 'Volume (VU)', 'Next step', ''].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left font-medium" style={{ color: 'var(--desk-text-secondary)' }}>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+                </thead>
+                <tbody>
+                  {manifests.map((manifest) => {
+                    const next = nextManifestLifecycleAction(manifest.state);
+                    return (
+                      <tr key={manifest.manifest_id} className="border-t" style={{ borderColor: 'var(--desk-border)' }}>
+                        <td className="px-4 py-3 font-mono text-sm">{manifest.manifest_id}</td>
+                        <td className="px-4 py-3">
+                          <span className={`status-chip ${stateClass(manifest.state)}`}>{manifest.state}</span>
+                        </td>
+                        <td className="px-4 py-3">{manifest.transfer_count ?? '—'}</td>
+                        <td className="px-4 py-3">{manifest.total_volume_vu ?? '—'}</td>
+                        <td className="px-4 py-3">{next?.label ?? '—'}</td>
+                        <td className="px-4 py-3 text-right">
+                          <Link href={`/manifests/${manifest.manifest_id}`} className="button--secondary inline-flex rounded-lg px-4 py-2 text-sm">
+                            Open
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </PageSection>
+        )}
+      </PageChrome>
     </PageTransition>
   );
 }

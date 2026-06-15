@@ -63,6 +63,11 @@ import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.TokenHolder
 import com.pegasusx.driver.services.TelemetryService
 import com.pegasusx.driver.ui.components.ClientPolicyBanner
+import com.pegasusx.driver.ui.components.DriverLoadingState
+import com.pegasusx.driver.ui.components.DriverSectionTitle
+import com.pegasusx.driver.ui.components.DriverStateKind
+import com.pegasusx.driver.ui.components.DriverStatePane
+import com.pegasusx.driver.ui.components.DriverTodayKpiCard
 import com.pegasusx.driver.ui.components.PegasusCard
 import com.pegasusx.driver.ui.components.StaggeredAppear
 import com.pegasusx.driver.ui.components.StatusPill
@@ -120,7 +125,19 @@ fun HomeScreen(
     }
 
     if (state.isLoading) {
-        HomeShimmer(lab = lab)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(lab.bg)
+                .padding(horizontal = PegasusSpacing.s16, vertical = PegasusSpacing.s24),
+            contentAlignment = Alignment.Center,
+        ) {
+            DriverLoadingState(
+                title = "Loading your route",
+                body = "Checking manifest assignments, vehicle profile, and delivery status.",
+                compact = true,
+            )
+        }
         return
     }
 
@@ -653,7 +670,6 @@ private fun ReturningToWarehouseCard(
 
 @Composable
 private fun TodaySummaryCard(orders: List<Order>) {
-    val lab = LocalPegasusColors.current
     val pending = orders.count {
         it.state != OrderState.COMPLETED && it.state != OrderState.CANCELLED
     }
@@ -668,99 +684,14 @@ private fun TodaySummaryCard(orders: List<Order>) {
             .uppercase()
     }
 
-    PegasusCard {
-        Column(modifier = Modifier.padding(PegasusSpacing.s20)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Today",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = lab.fg
-                )
-                Text(
-                    text = todayDate,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = FontFamily.Monospace,
-                    color = lab.fgTertiary
-                )
-            }
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Row(modifier = Modifier.fillMaxWidth()) {
-                SummaryTile(
-                    value = "$pending",
-                    label = "Pending",
-                    icon = Icons.Default.Schedule,
-                    modifier = Modifier.weight(1f)
-                )
-                VerticalDivider()
-                SummaryTile(
-                    value = "$completed",
-                    label = "Done",
-                    icon = Icons.Default.CheckCircle,
-                    modifier = Modifier.weight(1f)
-                )
-                VerticalDivider()
-                SummaryTile(
-                    value = if (revenue > 0) revenue.formattedAmount().replace("", "") else "—",
-                    label = "Revenue",
-                    icon = Icons.Default.DirectionsCar,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryTile(
-    value: String,
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    modifier: Modifier = Modifier
-) {
-    val lab = LocalPegasusColors.current
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = lab.fgTertiary,
-            modifier = Modifier.size(16.dp)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
-            color = lab.fg,
-            maxLines = 1
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
-            color = lab.fgTertiary
-        )
-    }
-}
-
-@Composable
-private fun VerticalDivider() {
-    val lab = LocalPegasusColors.current
-    Box(
-        modifier = Modifier
-            .width(0.5.dp)
-            .height(36.dp)
-            .background(lab.separator)
+    DriverTodayKpiCard(
+        dateLabel = todayDate,
+        pending = pending,
+        completed = completed,
+        revenueLabel = if (revenue > 0) revenue.formattedAmount() else "—",
+        pendingIcon = Icons.Default.Schedule,
+        completedIcon = Icons.Default.CheckCircle,
+        revenueIcon = Icons.Default.DirectionsCar,
     )
 }
 
@@ -911,37 +842,19 @@ private fun ActionTile(
 private fun RecentActivitySection(completedOrders: List<Order>) {
     val lab = LocalPegasusColors.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            text = "Recent",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = lab.fg,
-            modifier = Modifier.padding(horizontal = PegasusSpacing.s4)
+        DriverSectionTitle(
+            title = "RECENT",
+            modifier = Modifier.padding(horizontal = PegasusSpacing.s4),
         )
 
         if (completedOrders.isEmpty()) {
-            PegasusCard {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Schedule,
-                        contentDescription = null,
-                        tint = lab.fgTertiary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text(
-                        text = "No deliveries yet",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = lab.fgSecondary
-                    )
-                }
-            }
+            DriverStatePane(
+                kind = DriverStateKind.Delivery,
+                headline = "No deliveries yet",
+                body = "Completed stops will appear here after you finish your route.",
+                compact = true,
+                usePegasusCard = true,
+            )
         } else {
             completedOrders.take(3).forEach { order ->
                 PegasusCard {
@@ -1017,87 +930,4 @@ private fun PulsingDot(color: androidx.compose.ui.graphics.Color) {
             .clip(CircleShape)
             .background(color)
     )
-}
-
-// ── Shimmer skeleton shown while orders are loading ──────────────────────────
-@Composable
-private fun HomeShimmer(lab: com.pegasusx.driver.ui.theme.PegasusColors) {
-    val transition = rememberInfiniteTransition(label = "shimmer")
-    val shimmerAlpha by transition.animateFloat(
-        initialValue = 0.25f,
-        targetValue = 0.60f,
-        animationSpec = infiniteRepeatable(tween(MotionTokens.DurationExtraLong4), RepeatMode.Reverse),
-        label = "shimmer_alpha"
-    )
-    val shimmerColor = lab.fgTertiary.copy(alpha = shimmerAlpha)
-
-    @Composable
-    fun ShimmerBlock(width: Float = 1f, height: Int = 20, corner: Int = 8) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(fraction = width)
-                .height(height.dp)
-                .clip(RoundedCornerShape(corner.dp))
-                .background(shimmerColor)
-        )
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(lab.bg)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = PegasusSpacing.s16)
-            .padding(bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(PegasusSpacing.s20),
-    ) {
-        Spacer(Modifier.height(PegasusSpacing.s20))
-        // Greeting skeleton
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ShimmerBlock(width = 0.4f, height = 16)
-            ShimmerBlock(width = 0.65f, height = 24)
-        }
-        // Status chips skeleton
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            repeat(3) { ShimmerBlock(width = 0.26f, height = 32, corner = 16) }
-        }
-        // Vehicle card skeleton
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(88.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(lab.card)
-                .padding(16.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ShimmerBlock(width = 0.5f, height = 14)
-                ShimmerBlock(width = 0.35f, height = 14)
-            }
-        }
-        // Transit card skeleton
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(lab.card)
-        )
-        // Summary card skeleton
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(80.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(lab.card)
-        )
-        // Map button skeleton
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(shimmerColor)
-        )
-    }
 }

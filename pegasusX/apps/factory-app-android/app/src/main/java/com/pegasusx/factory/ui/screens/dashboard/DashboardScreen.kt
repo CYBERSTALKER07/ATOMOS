@@ -20,7 +20,11 @@ import com.pegasusx.factory.data.model.DashboardStats
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasusx.factory.ui.components.ClientPolicyBanner
+import com.pegasusx.factory.ui.components.FactoryKpiBadge
+import com.pegasusx.factory.ui.components.FactoryKpiTile
 import com.pegasusx.factory.ui.components.FactoryLoadingState
+import com.pegasusx.factory.ui.components.FactoryMetricTile
+import com.pegasusx.factory.ui.components.FactorySectionTitle
 import com.pegasusx.factory.ui.components.FactoryStateKind
 import com.pegasusx.factory.ui.components.FactoryStatePane
 import com.pegasusx.factory.ui.navigation.FactoryRoutes
@@ -175,7 +179,7 @@ fun DashboardScreen(
                     .padding(innerPadding),
             )
             else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 168.dp),
+                columns = GridCells.Adaptive(minSize = 160.dp),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
@@ -194,16 +198,20 @@ fun DashboardScreen(
                     WorkflowLaunchCard(onNavigate = onNavigate)
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    Text(
-                        text = "Operations at a glance",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    FactorySectionTitle(title = "Operations at a glance")
                 }
                 items(kpiCards, key = { it.label }) { card ->
-                    KpiMetricCard(
-                        card = card,
-                        stats = stats,
+                    val badge = when (card.label) {
+                        "Gate Exceptions" -> if (stats.criticalInsights > 0) FactoryKpiBadge.Alert else null
+                        "Dispatched Today" -> if (stats.dispatchedToday > 0) FactoryKpiBadge.Done else null
+                        else -> null
+                    }
+                    FactoryKpiTile(
+                        label = card.label,
+                        value = card.value(stats),
+                        icon = card.icon,
+                        supporting = card.supporting(stats),
+                        badge = badge,
                         onClick = { onNavigate(card.route) },
                     )
                 }
@@ -369,17 +377,17 @@ private fun DashboardHeroCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
-                OverviewMetric(
+                FactoryMetricTile(
                     label = "Queued",
                     value = stats.pendingTransfers.toString(),
                     modifier = Modifier.weight(1f),
                 )
-                OverviewMetric(
+                FactoryMetricTile(
                     label = "Loading",
                     value = stats.loadingTransfers.toString(),
                     modifier = Modifier.weight(1f),
                 )
-                OverviewMetric(
+                FactoryMetricTile(
                     label = "Critical",
                     value = stats.criticalInsights.toString(),
                     modifier = Modifier.weight(1f),
@@ -410,76 +418,3 @@ private fun DashboardHeroCard(
     }
 }
 
-@Composable
-private fun OverviewMetric(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-    ) {
-        Column(
-            modifier = Modifier.padding(PegasusSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun KpiMetricCard(
-    card: KpiCard,
-    stats: DashboardStats,
-    onClick: () -> Unit,
-) {
-    ElevatedCard(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(PegasusSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-        ) {
-            Surface(
-                shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.secondaryContainer,
-            ) {
-                Icon(
-                    imageVector = card.icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier
-                        .padding(PegasusSpacing.sm)
-                        .size(24.dp),
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
-                Text(
-                    text = card.value(stats),
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                Text(
-                    text = card.label,
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Text(
-                    text = card.supporting(stats),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}

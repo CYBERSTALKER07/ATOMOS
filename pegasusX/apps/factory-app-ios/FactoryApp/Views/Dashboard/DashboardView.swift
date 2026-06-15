@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @Environment(TokenStore.self) private var tokenStore
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let onOpenSupplyRequests: () -> Void
     let onOpenPayloadOverride: () -> Void
     let onOpenInsights: () -> Void
@@ -17,6 +18,10 @@ struct DashboardView: View {
     @State private var showNotifications = false
     private let refreshNanos: UInt64 = 30_000_000_000
 
+    private var gridMin: CGFloat {
+        horizontalSizeClass == .regular ? 180 : 160
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -26,14 +31,8 @@ struct DashboardView: View {
                         message: "Fetching live factory metrics for loading, fleet, and staffing."
                     )
                 } else if let error {
-                    ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") {
-                            Task { await load() }
-                        }
+                    FactoryErrorView(message: error) {
+                        Task { await load() }
                     }
                 } else {
                     VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
@@ -48,20 +47,31 @@ struct DashboardView: View {
                             onOpenCreateTransfer: { showCreateTransfer = true },
                             onOpenInsights: onOpenInsights
                         )
-                        Text("Operations at a glance")
-                            .font(.headline)
-                            .padding(.horizontal)
+                        FactorySectionHeader(
+                            title: "Operations at a glance",
+                            subtitle: "Live factory KPIs across transfers, fleet, and staffing"
+                        )
+                        .padding(.horizontal)
 
                         LazyVGrid(
-                            columns: [GridItem(.adaptive(minimum: 160), spacing: LabTheme.spacingMD)],
+                            columns: [GridItem(.adaptive(minimum: gridMin), spacing: LabTheme.spacingMD)],
                             spacing: LabTheme.spacingMD
                         ) {
                             ForEach(Array(dashboardMetrics.enumerated()), id: \.element.title) { index, metric in
-                                KpiCard(metric: metric, index: index)
+                                KpiTile(
+                                    title: metric.title,
+                                    value: metric.value,
+                                    systemImage: metric.icon,
+                                    tint: metric.tint,
+                                    supporting: metric.supporting,
+                                    chip: metric.chip,
+                                    staggerIndex: index
+                                )
                             }
                         }
                         .padding(.horizontal)
                     }
+                    .labReadableWidth()
                     .padding(.vertical)
                 }
             }
@@ -202,6 +212,8 @@ private struct DashboardMetric {
     let value: String
     let supporting: String
     let icon: String
+    let tint: Color
+    var chip: (text: String, tint: Color)? = nil
 }
 
 private struct WorkflowLaunchCard: View {
@@ -278,32 +290,6 @@ private struct WorkflowLaunchCard: View {
     }
 }
 
-private struct KpiCard: View {
-    let metric: DashboardMetric
-    let index: Int
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
-            Image(systemName: metric.icon)
-                .font(.title3)
-                .foregroundStyle(.secondary)
-
-            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                Text(metric.value)
-                    .font(.title2.bold())
-                Text(metric.title)
-                    .font(.subheadline.bold())
-                Text(metric.supporting)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .labCard()
-        .staggeredAppear(index: index)
-    }
-}
-
 private struct WorkflowLaunchRow: View {
     let title: String
     let supporting: String
@@ -375,14 +361,28 @@ private struct OverviewMetric: View {
 private extension DashboardView {
     var dashboardMetrics: [DashboardMetric] {
         [
-            DashboardMetric(title: "Pending transfers", value: "\(stats.pendingTransfers)", supporting: "Awaiting release to loading", icon: "tray.full"),
-            DashboardMetric(title: "Now loading", value: "\(stats.loadingTransfers)", supporting: "Transfers staged at the bay", icon: "shippingbox"),
-            DashboardMetric(title: "Active manifests", value: "\(stats.activeManifests)", supporting: "Live outbound manifest groups", icon: "list.clipboard"),
-            DashboardMetric(title: "Dispatched today", value: "\(stats.dispatchedToday)", supporting: "Completed releases this shift", icon: "checkmark.circle"),
-            DashboardMetric(title: "Vehicles total", value: "\(stats.vehiclesTotal)", supporting: "Fleet capacity on record", icon: "truck.box"),
-            DashboardMetric(title: "Vehicles available", value: "\(stats.vehiclesAvailable)", supporting: "Ready for assignment", icon: "truck.box.badge.clock"),
-            DashboardMetric(title: "Staff on shift", value: "\(stats.staffOnShift)", supporting: "Operators currently active", icon: "person.2"),
-            DashboardMetric(title: "Gate exceptions", value: "\(stats.criticalInsights)", supporting: "Transfers removed during loading", icon: "exclamationmark.triangle")
+            DashboardMetric(title: "Pending transfers", value: "\(stats.pendingTransfers)", supporting: "Awaiting release to loading", icon: "tray.full", tint: LabTheme.warning),
+            DashboardMetric(title: "Now loading", value: "\(stats.loadingTransfers)", supporting: "Transfers staged at the bay", icon: "shippingbox", tint: LabTheme.warning),
+            DashboardMetric(title: "Active manifests", value: "\(stats.activeManifests)", supporting: "Live outbound manifest groups", icon: "list.clipboard", tint: .accentColor),
+            DashboardMetric(
+                title: "Dispatched today",
+                value: "\(stats.dispatchedToday)",
+                supporting: "Completed releases this shift",
+                icon: "checkmark.circle",
+                tint: LabTheme.success,
+                chip: stats.dispatchedToday > 0 ? ("DONE", LabTheme.success) : nil
+            ),
+            DashboardMetric(title: "Vehicles total", value: "\(stats.vehiclesTotal)", supporting: "Fleet capacity on record", icon: "truck.box", tint: .accentColor),
+            DashboardMetric(title: "Vehicles available", value: "\(stats.vehiclesAvailable)", supporting: "Ready for assignment", icon: "truck.box.badge.clock", tint: LabTheme.success),
+            DashboardMetric(title: "Staff on shift", value: "\(stats.staffOnShift)", supporting: "Operators currently active", icon: "person.2", tint: .accentColor),
+            DashboardMetric(
+                title: "Gate exceptions",
+                value: "\(stats.criticalInsights)",
+                supporting: "Transfers removed during loading",
+                icon: "exclamationmark.triangle",
+                tint: LabTheme.destructive,
+                chip: stats.criticalInsights > 0 ? ("ALERT", LabTheme.destructive) : nil
+            )
         ]
     }
 }

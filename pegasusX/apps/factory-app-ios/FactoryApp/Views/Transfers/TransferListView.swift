@@ -42,27 +42,23 @@ struct TransferListView: View {
                 Divider()
 
                 if loading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    FactoryLoadingView(
+                        title: "Loading transfers",
+                        message: "Fetching the factory transfer queue and lifecycle states."
+                    )
                 } else if let error {
-                    ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") {
-                            Task { await load() }
-                        }
+                    FactoryErrorView(message: error) {
+                        Task { await load() }
                     }
                 } else if transfers.isEmpty {
-                    ContentUnavailableView(
-                        "No Transfers",
-                        systemImage: "arrow.left.arrow.right",
-                        description: Text(
-                            selectedFilter == "ALL"
-                                ? "There are no transfers available right now."
-                                : "There are no \(selectedFilter) transfers in the current queue."
-                        )
+                    FactoryStateView(
+                        kind: selectedFilter == "ALL" ? .empty : .noResults,
+                        headline: selectedFilter == "ALL" ? "No transfers" : "No \(selectedFilter) transfers",
+                        message: selectedFilter == "ALL"
+                            ? "There are no transfers in the factory queue right now."
+                            : "Adjust the filter or wait for the next queue refresh.",
+                        actionTitle: selectedFilter == "ALL" ? nil : "Show All",
+                        action: selectedFilter == "ALL" ? nil : { selectedFilter = "ALL" }
                     )
                 } else {
                     List(selection: $selectedTransferID) {
@@ -186,8 +182,11 @@ private struct TransferRow: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
-                    TransferRowTag(text: transfer.state)
-                    TransferRowTag(text: transfer.priority.isEmpty ? "STANDARD" : transfer.priority, emphasized: false)
+                    FactoryStatusBadge(text: transfer.state)
+                    FactoryStatusBadge(
+                        text: transfer.priority.isEmpty ? "STANDARD" : transfer.priority,
+                        emphasized: false
+                    )
                 }
             }
 
@@ -215,18 +214,5 @@ private struct TransferRowMetric: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(LabTheme.spacingSM)
         .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
-    }
-}
-
-private struct TransferRowTag: View {
-    let text: String
-    var emphasized = true
-
-    var body: some View {
-        Text(text)
-            .font(.footnote.bold())
-            .padding(.horizontal, LabTheme.spacingSM)
-            .padding(.vertical, LabTheme.spacingXS)
-            .background(emphasized ? LabTheme.fill : LabTheme.tertiaryBackground, in: Capsule())
     }
 }

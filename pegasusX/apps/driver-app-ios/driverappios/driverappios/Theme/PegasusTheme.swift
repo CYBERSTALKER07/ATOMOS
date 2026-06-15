@@ -35,6 +35,25 @@ enum LabTheme {
     static let offline     = Color(uiColor: .systemRed)
     static let transit     = Color(uiColor: .systemBlue)
 
+    /// Maps delivery/ops status strings to semantic badge tints (aligned with warehouse/payload native).
+    static func statusTint(for status: String) -> Color {
+        switch status.uppercased() {
+        case "COMPLETED", "DONE", "DELIVERED", "ACTIVE", "ON_ROUTE", "IN_TRANSIT",
+             "ASSIGNED", "LOADED", "SEALED", "LIVE":
+            return success
+        case "PENDING", "IDLE", "AWAITING_SEAL", "AWAITING_PAYLOAD", "LOADING",
+             "RETURNING", "READY", "READY_TO_DEPART":
+            return warning
+        case "CANCELLED", "REJECTED", "FAILED", "OFFLINE", "GPS_ERROR", "BLOCKED":
+            return destructive
+        default:
+            return fgTertiary
+        }
+    }
+
+    /// Keeps dense driver ops readable on iPad without stretching edge-to-edge.
+    static let readableMaxWidth: CGFloat = 560
+
     // MARK: Corner Radii (Native Fluid)
 
     static let cardRadius: Double   = 24

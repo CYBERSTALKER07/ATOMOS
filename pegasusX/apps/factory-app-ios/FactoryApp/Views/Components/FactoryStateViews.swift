@@ -120,6 +120,60 @@ struct FactoryStateView: View {
     }
 }
 
+/// Inline loading pane for scroll contexts (lighter than full-screen `FactoryLoadingState`).
+struct FactoryLoadingView: View {
+    let title: String
+    var message: String = "Fetching the latest factory data."
+
+    @State private var animating = false
+
+    var body: some View {
+        VStack(spacing: LabTheme.spacingLG) {
+            ZStack {
+                Circle()
+                    .fill(LabTheme.tertiaryBackground)
+                    .frame(width: 72, height: 72)
+                    .scaleEffect(animating ? 1.04 : 0.96)
+                ProgressView()
+                    .controlSize(.regular)
+            }
+
+            VStack(spacing: LabTheme.spacingSM) {
+                Text(title)
+                    .font(.title3.bold())
+                Text(message)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 200)
+        .padding(LabTheme.spacingXL)
+        .onAppear {
+            withAnimation(Anim.smooth.repeatForever(autoreverses: true)) {
+                animating = true
+            }
+        }
+    }
+}
+
+struct FactoryErrorView: View {
+    let message: String
+    let retry: () -> Void
+
+    var body: some View {
+        ContentUnavailableView {
+            Label("Unable to load", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text(message)
+        } actions: {
+            Button("Retry", action: retry)
+                .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, minHeight: 200)
+    }
+}
+
 struct FactoryRuntimeBanner: View {
     let tone: FactoryRuntimeTone
     let message: String

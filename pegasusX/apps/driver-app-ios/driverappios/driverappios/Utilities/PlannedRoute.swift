@@ -6,18 +6,16 @@
 import CoreLocation
 import Foundation
 import MapKit
+import SwiftUI
 
 func buildPlannedRouteCoordinates(orders: [Order], activeRouteId: String?) -> [CLLocationCoordinate2D] {
     guard let activeRouteId, !activeRouteId.isEmpty else { return [] }
     return orders
         .filter { order in
-            order.routeId == activeRouteId &&
-                order.state.isActive &&
-                order.latitude != nil &&
-                order.longitude != nil
+            order.routeId == activeRouteId && order.state.isActive
         }
         .sorted { ($0.sequenceIndex ?? 0) < ($1.sequenceIndex ?? 0) }
-        .map { CLLocationCoordinate2D(latitude: $0.latitude!, longitude: $0.longitude!) }
+        .map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
 }
 
 func resolveActiveRouteId(orders: [Order]) -> String? {
@@ -26,13 +24,9 @@ func resolveActiveRouteId(orders: [Order]) -> String? {
         .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION, .DISPATCHED, .LOADED,
     ]
     let active = orders.first { order in
-        executionStates.contains(order.state) &&
-            order.latitude != nil &&
-            order.longitude != nil
+        executionStates.contains(order.state)
     } ?? orders.first { order in
-        order.state.isActive &&
-            order.latitude != nil &&
-            order.longitude != nil
+        order.state.isActive
     }
     return active?.routeId
 }

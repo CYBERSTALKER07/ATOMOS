@@ -11,6 +11,7 @@
 		08DCAD5E57ABE9A77BDC31BF /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DC51DD69BB5CCE42A117B38 /* InsightsView.swift */; };
 		2C7F31F05954E438E2DC7A3C /* FactoryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB0231B3E4D7F77C26D58738 /* FactoryServiceTests.swift */; };
 		3DA980241574ECD429F25695 /* FactoryStateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25FAB61F03CFFC021BBF1C5 /* FactoryStateViews.swift */; };
+		F1A11UI01FACTORYUICOMPONENTS /* FactoryUiComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A11UI02FACTORYUICOMPONENTS /* FactoryUiComponents.swift */; };
 		40243DBF7537C30F6A47F0CF /* CreateTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B014D56219BFD89EA5B77D3A /* CreateTransferView.swift */; };
 		47459729F677F92B3ACA5B83 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB755B322A726A294EEC85F /* APIClient.swift */; };
 		48ED56F565717162B979873D /* StaffDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1247BC5863AD5F90858FA13 /* StaffDetailView.swift */; };
@@ -80,6 +81,7 @@
 		C43EECD24BC340D74BB39421 /* ManifestDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestDetailView.swift; sourceTree = "<group>"; };
 		CC0573ADB1ECAC9305E1C304 /* FactoryAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FactoryAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D25FAB61F03CFFC021BBF1C5 /* FactoryStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryStateViews.swift; sourceTree = "<group>"; };
+		F1A11UI02FACTORYUICOMPONENTS /* FactoryUiComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryUiComponents.swift; sourceTree = "<group>"; };
 		D5E6C6EAAB02F80B564C9BCD /* TransferDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferDetailView.swift; sourceTree = "<group>"; };
 		E5104E434E2B1B78926A3710 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		FA446365E92950FF385D6DBC /* StaffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaffView.swift; sourceTree = "<group>"; };
@@ -112,6 +114,7 @@
 			children = (
 				3BA69CE240E8A7A9EEB1F394 /* ClientPolicyBanner.swift */,
 				D25FAB61F03CFFC021BBF1C5 /* FactoryStateViews.swift */,
+				F1A11UI02FACTORYUICOMPONENTS /* FactoryUiComponents.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -393,6 +396,7 @@
 				0742290990B8EC6F43281C17 /* FactoryRealtimeClient.swift in Sources */,
 				87D324445DB50EBDC5896BE4 /* FactoryService.swift in Sources */,
 				3DA980241574ECD429F25695 /* FactoryStateViews.swift in Sources */,
+				F1A11UI01FACTORYUICOMPONENTS /* FactoryUiComponents.swift in Sources */,
 				E34305F5876E7723CD55E9F0 /* FleetView.swift in Sources */,
 				08DCAD5E57ABE9A77BDC31BF /* InsightsView.swift in Sources */,
 				7D095F0CD0E3535A6E8E066A /* LoadingBayView.swift in Sources */,

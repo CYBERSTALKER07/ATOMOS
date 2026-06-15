@@ -49,8 +49,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.OrderState
-import com.pegasusx.driver.ui.components.DriverLoadingStatePanel
-import com.pegasusx.driver.ui.components.DriverStatePanel
+import androidx.compose.material.icons.filled.Refresh
+import com.pegasusx.driver.ui.components.DriverLoadingState
+import com.pegasusx.driver.ui.components.DriverStateKind
+import com.pegasusx.driver.ui.components.DriverStatePane
 import com.pegasusx.driver.ui.components.PegasusCard
 import com.pegasusx.driver.data.remote.ConnectionState
 import com.pegasusx.driver.ui.components.StateBadge
@@ -114,7 +116,8 @@ fun ManifestScreen(
                             pendingCount = pendingOrders.size,
                             loadingMode = loadingMode,
                             wsConnectionState = state.wsConnectionState,
-                            onToggleLoadingMode = { loadingMode = !loadingMode }
+                            onToggleLoadingMode = { loadingMode = !loadingMode },
+                            onRefresh = { viewModel.loadManifest() },
                         )
                     }
 
@@ -295,7 +298,8 @@ private fun ManifestHeader(
     pendingCount: Int,
     loadingMode: Boolean,
     wsConnectionState: ConnectionState,
-    onToggleLoadingMode: () -> Unit
+    onToggleLoadingMode: () -> Unit,
+    onRefresh: () -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val typography = MaterialTheme.typography
@@ -355,6 +359,13 @@ private fun ManifestHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                IconButton(onClick = onRefresh) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "Refresh manifest",
+                        tint = colorScheme.onSurfaceVariant,
+                    )
+                }
                 Text(
                     text = "Loading Mode",
                     style = typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
@@ -529,9 +540,10 @@ private fun LoadingView() {
             .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center
     ) {
-        DriverLoadingStatePanel(
+        DriverLoadingState(
             title = "Loading routes",
-            message = "Checking manifest state, sequence, and delivery assignments.",
+            body = "Checking manifest state, sequence, and delivery assignments.",
+            shimmerLines = true,
         )
     }
 }
@@ -545,10 +557,11 @@ private fun EmptyView() {
             .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center
     ) {
-        DriverStatePanel(
-            icon = Icons.Default.LocalShipping,
-            title = "No upcoming rides",
-            message = "Pull to refresh or check back later.",
+        DriverStatePane(
+            kind = DriverStateKind.Route,
+            headline = "No upcoming rides",
+            body = "Pull to refresh or check back when dispatch assigns your route.",
+            usePegasusCard = true,
         )
     }
 }

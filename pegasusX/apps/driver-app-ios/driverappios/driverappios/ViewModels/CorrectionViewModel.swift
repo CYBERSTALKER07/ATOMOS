@@ -3,6 +3,7 @@
 //  driverappios
 //
 
+import CoreLocation
 import SwiftUI
 
 @Observable

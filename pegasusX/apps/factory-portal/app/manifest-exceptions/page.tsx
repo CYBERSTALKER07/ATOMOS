@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import FactoryPageState from '@/components/FactoryPageState';
+import { PageChrome } from '@/components/PageChrome';
+import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
+import { PageSection } from '@/components/PageSection';
 import FactoryRuntimeBanner from '@/components/FactoryRuntimeBanner';
 import EmptyState from '@/components/EmptyState';
-import { PageSkeleton } from '@/components/Skeleton';
 
 interface ManifestException {
   exception_id: string;
@@ -71,7 +72,6 @@ export default function ManifestExceptionsPage() {
 
   const fetchExceptions = useCallback(async (options?: { background?: boolean; silent?: boolean }) => {
     const background = options?.background ?? false;
-    const silent = options?.silent ?? false;
 
     if (background) {
       setRefreshing(true);
@@ -87,12 +87,7 @@ export default function ManifestExceptionsPage() {
       }
       const data = await res.json();
       const next: ManifestException[] = data.exceptions || [];
-      const nextSignature = exceptionSignature(next);
-
-      if (background && previousSignatureRef.current && previousSignatureRef.current !== nextSignature && !silent) {
-        // signature drift only — no toast spam for exception inbox
-      }
-      previousSignatureRef.current = nextSignature;
+      previousSignatureRef.current = exceptionSignature(next);
       setExceptions(next);
       setError(null);
       setLastSyncedAt(Date.now());
@@ -109,7 +104,7 @@ export default function ManifestExceptionsPage() {
   }, [escalatedOnly, exceptions.length]);
 
   useEffect(() => {
-    fetchExceptions();
+    void fetchExceptions();
   }, [fetchExceptions]);
 
   useEffect(() => {
@@ -126,7 +121,7 @@ export default function ManifestExceptionsPage() {
   useEffect(() => {
     const interval = window.setInterval(() => {
       if (!document.hidden && navigator.onLine) {
-        fetchExceptions({ background: true, silent: true });
+        void fetchExceptions({ background: true, silent: true });
       }
     }, LIVE_REFRESH_MS);
     return () => window.clearInterval(interval);
@@ -138,12 +133,21 @@ export default function ManifestExceptionsPage() {
         const event = parseFactoryLiveEvent(raw);
         if (!event?.type) return;
         if (event.type === 'FACTORY_MANIFEST_UPDATE' || event.type === 'FACTORY_TRANSFER_UPDATE') {
-          fetchExceptions({ background: true, silent: true });
+          void fetchExceptions({ background: true, silent: true });
         }
       },
     });
     return unsubscribe;
   }, [fetchExceptions]);
+
+  const dlqCount = useMemo(
+    () => exceptions.filter((ex) => ex.attempt_count >= 3).length,
+    [exceptions],
+  );
+  const escalatedCount = useMemo(
+    () => exceptions.filter((ex) => ex.escalated).length,
+    [exceptions],
+  );
 
   const runtimeMessage = isOffline
     ? `Offline — showing last sync from ${formatSyncTime(lastSyncedAt)}`
@@ -161,104 +165,97 @@ export default function ManifestExceptionsPage() {
         ? 'refreshing'
         : 'live';
 
+  const showFatalError = Boolean(error) && exceptions.length === 0 && !loading;
+
   return (
     <PageTransition>
-      <div className="flex flex-col gap-6 p-6">
-        <FactoryRuntimeBanner tone={runtimeTone} message={runtimeMessage} />
-
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="md-typescale-headline-small" style={{ color: 'var(--color-md-on-surface)' }}>
-              Loading Gate Exceptions
-            </h1>
-            <p className="md-typescale-body-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>
-              Transfers removed from manifests during loading — overflow, damage, or manual pull
-            </p>
-          </div>
+      <PageChrome
+        title="Gate exceptions"
+        description="Transfers removed from manifests during loading — overflow, damage, or manual pull."
+        loading={loading}
+        skeletonVariant="table"
+        error={showFatalError ? error : null}
+        actions={
           <button
             type="button"
-            className={`md-btn ${escalatedOnly ? 'md-btn-filled' : 'md-btn-outlined'} md-typescale-label-large px-4 py-2`}
+            className={`${escalatedOnly ? 'desk-btn-primary' : 'button--secondary'} inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm`}
             onClick={() => setEscalatedOnly((value) => !value)}
           >
             <Icon name="error" size={18} />
-            {escalatedOnly ? 'Showing Escalated' : 'Show Escalated Only'}
+            {escalatedOnly ? 'Showing escalated' : 'Escalated only'}
           </button>
+        }
+      >
+        <FactoryRuntimeBanner tone={runtimeTone} message={runtimeMessage} />
+
+        <div className="mt-4">
+        <KpiStatGrid columns={4}>
+          <KpiStatCard label="Open exceptions" value={exceptions.length} sub={escalatedOnly ? 'Escalated filter on' : 'All reasons'} />
+          <KpiStatCard label="DLQ threshold" value={dlqCount} sub="3+ overflow attempts" />
+          <KpiStatCard label="Escalated" value={escalatedCount} sub="Requires operator review" />
+          <KpiStatCard label="Last sync" value={formatSyncTime(lastSyncedAt)} sub={isOffline ? 'Offline' : 'Live inbox'} />
+        </KpiStatGrid>
         </div>
 
-        {error && !loading ? (
-          <FactoryPageState
-            kind="error"
-            title="Unable to load exceptions"
-            body={error}
-            actionLabel="Retry"
-            onAction={() => fetchExceptions()}
-          />
-        ) : loading ? (
-          <PageSkeleton />
-        ) : exceptions.length === 0 ? (
+        {exceptions.length === 0 ? (
           <EmptyState
-            icon="check_circle"
+            variant="no-data"
             headline={escalatedOnly ? 'No escalated exceptions' : 'No exceptions'}
             body={
               escalatedOnly
-                ? 'No transfers have hit the DLQ threshold (3+ overflows)'
-                : 'All manifest loading operations completed without exceptions'
+                ? 'No transfers have hit the DLQ threshold (3+ overflows).'
+                : 'All manifest loading operations completed without exceptions.'
             }
+            action={escalatedOnly ? 'Show all' : undefined}
+            onAction={escalatedOnly ? () => setEscalatedOnly(false) : undefined}
           />
         ) : (
-          <div className="md-card md-elevation-1 md-shape-md overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr style={{ background: 'var(--color-md-surface-container)' }}>
-                  {['Transfer', 'Manifest', 'Reason', 'Attempts', 'Escalated', 'Time'].map((h) => (
-                    <th
-                      key={h}
-                      className="md-typescale-label-small px-4 py-3 text-left"
-                      style={{ color: 'var(--color-md-on-surface-variant)' }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {exceptions.map((ex) => (
-                  <tr
-                    key={ex.exception_id}
-                    className="border-t"
-                    style={{
-                      borderColor: 'var(--color-md-outline-variant)',
-                      background: ex.attempt_count >= 3 ? 'var(--color-md-error-container)' : undefined,
-                    }}
-                  >
-                    <td className="md-typescale-body-small px-4 py-3 font-mono">{shortId(ex.transfer_id)}</td>
-                    <td className="md-typescale-body-small px-4 py-3 font-mono">{shortId(ex.manifest_id)}</td>
-                    <td className="px-4 py-3">{reasonBadge(ex.reason)}</td>
-                    <td className="md-typescale-body-small px-4 py-3">
-                      <span
-                        className={ex.attempt_count >= 3 ? 'font-bold' : ''}
-                        style={{ color: ex.attempt_count >= 3 ? 'var(--color-md-error)' : 'var(--color-md-on-surface)' }}
-                      >
-                        {ex.attempt_count}
-                        {ex.attempt_count >= 3 && ' — DLQ'}
-                      </span>
-                    </td>
-                    <td className="md-typescale-body-small px-4 py-3">
-                      {ex.escalated ? 'Yes' : 'No'}
-                    </td>
-                    <td
-                      className="md-typescale-body-small px-4 py-3"
-                      style={{ color: 'var(--color-md-on-surface-variant)' }}
-                    >
-                      {ex.created_at ? new Date(ex.created_at).toLocaleString() : '—'}
-                    </td>
+          <PageSection title="Exception inbox" description="Rows highlighted when attempt count reaches DLQ threshold." className="mt-6">
+            <div className="overflow-x-auto -mx-5 px-5">
+              <table className="desk-table w-full text-sm">
+                <thead>
+                  <tr className="border-b" style={{ borderColor: 'var(--desk-border)' }}>
+                    {['Transfer', 'Manifest', 'Reason', 'Attempts', 'Escalated', 'Time'].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left font-medium" style={{ color: 'var(--desk-text-secondary)' }}>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {exceptions.map((ex) => (
+                    <tr
+                      key={ex.exception_id}
+                      className="border-t"
+                      style={{
+                        borderColor: 'var(--desk-border)',
+                        background: ex.attempt_count >= 3 ? 'var(--color-md-error-container)' : undefined,
+                      }}
+                    >
+                      <td className="px-4 py-3 font-mono">{shortId(ex.transfer_id)}</td>
+                      <td className="px-4 py-3 font-mono">{shortId(ex.manifest_id)}</td>
+                      <td className="px-4 py-3">{reasonBadge(ex.reason)}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={ex.attempt_count >= 3 ? 'font-bold' : ''}
+                          style={{ color: ex.attempt_count >= 3 ? 'var(--color-md-error)' : 'var(--desk-text-primary)' }}
+                        >
+                          {ex.attempt_count}
+                          {ex.attempt_count >= 3 && ' — DLQ'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">{ex.escalated ? 'Yes' : 'No'}</td>
+                      <td className="px-4 py-3" style={{ color: 'var(--desk-text-secondary)' }}>
+                        {ex.created_at ? new Date(ex.created_at).toLocaleString() : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </PageSection>
         )}
-      </div>
+      </PageChrome>
     </PageTransition>
   );
 }

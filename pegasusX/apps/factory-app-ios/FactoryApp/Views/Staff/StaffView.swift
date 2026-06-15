@@ -10,47 +10,53 @@ struct StaffView: View {
         NavigationStack {
             Group {
                 if loading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    FactoryLoadingView(
+                        title: "Loading staff",
+                        message: "Fetching factory operators and shift status."
+                    )
                 } else if let error {
-                    ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") { load() }
-                    }
+                    FactoryErrorView(message: error, retry: load)
                 } else if staff.isEmpty {
-                    ContentUnavailableView("No Staff", systemImage: "person.2", description: Text("No staff members found"))
+                    FactoryStateView(
+                        kind: .empty,
+                        headline: "No staff",
+                        message: "No staff members are registered for this factory."
+                    )
                 } else {
                     List {
-                        ForEach(Array(staff.enumerated()), id: \.element.id) { index, member in
-                            NavigationLink(value: member.id) {
-                                HStack(spacing: LabTheme.spacingLG) {
-                                    Image(systemName: "person.circle")
-                                        .font(.title2)
-                                        .foregroundStyle(.secondary)
-                                        .frame(width: 32)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(member.name)
-                                            .font(.subheadline.bold())
-                                        Text(member.phone)
-                                            .font(.caption)
+                        Section {
+                            FactorySectionHeader(
+                                title: "Staff roster",
+                                subtitle: "\(staff.count) operators on record"
+                            )
+                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                            .listRowBackground(Color.clear)
+                        }
+
+                        Section {
+                            ForEach(Array(staff.enumerated()), id: \.element.id) { index, member in
+                                NavigationLink(value: member.id) {
+                                    HStack(spacing: LabTheme.spacingLG) {
+                                        Image(systemName: "person.circle")
+                                            .font(.title2)
                                             .foregroundStyle(.secondary)
-                                        Text(member.role)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
+                                            .frame(width: 32)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(member.name)
+                                                .font(.subheadline.bold())
+                                            Text(member.phone)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                            Text(member.role)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        FactoryStatusBadge(text: member.status)
                                     }
-                                    Spacer()
-                                    Text(member.status)
-                                        .font(.caption2.bold())
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 3)
-                                        .background(.quaternary)
-                                        .clipShape(Capsule())
                                 }
+                                .staggeredAppear(index: index)
                             }
-                            .staggeredAppear(index: index)
                         }
                     }
                     .listStyle(.plain)
@@ -63,9 +69,8 @@ struct StaffView: View {
             .navigationTitle("Staff")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { load() } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
+                    Button("Refresh", systemImage: "arrow.clockwise", action: load)
+                        .labelStyle(.iconOnly)
                 }
             }
             .task { load() }

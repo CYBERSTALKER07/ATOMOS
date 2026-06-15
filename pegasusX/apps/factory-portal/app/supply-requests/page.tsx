@@ -8,8 +8,11 @@ import { ListToolbar } from '@/components/ListToolbar';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import FactoryPageState from '@/components/FactoryPageState';
+import { PageChrome } from '@/components/PageChrome';
+import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
+import { PageSection } from '@/components/PageSection';
 import FactoryRuntimeBanner from '@/components/FactoryRuntimeBanner';
+import EmptyState from '@/components/EmptyState';
 import { motion } from 'framer-motion';
 
 interface SupplyRequest {
@@ -254,52 +257,30 @@ export default function SupplyRequestsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <PageTransition>
-        <div className="p-6">
-          <FactoryPageState
-            kind="loading"
-            title="Supply Requests"
-            subtitle="Loading the current warehouse demand queue for this factory."
-          />
-        </div>
-      </PageTransition>
-    );
-  }
+  const submittedCount = useMemo(() => requests.filter((r) => r.state === 'SUBMITTED').length, [requests]);
+  const inProductionCount = useMemo(() => requests.filter((r) => r.state === 'IN_PRODUCTION').length, [requests]);
+  const readyCount = useMemo(() => requests.filter((r) => r.state === 'READY').length, [requests]);
+  const totalVolume = useMemo(
+    () => requests.reduce((sum, r) => sum + r.total_volume_vu, 0),
+    [requests],
+  );
 
-  if (error && requests.length === 0) {
-    return (
-      <PageTransition>
-        <div className="p-6">
-          <FactoryPageState
-            kind={isOffline ? 'offline' : 'error'}
-            title="Incoming Supply Requests"
-            subtitle="Factory operators review and advance warehouse demand from this queue."
-            headline={isOffline ? 'Supply queue unavailable offline' : 'Unable to load supply requests'}
-            body={
-              isOffline
-                ? 'Reconnect to fetch the first live sync for this factory queue.'
-                : error
-            }
-            actionLabel="Retry"
-            onAction={() => void fetchRequests()}
-          />
-        </div>
-      </PageTransition>
-    );
-  }
+  const fatalError =
+    error && requests.length === 0
+      ? isOffline
+        ? 'Reconnect to fetch the first live sync for this factory queue.'
+        : error
+      : null;
 
   return (
     <PageTransition>
-      <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold">Incoming Supply Requests</h1>
-            <p className="mt-1 text-sm" style={{ color: 'var(--color-md-on-surface-variant)' }}>
-              {filtered.length} request{filtered.length !== 1 ? 's' : ''} in view
-            </p>
-          </div>
+      <PageChrome
+        title="Supply requests"
+        description="Factory operators review and advance warehouse demand from this queue."
+        loading={loading}
+        skeletonVariant="table"
+        error={fatalError}
+        actions={
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -308,30 +289,40 @@ export default function SupplyRequestsPage() {
           >
             <Icon name="refresh" size={16} /> Refresh
           </motion.button>
-        </div>
-
+        }
+      >
         <FactoryRuntimeBanner tone={runtimeTone} message={runtimeMessage} />
 
-        <div className="flex gap-2 flex-wrap">
-          {(['ALL', 'SUBMITTED', 'ACKNOWLEDGED', 'IN_PRODUCTION', 'READY', 'FULFILLED', 'CANCELLED'] as FilterState[]).map((value) => (
-            <button
-              key={value}
-              onClick={() => setFilter(value)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors border"
-              style={{
-                background: filter === value ? 'var(--color-md-primary)' : 'transparent',
-                color: filter === value ? 'var(--color-md-on-primary)' : 'var(--color-md-on-surface-variant)',
-                borderColor: filter === value ? 'var(--color-md-primary)' : 'var(--color-md-outline-variant)',
-              }}
-            >
-              {value.replace(/_/g, ' ')}
-            </button>
-          ))}
-        </div>
+        <KpiStatGrid columns={4}>
+          <KpiStatCard label="Submitted" value={submittedCount} sub="Awaiting factory ACK" />
+          <KpiStatCard label="In production" value={inProductionCount} sub="Active factory work" />
+          <KpiStatCard label="Ready to fulfill" value={readyCount} sub="Outbound handoff queue" />
+          <KpiStatCard label="Total volume (VU)" value={totalVolume.toLocaleString()} sub={`${requests.length} requests total`} />
+        </KpiStatGrid>
+
+        <PageSection title="Queue filter" description={`${filtered.length} request${filtered.length !== 1 ? 's' : ''} in view`} className="mt-6">
+          <div className="flex gap-2 flex-wrap">
+            {(['ALL', 'SUBMITTED', 'ACKNOWLEDGED', 'IN_PRODUCTION', 'READY', 'FULFILLED', 'CANCELLED'] as FilterState[]).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setFilter(value)}
+                className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors border"
+                style={{
+                  background: filter === value ? 'var(--color-md-primary)' : 'transparent',
+                  color: filter === value ? 'var(--color-md-on-primary)' : 'var(--color-md-on-surface-variant)',
+                  borderColor: filter === value ? 'var(--color-md-primary)' : 'var(--color-md-outline-variant)',
+                }}
+              >
+                {value.replace(/_/g, ' ')}
+              </button>
+            ))}
+          </div>
+        </PageSection>
 
         {filtered.length === 0 ? (
-          <FactoryPageState
-            kind={filter === 'ALL' ? 'empty' : 'no-results'}
+          <EmptyState
+            variant={filter === 'ALL' ? 'no-data' : 'no-results'}
             imageUrl="/images/empty-orders.png"
             headline={filter === 'ALL' ? 'No supply requests found' : 'No requests match this filter'}
             body={
@@ -339,25 +330,26 @@ export default function SupplyRequestsPage() {
                 ? 'Warehouse demand will appear here as soon as requests reach this factory queue.'
                 : `There are no ${filter.replace(/_/g, ' ').toLowerCase()} requests in the current view.`
             }
-            actionLabel={filter === 'ALL' ? undefined : 'Clear Filter'}
+            action={filter === 'ALL' ? undefined : 'Clear filter'}
             onAction={filter === 'ALL' ? undefined : () => setFilter('ALL')}
           />
         ) : (
           <>
-          <ListToolbar
-            page={page}
-            pageCount={pageCount}
-            totalLabel={`${filtered.length} supply requests`}
-            onPrev={prev}
-            onNext={next}
-            onExport={exportCsv}
-          />
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-sm"
-          >
-            <table className="w-full text-sm">
+            <ListToolbar
+              page={page}
+              pageCount={pageCount}
+              totalLabel={`${filtered.length} supply requests`}
+              onPrev={prev}
+              onNext={next}
+              onExport={exportCsv}
+            />
+            <PageSection title="Demand queue" description="Advance requests through ACK → production → ready → fulfill.">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="overflow-x-auto -mx-5 px-5"
+              >
+                <table className="desk-table w-full text-sm">
               <thead>
                 <tr style={{ background: 'var(--color-md-surface-container)' }}>
                   <th className="text-left px-4 py-3 font-medium">Warehouse</th>
@@ -423,10 +415,11 @@ export default function SupplyRequestsPage() {
                 ))}
               </tbody>
             </table>
-          </motion.div>
+              </motion.div>
+            </PageSection>
           </>
         )}
-      </div>
+      </PageChrome>
     </PageTransition>
   );
 }

@@ -220,13 +220,7 @@ struct HomeView: View {
 
             Spacer()
 
-            Text("ASSIGNED")
-                .font(.system(size: 9, weight: .heavy, design: .monospaced))
-                .foregroundStyle(LabTheme.success)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(LabTheme.success.opacity(0.15))
-                .clipShape(.capsule)
+            DriverStatusBadge(text: "ASSIGNED", tint: LabTheme.success)
         }
         .padding(LabTheme.s16)
         .labCard()
@@ -374,50 +368,15 @@ struct HomeView: View {
     // MARK: - Today Summary
 
     private var todaySummary: some View {
-        VStack(spacing: 14) {
-            HStack {
-                Text("Today")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(LabTheme.fg)
-                Spacer()
-                Text(todayDate)
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundStyle(LabTheme.fgTertiary)
-            }
+        VStack(spacing: LabTheme.s12) {
+            DriverSectionHeader(title: "Today", trailing: todayDate)
 
-            HStack(spacing: 0) {
-                summaryTile(value: "\(vm.pendingMissions.count)", label: "Pending", icon: "clock")
-                divider
-                summaryTile(value: "\(vm.completedIds.count)", label: "Done", icon: "checkmark")
-                divider
-                summaryTile(value: totalRevenue, label: "Revenue", icon: "banknote")
+            HStack(spacing: LabTheme.s12) {
+                KpiTile(label: "Pending", value: "\(vm.pendingMissions.count)", icon: "clock")
+                KpiTile(label: "Done", value: "\(vm.completedIds.count)", icon: "checkmark", tint: LabTheme.success)
+                KpiTile(label: "Revenue", value: totalRevenue, icon: "banknote")
             }
         }
-        .padding(LabTheme.s20)
-        .labCard()
-    }
-
-    private func summaryTile(value: String, label: String, icon: String) -> some View {
-        VStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 12))
-                .foregroundStyle(LabTheme.fgTertiary)
-            Text(value)
-                .font(.system(size: 18, weight: .bold, design: .monospaced))
-                .foregroundStyle(LabTheme.fg)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-            Text(label)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(LabTheme.fgTertiary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var divider: some View {
-        Rectangle()
-            .fill(LabTheme.separator)
-            .frame(width: 0.5, height: 36)
     }
 
     private var totalRevenue: String {
@@ -474,9 +433,7 @@ struct HomeView: View {
 
     private var quickActions: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Quick Actions")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(LabTheme.fg)
+            DriverSectionHeader(title: "Quick Actions")
                 .padding(.horizontal, LabTheme.s4)
 
             HStack(spacing: 12) {
@@ -508,26 +465,15 @@ struct HomeView: View {
 
     private var recentActivity: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Recent")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(LabTheme.fg)
+            DriverSectionHeader(title: "Recent")
                 .padding(.horizontal, LabTheme.s4)
 
             if vm.completedMissions.isEmpty {
-                HStack {
-                    Spacer()
-                    VStack(spacing: 8) {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 20))
-                            .foregroundStyle(LabTheme.fgTertiary)
-                        Text("No deliveries yet")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(LabTheme.fgSecondary)
-                    }
-                    .padding(.vertical, 24)
-                    Spacer()
-                }
-                .labCard()
+                DriverEmptyView(
+                    icon: "clock.arrow.circlepath",
+                    title: "No deliveries yet",
+                    message: "Completed drops will appear here."
+                )
             } else {
                 ForEach(vm.completedMissions.prefix(3)) { mission in
                     HStack(spacing: 12) {

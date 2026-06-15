@@ -2,24 +2,56 @@ package com.pegasusx.factory.ui.screens.analytics
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import com.pegasusx.factory.data.model.FactoryAnalyticsOverview
 import com.pegasusx.factory.data.remote.FactoryApi
+import com.pegasusx.factory.ui.components.FactoryKpiBadge
+import com.pegasusx.factory.ui.components.FactoryKpiTile
 import com.pegasusx.factory.ui.components.FactoryLoadingState
+import com.pegasusx.factory.ui.components.FactoryOpsListCard
+import com.pegasusx.factory.ui.components.FactorySectionTitle
 import com.pegasusx.factory.ui.components.FactoryStateKind
 import com.pegasusx.factory.ui.components.FactoryStatePane
-import com.pegasusx.factory.ui.theme.Destructive
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+
+private data class AnalyticsKpi(
+    val label: String,
+    val value: (FactoryAnalyticsOverview) -> String,
+    val icon: ImageVector,
+    val alert: (FactoryAnalyticsOverview) -> Boolean = { false },
+)
+
+private val analyticsKpis = listOf(
+    AnalyticsKpi("Transfers Total", { it.transfersTotal.toString() }, Icons.Default.LocalShipping),
+    AnalyticsKpi("Active Manifests", { it.manifestsActive.toString() }, Icons.Default.Analytics),
+    AnalyticsKpi(
+        label = "Exception Queue",
+        value = { it.exceptionQueue.toString() },
+        icon = Icons.Default.Warning,
+        alert = { it.exceptionQueue > 0 },
+    ),
+    AnalyticsKpi(
+        label = "Avg Lead Time (min)",
+        value = { String.format("%.1f", it.avgLeadTimeMins) },
+        icon = Icons.Default.Schedule,
+    ),
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +88,16 @@ fun AnalyticsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Analytics Overview") },
+                title = {
+                    Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                        Text("Analytics Overview")
+                        Text(
+                            text = "Throughput, manifest pressure, and exceptions",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -109,87 +150,32 @@ private fun AnalyticsContent(
         modifier = modifier,
     ) {
         item {
-            Text(
-                text = "Factory throughput, manifest pressure, and exception queue.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                AnalyticsKpiCard("Transfers Total", overview.transfersTotal.toString())
-                AnalyticsKpiCard("Active Manifests", overview.manifestsActive.toString())
-                AnalyticsKpiCard(
-                    label = "Exception Queue",
-                    value = overview.exceptionQueue.toString(),
-                    alert = overview.exceptionQueue > 0,
-                )
-                AnalyticsKpiCard(
-                    label = "Avg Lead Time (min)",
-                    value = String.format("%.1f", overview.avgLeadTimeMins),
-                )
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 160.dp),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 520.dp),
+            ) {
+                items(analyticsKpis, key = { it.label }) { kpi ->
+                    FactoryKpiTile(
+                        label = kpi.label,
+                        value = kpi.value(overview),
+                        icon = kpi.icon,
+                        badge = if (kpi.alert(overview)) FactoryKpiBadge.Alert else null,
+                    )
+                }
             }
         }
         if (overview.dailyActivity.isNotEmpty()) {
             item {
-                Text(
-                    text = "7-day transfer activity",
-                    style = MaterialTheme.typography.titleSmall,
-                )
+                FactorySectionTitle(title = "7-day transfer activity")
             }
             items(overview.dailyActivity, key = { it.date }) { day ->
-                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(PegasusSpacing.md),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(day.date, style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            text = "${day.transfers} transfers",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = FontFamily.Monospace,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AnalyticsKpiCard(
-    label: String,
-    value: String,
-    alert: Boolean = false,
-) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(PegasusSpacing.lg),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontFamily = FontFamily.Monospace,
-                )
-            }
-            if (alert) {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = "Alert",
-                    tint = Destructive,
+                FactoryOpsListCard(
+                    headline = day.date,
+                    supporting = "${day.transfers} transfers recorded",
                 )
             }
         }

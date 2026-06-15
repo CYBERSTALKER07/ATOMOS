@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.StatusGreen
+import com.pegasusx.driver.ui.components.DriverGpsBanner
 import com.pegasusx.driver.ui.theme.StatusRed
 import com.pegasusx.driver.ui.theme.formattedAmount
 
@@ -129,7 +130,14 @@ fun CashCollectionScreen(
 
         state.error?.let { error ->
             Spacer(modifier = Modifier.height(12.dp))
-            Text(text = error, color = StatusRed, fontSize = 12.sp, textAlign = TextAlign.Center)
+            if (error.contains("GPS", ignoreCase = true)) {
+                DriverGpsBanner(
+                    message = error,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                Text(text = error, color = StatusRed, fontSize = 12.sp, textAlign = TextAlign.Center)
+            }
         }
 
         Spacer(modifier = Modifier.height(48.dp))

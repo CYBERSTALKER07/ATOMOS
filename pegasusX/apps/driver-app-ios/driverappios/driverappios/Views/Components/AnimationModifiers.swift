@@ -146,6 +146,11 @@ extension View {
     func labCard() -> some View {
         modifier(LabCardModifier())
     }
+
+    func labReadableWidth() -> some View {
+        frame(maxWidth: LabTheme.readableMaxWidth)
+            .frame(maxWidth: .infinity)
+    }
 }
 
 #Preview {

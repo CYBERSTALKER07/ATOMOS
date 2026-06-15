@@ -17,40 +17,23 @@ struct MissionListCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if isLoading {
-                HStack(spacing: 10) {
-                    ProgressView()
-                        .tint(LabTheme.fg)
-                    Text("Syncing fleet...")
-                        .font(.subheadline)
-                        .foregroundStyle(LabTheme.fgSecondary)
-                }
-                .frame(maxWidth: .infinity)
+                DriverLoadingView(
+                    title: "Syncing fleet",
+                    message: "Checking manifest state and delivery assignments."
+                )
                 .padding(.vertical, 32)
             } else if missions.isEmpty {
-                VStack(spacing: 14) {
-                    Image(systemName: "shippingbox")
-                        .font(.system(size: 28))
-                        .foregroundStyle(LabTheme.fgTertiary)
-
-                    Text("No active missions")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(LabTheme.fgSecondary)
-
-                    Button {
+                DriverEmptyView(
+                    icon: "shippingbox",
+                    title: "No active missions",
+                    message: "Pull to refresh when dispatch assigns new drops.",
+                    actionTitle: "Refresh",
+                    action: {
                         Haptics.light()
                         onRefresh()
-                    } label: {
-                        Text("Refresh")
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(LabTheme.fg)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(LabTheme.fg.opacity(0.08), in: Capsule())
                     }
-                    .buttonStyle(.pressable)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 32)
+                )
+                .padding(.vertical, 16)
             } else {
                 LazyVStack(spacing: 12) {
                     ForEach(Array(missions.enumerated()), id: \.element.id) { index, mission in
@@ -83,18 +66,11 @@ struct MissionListCard: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
-                        Text("ORD-\(mission.order_id.suffix(4).uppercased())") // Tactical ID
-                            .font(.system(size: 14, weight: .black, design: .monospaced)) // Black weight
+                        Text("ORD-\(mission.order_id.suffix(4).uppercased())")
+                            .font(.system(size: 14, weight: .black, design: .monospaced))
                             .foregroundStyle(LabTheme.fg)
-                        
-                        // Status Pill
-                        Text("ACTIVE")
-                            .font(.system(size: 8, weight: .black))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(LabTheme.live.opacity(0.12))
-                            .foregroundStyle(LabTheme.live)
-                            .clipShape(.capsule)
+
+                        DriverStatusBadge(text: "ACTIVE", tint: LabTheme.live)
                     }
 
                     HStack(spacing: 4) {

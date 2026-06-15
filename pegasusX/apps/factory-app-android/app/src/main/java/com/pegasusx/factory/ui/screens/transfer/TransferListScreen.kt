@@ -17,8 +17,10 @@ import com.pegasusx.factory.data.model.Transfer
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasusx.factory.ui.components.FactoryLoadingState
+import com.pegasusx.factory.ui.components.FactoryMetricTile
 import com.pegasusx.factory.ui.components.FactoryStateKind
 import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasusx.factory.ui.components.FactoryStatusChip
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -73,7 +75,16 @@ fun TransferListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Transfers") },
+                title = {
+                    Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                        Text("Transfers")
+                        Text(
+                            text = "Factory-to-warehouse movement pipeline",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 },
@@ -89,7 +100,6 @@ fun TransferListScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            // Filter chips
             Row(
                 modifier = Modifier
                     .horizontalScroll(rememberScrollState())
@@ -179,24 +189,24 @@ private fun TransferRow(transfer: Transfer, onClick: () -> Unit) {
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
                 ) {
-                    TransferTag(
-                        text = transfer.state,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                    TransferTag(
-                        text = transfer.priority.ifBlank { "STANDARD" },
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    FactoryStatusChip(status = transfer.state)
+                    FactoryStatusChip(status = transfer.priority.ifBlank { "STANDARD" })
                 }
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
-                TransferMetric("Items", transfer.totalItems.toString(), Modifier.weight(1f))
-                TransferMetric("Volume", "${String.format("%.0f", transfer.totalVolumeL)}L", Modifier.weight(1f))
+                FactoryMetricTile(
+                    label = "Items",
+                    value = transfer.totalItems.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+                FactoryMetricTile(
+                    label = "Volume",
+                    value = "${String.format("%.0f", transfer.totalVolumeL)}L",
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
@@ -231,71 +241,5 @@ private fun TransferListSummary(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-@Composable
-private fun EmptyTransferListState(selectedFilter: String) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-    ) {
-        Text(
-            text = "No transfers found",
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Text(
-            text = if (selectedFilter == "ALL") {
-                "There are no transfers available right now."
-            } else {
-                "There are no $selectedFilter transfers in the current queue."
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun TransferMetric(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-    ) {
-        Column(
-            modifier = Modifier.padding(PegasusSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
-        ) {
-            Text(value, style = MaterialTheme.typography.titleMedium)
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun TransferTag(
-    text: String,
-    containerColor: androidx.compose.ui.graphics.Color,
-    contentColor: androidx.compose.ui.graphics.Color,
-) {
-    Surface(
-        shape = MaterialTheme.shapes.small,
-        color = containerColor,
-        contentColor = contentColor,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = PegasusSpacing.sm, vertical = PegasusSpacing.xs),
-        )
     }
 }

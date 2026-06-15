@@ -82,6 +82,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.driver.data.model.RejectionReason
+import com.pegasusx.driver.ui.components.DriverLoadingState
+import com.pegasusx.driver.ui.components.DriverSectionTitle
+import com.pegasusx.driver.ui.components.DriverStateKind
+import com.pegasusx.driver.ui.components.DriverStatePane
 import com.pegasusx.driver.ui.theme.StatusGreen
 import com.pegasusx.driver.ui.theme.StatusRed
 import kotlinx.coroutines.launch
@@ -202,7 +206,7 @@ fun DeliveryCorrectionScreen(
                 ) {
                     // Section header
                     item {
-                        SectionLabel("MANIFEST ITEMS · ${state.audits.size}")
+                        DriverSectionTitle(title = "MANIFEST ITEMS · ${state.audits.size}")
                     }
 
                     // Order ID mono badge
@@ -511,7 +515,7 @@ private fun ModificationSheetContent(
         Spacer(modifier = Modifier.height(20.dp))
 
         // ── Quantity Stepper ─────────────────────────────────────────────────
-        SectionLabel("ACCEPTED QUANTITY")
+        DriverSectionTitle(title = "ACCEPTED QUANTITY")
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(
@@ -573,7 +577,7 @@ private fun ModificationSheetContent(
         // ── Rejection Reason Chips ───────────────────────────────────────────
         AnimatedVisibility(visible = rejected > 0) {
             Column {
-                SectionLabel("REJECTION REASON")
+                DriverSectionTitle(title = "REJECTION REASON")
                 Spacer(modifier = Modifier.height(12.dp))
 
                 FlowRow(
@@ -787,60 +791,29 @@ private fun CorrectionFooter(
 private fun LoadingState(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator()
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Loading manifest…",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        DriverLoadingState(
+            title = "Loading manifest",
+            body = "Fetching line items and audit state for this delivery.",
+            compact = true,
+        )
     }
 }
 
 @Composable
 private fun ErrorState(message: String, modifier: Modifier = Modifier) {
     Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Inventory2,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Failed to Load Order",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        }
+        DriverStatePane(
+            kind = DriverStateKind.Error,
+            headline = "Failed to load order",
+            body = message,
+            compact = true,
+        )
     }
-}
-
-@Composable
-private fun SectionLabel(label: String) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        letterSpacing = 1.sp
-    )
 }

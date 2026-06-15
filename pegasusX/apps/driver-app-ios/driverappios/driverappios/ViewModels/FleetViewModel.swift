@@ -418,8 +418,8 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     func recordSplitPayment(orderId: String, totalAmount: Int, cashMinor: Int? = nil, cardMinor: Int? = nil, currency: String? = nil) async {
         deliveryEdgeError = nil
         deliveryEdgeMessage = nil
-        let cash = cashMinor ?? Int64(totalAmount / 2)
-        let card = cardMinor ?? Int64(totalAmount - Int(cash))
+        let cash = Int64(cashMinor ?? totalAmount / 2)
+        let card = Int64(cardMinor ?? totalAmount - Int(cash))
         guard cash + card > 0 else {
             deliveryEdgeError = "Split amounts must be greater than zero"
             return

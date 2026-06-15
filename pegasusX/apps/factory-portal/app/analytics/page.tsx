@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import FactoryPageState from '@/components/FactoryPageState';
-import { motion } from 'framer-motion';
+import { PageChrome } from '@/components/PageChrome';
+import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
 
 interface AnalyticsOverview {
   daily_activity: unknown[];
@@ -40,82 +41,58 @@ export default function FactoryAnalyticsPage() {
     void load();
   }, [load]);
 
-  const kpis = overview
-    ? [
-        { label: 'Transfers Total', value: overview.transfers_total, icon: 'transfers' },
-        { label: 'Active Manifests', value: overview.manifests_active, icon: 'manifests' },
-        { label: 'Exception Queue', value: overview.exception_queue, icon: 'warning', danger: overview.exception_queue > 0 },
-        { label: 'Avg Lead Time (min)', value: overview.avg_lead_time_mins, icon: 'analytics' },
-      ]
-    : [];
-
   return (
     <PageTransition>
-      <div className="space-y-4 p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-[var(--foreground)]">Analytics Overview</h1>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Factory throughput, manifest pressure, and exception queue from the analytics endpoint.
-            </p>
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+      <PageChrome
+        title="Analytics overview"
+        description="Factory throughput, manifest pressure, and exception queue from the analytics endpoint."
+        loading={loading}
+        skeletonVariant="dashboard"
+        error={error && !overview ? error : null}
+        actions={
+          <button
+            type="button"
             onClick={() => {
               setLoading(true);
               void load();
             }}
-            className="button--secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm hover-lift active-press"
+            className="button--secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm"
           >
             <Icon name="refresh" size={16} /> Refresh
-          </motion.button>
-        </div>
+          </button>
+        }
+      >
+        {overview ? (
+          <>
+            <KpiStatGrid columns={4}>
+              <KpiStatCard label="Transfers total" value={overview.transfers_total} sub="All-time factory transfers" />
+              <KpiStatCard label="Active manifests" value={overview.manifests_active} sub="In loading gate pipeline" />
+              <KpiStatCard
+                label="Exception queue"
+                value={overview.exception_queue}
+                sub={overview.exception_queue > 0 ? 'Review gate exceptions' : 'No open exceptions'}
+              />
+              <KpiStatCard
+                label="Avg lead time"
+                value={`${overview.avg_lead_time_mins} min`}
+                sub="Transfer approval to dispatch"
+              />
+            </KpiStatGrid>
 
-        {loading ? (
-          <FactoryPageState
-            kind="loading"
-            skeleton={
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="md-skeleton h-28 rounded-xl" />
-                ))}
+            {overview.exception_queue > 0 && (
+              <div className="mt-6">
+                <Link
+                  href="/manifest-exceptions"
+                  className="button--secondary inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm"
+                >
+                  <Icon name="warning" size={16} />
+                  Open gate exceptions ({overview.exception_queue})
+                </Link>
               </div>
-            }
-          />
-        ) : error && !overview ? (
-          <FactoryPageState
-            kind="error"
-            headline="Unable to load analytics overview"
-            body={error}
-            actionLabel="Retry"
-            onAction={() => {
-              setLoading(true);
-              void load();
-            }}
-          />
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {kpis.map((kpi) => (
-              <motion.div
-                key={kpi.label}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-[var(--muted)]">{kpi.label}</span>
-                  <Icon name={kpi.icon} size={18} className="text-[var(--muted)]" />
-                </div>
-                <div className="mt-4 flex items-center gap-2">
-                  <span className="text-3xl font-semibold tabular-nums text-[var(--foreground)]">{kpi.value}</span>
-                  {kpi.danger && <span className="status-chip status-chip--critical">Alert</span>}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
+            )}
+          </>
+        ) : null}
+      </PageChrome>
     </PageTransition>
   );
 }

@@ -14,43 +14,56 @@ struct AnalyticsView: View {
     var body: some View {
         Group {
             if loading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                FactoryLoadingView(
+                    title: "Loading analytics",
+                    message: "Fetching factory throughput, manifest pressure, and exception queue."
+                )
             } else if let error {
-                ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text(error)
-                } actions: {
-                    Button("Retry") { load() }
-                }
+                FactoryErrorView(message: error, retry: load)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
-                        Text("Factory throughput, manifest pressure, and exception queue.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        FactorySectionHeader(
+                            title: "Analytics overview",
+                            subtitle: "Factory throughput, manifest pressure, and exception queue"
+                        )
 
                         LazyVGrid(
                             columns: [GridItem(.adaptive(minimum: 150), spacing: LabTheme.spacingSM)],
                             spacing: LabTheme.spacingSM
                         ) {
-                            AnalyticsKpiCard(title: "Transfers Total", value: "\(overview.transfersTotal)")
-                            AnalyticsKpiCard(title: "Active Manifests", value: "\(overview.manifestsActive)")
-                            AnalyticsKpiCard(
+                            KpiTile(
+                                title: "Transfers Total",
+                                value: "\(overview.transfersTotal)",
+                                systemImage: "arrow.left.arrow.right",
+                                tint: .accentColor
+                            )
+                            KpiTile(
+                                title: "Active Manifests",
+                                value: "\(overview.manifestsActive)",
+                                systemImage: "list.clipboard",
+                                tint: LabTheme.warning
+                            )
+                            KpiTile(
                                 title: "Exception Queue",
                                 value: "\(overview.exceptionQueue)",
-                                alert: overview.exceptionQueue > 0
+                                systemImage: "exclamationmark.triangle",
+                                tint: LabTheme.destructive,
+                                chip: overview.exceptionQueue > 0 ? ("ALERT", LabTheme.destructive) : nil
                             )
-                            AnalyticsKpiCard(
+                            KpiTile(
                                 title: "Avg Lead Time (min)",
-                                value: String(format: "%.1f", overview.avgLeadTimeMins)
+                                value: String(format: "%.1f", overview.avgLeadTimeMins),
+                                systemImage: "clock",
+                                tint: LabTheme.secondaryLabel
                             )
                         }
 
                         if !overview.dailyActivity.isEmpty {
-                            Text("7-day transfer activity")
-                                .font(.headline)
+                            FactorySectionHeader(
+                                title: "7-day transfer activity",
+                                subtitle: "Daily transfer volume"
+                            )
                             ForEach(overview.dailyActivity, id: \.date) { day in
                                 HStack {
                                     Text(day.date)
@@ -62,6 +75,7 @@ struct AnalyticsView: View {
                             }
                         }
                     }
+                    .labReadableWidth()
                     .padding()
                 }
             }
@@ -70,7 +84,8 @@ struct AnalyticsView: View {
         .navigationTitle("Analytics Overview")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                Button("Refresh", systemImage: "arrow.clockwise", action: load)
+                    .labelStyle(.iconOnly)
             }
         }
         .task { load() }
@@ -87,31 +102,5 @@ struct AnalyticsView: View {
             }
             loading = false
         }
-    }
-}
-
-private struct AnalyticsKpiCard: View {
-    let title: String
-    let value: String
-    var alert: Bool = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-            HStack {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if alert {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(LabTheme.destructive)
-                }
-            }
-            Text(value)
-                .font(.title2.bold().monospacedDigit())
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .labCard()
     }
 }

@@ -47,6 +47,8 @@ import com.pegasusx.driver.data.model.LoginRequest
 import com.pegasusx.driver.data.remote.DriverApi
 import com.google.firebase.messaging.FirebaseMessaging
 import com.pegasusx.driver.data.remote.FirebaseAuthHelper
+import com.pegasusx.driver.ui.components.DriverStateKind
+import com.pegasusx.driver.ui.components.DriverStatePane
 import kotlinx.coroutines.tasks.await
 import com.pegasusx.driver.data.remote.TokenHolder
 import kotlinx.coroutines.launch
@@ -205,12 +207,12 @@ fun LoginScreen(
 
                 // Error
                 error?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                    DriverStatePane(
+                        kind = DriverStateKind.AuthFailure,
+                        headline = "Login failed",
+                        body = it,
+                        compact = true,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
 

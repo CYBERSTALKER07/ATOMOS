@@ -43,8 +43,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.pegasusx.driver.ui.components.DriverLoadingStatePanel
-import com.pegasusx.driver.ui.components.DriverStatePanel
+import com.pegasusx.driver.ui.components.DriverLoadingState
+import com.pegasusx.driver.ui.components.DriverStateKind
+import com.pegasusx.driver.ui.components.DriverStatePane
 import java.time.Duration
 import java.time.Instant
 
@@ -88,9 +89,10 @@ fun DriverNotificationInboxScreen(
                         .padding(24.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    DriverLoadingStatePanel(
+                    DriverLoadingState(
                         title = "Loading notifications",
-                        message = "Checking route, payment, and dispatch updates.",
+                        body = "Checking route, payment, and dispatch updates.",
+                        shimmerLines = true,
                     )
                 }
             }
@@ -101,10 +103,10 @@ fun DriverNotificationInboxScreen(
                         .padding(24.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    DriverStatePanel(
-                        icon = Icons.Outlined.ErrorOutline,
-                        title = "Couldn't load notifications",
-                        message = state.error ?: "Unable to load notifications. Check your connection and try again.",
+                    DriverStatePane(
+                        kind = DriverStateKind.Error,
+                        headline = "Couldn't load notifications",
+                        body = state.error ?: "Unable to load notifications. Check your connection and try again.",
                         actionLabel = "Retry",
                         onAction = viewModel::reload,
                     )
@@ -117,10 +119,10 @@ fun DriverNotificationInboxScreen(
                         .padding(24.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    DriverStatePanel(
-                        icon = Icons.Outlined.Notifications,
-                        title = "No notifications yet",
-                        message = "Dispatch, payment, and route updates will appear here.",
+                    DriverStatePane(
+                        kind = DriverStateKind.Notifications,
+                        headline = "No notifications yet",
+                        body = "Dispatch, payment, and route updates will appear here.",
                     )
                 }
             }

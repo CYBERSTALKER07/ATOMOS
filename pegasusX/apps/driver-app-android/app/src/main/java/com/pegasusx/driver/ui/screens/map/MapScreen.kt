@@ -73,6 +73,9 @@ import com.pegasusx.driver.data.telemetry.formatNavigationDistance
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.OrderState
 import com.pegasusx.driver.ui.screens.manifest.ManifestViewModel
+import com.pegasusx.driver.ui.components.DriverGpsBanner
+import com.pegasusx.driver.ui.components.DriverStateKind
+import com.pegasusx.driver.ui.components.DriverStatePane
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
@@ -272,6 +275,17 @@ fun MapScreen(
             .fillMaxSize()
             .background(lab.bg)
     ) {
+        if (!hasLocationPermission) {
+            DriverGpsBanner(
+                message = "Location access is required for live navigation and telemetry.",
+                actionLabel = "Enable",
+                onAction = { permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            )
+        }
+
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
@@ -546,14 +560,16 @@ fun MapScreen(
         // Empty state
         if (activeOrders.isEmpty() && !uiState.isLoading) {
             Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "No active deliveries",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = lab.fgTertiary
+                DriverStatePane(
+                    kind = DriverStateKind.Route,
+                    headline = "No active deliveries",
+                    body = "Assigned stops with coordinates will appear on the map when your route is active.",
+                    compact = true,
                 )
             }
         }

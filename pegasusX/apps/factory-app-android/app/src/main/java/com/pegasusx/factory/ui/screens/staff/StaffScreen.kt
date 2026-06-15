@@ -1,22 +1,21 @@
 package com.pegasusx.factory.ui.screens.staff
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.pegasusx.factory.data.model.StaffMember
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasusx.factory.ui.components.FactoryLoadingState
+import com.pegasusx.factory.ui.components.FactoryMetricTile
+import com.pegasusx.factory.ui.components.FactoryOpsListCard
+import com.pegasusx.factory.ui.components.FactorySectionTitle
 import com.pegasusx.factory.ui.components.FactoryStateKind
 import com.pegasusx.factory.ui.components.FactoryStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
@@ -66,10 +65,21 @@ fun StaffScreen(
         load()
     }
 
+    val onShift = staff.count { it.status.equals("ON_SHIFT", ignoreCase = true) || it.status.equals("ACTIVE", ignoreCase = true) }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Staff") },
+                title = {
+                    Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                        Text("Staff")
+                        Text(
+                            text = "Operator roster and shift status",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 },
@@ -107,46 +117,62 @@ fun StaffScreen(
             )
             else -> LazyColumn(
                 contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
-                items(staff, key = { it.id }) { member ->
-                    ElevatedCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onStaffClick(member.id) },
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(PegasusSpacing.lg),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(32.dp),
-                            )
-                            Spacer(Modifier.width(PegasusSpacing.lg))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(member.name, style = MaterialTheme.typography.titleSmall)
-                                Text(
-                                    text = member.phone,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    text = member.role,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            AssistChip(
-                                onClick = {},
-                                label = { Text(member.status, style = MaterialTheme.typography.labelSmall) },
-                            )
-                        }
-                    }
+                item {
+                    StaffSummaryCard(
+                        total = staff.size,
+                        onShift = onShift,
+                    )
                 }
+                item {
+                    FactorySectionTitle(title = "Operator roster")
+                }
+                items(staff, key = { it.id }) { member ->
+                    FactoryOpsListCard(
+                        headline = member.name,
+                        supporting = "${member.role} · ${member.phone}",
+                        status = member.status,
+                        onClick = { onStaffClick(member.id) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StaffSummaryCard(
+    total: Int,
+    onShift: Int,
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+        ) {
+            Text(
+                text = "Staffing snapshot",
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                text = "Operators currently registered and active on the factory floor.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+            ) {
+                FactoryMetricTile("Total", total.toString(), Modifier.weight(1f))
+                FactoryMetricTile("On shift", onShift.toString(), Modifier.weight(1f))
+                FactoryMetricTile("Off shift", (total - onShift).toString(), Modifier.weight(1f))
             }
         }
     }
