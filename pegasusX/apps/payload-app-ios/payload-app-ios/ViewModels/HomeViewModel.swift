@@ -623,10 +623,11 @@ final class HomeViewModel {
     }
 
     private func recoverInFlightMutations() {
-        let hadInFlight = startingLoading || sealingManifest || injectingOrder
+        let hadInFlight = startingLoading || sealingManifest || injectingOrder || sealingOrderId != nil
         startingLoading = false
         sealingManifest = false
         injectingOrder = false
+        sealingOrderId = nil
         if hadInFlight {
             syncCompleteMessage = "Connection restored — loading workflow refreshed from server."
         }

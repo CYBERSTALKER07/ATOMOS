@@ -20,6 +20,7 @@ type Deps struct {
 	OrderService interface {
 		HandleShopClosedResponse(http.ResponseWriter, *http.Request)
 		HandleRetailerCancel(http.ResponseWriter, *http.Request)
+		HandleRetailerRequestCancel(http.ResponseWriter, *http.Request)
 	}
 	FirebaseAuthEnabled bool
 	FirebaseVerifier    auth.FirebaseVerifier
@@ -57,7 +58,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/retailers/{retailerID}/orders", d.Service.HandleOrders)
 		rr.Get("/v1/orders", d.Service.HandleOrdersAlias)
 
-		rr.Post("/v1/orders/request-cancel", d.Service.HandleRequestCancel)
+		if d.OrderService != nil {
+			rr.Post("/v1/orders/request-cancel", d.OrderService.HandleRetailerRequestCancel)
+		} else {
+			rr.Post("/v1/orders/request-cancel", d.Service.HandleRequestCancel)
+		}
 		if d.OrderService != nil {
 			rr.Post("/v1/order/cancel", d.OrderService.HandleRetailerCancel)
 		} else {

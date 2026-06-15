@@ -50,6 +50,7 @@ const (
 	StatusDeliveredOnCredit      Status = "DELIVERED_ON_CREDIT"
 	StatusCompleted              Status = "COMPLETED"
 	StatusCancelled              Status = "CANCELLED"
+	StatusCancelRequested        Status = "CANCEL_REQUESTED"
 	StatusReconciliationRequired Status = "RECONCILIATION_REQUIRED"
 	StatusDelayed                Status = "DELAYED"
 
@@ -2644,13 +2645,13 @@ func validateStatusTransition(current Status, next Status) error {
 	case StatusPending:
 		allowed = next == StatusLoaded || next == StatusCancelled || next == StatusDelayed
 	case StatusLoaded:
-		allowed = next == StatusInTransit || next == StatusCancelled || next == StatusDelayed || next == StatusPending
+		allowed = next == StatusInTransit || next == StatusCancelled || next == StatusCancelRequested || next == StatusDelayed || next == StatusPending
 	case StatusDelayed:
 		allowed = next == StatusPending
 	case StatusInTransit:
-		allowed = next == StatusArrived || next == StatusCancelled || next == StatusPending
+		allowed = next == StatusArrived || next == StatusCancelled || next == StatusCancelRequested || next == StatusPending
 	case StatusArrived:
-		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusCompleted || next == StatusDeliveredOnCredit
+		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusCompleted || next == StatusDeliveredOnCredit || next == StatusCancelRequested
 	case StatusArrivedShopClosed:
 		allowed = next == StatusAwaitingPayment || next == StatusDeliveredOnCredit
 	case StatusDeliveredOnCredit:

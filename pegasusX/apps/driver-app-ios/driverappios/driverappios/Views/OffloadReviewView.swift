@@ -22,6 +22,7 @@ struct OffloadReviewView: View {
     @State private var rejectionReasons: [String: RejectionReason] = [:]
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+    @State private var driverSocketState = DriverSocketState.shared
 
     private let fleetService: FleetServiceProtocol = FleetServiceLive.shared
 
@@ -275,6 +276,16 @@ struct OffloadReviewView: View {
             .padding(.bottom, LabTheme.s24)
         }
         .background(LabTheme.bg)
+        .onChange(of: driverSocketState.reconnectEpoch) { _, _ in
+            Task {
+                let hadInFlight = isSubmitting
+                await DriverReconnectRecovery.recoverInFlight(wasInFlight: hadInFlight)
+                if hadInFlight {
+                    isSubmitting = false
+                    errorMessage = DriverReconnectRecovery.hint
+                }
+            }
+        }
     }
 
     private func confirmOffload() {

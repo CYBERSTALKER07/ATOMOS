@@ -128,6 +128,13 @@ struct TransferDetailView: View {
                     if !transitioning {
                         Task { await load() }
                     }
+                },
+                onReconnect: {
+                    if transitioning {
+                        transitioning = false
+                        error = "Connection restored — transfer state refreshed from server."
+                    }
+                    Task { await load() }
                 }
             )
         }

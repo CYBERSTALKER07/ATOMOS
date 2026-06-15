@@ -54,6 +54,7 @@ interface FactoryApi {
     suspend fun transitionTransfer(
         @Path("id") id: String,
         @Body body: TransitionRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<Transfer>
 
     // ── Loading Bay (transfers filtered by loading states) ──

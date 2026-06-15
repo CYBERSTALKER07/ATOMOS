@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/auth';
 import { factoryTransferCreateKey } from '@pegasusx/api-client';
 import { factoryOperatorId } from '@/lib/factory-scope';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
@@ -66,6 +67,14 @@ export default function CreateTransferPage() {
   useEffect(() => {
     void loadFleet();
   }, [loadFleet]);
+
+  useFactorySessionReconcile(() => {
+    if (submitting) {
+      setSubmitting(false);
+      toast('Connection restored — verify transfer was created before retrying.', 'info');
+    }
+    void loadFleet();
+  });
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();

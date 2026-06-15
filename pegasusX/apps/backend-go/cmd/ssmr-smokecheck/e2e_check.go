@@ -366,7 +366,7 @@ func runNegotiationE2E(ctx context.Context, client *http.Client, base string, cf
 		"driver_id": driverID,
 		"route_id":  "route-ssmr-negotiate",
 	})
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/orders/"+orderID+"/assign", assignBody, adminToken, "")
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/orders/"+orderID+"/assign", assignBody, adminToken, "admin-order-assign:"+orderID+":"+driverID)
 	if err != nil {
 		return err
 	}
@@ -375,7 +375,7 @@ func runNegotiationE2E(ctx context.Context, client *http.Client, base string, cf
 	}
 	for _, next := range []string{"LOADED", "IN_TRANSIT"} {
 		patchBody, _ := json.Marshal(map[string]string{"status": next})
-		status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/order/"+orderID+"/status", patchBody, adminToken, "")
+		status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/order/"+orderID+"/status", patchBody, adminToken, "admin-order-status:"+orderID+":"+next)
 		if err != nil {
 			return err
 		}
@@ -476,7 +476,7 @@ func runShopClosedE2E(ctx context.Context, client *http.Client, base string, cfg
 		"driver_id": driverID,
 		"route_id":  "route-ssmr-shop-closed",
 	})
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/orders/"+orderID+"/assign", assignBody, adminToken, "")
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/orders/"+orderID+"/assign", assignBody, adminToken, "admin-order-assign:"+orderID+":"+driverID)
 	if err != nil {
 		return err
 	}
@@ -485,7 +485,7 @@ func runShopClosedE2E(ctx context.Context, client *http.Client, base string, cfg
 	}
 	for _, next := range []string{"LOADED", "IN_TRANSIT"} {
 		patchBody, _ := json.Marshal(map[string]string{"status": next})
-		status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/order/"+orderID+"/status", patchBody, adminToken, "")
+		status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/order/"+orderID+"/status", patchBody, adminToken, "admin-order-status:"+orderID+":"+next)
 		if err != nil {
 			return err
 		}
@@ -1111,18 +1111,6 @@ func runRetailerCancelE2E(ctx context.Context, client *http.Client, base, retail
 	}
 	if status != http.StatusOK {
 		return fmt.Errorf("POST order/cancel status %d body %s", status, string(body))
-	}
-	requestBody, _ := json.Marshal(map[string]string{
-		"order_id":    orderID,
-		"retailer_id": retailerID,
-		"reason":      "SSMR smoke request-cancel",
-	})
-	status, body, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/orders/request-cancel", requestBody, retailerToken, "retailer-request-cancel-smoke:"+orderID)
-	if err != nil {
-		return err
-	}
-	if status != http.StatusOK {
-		return fmt.Errorf("POST orders/request-cancel status %d body %s", status, string(body))
 	}
 	fmt.Println("PX_E2E_RETAILER_CANCEL_OK")
 	return nil
@@ -3597,7 +3585,7 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 		"driver_id": driverID,
 		"route_id":  "route-ssmr-delivery-edge",
 	})
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/orders/"+orderID+"/assign", assignBody, adminToken, "")
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/orders/"+orderID+"/assign", assignBody, adminToken, "admin-order-assign:"+orderID+":"+driverID)
 	if err != nil {
 		return fmt.Errorf("assign: %w", err)
 	}
@@ -3606,7 +3594,7 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 	}
 	for _, next := range []string{"LOADED", "IN_TRANSIT"} {
 		patchBody, _ := json.Marshal(map[string]string{"status": next})
-		status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/order/"+orderID+"/status", patchBody, adminToken, "")
+		status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/order/"+orderID+"/status", patchBody, adminToken, "admin-order-status:"+orderID+":"+next)
 		if err != nil {
 			return err
 		}

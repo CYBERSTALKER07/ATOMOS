@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/auth';
+import { factoryTransferTransitionKey } from '@pegasusx/api-client';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
@@ -81,6 +83,14 @@ export default function TransferDetailPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useFactorySessionReconcile(() => {
+    if (progressing) {
+      setProgressing(false);
+      toast('Connection restored — transfer state refreshed from server.', 'info');
+    }
+    void load();
+  });
+
   async function handleProgress() {
     if (!transfer) return;
     const next = NEXT_STATE[transfer.state];
@@ -90,6 +100,10 @@ export default function TransferDetailPage() {
     try {
       const res = await apiFetch(`/v1/factory/transfers/${id}/transition`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': factoryTransferTransitionKey(id, next.targetState),
+        },
         body: JSON.stringify({ target_state: next.targetState }),
       });
       if (res.ok) {

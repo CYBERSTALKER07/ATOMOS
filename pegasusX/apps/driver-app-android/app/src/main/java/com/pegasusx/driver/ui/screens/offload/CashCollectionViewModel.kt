@@ -11,6 +11,9 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import com.pegasusx.driver.data.model.CollectCashRequest
 import com.pegasusx.driver.data.model.SplitPaymentPayload
 import com.pegasusx.driver.data.remote.DriverApi
+import com.pegasusx.driver.data.remote.DriverWebSocket
+import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
+import com.pegasusx.driver.data.remote.reconcileDriverSession
 import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,7 +41,8 @@ data class CashCollectionUiState(
 class CashCollectionViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val api: DriverApi,
-    private val app: Application
+    private val app: Application,
+    private val driverWebSocket: DriverWebSocket,
 ) : ViewModel() {
 
     private val orderId: String = savedStateHandle["orderId"] ?: ""
@@ -48,6 +52,25 @@ class CashCollectionViewModel @Inject constructor(
     val state: StateFlow<CashCollectionUiState> = _state.asStateFlow()
 
     private val fusedClient = LocationServices.getFusedLocationProviderClient(app)
+
+    init {
+        viewModelScope.launch {
+            driverWebSocket.onReconnect.collect {
+                recoverInFlightMutation()
+            }
+        }
+    }
+
+    private suspend fun recoverInFlightMutation() {
+        val hadInFlight = _state.value.isCompleting
+        runCatching { reconcileDriverSession(api) }
+        _state.update {
+            it.copy(
+                isCompleting = false,
+                error = if (hadInFlight) DRIVER_RECONNECT_RECOVERY_HINT else it.error,
+            )
+        }
+    }
 
     fun acknowledgeCashReceived() {
         _state.update { it.copy(cashReceived = true, showConfirmDialog = true, error = null) }

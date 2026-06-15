@@ -98,6 +98,16 @@ struct PaymentWaitingView: View {
         .task(id: driverSocketState.eventSequence) {
             handleDriverSocketEvent(driverSocketState.lastEvent)
         }
+        .onChange(of: driverSocketState.reconnectEpoch) { _, _ in
+            Task {
+                let hadInFlight = isCompleting
+                await DriverReconnectRecovery.recoverInFlight(wasInFlight: hadInFlight)
+                if hadInFlight {
+                    isCompleting = false
+                    errorMessage = DriverReconnectRecovery.hint
+                }
+            }
+        }
     }
 
     private func handleDriverSocketEvent(_ event: DriverSocketState.DriverEvent?) {

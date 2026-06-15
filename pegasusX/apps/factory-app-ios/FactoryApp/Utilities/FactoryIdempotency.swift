@@ -66,6 +66,10 @@ enum FactoryIdempotency {
         return "factory-transfer-create:\(factoryId()):\(stableHash(fingerprint))"
     }
 
+    static func transferTransition(transferId: String, targetState: String) -> String {
+        "factory-transfer-transition:\(transferId):\(targetState.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())"
+    }
+
     static func forLifecycleAction(_ action: String, manifestId: String) -> String {
         switch action {
         case ManifestLifecycleAction.startLoading.rawValue:

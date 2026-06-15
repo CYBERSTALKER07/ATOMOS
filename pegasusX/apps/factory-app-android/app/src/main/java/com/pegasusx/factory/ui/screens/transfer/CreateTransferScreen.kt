@@ -38,10 +38,12 @@ import com.pegasusx.factory.data.model.CreateTransferRequest
 import com.pegasusx.factory.data.model.FleetDriverRow
 import com.pegasusx.factory.data.model.FleetVehicleRow
 import com.pegasusx.factory.data.remote.FactoryApi
+import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import com.pegasusx.factory.ui.components.FactoryLoadingState
 import com.pegasusx.factory.ui.components.FactoryStateKind
 import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -124,6 +126,22 @@ fun CreateTransferScreen(
             }
         }
     }
+
+    FactoryRealtimeReloadEffect(
+        api = api,
+        eventTypes = setOf(FactoryRealtimeEventType.TransferUpdate),
+        onEvent = { /* create form has no list to refresh */ },
+        onReconnect = {
+            if (submitting) {
+                submitting = false
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        "Connection restored — verify transfer was created before retrying.",
+                    )
+                }
+            }
+        },
+    )
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },

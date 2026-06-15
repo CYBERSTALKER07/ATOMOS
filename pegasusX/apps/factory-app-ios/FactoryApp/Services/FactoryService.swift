@@ -49,7 +49,11 @@ enum FactoryService {
     }
 
     static func transitionTransfer(id: String, target: String) async throws -> Transfer {
-        try await api.post("v1/factory/transfers/\(id)/transition", body: TransitionRequest(targetState: target))
+        try await api.post(
+            "v1/factory/transfers/\(id)/transition",
+            body: TransitionRequest(targetState: target),
+            idempotencyKey: FactoryIdempotency.transferTransition(transferId: id, targetState: target)
+        )
     }
 
     static func createTransfer(_ req: FactoryCreateTransferRequest) async throws -> FactoryCreateTransferResponse {

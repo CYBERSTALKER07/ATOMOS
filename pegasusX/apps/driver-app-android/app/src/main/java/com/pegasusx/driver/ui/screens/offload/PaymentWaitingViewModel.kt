@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.pegasusx.driver.data.model.CompleteOrderRequest
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
+import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
+import com.pegasusx.driver.data.remote.reconcileDriverSession
 import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +41,22 @@ class PaymentWaitingViewModel @Inject constructor(
 
     init {
         connectAndListen()
+        viewModelScope.launch {
+            driverWS.onReconnect.collect {
+                recoverInFlightMutation()
+            }
+        }
+    }
+
+    private suspend fun recoverInFlightMutation() {
+        val hadInFlight = _state.value.isCompleting
+        runCatching { reconcileDriverSession(api) }
+        _state.update {
+            it.copy(
+                isCompleting = false,
+                error = if (hadInFlight) DRIVER_RECONNECT_RECOVERY_HINT else it.error,
+            )
+        }
     }
 
     private fun connectAndListen() {

@@ -163,11 +163,28 @@ func (s *Service) HandleTransferTransition(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "transfer_id_required"})
 		return
 	}
+
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req struct {
 		TargetState string `json:"target_state"`
 	}
-	if r.Body != nil {
-		_ = json.NewDecoder(r.Body).Decode(&req)
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
 	}
 	target := strings.ToUpper(strings.TrimSpace(req.TargetState))
 	if target == "" {
@@ -175,7 +192,7 @@ func (s *Service) HandleTransferTransition(w http.ResponseWriter, r *http.Reques
 	}
 
 	var row TransferRow
-	err := s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -219,7 +236,8 @@ func (s *Service) HandleTransferTransition(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	s.invalidateFactoryKeys(r.Context(), factoryTransferListKey(s.supplierID))
-	writeJSON(w, http.StatusOK, s.iosTransferPayload(row))
+	idemCommitted = true
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, s.iosTransferPayload(row))
 }
 
 // HandleStaffDetail serves GET /v1/factory/staff/{staffID}.

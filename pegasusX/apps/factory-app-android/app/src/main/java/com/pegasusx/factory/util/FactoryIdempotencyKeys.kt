@@ -46,6 +46,9 @@ object FactoryIdempotencyKeys {
         return "factory-transfer-create:${factoryId()}:${stableHash(fingerprint)}"
     }
 
+    fun transferTransition(transferId: String, targetState: String): String =
+        "factory-transfer-transition:$transferId:${targetState.trim().uppercase()}"
+
     fun forLifecyclePath(manifestId: String, path: String): String = when (path) {
         "start-loading" -> startLoading(manifestId)
         "seal" -> seal(manifestId)

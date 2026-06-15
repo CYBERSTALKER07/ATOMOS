@@ -270,11 +270,13 @@ class HomeViewModel @Inject constructor(
 
     private fun recoverInFlightMutations() {
         _state.update {
+            val hadInFlight = it.startingLoading || it.sealingManifest || it.injectingOrder || it.sealingOrderId != null
             it.copy(
                 startingLoading = false,
                 sealingManifest = false,
+                sealingOrderId = null,
                 injectingOrder = false,
-                syncCompleteMessage = if (it.startingLoading || it.sealingManifest || it.injectingOrder) {
+                syncCompleteMessage = if (hadInFlight) {
                     "Connection restored — loading workflow refreshed from server."
                 } else {
                     it.syncCompleteMessage

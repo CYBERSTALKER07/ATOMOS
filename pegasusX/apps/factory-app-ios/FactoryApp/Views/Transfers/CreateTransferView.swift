@@ -4,6 +4,7 @@ struct CreateTransferView: View {
     @Environment(\.dismiss) private var dismiss
     let onCreated: (String) -> Void
 
+    @State private var realtimeClient = FactoryRealtimeClient()
     @State private var loadingFleet = true
     @State private var submitting = false
     @State private var error: String?
@@ -69,6 +70,21 @@ struct CreateTransferView: View {
                 }
             }
             .task { await loadFleet() }
+            .onAppear {
+                realtimeClient.connect(
+                    onStateChange: { _ in },
+                    onEvent: { _ in },
+                    onReconnect: {
+                        if submitting {
+                            submitting = false
+                            error = "Connection restored — verify transfer was created before retrying."
+                        }
+                    }
+                )
+            }
+            .onDisappear {
+                realtimeClient.disconnect()
+            }
         }
     }
 

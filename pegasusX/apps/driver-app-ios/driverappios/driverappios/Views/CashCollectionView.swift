@@ -18,6 +18,7 @@ struct CashCollectionView: View {
 
     @State private var isCompleting = false
     @State private var errorMessage: String?
+    @State private var driverSocketState = DriverSocketState.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -122,6 +123,16 @@ struct CashCollectionView: View {
             .padding(.bottom, LabTheme.s24)
         }
         .background(LabTheme.bg)
+        .onChange(of: driverSocketState.reconnectEpoch) { _, _ in
+            Task {
+                let hadInFlight = isCompleting
+                await DriverReconnectRecovery.recoverInFlight(wasInFlight: hadInFlight)
+                if hadInFlight {
+                    isCompleting = false
+                    errorMessage = DriverReconnectRecovery.hint
+                }
+            }
+        }
     }
 
     private func completeWithCash() {

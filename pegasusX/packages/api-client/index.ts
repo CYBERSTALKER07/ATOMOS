@@ -170,6 +170,7 @@ export {
   retailerOrderCreateKey,
   retailerConfirmCashKey,
   retailerCancelKey,
+  retailerRequestCancelKey,
   retailerConfirmPreorderKey,
   retailerConfirmAIKey,
   adminOrderAssignKey,
@@ -186,6 +187,7 @@ export {
   factoryManifestCancelTransferKey,
   factoryManifestCancelKey,
   factoryTransferCreateKey,
+  factoryTransferTransitionKey,
 } from "./idempotency";
 export {
   SESSION_RECONCILE_ENDPOINTS,

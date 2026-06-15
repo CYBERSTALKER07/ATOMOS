@@ -235,6 +235,10 @@ export function retailerCancelKey(orderId: string): string {
   return `retailer-cancel:${orderId}`;
 }
 
+export function retailerRequestCancelKey(orderId: string): string {
+  return `retailer-request-cancel:${orderId}`;
+}
+
 export function retailerConfirmPreorderKey(orderId: string): string {
   return `retailer-confirm-preorder:${orderId}`;
 }
@@ -317,4 +321,8 @@ export function factoryTransferCreateKey(
   vehicleId = "",
 ): string {
   return `factory-transfer-create:${factoryId}:${stableHash(`${orderId}:${totalVu}:${driverId}:${vehicleId}`)}`;
+}
+
+export function factoryTransferTransitionKey(transferId: string, targetState: string): string {
+  return `factory-transfer-transition:${transferId}:${targetState.trim().toUpperCase()}`;
 }

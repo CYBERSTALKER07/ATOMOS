@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.factory.data.model.Transfer
 import com.pegasusx.factory.data.model.TransitionRequest
 import com.pegasusx.factory.data.remote.FactoryApi
+import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasusx.factory.ui.components.FactoryLoadingState
 import com.pegasusx.factory.ui.components.FactoryStateKind
@@ -58,7 +59,11 @@ fun TransferDetailScreen(
         transitioning = true
         scope.launch {
             try {
-                val resp = api.transitionTransfer(transferId, TransitionRequest(targetState = target))
+                val resp = api.transitionTransfer(
+                    transferId,
+                    TransitionRequest(targetState = target),
+                    FactoryIdempotencyKeys.transferTransition(transferId, target),
+                )
                 if (resp.isSuccessful && resp.body() != null) {
                     transfer = resp.body()!!
                     snackbarHostState.showSnackbar("Transitioned to $target")
@@ -76,15 +81,26 @@ fun TransferDetailScreen(
     LaunchedEffect(transferId) { load() }
 
     FactoryRealtimeReloadEffect(
+        api = api,
         eventTypes = setOf(
             FactoryRealtimeEventType.TransferUpdate,
             FactoryRealtimeEventType.ManifestUpdate,
         ),
-    ) {
-        if (!transitioning) {
+        onEvent = {
+            if (!transitioning) {
+                load()
+            }
+        },
+        onReconnect = {
+            if (transitioning) {
+                transitioning = false
+                scope.launch {
+                    snackbarHostState.showSnackbar("Connection restored — transfer state refreshed from server.")
+                }
+            }
             load()
-        }
-    }
+        },
+    )
 
     Scaffold(
         topBar = {
