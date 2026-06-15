@@ -28,6 +28,7 @@ import com.pegasus.payload.data.model.SealOrderResponse
 import com.pegasus.payload.data.model.StatusResponse
 import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.data.remote.PayloadApi
+import com.pegasus.payload.util.PayloadIdempotencyKeys
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -51,7 +52,7 @@ class PayloadRepository @Inject constructor(
     private val okHttp: OkHttpClient,
 ) {
     private fun deterministicIdempotencyKey(action: String, entityId: String): String =
-        "payload-$action-$entityId"
+        PayloadIdempotencyKeys.key(action, entityId)
 
     /** Parallel refetch of authoritative payload snapshots after WS reconnect. */
     suspend fun reconcileSession(baseUrl: String) {
@@ -144,7 +145,7 @@ class PayloadRepository @Inject constructor(
     suspend fun recommendReassign(orderId: String): RecommendReassignResponse =
         api.recommendReassign(
             req = RecommendReassignRequest(orderId = orderId),
-            idempotencyKey = deterministicIdempotencyKey("recommend-reassign", orderId),
+            idempotencyKey = PayloadIdempotencyKeys.recommendReassign(orderId),
         )
 
     /**
@@ -154,13 +155,13 @@ class PayloadRepository @Inject constructor(
     suspend fun fleetReassign(orderIds: List<String>, newRouteId: String): FleetReassignResponse =
         api.fleetReassign(
             req = FleetReassignRequest(orderIds = orderIds, newRouteId = newRouteId),
-            idempotencyKey = deterministicIdempotencyKey("fleet-reassign", orderIds.sorted().joinToString(",")),
+            idempotencyKey = PayloadIdempotencyKeys.fleetReassign(orderIds),
         )
 
     suspend fun applyReassignOrder(orderId: String, toDriverId: String, reason: String = "payload-redispatch"): StatusResponse {
         return api.reassignOrder(
             req = ReassignOrderRequest(orderId = orderId, toDriverId = toDriverId, reason = reason),
-            idempotencyKey = deterministicIdempotencyKey("reassign-order", "$orderId-$toDriverId"),
+            idempotencyKey = PayloadIdempotencyKeys.applyReassign(orderId, toDriverId),
         )
     }
 

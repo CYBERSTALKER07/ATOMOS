@@ -12,11 +12,19 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	var req struct {
 		OrderIDs   []string `json:"order_ids"`
 		NewRouteID string   `json:"new_route_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -30,7 +38,7 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 	conflicts := make([]map[string]string, 0)
 	now := s.now().Format("2006-01-02T15:04:05Z07:00")
 
-	err := s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -67,7 +75,7 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"conflicts":    conflicts,
 		"total":        len(req.OrderIDs),
 		"reassigned":   reassigned,

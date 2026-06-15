@@ -1141,8 +1141,16 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	var req applyReassignRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -1156,7 +1164,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var reassignment Reassignment
-	err := s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1400,7 +1408,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "reassign_target_unavailable"})
 			return
 		case "order_already_assigned":
-			writeJSON(w, http.StatusOK, map[string]any{"status": "already_assigned", "order_id": req.OrderID})
+			s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{"status": "already_assigned", "order_id": req.OrderID})
 			return
 		default:
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reassign_failed"})
@@ -1437,7 +1445,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"status":         "order_reassigned",
 		"order_id":       reassignment.OrderID,
 		"from_route_id":  reassignment.FromRouteID,

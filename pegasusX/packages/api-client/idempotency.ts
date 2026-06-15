@@ -98,6 +98,19 @@ export function payloadSealCompletedKey(manifestIds: string[]): string {
   return `payload-seal-completed-${sorted.join(",")}`;
 }
 
+export function payloadRecommendReassignKey(orderId: string): string {
+  return `payload-recommend-reassign-${orderId}`;
+}
+
+export function payloadFleetReassignKey(orderIds: string[]): string {
+  const sorted = [...orderIds].map((id) => id.trim()).filter(Boolean).sort();
+  return `payload-fleet-reassign-${sorted.join(",")}`;
+}
+
+export function payloadApplyReassignKey(orderId: string, toDriverId: string): string {
+  return `payload-reassign-order-${orderId}-${toDriverId}`;
+}
+
 export function payloadSupplierSealManifestKey(manifestId: string): string {
   return `payload-supplier-seal-manifest-${manifestId}`;
 }

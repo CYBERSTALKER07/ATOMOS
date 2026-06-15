@@ -88,12 +88,20 @@ final class APIClient: @unchecked Sendable {
     }
     func recommendReassign(orderId: String) async throws -> RecommendReassignResponse {
         let payload = ["order_id": orderId]
-        return try await post("v1/payloader/recommend-reassign", body: payload)
+        return try await post(
+            "v1/payloader/recommend-reassign",
+            body: payload,
+            headers: ["Idempotency-Key": PayloadIdempotency.recommendReassign(orderId: orderId)]
+        )
     }
 
     func reassignOrder(orderId: String, toDriverId: String, reason: String = "payload-redispatch") async throws -> StatusResponse {
         let payload = ["order_id": orderId, "to_driver_id": toDriverId, "reason": reason]
-        return try await post("v1/payloader/reassign-order", body: payload)
+        return try await post(
+            "v1/payloader/reassign-order",
+            body: payload,
+            headers: ["Idempotency-Key": PayloadIdempotency.applyReassign(orderId: orderId, toDriverId: toDriverId)]
+        )
     }
 
     // MARK: - Manifest lifecycle
@@ -201,7 +209,7 @@ final class APIClient: @unchecked Sendable {
         try await post(
             "v1/fleet/reassign",
             body: FleetReassignRequest(orderIds: orderIds, newRouteId: newRouteId),
-            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "fleet-reassign", entityId: orderIds.sorted().joined(separator: ","))]
+            headers: ["Idempotency-Key": PayloadIdempotency.fleetReassign(orderIds: orderIds)]
         )
     }
 
