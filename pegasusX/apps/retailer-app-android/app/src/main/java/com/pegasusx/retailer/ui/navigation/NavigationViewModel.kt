@@ -6,6 +6,8 @@ import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.api.RetailerWSMessage
 import com.pegasusx.retailer.data.api.RetailerWebSocket
 import com.pegasusx.retailer.data.api.ShopClosedAlert
+import com.pegasusx.retailer.data.api.reconcileRetailerSession
+import com.pegasusx.retailer.util.RetailerIdempotencyKeys
 import com.pegasusx.retailer.data.api.toShopClosedAlert
 import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.CardCheckoutRequest
@@ -135,6 +137,9 @@ class NavigationViewModel @Inject constructor(
     }
 
     fun reconcileAfterReconnect() {
+        viewModelScope.launch {
+            reconcileRetailerSession(api)
+        }
         loadActiveOrders()
         loadPendingPayments(reconcile = true)
         PendingOrderSyncScheduler.enqueue(appContext)
@@ -273,7 +278,7 @@ class NavigationViewModel @Inject constructor(
 
     suspend fun confirmCash(orderId: String): Result<Unit> {
         return try {
-            api.confirmCash(ConfirmCashRequest(orderId = orderId), "retailer-confirm-cash:$orderId")
+            api.confirmCash(ConfirmCashRequest(orderId = orderId), RetailerIdempotencyKeys.confirmCash(orderId))
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

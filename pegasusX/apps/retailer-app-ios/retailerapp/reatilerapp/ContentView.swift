@@ -730,6 +730,7 @@ struct ContentView: View {
             case .promotionChanged:
                 break
             case .transportReconnected:
+                await RetailerSessionReconcile.run(api: api)
                 await loadActiveOrders()
                 await loadPendingPayments(reconcile: true)
                 await PendingOrderReplayer.flush(modelContext: modelContext, api: api)

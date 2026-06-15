@@ -52,10 +52,13 @@ enum PendingOrderReplayer {
             guard let payload = try? JSONDecoder().decode(ProcurementOrderRequest.self, from: data) else {
                 return true
             }
+            let key = order.idempotencyKey.isEmpty
+                ? RetailerIdempotency.orderCreate(items: payload.items)
+                : order.idempotencyKey
             let _: ProcurementOrderResponse = try await api.post(
                 path: order.endpoint,
                 body: payload,
-                headers: ["Idempotency-Key": idempotencyKey]
+                headers: ["Idempotency-Key": key]
             )
             return true
         default:

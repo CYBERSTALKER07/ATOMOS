@@ -62,7 +62,10 @@ interface FactoryApi {
 
     // ── Dispatch ──
     @POST("v1/factory/dispatch")
-    suspend fun dispatch(@Body body: DispatchRequest): Response<DispatchResponse>
+    suspend fun dispatch(
+        @Body body: DispatchRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<DispatchResponse>
 
     // ── Supply Requests ──
     @GET("v1/factory/supply-requests")
@@ -122,16 +125,19 @@ interface FactoryApi {
     @POST("v1/factory/manifests/rebalance")
     suspend fun rebalanceManifest(
         @Body body: ManifestRebalanceRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<ManifestRebalanceResponse>
 
     @POST("v1/factory/manifests/cancel-transfer")
     suspend fun cancelManifestTransfer(
         @Body body: ManifestCancelTransferRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<ManifestCancelTransferResponse>
 
     @POST("v1/factory/manifests/cancel")
     suspend fun cancelManifest(
         @Body body: ManifestCancelRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<ManifestCancelResponse>
 
     // ── Fleet ──

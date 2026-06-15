@@ -76,7 +76,8 @@ class CashCollectionViewModel @Inject constructor(
                         cashMinor = cash,
                         cardMinor = card,
                         currency = currency,
-                    )
+                    ),
+                    DriverIdempotencyKeys.splitPayment(orderId, cash, card),
                 )
                 _state.update { it.copy(isCompleting = false, splitPaymentRecorded = true) }
             } catch (e: Exception) {

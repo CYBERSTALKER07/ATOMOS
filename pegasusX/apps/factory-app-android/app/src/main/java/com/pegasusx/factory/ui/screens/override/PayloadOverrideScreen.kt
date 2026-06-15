@@ -66,6 +66,7 @@ import com.pegasusx.factory.ui.components.FactoryStateKind
 import com.pegasusx.factory.ui.components.FactoryStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.delay
@@ -145,12 +146,18 @@ fun PayloadOverrideScreen(
         actingKey = candidate.transfer.transferId
         scope.launch {
             try {
+                val transferId = candidate.transfer.transferId
                 val resp = api.rebalanceManifest(
                     ManifestRebalanceRequest(
                         sourceManifestId = candidate.sourceManifestId,
                         targetManifestId = targetManifestId,
-                        transferIds = listOf(candidate.transfer.transferId),
-                    )
+                        transferIds = listOf(transferId),
+                    ),
+                    FactoryIdempotencyKeys.rebalance(
+                        manifestId = candidate.sourceManifestId,
+                        transferId = transferId,
+                        targetManifestId = targetManifestId,
+                    ),
                 )
                 if (resp.isSuccessful) {
                     snackbarHostState.showSnackbar("Moved ${candidate.transfer.transferId.take(8)}")
@@ -171,11 +178,13 @@ fun PayloadOverrideScreen(
         actingKey = candidate.transfer.transferId
         scope.launch {
             try {
+                val transferId = candidate.transfer.transferId
                 val resp = api.cancelManifestTransfer(
                     ManifestCancelTransferRequest(
                         manifestId = candidate.manifestId,
-                        transferId = candidate.transfer.transferId,
-                    )
+                        transferId = transferId,
+                    ),
+                    FactoryIdempotencyKeys.cancelTransfer(candidate.manifestId, transferId),
                 )
                 if (resp.isSuccessful) {
                     snackbarHostState.showSnackbar("Released ${candidate.transfer.transferId.take(8)}")
@@ -196,7 +205,10 @@ fun PayloadOverrideScreen(
         actingKey = manifest.id
         scope.launch {
             try {
-                val resp = api.cancelManifest(ManifestCancelRequest(manifest.id))
+                val resp = api.cancelManifest(
+                    ManifestCancelRequest(manifest.id),
+                    FactoryIdempotencyKeys.cancelManifest(manifest.id),
+                )
                 if (resp.isSuccessful) {
                     snackbarHostState.showSnackbar("Cancelled manifest ${manifest.id.take(8)}")
                     cancelManifestCandidate = null

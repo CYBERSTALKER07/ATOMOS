@@ -212,14 +212,25 @@ func (s *Service) HandleWarehouseMarkDelayed(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id required"})
 		return
 	}
+	bodyBytes, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, bodyBytes) {
+		return
+	}
 	var body warehouseOrderMutationRequest
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = json.Unmarshal(bodyBytes, &body)
 
 	if err := s.WarehouseMarkDelayed(r.Context(), ops, orderID, body.Reason); err != nil {
 		mapWarehouseOrderMutationError(w, r, orderID, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"order_id": orderID, "status": string(StatusDelayed)})
+	resp := map[string]string{"order_id": orderID, "status": string(StatusDelayed)}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, bodyBytes, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleWarehouseRejectOrder serves POST /v1/warehouse/ops/orders/{id}/reject.
@@ -234,8 +245,16 @@ func (s *Service) HandleWarehouseRejectOrder(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id required"})
 		return
 	}
+	bodyBytes, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, bodyBytes) {
+		return
+	}
 	var body warehouseOrderMutationRequest
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.Reason) == "" {
+	if err := json.Unmarshal(bodyBytes, &body); err != nil || strings.TrimSpace(body.Reason) == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "reason required"})
 		return
 	}
@@ -244,7 +263,10 @@ func (s *Service) HandleWarehouseRejectOrder(w http.ResponseWriter, r *http.Requ
 		mapWarehouseOrderMutationError(w, r, orderID, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"order_id": orderID, "status": "cancelled_by_origin"})
+	resp := map[string]string{"order_id": orderID, "status": "cancelled_by_origin"}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, bodyBytes, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleWarehousePayloadOverflow serves POST /v1/warehouse/ops/orders/{id}/overflow.
@@ -259,14 +281,25 @@ func (s *Service) HandleWarehousePayloadOverflow(w http.ResponseWriter, r *http.
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id required"})
 		return
 	}
+	bodyBytes, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, bodyBytes) {
+		return
+	}
 	var body warehouseOrderMutationRequest
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = json.Unmarshal(bodyBytes, &body)
 
 	if err := s.WarehousePayloadOverflow(r.Context(), ops, orderID, body.Reason); err != nil {
 		mapWarehouseOrderMutationError(w, r, orderID, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"order_id": orderID, "status": string(StatusPending)})
+	resp := map[string]string{"order_id": orderID, "status": string(StatusPending)}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, bodyBytes, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 func mapWarehouseOrderMutationError(w http.ResponseWriter, r *http.Request, orderID string, err error) {

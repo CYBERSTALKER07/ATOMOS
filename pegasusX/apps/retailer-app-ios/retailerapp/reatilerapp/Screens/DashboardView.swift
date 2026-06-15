@@ -472,7 +472,7 @@ struct DashboardView: View {
                     "order_id": orderId,
                     "retailer_id": retailerId,
                 ],
-                headers: ["Idempotency-Key": "retailer-cancel:\(orderId)"]
+                headers: ["Idempotency-Key": RetailerIdempotency.cancel(orderId: orderId)]
             )
             withAnimation(AnimationConstants.fluid) {
                 activeOrders.removeAll { $0.id == orderId }

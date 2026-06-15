@@ -32,6 +32,7 @@ import com.pegasusx.driver.data.remote.TelemetrySocket
 import com.pegasusx.driver.data.telemetry.LocationTrail
 import com.pegasusx.driver.data.remote.TokenHolder
 import com.pegasusx.driver.util.Haversine
+import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -212,7 +213,7 @@ class TelemetryService : Service() {
                         try {
                             api.markArrived(
                                 body = mapOf("order_id" to order.id),
-                                idempotencyKey = "driver-mark-arrived-${order.id}"
+                                idempotencyKey = DriverIdempotencyKeys.markArrived(order.id),
                             )
                             orderDao.updateState(order.id, OrderState.ARRIVED.name, System.currentTimeMillis().toString())
                             Log.d(TAG, "Auto-ARRIVED: ${order.id} (${dist.toInt()}m)")

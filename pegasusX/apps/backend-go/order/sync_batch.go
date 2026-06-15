@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -47,12 +46,14 @@ func (s *Service) HandleSyncBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, 128*1024))
+	bodyBytes, err := readLimitedBody(r, 128*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	defer r.Body.Close()
+	if s.guardIdempotency(w, r, bodyBytes) {
+		return
+	}
 
 	var req SyncBatchRequest
 	if err := json.Unmarshal(bodyBytes, &req); err != nil {
@@ -85,11 +86,14 @@ func (s *Service) HandleSyncBatch(w http.ResponseWriter, r *http.Request) {
 		processed = append(processed, orderID)
 	}
 
-	writeJSON(w, http.StatusOK, SyncBatchResult{
+	result := SyncBatchResult{
 		Status:    "OK",
 		Processed: processed,
 		Skipped:   skipped,
-	})
+	}
+	respBytes, _ := json.Marshal(result)
+	s.saveIdempotency(r.Context(), r, bodyBytes, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 func (s *Service) processBatchDelivery(ctx context.Context, claims auth.Claims, delivery BatchDelivery) (string, error) {

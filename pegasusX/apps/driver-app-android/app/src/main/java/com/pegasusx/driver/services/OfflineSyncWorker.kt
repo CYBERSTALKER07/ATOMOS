@@ -63,18 +63,23 @@ class OfflineSyncWorker @AssistedInject constructor(
         if (parsed.isEmpty()) return
 
         runCatching {
+            val deliveries = parsed.map { (_, payload) ->
+                SyncBatchDelivery(
+                    orderId = payload.orderId,
+                    signature = payload.signature,
+                    timestamp = System.currentTimeMillis() / 1000.0,
+                    status = "DELIVERED",
+                )
+            }
+            val batchKey = DriverIdempotencyKeys.syncBatch(
+                deliveries.map { "${it.orderId}:${it.signature}" },
+            )
             val result = api.syncBatch(
                 SyncBatchRequest(
                     driverId = driverId,
-                    deliveries = parsed.map { (_, payload) ->
-                        SyncBatchDelivery(
-                            orderId = payload.orderId,
-                            signature = payload.signature,
-                            timestamp = System.currentTimeMillis() / 1000.0,
-                            status = "DELIVERED",
-                        )
-                    },
+                    deliveries = deliveries,
                 ),
+                idempotencyKey = batchKey,
             )
             val processed = result.processed.toSet()
             for ((mutation, payload) in parsed) {

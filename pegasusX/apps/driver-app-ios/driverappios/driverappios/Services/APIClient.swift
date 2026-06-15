@@ -203,7 +203,7 @@ final class APIClient: @unchecked Sendable {
         let _: Resp = try await post(
             "v1/delivery/arrive",
             body: body,
-            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "mark-arrived", orderId: orderId)]
+            headers: ["Idempotency-Key": DriverIdempotency.markArrived(orderId: orderId)]
         )
     }
 
@@ -346,7 +346,8 @@ final class APIClient: @unchecked Sendable {
         }
         return try await post(
             "v1/delivery/split-payment",
-            body: Req(order_id: orderId, cash_minor: cashMinor, card_minor: cardMinor, currency: currency)
+            body: Req(order_id: orderId, cash_minor: cashMinor, card_minor: cardMinor, currency: currency),
+            headers: ["Idempotency-Key": DriverIdempotency.splitPayment(orderId: orderId, cashMinor: cashMinor, cardMinor: cardMinor)]
         )
     }
 

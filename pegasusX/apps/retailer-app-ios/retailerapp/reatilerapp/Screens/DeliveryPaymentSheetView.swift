@@ -405,7 +405,7 @@ struct DeliveryPaymentSheetView: View {
             let _: [String: DiscardableCodable] = try await api.post(
                 path: "/v1/delivery/confirm-cash",
                 body: body,
-                headers: ["Idempotency-Key": "retailer-confirm-cash:\(event.orderId)"]
+                headers: ["Idempotency-Key": RetailerIdempotency.confirmCash(orderId: event.orderId)]
             )
             phase = .cashPending
         } catch {

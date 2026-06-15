@@ -1454,14 +1454,21 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	var req struct {
 		ManifestIDs []string `json:"manifest_ids"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	results := make([]map[string]any, 0, len(req.ManifestIDs))
 	sealedCount := 0
@@ -1534,11 +1541,14 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":       "batch_seal_complete",
 		"sealed_count": sealedCount,
 		"results":      results,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleSealManifest serves POST /v1/payloader/manifests/{manifestID}/seal.
@@ -1641,16 +1651,19 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	var req sealRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer func() {
-		if r.Body != nil {
-			_ = r.Body.Close()
-		}
-	}()
 	req.OrderID = strings.TrimSpace(req.OrderID)
 	req.ManifestID = strings.TrimSpace(req.ManifestID)
 	if req.OrderID == "" && req.ManifestID == "" {
@@ -1710,12 +1723,15 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 			"order_count": manifest.StopCount,
 			"updated_at":  manifest.UpdatedAt,
 		})
-		writeJSON(w, http.StatusOK, map[string]any{
+		resp := map[string]any{
 			"status":      "PAYLOAD_MANIFEST_SEALED",
 			"manifest_id": manifest.ManifestID,
 			"state":       manifest.State,
 			"sealed_at":   manifest.SealedAt,
-		})
+		}
+		respBytes, _ := json.Marshal(resp)
+		s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+		writeJSONBytes(w, http.StatusOK, respBytes)
 		return
 	}
 
@@ -1747,12 +1763,15 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 	s.invalidatePayloadKeys(r.Context(), payloadOrderListKey(s.supplierID))
 	s.broadcastPayloadEvent(r.Context(), "ORDER_DISPATCHED", map[string]any{"order_id": req.OrderID})
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":        "PAYLOAD_SEALED_AND_DISPATCHED",
 		"order_id":      req.OrderID,
 		"sealed_at":     now,
 		"dispatch_code": dispatchCodeForOrder(req.OrderID),
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 func writeJSON(w http.ResponseWriter, code int, body any) {

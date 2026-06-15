@@ -69,6 +69,7 @@ class DeliveryTrackingViewModel @Inject constructor(
     init {
         startPolling()
         observeWebSocket()
+        observeReconnects()
     }
 
     fun toggleSupplier(supplierId: String) {
@@ -138,6 +139,14 @@ class DeliveryTrackingViewModel @Inject constructor(
         } catch (e: Exception) {
             if (_state.value.orders.isEmpty() && _state.value.activeFulfillmentCount == 0) {
                 _state.value = _state.value.copy(loadIssue = resolveLoadIssue(e))
+            }
+        }
+    }
+
+    private fun observeReconnects() {
+        viewModelScope.launch {
+            ws.reconnects.collect {
+                refreshTrackingState()
             }
         }
     }

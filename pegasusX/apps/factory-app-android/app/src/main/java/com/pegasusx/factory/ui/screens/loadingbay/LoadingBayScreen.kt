@@ -24,6 +24,7 @@ import com.pegasusx.factory.ui.components.FactoryStatePane
 import com.pegasusx.factory.ui.components.FactoryStatusChip
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,7 +109,10 @@ fun LoadingBayScreen(
                         scope.launch {
                             try {
                                 val ids = loadingState.map { it.id }
-                                val resp = api.dispatch(DispatchRequest(transferIds = ids))
+                                val resp = api.dispatch(
+                                    DispatchRequest(transferIds = ids),
+                                    FactoryIdempotencyKeys.batchDispatch(ids),
+                                )
                                 if (resp.isSuccessful) {
                                     snackbarHostState.showSnackbar("Dispatched ${ids.size} transfers")
                                     load()

@@ -21,4 +21,23 @@ object DriverIdempotencyKeys {
     fun depart(truckId: String): String = "driver-depart:${driverId()}:$truckId"
 
     fun returnComplete(truckId: String): String = "driver-return-complete:${driverId()}:$truckId"
+
+    fun syncBatch(orderSignatures: List<String>): String {
+        val sorted = orderSignatures.map { it.trim() }.filter { it.isNotEmpty() }.sorted()
+        return "driver-sync-batch:${driverId()}:${stableHash(sorted.joinToString(","))}"
+    }
+
+    fun markArrived(orderId: String): String = "driver-mark-arrived-$orderId"
+
+    fun splitPayment(orderId: String, cashMinor: Long, cardMinor: Long): String =
+        "driver-split-payment:${driverId()}:$orderId:$cashMinor:$cardMinor"
+
+    private fun stableHash(input: String): String {
+        var hash = 2166136261L
+        for (c in input) {
+            hash = hash xor c.code.toLong()
+            hash = (hash * 16777619L) and 0xFFFFFFFFL
+        }
+        return hash.toString(36)
+    }
 }

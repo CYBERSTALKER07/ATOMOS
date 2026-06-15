@@ -63,7 +63,11 @@ enum FactoryService {
 
     // MARK: - Dispatch
     static func dispatch(transferIds: [String]) async throws -> DispatchResponse {
-        try await api.post("v1/factory/dispatch", body: DispatchRequest(transferIds: transferIds))
+        try await api.post(
+            "v1/factory/dispatch",
+            body: DispatchRequest(transferIds: transferIds),
+            idempotencyKey: FactoryIdempotency.batchDispatch(transferIds: transferIds)
+        )
     }
 
     // MARK: - Supply Requests
@@ -113,6 +117,11 @@ enum FactoryService {
                 sourceManifestId: sourceManifestId,
                 targetManifestId: targetManifestId,
                 transferIds: [transferId]
+            ),
+            idempotencyKey: FactoryIdempotency.rebalance(
+                manifestId: sourceManifestId,
+                transferId: transferId,
+                targetManifestId: targetManifestId
             )
         )
     }
@@ -120,14 +129,16 @@ enum FactoryService {
     static func cancelManifestTransfer(manifestId: String, transferId: String) async throws -> ManifestCancelTransferResponse {
         try await api.post(
             "v1/factory/manifests/cancel-transfer",
-            body: ManifestCancelTransferRequest(manifestId: manifestId, transferId: transferId)
+            body: ManifestCancelTransferRequest(manifestId: manifestId, transferId: transferId),
+            idempotencyKey: FactoryIdempotency.cancelTransfer(manifestId: manifestId, transferId: transferId)
         )
     }
 
     static func cancelManifest(manifestId: String) async throws -> ManifestCancelResponse {
         try await api.post(
             "v1/factory/manifests/cancel",
-            body: ManifestCancelRequest(manifestId: manifestId)
+            body: ManifestCancelRequest(manifestId: manifestId),
+            idempotencyKey: FactoryIdempotency.cancelManifest(manifestId: manifestId)
         )
     }
 

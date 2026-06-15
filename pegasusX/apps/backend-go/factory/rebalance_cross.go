@@ -17,7 +17,7 @@ type crossManifestRebalanceResult struct {
 	VolumeMovedVU  int64
 }
 
-func (s *Service) handleCrossManifestRebalance(w http.ResponseWriter, r *http.Request, req manifestRebalanceRequest) {
+func (s *Service) handleCrossManifestRebalance(w http.ResponseWriter, r *http.Request, body []byte, req manifestRebalanceRequest) {
 	if req.SourceManifestID == "" || req.TargetManifestID == "" || len(req.TransferIDs) == 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "source_target_and_transfer_ids_required"})
 		return
@@ -85,7 +85,7 @@ func (s *Service) handleCrossManifestRebalance(w http.ResponseWriter, r *http.Re
 		"transfers_moved":    result.TransfersMoved,
 		"volume_moved_vu":    result.VolumeMovedVU,
 	})
-	writeJSON(w, http.StatusOK, map[string]any{
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"source_manifest_id": req.SourceManifestID,
 		"target_manifest_id": req.TargetManifestID,
 		"transfers_moved":    result.TransfersMoved,

@@ -506,7 +506,7 @@ struct OrderDetailSheet: View {
                     "order_id": order.id,
                     "retailer_id": retailerId,
                 ],
-                headers: ["Idempotency-Key": "retailer-cancel:\(order.id)"]
+                headers: ["Idempotency-Key": RetailerIdempotency.cancel(orderId: order.id)]
             )
             onCancelled?()
             dismiss()

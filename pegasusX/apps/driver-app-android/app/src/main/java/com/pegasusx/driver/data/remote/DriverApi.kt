@@ -246,7 +246,10 @@ interface DriverApi {
 
     // Edge 35: Create split payment
     @POST("v1/delivery/split-payment")
-    suspend fun splitPayment(@Body body: SplitPaymentPayload): SplitPaymentResponse
+    suspend fun splitPayment(
+        @Body body: SplitPaymentPayload,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): SplitPaymentResponse
 
     // ── Dynamic Delivery Handshake ──
 
@@ -260,5 +263,8 @@ interface DriverApi {
 
     /** Offline delivery batch upload — preferred path for verifier-queued deliveries. */
     @POST("v1/sync/batch")
-    suspend fun syncBatch(@Body request: SyncBatchRequest): SyncBatchResponse
+    suspend fun syncBatch(
+        @Body request: SyncBatchRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): SyncBatchResponse
 }

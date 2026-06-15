@@ -296,17 +296,24 @@ func (s *Service) HandleSplitPayment(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	var req struct {
 		OrderID   string `json:"order_id"`
 		CashMinor int64  `json:"cash_minor"`
 		CardMinor int64  `json:"card_minor"`
 		Currency  string `json:"currency"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.OrderID = strings.TrimSpace(req.OrderID)
 	if req.OrderID == "" || req.CashMinor+req.CardMinor <= 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_split_amounts"})
@@ -337,7 +344,10 @@ func (s *Service) HandleSplitPayment(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "event_failed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "split_recorded"})
+	resp := map[string]string{"status": "split_recorded"}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 func (s *Service) emitDriverEdgeEvent(ctx context.Context, o Order, payload map[string]any) error {

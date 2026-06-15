@@ -171,9 +171,35 @@ export function driverReturnCompleteKey(driverId: string, truckId: string): stri
   return `driver-return-complete:${driverId}:${truckId}`;
 }
 
+export function driverSyncBatchKey(driverId: string, orderSignatures: string[]): string {
+  const sorted = [...orderSignatures].map((s) => s.trim()).filter(Boolean).sort();
+  return `driver-sync-batch:${driverId}:${stableHash(sorted.join(","))}`;
+}
+
+export function driverMarkArrivedKey(orderId: string): string {
+  return `driver-mark-arrived-${orderId}`;
+}
+
+export function driverSplitPaymentKey(
+  driverId: string,
+  orderId: string,
+  cashMinor: number,
+  cardMinor: number,
+): string {
+  return `driver-split-payment:${driverId}:${orderId}:${cashMinor}:${cardMinor}`;
+}
+
 /** Matches retailer Android/iOS/desktop procurement order-create keys. */
 export function retailerOrderCreateKey(procurementFingerprint: string): string {
   return `retailer-procurement:${procurementFingerprint}`;
+}
+
+export function retailerConfirmCashKey(orderId: string): string {
+  return `retailer-confirm-cash:${orderId}`;
+}
+
+export function retailerCancelKey(orderId: string): string {
+  return `retailer-cancel:${orderId}`;
 }
 
 export function warehouseEmergencyTransferKey(
@@ -211,4 +237,25 @@ export function factoryManifestDispatchKey(manifestId: string, factoryId: string
 
 export function factoryManifestCompleteKey(manifestId: string, factoryId: string): string {
   return `factory-manifest-complete:${factoryId}:${manifestId}`;
+}
+
+export function factoryBatchDispatchKey(factoryId: string, transferIds: string[]): string {
+  const sorted = [...transferIds].map((id) => id.trim()).filter(Boolean).sort();
+  return `factory-dispatch:${factoryId}:${stableHash(sorted.join(","))}`;
+}
+
+export function factoryManifestRebalanceKey(
+  manifestId: string,
+  transferId: string,
+  targetFingerprint: string,
+): string {
+  return `factory-manifest-rebalance:${manifestId}:${transferId}:${stableHash(targetFingerprint)}`;
+}
+
+export function factoryManifestCancelTransferKey(manifestId: string, transferId: string): string {
+  return `factory-manifest-cancel-transfer:${manifestId}:${transferId}`;
+}
+
+export function factoryManifestCancelKey(manifestId: string, reason?: string): string {
+  return `factory-manifest-cancel:${manifestId}:${stableHash(reason ?? "")}`;
 }

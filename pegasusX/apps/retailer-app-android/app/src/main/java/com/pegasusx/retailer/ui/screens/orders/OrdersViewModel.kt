@@ -8,6 +8,7 @@ import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.OrderStatus
+import com.pegasusx.retailer.util.RetailerIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -136,7 +137,7 @@ class OrdersViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val body = mapOf("order_id" to orderId, "retailer_id" to retailerId)
-                val idempotencyKey = "retailer-cancel:$orderId"
+                val idempotencyKey = RetailerIdempotencyKeys.cancel(orderId)
                 try {
                     api.cancelOrder(body = body, idempotencyKey = idempotencyKey)
                 } catch (first: Exception) {

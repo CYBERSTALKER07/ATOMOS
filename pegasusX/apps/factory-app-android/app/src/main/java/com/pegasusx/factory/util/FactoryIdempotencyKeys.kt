@@ -14,11 +14,42 @@ object FactoryIdempotencyKeys {
 
     fun complete(manifestId: String): String = "factory-manifest-complete:${factoryId()}:$manifestId"
 
+    fun batchDispatch(transferIds: List<String>): String {
+        val sorted = transferIds.map { it.trim() }.filter { it.isNotEmpty() }.sorted()
+        return "factory-dispatch:${factoryId()}:${stableHash(sorted.joinToString(","))}"
+    }
+
+    fun rebalance(
+        manifestId: String,
+        transferId: String,
+        toDriverId: String = "",
+        toVehicle: String = "",
+        targetManifestId: String = "",
+    ): String {
+        val fingerprint = listOf(toDriverId, toVehicle, targetManifestId).joinToString(":")
+        return "factory-manifest-rebalance:$manifestId:$transferId:${stableHash(fingerprint)}"
+    }
+
+    fun cancelTransfer(manifestId: String, transferId: String): String =
+        "factory-manifest-cancel-transfer:$manifestId:$transferId"
+
+    fun cancelManifest(manifestId: String, reason: String = ""): String =
+        "factory-manifest-cancel:$manifestId:${stableHash(reason)}"
+
     fun forLifecyclePath(manifestId: String, path: String): String = when (path) {
         "start-loading" -> startLoading(manifestId)
         "seal" -> seal(manifestId)
         "dispatch" -> dispatch(manifestId)
         "complete" -> complete(manifestId)
         else -> "factory-manifest-transition:${factoryId()}:$manifestId:$path"
+    }
+
+    private fun stableHash(input: String): String {
+        var hash = 2166136261L
+        for (c in input) {
+            hash = hash xor c.code.toLong()
+            hash = (hash * 16777619L) and 0xFFFFFFFFL
+        }
+        return hash.toString(36)
     }
 }

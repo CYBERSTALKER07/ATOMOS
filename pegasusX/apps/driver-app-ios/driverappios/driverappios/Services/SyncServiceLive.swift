@@ -30,11 +30,16 @@ final class SyncServiceLive: SyncServiceProtocol {
             }
         )
 
+        let batchKey = DriverIdempotency.syncBatch(
+            deliveries.map { "\($0.orderId):\($0.signature)" }
+        )
+
         let url = URL(string: "\(APIClient.shared.apiBaseURL)/v1/sync/batch")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+        request.setValue(batchKey, forHTTPHeaderField: "Idempotency-Key")
         request.httpBody = try JSONEncoder().encode(body)
 
         let (data, response) = try await URLSession.shared.data(for: request)

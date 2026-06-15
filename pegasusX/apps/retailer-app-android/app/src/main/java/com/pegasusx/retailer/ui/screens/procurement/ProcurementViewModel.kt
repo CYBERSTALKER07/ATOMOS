@@ -8,6 +8,7 @@ import com.pegasusx.retailer.data.local.PendingOrderEntity
 import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.ProcurementOrderItem
+import com.pegasusx.retailer.util.RetailerIdempotencyKeys
 import com.pegasusx.retailer.data.model.ProcurementOrderRequest
 import com.pegasusx.retailer.data.model.Product
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -214,10 +215,7 @@ class ProcurementViewModel @Inject constructor(
     }
 
     private fun buildIdempotencyKey(items: List<ProcurementOrderItem>): String {
-        return "retailer-procurement:" + items
-            .map { "${it.productId}:${it.quantity}" }
-            .sorted()
-            .joinToString("|")
+        return RetailerIdempotencyKeys.orderCreate(items)
     }
 
     private fun resolveLoadIssue(error: Exception): ProcurementLoadIssue {

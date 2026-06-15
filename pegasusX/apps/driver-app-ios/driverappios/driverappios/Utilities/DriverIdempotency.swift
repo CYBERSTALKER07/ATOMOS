@@ -44,4 +44,29 @@ enum DriverIdempotency {
     static func returnComplete(truckId: String) -> String {
         "driver-return-complete:\(driverId()):\(truckId)"
     }
+
+    static func syncBatch(orderSignatures: [String]) -> String {
+        let sorted = orderSignatures
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .sorted()
+        return "driver-sync-batch:\(driverId()):\(stableHash(sorted.joined(separator: ",")))"
+    }
+
+    static func markArrived(orderId: String) -> String {
+        "driver-mark-arrived-\(orderId)"
+    }
+
+    static func splitPayment(orderId: String, cashMinor: Int64, cardMinor: Int64) -> String {
+        "driver-split-payment:\(driverId()):\(orderId):\(cashMinor):\(cardMinor)"
+    }
+
+    private static func stableHash(_ input: String) -> String {
+        var hash: UInt32 = 2166136261
+        for scalar in input.unicodeScalars {
+            hash ^= scalar.value
+            hash = hash &* 16777619
+        }
+        return String(hash, radix: 36)
+    }
 }

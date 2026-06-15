@@ -2069,21 +2069,31 @@ func (s *Service) HandleMarkArrived(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	var req struct {
 		OrderID string `json:"order_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	resp, err := s.MarkArrived(r.Context(), claims, req.OrderID)
 	if err != nil {
 		s.writeOrderMutationError(w, "driver mark arrived failed", req.OrderID, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleSubmitDelivery is POST /v1/order/deliver.
@@ -2871,14 +2881,22 @@ func (s *Service) HandleRetailerConfirmCash(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	var req struct {
 		OrderID string `json:"order_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	orderID := strings.TrimSpace(req.OrderID)
 	if orderID == "" {
@@ -2931,12 +2949,15 @@ func (s *Service) HandleRetailerConfirmCash(w http.ResponseWriter, r *http.Reque
 
 	s.afterOrderMutation(r.Context(), current)
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"success":  true,
 		"order_id": orderID,
 		"state":    current.Status,
 		"message":  "awaiting_driver_cash_collection",
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────

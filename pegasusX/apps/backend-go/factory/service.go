@@ -1071,14 +1071,22 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	var req dispatchRequest
-	if r.Body != nil {
-		_ = json.NewDecoder(r.Body).Decode(&req)
+	if len(body) > 0 {
+		_ = json.Unmarshal(body, &req)
 	}
 	var manifest ManifestRow
 	selectedCount := 0
 	now := ""
-	err := s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1207,7 +1215,7 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		"updated_at":        now,
 	})
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"status":                 "dispatch_planned",
 		"created_manifest_count": 1,
 		"manifests_created":      1,
@@ -1223,8 +1231,16 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	var req manifestRebalanceRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -1241,7 +1257,7 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 		req.TransferIDs = []string{req.TransferID}
 	}
 	if req.TargetManifestID != "" && req.TargetManifestID != req.SourceManifestID {
-		s.handleCrossManifestRebalance(w, r, req)
+		s.handleCrossManifestRebalance(w, r, body, req)
 		return
 	}
 	if req.ManifestID == "" || req.TransferID == "" || (req.ToDriverID == "" && req.ToVehicle == "") {
@@ -1251,7 +1267,7 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 
 	var manifest ManifestRow
 	var reassign ManifestReassignment
-	err := s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1380,7 +1396,7 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "transfer_not_mutable"})
 			return
 		case "transfer_already_assigned":
-			writeJSON(w, http.StatusOK, map[string]any{"status": "already_assigned", "manifest_id": req.ManifestID, "transfer_id": req.TransferID})
+			s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{"status": "already_assigned", "manifest_id": req.ManifestID, "transfer_id": req.TransferID})
 			return
 		default:
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "manifest_rebalance_failed"})
@@ -1400,7 +1416,7 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 		"manifest_reassignments": manifest.ReassignmentDepth,
 	})
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"status":                 "manifest_rebalanced",
 		"manifest_id":            req.ManifestID,
 		"transfer_id":            req.TransferID,
@@ -1419,8 +1435,16 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	var req manifestCancelTransferRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -1432,7 +1456,7 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 	}
 
 	var exception ManifestException
-	err := s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1530,7 +1554,7 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "transfer_not_found"})
 			return
 		case "transfer_already_cancelled":
-			writeJSON(w, http.StatusOK, map[string]any{"status": "already_cancelled", "manifest_id": req.ManifestID, "transfer_id": req.TransferID})
+			s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{"status": "already_cancelled", "manifest_id": req.ManifestID, "transfer_id": req.TransferID})
 			return
 		default:
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cancel_transfer_failed"})
@@ -1557,7 +1581,7 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"status":        "transfer_cancelled",
 		"manifest_id":   req.ManifestID,
 		"transfer_id":   req.TransferID,
@@ -1573,8 +1597,16 @@ func (s *Service) HandleManifestCancel(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	var req manifestCancelRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -1586,7 +1618,7 @@ func (s *Service) HandleManifestCancel(w http.ResponseWriter, r *http.Request) {
 
 	var manifest ManifestRow
 	var now string
-	err := s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1643,7 +1675,7 @@ func (s *Service) HandleManifestCancel(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "manifest_already_completed"})
 			return
 		case "manifest_already_cancelled":
-			writeJSON(w, http.StatusOK, map[string]any{"status": "already_cancelled", "manifest_id": req.ManifestID})
+			s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{"status": "already_cancelled", "manifest_id": req.ManifestID})
 			return
 		default:
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "manifest_cancel_failed"})
@@ -1658,7 +1690,7 @@ func (s *Service) HandleManifestCancel(w http.ResponseWriter, r *http.Request) {
 		"updated_at":  now,
 	})
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"status":      "manifest_cancelled",
 		"manifest_id": req.ManifestID,
 		"reason":      strings.TrimSpace(req.Reason),

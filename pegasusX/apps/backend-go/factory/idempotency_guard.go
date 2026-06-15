@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -75,4 +76,10 @@ func writeJSONBytes(w http.ResponseWriter, code int, body []byte) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_, _ = w.Write(body)
+}
+
+func (s *Service) writeIdempotentJSON(w http.ResponseWriter, r *http.Request, reqBody []byte, code int, resp any) {
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, reqBody, code, respBytes)
+	writeJSONBytes(w, code, respBytes)
 }
