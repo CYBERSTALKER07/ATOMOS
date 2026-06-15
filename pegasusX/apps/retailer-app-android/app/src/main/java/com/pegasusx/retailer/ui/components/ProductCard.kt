@@ -146,18 +146,35 @@ fun ProductCard(
                 }
 
                 if (product.isOutOfStock) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.56f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                    if (product.acceptsBackorder) {
                         Text(
-                            text = "Out of stock",
-                            style = MaterialTheme.typography.labelLarge,
+                            text = "Backorder",
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(12.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.errorContainer,
+                                    shape = PillShape,
+                                )
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.56f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "Out of stock",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        }
                     }
                 } else if (product.isLowStock) {
                     Text(

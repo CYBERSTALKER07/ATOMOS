@@ -80,12 +80,62 @@ export type OrderStatus =
   | "CANCELLED"
   | "RECONCILIATION_REQUIRED"
   | "DELAYED"
+  | "BACKORDERED"
   // Operational / legacy client aliases still seen on WS payloads and fleet guards.
   | "DISPATCHED"
   | "ARRIVING"
   | "EN_ROUTE";
 
-export type OrderSource = "MANUAL" | "MANUAL_PREORDER" | "AI_PREORDER";
+export type OrderSource = "MANUAL" | "MANUAL_PREORDER" | "AI_PREORDER" | "BACKORDER";
+
+export type OutOfStockPolicy = "INHERIT" | "REJECT" | "ACCEPT_BACKORDER";
+
+export interface StockWarning {
+  sku: string;
+  requested: number;
+  available: number;
+  backorder_qty: number;
+  accepts_backorder: boolean;
+}
+
+export interface SupplierOrderCheckoutResult {
+  order_id: string;
+  supplier_id: string;
+  supplier_name: string;
+  total: number;
+  item_count: number;
+}
+
+export interface UnifiedCheckoutResponse {
+  status: string;
+  invoice_id: string;
+  total: number;
+  supplier_orders: SupplierOrderCheckoutResult[];
+  backordered_item_count?: number;
+  backorder_order_id?: string;
+  stock_warnings?: StockWarning[];
+}
+
+export interface RetailerCatalogProductStock {
+  available_stock?: number;
+  is_out_of_stock?: boolean;
+  accepts_backorder?: boolean;
+}
+
+export interface WarehouseOpsSettings {
+  warehouse_id: string;
+  name: string;
+  region_id?: string;
+  default_out_of_stock_policy: OutOfStockPolicy;
+  operating_schedule?: Record<string, unknown>;
+  is_on_shift: boolean;
+  ops_always_available: boolean;
+}
+
+export interface WarehouseInventoryPolicyPatchRequest {
+  out_of_stock_policy?: OutOfStockPolicy;
+  reorder_threshold?: number;
+}
 
 export type OrderConfirmationStatus = "CONFIRMED" | "DRAFT" | "PENDING" | "REJECTED" | "AUTO_CONFIRMED";
 
@@ -1827,6 +1877,8 @@ export interface WarehouseSupplyRequest {
   projected_units?: number;
   committed_units?: number;
   pending_confirmation_units?: number;
+  item_count?: number;
+  items?: WarehouseSupplyRequestItem[];
   created_at: string;
   updated_at?: string;
 }

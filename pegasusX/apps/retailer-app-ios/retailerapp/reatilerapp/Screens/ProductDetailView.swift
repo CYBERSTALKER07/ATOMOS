@@ -393,7 +393,7 @@ struct ProductDetailView: View {
                 Spacer()
 
                 LabButton("Add to Cart", icon: "cart.badge.plus") {
-                    guard let variant = selectedVariant else { return }
+                    guard let variant = selectedVariant, !product.blocksAddToCart else { return }
                     cart.add(product: product, variant: variant, quantity: quantity)
                     addedToCart.toggle()
                     quantity = 1

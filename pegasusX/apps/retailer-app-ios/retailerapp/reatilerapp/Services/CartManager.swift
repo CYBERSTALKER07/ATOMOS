@@ -44,6 +44,7 @@ final class CartManager {
     // MARK: - Add to Cart
 
     func add(product: Product, variant: Variant, quantity: Int = 1) {
+        guard !product.blocksAddToCart else { return }
         let itemId = "\(product.id)-\(variant.id)"
         if let index = items.firstIndex(where: { $0.id == itemId }) {
             items[index].quantity += quantity
@@ -234,11 +235,28 @@ struct UnifiedCheckoutPayload: Codable {
 
 // MARK: - Checkout Response
 
+struct StockWarning: Codable, Hashable {
+    let sku: String
+    let requested: Int64
+    let available: Int64
+    let backorderQty: Int64
+    let acceptsBackorder: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case sku, requested, available
+        case backorderQty = "backorder_qty"
+        case acceptsBackorder = "accepts_backorder"
+    }
+}
+
 struct CheckoutResponse: Codable {
     let status: String
     let invoiceId: String
     let total: Int64
     let supplierOrders: [SupplierOrderResult]?
+    let backorderedItemCount: Int?
+    let backorderOrderId: String?
+    let stockWarnings: [StockWarning]?
 
     struct SupplierOrderResult: Codable {
         let orderId: String
@@ -261,6 +279,9 @@ struct CheckoutResponse: Codable {
         case invoiceId = "invoice_id"
         case total = "total"
         case supplierOrders = "supplier_orders"
+        case backorderedItemCount = "backordered_item_count"
+        case backorderOrderId = "backorder_order_id"
+        case stockWarnings = "stock_warnings"
     }
 }
 
@@ -308,7 +329,9 @@ extension CartManager {
                 sellByBlock: existing.product.sellByBlock,
                 unitsPerBlock: existing.product.unitsPerBlock,
                 price: Int(serverItem.unitPrice),
-                availableStock: existing.product.availableStock
+                availableStock: existing.product.availableStock,
+                isOutOfStockFlag: existing.product.isOutOfStockFlag,
+                acceptsBackorder: existing.product.acceptsBackorder
             )
             return CartItem(
                 id: "\(updatedProduct.id)-\(updatedVariant.id)",

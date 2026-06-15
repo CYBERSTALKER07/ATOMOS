@@ -13,6 +13,7 @@ import com.pegasusx.retailer.data.model.CheckoutLineItem
 import com.pegasusx.retailer.data.model.CheckoutQuoteLine
 import com.pegasusx.retailer.data.model.CheckoutQuoteRequest
 import com.pegasusx.retailer.data.model.Product
+import com.pegasusx.retailer.data.model.StockWarning
 import com.pegasusx.retailer.data.model.SupplierOrderResult
 import com.pegasusx.retailer.data.model.UnifiedCheckoutRequest
 import com.pegasusx.retailer.data.model.Variant
@@ -54,6 +55,7 @@ data class CartUiState(
     val removedItemMessage: String? = null,
     val supplierIsActive: Boolean = true,
     val oosItems: List<String> = emptyList(),
+    val stockWarnings: List<StockWarning> = emptyList(),
     val paymentOptions: List<CheckoutPaymentOption> = emptyList(),
     val isRefreshing: Boolean = false,
     val syncError: String? = null,
@@ -371,6 +373,7 @@ init {
     }
 
     fun addToCart(product: Product, variant: Variant) {
+        if (product.blocksAddToCart) return
         val itemId = "${product.id}_${variant.id}"
         _uiState.update { state ->
             val existing = state.items.find { it.id == itemId }
@@ -494,7 +497,7 @@ init {
 
     fun processPayment() {
         viewModelScope.launch {
-            _uiState.update { it.copy(checkoutPhase = CheckoutPhase.PROCESSING, checkoutError = null) }
+            _uiState.update { it.copy(checkoutPhase = CheckoutPhase.PROCESSING, checkoutError = null, stockWarnings = emptyList()) }
             try {
                 val state = _uiState.value
                 val retailerId = tokenManager.getUserId() ?: ""
@@ -535,6 +538,7 @@ init {
                 val firstOrderId = response.supplierOrders.firstOrNull()?.orderId
                 _uiState.update {
                     it.copy(
+                        stockWarnings = response.stockWarnings,
                         lastOrderId = firstOrderId ?: response.invoiceId,
                         paymentUrlToOpen = paymentUrl,
                         checkoutPhase = CheckoutPhase.COMPLETE,
@@ -562,10 +566,10 @@ init {
                         if (oosArr is kotlinx.serialization.json.JsonArray) {
                             flaggedOos = oosArr.mapNotNull { it.toString().trim('"').takeIf { s -> s.isNotEmpty() } }
                         }
-                        msg = if (code == "ALL_ITEMS_OUT_OF_STOCK") {
-                            "All items are out of stock. Please update your cart."
-                        } else {
-                            body ?: "Some items are out of stock"
+                        msg = when (code) {
+                            "ALL_ITEMS_OUT_OF_STOCK" -> "All items are out of stock. Please update your cart."
+                            "PARTIAL_OUT_OF_STOCK_REJECTED" -> "Some items are out of stock and cannot be backordered. Please update your cart."
+                            else -> body ?: "Some items are out of stock"
                         }
                     } catch (_: Exception) {
                         msg = body ?: "Item out of stock — pull to refresh"

@@ -104,10 +104,15 @@ struct Product: Codable, Identifiable, Hashable {
     let unitsPerBlock: Int?
     let price: Int?
     let availableStock: Int?
+    let isOutOfStockFlag: Bool
+    let acceptsBackorder: Bool
     let offer: ProductOffer?
 
-    var isOutOfStock: Bool { availableStock != nil && availableStock! <= 0 }
+    var isOutOfStock: Bool {
+        (availableStock != nil && availableStock! <= 0) || isOutOfStockFlag
+    }
     var isLowStock: Bool { availableStock != nil && (1...5).contains(availableStock!) }
+    var blocksAddToCart: Bool { isOutOfStock && !acceptsBackorder }
 
     enum CodingKeys: String, CodingKey {
         case id, name, description, nutrition, variants, offer
@@ -130,6 +135,8 @@ struct Product: Codable, Identifiable, Hashable {
         case price
         case availableStock = "available_stock"
         case availableStockCamel = "availableStock"
+        case isOutOfStockFlag = "is_out_of_stock"
+        case acceptsBackorder = "accepts_backorder"
     }
 
     init(
@@ -148,6 +155,8 @@ struct Product: Codable, Identifiable, Hashable {
         unitsPerBlock: Int? = nil,
         price: Int? = nil,
         availableStock: Int? = nil,
+        isOutOfStockFlag: Bool = false,
+        acceptsBackorder: Bool = false,
         offer: ProductOffer? = nil
     ) {
         self.id = id
@@ -165,6 +174,8 @@ struct Product: Codable, Identifiable, Hashable {
         self.unitsPerBlock = unitsPerBlock
         self.price = price
         self.availableStock = availableStock
+        self.isOutOfStockFlag = isOutOfStockFlag
+        self.acceptsBackorder = acceptsBackorder
         self.offer = offer
     }
 
@@ -195,6 +206,8 @@ struct Product: Codable, Identifiable, Hashable {
         price = try container.decodeIfPresent(Int.self, forKey: .price)
         availableStock = try container.decodeIfPresent(Int.self, forKey: .availableStock)
             ?? container.decodeIfPresent(Int.self, forKey: .availableStockCamel)
+        isOutOfStockFlag = try container.decodeIfPresent(Bool.self, forKey: .isOutOfStockFlag) ?? false
+        acceptsBackorder = try container.decodeIfPresent(Bool.self, forKey: .acceptsBackorder) ?? false
         offer = try container.decodeIfPresent(ProductOffer.self, forKey: .offer)
     }
 

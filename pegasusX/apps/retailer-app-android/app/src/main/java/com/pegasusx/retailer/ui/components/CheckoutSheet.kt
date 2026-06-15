@@ -75,6 +75,8 @@ fun CheckoutSheet(
     selectedPaymentGateway: String,
     paymentLabel: String,
     paymentOptions: List<CheckoutPaymentOption>,
+    stockWarnings: List<com.pegasusx.retailer.data.model.StockWarning> = emptyList(),
+    oosItems: List<String> = emptyList(),
     onBuy: () -> Unit,
     onSelectPayment: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -110,6 +112,54 @@ fun CheckoutSheet(
             }
 
             Spacer(modifier = Modifier.height(20.dp))
+
+            if (stockWarnings.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = SoftSquircleShape,
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.65f),
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            "Partial backorder",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "Some items are out of stock but your warehouse accepts backorders.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        stockWarnings.forEach { warning ->
+                            Text(
+                                "${warning.sku}: ${warning.backorderQty} of ${warning.requested} backordered",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            if (oosItems.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = SoftSquircleShape,
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.65f),
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            "Out of stock",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        oosItems.forEach { sku ->
+                            Text(sku, style = MaterialTheme.typography.labelSmall, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             // Animated content between phases
             AnimatedContent(

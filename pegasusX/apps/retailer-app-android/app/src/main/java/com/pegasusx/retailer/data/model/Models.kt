@@ -182,11 +182,15 @@ data class Product(
     @JsonNames("units_per_block", "unitsPerBlock") val unitsPerBlock: Int? = null,
     @JsonNames("price", "price") val price: Int? = null,
     @JsonNames("available_stock", "availableStock") val availableStock: Int? = null,
+    @JsonNames("is_out_of_stock", "isOutOfStock") val isOutOfStockFlag: Boolean = false,
+    @JsonNames("accepts_backorder", "acceptsBackorder") val acceptsBackorder: Boolean = false,
     @JsonNames("price_minor") val priceMinor: Long? = null,
     @SerialName("offer") val offer: ProductOffer? = null,
 ) {
-    val isOutOfStock: Boolean get() = availableStock != null && availableStock <= 0
+    val isOutOfStock: Boolean
+        get() = (availableStock != null && availableStock <= 0) || isOutOfStockFlag
     val isLowStock: Boolean get() = availableStock != null && availableStock in 1..5
+    val blocksAddToCart: Boolean get() = isOutOfStock && !acceptsBackorder
     val defaultVariant: Variant? get() = variants.firstOrNull()
     val hasSaleOffer: Boolean
         get() = offer?.salePriceMinor?.let { it > 0 } == true
@@ -699,11 +703,23 @@ data class CheckoutQuoteResponse(
 )
 
 @Serializable
+data class StockWarning(
+    @SerialName("sku") val sku: String,
+    @SerialName("requested") val requested: Long = 0,
+    @SerialName("available") val available: Long = 0,
+    @SerialName("backorder_qty") val backorderQty: Long = 0,
+    @SerialName("accepts_backorder") val acceptsBackorder: Boolean = false,
+)
+
+@Serializable
 data class UnifiedCheckoutResponse(
     @SerialName("status") val status: String,
     @SerialName("invoice_id") val invoiceId: String,
     @SerialName("total") val total: Long = 0,
     @SerialName("supplier_orders") val supplierOrders: List<SupplierOrderResult> = emptyList(),
+    @SerialName("backordered_item_count") val backorderedItemCount: Int = 0,
+    @SerialName("backorder_order_id") val backorderOrderId: String? = null,
+    @SerialName("stock_warnings") val stockWarnings: List<StockWarning> = emptyList(),
 )
 
 @Serializable

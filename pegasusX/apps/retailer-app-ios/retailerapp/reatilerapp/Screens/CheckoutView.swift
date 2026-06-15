@@ -26,6 +26,7 @@ struct CheckoutView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var oosItems: [String] = []
+    @State private var stockWarnings: [StockWarning] = []
     @State private var showSupplierClosedWarning = false
 
     private let api = APIClient.shared
@@ -108,6 +109,12 @@ struct CheckoutView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: AppTheme.spacingLG) {
+                    if !stockWarnings.isEmpty {
+                        stockWarningsSection
+                    }
+                    if !oosItems.isEmpty {
+                        oosItemsSection
+                    }
                     cartItemsSection.slideIn(delay: 0)
                     paymentSection.slideIn(delay: 0.05)
                     summarySection.slideIn(delay: 0.1)
@@ -118,6 +125,43 @@ struct CheckoutView: View {
             .scrollIndicators(.hidden)
 
             submitButton
+        }
+    }
+
+    // MARK: - Stock Warnings
+
+    private var stockWarningsSection: some View {
+        LabCard {
+            VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
+                Label("Partial backorder", systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    .foregroundStyle(AppTheme.warning)
+                Text("Some items are out of stock but your warehouse accepts backorders.")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+                ForEach(stockWarnings, id: \.sku) { warning in
+                    Text("\(warning.sku): \(warning.backorderQty) of \(warning.requested) backordered")
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(AppTheme.textPrimary)
+                }
+            }
+            .padding(AppTheme.spacingLG)
+        }
+    }
+
+    private var oosItemsSection: some View {
+        LabCard {
+            VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
+                Label("Out of stock", systemImage: "xmark.circle.fill")
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    .foregroundStyle(AppTheme.destructive)
+                ForEach(oosItems, id: \.self) { sku in
+                    Text(sku)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(AppTheme.textPrimary)
+                }
+            }
+            .padding(AppTheme.spacingLG)
         }
     }
 
@@ -383,7 +427,9 @@ struct CheckoutView: View {
                     .font(.system(.title2, design: .rounded, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
 
-                Text("Your order has been submitted successfully.\nYou'll receive updates in your inbox.")
+                Text(stockWarnings.isEmpty
+                     ? "Your order has been submitted successfully.\nYou'll receive updates in your inbox."
+                     : "Your order was placed with partial backorder items.\nFulfillment will continue when stock arrives.")
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
                     .multilineTextAlignment(.center)
@@ -425,15 +471,19 @@ struct CheckoutView: View {
             }
         }
         
+        stockWarnings = []
+        oosItems = []
+        
         let payload = cart.buildCheckoutPayload(retailerId: rid, paymentGateway: finalGateway)
         let idempotencyKey = checkoutIdempotencyKey(payload: payload, gateway: finalGateway)
         do {
-            _ = try await RetailerCheckoutService.completeCheckout(
+            let response = try await RetailerCheckoutService.completeCheckout(
                 api: api,
                 payload: payload,
                 gateway: finalGateway,
                 idempotencyKey: idempotencyKey
             )
+            stockWarnings = response.stockWarnings ?? []
             cart.clear()
             Haptics.success()
             withAnimation(AnimationConstants.fluid) { showSuccess = true }
@@ -443,11 +493,17 @@ struct CheckoutView: View {
                 if let jsonData = message.data(using: .utf8),
                    let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
                     let code = json["code"] as? String ?? ""
-                    if code == "ALL_ITEMS_OUT_OF_STOCK",
-                       let items = json["oos_items"] as? [String] {
+                    if let items = json["oos_items"] as? [String] {
                         oosItems = items
                     }
-                    errorMessage = "All items are out of stock. Please update your cart."
+                    switch code {
+                    case "ALL_ITEMS_OUT_OF_STOCK":
+                        errorMessage = "All items are out of stock. Please update your cart."
+                    case "PARTIAL_OUT_OF_STOCK_REJECTED":
+                        errorMessage = "Some items are out of stock and cannot be backordered. Please update your cart."
+                    default:
+                        errorMessage = "Items are out of stock — please refresh"
+                    }
                 } else {
                     errorMessage = "Items are out of stock — please refresh"
                 }

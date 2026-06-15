@@ -31,6 +31,15 @@ struct ProductCardView: View {
                     ))
 
                     VStack(alignment: .trailing, spacing: AppTheme.spacingXS) {
+                        if product.isOutOfStock {
+                            RetailerStatusBadge(
+                                text: product.acceptsBackorder ? "BACKORDER" : "EMPTY",
+                                tint: product.acceptsBackorder ? AppTheme.warning : AppTheme.destructive
+                            )
+                        } else if product.isLowStock {
+                            RetailerStatusBadge(text: "LOW", tint: AppTheme.warning)
+                        }
+
                         if product.hasSaleOffer {
                             RetailerStatusBadge(text: "SALE", tint: AppTheme.destructive)
                         }
