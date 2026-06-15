@@ -456,9 +456,9 @@ struct ProblemDetail: Codable {
     }
 }
 
-// MARK: - Type Erased Encodable
+// MARK: - Type Erased Codable
 
-private struct AnyEncodable: Encodable {
+struct AnyEncodable: Encodable {
     private let _encode: (Encoder) throws -> Void
 
     init(_ wrapped: any Encodable) {
@@ -467,6 +467,31 @@ private struct AnyEncodable: Encodable {
 
     func encode(to encoder: Encoder) throws {
         try _encode(encoder)
+    }
+}
+
+struct AnyDecodable: Decodable {
+    let value: Any
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let bool = try? container.decode(Bool.self) {
+            value = bool
+        } else if let int = try? container.decode(Int.self) {
+            value = int
+        } else if let double = try? container.decode(Double.self) {
+            value = double
+        } else if let string = try? container.decode(String.self) {
+            value = string
+        } else if let array = try? container.decode([AnyDecodable].self) {
+            value = array.map(\.value)
+        } else if let dict = try? container.decode([String: AnyDecodable].self) {
+            value = dict.mapValues(\.value)
+        } else if container.decodeNil() {
+            value = NSNull()
+        } else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unsupported JSON value")
+        }
     }
 }
 

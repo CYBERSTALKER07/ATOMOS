@@ -122,7 +122,7 @@ struct ProductDetailView: View {
 
                 Spacer()
 
-                if selectedVariant != nil {
+                if let variant = selectedVariant {
                     VStack(alignment: .trailing, spacing: 2) {
                         if product.hasSaleOffer, let listPrice = product.displayListPrice {
                             Text(listPrice)

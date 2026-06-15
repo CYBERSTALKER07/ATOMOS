@@ -16,6 +16,18 @@ struct SavedCardsView: View {
     @State private var isAddingCard = false
     @State private var optCode = ""
     @State private var pendingCardToken: String? = nil
+
+    init(
+        returnTo: String? = nil,
+        orderId: String? = nil,
+        sessionId: String? = nil,
+        onReturnToPayment: (() -> Void)? = nil
+    ) {
+        self.returnTo = returnTo
+        self.orderId = orderId
+        self.sessionId = sessionId
+        self.onReturnToPayment = onReturnToPayment
+    }
     
     var body: some View {
         List {

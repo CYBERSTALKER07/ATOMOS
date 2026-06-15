@@ -719,6 +719,8 @@ struct ContentView: View {
                 await loadActiveOrders()
             case .cartSyncUpdated:
                 break
+            case .promotionChanged:
+                break
             }
             refreshCenter.trigger()
         }

@@ -449,7 +449,7 @@ struct OrdersView: View {
                  .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited,
                  .preOrderNudge, .preOrderConfirmationPush:
                 await loadData()
-            case .shopClosedAlert, .cartSyncUpdated:
+            case .shopClosedAlert, .cartSyncUpdated, .promotionChanged:
                 break
             }
         }

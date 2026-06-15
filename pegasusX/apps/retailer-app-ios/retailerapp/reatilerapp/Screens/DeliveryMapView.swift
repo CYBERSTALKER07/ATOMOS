@@ -222,7 +222,9 @@ struct DeliveryMapView: View {
                         warehouseId: old.warehouseId, warehouseName: old.warehouseName,
                         driverId: old.driverId, state: old.state, totalAmount: old.totalAmount,
                         orderSource: old.orderSource, driverLatitude: lat ?? old.driverLatitude,
-                        driverLongitude: lng ?? old.driverLongitude, isApproaching: true,
+                        driverLongitude: lng ?? old.driverLongitude,
+                        liveLocationAvailable: old.liveLocationAvailable,
+                        isApproaching: true,
                         deliveryToken: old.deliveryToken, createdAt: old.createdAt, items: old.items
                     )
                     orders[idx] = updated
