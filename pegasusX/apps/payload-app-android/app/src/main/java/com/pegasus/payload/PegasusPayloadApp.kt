@@ -4,6 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import com.pegasus.payload.data.auth.FirebaseAuthHelper
 import com.pegasus.payload.services.NotificationBus
 import dagger.hilt.android.HiltAndroidApp
 
@@ -18,6 +19,7 @@ import dagger.hilt.android.HiltAndroidApp
 class PegasusPayloadApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        FirebaseAuthHelper.init(this)
         createNotificationChannel()
     }
 

@@ -50,6 +50,10 @@ class SecureStore @Inject constructor(@ApplicationContext context: Context) {
         get() = prefs.getString(K_FB_TOKEN, null)
         set(value) = prefs.edit().run { if (value == null) remove(K_FB_TOKEN) else putString(K_FB_TOKEN, value); apply() }
 
+    var refreshToken: String?
+        get() = prefs.getString(K_REFRESH, null)
+        set(value) = prefs.edit().run { if (value == null) remove(K_REFRESH) else putString(K_REFRESH, value); apply() }
+
     /** JSON-serialized List<QueuedAction>. Mirrors Expo's `offline_queue` SecureStore key. */
     var offlineQueueJson: String?
         get() = prefs.getString(K_OFFLINE_QUEUE, null)
@@ -64,6 +68,7 @@ class SecureStore @Inject constructor(@ApplicationContext context: Context) {
         const val K_WH_ID = "payloader_warehouse_id"
         const val K_WH_NAME = "payloader_warehouse_name"
         const val K_FB_TOKEN = "payloader_firebase_token"
+        const val K_REFRESH = "payloader_refresh_token"
         const val K_OFFLINE_QUEUE = "payloader_offline_queue"
     }
 }

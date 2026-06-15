@@ -46,6 +46,9 @@ interface PayloadApi {
     @POST("v1/auth/payloader/login")
     suspend fun login(@Body req: LoginRequest): LoginResponse
 
+    @POST("v1/auth/payloader/refresh")
+    suspend fun refreshToken(@Body req: com.pegasus.payload.data.model.RefreshTokenRequest): com.pegasus.payload.data.model.RefreshTokenResponse
+
     // ── Trucks / Orders ──────────────────────────────────────────────────────
     @GET("v1/payloader/trucks")
     suspend fun trucks(): List<Truck>
@@ -64,7 +67,7 @@ interface PayloadApi {
 
     @POST("v1/payloader/reassign-order")
     suspend fun reassignOrder(
-        @Body req: com.google.gson.JsonElement,
+        @Body req: com.pegasus.payload.data.model.ReassignOrderRequest,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): StatusResponse
 

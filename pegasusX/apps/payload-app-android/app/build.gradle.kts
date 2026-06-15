@@ -179,6 +179,7 @@ dependencies {
     // Firebase Cloud Messaging
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("com.google.firebase:firebase-auth-ktx")
 
     // Core
     implementation("androidx.core:core-ktx:1.15.0")

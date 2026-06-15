@@ -11,6 +11,7 @@ data class LoginRequest(val phone: String, val pin: String)
 @Serializable
 data class LoginResponse(
     val token: String,
+    @SerialName("refresh_token") val refreshToken: String = "",
     @SerialName("worker_id") val workerId: String,
     @SerialName("supplier_id") val supplierId: String,
     val role: String,
@@ -20,6 +21,17 @@ data class LoginResponse(
     @SerialName("warehouse_lat") val warehouseLat: Double = 0.0,
     @SerialName("warehouse_lng") val warehouseLng: Double = 0.0,
     @SerialName("firebase_token") val firebaseToken: String? = null,
+)
+
+@Serializable
+data class RefreshTokenRequest(
+    @SerialName("refresh_token") val refreshToken: String,
+)
+
+@Serializable
+data class RefreshTokenResponse(
+    val token: String,
+    @SerialName("refresh_token") val refreshToken: String = "",
 )
 
 // ─── Trucks ──────────────────────────────────────────────────────────────────
@@ -194,6 +206,14 @@ data class RecommendReassignResponse(
     @SerialName("order_volume_vu") val orderVolumeVu: Double = 0.0,
     @SerialName("current_driver") val currentDriver: String = "",
     val recommendations: List<TruckRecommendation> = emptyList(),
+)
+
+@Serializable
+data class ReassignOrderRequest(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("to_driver_id") val toDriverId: String,
+    val reason: String = "payload-redispatch",
+    @SerialName("to_manifest_id") val toManifestId: String? = null,
 )
 
 @Serializable

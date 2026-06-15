@@ -300,6 +300,22 @@ final class APIClient: @unchecked Sendable {
             do { return try decoder.decode(T.self, from: data) }
             catch { throw APIError.decodingError }
         case 401:
+            let refreshed = try await attemptRefresh()
+            if refreshed {
+                var retry = request
+                if let token = await MainActor.run(body: { TokenStore.shared.token }) {
+                    retry.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                }
+                let (retryData, retryResponse) = try await dataForRequestWithFallback(retry)
+                guard let retryHttp = retryResponse as? HTTPURLResponse else { throw APIError.networkError }
+                if (200...299).contains(retryHttp.statusCode) {
+                    if T.self == StatusResponse.self, retryData.isEmpty {
+                        return StatusResponse(status: "ok") as! T
+                    }
+                    do { return try decoder.decode(T.self, from: retryData) }
+                    catch { throw APIError.decodingError }
+                }
+            }
             await MainActor.run { TokenStore.shared.logout() }
             throw APIError.unauthorized
         case 403:
@@ -313,6 +329,24 @@ final class APIClient: @unchecked Sendable {
 
     private func parseProblem(_ data: Data) -> ProblemDetail? {
         try? decoder.decode(ProblemDetail.self, from: data)
+    }
+
+    private func attemptRefresh() async throws -> Bool {
+        let refresh = await MainActor.run { TokenStore.shared.refreshToken }
+        guard let refresh, !refresh.isEmpty else { return false }
+        var request = URLRequest(url: URL(string: "\(baseURL)/v1/auth/payloader/refresh")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try encoder.encode(RefreshTokenRequest(refreshToken: refresh))
+        let (data, response) = try await dataForRequestWithFallback(request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            await MainActor.run { TokenStore.shared.logout() }
+            return false
+        }
+        let auth = try decoder.decode(RefreshTokenResponse.self, from: data)
+        let nextRefresh = auth.refreshToken ?? refresh
+        await MainActor.run { TokenStore.shared.updateTokens(token: auth.token, refresh: nextRefresh) }
+        return true
     }
 
     private func dataForRequestWithFallback(_ request: URLRequest) async throws -> (Data, URLResponse) {

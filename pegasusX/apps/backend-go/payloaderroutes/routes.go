@@ -26,6 +26,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}
 
 	r.Post("/v1/auth/payloader/login", d.Service.HandlePayloaderLogin)
+	r.Post("/v1/auth/payloader/refresh", d.Service.HandlePayloaderRefresh)
 
 	mountProtected := func(rr chi.Router) {
 		rr.Get("/v1/payloader/trucks", d.Service.HandleTrucks)

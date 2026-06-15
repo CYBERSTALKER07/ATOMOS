@@ -35,7 +35,7 @@
 | ID | Feature | Backend | Terminal | Android | iOS | Status |
 |----|---------|---------|----------|---------|-----|--------|
 | PL1-01 | API path audit | `payloaderroutes/routes.go` | `/v1/payloader/*` + supplier manifest aliases | `PayloadApi.kt` | `APIClient.swift` | **WIRED** (no drift found) |
-| PL1-02 | Token refresh | — | N/A (PIN session; re-login on 401) | N/A | N/A | **DEFERRED** (no `/v1/auth/payloader/refresh` backend route) |
+| PL1-02 | Token refresh | `POST /v1/auth/payloader/refresh` | `authSession.ts` 401 retry | `TokenRefreshAuthenticator` | `APIClient.attemptRefresh` | **WIRED** (`PX_E2E_PAYLOAD_AUTH_REFRESH_OK`) |
 | PL1-03 | Mock/hardcoded data | — | live API only | live API | live API | **WIRED** |
 | PL1-04 | Missing-items post-seal | `POST /v1/delivery/missing-items` | double-check screen | wired | wired | **WIRED** |
 | PL1-05 | Device token | `POST /v1/user/device-token` | — (Expo OTA separate) | FCM service | APNs manager | **WIRED** (`PX_E2E_PAYLOAD_DEVICE_TOKEN_OK`) |
@@ -65,7 +65,7 @@
 |----|---------|---------|----------|---------|-----|--------|
 | PL3-01 | Client version policy | `GET /v1/platform/client-policy?role=PAYLOAD` | banner in `App.tsx` | `ClientPolicyBanner` | `ClientPolicyBanner` | **WIRED** |
 | PL3-02 | SSMR marker | smokecheck | — | — | — | **WIRED** (`PX_E2E_PAYLOAD_CLIENT_POLICY_OK`) |
-| PL3-03 | Firebase OTP / custom token | login response `firebase_token` | stored; not exchanged | scaffold | scaffold | **DEFERRED** (graceful only) |
+| PL3-03 | Firebase OTP / custom token | login `firebase_token` when Admin Auth configured | stored; PIN-only UX | `FirebaseAuthHelper` exchange | stub + graceful | **SCAFFOLD** (PIN production path; phone OTP deferred) |
 | PL3-04 | Expo OTA updates | — | `expo-updates` | APK `AutoUpdater` | `AutoUpdater` | **WIRED** (platform-specific; separate from policy API) |
 
 **Exit:** Outdated/force-update surfaces show honest banners on all payload clients; SSMR asserts PAYLOAD role policy tuple.
@@ -85,8 +85,7 @@ cd pegasusX/apps/payload-app-android && ./gradlew compileDebugKotlin
 
 ## Known remaining gaps
 
-- No payloader JWT refresh endpoint — sessions expire; clients must re-login (intentional v1 PIN flow).
-- Firebase phone OTP not implemented — custom-token scaffold stored at login only.
+- Firebase phone OTP UI not exposed — PIN login is the production path; custom-token exchange wired on Android when backend mints tokens (`FIREBASE_CREDENTIALS_PATH` or emulator).
 - Re-dispatch UI uses `fleet/reassign` on Expo; durable apply path `payloader/reassign-order` wired on API surfaces for programmatic use.
 - Barcode scanning deferred ecosystem-wide (see payload iOS `project.yml` comment).
 

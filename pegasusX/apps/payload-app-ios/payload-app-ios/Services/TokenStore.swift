@@ -22,6 +22,7 @@ final class TokenStore {
     private(set) var warehouseId: String?
     private(set) var warehouseName: String?
     private(set) var firebaseToken: String?
+    private(set) var refreshToken: String?
 
     var isAuthenticated: Bool { token != nil }
 
@@ -32,6 +33,7 @@ final class TokenStore {
         warehouseId = read(.warehouseId)
         warehouseName = read(.warehouseName)
         firebaseToken = read(.firebaseToken)
+        refreshToken = read(.refreshToken)
     }
 
     func saveSession(from resp: LoginResponse) {
@@ -40,6 +42,9 @@ final class TokenStore {
         write(.supplierId, value: resp.supplierId)
         write(.warehouseId, value: resp.warehouseId)
         write(.warehouseName, value: resp.warehouseName)
+        if let refresh = resp.refreshToken, !refresh.isEmpty {
+            write(.refreshToken, value: refresh)
+        }
         if let fb = resp.firebaseToken { write(.firebaseToken, value: fb) }
 
         token = resp.token
@@ -47,11 +52,22 @@ final class TokenStore {
         supplierId = resp.supplierId
         warehouseId = resp.warehouseId
         warehouseName = resp.warehouseName
+        refreshToken = resp.refreshToken
         firebaseToken = resp.firebaseToken
+    }
+
+    func updateTokens(token: String, refresh: String?) {
+        write(.token, value: token)
+        if let refresh, !refresh.isEmpty {
+            write(.refreshToken, value: refresh)
+        }
+        self.token = token
+        self.refreshToken = refresh ?? refreshToken
     }
 
     @MainActor
     func logout() {
+        FirebaseAuthHelper.shared.signOut()
         for k in Key.allCases { delete(k) }
         token = nil
         name = nil
@@ -59,6 +75,7 @@ final class TokenStore {
         warehouseId = nil
         warehouseName = nil
         firebaseToken = nil
+        refreshToken = nil
     }
 
     // MARK: - Keychain plumbing
@@ -70,6 +87,7 @@ final class TokenStore {
         case warehouseId   = "payloader_warehouse_id"
         case warehouseName = "payloader_warehouse_name"
         case firebaseToken = "payloader_firebase_token"
+        case refreshToken  = "payloader_refresh_token"
     }
 
     private func read(_ key: Key) -> String? {

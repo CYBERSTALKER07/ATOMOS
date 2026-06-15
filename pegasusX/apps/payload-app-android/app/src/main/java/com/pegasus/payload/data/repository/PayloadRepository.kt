@@ -2,7 +2,8 @@ package com.pegasus.payload.data.repository
 
 import com.pegasus.payload.data.local.SecureStore
 import com.pegasus.payload.data.model.DeviceTokenRequest
-import com.google.gson.JsonObject
+import com.pegasus.payload.data.model.NotificationItem
+import com.pegasus.payload.data.model.ReassignOrderRequest
 import com.pegasus.payload.data.model.FleetReassignRequest
 import com.pegasus.payload.data.model.FleetReassignResponse
 import com.pegasus.payload.data.model.InjectOrderRequest
@@ -137,13 +138,8 @@ class PayloadRepository @Inject constructor(
         )
 
     suspend fun applyReassignOrder(orderId: String, toDriverId: String, reason: String = "payload-redispatch"): StatusResponse {
-        val body = JsonObject().apply {
-            addProperty("order_id", orderId)
-            addProperty("to_driver_id", toDriverId)
-            addProperty("reason", reason)
-        }
         return api.reassignOrder(
-            req = body,
+            req = ReassignOrderRequest(orderId = orderId, toDriverId = toDriverId, reason = reason),
             idempotencyKey = deterministicIdempotencyKey("reassign-order", "$orderId-$toDriverId"),
         )
     }

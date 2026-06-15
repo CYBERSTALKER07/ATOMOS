@@ -2,6 +2,7 @@ package com.pegasus.payload.di
 
 import com.pegasus.payload.BuildConfig
 import com.pegasus.payload.data.remote.AuthInterceptor
+import com.pegasus.payload.data.remote.TokenRefreshAuthenticator
 import com.pegasus.payload.data.remote.PayloadApi
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
@@ -28,13 +29,17 @@ object NetworkModule {
     }
 
     @Provides @Singleton
-    fun provideOkHttp(authInterceptor: AuthInterceptor): OkHttpClient {
+    fun provideOkHttp(
+        authInterceptor: AuthInterceptor,
+        tokenRefreshAuthenticator: TokenRefreshAuthenticator,
+    ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC
             else HttpLoggingInterceptor.Level.NONE
         }
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .authenticator(tokenRefreshAuthenticator)
             .addInterceptor(logging)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)

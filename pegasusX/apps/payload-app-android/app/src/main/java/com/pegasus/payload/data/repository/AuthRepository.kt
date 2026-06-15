@@ -1,5 +1,6 @@
 package com.pegasus.payload.data.repository
 
+import com.pegasus.payload.data.auth.FirebaseAuthHelper
 import com.pegasus.payload.data.local.SecureStore
 import com.pegasus.payload.data.model.LoginRequest
 import com.pegasus.payload.data.model.LoginResponse
@@ -52,11 +53,17 @@ class AuthRepository @Inject constructor(
     suspend fun login(phone: String, pin: String): Result<Session> = runCatching {
         val resp: LoginResponse = api.login(LoginRequest(phone = phone, pin = pin))
         secureStore.token = resp.token
+        if (resp.refreshToken.isNotBlank()) {
+            secureStore.refreshToken = resp.refreshToken
+        }
         secureStore.name = resp.name
         secureStore.supplierId = resp.supplierId
         secureStore.warehouseId = resp.warehouseId
         secureStore.warehouseName = resp.warehouseName
-        secureStore.firebaseToken = resp.firebaseToken
+        resp.firebaseToken?.let { custom ->
+            secureStore.firebaseToken = custom
+            FirebaseAuthHelper.exchangeCustomToken(custom)
+        }
         val s = Session(
             token = resp.token,
             workerId = resp.workerId,
@@ -70,6 +77,7 @@ class AuthRepository @Inject constructor(
     }
 
     fun logout() {
+        FirebaseAuthHelper.signOut()
         secureStore.clear()
         _session.value = null
     }

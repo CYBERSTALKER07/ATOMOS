@@ -11,6 +11,7 @@ import { extractProblemMessage, getPayloadTranslator, resolvePayloadLocale } fro
 import * as Updates from 'expo-updates';
 import { buildManifest, type LiveOrder, type ManifestItem } from './utils/manifest';
 import { PayloadTerminalApi } from './api';
+import { authFetch, clearPayloaderSession, savePayloaderSession, setTokenRefreshListener } from './authSession';
 import { defaultLocale, type Locale } from '../../packages/i18n/locales';
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -292,6 +293,11 @@ export default function App() {
 
   // Lock tablet to landscape + restore session on mount
   useEffect(() => {
+    setTokenRefreshListener(setToken);
+    return () => setTokenRefreshListener(null);
+  }, []);
+
+  useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_LEFT);
     (async () => {
       try {
@@ -324,9 +330,7 @@ export default function App() {
     if (!token) return;
     setIsLoadingTrucks(true);
     try {
-      const res = await fetch(`${API_BASE}/v1/payloader/trucks`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      const res = await authFetch('/v1/payloader/trucks');
       if (!res.ok) return;
       const vehicles: { id: string; label: string; license_plate: string; vehicle_class: string }[] = await res.json();
       setTrucks(vehicles.map(v => ({
@@ -360,15 +364,7 @@ export default function App() {
         throw new Error(await extractProblemMessage(res, locale));
       }
       const data = await res.json();
-      await SecureStore.setItemAsync('payloader_token', data.token);
-      await SecureStore.setItemAsync('payloader_name', data.name || 'Payloader');
-      if (data.supplier_id) await SecureStore.setItemAsync('payloader_supplier_id', data.supplier_id);
-      if (data.warehouse_id) await SecureStore.setItemAsync('payloader_warehouse_id', data.warehouse_id);
-      if (data.warehouse_name) await SecureStore.setItemAsync('payloader_warehouse_name', data.warehouse_name);
-      // Store Firebase custom token for future SDK integration (graceful — not exchanged yet)
-      if (data.firebase_token) {
-        await SecureStore.setItemAsync('payloader_firebase_token', data.firebase_token);
-      }
+      await savePayloaderSession(data);
       setToken(data.token);
       setWorkerName(data.name || 'Payloader');
       if (data.supplier_id) setSupplierId(data.supplier_id);
@@ -380,12 +376,7 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await SecureStore.deleteItemAsync('payloader_token');
-    await SecureStore.deleteItemAsync('payloader_name');
-    await SecureStore.deleteItemAsync('payloader_supplier_id');
-    await SecureStore.deleteItemAsync('payloader_firebase_token');
-    await SecureStore.deleteItemAsync('payloader_warehouse_id');
-    await SecureStore.deleteItemAsync('payloader_warehouse_name');
+    await clearPayloaderSession();
     setToken(null);
     setWorkerName('');
     setSupplierId(null);
@@ -404,9 +395,7 @@ export default function App() {
       let unreadCount = 0;
       let hasMore = true;
       while (hasMore && offset < 2500) {
-        const res = await fetch(`${API_BASE}/v1/user/notifications?limit=${pageSize}&offset=${offset}`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
+        const res = await authFetch(`/v1/user/notifications?limit=${pageSize}&offset=${offset}`);
         if (!res.ok) return;
         const data = await res.json();
         const page = Array.isArray(data.notifications)
@@ -477,9 +466,9 @@ export default function App() {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
     try {
-      await fetch(`${API_BASE}/v1/user/notifications/read`, {
+      await authFetch('/v1/user/notifications/read', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notification_ids: [id] }),
       });
     } catch {}
@@ -490,9 +479,9 @@ export default function App() {
     setNotifications(prev => prev.map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
     setUnreadCount(0);
     try {
-      await fetch(`${API_BASE}/v1/user/notifications/read`, {
+      await authFetch('/v1/user/notifications/read', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mark_all: true }),
       });
     } catch {}
@@ -745,12 +734,11 @@ export default function App() {
     setReDispatchVolume(0);
     setIsLoadingRecs(true);
     try {
-      const res = await fetch(`${API_BASE}/v1/payloader/recommend-reassign`, {
+      const res = await authFetch('/v1/payloader/recommend-reassign', {
         method: 'POST',
         headers: {
-          ...(authHeaders as Record<string, string>),
           'Idempotency-Key': buildPayloadIdempotencyKey('recommend-reassign', orderId),
-        } as HeadersInit,
+        },
         body: JSON.stringify({ order_id: orderId }),
       });
       if (!res.ok) throw new Error(await extractProblemMessage(res, locale));
@@ -770,12 +758,11 @@ export default function App() {
     setIsReassigning(true);
     try {
       // RouteId == DriverId in this codebase; vehicle is bound to the driver.
-      const res = await fetch(`${API_BASE}/v1/fleet/reassign`, {
+      const res = await authFetch('/v1/fleet/reassign', {
         method: 'POST',
         headers: {
-          ...(authHeaders as Record<string, string>),
           'Idempotency-Key': buildPayloadIdempotencyKey('fleet-reassign', reDispatchOrderId),
-        } as HeadersInit,
+        },
         body: JSON.stringify({
           order_ids: [reDispatchOrderId],
           new_route_id: newDriverId,
@@ -820,9 +807,8 @@ export default function App() {
     const cacheKey = `manifest_${truckId}`;
     const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
     try {
-      const res = await fetch(
-        `${API_BASE}/v1/payloader/orders?vehicle_id=${encodeURIComponent(truckId)}&state=LOADED`,
-        { headers: authHeaders as HeadersInit }
+      const res = await authFetch(
+        `/v1/payloader/orders?vehicle_id=${encodeURIComponent(truckId)}&state=LOADED`,
       );
       if (!res.ok) throw new Error(await extractProblemMessage(res, locale));
       const data: LiveOrder[] = await res.json();
@@ -951,10 +937,9 @@ export default function App() {
     if (!manifestId || !token) return;
     setExceptionLoading(orderId);
     try {
-      const res = await fetch(`${API_BASE}/v1/payload/manifest-exception`, {
+      const res = await authFetch('/v1/payload/manifest-exception', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Idempotency-Key': buildPayloadIdempotencyKey('manifest-exception', `${manifestId}-${orderId}`),
         },
@@ -1064,10 +1049,9 @@ export default function App() {
     const remaining: QueuedAction[] = [];
     for (const action of offlineQueue) {
       try {
-        const res = await fetch(`${API_BASE}${action.endpoint}`, {
+        const res = await authFetch(action.endpoint, {
           method: action.method,
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
             'Idempotency-Key': action.id,
           },
@@ -1108,12 +1092,11 @@ export default function App() {
     if (!selectedOrderId || !allChecked) return;
     setIsSealing(true);
     try {
-      const res = await fetch(`${API_BASE}/v1/payload/seal`, {
+      const res = await authFetch('/v1/payload/seal', {
         method: 'POST',
         headers: {
-          ...(authHeaders as Record<string, string>),
           'Idempotency-Key': buildPayloadIdempotencyKey('payload-seal', selectedOrderId),
-        } as HeadersInit,
+        },
         body: JSON.stringify({
           order_id: selectedOrderId,
           terminal_id: activeTruck || 'WH-UNKNOWN',
@@ -1205,12 +1188,11 @@ export default function App() {
                   style: 'destructive',
                   onPress: async () => {
                     try {
-                      await fetch(`${API_BASE}/v1/delivery/missing-items`, {
+                      await authFetch('/v1/delivery/missing-items', {
                         method: 'POST',
                         headers: {
-                          ...(authHeaders as Record<string, string>),
                           'Idempotency-Key': buildPayloadIdempotencyKey('missing-items', postSealOrderId ?? 'unknown-order'),
-                        } as HeadersInit,
+                        },
                         body: JSON.stringify({ order_id: postSealOrderId, items: [], source: 'PAYLOAD_TERMINAL' }),
                       });
                       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);

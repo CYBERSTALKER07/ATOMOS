@@ -548,7 +548,8 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 		return fmt.Errorf("payloader login status %d body %s", status, string(respBody))
 	}
 	var login struct {
-		Token string `json:"token"`
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 	if err := json.Unmarshal(respBody, &login); err != nil {
 		return err
@@ -556,7 +557,30 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 	if login.Token == "" {
 		return fmt.Errorf("payloader login missing token")
 	}
+	if login.RefreshToken == "" {
+		return fmt.Errorf("payloader login missing refresh_token")
+	}
 	token := login.Token
+
+	refreshBody, _ := json.Marshal(map[string]string{"refresh_token": login.RefreshToken})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/auth/payloader/refresh", refreshBody, "", "")
+	if err != nil {
+		return fmt.Errorf("payloader refresh: %w", err)
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("payloader refresh status %d body %s", status, string(respBody))
+	}
+	var refreshResp struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(respBody, &refreshResp); err != nil {
+		return err
+	}
+	if refreshResp.Token == "" {
+		return fmt.Errorf("payloader refresh missing token")
+	}
+	token = refreshResp.Token
+	fmt.Println("PX_E2E_PAYLOAD_AUTH_REFRESH_OK")
 
 	if status, _, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/payloader/trucks", nil, token, ""); err != nil {
 		return fmt.Errorf("payloader trucks: %w", err)

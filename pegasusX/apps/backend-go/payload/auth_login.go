@@ -105,9 +105,15 @@ func (s *Service) HandlePayloaderLogin(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_token_failed"})
 		return
 	}
+	refresh, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 7 * 24 * time.Hour})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_refresh_failed"})
+		return
+	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"token":          token,
+		"refresh_token":  refresh,
 		"worker_id":      workerID,
 		"supplier_id":    s.supplierID,
 		"role":           string(auth.RolePayload),
@@ -116,5 +122,16 @@ func (s *Service) HandlePayloaderLogin(w http.ResponseWriter, r *http.Request) {
 		"warehouse_name": warehouseName,
 		"warehouse_lat":  41.3111,
 		"warehouse_lng":  69.2797,
-	})
+	}
+	if fbToken, err := auth.MintCustomToken(r.Context(), workerID, map[string]interface{}{
+		"role":        string(auth.RolePayload),
+		"worker_id":   workerID,
+		"supplier_id": s.supplierID,
+	}); err != nil {
+		s.log.Warn("firebase custom token mint failed", "err", err)
+	} else if fbToken != "" {
+		resp["firebase_token"] = fbToken
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }

@@ -31,6 +31,9 @@ final class LoginViewModel {
         do {
             let resp = try await APIClient.shared.login(phone: trimmed, pin: pin)
             TokenStore.shared.saveSession(from: resp)
+            if let fbToken = resp.firebaseToken {
+                FirebaseAuthHelper.shared.exchangeCustomToken(fbToken) { _ in }
+            }
         } catch APIError.unauthorized {
             error = "Invalid credentials"
         } catch APIError.problemDetail(let p) {

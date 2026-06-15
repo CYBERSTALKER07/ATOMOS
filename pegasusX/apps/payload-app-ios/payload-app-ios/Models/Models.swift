@@ -17,6 +17,7 @@ struct LoginRequest: Encodable {
 
 struct LoginResponse: Decodable {
     let token: String
+    let refreshToken: String?
     let workerId: String
     let supplierId: String
     let role: String
@@ -26,6 +27,19 @@ struct LoginResponse: Decodable {
     let warehouseLat: Double
     let warehouseLng: Double
     let firebaseToken: String?
+}
+
+struct RefreshTokenRequest: Encodable {
+    let refreshToken: String
+
+    enum CodingKeys: String, CodingKey {
+        case refreshToken = "refresh_token"
+    }
+}
+
+struct RefreshTokenResponse: Decodable {
+    let token: String
+    let refreshToken: String?
 }
 
 // MARK: - Trucks / Manifest

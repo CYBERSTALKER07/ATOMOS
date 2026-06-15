@@ -84,7 +84,6 @@ val generateWsEventModels by tasks.registering(Exec::class) {
         "kotlinx",
         "--top-level",
         "PegasusWSEventEnvelope",
-        "--just-types",
         "--out",
         generatedWsModelFile.absolutePath,
     )
