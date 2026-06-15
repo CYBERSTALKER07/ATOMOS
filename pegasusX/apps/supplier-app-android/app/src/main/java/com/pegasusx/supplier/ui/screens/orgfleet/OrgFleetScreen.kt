@@ -12,6 +12,9 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.*
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
+import com.pegasusx.supplier.util.SUPPLIER_RECONNECT_RECOVERY_HINT
+import com.pegasusx.supplier.ui.realtime.SupplierReconnectRecoveryEffect
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
@@ -24,6 +27,7 @@ import java.util.UUID
 fun OrgFleetScreen(
     api: SupplierApi,
     ops: SupplierOperationsRepository,
+    realtimeSignals: SupplierRealtimeSignals,
     onBack: () -> Unit,
 ) {
     var tab by remember { mutableIntStateOf(0) }
@@ -37,7 +41,20 @@ fun OrgFleetScreen(
     var showVehicleDialog by remember { mutableStateOf(false) }
     var showOrgDialog by remember { mutableStateOf(false) }
     var memberActionId by remember { mutableStateOf<String?>(null) }
+    var fleetActionBusy by remember { mutableStateOf(false) }
+    var fleetActionMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    SupplierReconnectRecoveryEffect(
+        realtimeSignals = realtimeSignals,
+        isBusy = { fleetActionBusy || memberActionId != null },
+    ) { hadInFlight ->
+        if (hadInFlight) {
+            fleetActionBusy = false
+            memberActionId = null
+            fleetActionMessage = SUPPLIER_RECONNECT_RECOVERY_HINT
+        }
+    }
 
     fun reload() {
         scope.launch {
@@ -97,6 +114,9 @@ fun OrgFleetScreen(
                 onAction = { reload() },
             )
             else -> Column(Modifier.padding(padding).fillMaxSize()) {
+                fleetActionMessage?.let { msg ->
+                    Text(msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.sm))
+                }
                 TabRow(selectedTabIndex = tab) {
                     Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Drivers (${drivers.size})") })
                     Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Vehicles (${vehicles.size})") })
@@ -133,9 +153,15 @@ fun OrgFleetScreen(
             onDismiss = { showDriverDialog = false },
             onCreate = { request ->
                 scope.launch {
-                    ops.createFleetDriver(request, UUID.randomUUID().toString())
-                    showDriverDialog = false
-                    reload()
+                    fleetActionBusy = true
+                    fleetActionMessage = null
+                    try {
+                        ops.createFleetDriver(request, UUID.randomUUID().toString())
+                        showDriverDialog = false
+                        reload()
+                    } finally {
+                        fleetActionBusy = false
+                    }
                 }
             },
         )
@@ -146,9 +172,15 @@ fun OrgFleetScreen(
             onDismiss = { showVehicleDialog = false },
             onCreate = { request ->
                 scope.launch {
-                    ops.createFleetVehicle(request, UUID.randomUUID().toString())
-                    showVehicleDialog = false
-                    reload()
+                    fleetActionBusy = true
+                    fleetActionMessage = null
+                    try {
+                        ops.createFleetVehicle(request, UUID.randomUUID().toString())
+                        showVehicleDialog = false
+                        reload()
+                    } finally {
+                        fleetActionBusy = false
+                    }
                 }
             },
         )
@@ -159,9 +191,15 @@ fun OrgFleetScreen(
             onDismiss = { showOrgDialog = false },
             onCreate = { request ->
                 scope.launch {
-                    ops.createOrgMember(request, UUID.randomUUID().toString())
-                    showOrgDialog = false
-                    reload()
+                    fleetActionBusy = true
+                    fleetActionMessage = null
+                    try {
+                        ops.createOrgMember(request, UUID.randomUUID().toString())
+                        showOrgDialog = false
+                        reload()
+                    } finally {
+                        fleetActionBusy = false
+                    }
                 }
             },
         )

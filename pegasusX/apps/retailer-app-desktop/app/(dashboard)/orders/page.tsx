@@ -29,6 +29,10 @@ import { ListRowSkeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import { confirmAiOrder, rejectAiOrder } from "../../../lib/api";
+import {
+  retailerCancelKey,
+  retailerRequestCancelKey,
+} from "@pegasusx/api-client";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import type { Order, RetailerProfile, TrackingResponse } from "../../../lib/types";
 
@@ -197,7 +201,9 @@ export default function OrdersPage() {
         const res = await apiFetch(endpoint, {
           method: "POST",
           headers: {
-            "Idempotency-Key": `retailer-${useRequestCancel ? "request-" : ""}cancel:${orderId}`,
+            "Idempotency-Key": useRequestCancel
+              ? retailerRequestCancelKey(orderId)
+              : retailerCancelKey(orderId),
             "Content-Type": "application/json",
           },
           body: JSON.stringify({

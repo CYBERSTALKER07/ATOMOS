@@ -177,6 +177,7 @@ private struct CreateDriverSheet: View {
     let vehicles: [FleetVehicle]
     let onDone: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var name = ""
     @State private var phone = ""
     @State private var pin = ""
@@ -221,6 +222,12 @@ private struct CreateDriverSheet: View {
                         .disabled(busy || name.isEmpty || phone.isEmpty || pin.isEmpty || nodeId.isEmpty)
                 }
             }
+            .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+                if busy {
+                    busy = false
+                    error = "Connection restored — verify status before retrying."
+                }
+            }
         }
     }
 
@@ -262,6 +269,7 @@ private struct CreateVehicleSheet: View {
     let topology: SupplierTopologyResponse
     let onDone: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var label = ""
     @State private var plate = ""
     @State private var nodeType = "WAREHOUSE"
@@ -292,6 +300,12 @@ private struct CreateVehicleSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(busy ? "…" : "Create") { Task { await create() } }
                         .disabled(busy || plate.isEmpty || nodeId.isEmpty)
+                }
+            }
+            .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+                if busy {
+                    busy = false
+                    error = "Connection restored — verify status before retrying."
                 }
             }
         }
@@ -329,6 +343,7 @@ private struct CreateOrgMemberSheet: View {
     let topology: SupplierTopologyResponse
     let onDone: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var name = ""
     @State private var email = ""
     @State private var phone = ""
@@ -374,6 +389,12 @@ private struct CreateOrgMemberSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(busy ? "…" : "Create") { Task { await create() } }
                         .disabled(busy || name.isEmpty || phone.isEmpty || password.isEmpty || (role != "ADMIN" && nodeId.isEmpty))
+                }
+            }
+            .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+                if busy {
+                    busy = false
+                    error = "Connection restored — verify status before retrying."
                 }
             }
         }

@@ -46,11 +46,11 @@ Retailer Android/iOS/desktop, supplier portal + native, warehouse portal + nativ
 |------|--------|
 | Middleware caches only 2xx; releases key on 4xx/5xx | **Closed** — `idempotency/middleware.go` |
 | Production idempotency store | Redis when cache backend connects (`bootstrap.go`); in-memory fallback when Redis unavailable |
-| Universal in-flight UI recovery on every screen | **Mostly closed** — dispatch/manifest mutation surfaces on supplier + warehouse native; retailer desktop orders AI/cancel actions |
-| Desktop imports `@pegasusx/api-client` key helpers | **Partial** — inline strings, same format |
+| Universal in-flight UI recovery on every screen | **Closed** — dispatch/manifest/org-fleet + retailer order confirm flows on mobile/desktop |
+| Desktop imports `@pegasusx/api-client` key helpers | **Mostly closed** — `lib/api.ts` + orders cancel/confirm keys; checkout/procurement still inline |
 | Warehouse `POST /v1/warehouse/ops/dispatch/execute` requires key | **Closed** — `warehouse/ops_portal.go`; portal + native use `warehouseDispatchKey` |
 
-**Overall:** backend P0/P1 mutation guards ~95%; client keys + reconcile ~90%; full audit including cross-cutting UX ~92%.
+**Overall:** backend P0/P1 mutation guards ~95%; client keys + reconcile ~95%; full audit ~95%.
 
 ## Priority legend
 

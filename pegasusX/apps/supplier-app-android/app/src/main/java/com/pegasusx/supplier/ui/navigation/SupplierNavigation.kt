@@ -366,7 +366,7 @@ fun SupplierNavigation(
                 key(refreshEpoch) { EarlyCompleteScreen(ops, realtimeSignals) { navController.popBackStack() } }
             }
             composable(SupplierRoutes.ORG_FLEET) {
-                key(refreshEpoch) { OrgFleetScreen(api, ops) { navController.popBackStack() } }
+                key(refreshEpoch) { OrgFleetScreen(api, ops, realtimeSignals) { navController.popBackStack() } }
             }
             composable(SupplierRoutes.EARNINGS) { key(refreshEpoch) { EarningsScreen(api = api, ops = ops) } }
             composable(SupplierRoutes.PROFILE) { key(refreshEpoch) { ProfileScreen(api) } }

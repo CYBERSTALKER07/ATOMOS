@@ -32,6 +32,7 @@ data class DashboardUiState(
     val recentProducts: List<Product> = emptyList(),
     val error: String? = null,
     val loadIssue: DashboardLoadIssue? = null,
+    val orderActionPending: Boolean = false,
 ) {
     val syncMessage: String?
         get() = when (loadIssue) {
@@ -61,6 +62,20 @@ class DashboardViewModel @Inject constructor(
             retailerWebSocket.events
                 .filter { it.type == "PROMOTION_CHANGED" }
                 .collect { refresh() }
+        }
+        viewModelScope.launch {
+            retailerWebSocket.reconnects.collect {
+                if (_uiState.value.orderActionPending) {
+                    _uiState.update {
+                        it.copy(
+                            orderActionPending = false,
+                            error = ORDER_RECONNECT_RECOVERY_HINT,
+                            loadIssue = null,
+                        )
+                    }
+                    refresh()
+                }
+            }
         }
     }
 
@@ -140,6 +155,7 @@ class DashboardViewModel @Inject constructor(
 
     fun confirmAiOrder(orderId: String) {
         viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
             try {
                 api.confirmAiOrder(
                     body = mapOf("order_id" to orderId),
@@ -151,12 +167,15 @@ class DashboardViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
                 }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
             }
         }
     }
 
     fun rejectAiOrder(orderId: String, reason: String = "Retailer rejected") {
         viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
             try {
                 api.rejectAiOrder(
                     body = mapOf("order_id" to orderId, "reason" to reason),
@@ -168,12 +187,15 @@ class DashboardViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
                 }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
             }
         }
     }
 
     fun confirmPreorder(orderId: String) {
         viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
             try {
                 api.confirmPreorder(
                     body = mapOf("order_id" to orderId),
@@ -185,12 +207,15 @@ class DashboardViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
                 }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
             }
         }
     }
 
     fun editPreorder(order: Order, requestedDeliveryDate: String? = null) {
         viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
             try {
                 val deliveryDate = requestedDeliveryDate
                     ?: order.deliverBefore
@@ -218,6 +243,8 @@ class DashboardViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
                 }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
             }
         }
     }
@@ -236,5 +263,10 @@ class DashboardViewModel @Inject constructor(
             DashboardLoadIssue.OFFLINE -> "Offline mode active. Reconnect and retry"
             DashboardLoadIssue.ERROR -> error.message ?: "Dashboard request failed"
         }
+    }
+
+    private companion object {
+        const val ORDER_RECONNECT_RECOVERY_HINT =
+            "Connection restored — verify order status before retrying."
     }
 }

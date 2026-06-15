@@ -31,6 +31,7 @@ data class OrdersUiState(
     val predictions: List<DemandForecast> = emptyList(),
     val error: String? = null,
     val loadIssue: OrdersLoadIssue? = null,
+    val orderActionPending: Boolean = false,
 ) {
     val activeOrders: List<Order> get() = allOrders.filter {
         it.status == OrderStatus.LOADED || it.status == OrderStatus.DISPATCHED || it.status == OrderStatus.IN_TRANSIT || it.status == OrderStatus.ARRIVED
@@ -68,6 +69,20 @@ class OrdersViewModel @Inject constructor(
     init {
         refresh()
         connectWebSocket()
+        viewModelScope.launch {
+            retailerWebSocket.reconnects.collect {
+                if (_uiState.value.orderActionPending) {
+                    _uiState.update {
+                        it.copy(
+                            orderActionPending = false,
+                            error = ORDER_RECONNECT_RECOVERY_HINT,
+                            loadIssue = null,
+                        )
+                    }
+                    refresh()
+                }
+            }
+        }
     }
 
     private fun connectWebSocket() {
@@ -221,10 +236,11 @@ class OrdersViewModel @Inject constructor(
 
     fun confirmAiOrder(orderId: String) {
         viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
             try {
                 api.confirmAiOrder(
                     body = mapOf("order_id" to orderId),
-                    idempotencyKey = "retailer-confirm-ai:$orderId",
+                    idempotencyKey = RetailerIdempotencyKeys.confirmAI(orderId),
                 )
                 refresh()
             } catch (e: Exception) {
@@ -232,12 +248,15 @@ class OrdersViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
                 }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
             }
         }
     }
 
     fun rejectAiOrder(orderId: String, reason: String = "Retailer rejected") {
         viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
             try {
                 api.rejectAiOrder(
                     body = mapOf("order_id" to orderId, "reason" to reason),
@@ -249,16 +268,19 @@ class OrdersViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
                 }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
             }
         }
     }
 
     fun confirmPreorder(orderId: String) {
         viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
             try {
                 api.confirmPreorder(
                     body = mapOf("order_id" to orderId),
-                    idempotencyKey = "retailer-confirm-preorder:$orderId",
+                    idempotencyKey = RetailerIdempotencyKeys.confirmPreorder(orderId),
                 )
                 refresh()
             } catch (e: Exception) {
@@ -266,12 +288,15 @@ class OrdersViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
                 }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
             }
         }
     }
 
     fun editPreorder(order: Order, requestedDeliveryDate: String? = null) {
         viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
             try {
                 val deliveryDate = requestedDeliveryDate
                     ?: order.deliverBefore
@@ -299,6 +324,8 @@ class OrdersViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
                 }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
             }
         }
     }
@@ -317,5 +344,10 @@ class OrdersViewModel @Inject constructor(
             OrdersLoadIssue.OFFLINE -> "Offline mode active. Reconnect and retry"
             OrdersLoadIssue.ERROR -> error.message ?: "Orders request failed"
         }
+    }
+
+    private companion object {
+        const val ORDER_RECONNECT_RECOVERY_HINT =
+            "Connection restored — verify order status before retrying."
     }
 }

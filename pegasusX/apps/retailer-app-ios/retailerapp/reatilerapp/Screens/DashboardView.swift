@@ -9,8 +9,10 @@ struct DashboardView: View {
     @State private var reorderProducts: [Product] = []
     @State private var isLoading = false
     @State private var preorderingId: String?
+    @State private var orderActionPending = false
     @State private var clientPolicyMessage: String?
     @State private var loadError: String?
+    @State private var socket = RetailerWebSocket.shared
 
     private let api = APIClient.shared
 
@@ -72,6 +74,13 @@ struct DashboardView: View {
         .refreshable {
             await loadData()
             await loadClientPolicy()
+        }
+        .onChange(of: socket.reconnectEpoch) { _, _ in
+            if orderActionPending {
+                orderActionPending = false
+                loadError = "Connection restored — verify order status before retrying."
+                Task { await loadData() }
+            }
         }
     }
 
@@ -481,33 +490,41 @@ struct DashboardView: View {
     }
 
     private func confirmAiOrder(_ orderId: String) async {
+        orderActionPending = true
+        defer { orderActionPending = false }
         do {
             try await APIClient.shared.confirmAiOrder(orderId: orderId)
             await loadData()
         } catch {
-            print("Failed to confirm AI order")
+            loadError = "Failed to confirm AI order"
         }
     }
 
     private func rejectAiOrder(_ orderId: String) async {
+        orderActionPending = true
+        defer { orderActionPending = false }
         do {
             try await APIClient.shared.rejectAiOrder(orderId: orderId, reason: "Retailer rejected")
             await loadData()
         } catch {
-            print("Failed to reject AI order")
+            loadError = "Failed to reject AI order"
         }
     }
 
     private func confirmPreorder(_ orderId: String) async {
+        orderActionPending = true
+        defer { orderActionPending = false }
         do {
             try await APIClient.shared.confirmPreorder(orderId: orderId)
             await loadData()
         } catch {
-            print("Failed to confirm preorder")
+            loadError = "Failed to confirm preorder"
         }
     }
 
     private func editPreorder(_ orderId: String) async {
+        orderActionPending = true
+        defer { orderActionPending = false }
         guard let order = await findOrder(orderId) else { return }
         let deliveryDate = order.deliverBefore ?? order.autoConfirmAt ?? order.estimatedDelivery ?? ""
         guard !deliveryDate.isEmpty else { return }
