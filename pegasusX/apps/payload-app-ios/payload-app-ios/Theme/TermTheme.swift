@@ -18,6 +18,16 @@ enum TermTheme {
     static let alert = Color(UIColor.systemRed)
     static let warn = Color(UIColor.systemOrange)
     static let progress = Color(UIColor.systemBlue)
+
+    static func statusTint(for status: String) -> Color {
+        switch status.uppercased() {
+        case "LOADING": return progress
+        case "SEALED", "DISPATCHED", "LIVE": return live
+        case "DRAFT", "WARNING": return warn
+        case "ESCALATED", "OVERFLOW", "DAMAGED", "OFFLINE": return alert
+        default: return accent
+        }
+    }
     
     // MARK: Corner Radii (iPad Optimization)
     static let radiusLG: Double = 32

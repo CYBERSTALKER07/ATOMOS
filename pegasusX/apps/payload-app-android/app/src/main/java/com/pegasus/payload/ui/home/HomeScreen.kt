@@ -1,14 +1,8 @@
 package com.pegasus.payload.ui.home
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.EaseInOut
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -63,7 +57,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Lock
@@ -98,6 +91,14 @@ import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.data.model.TruckRecommendation
 import com.pegasus.payload.ui.components.ClientPolicyBanner
 import com.pegasus.payload.ui.components.ManifestKpiGrid
+import com.pegasus.payload.ui.components.PayloadConnectionStatus
+import com.pegasus.payload.ui.components.PayloadInlineLoading
+import com.pegasus.payload.ui.components.PayloadLoadingState
+import com.pegasus.payload.ui.components.PayloadSectionTitle
+import com.pegasus.payload.ui.components.PayloadSpacing
+import com.pegasus.payload.ui.components.PayloadStateKind
+import com.pegasus.payload.ui.components.PayloadStatePane
+import com.pegasus.payload.ui.components.PayloadStatusChip
 
 /**
  * Master-detail home with Phase 4 loading workflow.
@@ -169,7 +170,7 @@ fun HomeScreen(
                 title = {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Pegasus Payload Terminal")
-                        OnlineDot(online = state.online, queued = state.queuedActions)
+                        PayloadConnectionStatus(online = state.online, queued = state.queuedActions)
                     }
                 },
                 actions = {
@@ -298,46 +299,6 @@ fun HomeScreen(
     }
 }
 
-@Composable
-private fun OnlineDot(online: Boolean, queued: Int) {
-    val color = if (online) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-
-    val infiniteTransition = rememberInfiniteTransition(label = "dot-pulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = EaseInOut),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "dot-pulse-alpha",
-    )
-
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(contentAlignment = Alignment.Center) {
-            if (online) {
-                Box(
-                    Modifier
-                        .size(20.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(color.copy(alpha = pulseAlpha)),
-                )
-            }
-            Box(
-                Modifier
-                    .size(10.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(color),
-            )
-        }
-        Spacer(Modifier.size(8.dp))
-        Text(
-            text = if (online) "Live" else if (queued > 0) "Offline · $queued queued" else "Offline",
-            style = MaterialTheme.typography.labelMedium,
-        )
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NotificationsSheet(
@@ -362,7 +323,12 @@ private fun NotificationsSheet(
             }
             HorizontalDivider()
             if (items.isEmpty()) {
-                EmptyState(label = "No notifications", hint = "New events will appear here in real time.")
+                PayloadStatePane(
+                    kind = PayloadStateKind.Empty,
+                    headline = "No notifications",
+                    body = "New events will appear here in real time.",
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
+                )
             } else {
                 LazyColumn(Modifier.fillMaxWidth()) {
                     items(items, key = { it.notificationId }) { n ->
@@ -399,27 +365,33 @@ private fun ManifestExceptionsSheet(
             }
             HorizontalDivider()
             when {
-                loading && items.isEmpty() -> CenteredSpinner()
-                items.isEmpty() -> EmptyState(
-                    label = "No exceptions",
-                    hint = "Overflow, damaged, and manual removals appear here.",
+                loading && items.isEmpty() -> PayloadLoadingState(
+                    title = "Loading exceptions",
+                    body = "Fetching overflow, damaged, and manual removals.",
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
+                    compact = true,
+                )
+                items.isEmpty() -> PayloadStatePane(
+                    kind = PayloadStateKind.Empty,
+                    headline = "No exceptions",
+                    body = "Overflow, damaged, and manual removals appear here.",
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
                 )
                 else -> LazyColumn(Modifier.fillMaxWidth()) {
                     items(items, key = { it.exceptionId }) { row ->
                         Column(
                             Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                                .padding(vertical = PayloadSpacing.md),
+                            verticalArrangement = Arrangement.spacedBy(PayloadSpacing.xs),
                         ) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(row.reason, style = MaterialTheme.typography.labelLarge)
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(PayloadSpacing.sm),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                PayloadStatusChip(status = row.reason)
                                 if (row.escalated) {
-                                    Text(
-                                        "ESCALATED",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.error,
-                                    )
+                                    PayloadStatusChip(status = "ESCALATED")
                                 }
                             }
                             Text(
@@ -495,14 +467,11 @@ private fun TruckListPane(
         modifier = Modifier.fillMaxSize(),
     ) {
         Column(Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                Text("Vehicles", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Assigned loading vehicles",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            PayloadSectionTitle(
+                title = "Vehicles",
+                subtitle = "Assigned loading vehicles",
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = PayloadSpacing.lg),
+            )
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (batchReadyCount > 1) {
                 ElevatedCard(
@@ -533,8 +502,17 @@ private fun TruckListPane(
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                 )
             }
-            if (!loading && trucks.isEmpty() && error == null) {
-                EmptyState(label = "No vehicles available", hint = "Pull to refresh once dispatch assigns trucks.")
+            if (loading && trucks.isEmpty() && error == null) {
+                PayloadLoadingState(
+                    title = "Loading vehicles",
+                    body = "Refreshing supplier fleet availability for this shift.",
+                )
+            } else if (!loading && trucks.isEmpty() && error == null) {
+                PayloadStatePane(
+                    kind = PayloadStateKind.Truck,
+                    headline = "No vehicles available",
+                    body = "Pull to refresh once dispatch assigns trucks.",
+                )
             }
             LazyColumn(contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
                 items(trucks, key = { it.id }) { truck ->
@@ -624,7 +602,11 @@ private fun ManifestDetailPane(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (truck == null) {
-                EmptyState(label = "Select a vehicle", hint = "Pick a truck from the sidebar to load its manifest.")
+                PayloadStatePane(
+                    kind = PayloadStateKind.Truck,
+                    headline = "Select a vehicle",
+                    body = "Pick a truck from the sidebar to load its manifest.",
+                )
                 return@Column
             }
             DetailHeader(
@@ -648,10 +630,14 @@ private fun ManifestDetailPane(
             }
 
             when {
-                state.loadingManifest -> CenteredSpinner()
-                state.manifest == null -> EmptyState(
-                    label = "No open manifest",
-                    hint = "This truck has no DRAFT or LOADING manifest. Wait for dispatch.",
+                state.loadingManifest -> PayloadLoadingState(
+                    title = "Loading manifest",
+                    body = "Syncing orders and volume for this vehicle.",
+                )
+                state.manifest == null -> PayloadStatePane(
+                    kind = PayloadStateKind.Manifest,
+                    headline = "No open manifest",
+                    body = "This truck has no DRAFT or LOADING manifest. Wait for dispatch.",
                 )
                 else -> {
                     ManifestKpiGrid(manifest = state.manifest)
@@ -813,13 +799,15 @@ private fun OrderChecklist(
     onShowReDispatch: (String) -> Unit,
 ) {
     if (loading) {
-        CenteredSpinner()
+        PayloadInlineLoading()
         return
     }
     if (orders.isEmpty()) {
-        EmptyState(
-            label = "No live orders",
-            hint = "No LOADED orders for this vehicle yet. They appear once dispatch assigns them.",
+        PayloadStatePane(
+            kind = PayloadStateKind.Manifest,
+            headline = "No live orders",
+            body = "No LOADED orders for this vehicle yet. They appear once dispatch assigns them.",
+            modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),
         )
         return
     }
@@ -828,10 +816,9 @@ private fun OrderChecklist(
         shape = RoundedCornerShape(20.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                "Orders (${sealedOrderIds.size}/${orders.size} sealed)",
-                style = MaterialTheme.typography.titleMedium,
+        Column(Modifier.padding(PayloadSpacing.lg), verticalArrangement = Arrangement.spacedBy(PayloadSpacing.md)) {
+            PayloadSectionTitle(
+                title = "Orders (${sealedOrderIds.size}/${orders.size} sealed)",
             )
             // Order chips
             LazyColumn(
@@ -1154,13 +1141,6 @@ private fun AllSealedSuccessCard(
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 @Composable
-private fun CenteredSpinner() {
-    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
-    }
-}
-
-@Composable
 private fun ErrorBanner(message: String) {
     Surface(
         color = MaterialTheme.colorScheme.errorContainer,
@@ -1172,23 +1152,6 @@ private fun ErrorBanner(message: String) {
             message,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(12.dp),
-        )
-    }
-}
-
-@Composable
-private fun EmptyState(label: String, hint: String) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(label, style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(6.dp))
-        Text(
-            hint,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -1315,7 +1278,7 @@ private fun ReDispatchDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (loading) {
-                    CenteredSpinner()
+                    PayloadInlineLoading()
                 } else if (response == null) {
                     Text("No recommendations available.", style = MaterialTheme.typography.bodySmall)
                 } else {

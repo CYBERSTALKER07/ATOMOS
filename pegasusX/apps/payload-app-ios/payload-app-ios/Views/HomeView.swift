@@ -254,9 +254,11 @@ private struct TruckSidebar: View {
             } else {
                 if viewModel.batchReadyManifestIds.count > 1 {
                     Section {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("\(viewModel.batchReadyManifestIds.count) trucks ready to finalize")
-                                .font(.subheadline.weight(.semibold))
+                        VStack(alignment: .leading, spacing: TermTheme.s8) {
+                            PayloadSectionHeader(
+                                title: "BATCH FINALIZE",
+                                subtitle: "\(viewModel.batchReadyManifestIds.count) trucks ready to seal"
+                            )
                             Button(viewModel.batchSealing ? "Finalizing…" : "Seal all trucks") {
                                 Task { await viewModel.finalizeBatchSeal() }
                             }
@@ -385,54 +387,8 @@ private struct ManifestWorkflow: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) { // Increased tactical spacing
                 if let truck { TruckHeader(truck: truck) }
-                
-                HStack(spacing: 20) {
-                    StateBadge(state: manifest.state)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("PAYLOAD_VOLUME")
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .foregroundStyle(TermTheme.tertiary)
-                        Text(volumeLabel)
-                            .font(.system(size: 16, weight: .bold, design: .monospaced))
-                            .foregroundStyle(TermTheme.accent)
-                        
-                        ProgressView(value: progress)
-                            .tint(TermTheme.accent)
-                            .scaleEffect(x: 1, y: 1.5, anchor: .center)
-                    }
-                    .padding(TermTheme.s20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .tacticalCard()
-                }
 
-                HStack(spacing: 20) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("TARGET_STOPS")
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .foregroundStyle(TermTheme.tertiary)
-                        Text("\(manifest.stopCount ?? 0) UNITS")
-                            .font(.system(size: 20, weight: .black, design: .monospaced))
-                            .foregroundStyle(TermTheme.accent)
-                    }
-                    .padding(TermTheme.s20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .tacticalCard()
-
-                    if let region = manifest.regionCode, !region.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("DEPLOYMENT_ZONE")
-                                .font(.system(size: 10, weight: .black, design: .monospaced))
-                                .foregroundStyle(TermTheme.tertiary)
-                            Text(region.uppercased())
-                                .font(.system(size: 20, weight: .black, design: .monospaced))
-                                .foregroundStyle(TermTheme.accent)
-                        }
-                        .padding(TermTheme.s20)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .tacticalCard()
-                    }
-                }
+                ManifestKpiGrid(manifest: manifest)
 
                 if let err = viewModel.error {
                     Text(err)
@@ -501,16 +457,6 @@ private struct ManifestWorkflow: View {
             .padding()
         }
     }
-
-    private var progress: Double {
-        let cap = max(manifest.maxVolumeVu ?? 0, 0.001)
-        let total = manifest.totalVolumeVu ?? 0
-        return min(max(total / cap, 0), 1)
-    }
-
-    private var volumeLabel: String {
-        String(format: "%.1f / %.1f VU", manifest.totalVolumeVu ?? 0, manifest.maxVolumeVu ?? 0)
-    }
 }
 
 // MARK: - Order checklist
@@ -522,15 +468,11 @@ private struct OrderChecklistSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("ORDER_CHECKLIST")
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
-                    .foregroundStyle(TermTheme.secondary)
-                Spacer()
-                Text("\(viewModel.sealedOrderIds.count) / \(viewModel.orders.count) SEALED")
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
-                    .foregroundStyle(viewModel.allOrdersSealed ? TermTheme.live : TermTheme.accent)
-            }
+            PayloadSectionHeader(
+                title: "ORDER CHECKLIST",
+                trailing: "\(viewModel.sealedOrderIds.count) / \(viewModel.orders.count) SEALED",
+                trailingTint: viewModel.allOrdersSealed ? TermTheme.live : TermTheme.accent
+            )
             .padding(.horizontal, 4)
 
             if viewModel.loadingOrders {
@@ -981,35 +923,6 @@ private struct TruckHeader: View {
     }
 }
 
-private struct StateBadge: View {
-    let state: String
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("PROTOCOL_STATE")
-                .font(.system(size: 10, weight: .black, design: .monospaced))
-                .foregroundStyle(TermTheme.tertiary)
-                .tracking(1.4)
-            
-            Text(state.uppercased())
-                .font(.system(size: 24, weight: .black, design: .monospaced))
-                .foregroundStyle(statusColor)
-                .tracking(2.0)
-        }
-        .padding(TermTheme.s24)
-        .frame(minWidth: 200, alignment: .leading)
-        .tacticalCard()
-    }
-
-    private var statusColor: Color {
-        switch state.uppercased() {
-        case "LOADING": return TermTheme.progress
-        case "SEALED", "DISPATCHED": return TermTheme.live
-        case "DRAFT": return TermTheme.warn
-        default: return TermTheme.accent
-        }
-    }
-}
-
 // MARK: - Phase 5 sheets
 
 private struct InjectOrderSheet: View {
@@ -1384,41 +1297,7 @@ private struct RecommendationRow: View {
     }
 }
 
-// MARK: - Phase 6: Online chip / notifications sheet / info banner
-
-private struct OnlineDot: View {
-    let online: Bool
-    let queued: Int
-
-    @State private var pulseScale: CGFloat = 1
-
-    var body: some View {
-        HStack(spacing: 6) {
-            ZStack {
-                if online {
-                    Circle()
-                        .fill(Color.green.opacity(0.35))
-                        .frame(width: 14, height: 14)
-                        .scaleEffect(pulseScale)
-                        .animation(
-                            .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
-                            value: pulseScale
-                        )
-                }
-                Circle()
-                    .fill(online ? Color.green : Color.red)
-                    .frame(width: 8, height: 8)
-            }
-            Text(online ? "Live" : queued > 0 ? "Offline · \(queued) queued" : "Offline")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .onAppear { if online { pulseScale = 1.6 } }
-        .onChange(of: online) { _, isOnline in
-            pulseScale = isOnline ? 1.6 : 1
-        }
-    }
-}
+// MARK: - Phase 6: notifications sheet / info banner
 
 private struct NotificationsSheet: View {
     @Bindable var viewModel: HomeViewModel
@@ -1466,7 +1345,10 @@ private struct ManifestExceptionsSheet: View {
         NavigationStack {
             Group {
                 if viewModel.loadingExceptions && viewModel.manifestExceptions.isEmpty {
-                    ProgressView("Loading exceptions…")
+                    PayloadLoadingView(
+                        title: "LOADING EXCEPTIONS",
+                        message: "Fetching overflow, damaged, and manual removals."
+                    )
                 } else if viewModel.manifestExceptions.isEmpty {
                     PayloadStateView(
                         variant: .warning,
@@ -1476,24 +1358,21 @@ private struct ManifestExceptionsSheet: View {
                     )
                 } else {
                     List(viewModel.manifestExceptions) { row in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(row.reason)
-                                    .font(.headline)
+                        VStack(alignment: .leading, spacing: TermTheme.s8) {
+                            HStack(spacing: TermTheme.s8) {
+                                PayloadStatusBadge(text: row.reason)
                                 if row.escalated {
-                                    Text("ESCALATED")
-                                        .font(.caption.bold())
-                                        .foregroundStyle(.red)
+                                    PayloadStatusBadge(text: "ESCALATED", tint: TermTheme.alert)
                                 }
                             }
                             Text("Order \(row.orderId.prefix(8)) · Manifest \(row.manifestId.prefix(8))")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .font(.system(size: 13, weight: .medium, design: .monospaced))
+                                .foregroundStyle(TermTheme.secondary)
                             Text("Attempts \(row.attemptCount)")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundStyle(TermTheme.tertiary)
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, TermTheme.s4)
                     }
                     .listStyle(.plain)
                 }

@@ -5,7 +5,12 @@ import * as Haptics from 'expo-haptics';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as SecureStore from 'expo-secure-store';
 import "./global.css";
+import ConnectionStrip from './components/ConnectionStrip';
+import ManifestKpiGrid from './components/ManifestKpiGrid';
 import PayloadStatePanel from './components/PayloadStatePanel';
+import { SkeletonList } from './components/SkeletonPulse';
+import StatusBadge, { exceptionReasonTone } from './components/StatusBadge';
+import WorkflowSectionHeader from './components/WorkflowSectionHeader';
 import { useT, isIOS } from './theme';
 import { extractProblemMessage, getPayloadTranslator, resolvePayloadLocale } from './localization';
 import * as Updates from 'expo-updates';
@@ -186,6 +191,8 @@ export default function App() {
   const [manifestState, setManifestState] = useState<string>(''); // DRAFT | LOADING | SEALED
   const [manifestVolume, setManifestVolume] = useState(0);
   const [manifestMaxVolume, setManifestMaxVolume] = useState(0);
+  const [manifestStopCount, setManifestStopCount] = useState(0);
+  const [manifestRegionCode, setManifestRegionCode] = useState('');
   const [isStartingLoad, setIsStartingLoad] = useState(false);
   const [isSealingManifest, setIsSealingManifest] = useState(false);
   const [exceptionLoading, setExceptionLoading] = useState<string | null>(null); // orderId being excepted
@@ -568,6 +575,11 @@ export default function App() {
     }
   }, [token, showToast]);
 
+  useEffect(() => {
+    if (!token) return;
+    void loadManifestExceptions();
+  }, [token, liveSyncRevision, loadManifestExceptions]);
+
   const toastPanResponder = useMemo(
     () => PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) => {
@@ -858,6 +870,8 @@ export default function App() {
     setManifestState('');
     setManifestVolume(0);
     setManifestMaxVolume(0);
+    setManifestStopCount(0);
+    setManifestRegionCode('');
     fetchManifest(truckId);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
@@ -877,6 +891,8 @@ export default function App() {
         setManifestState(m.state);
         setManifestVolume(m.total_volume_vu || 0);
         setManifestMaxVolume(m.max_volume_vu || 0);
+        setManifestStopCount(m.stop_count || 0);
+        setManifestRegionCode(m.region_code || '');
       }
     } catch {}
   }, [token, activeTruck]);
@@ -1000,6 +1016,7 @@ export default function App() {
       if (data.escalated) {
         showToast('DLQ ESCALATION', `Order ${orderId.slice(0, 8)} escalated after ${data.overflow_count} overflow attempts.`, 'warning', 3800);
       }
+      void fetchTruckManifest();
     } catch (e: unknown) {
       showToast(tx('payload.alert.exception_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
     } finally {
@@ -1060,7 +1077,10 @@ export default function App() {
       setInjectOrderId('');
       setShowInjectOrder(false);
       // Refresh manifest to pick up new order
-      if (activeTruck) fetchManifest(activeTruck);
+      if (activeTruck) {
+        fetchManifest(activeTruck);
+        void fetchTruckManifest();
+      }
     } catch (e: unknown) {
       if (!isOnline) {
         // Offline: queue the action
@@ -1539,18 +1559,7 @@ export default function App() {
             <Text style={{ color: T.colors.sidebarSecondary, fontFamily: T.typography.mono.fontFamily, fontSize: 11 }}>
               {activeTruck}
             </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 }}>
-              <View style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: isOnline ? '#22C55E' : '#EF4444',
-              }} />
-              <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 10, color: T.colors.sidebarSecondary }}>
-                {isOnline ? (isIOS ? 'Live sync' : 'LIVE SYNC') : (isIOS ? 'Offline' : 'OFFLINE')}
-                {offlineQueue.length > 0 ? ` · ${offlineQueue.length} queued` : ''}
-              </Text>
-            </View>
+            <ConnectionStrip isOnline={isOnline} queuedCount={offlineQueue.length} theme={T} />
           </View>
           <Pressable
             onPress={() => {
@@ -1560,6 +1569,13 @@ export default function App() {
             style={{ padding: 6, marginRight: 4 }}
           >
             <MaterialIcons name="report-problem" size={20} color={T.colors.sidebarLabel} />
+            {manifestExceptions.length > 0 ? (
+              <View style={{ position: 'absolute', top: 2, right: 2, backgroundColor: '#F59E0B', borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '700' }}>
+                  {manifestExceptions.length > 99 ? '99+' : manifestExceptions.length}
+                </Text>
+              </View>
+            ) : null}
           </Pressable>
           <Pressable onPress={() => setShowNotifPanel(true)} style={{ padding: 6 }}>
             <MaterialIcons name="notifications" size={20} color={T.colors.sidebarLabel} />
@@ -1606,9 +1622,12 @@ export default function App() {
             borderBottomColor: T.colors.sidebarSeparator,
             backgroundColor: `${T.colors.accent}12`,
           }}>
-            <Text style={{ fontSize: 11, fontWeight: '600', color: T.colors.sidebarLabel, marginBottom: 8 }}>
-              {batchReadyManifestIds.length} trucks ready to finalize
-            </Text>
+            <WorkflowSectionHeader
+              onDark
+              subtitle={`${batchReadyManifestIds.length} trucks ready to finalize`}
+              theme={T}
+              title="Batch seal"
+            />
             <Pressable
               onPress={handleFinalizeBatchSeal}
               disabled={batchSealing}
@@ -1629,28 +1648,22 @@ export default function App() {
         {/* LEO: Volume Progress Bar + Manifest State */}
         {manifestId && (
           <View style={{ paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: T.colors.sidebarSeparator }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-              <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 10, color: T.colors.sidebarSecondary, letterSpacing: 0.3 }}>
-                {manifestState || 'DRAFT'}
-              </Text>
-              <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 10, color: T.colors.sidebarSecondary }}>
-                {manifestVolume.toFixed(1)}/{manifestMaxVolume.toFixed(1)} VU
-              </Text>
-            </View>
-            <View style={{ height: 6, backgroundColor: T.colors.fillTertiary, borderRadius: 3, overflow: 'hidden' }}>
-              <View style={{
-                height: 6,
-                borderRadius: 3,
-                width: manifestMaxVolume > 0 ? `${Math.min((manifestVolume / manifestMaxVolume) * 100, 100)}%` : '0%',
-                backgroundColor: manifestVolume / manifestMaxVolume > 0.95 ? '#EF4444' : manifestVolume / manifestMaxVolume > 0.8 ? '#F59E0B' : T.colors.accent,
-              } as any} />
-            </View>
+            <ManifestKpiGrid
+              compact
+              manifestId={manifestId}
+              maxVolumeVu={manifestMaxVolume}
+              regionCode={manifestRegionCode}
+              state={manifestState}
+              stopCount={manifestStopCount}
+              theme={T}
+              totalVolumeVu={manifestVolume}
+            />
             {manifestState === 'DRAFT' && (
               <Pressable
                 onPress={handleStartLoading}
                 disabled={isStartingLoad}
                 style={{
-                  marginTop: 8,
+                  marginTop: 10,
                   paddingVertical: 10,
                   alignItems: 'center',
                   backgroundColor: isStartingLoad ? T.colors.fillSecondary : T.colors.accent,
@@ -1725,9 +1738,7 @@ export default function App() {
                     </Text>
                   </View>
                   {isSealed && (
-                    <Text style={{ fontWeight: '600', fontSize: 11, color: T.colors.sidebarSecondary }}>
-                      {isIOS ? 'Cleared' : 'CLEARED'}
-                    </Text>
+                    <StatusBadge compact label={isIOS ? 'Cleared' : 'CLEARED'} theme={T} tone="success" />
                   )}
                 </Pressable>
               );
@@ -1829,7 +1840,14 @@ export default function App() {
             </View>
 
             {/* Manifest checklist */}
-            <ScrollView className="flex-1 px-8 py-4">
+            <View style={{ paddingHorizontal: 32, paddingTop: 16 }}>
+              <WorkflowSectionHeader
+                subtitle={isIOS ? 'Tap each line to confirm load verification.' : 'TAP EACH LINE TO CONFIRM LOAD VERIFICATION.'}
+                theme={T}
+                title="Load checklist"
+              />
+            </View>
+            <ScrollView className="flex-1 px-8 py-2">
               {selectedManifest.map(item => (
                 <Pressable
                   key={item.id}
@@ -1874,6 +1892,12 @@ export default function App() {
 
             {/* Seal button — per-order (legacy) + manifest-level (LEO) */}
             <View style={{ paddingHorizontal: 32, paddingVertical: 20, borderTopWidth: isIOS ? 0.33 : 1, borderTopColor: T.colors.separator }}>
+              <WorkflowSectionHeader
+                subtitle={manifestId ? (isIOS ? 'Inject orders or seal the manifest when loading is complete.' : 'INJECT ORDERS OR SEAL THE MANIFEST WHEN LOADING IS COMPLETE.') : (isIOS ? 'Seal each order after checklist verification.' : 'SEAL EACH ORDER AFTER CHECKLIST VERIFICATION.')}
+                theme={T}
+                title={manifestId ? 'Manifest workflow' : 'Order seal'}
+              />
+              <View style={{ marginTop: 12 }}>
               {/* Per-order seal (legacy — when no manifest entity exists) */}
               {!manifestId && (
                 <Pressable
@@ -1959,13 +1983,18 @@ export default function App() {
                   </Text>
                 </View>
               )}
+              </View>
             </View>
           </>
         ) : (
-          <View className="flex-1 items-center justify-center">
-            <Text style={{ fontSize: 13, color: T.colors.tertiaryLabel, letterSpacing: 0.3 }}>
-              {isLoading ? (isIOS ? 'Fetching...' : 'FETCHING...') : (isIOS ? 'Select order from manifest' : 'SELECT ORDER FROM MANIFEST')}
-            </Text>
+          <View className="flex-1 items-center justify-center p-8">
+            <PayloadStatePanel
+              compact
+              message={isIOS ? 'Choose an order from the sidebar to review its checklist.' : 'CHOOSE AN ORDER FROM THE SIDEBAR TO REVIEW ITS CHECKLIST.'}
+              theme={T}
+              title={isLoading ? (isIOS ? 'Fetching manifest...' : 'FETCHING MANIFEST...') : (isIOS ? 'Select order from manifest' : 'SELECT ORDER FROM MANIFEST')}
+              variant="manifest"
+            />
           </View>
         )}
       </View>
@@ -2143,18 +2172,10 @@ export default function App() {
                             {item.driver_name}
                           </Text>
                           {isBest && (
-                            <View style={{ marginLeft: 8, backgroundColor: T.colors.accent, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
-                              <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5 }}>
-                                {isIOS ? 'Best' : 'BEST'}
-                              </Text>
-                            </View>
+                            <StatusBadge compact label={isIOS ? 'Best' : 'BEST'} theme={T} tone="accent" />
                           )}
                           {isMaintenance && (
-                            <View style={{ marginLeft: 8, backgroundColor: T.colors.destructive, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
-                              <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5 }}>
-                                {isIOS ? 'Maintenance' : 'MAINTENANCE'}
-                              </Text>
-                            </View>
+                            <StatusBadge compact label={isIOS ? 'Maintenance' : 'MAINTENANCE'} theme={T} tone="danger" />
                           )}
                         </View>
                         <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 11, color: T.colors.tertiaryLabel, marginTop: 3, letterSpacing: 0.3 }}>
@@ -2290,9 +2311,7 @@ export default function App() {
               </Pressable>
             </View>
             {loadingExceptions && manifestExceptions.length === 0 ? (
-              <View style={{ padding: 40, alignItems: 'center' }}>
-                <Text style={{ color: T.colors.sidebarSecondary }}>{isIOS ? 'Loading…' : 'LOADING…'}</Text>
-              </View>
+              <SkeletonList count={4} theme={T} />
             ) : (
               <FlatList
                 data={manifestExceptions}
@@ -2301,7 +2320,7 @@ export default function App() {
                   <View style={{ padding: 40, alignItems: 'center' }}>
                     <PayloadStatePanel
                       theme={T}
-                      variant="warning"
+                      variant="manifest"
                       title={isIOS ? 'No exceptions' : 'NO EXCEPTIONS'}
                       message={isIOS ? 'Overflow, damaged, and manual removals appear here.' : 'OVERFLOW, DAMAGED, AND MANUAL REMOVALS APPEAR HERE.'}
                       compact
@@ -2310,10 +2329,10 @@ export default function App() {
                 }
                 renderItem={({ item }) => (
                   <View style={{ paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: T.colors.sidebarSeparator }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                      <Text style={{ fontWeight: '700', fontSize: 13, color: T.colors.sidebarLabel, marginRight: 8 }}>{item.reason}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
+                      <StatusBadge compact label={item.reason} theme={T} tone={exceptionReasonTone(item.reason)} />
                       {item.escalated ? (
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#EF4444' }}>ESCALATED</Text>
+                        <StatusBadge compact label={isIOS ? 'Escalated' : 'ESCALATED'} theme={T} tone="danger" />
                       ) : null}
                     </View>
                     <Text style={{ fontSize: 12, color: T.colors.sidebarSecondary }}>

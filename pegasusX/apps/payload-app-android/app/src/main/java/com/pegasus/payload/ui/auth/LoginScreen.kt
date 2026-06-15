@@ -25,6 +25,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pegasus.payload.ui.components.PayloadStateKind
+import com.pegasus.payload.ui.components.PayloadStatePane
 
 /**
  * LoginScreen — phone + 6-digit PIN auth, mirror of Expo `LoginForm`.
@@ -82,10 +84,12 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                     )
 
                     state.error?.let { msg ->
-                        Text(
-                            text = msg,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
+                        PayloadStatePane(
+                            kind = PayloadStateKind.AuthFailure,
+                            headline = "Login failed",
+                            body = msg,
+                            compact = true,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
 

@@ -1,7 +1,7 @@
 # pegasusX PAYLOAD Role — Phased Execution Ledger
 
 **Scope:** pegasusX only · **Parent plan:** `VEGETABLE_PLAN.md` §2.6  
-**Last updated:** 2026-06-15 (PL-4 home UX parity batch).
+**Last updated:** 2026-06-15 (PL-5P terminal deep component parity).
 
 ## Status model
 
@@ -76,7 +76,7 @@
 
 | ID | Feature | Backend | Terminal | Android | iOS | Status |
 |----|---------|---------|----------|---------|-----|--------|
-| PL4-01 | Manifest KPI header grid | — | sidebar volume bar (existing) | `ManifestKpiGrid` tactical tiles | `ManifestWorkflow` tactical cards | **WIRED** |
+| PL4-01 | Manifest KPI header grid | — | `ManifestKpiGrid` tactical tiles (PL-5P) | `ManifestKpiGrid` tactical tiles | `ManifestWorkflow` tactical cards | **WIRED** |
 | PL4-02 | Connection / queue status chrome | WS hub | sidebar live-sync dot + queue hint | `OnlineDot` in top bar | `OnlineDot` in sidebar toolbar | **WIRED** |
 | PL4-03 | Multi-truck batch seal UI | `seal-completed` | sidebar batch action card | `TruckListPane` batch card | `TruckSidebar` batch section | **WIRED** |
 | PL4-04 | Post-seal missing-items action | `POST /v1/delivery/missing-items` | countdown screen | `PostSealCountdownCard` | `PostSealCountdownView` | **WIRED** |
@@ -85,6 +85,61 @@
 | PL4-07 | HomeScreen structure | — | monolithic `App.tsx` (pegasus pattern) | `ManifestKpiGrid` extracted | `ManifestWorkflow` sections | **WIRED** |
 
 **Exit:** All three payload clients show consistent KPI/action/state panes for manifest workflow; batch seal + connection chrome synced; pegasusX additive features (exceptions, policy, missing-items) present on every surface.
+
+---
+
+## Phase PL-5P — Deep payload-terminal UI/UX (terminal)
+
+| ID | Feature | pegasus ref | pegasusX terminal | Status |
+|----|---------|-------------|-------------------|--------|
+| PL5P-01 | Sidebar connection strip | — (pegasusX PL-4) | `ConnectionStrip.tsx` live-sync dot + queue hint | **WIRED** |
+| PL5P-02 | Manifest KPI header grid | volume bar only | `ManifestKpiGrid.tsx` state pill + volume/stops/zone tiles | **WIRED** |
+| PL5P-03 | Status badges (state/cleared/escalated) | plain text labels | `StatusBadge.tsx` on orders, exceptions, re-dispatch | **WIRED** |
+| PL5P-04 | Workflow section headers | inline copy | `WorkflowSectionHeader.tsx` batch seal, checklist, seal/inject | **WIRED** |
+| PL5P-05 | Skeleton loaders | `PayloadStatePanel` only | `SkeletonPulse.tsx` / `SkeletonList` exceptions inbox | **WIRED** |
+| PL5P-06 | Right-pane empty state | plain text hint | `PayloadStatePanel` manifest variant | **WIRED** |
+| PL5P-07 | Exceptions inbox polish | — (pegasusX PL-2) | badge count on icon, reason/escalated chips, fixed invalid variant | **WIRED** |
+| PL5P-08 | KPI refresh after inject/exception | — | `fetchTruckManifest` after inject + exception | **WIRED** |
+
+**PL-5P audit gaps (intentional / blocked):** Monolithic `App.tsx` retained (pegasus pattern); re-dispatch apply still uses `fleet/reassign` (durable `payloader/reassign-order` in `api.ts` for programmatic use); Firebase phone OTP UI deferred; barcode scanning ecosystem-wide deferred.
+
+**Exit:** Component-level desk tokens, KPI tiles, section chrome, skeleton loaders, and status badges on terminal sidebar + manifest workflow panes. UI-only — no new SSMR.
+
+---
+
+## Phase PL-5A — Deep native UI/UX parity (Android)
+
+| ID | Feature | Backend | Terminal | Android | iOS | Status |
+|----|---------|---------|----------|---------|-----|--------|
+| PL5A-01 | Shared UI kit (`PayloadUiComponents`, `PayloadState`) | — | — | KPI tiles, status chips, section titles, connection status | `PayloadStateView` (pre-existing) | **WIRED** |
+| PL5A-02 | Manifest KPI grid refactor | — | — | `ManifestKpiGrid` → shared `PayloadKpiTile` / `PayloadStatusChip` | tactical cards | **WIRED** |
+| PL5A-03 | Home workflow state panes | — | — | truck/manifest/order loading + empty via `PayloadStatePane` / `PayloadLoadingState` | `PayloadStateView` variants | **WIRED** |
+| PL5A-04 | Exceptions + notifications sheets | `GET /v1/payloader/manifest-exceptions` | modal panel | status chips + empathetic empty/loading | sheet | **WIRED** |
+| PL5A-05 | PIN auth error surface | `POST /v1/auth/payloader/login` | login form | compact `PayloadStatePane` AuthFailure | `PayloadStateView` warning | **WIRED** |
+| PL5A-06 | Connection chrome | WS hub | sidebar live-sync dot | `PayloadConnectionStatus` in top bar | `OnlineDot` in sidebar | **WIRED** (PL-4; verified PL-5A) |
+
+**UI audit vs pegasus reference:** pegasus `payload-app-android` matches pegasusX on master-detail scaffold and loading workflow; pegasusX is ahead on `ManifestKpiGrid`, batch seal, exceptions inbox, client-policy banner, post-seal missing-items, and notification inbox. PL-5A aligns pegasusX Android with supplier SP-7 / warehouse WH-11A discipline (shared primitives, empathetic loading/empty copy, semantic status chips).
+
+**Exit:** Primary payload Android workflow surfaces share M3 discipline with cross-role native patterns. UI-only — no new SSMR markers.
+
+---
+
+## Phase PL-5 — Deep native UI/UX parity (iOS)
+
+| ID | Feature | Android | iOS | Status |
+|----|---------|---------|-----|--------|
+| PL5-01 | Shared KPI / status / section primitives | `ManifestKpiGrid` (pre-existing PL-4) | `KpiTile`, `PayloadStatusBadge`, `PayloadSectionHeader` | **WIRED** |
+| PL5-02 | Manifest KPI grid extraction | pre-existing PL-4 | `ManifestKpiGrid` — adaptive volume/stops/zone + state badge | **WIRED** |
+| PL5-03 | Connection dot chrome | `OnlineDot` in top bar | `OnlineDot` extracted — monospaced LIVE/OFFLINE label | **WIRED** |
+| PL5-04 | Order checklist + batch seal headers | pre-existing | `PayloadSectionHeader` on checklist + batch finalize | **WIRED** |
+| PL5-05 | Exceptions inbox polish | `ManifestExceptionsSheet` | status badges, `PayloadLoadingView`, tactical row copy | **WIRED** |
+| PL5-06 | PIN login tactical UI | `LoginScreen` Material | `LoginView` — TermTheme card, PIN dots, AUTHENTICATE CTA | **WIRED** |
+| PL5-07 | Loading/error/empty panes | `SupplierStatePane` pattern | `PayloadLoadingView` / `PayloadErrorView` / `PayloadEmptyView` | **WIRED** |
+| PL5-08 | Seal/inject/re-dispatch sheets | pre-existing | unchanged tactical sheets (pegasus parity + missing-items) | **WIRED** |
+
+**UI audit vs pegasus reference:** pegasusX iOS matches pegasus `HomeView` workflow (master-detail, seal/inject/exception sheets, OnlineDot, notifications) and adds PL-2/4 features (exceptions panel, client-policy banner, batch seal, missing-items). PL-5 extracts inline KPI cards into shared primitives aligned with Android `ManifestKpiGrid` and warehouse WH-11 / supplier SP-7 discipline.
+
+**Exit:** Primary payload iOS screens use shared components; no new SSMR markers (UI-only parity).
 
 ---
 
@@ -114,4 +169,7 @@ cd pegasusX/apps/payload-app-android && ./gradlew compileDebugKotlin
 3. ~~PL-2 parity wiring~~ — **CLOSED** (notifications/exceptions/offline pre-existing; verified)
 4. ~~PL-3 client policy~~ — **CLOSED** (2026-06-15)
 5. ~~PL-4 home UX parity~~ — **CLOSED** (2026-06-15): KPI grid Android, terminal batch seal + connection chrome
-6. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3
+6. ~~PL-5A Android deep UI/UX parity~~ — **CLOSED** (2026-06-15): shared `PayloadUiComponents` / `PayloadState`, HomeScreen + LoginScreen state panes
+7. ~~PL-5P terminal deep UI/UX (component-level)~~ — **CLOSED** (2026-06-15): `ManifestKpiGrid`, `StatusBadge`, `ConnectionStrip`, workflow section chrome — see PL-5P table
+8. ~~PL-5 iOS deep UI/UX parity~~ — **CLOSED** (2026-06-15): shared primitives, `ManifestKpiGrid`, tactical PIN login — see PL-5 table
+9. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3
