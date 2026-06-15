@@ -1532,19 +1532,46 @@ func supplyRequestIOSPayload(req SupplyRequest) map[string]any {
 		state = strings.TrimSpace(req.Status)
 	}
 	factoryID := strings.TrimSpace(req.FactoryID)
-	return map[string]any{
-		"request_id":      req.RequestID,
-		"warehouse_id":    req.WarehouseID,
-		"factory_id":      factoryID,
-		"supplier_id":     req.SupplierID,
-		"state":           state,
-		"priority":        "NORMAL",
-		"total_volume_vu": 0,
-		"notes":           "",
-		"created_by":      req.RequestedBy,
-		"created_at":      req.CreatedAt,
-		"updated_at":      req.UpdatedAt,
+	priority := strings.TrimSpace(req.Priority)
+	if priority == "" {
+		priority = "NORMAL"
 	}
+	totalVU := req.TotalVolumeVU
+	if totalVU <= 0 && req.ProjectedUnits > 0 {
+		totalVU = float64(req.ProjectedUnits)
+	}
+	items := make([]map[string]any, 0, len(req.Items))
+	for _, item := range req.Items {
+		items = append(items, map[string]any{
+			"item_id":             item.ItemID,
+			"product_id":          item.ProductID,
+			"requested_quantity":  item.RequestedQuantity,
+			"recommended_qty":     item.RecommendedQty,
+			"unit_volume_vu":      item.UnitVolumeVU,
+		})
+	}
+	payload := map[string]any{
+		"request_id":              req.RequestID,
+		"warehouse_id":            req.WarehouseID,
+		"factory_id":              factoryID,
+		"supplier_id":             req.SupplierID,
+		"state":                   state,
+		"priority":                priority,
+		"notes":                   req.Notes,
+		"region_id":               req.RegionID,
+		"total_volume_vu":         totalVU,
+		"projected_units":         req.ProjectedUnits,
+		"item_count":              len(req.Items),
+		"items":                   items,
+		"transfer_order_id":       strings.TrimSpace(req.LinkedTransferID),
+		"created_by":              req.RequestedBy,
+		"created_at":              req.CreatedAt,
+		"updated_at":              req.UpdatedAt,
+	}
+	if strings.TrimSpace(req.RequestedDeliveryDate) != "" {
+		payload["requested_delivery_date"] = req.RequestedDeliveryDate
+	}
+	return payload
 }
 
 func (s *Service) loadWarehouseCRMFromSpanner(ctx context.Context, warehouseID string) ([]portalRetailer, error) {

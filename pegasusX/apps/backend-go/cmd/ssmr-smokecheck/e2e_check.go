@@ -120,6 +120,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseReplenishmentInsightE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse replenishment insight: %w", err)
 	}
+	if err := runWarehouseSupplyRequestItemsE2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("warehouse supply request items: %w", err)
+	}
 	if err := runSupplierInventoryImportE2E(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("supplier inventory import (staging substrate): %w", err)
 	}
@@ -242,6 +245,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	fmt.Println("PX_E2E_WAREHOUSE_DISPATCH_SETTINGS_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_STOCK_POLICY_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_REPLENISHMENT_OK")
+	fmt.Println("PX_E2E_WAREHOUSE_SUPPLY_REQUEST_ITEMS_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_ANALYTICS_OK")
 	fmt.Println("PX_E2E_FACTORY_OK")
 	fmt.Println("PX_E2E_FACTORY_ANALYTICS_OK")
@@ -2058,6 +2062,119 @@ func runWarehouseReplenishmentInsightE2E(ctx context.Context, client *http.Clien
 		return fmt.Errorf("replenishment insight approve status %d body %s", status, string(respBody))
 	}
 	fmt.Println("PX_E2E_WAREHOUSE_REPLENISHMENT_OK")
+	return nil
+}
+
+func runWarehouseSupplyRequestItemsE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	whID := demoWarehouseID()
+	createBody, _ := json.Marshal(map[string]any{
+		"priority": "HIGH",
+		"notes":    "ssmr supply items",
+		"items": []map[string]any{
+			{"product_id": "SSMR-SKU-1", "requested_quantity": 4},
+		},
+	})
+	createURL := base + "/v1/warehouse/supply-requests?warehouse_id=" + whID
+	status, respBody, _, err := clientPost(ctx, client, createURL, createBody, cookie, "ssmr-wh-supply-items-create")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated {
+		return fmt.Errorf("warehouse supply items create status %d body %s", status, string(respBody))
+	}
+	var created struct {
+		RequestID string `json:"request_id"`
+	}
+	if err := json.Unmarshal(respBody, &created); err != nil {
+		return fmt.Errorf("decode warehouse supply items create: %w", err)
+	}
+	if created.RequestID == "" {
+		return fmt.Errorf("warehouse supply items create missing request_id: %s", string(respBody))
+	}
+
+	listURL := base + "/v1/warehouse/supply-requests?warehouse_id=" + whID
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, listURL, nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse supply list status %d body %s", status, string(respBody))
+	}
+	var listResp struct {
+		Requests []struct {
+			RequestID     string `json:"request_id"`
+			Priority      string `json:"priority"`
+			Notes         string `json:"notes"`
+			ItemCount     int    `json:"item_count"`
+			TotalVolumeVU float64 `json:"total_volume_vu"`
+			Items         []struct {
+				ProductID         string `json:"product_id"`
+				RequestedQuantity int64  `json:"requested_quantity"`
+			} `json:"items"`
+		} `json:"requests"`
+	}
+	if err := json.Unmarshal(respBody, &listResp); err != nil {
+		return fmt.Errorf("decode warehouse supply list: %w", err)
+	}
+	var matched *struct {
+		RequestID     string `json:"request_id"`
+		Priority      string `json:"priority"`
+		Notes         string `json:"notes"`
+		ItemCount     int    `json:"item_count"`
+		TotalVolumeVU float64 `json:"total_volume_vu"`
+		Items         []struct {
+			ProductID         string `json:"product_id"`
+			RequestedQuantity int64  `json:"requested_quantity"`
+		} `json:"items"`
+	}
+	for i := range listResp.Requests {
+		if listResp.Requests[i].RequestID == created.RequestID {
+			matched = &listResp.Requests[i]
+			break
+		}
+	}
+	if matched == nil {
+		return fmt.Errorf("warehouse supply list missing created request %s: %s", created.RequestID, string(respBody))
+	}
+	if matched.ItemCount < 1 || len(matched.Items) < 1 {
+		return fmt.Errorf("warehouse supply list missing items for %s: %s", created.RequestID, string(respBody))
+	}
+	if strings.ToUpper(strings.TrimSpace(matched.Priority)) != "HIGH" {
+		return fmt.Errorf("warehouse supply list priority want HIGH got %q", matched.Priority)
+	}
+	if strings.TrimSpace(matched.Notes) != "ssmr supply items" {
+		return fmt.Errorf("warehouse supply list notes want ssmr supply items got %q", matched.Notes)
+	}
+	if matched.Items[0].ProductID != "SSMR-SKU-1" || matched.Items[0].RequestedQuantity != 4 {
+		return fmt.Errorf("warehouse supply list item mismatch: %+v", matched.Items[0])
+	}
+
+	detailURL := base + "/v1/warehouse/supply-requests/" + created.RequestID + "?warehouse_id=" + whID
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, detailURL, nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse supply detail status %d body %s", status, string(respBody))
+	}
+	var detail struct {
+		RequestID string `json:"request_id"`
+		ItemCount int    `json:"item_count"`
+		Items     []struct {
+			ProductID         string `json:"product_id"`
+			RequestedQuantity int64  `json:"requested_quantity"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(respBody, &detail); err != nil {
+		return fmt.Errorf("decode warehouse supply detail: %w", err)
+	}
+	if detail.RequestID != created.RequestID || detail.ItemCount < 1 || len(detail.Items) < 1 {
+		return fmt.Errorf("warehouse supply detail missing items: %s", string(respBody))
+	}
+	if detail.Items[0].ProductID != "SSMR-SKU-1" || detail.Items[0].RequestedQuantity != 4 {
+		return fmt.Errorf("warehouse supply detail item mismatch: %+v", detail.Items[0])
+	}
+	fmt.Println("PX_E2E_WAREHOUSE_SUPPLY_REQUEST_ITEMS_OK")
 	return nil
 }
 

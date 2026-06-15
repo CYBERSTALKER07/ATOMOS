@@ -177,6 +177,7 @@ type SupplyRequest struct {
 	Notes                    string              `json:"notes,omitempty"`
 	RegionID                 string              `json:"region_id,omitempty"`
 	RequestedDeliveryDate    string              `json:"requested_delivery_date,omitempty"`
+	TotalVolumeVU            float64             `json:"total_volume_vu,omitempty"`
 	Items                    []SupplyRequestItem `json:"items,omitempty"`
 	CreatedAt                string              `json:"created_at"`
 	UpdatedAt                string              `json:"updated_at"`
@@ -405,6 +406,7 @@ func (s *Service) handleCreateSupplyRequest(w http.ResponseWriter, r *http.Reque
 		ProjectedUnits:           projectedUnits,
 		CommittedUnits:           committedUnits,
 		PendingConfirmationUnits: pendingConfirmationUnits,
+		TotalVolumeVU:            float64(projectedUnits),
 		CreatedAt:                nowTS,
 		UpdatedAt:                nowTS,
 	}

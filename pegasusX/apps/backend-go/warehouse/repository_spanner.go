@@ -74,8 +74,10 @@ func (r *SpannerRepository) ListSupplyRequests(ctx context.Context, warehouseID 
 	}
 
 	stmt := spanner.Statement{
-		SQL: `SELECT RequestId, WarehouseId, State, RequestedBy, CoverageStartDate, CoverageDays, ProjectedUnits, CommittedUnits, PendingConfirmationUnits,
-		             COALESCE(FactoryId, ''), COALESCE(TransferMode, 'TRUCK'), COALESCE(LinkedTransferId, ''), CreatedAt, UpdatedAt
+		SQL: `SELECT RequestId, WarehouseId, SupplierId, State, RequestedBy, CoverageStartDate, CoverageDays, ProjectedUnits, CommittedUnits, PendingConfirmationUnits,
+		             COALESCE(FactoryId, ''), COALESCE(TransferMode, 'TRUCK'), COALESCE(LinkedTransferId, ''),
+		             COALESCE(Priority, 'NORMAL'), COALESCE(Notes, ''), COALESCE(RegionId, ''),
+		             RequestedDeliveryDate, COALESCE(TotalVolumeVU, 0), CreatedAt, UpdatedAt
 			FROM WarehouseSupplyRequests@{FORCE_INDEX=Idx_WarehouseSupplyRequests_ByWarehouseUpdated}
 			WHERE WarehouseId = @warehouseId
 			ORDER BY UpdatedAt DESC
@@ -102,6 +104,7 @@ func (r *SpannerRepository) ListSupplyRequests(ctx context.Context, warehouseID 
 		var (
 			requestID                string
 			rowWarehouseID           string
+			supplierID               string
 			state                    string
 			requestedBy              spanner.NullString
 			coverageStartDate        string
@@ -112,12 +115,18 @@ func (r *SpannerRepository) ListSupplyRequests(ctx context.Context, warehouseID 
 			factoryID                string
 			transferMode             string
 			linkedTransferID         string
+			priority                 string
+			notes                    string
+			regionID                 string
+			requestedDeliveryDate    spanner.NullTime
+			totalVolumeVU            float64
 			createdAt                time.Time
 			updatedAt                time.Time
 		)
 		if err := row.Columns(
 			&requestID,
 			&rowWarehouseID,
+			&supplierID,
 			&state,
 			&requestedBy,
 			&coverageStartDate,
@@ -128,14 +137,28 @@ func (r *SpannerRepository) ListSupplyRequests(ctx context.Context, warehouseID 
 			&factoryID,
 			&transferMode,
 			&linkedTransferID,
+			&priority,
+			&notes,
+			&regionID,
+			&requestedDeliveryDate,
+			&totalVolumeVU,
 			&createdAt,
 			&updatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("decode warehouse supply request: %w", err)
 		}
 
+		deliveryDate := ""
+		if requestedDeliveryDate.Valid {
+			deliveryDate = requestedDeliveryDate.Time.UTC().Format(time.RFC3339Nano)
+		}
+		vu := totalVolumeVU
+		if vu <= 0 && projectedUnits > 0 {
+			vu = float64(projectedUnits)
+		}
 		requests = append(requests, SupplyRequest{
 			RequestID:                requestID,
+			SupplierID:               supplierID,
 			WarehouseID:              rowWarehouseID,
 			FactoryID:                factoryID,
 			TransferMode:             transferMode,
@@ -148,12 +171,71 @@ func (r *SpannerRepository) ListSupplyRequests(ctx context.Context, warehouseID 
 			ProjectedUnits:           projectedUnits,
 			CommittedUnits:           committedUnits,
 			PendingConfirmationUnits: pendingConfirmationUnits,
+			Priority:                 priority,
+			Notes:                    notes,
+			RegionID:                 regionID,
+			RequestedDeliveryDate:    deliveryDate,
+			TotalVolumeVU:            vu,
 			CreatedAt:                createdAt.UTC().Format(time.RFC3339Nano),
 			UpdatedAt:                updatedAt.UTC().Format(time.RFC3339Nano),
 		})
 	}
 
+	if len(requests) > 0 {
+		requestIDs := make([]string, 0, len(requests))
+		for _, req := range requests {
+			requestIDs = append(requestIDs, req.RequestID)
+		}
+		itemsByRequest, err := r.loadSupplyRequestItems(ctx, requestIDs)
+		if err != nil {
+			return nil, err
+		}
+		for i := range requests {
+			requests[i].Items = itemsByRequest[requests[i].RequestID]
+		}
+	}
+
 	return requests, nil
+}
+
+func (r *SpannerRepository) loadSupplyRequestItems(ctx context.Context, requestIDs []string) (map[string][]SupplyRequestItem, error) {
+	if len(requestIDs) == 0 {
+		return map[string][]SupplyRequestItem{}, nil
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT RequestId, ItemId, ProductId, RequestedQuantity, RecommendedQuantity, UnitVolumeVU
+		      FROM WarehouseSupplyRequestItems
+		      WHERE RequestId IN UNNEST(@ids)
+		      ORDER BY RequestId, ProductId`,
+		Params: map[string]any{"ids": requestIDs},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	out := make(map[string][]SupplyRequestItem)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("load warehouse supply request items: %w", err)
+		}
+		var requestID, itemID, productID string
+		var requested, recommended int64
+		var unitVU float64
+		if err := row.Columns(&requestID, &itemID, &productID, &requested, &recommended, &unitVU); err != nil {
+			continue
+		}
+		out[requestID] = append(out[requestID], SupplyRequestItem{
+			ItemID:            itemID,
+			ProductID:         productID,
+			RequestedQuantity: requested,
+			RecommendedQty:    recommended,
+			UnitVolumeVU:      unitVU,
+		})
+	}
+	return out, nil
 }
 
 // CreateSupplyRequest persists a supply request row atomically with outbox events.
@@ -210,6 +292,13 @@ func (r *SpannerRepository) CreateSupplyRequest(ctx context.Context, req SupplyR
 			if t, err := time.Parse(time.RFC3339Nano, req.RequestedDeliveryDate); err == nil {
 				row["RequestedDeliveryDate"] = t
 			}
+		}
+		totalVU := req.TotalVolumeVU
+		if totalVU <= 0 && req.ProjectedUnits > 0 {
+			totalVU = float64(req.ProjectedUnits)
+		}
+		if totalVU > 0 {
+			row["TotalVolumeVU"] = totalVU
 		}
 		mutations := []*spanner.Mutation{spanner.InsertOrUpdateMap("WarehouseSupplyRequests", row)}
 		for _, item := range req.Items {

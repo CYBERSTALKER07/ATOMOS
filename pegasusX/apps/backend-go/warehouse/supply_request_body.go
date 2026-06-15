@@ -137,6 +137,7 @@ func (s *Service) handleCreateSupplyRequestFromBody(w http.ResponseWriter, r *ht
 		Notes:          strings.TrimSpace(body.Notes),
 		RegionID:       strings.TrimSpace(body.RegionID),
 		ProjectedUnits: projected,
+		TotalVolumeVU:  float64(projected),
 		Items:          items,
 		CreatedAt:      nowTS,
 		UpdatedAt:      nowTS,
