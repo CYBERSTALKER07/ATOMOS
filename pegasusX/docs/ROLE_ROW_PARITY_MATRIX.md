@@ -17,7 +17,7 @@ Last updated: 2026-06-11. Canonical reference: `pegasus/`. Delivery tree: `pegas
 
 ## SUPPLIER — screen map
 
-| Pegasus (`admin-portal`) | pegasusX (`supplier-portal`) | Backend | Status |
+| Pegasus (`supplier-portal`) | pegasusX (`supplier-portal`) | Backend | Status |
 |--------------------------|------------------------------|---------|--------|
 | `/auth/register` | `/auth/register` | POST `/v1/auth/supplier/register` | Wired |
 | `/setup/billing` | `/setup/billing` | POST `/v1/supplier/billing/setup` | Wired |

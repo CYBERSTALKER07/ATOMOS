@@ -42,11 +42,11 @@ type Service struct {
 	notifSvc    *notifications.Service
 	log         *slog.Logger
 
-	supplierID string
-	currency   string
-	jwtSecret  string
-	jwtIssuer  string
-	now        func() time.Time
+	supplierID       string
+	currency         string
+	jwtSecret        string
+	jwtIssuer        string
+	now              func() time.Time
 	firebaseVerifier auth.FirebaseVerifier
 
 	mu             sync.RWMutex
@@ -60,7 +60,7 @@ type Service struct {
 	reassignments  []Reassignment
 	seq            int64
 
-	portalLister PortalManifestLister
+	portalLister  PortalManifestLister
 	manifestStore *manifest.Store
 }
 
@@ -74,13 +74,13 @@ type ServiceConfig struct {
 	NotifSvc    *notifications.Service
 	Log         *slog.Logger
 
-	SupplierID string
-	Currency   string
-	JWTSecret  string
-	JWTIssuer  string
-	Now        func() time.Time
+	SupplierID       string
+	Currency         string
+	JWTSecret        string
+	JWTIssuer        string
+	Now              func() time.Time
 	FirebaseVerifier auth.FirebaseVerifier
-	ManifestStore *manifest.Store
+	ManifestStore    *manifest.Store
 }
 
 type payloaderTruckWire struct {
@@ -204,22 +204,22 @@ func NewService(c ServiceConfig) *Service {
 		c.Currency = "UZS"
 	}
 	return &Service{
-		repo:           c.Repo,
-		cache:          c.Cache,
-		supplierHub:    c.SupplierHub,
-		payloadHub:     c.PayloadHub,
-		driverHub:      c.DriverHub,
-		notifSvc:       c.NotifSvc,
-		log:            c.Log,
-		supplierID:     c.SupplierID,
-		currency:       c.Currency,
-		jwtSecret:      c.JWTSecret,
-		jwtIssuer:      c.JWTIssuer,
-		now:            c.Now,
+		repo:             c.Repo,
+		cache:            c.Cache,
+		supplierHub:      c.SupplierHub,
+		payloadHub:       c.PayloadHub,
+		driverHub:        c.DriverHub,
+		notifSvc:         c.NotifSvc,
+		log:              c.Log,
+		supplierID:       c.SupplierID,
+		currency:         c.Currency,
+		jwtSecret:        c.JWTSecret,
+		jwtIssuer:        c.JWTIssuer,
+		now:              c.Now,
 		firebaseVerifier: c.FirebaseVerifier,
 		manifestStore:    c.ManifestStore,
-		manifestOrders: make(map[string][]ManifestOrder),
-		overflowCount:  make(map[string]int64),
+		manifestOrders:   make(map[string][]ManifestOrder),
+		overflowCount:    make(map[string]int64),
 	}
 }
 
@@ -578,7 +578,7 @@ func (s *Service) orderLineItemsLocked() map[string][]liveOrderLineWire {
 	}
 	ctx := context.Background()
 	stmt := spanner.Statement{
-		SQL: `SELECT OrderId, LineItemsJson FROM Orders WHERE OrderId IN UNNEST(@oids)`,
+		SQL:    `SELECT OrderId, LineItemsJson FROM Orders WHERE OrderId IN UNNEST(@oids)`,
 		Params: map[string]interface{}{"oids": orderIDs},
 	}
 	iter := spannerRepo.client.Single().Query(ctx, stmt)
@@ -606,10 +606,10 @@ func decodeLiveOrderLineItems(raw []byte) []liveOrderLineWire {
 		return nil
 	}
 	var source []struct {
-		SKU       string `json:"sku"`
-		SKUID     string `json:"sku_id"`
-		Name      string `json:"name"`
-		Quantity  int64  `json:"quantity"`
+		SKU      string `json:"sku"`
+		SKUID    string `json:"sku_id"`
+		Name     string `json:"name"`
+		Quantity int64  `json:"quantity"`
 	}
 	if err := json.Unmarshal(raw, &source); err != nil {
 		return nil
@@ -1577,7 +1577,7 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		"order_count": manifest.StopCount,
 		"updated_at":  manifest.UpdatedAt,
 	})
-	
+
 	if manifest.DriverID != "" {
 		s.broadcastDriverEvent(r.Context(), manifest.DriverID, map[string]any{
 			"type":        "MANIFEST_DISPATCHED",

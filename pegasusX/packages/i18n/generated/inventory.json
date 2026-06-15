@@ -12,4657 +12,4657 @@
   "entries": [
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/dashboard/page.tsx",
       "line": 46,
       "text": "Global Supply"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/dashboard/page.tsx",
       "line": 47,
       "text": "Regional Command — Production Portal"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/dashboard/page.tsx",
       "line": 56,
       "text": "System Live"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/dashboard/page.tsx",
       "line": 64,
       "text": "System Offline"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/dashboard/page.tsx",
       "line": 67,
       "text": "Telemetry: 5000ms"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 103,
       "text": "Dead Letter Queue"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 107,
       "text": "Trapped"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 130,
       "text": "Replay"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 141,
       "text": "Offset"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 142,
       "text": "Order ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 143,
       "text": "Event Type"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 144,
       "text": "Amount"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 145,
       "text": "Failed At"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 146,
       "text": "Reason"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 147,
       "text": "Action"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 176,
       "text": "Offset"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 177,
       "text": "Order ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 178,
       "text": "Event Type"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 179,
       "text": "Amount"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 180,
       "text": "Failed At"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 181,
       "text": "Reason"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 182,
       "text": "Action"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 227,
       "text": "Rows"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 246,
       "text": "First"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 247,
       "text": "Prev"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 248,
       "text": "Next"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 285,
       "text": "pegasus-logistics-events-dlq"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 285,
       "text": "pegasus-logistics-events"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/dlq/page.tsx",
+      "file": "apps/supplier-portal/app/dlq/page.tsx",
       "line": 259,
       "text": "Confirm Replay"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/error.tsx",
+      "file": "apps/supplier-portal/app/error.tsx",
       "line": 22,
       "text": "SYSTEM FAULT"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/fleet/page.tsx",
       "line": 375,
       "text": "Fleet Management"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/fleet/page.tsx",
       "line": 512,
       "text": "Driver Detail"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/fleet/page.tsx",
       "line": 529,
       "text": "Driver ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/fleet/page.tsx",
       "line": 533,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/fleet/page.tsx",
       "line": 549,
       "text": "Vehicle"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/fleet/page.tsx",
       "line": 553,
       "text": "Plate"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/fleet/page.tsx",
       "line": 557,
       "text": "Phone"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/fleet/page.tsx",
       "line": 563,
       "text": "Position"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/fleet/page.tsx",
       "line": 587,
       "text": "No active orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/kyc/page.tsx",
+      "file": "apps/supplier-portal/app/kyc/page.tsx",
       "line": 123,
       "text": "KYC Clearance"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/kyc/page.tsx",
+      "file": "apps/supplier-portal/app/kyc/page.tsx",
       "line": 124,
       "text": "Retailer network access verification queue"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/kyc/page.tsx",
+      "file": "apps/supplier-portal/app/kyc/page.tsx",
       "line": 129,
       "text": "Pending Verifications"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/kyc/page.tsx",
+      "file": "apps/supplier-portal/app/kyc/page.tsx",
       "line": 154,
       "text": "Owner:"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/kyc/page.tsx",
+      "file": "apps/supplier-portal/app/kyc/page.tsx",
       "line": 155,
       "text": "ID:"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/kyc/page.tsx",
+      "file": "apps/supplier-portal/app/kyc/page.tsx",
       "line": 156,
       "text": "STIR:"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/kyc/page.tsx",
+      "file": "apps/supplier-portal/app/kyc/page.tsx",
       "line": 157,
       "text": "Time:"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/ledger/page.tsx",
+      "file": "apps/supplier-portal/app/ledger/page.tsx",
       "line": 69,
       "text": "Unknown"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/ledger/page.tsx",
+      "file": "apps/supplier-portal/app/ledger/page.tsx",
       "line": 85,
       "text": "Financial Ledger"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/ledger/page.tsx",
+      "file": "apps/supplier-portal/app/ledger/page.tsx",
       "line": 86,
       "text": "System Settlement & Reconciliation Engine"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/ledger/page.tsx",
+      "file": "apps/supplier-portal/app/ledger/page.tsx",
       "line": 128,
       "text": "Order ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/ledger/page.tsx",
+      "file": "apps/supplier-portal/app/ledger/page.tsx",
       "line": 129,
       "text": "Time"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/ledger/page.tsx",
+      "file": "apps/supplier-portal/app/ledger/page.tsx",
       "line": 130,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/ledger/page.tsx",
+      "file": "apps/supplier-portal/app/ledger/page.tsx",
       "line": 131,
       "text": "Channel"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/ledger/page.tsx",
+      "file": "apps/supplier-portal/app/ledger/page.tsx",
       "line": 132,
       "text": "Settlement (Amount)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/ledger/page.tsx",
+      "file": "apps/supplier-portal/app/ledger/page.tsx",
       "line": 133,
       "text": "Outcome"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/ledger/page.tsx",
+      "file": "apps/supplier-portal/app/ledger/page.tsx",
       "line": 188,
       "text": "Rows"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/ledger/page.tsx",
+      "file": "apps/supplier-portal/app/ledger/page.tsx",
       "line": 208,
       "text": "First"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/ledger/page.tsx",
+      "file": "apps/supplier-portal/app/ledger/page.tsx",
       "line": 209,
       "text": "Prev"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/ledger/page.tsx",
+      "file": "apps/supplier-portal/app/ledger/page.tsx",
       "line": 210,
       "text": "Next"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 285,
       "text": "System Ledger"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 294,
       "text": "Selected"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 312,
       "text": "No active drivers"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 390,
       "text": "Order ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 391,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 392,
       "text": "Amount (Amount)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 393,
       "text": "Route"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 394,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 500,
       "text": "Loading Manifest"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 505,
       "text": "Close"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 511,
       "text": "Load #"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 512,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 513,
       "text": "Order ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 514,
       "text": "Volume (VU)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 515,
       "text": "Placement"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 558,
       "text": "Confirm Dispatch"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.old.tsx",
+      "file": "apps/supplier-portal/app/page.old.tsx",
       "line": 387,
       "text": "Select all pending orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 417,
       "text": "Active Trucks"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 432,
       "text": "Completed"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 458,
       "text": "In Transit"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 470,
       "text": "Revenue"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 474,
       "text": "Settled today"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 496,
       "text": "Order Pipeline"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 541,
       "text": "No orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 551,
       "text": "Revenue Split"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 588,
       "text": "No revenue data"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 613,
       "text": "No active drivers"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 691,
       "text": "Order"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 692,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 693,
       "text": "Amount"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 694,
       "text": "Route"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 695,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 780,
       "text": "Loading Manifest"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 793,
       "text": "Load #"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 794,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 795,
       "text": "Order"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 796,
       "text": "Volume"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 797,
       "text": "Placement"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 828,
       "text": "Confirm Dispatch"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 836,
       "text": "Cancel"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 837,
       "text": "Confirm"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/page.tsx",
+      "file": "apps/supplier-portal/app/page.tsx",
       "line": 688,
       "text": "Select all pending orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 71,
       "text": "Reconciliation"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 72,
       "text": "Spanner ↔ Gateway Settlement Anomaly Scanner"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 114,
       "text": "Order ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 115,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 116,
       "text": "Spanner (Amount)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 117,
       "text": "Gateway (Amount)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 118,
       "text": "Delta"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 119,
       "text": "Provider"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 120,
       "text": "Detected"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 121,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 142,
       "text": "No anomalies detected"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 143,
       "text": "Spanner and Gateway ledgers are in sync"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 173,
       "text": "Rows"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 193,
       "text": "First"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 194,
       "text": "Prev"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/reconciliation/page.tsx",
       "line": 195,
       "text": "Next"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/setup/billing/page.tsx",
+      "file": "apps/supplier-portal/app/setup/billing/page.tsx",
       "line": 158,
       "text": "Kapitalbank"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/setup/billing/page.tsx",
+      "file": "apps/supplier-portal/app/setup/billing/page.tsx",
       "line": 159,
       "text": "20208000900100001010"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/setup/billing/page.tsx",
+      "file": "apps/supplier-portal/app/setup/billing/page.tsx",
       "line": 161,
       "text": "8600 1234 5678 9012"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 99,
       "text": "AI Demand Analytics"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 109,
       "text": "Prediction Accuracy"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 111,
       "text": "last 30 days"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 114,
       "text": "Upcoming AI Orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 116,
       "text": "line items queued"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 119,
       "text": "Data Points"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 121,
       "text": "days tracked"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 216,
       "text": "No time-series data available yet"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 233,
       "text": "Date"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 234,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 235,
       "text": "SKU"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 236,
       "text": "Product"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 237,
       "text": "Predicted Qty"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/demand/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/demand/page.tsx",
       "line": 256,
       "text": "No upcoming AI orders for your catalog"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/page.tsx",
       "line": 79,
       "text": "Analytics"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/page.tsx",
       "line": 104,
       "text": "AI Future Demand (Next 24H)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/page.tsx",
       "line": 105,
       "text": "Empathy Engine predictions for your catalog"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/page.tsx",
       "line": 115,
       "text": "Retailers"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/page.tsx",
       "line": 119,
       "text": "Total Pallets"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/page.tsx",
       "line": 123,
       "text": "Forecast Value"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/page.tsx",
       "line": 183,
       "text": "SKU ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/page.tsx",
       "line": 184,
       "text": "Pallets"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/page.tsx",
       "line": 185,
       "text": "Volume (Amount)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/analytics/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/analytics/page.tsx",
       "line": 186,
       "text": "Share"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 218,
       "text": "Inventory Control"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 219,
       "text": "Catalog Injection, Product Ledger &amp; Promotional Routing"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 294,
       "text": "Active Product Ledger"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 311,
       "text": "Product"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 312,
       "text": "Category"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 313,
       "text": "Price"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 315,
       "text": "Block"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 316,
       "text": "MOQ / Step"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 317,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 318,
       "text": "SKU ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 319,
       "text": "Actions"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 432,
       "text": "Edit Product"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 433,
       "text": "Close"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 444,
       "text": "Name"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 453,
       "text": "Description"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 463,
       "text": "Base Price (Amount)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 475,
       "text": "MOQ"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 484,
       "text": "Step"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 493,
       "text": "Units/Block"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/catalog/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/catalog/page.tsx",
       "line": 505,
       "text": "Product Image"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 228,
       "text": "Loading country configs…"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 237,
       "text": "Country Overrides"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 238,
       "text": "No country configurations found in the system."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 252,
       "text": "Country Overrides"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 279,
       "text": "Select Country"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 350,
       "text": "Operational Timings"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 415,
       "text": "GlobalPaynt & Notifications"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 419,
       "text": "GlobalPaynt Gateways (comma-separated)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 448,
       "text": "Notification Fallback Order (comma-separated)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 537,
       "text": "Active Overrides"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 431,
       "text": "e.g. GLOBAL_PAY, CASH, CASH"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 460,
       "text": "e.g. FCM, TELEGRAM, SMS"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 493,
       "text": "e.g. ESKIZ, TWILIO"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 503,
       "text": "e.g. GOOGLE, MAPBOX"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/country-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/country-overrides/page.tsx",
       "line": 513,
       "text": "e.g. GEMINI, OPENAI"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/crm/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/crm/page.tsx",
       "line": 117,
       "text": "Retailer CRM"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/crm/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/crm/page.tsx",
       "line": 118,
       "text": "Manage retailer relationships and track lifetime value"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/crm/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/crm/page.tsx",
       "line": 151,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/crm/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/crm/page.tsx",
       "line": 152,
       "text": "Lifetime Value (Amount)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/crm/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/crm/page.tsx",
       "line": 153,
       "text": "Orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/crm/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/crm/page.tsx",
       "line": 154,
       "text": "Last Order"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/crm/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/crm/page.tsx",
       "line": 155,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/crm/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/crm/page.tsx",
       "line": 249,
       "text": "CONTACT"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/crm/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/crm/page.tsx",
       "line": 269,
       "text": "Lifetime Value"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/crm/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/crm/page.tsx",
       "line": 273,
       "text": "Total Orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/crm/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/crm/page.tsx",
       "line": 280,
       "text": "ORDER LEDGER"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/crm/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/crm/page.tsx",
       "line": 282,
       "text": "No orders yet"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dashboard/page.tsx",
       "line": 91,
       "text": "Analytics"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dashboard/page.tsx",
       "line": 92,
       "text": "Financial overview and operational intelligence"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dashboard/page.tsx",
       "line": 113,
       "text": "AI Future Demand (Next 24H)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dashboard/page.tsx",
       "line": 114,
       "text": "Empathy Engine predictions for your catalog"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dashboard/page.tsx",
       "line": 124,
       "text": "Retailers"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dashboard/page.tsx",
       "line": 128,
       "text": "Total Pallets"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dashboard/page.tsx",
       "line": 132,
       "text": "Forecast Value"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dashboard/page.tsx",
       "line": 192,
       "text": "SKU ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dashboard/page.tsx",
       "line": 193,
       "text": "Pallets"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dashboard/page.tsx",
       "line": 194,
       "text": "Volume (Amount)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dashboard/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dashboard/page.tsx",
       "line": 195,
       "text": "Share"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/delivery-zones/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/delivery-zones/page.tsx",
       "line": 170,
       "text": "Zone Name"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/delivery-zones/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/delivery-zones/page.tsx",
       "line": 171,
       "text": "Min (km)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/delivery-zones/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/delivery-zones/page.tsx",
       "line": 172,
       "text": "Max (km)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/delivery-zones/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/delivery-zones/page.tsx",
       "line": 173,
       "text": "Fee (minor)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/delivery-zones/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/delivery-zones/page.tsx",
       "line": 174,
       "text": "Priority"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/delivery-zones/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/delivery-zones/page.tsx",
       "line": 175,
       "text": "Warehouse"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/delivery-zones/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/delivery-zones/page.tsx",
       "line": 176,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/delivery-zones/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/delivery-zones/page.tsx",
       "line": 177,
       "text": "Actions"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/delivery-zones/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/delivery-zones/page.tsx",
       "line": 253,
       "text": "e.g. City Center"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/delivery-zones/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/delivery-zones/page.tsx",
       "line": 293,
       "text": "e.g. 50000"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/delivery-zones/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/delivery-zones/page.tsx",
       "line": 319,
       "text": "Leave blank for global zone"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/depot-reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/depot-reconciliation/page.tsx",
       "line": 118,
       "text": "Retry"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/depot-reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/depot-reconciliation/page.tsx",
       "line": 128,
       "text": "No quarantine stock"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/depot-reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/depot-reconciliation/page.tsx",
       "line": 276,
       "text": "Product"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/depot-reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/depot-reconciliation/page.tsx",
       "line": 277,
       "text": "Qty"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/depot-reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/depot-reconciliation/page.tsx",
       "line": 278,
       "text": "Unit Price"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/depot-reconciliation/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/depot-reconciliation/page.tsx",
       "line": 279,
       "text": "Actions"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 677,
       "text": "Order"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 678,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 679,
       "text": "Volume"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 680,
       "text": "Instruction"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 798,
       "text": "Order ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 799,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 800,
       "text": "Reason"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 901,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 902,
       "text": "Order ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 903,
       "text": "Amount"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 904,
       "text": "Volume"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 905,
       "text": "Truck"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 1083,
       "text": "Order ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 1084,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 1085,
       "text": "Reason"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 1211,
       "text": "No GPS"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/dispatch/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/dispatch/page.tsx",
       "line": 732,
       "text": "Re-dispatch to another truck"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/exceptions/shop-closed/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/exceptions/shop-closed/page.tsx",
       "line": 54,
       "text": "Shop Closed Escalations"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/exceptions/shop-closed/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/exceptions/shop-closed/page.tsx",
       "line": 71,
       "text": "Wait"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/exceptions/shop-closed/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/exceptions/shop-closed/page.tsx",
       "line": 72,
       "text": "Bypass / Offload"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/exceptions/shop-closed/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/exceptions/shop-closed/page.tsx",
       "line": 73,
       "text": "Return to Depot"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/factories/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/factories/page.tsx",
       "line": 82,
       "text": "Factories"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/factories/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/factories/page.tsx",
       "line": 145,
       "text": "Loading..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/factories/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/factories/page.tsx",
       "line": 150,
       "text": "No factories yet"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/factories/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/factories/page.tsx",
       "line": 235,
       "text": "Product Types"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/factories/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/factories/page.tsx",
       "line": 241,
       "text": "No product types configured"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/factories/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/factories/page.tsx",
       "line": 249,
       "text": "Warehouse Assignments"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/factories/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/factories/page.tsx",
       "line": 291,
       "text": "Add Factory"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 379,
       "text": "Total Drivers"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 383,
       "text": "In-House"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 389,
       "text": "Contractors"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 395,
       "text": "Offline"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 404,
       "text": "Total Vehicles"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 408,
       "text": "Total Capacity"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 414,
       "text": "Assigned"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 427,
       "text": "No vehicles registered yet"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 437,
       "text": "Class"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 438,
       "text": "Label"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 439,
       "text": "Plate"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 440,
       "text": "Capacity"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 441,
       "text": "Assigned Driver"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 442,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 533,
       "text": "No drivers provisioned yet"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 543,
       "text": "Name"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 544,
       "text": "Phone"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 545,
       "text": "Type"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 546,
       "text": "Assigned Vehicle"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 547,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 638,
       "text": "Name *"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 648,
       "text": "Phone (+998) *"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 658,
       "text": "Driver Type"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 684,
       "text": "Assign Vehicle"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 700,
       "text": "License Plate / Tracking Number"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 844,
       "text": "Vehicle Class *"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 892,
       "text": "Computed VU"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 902,
       "text": "Label"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 912,
       "text": "License Plate"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 643,
       "text": "Driver full name"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 653,
       "text": "+998901234567"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 705,
       "text": "01 A 123 BC"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 882,
       "text": "0"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 907,
       "text": "e.g. Transit Van #3"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 917,
       "text": "01 A 123 BC"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 635,
       "text": "Add Driver"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 795,
       "text": "Driver Detail"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/fleet/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/fleet/page.tsx",
       "line": 840,
       "text": "Add Vehicle"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/geo-report/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/geo-report/page.tsx",
       "line": 105,
       "text": "Coverage Map"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/geo-report/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/geo-report/page.tsx",
       "line": 141,
       "text": "Loading coverage data..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/geo-report/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/geo-report/page.tsx",
       "line": 171,
       "text": "Zones"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/geo-report/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/geo-report/page.tsx",
       "line": 208,
       "text": "Zone Breakdown"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/geo-report/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/geo-report/page.tsx",
       "line": 226,
       "text": "Hexes:"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/geo-report/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/geo-report/page.tsx",
       "line": 227,
       "text": "Retailers:"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/geo-report/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/geo-report/page.tsx",
       "line": 235,
       "text": "No coverage zones defined yet"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/inventory/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/inventory/page.tsx",
       "line": 184,
       "text": "Inventory Management"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/inventory/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/inventory/page.tsx",
       "line": 214,
       "text": "Loading inventory..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/inventory/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/inventory/page.tsx",
       "line": 228,
       "text": "Product"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/inventory/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/inventory/page.tsx",
       "line": 229,
       "text": "SKU"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/inventory/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/inventory/page.tsx",
       "line": 230,
       "text": "Stock"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/inventory/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/inventory/page.tsx",
       "line": 231,
       "text": "Action"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/inventory/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/inventory/page.tsx",
       "line": 307,
       "text": "Product"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/inventory/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/inventory/page.tsx",
       "line": 308,
       "text": "Prev"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/inventory/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/inventory/page.tsx",
       "line": 309,
       "text": "Delta"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/inventory/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/inventory/page.tsx",
       "line": 310,
       "text": "New"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/inventory/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/inventory/page.tsx",
       "line": 311,
       "text": "Reason"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/inventory/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/inventory/page.tsx",
       "line": 312,
       "text": "Date"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/inventory/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/inventory/page.tsx",
       "line": 251,
       "text": "+/-"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 315,
       "text": "SKU"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 316,
       "text": "Product"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 317,
       "text": "Total Qty"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 318,
       "text": "Orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 340,
       "text": "Total"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 368,
       "text": "Order ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 369,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 370,
       "text": "Items"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 371,
       "text": "State"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 372,
       "text": "Created"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 425,
       "text": "Manifest"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 426,
       "text": "State"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 427,
       "text": "Driver"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 428,
       "text": "Truck"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 429,
       "text": "Stops"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 430,
       "text": "Volume"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 431,
       "text": "Created"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 432,
       "text": "Actions"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/manifests/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/manifests/page.tsx",
       "line": 520,
       "text": "Enter Order UUID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/onboarding/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/onboarding/page.tsx",
       "line": 26,
       "text": "Redirecting to dashboard…"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 476,
       "text": "Orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 544,
       "text": "All States"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 616,
       "text": "Order"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 617,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 618,
       "text": "State"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 619,
       "text": "Truck / Route"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 620,
       "text": "Delivery Date"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 621,
       "text": "Items"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 622,
       "text": "Amount"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 623,
       "text": "Payment"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 624,
       "text": "Created"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 625,
       "text": "Actions"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 705,
       "text": "Cancel"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 722,
       "text": "Target Truck"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 731,
       "text": "Select a truck…"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 744,
       "text": "Truck Capacity"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 747,
       "text": "Max:"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 751,
       "text": "Used:"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 755,
       "text": "Free:"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 918,
       "text": "Order ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 937,
       "text": "Progress"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 986,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 994,
       "text": "Amount"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 998,
       "text": "Items"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 1008,
       "text": "Payment Gateway"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 1014,
       "text": "Payment Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 1024,
       "text": "Assigned Truck"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 1032,
       "text": "Requested Delivery"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 1039,
       "text": "Created"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 1044,
       "text": "Source"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 1050,
       "text": "Activity Timeline"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 1058,
       "text": "No events recorded yet."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 534,
       "text": "Search order ID or retailer…"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 792,
       "text": "Reason…"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 485,
       "text": "Refresh orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 613,
       "text": "Select all"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 654,
       "text": "Scheduled far out"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 702,
       "text": "Reassign Orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/orders/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/orders/page.tsx",
       "line": 913,
       "text": "Order Details"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 221,
       "text": "Organization Members"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 228,
       "text": "Invite Member"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 236,
       "text": "Loading members..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 241,
       "text": "No organization members yet."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 242,
       "text": "Invite your first team member to get started."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 249,
       "text": "Name"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 250,
       "text": "Contact"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 251,
       "text": "Role"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 252,
       "text": "Assignment"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 253,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 254,
       "text": "Actions"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 313,
       "text": "Full Name"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 319,
       "text": "Email"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 325,
       "text": "Phone"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 331,
       "text": "Password"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 337,
       "text": "Role"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 340,
       "text": "Node Admin (Warehouse-scoped)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 341,
       "text": "Global Admin (Full access)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 342,
       "text": "Factory Admin (Factory-scoped)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 343,
       "text": "Factory Payloader (Loading/Offloading)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 349,
       "text": "Assigned Warehouse"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 352,
       "text": "Select warehouse..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 362,
       "text": "Assigned Factory"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 365,
       "text": "Select factory..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 315,
       "text": "John Doe"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 321,
       "text": "john@example.com"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 327,
       "text": "+998901234567"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 333,
       "text": "Minimum 8 characters"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/org/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/org/page.tsx",
       "line": 303,
       "text": "Invite Organization Member"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/payment-config/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/payment-config/page.tsx",
       "line": 352,
       "text": "Connect will be available when the provider enables merchant redirect onboarding"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 143,
       "text": "Pricing Engine"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 144,
       "text": "B2B Volume Discount Rules — Upsert & Manage"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 152,
       "text": "New Pricing Rule"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 157,
       "text": "SKU"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 165,
       "text": "Select a product…"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 184,
       "text": "Min Pallets"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 195,
       "text": "Discount %"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 205,
       "text": "Max 40% — hard cap"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 210,
       "text": "Target Retailer Tier"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 226,
       "text": "Valid Until (optional)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 236,
       "text": "Tier ID (optional — auto-generated if blank)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 263,
       "text": "Session Rules"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 269,
       "text": "Loading pricing rules…"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 281,
       "text": "SKU"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 282,
       "text": "Min Pallets"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 283,
       "text": "Discount"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 284,
       "text": "Tier Target"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 285,
       "text": "Expires"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 286,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 287,
       "text": "Actions"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 174,
       "text": "e.g. SKU-COKE-001"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/page.tsx",
       "line": 239,
       "text": "UUID for idempotent upserts"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 188,
       "text": "Retailer Pricing Overrides"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 223,
       "text": "All SKUs"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 247,
       "text": "SKU"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 248,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 249,
       "text": "Override Price"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 250,
       "text": "Set By"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 251,
       "text": "Expires"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 252,
       "text": "Notes"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 328,
       "text": "Retailer ID *"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 339,
       "text": "Product (SKU) *"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 346,
       "text": "Select a product"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 354,
       "text": "Override Price (UZS) *"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 367,
       "text": "Expires At"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 378,
       "text": "Notes"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 404,
       "text": "SKU"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 408,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 412,
       "text": "Override Price"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 419,
       "text": "Set By"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 431,
       "text": "Created"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 438,
       "text": "Expires"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 445,
       "text": "Notes"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 212,
       "text": "Filter by Retailer ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 332,
       "text": "Enter retailer UUID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 360,
       "text": "e.g. 125000"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 383,
       "text": "Reason for this override"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/pricing/retailer-overrides/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/pricing/retailer-overrides/page.tsx",
       "line": 300,
       "text": "Deactivate"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/products/[sku_id]/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/products/[sku_id]/page.tsx",
       "line": 283,
       "text": "https://..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/products/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/products/page.tsx",
       "line": 145,
       "text": "My Products"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/products/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/products/page.tsx",
       "line": 180,
       "text": "Search products..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/profile/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/profile/page.tsx",
       "line": 50,
       "text": "Not set"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/profile/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/profile/page.tsx",
       "line": 148,
       "text": "Failed to load profile"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/profile/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/profile/page.tsx",
       "line": 149,
       "text": "Retry"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/profile/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/profile/page.tsx",
       "line": 185,
       "text": "Cancel"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/profile/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/profile/page.tsx",
       "line": 200,
       "text": "Company Details"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/profile/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/profile/page.tsx",
       "line": 216,
       "text": "Warehouse"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/profile/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/profile/page.tsx",
       "line": 228,
       "text": "Banking & Payment"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/profile/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/profile/page.tsx",
       "line": 240,
       "text": "Operating Categories"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/profile/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/profile/page.tsx",
       "line": 253,
       "text": "Shift Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/returns/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/returns/page.tsx",
       "line": 129,
       "text": "Dispute & Returns"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/returns/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/returns/page.tsx",
       "line": 138,
       "text": "Open Returns"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/returns/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/returns/page.tsx",
       "line": 142,
       "text": "Total Damage Value"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/returns/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/returns/page.tsx",
       "line": 158,
       "text": "Loading returns..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/returns/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/returns/page.tsx",
       "line": 197,
       "text": "Return to Stock"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/returns/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/returns/page.tsx",
       "line": 198,
       "text": "Write Off"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/returns/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/returns/page.tsx",
       "line": 204,
       "text": "Notes..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 314,
       "text": "Access Restricted"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 315,
       "text": "Staff management requires Global Admin privileges."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 328,
       "text": "Staff Management"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 335,
       "text": "Add Member"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 369,
       "text": "All Roles"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 370,
       "text": "Global Admin"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 371,
       "text": "Node Admin"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 372,
       "text": "Factory Admin"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 373,
       "text": "Payloader"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 377,
       "text": "All Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 378,
       "text": "Active"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 379,
       "text": "Inactive"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 388,
       "text": "Loading staff..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 397,
       "text": "Add your first team member to get started."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 406,
       "text": "Member"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 407,
       "text": "Contact"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 408,
       "text": "Role"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 409,
       "text": "Assignment"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 410,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 411,
       "text": "Joined"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 412,
       "text": "Actions"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 502,
       "text": "Full Name"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 508,
       "text": "Email"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 514,
       "text": "Phone"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 520,
       "text": "Password"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 526,
       "text": "Role"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 529,
       "text": "Node Admin (Warehouse-scoped)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 530,
       "text": "Global Admin (Full access)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 531,
       "text": "Factory Admin (Factory-scoped)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 532,
       "text": "Factory Payloader (Loading/Offloading)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 538,
       "text": "Assigned Warehouse"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 541,
       "text": "Select warehouse..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 551,
       "text": "Assigned Factory"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 554,
       "text": "Select factory..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 601,
       "text": "Name"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 607,
       "text": "Role"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 611,
       "text": "Global Admin (Full access)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 612,
       "text": "Node Admin (Warehouse-scoped)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 613,
       "text": "Factory Admin (Factory-scoped)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 614,
       "text": "Factory Payloader (Loading/Offloading)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 620,
       "text": "Assigned Warehouse"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 623,
       "text": "Select warehouse..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 633,
       "text": "Assigned Factory"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 636,
       "text": "Select factory..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 362,
       "text": "Search by name, email, or phone..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 504,
       "text": "John Doe"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 510,
       "text": "john@example.com"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 516,
       "text": "+998901234567"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 522,
       "text": "Minimum 8 characters"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 469,
       "text": "Edit member"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 492,
       "text": "Add Organization Member"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/staff/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/staff/page.tsx",
       "line": 574,
       "text": "Edit Member"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 153,
       "text": "Supply Lanes"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 154,
       "text": "Loading network topology..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 197,
       "text": "Network Mode"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 204,
       "text": "Active Lanes"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 210,
       "text": "SLA Events (Recent)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 216,
       "text": "Pull Matrix Runs"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 225,
       "text": "Optimization Objective"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 267,
       "text": "No Supply Lanes"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 268,
       "text": "Create a lane to connect a factory to a warehouse."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 274,
       "text": "Factory"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 275,
       "text": "Warehouse"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 276,
       "text": "Transit (h)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 277,
       "text": "Dampened (h)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 278,
       "text": "Dist. (km)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 279,
       "text": "Cost"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 280,
       "text": "Est. Impact (kg CO₂)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 281,
       "text": "Priority"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 282,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 283,
       "text": "Actions"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 345,
       "text": "No SLA Events"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 346,
       "text": "All transfers are within expected delivery windows."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 352,
       "text": "Transfer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 353,
       "text": "Factory"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 354,
       "text": "Warehouse"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 355,
       "text": "Level"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 356,
       "text": "Breach (min)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 392,
       "text": "No Pull Matrix Runs"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 393,
       "text": "The automated aggregation engine hasn&apos;t run yet."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 399,
       "text": "Run At"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 400,
       "text": "Source"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 401,
       "text": "Transfers"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 402,
       "text": "SKUs"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 403,
       "text": "Duration"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 440,
       "text": "New Supply Lane"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 445,
       "text": "Factory ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 450,
       "text": "Warehouse ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 455,
       "text": "Transit Time (hours)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 460,
       "text": "Freight Cost (minor units)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 465,
       "text": "Carbon Score"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 472,
       "text": "Priority"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 446,
       "text": "UUID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/supply-lanes/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/supply-lanes/page.tsx",
       "line": 451,
       "text": "UUID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/CoverageEditor.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/CoverageEditor.tsx",
       "line": 339,
       "text": "Hexes"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/CoverageEditor.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/CoverageEditor.tsx",
       "line": 345,
       "text": "Retailers"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/CoverageEditor.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/CoverageEditor.tsx",
       "line": 351,
       "text": "Conflicts"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseForm.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseForm.tsx",
       "line": 80,
       "text": "Name *"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseForm.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseForm.tsx",
       "line": 92,
       "text": "Location *"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseForm.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseForm.tsx",
       "line": 102,
       "text": "Coverage Radius (km)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseForm.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseForm.tsx",
       "line": 125,
       "text": "Set as default warehouse"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseForm.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseForm.tsx",
       "line": 85,
       "text": "Main Warehouse"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseForm.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseForm.tsx",
       "line": 108,
       "text": "50"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
       "line": 119,
       "text": "Warehouse Staff"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
       "line": 175,
       "text": "New Warehouse Staff"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
       "line": 178,
       "text": "Name"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
       "line": 189,
       "text": "Phone"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
       "line": 201,
       "text": "PIN (8 digits)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
       "line": 215,
       "text": "Role"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
       "line": 262,
       "text": "Retry"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
       "line": 267,
       "text": "No staff assigned to this warehouse"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
       "line": 268,
       "text": "Add a staff member to enable warehouse operations"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
       "line": 184,
       "text": "Full name"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
       "line": 195,
       "text": "+998..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/WarehouseStaffPanel.tsx",
       "line": 207,
       "text": "00000000"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 162,
       "text": "Warehouses"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 195,
       "text": "Name"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 196,
       "text": "Address"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 197,
       "text": "Hexes"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 198,
       "text": "Drivers"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 199,
       "text": "Orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 200,
       "text": "Shift"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 201,
       "text": "Default"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 332,
       "text": "Location"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 349,
       "text": "Coverage Radius"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 541,
       "text": "Name"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 545,
       "text": "Address"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 550,
       "text": "Latitude"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 554,
       "text": "Longitude"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 559,
       "text": "Coverage Radius (km)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 565,
       "text": "Warehouse Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 567,
       "text": "Active"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 577,
       "text": "On Shift"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 591,
       "text": "Disabled Reason"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 598,
       "text": "Capacity Guardrail"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 600,
       "text": "Loading utilization..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 605,
       "text": "Inflight VU:"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 592,
       "text": "e.g. Maintenance, Out of stock"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/supplier/warehouses/page.tsx",
+      "file": "apps/supplier-portal/app/supplier/warehouses/page.tsx",
       "line": 636,
       "text": "100"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/cash-holdings/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/cash-holdings/page.tsx",
       "line": 180,
       "text": "Order"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/cash-holdings/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/cash-holdings/page.tsx",
       "line": 181,
       "text": "Driver"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/cash-holdings/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/cash-holdings/page.tsx",
       "line": 182,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/cash-holdings/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/cash-holdings/page.tsx",
       "line": 183,
       "text": "Amount"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/cash-holdings/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/cash-holdings/page.tsx",
       "line": 184,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/cash-holdings/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/cash-holdings/page.tsx",
       "line": 185,
       "text": "Distance"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/cash-holdings/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/cash-holdings/page.tsx",
       "line": 186,
       "text": "Collected"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 107,
       "text": "Chargebacks"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 115,
       "text": "Record Chargeback"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 120,
       "text": "CASH"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 121,
       "text": "GLOBAL_PAY"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 122,
       "text": "GLOBAL_PAY"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 126,
       "text": "Record"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 130,
       "text": "Record Reversal"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 132,
       "text": "Record Reversal"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 137,
       "text": "Loading…"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 145,
       "text": "Order"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 146,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 147,
       "text": "Spanner"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 148,
       "text": "Gateway"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 149,
       "text": "Provider"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 150,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 151,
       "text": "Detected"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 117,
       "text": "Order ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 118,
       "text": "Retailer ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 124,
       "text": "Amount UZS"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/chargebacks/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/chargebacks/page.tsx",
       "line": 131,
       "text": "GlobalPaynt Session ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 47,
       "text": "Treasury"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 60,
       "text": "Vault Secure"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 65,
       "text": "Vault Offline"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 85,
       "text": "Net Revenue (5% Commission)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 89,
       "text": "Liquid — Settled"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 94,
       "text": "Supplier Payout Liability"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 98,
       "text": "Pending Clearing"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 103,
       "text": "Gross System Volume"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 107,
       "text": "Total throughput"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 113,
       "text": "No treasury data available"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 114,
       "text": "The vault is currently disconnected. Treasury data will appear when the connection is restored."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 122,
       "text": "Margin Analysis"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 125,
       "text": "Commission Rate"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 129,
       "text": "Revenue / Volume"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 135,
       "text": "Payout Ratio"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/page.tsx",
       "line": 141,
       "text": "Clearing Buffer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/refunds/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/refunds/page.tsx",
       "line": 89,
       "text": "Refunds"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/refunds/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/refunds/page.tsx",
       "line": 137,
       "text": "Refund ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/refunds/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/refunds/page.tsx",
       "line": 138,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/refunds/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/refunds/page.tsx",
       "line": 139,
       "text": "Amount"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/refunds/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/refunds/page.tsx",
       "line": 140,
       "text": "Gateway"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/refunds/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/refunds/page.tsx",
       "line": 141,
       "text": "Provider Ref"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/refunds/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/refunds/page.tsx",
       "line": 99,
       "text": "Order ID"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/refunds/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/refunds/page.tsx",
       "line": 105,
       "text": "Refund reason"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/refunds/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/refunds/page.tsx",
       "line": 111,
       "text": "Amount UZS (0=full)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 190,
       "text": "All statuses"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 191,
       "text": "Paid"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 192,
       "text": "Pending"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 269,
       "text": "Order"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 270,
       "text": "Invoice"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 271,
       "text": "Retailer"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 272,
       "text": "Amount"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 273,
       "text": "Gateway"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 274,
       "text": "Status"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 275,
       "text": "Paid At"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 276,
       "text": "Actions"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 330,
       "text": "Override"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 331,
       "text": "SETTLED"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 332,
       "text": "PENDING"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 333,
       "text": "DISPUTED"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/treasury/settlement/page.tsx",
+      "file": "apps/supplier-portal/app/treasury/settlement/page.tsx",
       "line": 334,
       "text": "WRITTEN_OFF"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 279,
       "text": "Sign Out"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 284,
       "text": "v2.0.0"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 586,
       "text": "Admin Supplier"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 587,
       "text": "admin@void.pegasus.uz"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 595,
       "text": "Profile"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 603,
       "text": "Settings"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 608,
       "text": "Sign Out"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 634,
       "text": "Search pages..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 208,
       "text": "Open sidebar"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 227,
       "text": "Collapse sidebar"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 276,
       "text": "Sign Out"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 462,
       "text": "Open navigation"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 468,
       "text": "Breadcrumb"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 507,
       "text": "Search (Ctrl+K)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 518,
       "text": "Notifications"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/AdminShell.tsx",
+      "file": "apps/supplier-portal/components/AdminShell.tsx",
       "line": 578,
       "text": "Profile menu"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/Drawer.tsx",
+      "file": "apps/supplier-portal/components/Drawer.tsx",
       "line": 58,
       "text": "Close"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/MapLocationPicker.tsx",
+      "file": "apps/supplier-portal/components/MapLocationPicker.tsx",
       "line": 113,
       "text": "Street address, city"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/NetworkStatusBanner.tsx",
+      "file": "apps/supplier-portal/components/NetworkStatusBanner.tsx",
       "line": 89,
       "text": "Server high load — throttling requests"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/PaginationControls.tsx",
+      "file": "apps/supplier-portal/components/PaginationControls.tsx",
       "line": 20,
       "text": "Rows"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/PaginationControls.tsx",
+      "file": "apps/supplier-portal/components/PaginationControls.tsx",
       "line": 38,
       "text": "First page"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/PaginationControls.tsx",
+      "file": "apps/supplier-portal/components/PaginationControls.tsx",
       "line": 39,
       "text": "Previous page"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/PaginationControls.tsx",
+      "file": "apps/supplier-portal/components/PaginationControls.tsx",
       "line": 43,
       "text": "Next page"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/PaginationControls.tsx",
+      "file": "apps/supplier-portal/components/PaginationControls.tsx",
       "line": 44,
       "text": "Last page"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 249,
       "text": "SYNCING CONFIG..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 273,
       "text": "Catalog Injection"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 292,
       "text": "Product Name"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 302,
       "text": "Base Price (Amount)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 317,
       "text": "Category"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 326,
       "text": "Select product category"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 340,
       "text": "Volumetric Unit"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 371,
       "text": "Tiny (0.01 VU)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 372,
       "text": "Small (0.1 VU)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 373,
       "text": "Medium (0.5 VU)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 374,
       "text": "Standard (1.0 VU)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 375,
       "text": "Bulky (2.0 VU)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 376,
       "text": "Pallet (50.0 VU)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 377,
       "text": "Custom"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 397,
       "text": "Computed VU"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 409,
       "text": "Custom VU"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 424,
       "text": "Description"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 443,
       "text": "Sell strictly by the block (case / pallet)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 447,
       "text": "Units Per Block"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 465,
       "text": "Packaging Constraints (AI Auto-Order)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 468,
       "text": "Step Size"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 468,
       "text": "MOQ"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 472,
       "text": "Step Size (units/case)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 488,
       "text": "Order qty must be a multiple of this (e.g. 24 for a case of 24)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 491,
       "text": "Min Order Qty (MOQ)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 501,
       "text": "Minimum total units per order (must be ≥ step size)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 507,
       "text": "Product Image (High Res)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 391,
       "text": "0"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 418,
       "text": "e.g. 3.5"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierProductForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierProductForm.tsx",
       "line": 430,
       "text": "Retail-facing product description"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierPromotionForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierPromotionForm.tsx",
       "line": 44,
       "text": "Promotion Engine"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierPromotionForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierPromotionForm.tsx",
       "line": 52,
       "text": "Target SKU"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierPromotionForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierPromotionForm.tsx",
       "line": 59,
       "text": "Select target SKU"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierPromotionForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierPromotionForm.tsx",
       "line": 68,
       "text": "Min Pallets (Threshold)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierPromotionForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierPromotionForm.tsx",
       "line": 79,
       "text": "Discount (%)"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/SupplierPromotionForm.tsx",
+      "file": "apps/supplier-portal/components/SupplierPromotionForm.tsx",
       "line": 93,
       "text": "Valid Until"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/Toast.tsx",
+      "file": "apps/supplier-portal/components/Toast.tsx",
       "line": 76,
       "text": "Dismiss"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/NodeEfficiency.tsx",
+      "file": "apps/supplier-portal/components/analytics/NodeEfficiency.tsx",
       "line": 23,
       "text": "Warehouse"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/NodeEfficiency.tsx",
+      "file": "apps/supplier-portal/components/analytics/NodeEfficiency.tsx",
       "line": 24,
       "text": "Orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/NodeEfficiency.tsx",
+      "file": "apps/supplier-portal/components/analytics/NodeEfficiency.tsx",
       "line": 25,
       "text": "Avg Cycle"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/NodeEfficiency.tsx",
+      "file": "apps/supplier-portal/components/analytics/NodeEfficiency.tsx",
       "line": 26,
       "text": "On-Time"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/SLAHealth.tsx",
+      "file": "apps/supplier-portal/components/analytics/SLAHealth.tsx",
       "line": 89,
       "text": "On-Time:"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/SLAHealth.tsx",
+      "file": "apps/supplier-portal/components/analytics/SLAHealth.tsx",
       "line": 90,
       "text": "Late:"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/SLAHealth.tsx",
+      "file": "apps/supplier-portal/components/analytics/SLAHealth.tsx",
       "line": 91,
       "text": "Breached:"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/FactoryActivityChart.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/FactoryActivityChart.tsx",
       "line": 14,
       "text": "No factory data"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/FactoryTransfersPie.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/FactoryTransfersPie.tsx",
       "line": 26,
       "text": "No transfer data"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/FleetLoadBars.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/FleetLoadBars.tsx",
       "line": 14,
       "text": "No fleet load data"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/GatewayPieChart.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/GatewayPieChart.tsx",
       "line": 20,
       "text": "No gateway data"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/NodeEfficiencyGrid.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/NodeEfficiencyGrid.tsx",
       "line": 12,
       "text": "No node data"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/NodeEfficiencyGrid.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/NodeEfficiencyGrid.tsx",
       "line": 38,
       "text": "Orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/NodeEfficiencyGrid.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/NodeEfficiencyGrid.tsx",
       "line": 42,
       "text": "Avg Min"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/RevenueChart.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/RevenueChart.tsx",
       "line": 14,
       "text": "No revenue data"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/SLAStackedBar.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/SLAStackedBar.tsx",
       "line": 14,
       "text": "No SLA data"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/ThroughputLine.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/ThroughputLine.tsx",
       "line": 14,
       "text": "No throughput data"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/TopRetailersTable.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/TopRetailersTable.tsx",
       "line": 11,
       "text": "No retailer data"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/TopRetailersTable.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/TopRetailersTable.tsx",
       "line": 26,
       "text": "Shop"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/TopRetailersTable.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/TopRetailersTable.tsx",
       "line": 27,
       "text": "Orders"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/TopRetailersTable.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/TopRetailersTable.tsx",
       "line": 28,
       "text": "Revenue"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/analytics/advanced/TopRetailersTable.tsx",
+      "file": "apps/supplier-portal/components/analytics/advanced/TopRetailersTable.tsx",
       "line": 29,
       "text": "Avg"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/dashboard/FleetMapCell.tsx",
+      "file": "apps/supplier-portal/components/dashboard/FleetMapCell.tsx",
       "line": 243,
       "text": "Fleet GPS"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/dashboard/OrphanAlertsCell.tsx",
+      "file": "apps/supplier-portal/components/dashboard/OrphanAlertsCell.tsx",
       "line": 70,
       "text": "Coverage Alerts"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/dashboard/QuickActionsCell.tsx",
+      "file": "apps/supplier-portal/components/dashboard/QuickActionsCell.tsx",
       "line": 120,
       "text": "Quick Actions"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/CreateFactoryWizard.tsx",
+      "file": "apps/supplier-portal/components/factory/CreateFactoryWizard.tsx",
       "line": 192,
       "text": "Factory Location"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/CreateFactoryWizard.tsx",
+      "file": "apps/supplier-portal/components/factory/CreateFactoryWizard.tsx",
       "line": 255,
       "text": "Detecting address..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/CreateFactoryWizard.tsx",
+      "file": "apps/supplier-portal/components/factory/CreateFactoryWizard.tsx",
       "line": 261,
       "text": "Street"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/CreateFactoryWizard.tsx",
+      "file": "apps/supplier-portal/components/factory/CreateFactoryWizard.tsx",
       "line": 265,
       "text": "City"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/CreateFactoryWizard.tsx",
+      "file": "apps/supplier-portal/components/factory/CreateFactoryWizard.tsx",
       "line": 269,
       "text": "Country"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/CreateFactoryWizard.tsx",
+      "file": "apps/supplier-portal/components/factory/CreateFactoryWizard.tsx",
       "line": 304,
       "text": "Factory Details"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/CreateFactoryWizard.tsx",
+      "file": "apps/supplier-portal/components/factory/CreateFactoryWizard.tsx",
       "line": 323,
       "text": "Warehouse Assignment"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/CreateFactoryWizard.tsx",
+      "file": "apps/supplier-portal/components/factory/CreateFactoryWizard.tsx",
       "line": 285,
       "text": "Full address"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/CreateFactoryWizard.tsx",
+      "file": "apps/supplier-portal/components/factory/CreateFactoryWizard.tsx",
       "line": 310,
       "text": "e.g. Central Production Unit"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/CreateFactoryWizard.tsx",
+      "file": "apps/supplier-portal/components/factory/CreateFactoryWizard.tsx",
       "line": 312,
       "text": "3"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/CreateFactoryWizard.tsx",
+      "file": "apps/supplier-portal/components/factory/CreateFactoryWizard.tsx",
       "line": 313,
       "text": "10000"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/CreateFactoryWizard.tsx",
+      "file": "apps/supplier-portal/components/factory/CreateFactoryWizard.tsx",
       "line": 315,
       "text": "beverages, dairy, snacks"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/CreateFactoryWizard.tsx",
+      "file": "apps/supplier-portal/components/factory/CreateFactoryWizard.tsx",
       "line": 316,
       "text": "UZ-TAS"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/FactoryNetworkMap.tsx",
+      "file": "apps/supplier-portal/components/factory/FactoryNetworkMap.tsx",
       "line": 315,
       "text": "Supply link"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/FactoryNetworkMap.tsx",
+      "file": "apps/supplier-portal/components/factory/FactoryNetworkMap.tsx",
       "line": 341,
       "text": "Loading network data..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/factory/WarehouseAssignmentPanel.tsx",
+      "file": "apps/supplier-portal/components/factory/WarehouseAssignmentPanel.tsx",
       "line": 151,
       "text": "No warehouses configured yet"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/location-picker/location-picker.tsx",
+      "file": "apps/supplier-portal/components/location-picker/location-picker.tsx",
       "line": 227,
       "text": "Latitude"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/location-picker/location-picker.tsx",
+      "file": "apps/supplier-portal/components/location-picker/location-picker.tsx",
       "line": 241,
       "text": "Longitude"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/location-picker/location-picker.tsx",
+      "file": "apps/supplier-portal/components/location-picker/location-picker.tsx",
       "line": 166,
       "text": "Search address..."
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/location-picker/location-picker.tsx",
+      "file": "apps/supplier-portal/components/location-picker/location-picker.tsx",
       "line": 236,
       "text": "41.2995"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/location-picker/location-picker.tsx",
+      "file": "apps/supplier-portal/components/location-picker/location-picker.tsx",
       "line": 250,
       "text": "69.2401"
     },
     {
       "kind": "web-jsx-text",
-      "file": "apps/admin-portal/components/location-picker/location-picker.tsx",
+      "file": "apps/supplier-portal/components/location-picker/location-picker.tsx",
       "line": 187,
       "text": "Use my current GPS location"
     },

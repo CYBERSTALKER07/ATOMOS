@@ -36,19 +36,19 @@ const (
 
 // Service stores additive in-memory data for factory operational surfaces.
 type Service struct {
-	repo        Repository
-	cache       *cache.Cache
-	supplierHub *ws.Hub
-	factoryHub  *ws.Hub
-	log         *slog.Logger
+	repo          Repository
+	cache         *cache.Cache
+	supplierHub   *ws.Hub
+	factoryHub    *ws.Hub
+	log           *slog.Logger
 	spannerClient *spanner.Client
 
-	supplierID    string
-	factoryNodeID string
-	currency      string
-	jwtSecret     string
-	jwtIssuer     string
-	now           func() time.Time
+	supplierID       string
+	factoryNodeID    string
+	currency         string
+	jwtSecret        string
+	jwtIssuer        string
+	now              func() time.Time
 	firebaseVerifier auth.FirebaseVerifier
 
 	mu                    sync.RWMutex
@@ -75,12 +75,12 @@ type ServiceConfig struct {
 	Log         *slog.Logger
 	Spanner     *spanner.Client
 
-	SupplierID    string
-	FactoryNodeID string
-	Currency      string
-	JWTSecret     string
-	JWTIssuer     string
-	Now           func() time.Time
+	SupplierID       string
+	FactoryNodeID    string
+	Currency         string
+	JWTSecret        string
+	JWTIssuer        string
+	Now              func() time.Time
 	FirebaseVerifier auth.FirebaseVerifier
 }
 

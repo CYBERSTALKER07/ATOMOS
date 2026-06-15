@@ -28,9 +28,9 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-	"github.com/pegasusx/pegasusx/packages/handoff"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
+	"github.com/pegasusx/pegasusx/packages/handoff"
 )
 
 // Status is the canonical order state. Matches packages/types OrderStatus and
@@ -88,11 +88,11 @@ var (
 
 // LineItem is one line on an order.
 type LineItem struct {
-	SKU           string  `json:"sku"`
-	Name          string  `json:"name"`
-	Quantity      int64   `json:"quantity"`
-	UnitPrice     int64   `json:"unit_price_minor"` // minor units (tiyin / cents)
-	UnitVolumeVU  float64 `json:"unit_volume_vu,omitempty"`
+	SKU          string  `json:"sku"`
+	Name         string  `json:"name"`
+	Quantity     int64   `json:"quantity"`
+	UnitPrice    int64   `json:"unit_price_minor"` // minor units (tiyin / cents)
+	UnitVolumeVU float64 `json:"unit_volume_vu,omitempty"`
 }
 
 // Order is the persisted aggregate.
@@ -238,23 +238,23 @@ func NewService(c ServiceConfig) *Service {
 		grace = 5 * time.Minute
 	}
 	svc := &Service{
-		repo:            c.Repo,
-		cache:           c.Cache,
-		warehouse:       c.Warehouse,
-		promotions:      c.Promotions,
-		supplierID:      c.SupplierID,
-		supplierName:    strings.TrimSpace(c.SupplierName),
-		currency:        c.Currency,
-		retailerHub:     c.RetailerHub,
-		supplierHub:     c.SupplierHub,
-		driverHub:       c.DriverHub,
-		spannerClient:   c.SpannerClient,
-		shopGrace:       grace,
-		log:             c.Log,
-		now:             c.Now,
-		newID:           c.NewID,
-		jwtSecret:       c.JWTSecret,
-		handoff:         c.Handoff,
+		repo:          c.Repo,
+		cache:         c.Cache,
+		warehouse:     c.Warehouse,
+		promotions:    c.Promotions,
+		supplierID:    c.SupplierID,
+		supplierName:  strings.TrimSpace(c.SupplierName),
+		currency:      c.Currency,
+		retailerHub:   c.RetailerHub,
+		supplierHub:   c.SupplierHub,
+		driverHub:     c.DriverHub,
+		spannerClient: c.SpannerClient,
+		shopGrace:     grace,
+		log:           c.Log,
+		now:           c.Now,
+		newID:         c.NewID,
+		jwtSecret:     c.JWTSecret,
+		handoff:       c.Handoff,
 	}
 	if svc.handoff == nil {
 		svc.handoff = handoff.FromEnv()
@@ -437,8 +437,8 @@ type ConfirmOffloadResponse struct {
 
 // ValidateQRRequest is the wire shape for POST /v1/order/validate-qr.
 type ValidateQRRequest struct {
-	OrderID       string `json:"order_id"`
-	ScannedToken  string `json:"scanned_token"`
+	OrderID      string `json:"order_id"`
+	ScannedToken string `json:"scanned_token"`
 }
 
 // ValidateQRResponse matches the driver scanner contract without mutating order state.
@@ -596,28 +596,71 @@ func (r AssignOrderRequest) Validate() (AssignOrderRequest, error) {
 	return normalized, nil
 }
 
-func normalizeRetailerLineItems(items []LineItem) ([]LineItem, int64, error) {
+func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineItem) ([]LineItem, int64, error) {
 	if len(items) == 0 {
 		return nil, 0, errors.New("line_items required")
 	}
 	var total int64
 	normalized := make([]LineItem, 0, len(items))
-	for i, li := range items {
-		item := LineItem{
-			SKU:       strings.TrimSpace(li.SKU),
-			Name:      strings.TrimSpace(li.Name),
-			Quantity:  li.Quantity,
-			UnitPrice: li.UnitPrice,
+
+	keys := make([]spanner.Key, 0, len(items))
+	for _, li := range items {
+		sku := strings.TrimSpace(li.SKU)
+		if sku != "" {
+			keys = append(keys, spanner.Key{sku})
 		}
-		if item.SKU == "" {
+	}
+
+	iter := s.spannerClient.Single().Read(ctx, "Products", spanner.KeySetFromKeys(keys...), []string{"ProductId", "Name", "PriceMinor", "UnitVolumeVU"})
+	defer iter.Stop()
+
+	prices := make(map[string]int64)
+	names := make(map[string]string)
+	volumes := make(map[string]float64)
+
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to read products: %v", err)
+		}
+		var id, name string
+		var price int64
+		var vu spanner.NullFloat64
+		if err := row.Columns(&id, &name, &price, &vu); err != nil {
+			return nil, 0, err
+		}
+		prices[id] = price
+		names[id] = name
+		if vu.Valid {
+			volumes[id] = vu.Float64
+		}
+	}
+
+	for i, li := range items {
+		sku := strings.TrimSpace(li.SKU)
+		if sku == "" {
 			return nil, 0, fmt.Errorf("line_items[%d].sku required", i)
 		}
-		if item.Quantity <= 0 {
+		if li.Quantity <= 0 {
 			return nil, 0, fmt.Errorf("line_items[%d].quantity must be > 0", i)
 		}
-		if item.UnitPrice < 0 {
-			return nil, 0, fmt.Errorf("line_items[%d].unit_price_minor must be >= 0", i)
+
+		serverPrice, ok := prices[sku]
+		if !ok {
+			return nil, 0, fmt.Errorf("line_items[%d].sku %s not found in catalog", i, sku)
 		}
+
+		item := LineItem{
+			SKU:          sku,
+			Name:         names[sku],
+			Quantity:     li.Quantity,
+			UnitPrice:    serverPrice,
+			UnitVolumeVU: volumes[sku],
+		}
+
 		total += item.UnitPrice * item.Quantity
 		normalized = append(normalized, item)
 	}
@@ -689,7 +732,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, errors.New("retailer_id required from session")
 	}
 
-	lineItems, total, err := normalizeRetailerLineItems(req.LineItems)
+	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems)
 	if err != nil {
 		return CreateResponse{}, err
 	}
@@ -838,7 +881,7 @@ func (s *Service) ConfirmAIOrder(ctx context.Context, retailerID string, req Con
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
 	if len(req.LineItems) > 0 {
-		lineItems, total, err := normalizeRetailerLineItems(req.LineItems)
+		lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems)
 		if err != nil {
 			return RetailerOrderLifecycleResponse{}, err
 		}
@@ -936,7 +979,7 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 	if orderID == "" {
 		return RetailerOrderLifecycleResponse{}, errors.New("order_id required")
 	}
-	lineItems, total, err := normalizeRetailerLineItems(req.LineItems)
+	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems)
 	if err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}
@@ -1878,7 +1921,7 @@ func (s *Service) HandleGetQRPayload(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
 		return
 	}
-	
+
 	current, found, err := s.repo.GetOrder(r.Context(), orderID)
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "get order for qr payload failed", "err", err, "order_id", orderID)
@@ -1893,7 +1936,7 @@ func (s *Service) HandleGetQRPayload(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
-	
+
 	qrToken := s.publicDeliveryToken(current)
 
 	writeJSON(w, http.StatusOK, map[string]string{
@@ -1913,7 +1956,7 @@ func (s *Service) HandleDeliveryScanQR(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	
+
 	var req struct {
 		OrderID         string     `json:"order_id"`
 		QRToken         string     `json:"qr_token"`
@@ -1947,22 +1990,22 @@ func (s *Service) HandleDeliveryScanQR(w http.ResponseWriter, r *http.Request) {
 			return emitPaymentRequired(r.Context(), txn, orderRecord)
 		},
 	})
-	
+
 	if err != nil {
 		s.log.Warn("delivery scan qr failed", "order_id", req.OrderID, "err", err)
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		return
 	}
-	
+
 	if !result.NoChange {
 		s.broadcastSettlementRequired(r.Context(), result.Order)
 		s.broadcastPaymentRequired(r.Context(), result.Order)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"valid":     true,
-		"order_id":  result.Order.OrderID,
-		"state":     result.Order.Status,
+		"valid":    true,
+		"order_id": result.Order.OrderID,
+		"state":    result.Order.Status,
 	})
 }
 
@@ -2719,15 +2762,15 @@ func (s *Service) AmendOrder(ctx context.Context, claims auth.Claims, req AmendO
 
 	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
 		payload := map[string]any{
-			"type":            "ORDER_AMENDED",
-			"order_id":        current.OrderID,
-			"driver_id":       claims.Subject,
-			"previous_total":  previousTotal,
-			"adjusted_total":  adjustedTotal,
-			"currency":        current.Currency,
-			"driver_notes":    strings.TrimSpace(req.DriverNotes),
-			"amended_items":   req.Items,
-			"timestamp":       current.UpdatedAt.Format(time.RFC3339Nano),
+			"type":           "ORDER_AMENDED",
+			"order_id":       current.OrderID,
+			"driver_id":      claims.Subject,
+			"previous_total": previousTotal,
+			"adjusted_total": adjustedTotal,
+			"currency":       current.Currency,
+			"driver_notes":   strings.TrimSpace(req.DriverNotes),
+			"amended_items":  req.Items,
+			"timestamp":      current.UpdatedAt.Format(time.RFC3339Nano),
 		}
 		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, payload)
 	}); err != nil {
@@ -2819,7 +2862,7 @@ func (s *Service) HandleReportDamage(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
-	
+
 	if current.Status != StatusInTransit && current.Status != StatusArrived {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_status_for_damage_report"})
 		return
@@ -2868,7 +2911,7 @@ func (s *Service) HandleReportDamage(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "update_failed"})
 		return
 	}
-	
+
 	s.afterOrderMutation(r.Context(), current)
 
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -2987,7 +3030,7 @@ func resolveOrderPaymentMethod(ctx context.Context, client *spanner.Client, orde
 		      LIMIT 1`,
 		Params: map[string]any{"oid": orderID},
 	}
-	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err != nil {

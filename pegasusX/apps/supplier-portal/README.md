@@ -1,6 +1,6 @@
 # supplier-portal
 
-Next.js 15 + React 19 **supplier portal** (web + Tauri 2 desktop + **Android**). Pegasus equivalent: `admin-portal`. The product user is a **SUPPLIER**; JWT role remains `ADMIN` for legacy compatibility.
+Next.js 15 + React 19 **supplier portal** (web + Tauri 2 desktop + **Android**). Pegasus equivalent: `supplier-portal`. The product user is a **SUPPLIER**; JWT role remains `ADMIN` for legacy compatibility.
 
 ## Stack
 

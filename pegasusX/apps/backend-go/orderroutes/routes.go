@@ -35,7 +35,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/fleet/route/request-early-complete", d.Service.HandleRequestEarlyComplete)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/confirm-payment-bypass", d.Service.HandleConfirmPaymentBypass)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/report-damage", d.Service.HandleReportDamage)
-		
+
 		gr.With(auth.RequireRole(auth.RoleRetailer)).Get("/v1/order/{orderID}/qr-payload", d.Service.HandleGetQRPayload)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/scan-qr", d.Service.HandleDeliveryScanQR)
 		gr.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/delivery/confirm-cash", d.Service.HandleRetailerConfirmCash)

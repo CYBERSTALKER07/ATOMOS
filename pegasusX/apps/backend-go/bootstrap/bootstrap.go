@@ -38,10 +38,10 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
-	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
 	"github.com/pegasusx/pegasusx/apps/backend-go/storage"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
@@ -755,16 +755,16 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		RouteGeometryBuilder: routeGeometryBuilder,
 		Locations:            driverLocations,
 		SupplierHub:          supplierHub,
-		WarehouseHub:     warehouseHub,
-		Log:              log,
-		SupplierID:       supplierSeed.SupplierID,
-		Currency:         cfg.SeedSupplierCurrency,
-		JWTSecret:        cfg.JWTSecret,
-		JWTIssuer:        cfg.JWTIssuer,
-		OptimizerClient:  optimizerCli,
-		PlanCounters:     dispatchCounters,
-		FallbackDepotLat: cfg.DeliveryZoneCenterLat,
-		FallbackDepotLng: cfg.DeliveryZoneCenterLng,
+		WarehouseHub:         warehouseHub,
+		Log:                  log,
+		SupplierID:           supplierSeed.SupplierID,
+		Currency:             cfg.SeedSupplierCurrency,
+		JWTSecret:            cfg.JWTSecret,
+		JWTIssuer:            cfg.JWTIssuer,
+		OptimizerClient:      optimizerCli,
+		PlanCounters:         dispatchCounters,
+		FallbackDepotLat:     cfg.DeliveryZoneCenterLat,
+		FallbackDepotLng:     cfg.DeliveryZoneCenterLng,
 	})
 
 	var reliabilityMiddleware *ReliabilityMiddleware
@@ -1135,7 +1135,7 @@ func driverRouteGeometryQuery(client *spanner.Client, builder *routing.GeometryB
 			        AND Status NOT IN ('COMPLETED', 'CANCELLED')`,
 			Params: map[string]interface{}{"did": driverID, "rid": routeID},
 		}
-		ownIter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, ownStmt)
+		ownIter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, ownStmt)
 		defer ownIter.Stop()
 		ownRow, err := ownIter.Next()
 		if err != nil {
@@ -1176,7 +1176,7 @@ func driverRouteGeometryQuery(client *spanner.Client, builder *routing.GeometryB
 			      LIMIT 1`,
 			Params: map[string]interface{}{"did": driverID, "rid": routeID},
 		}
-		storedIter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, storedStmt)
+		storedIter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, storedStmt)
 		storedRow, storedErr := storedIter.Next()
 		storedIter.Stop()
 		if storedErr == nil {

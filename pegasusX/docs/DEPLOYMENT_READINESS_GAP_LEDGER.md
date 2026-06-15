@@ -49,7 +49,7 @@ Last updated: 2026-06-05. Tracks production v1 closure — not full Pegasus refe
 
 | ID | Item |
 |----|------|
-| P2-01 | Full Pegasus admin-portal ~59 routes |
+| P2-01 | Full Pegasus supplier-portal ~59 routes |
 | P2-02 | Rust optimizer sidecar |
 | P2-03 | Payme/Click production SDK depth (GlobalPay scaffold acceptable for v1) |
 | P2-04 | Multi-supplier beyond `MAX_SUPPLIERS` policy |

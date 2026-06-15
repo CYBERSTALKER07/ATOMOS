@@ -37,7 +37,7 @@ SSMR e2e markers (all must print during `ssmr-smokecheck e2e`):
 
 ## Phase B1 — Supplier portal layout sign-off (pegasusX UI parity)
 
-Visual/layout checks only — no API or backend contract changes. Compare pegasusX `supplier-portal` against pegasus `admin-portal` supplier surfaces.
+Visual/layout checks only — no API or backend contract changes. Compare pegasusX `supplier-portal` against pegasus `supplier-portal` supplier surfaces.
 
 | Route | Chrome | Boss [ ] |
 |-------|--------|----------|
