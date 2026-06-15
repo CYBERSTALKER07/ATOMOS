@@ -28,6 +28,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleFactoryAdmin)).Post("/v1/orders/{orderID}/assign", d.Service.HandleAssignOrder)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/arrive", d.Service.HandleMarkArrived)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/order/deliver", d.Service.HandleSubmitDelivery)
+		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/sync/batch", d.Service.HandleSyncBatch)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/order/confirm-offload", d.Service.HandleConfirmOffload)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/order/complete", d.Service.HandleCompleteOrder)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/order/collect-cash", d.Service.HandleCollectCash)

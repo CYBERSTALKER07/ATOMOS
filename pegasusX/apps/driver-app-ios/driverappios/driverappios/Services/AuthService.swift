@@ -336,6 +336,7 @@ final class DriverSocketState {
     private var webSocketTask: URLSessionWebSocketTask?
     private var reconnectWorkItem: DispatchWorkItem?
     private var shouldReconnect = false
+    private var reconnectAttempt = 0
     private var currentBaseURL: String?
     private var currentToken: String?
 
@@ -350,6 +351,7 @@ final class DriverSocketState {
         shouldReconnect = true
         currentBaseURL = baseURL
         currentToken = token
+        reconnectAttempt = 0
         establishConnection()
     }
 
@@ -406,6 +408,7 @@ final class DriverSocketState {
         let task = URLSession.shared.webSocketTask(with: request)
         webSocketTask = task
         task.resume()
+        reconnectAttempt = 0
         connectionState = .connected
         listenForMessages()
     }
@@ -482,14 +485,23 @@ final class DriverSocketState {
         guard shouldReconnect, outdatedNotice == nil else { return }
         connectionState = .reconnecting
         reconnectWorkItem?.cancel()
+        reconnectAttempt += 1
+        let delay = reconnectDelaySeconds(attempt: reconnectAttempt - 1, base: 3, max: 60)
         let work = DispatchWorkItem { [weak self] in
             Task { @MainActor in
                 self?.establishConnection()
             }
         }
         reconnectWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
+}
+
+private func reconnectDelaySeconds(attempt: Int, base: TimeInterval, max: TimeInterval, retryAfter: TimeInterval = 0) -> TimeInterval {
+    let capped = min(max(attempt, 0), 10)
+    let exp = min(base * pow(2.0, Double(capped)), max)
+    let jittered = exp + Double.random(in: 0...(exp / 2))
+    return min(max(jittered, retryAfter), max)
 }
 
 // MARK: - Auth Models

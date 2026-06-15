@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { reconnectDelayMs } from '@pegasusx/api-client';
 import { readTokenFromCookie, apiFetch } from './auth';
 
 const API = (
@@ -245,7 +246,8 @@ export function useNotifications() {
       if (disposedRef.current) return;
       reconnectAttemptRef.current += 1;
       setWsState('reconnecting');
-      reconnectTimer.current = setTimeout(connectWS, 5000);
+      const delay = reconnectDelayMs(reconnectAttemptRef.current - 1, { baseMs: 5_000, maxMs: 60_000 });
+      reconnectTimer.current = setTimeout(connectWS, delay);
     };
 
     ws.onerror = () => ws.close();

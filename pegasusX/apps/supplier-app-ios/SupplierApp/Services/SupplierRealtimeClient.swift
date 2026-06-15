@@ -16,9 +16,11 @@ final class SupplierRealtimeClient {
     private var task: URLSessionWebSocketTask?
     private var closed = true
     private var reconnectWorkItem: DispatchWorkItem?
+    private var reconnectAttempt = 0
 
     func connect(onEvent: @escaping (SupplierLiveEvent) -> Void) {
         closed = false
+        reconnectAttempt = 0
         Task { await openSocket(onEvent: onEvent) }
     }
 
@@ -41,6 +43,7 @@ final class SupplierRealtimeClient {
             task?.cancel(with: .goingAway, reason: nil)
             task = URLSession.shared.webSocketTask(with: url)
             task?.resume()
+            reconnectAttempt = 0
             receiveLoop(onEvent: onEvent)
         } catch {
             scheduleReconnect(onEvent: onEvent)
@@ -54,8 +57,10 @@ final class SupplierRealtimeClient {
             guard let self, !self.closed else { return }
             Task { await self.openSocket(onEvent: onEvent) }
         }
+        reconnectAttempt += 1
+        let delay = reconnectDelaySeconds(attempt: reconnectAttempt - 1, base: 3, max: 60)
         reconnectWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
     private func wsURL(sessionToken: String) -> URL? {
@@ -96,4 +101,10 @@ final class SupplierRealtimeClient {
             }
         }
     }
+}
+
+private func reconnectDelaySeconds(attempt: Int, base: TimeInterval, max: TimeInterval) -> TimeInterval {
+    let capped = min(max(attempt, 0), 10)
+    let exp = min(base * pow(2.0, Double(capped)), max)
+    return exp + Double.random(in: 0...(exp / 2))
 }

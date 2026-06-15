@@ -53,6 +53,8 @@ enum OrderStatus: String, Codable, CaseIterable {
     case cancelled = "CANCELLED"
     case quarantine = "QUARANTINE"
     case deliveredOnCredit = "DELIVERED_ON_CREDIT"
+    case reconciliationRequired = "RECONCILIATION_REQUIRED"
+    case delayed = "DELAYED"
 
     var displayName: String {
         switch self {
@@ -74,6 +76,8 @@ enum OrderStatus: String, Codable, CaseIterable {
         case .cancelled: "Cancelled"
         case .quarantine: "On Hold"
         case .deliveredOnCredit: "Delivered (Credit)"
+        case .reconciliationRequired: "Reconciliation Required"
+        case .delayed: "Delayed"
         }
     }
 
@@ -90,7 +94,7 @@ enum OrderStatus: String, Codable, CaseIterable {
         case .pendingCashCollection: "systemOrange"
         case .completed, .deliveredOnCredit: "systemGreen"
         case .cancelled, .cancelRequested, .noCapacity: "systemRed"
-        case .quarantine: "systemYellow"
+        case .quarantine, .delayed, .reconciliationRequired: "systemYellow"
         }
     }
 
@@ -117,7 +121,7 @@ enum OrderStatus: String, Codable, CaseIterable {
         case .inTransit: 3
         case .arriving, .arrived, .arrivedShopClosed: 4
         case .completed, .deliveredOnCredit: 5
-        case .cancelled, .cancelRequested, .noCapacity, .quarantine: -1
+        case .cancelled, .cancelRequested, .noCapacity, .quarantine, .reconciliationRequired, .delayed: -1
         default: -1
         }
     }

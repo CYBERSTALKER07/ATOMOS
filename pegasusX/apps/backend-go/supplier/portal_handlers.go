@@ -109,6 +109,7 @@ type supplierProfileResponse struct {
 	IsRegistered     bool     `json:"is_registered"`
 	IsConfigured     bool     `json:"is_configured"`
 	SelectedGateways []string `json:"selected_gateways"`
+	PaymentAcceptor  string   `json:"payment_acceptor"`
 	UpdatedAt        string   `json:"updated_at"`
 }
 
@@ -285,6 +286,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		IsRegistered:     current.IsRegistered,
 		IsConfigured:     current.IsConfigured,
 		SelectedGateways: append([]string(nil), current.SelectedGateways...),
+		PaymentAcceptor:  normalizePaymentAcceptor(current.PaymentAcceptor),
 		UpdatedAt:        updated,
 	})
 }

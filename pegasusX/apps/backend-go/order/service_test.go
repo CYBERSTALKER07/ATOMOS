@@ -649,7 +649,9 @@ func TestServiceConfirmOffloadIdempotentNoop(t *testing.T) {
 
 func TestServiceSubmitDeliveryPersistsProofArtifact(t *testing.T) {
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
-	repo := &testRepo{found: true, order: deliveryTestOrder(StatusArrived)}
+	order := deliveryTestOrder(StatusArrived)
+	order.QRToken = "qr-token"
+	repo := &testRepo{found: true, order: order}
 	svc := newTestService(repo, now)
 
 	resp, err := svc.SubmitDelivery(context.Background(), driverClaims(), DeliverySubmitRequest{

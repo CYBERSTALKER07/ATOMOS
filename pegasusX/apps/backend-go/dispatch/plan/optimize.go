@@ -24,6 +24,13 @@ const (
 
 	defaultCapacityBufferPct  = 5.0
 	maxAcceptableUtilFraction = 1.0 - defaultCapacityBufferPct/100.0
+
+	// fallbackTimeout bounds H3 cell resolution + binpack CPU during peak dispatch.
+	// Prevents Go handlers from hanging when the optimiser is unavailable.
+	fallbackTimeout = 3 * time.Second
+
+	// solverBudget is aligned with optimizerclient.DefaultTimeout plus wire overhead.
+	solverBudget = optimizerclient.DefaultTimeout + 250*time.Millisecond
 )
 
 // Job is the backend-domain input. The orchestrator builds an
@@ -53,23 +60,23 @@ func OptimizeAndValidate(ctx context.Context, client *optimizerclient.Client, jo
 			Orders:     geoOrdersFromDispatchable(job.Orders),
 			Fleet:      job.Fleet,
 		}
-		solveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		solveCtx, cancel := context.WithTimeout(ctx, solverBudget)
 		defer cancel()
 		res, err := client.Solve(solveCtx, in)
 		if err == nil {
 			if rejected := validateAssignment(res, job.Fleet); rejected != "" {
-				out := runFallback(job)
+				out := runFallbackWithDeadline(ctx, job)
 				out.Warnings = append(out.Warnings,
 					fmt.Sprintf("validation rejected: %s — engaged Phase 1 fallback", rejected))
 				return out, SourceFallbackValidation, nil
 			}
 			return res, SourceOptimizer, nil
 		}
-		out := runFallback(job)
+		out := runFallbackWithDeadline(ctx, job)
 		out.Warnings = append(out.Warnings, fmt.Sprintf("optimizer error → fallback: %v", err))
 		return out, SourceFallbackPhase1, nil
 	}
-	return runFallback(job), SourceFallbackPhase1, nil
+	return runFallbackWithDeadline(ctx, job), SourceFallbackPhase1, nil
 }
 
 // validateAssignment returns "" when every route fits within the configured
@@ -106,15 +113,38 @@ func validateAssignment(res *dispatch.AssignmentResult, fleet []dispatch.Availab
 func runFallback(job Job) *dispatch.AssignmentResult {
 	cellLookup := job.CellLookup
 	if cellLookup == nil {
-		cellLookup = func(lat, lng float64) string {
-			return fmt.Sprintf("%.4f,%.4f", lat, lng)
-		}
+		cellLookup = dispatch.H3CellLookup
 	}
 	res := dispatch.BinPack(job.Orders, job.Fleet, cellLookup)
 	if res == nil {
 		return &dispatch.AssignmentResult{}
 	}
 	return res
+}
+
+// runFallbackWithDeadline runs Phase 1 fallback with a strict deadline so H3
+// geo-batching cannot block request handlers during regional dispatch peaks.
+func runFallbackWithDeadline(ctx context.Context, job Job) *dispatch.AssignmentResult {
+	fallbackCtx, cancel := context.WithTimeout(ctx, fallbackTimeout)
+	defer cancel()
+
+	type result struct {
+		res *dispatch.AssignmentResult
+	}
+	ch := make(chan result, 1)
+	go func() {
+		ch <- result{res: runFallback(job)}
+	}()
+
+	select {
+	case out := <-ch:
+		return out.res
+	case <-fallbackCtx.Done():
+		res := &dispatch.AssignmentResult{}
+		res.Warnings = append(res.Warnings,
+			fmt.Sprintf("fallback deadline exceeded (%s): %v", fallbackTimeout, fallbackCtx.Err()))
+		return res
+	}
 }
 
 func geoOrdersFromDispatchable(in []dispatch.DispatchableOrder) []dispatch.GeoOrder {

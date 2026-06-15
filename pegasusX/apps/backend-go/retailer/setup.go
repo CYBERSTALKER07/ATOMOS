@@ -4,64 +4,111 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-
-	"cloud.google.com/go/spanner"
-	"github.com/google/uuid"
-	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
 )
 
-// HandleRetailerSetup serves POST /v1/retailer/setup
+// HandleRetailerSetup completes retailer onboarding for authenticated clients.
+// POST /v1/retailer/setup
 func (s *Service) HandleRetailerSetup(w http.ResponseWriter, r *http.Request) {
-	if s.spannerClient == nil {
-		web.JSONError(w, "Spanner not configured", http.StatusServiceUnavailable)
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
 
-	var req struct {
-		Name        string  `json:"name"`
-		Phone       string  `json:"phone"`
-		CountryCode string  `json:"country_code"`
-		Lat         float64 `json:"lat"`
-		Lng         float64 `json:"lng"`
-		RegionID    string  `json:"region_id"`
+	retailerID, err := retailerIDFromRequest(r)
+	if err != nil {
+		writeRetailerIdentityError(w, err)
+		return
 	}
+
+	var req map[string]json.RawMessage
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		web.JSONError(w, "invalid JSON", http.StatusBadRequest)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
 	defer r.Body.Close()
 
-	if strings.TrimSpace(req.Phone) == "" || strings.TrimSpace(req.Name) == "" {
-		web.JSONError(w, "phone and name are required", http.StatusBadRequest)
+	ret, found, err := s.repo.GetRetailer(r.Context(), retailerID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_retailer_failed"})
 		return
 	}
-	if req.CountryCode == "" {
-		req.CountryCode = "UZ"
+	if !found {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "retailer_not_found"})
+		return
+	}
+	if strings.TrimSpace(ret.SupplierID) == "" {
+		ret.SupplierID = s.supplierID
 	}
 
-	retID := "ret-" + uuid.NewString()[:8]
-	now := s.now().UTC()
-
-	var regionID spanner.NullString
-	if req.RegionID != "" {
-		regionID = spanner.NullString{StringVal: req.RegionID, Valid: true}
+	if name := firstNonEmpty(rawString(req, "name"), rawString(req, "store_name"), rawString(req, "owner_name"), rawString(req, "company")); name != "" {
+		ret.Name = name
+	}
+	if phone := firstNonEmpty(rawString(req, "phone"), rawString(req, "phone_number")); phone != "" {
+		ret.Phone = phone
+	}
+	if lat, ok := firstFloat(req, "lat", "latitude"); ok {
+		ret.Lat = lat
+	}
+	if lng, ok := firstFloat(req, "lng", "longitude"); ok {
+		ret.Lng = lng
+	}
+	if country := rawString(req, "country_code"); country != "" {
+		ret.CountryCode = country
 	}
 
-	m := spanner.Insert("Retailers",
-		[]string{"RetailerId", "Phone", "Name", "CountryCode", "Lat", "Lng", "RegionId", "CreatedAt"},
-		[]any{retID, strings.TrimSpace(req.Phone), strings.TrimSpace(req.Name), req.CountryCode, req.Lat, req.Lng, regionID, now},
-	)
+	// Desktop setup wizard fields — best-effort label when name is still empty.
+	if strings.TrimSpace(ret.Name) == "" {
+		if label := firstNonEmpty(rawString(req, "shippingAddress"), rawString(req, "billingAddress")); label != "" {
+			if city := rawString(req, "city"); city != "" {
+				label = label + ", " + city
+			}
+			ret.Name = label
+		}
+	}
 
-	if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
-		s.log.ErrorContext(r.Context(), "failed to create retailer", "err", err)
-		web.JSONError(w, "Failed to create retailer", http.StatusInternalServerError)
+	ret.UpdatedAt = s.now()
+	if err := s.repo.UpdateRetailer(r.Context(), ret, nil); err != nil {
+		s.log.ErrorContext(r.Context(), "retailer setup update failed", "retailer_id", retailerID, "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "update_failed"})
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]any{
-		"retailer_id":  retID,
-		"phone":        req.Phone,
-		"name":         req.Name,
-		"country_code": req.CountryCode,
-	})
+	s.cache.Invalidate(r.Context(), retailerByPhoneKey(ret.Phone))
+	s.writeMobileAuthResponse(w, ret)
+}
+
+func rawString(req map[string]json.RawMessage, key string) string {
+	raw, ok := req[key]
+	if !ok || len(raw) == 0 {
+		return ""
+	}
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(value)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func firstFloat(req map[string]json.RawMessage, keys ...string) (float64, bool) {
+	for _, key := range keys {
+		raw, ok := req[key]
+		if !ok || len(raw) == 0 {
+			continue
+		}
+		var value float64
+		if err := json.Unmarshal(raw, &value); err != nil {
+			continue
+		}
+		return value, true
+	}
+	return 0, false
 }

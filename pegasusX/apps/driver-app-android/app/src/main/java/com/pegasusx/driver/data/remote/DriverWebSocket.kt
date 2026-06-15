@@ -76,6 +76,7 @@ class DriverWebSocket @Inject constructor(
 
     private var currentBaseUrl: String? = null
     private var currentToken: String? = null
+    private var pendingRetryAfterMs: Long? = null
 
     fun connect(baseUrl: String, driverId: String, token: String) {
         if (socket != null && _connectionState.value == ConnectionState.CONNECTED) return
@@ -124,6 +125,7 @@ class DriverWebSocket @Inject constructor(
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "Connection failed", t)
                 socket = null
+                pendingRetryAfterMs = ReconnectBackoff.retryAfterMs(response)
                 if (!intentionalClose.get()) {
                     _connectionState.value = ConnectionState.RECONNECTING
                 }
@@ -152,7 +154,13 @@ class DriverWebSocket @Inject constructor(
             return
         }
         _connectionState.value = ConnectionState.RECONNECTING
-        val delay = (BASE_RECONNECT_DELAY_MS * (1L shl attempt.coerceAtMost(5))).coerceAtMost(MAX_RECONNECT_DELAY_MS)
+        val delay = ReconnectBackoff.delayMs(
+            attempt,
+            BASE_RECONNECT_DELAY_MS,
+            MAX_RECONNECT_DELAY_MS,
+            pendingRetryAfterMs,
+        )
+        pendingRetryAfterMs = null
         Log.d(TAG, "Reconnecting in ${delay}ms (attempt ${attempt + 1})")
         reconnectTask?.cancel(false)
         reconnectTask = reconnectExecutor.schedule(

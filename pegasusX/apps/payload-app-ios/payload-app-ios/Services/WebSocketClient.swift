@@ -24,6 +24,7 @@ final class WebSocketClient {
     private var token: String?
     private var receiveTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
+    private var reconnectAttempt = 0
 
     init() {
         let cfg = URLSessionConfiguration.default
@@ -33,6 +34,7 @@ final class WebSocketClient {
 
     func connect(token: String) {
         self.token = token
+        reconnectAttempt = 0
         openSocket()
     }
 
@@ -53,6 +55,7 @@ final class WebSocketClient {
         let t = session.webSocketTask(with: url)
         task = t
         t.resume()
+        reconnectAttempt = 0
         online = true
         onReconnect?()
         startReceiving(t)
@@ -89,11 +92,19 @@ final class WebSocketClient {
         online = false
         task = nil
         guard token != nil else { return }
+        reconnectAttempt += 1
+        let delaySeconds = reconnectDelaySeconds(attempt: reconnectAttempt - 1, base: 3, max: 60)
         reconnectTask?.cancel()
         reconnectTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            try? await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
             guard !Task.isCancelled, let self, self.token != nil else { return }
             self.openSocket()
         }
     }
+}
+
+private func reconnectDelaySeconds(attempt: Int, base: TimeInterval, max: TimeInterval) -> TimeInterval {
+    let capped = min(max(attempt, 0), 10)
+    let exp = min(base * pow(2.0, Double(capped)), max)
+    return exp + Double.random(in: 0...(exp / 2))
 }

@@ -1,0 +1,25 @@
+package com.pegasusx.driver.data.remote
+
+import kotlin.math.min
+import kotlin.random.Random
+import okhttp3.Response
+
+/** Desert Protocol reconnect scheduling shared by driver WebSocket clients. */
+object ReconnectBackoff {
+    fun delayMs(
+        attempt: Int,
+        baseMs: Long = 2_000L,
+        maxMs: Long = 60_000L,
+        retryAfterMs: Long? = null,
+    ): Long {
+        val capped = attempt.coerceIn(0, 10)
+        val exp = min(baseMs * (1L shl capped), maxMs)
+        val jittered = exp + Random.nextLong(0, exp / 2 + 1)
+        return maxOf(jittered, retryAfterMs ?: 0L)
+    }
+
+    fun retryAfterMs(response: Response?): Long? {
+        val raw = response?.header("Retry-After") ?: return null
+        return raw.toLongOrNull()?.times(1_000)
+    }
+}

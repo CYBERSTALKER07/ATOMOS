@@ -72,11 +72,18 @@ export type OrderStatus =
   | "LOADED"
   | "IN_TRANSIT"
   | "ARRIVED"
+  | "ARRIVED_SHOP_CLOSED"
   | "AWAITING_PAYMENT"
   | "PENDING_CASH_COLLECTION"
+  | "DELIVERED_ON_CREDIT"
   | "COMPLETED"
   | "CANCELLED"
-  | "DELAYED";
+  | "RECONCILIATION_REQUIRED"
+  | "DELAYED"
+  // Operational / legacy client aliases still seen on WS payloads and fleet guards.
+  | "DISPATCHED"
+  | "ARRIVING"
+  | "EN_ROUTE";
 
 export type OrderSource = "MANUAL" | "MANUAL_PREORDER" | "AI_PREORDER";
 

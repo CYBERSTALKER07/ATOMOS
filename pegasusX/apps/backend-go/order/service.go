@@ -27,6 +27,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
@@ -194,12 +195,14 @@ type Service struct {
 	driverHub     *ws.Hub
 	spannerClient *spanner.Client
 	manifestStore *manifest.Store
+	idem          idempotency.Store
 	shopGrace     time.Duration
 	log           *slog.Logger
 	now           func() time.Time
 	newID         func() string
 	jwtSecret     string
 	handoff       *handoff.Engine
+	gatewayPolicy GatewayPolicyReader
 }
 
 // ServiceConfig is the constructor input.
@@ -221,6 +224,7 @@ type ServiceConfig struct {
 	NewID           func() string
 	JWTSecret       string
 	Handoff         *handoff.Engine
+	Idem            idempotency.Store
 }
 
 // NewService constructs a Service with default Now/NewID.
@@ -256,6 +260,7 @@ func NewService(c ServiceConfig) *Service {
 		newID:         c.NewID,
 		jwtSecret:     c.JWTSecret,
 		handoff:       c.Handoff,
+		idem:          c.Idem,
 	}
 	if svc.handoff == nil {
 		svc.handoff = handoff.FromEnv()
@@ -271,6 +276,11 @@ func (s *Service) SetPaymentCapturer(pc PaymentCapturer) {
 // SetManifestStore wires manifest persistence for route geometry refresh after reorder.
 func (s *Service) SetManifestStore(store *manifest.Store) {
 	s.manifestStore = store
+}
+
+// SetGatewayPolicyReader wires payment gateway policy for PAYMENT_REQUIRED fanout.
+func (s *Service) SetGatewayPolicyReader(reader GatewayPolicyReader) {
+	s.gatewayPolicy = reader
 }
 
 // CreateRequest is the wire shape for POST /v1/order/create.
@@ -409,6 +419,7 @@ type DeliverySubmitRequest struct {
 	Latitude        float64    `json:"latitude"`
 	Longitude       float64    `json:"longitude"`
 	ClientTimestamp *time.Time `json:"client_timestamp,omitempty"`
+	BypassGeofence  bool       `json:"-"`
 }
 
 // DeliverySubmitResponse confirms QR/offline-token delivery submission.
@@ -1412,17 +1423,23 @@ func (s *Service) SubmitDelivery(ctx context.Context, claims auth.Claims, req De
 			return next
 		},
 		Precheck: func(orderRecord Order) error {
-			if req.token() != "" && s.jwtSecret != "" && orderRecord.ManifestID != "" {
-				if err := s.validateOfflineQR(orderRecord.ManifestID, claims.Subject, orderRecord.OrderID, req.token()); err != nil {
-					return err
+			if token := req.token(); token != "" {
+				if err := s.validateDeliveryToken(orderRecord, token); err != nil {
+					if s.jwtSecret == "" || orderRecord.ManifestID == "" ||
+						s.validateOfflineQR(orderRecord.ManifestID, claims.Subject, orderRecord.OrderID, token) != nil {
+						return err
+					}
 				}
 			}
 
-			computedDistance, err := validateOptionalGeofence(req.Latitude, req.Longitude, orderRecord)
-			if err == nil {
-				distanceM = computedDistance
+			if !req.BypassGeofence && (req.Latitude != 0 || req.Longitude != 0) {
+				computedDistance, err := validateOptionalGeofence(req.Latitude, req.Longitude, orderRecord)
+				if err == nil {
+					distanceM = computedDistance
+				}
+				return err
 			}
-			return err
+			return nil
 		},
 		BuildProofs: func(orderRecord Order) []DeliveryProofArtifact {
 			latitude, longitude := deliveryProofCoordinatesFromValues(req.Latitude, req.Longitude)
@@ -1446,6 +1463,12 @@ func (s *Service) SubmitDelivery(ctx context.Context, claims auth.Claims, req De
 		return DeliverySubmitResponse{}, err
 	}
 
+	if result.Order.ManifestID != "" && result.Order.Status == StatusCompleted {
+		if err := s.tryCompleteManifest(ctx, result.Order.ManifestID); err != nil {
+			s.log.ErrorContext(ctx, "failed to complete manifest after delivery", "manifest_id", result.Order.ManifestID, "err", err)
+		}
+	}
+
 	return DeliverySubmitResponse{
 		Success:  true,
 		Message:  "Delivery completed.",
@@ -1461,10 +1484,10 @@ func (s *Service) ConfirmOffload(ctx context.Context, claims auth.Claims, req Co
 		Reason:          "confirm_offload",
 		ClientTimestamp: req.ClientTimestamp,
 		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
-			if err := emitSettlementRequired(ctx, txn, orderRecord); err != nil {
+			if err := s.emitSettlementRequired(ctx, txn, orderRecord); err != nil {
 				return err
 			}
-			return emitPaymentRequired(ctx, txn, orderRecord)
+			return s.emitPaymentRequired(ctx, txn, orderRecord)
 		},
 	})
 	if err != nil {
@@ -1962,10 +1985,10 @@ func (s *Service) HandleDeliveryScanQR(w http.ResponseWriter, r *http.Request) {
 			return s.validateDeliveryToken(orderRecord, req.QRToken)
 		},
 		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
-			if err := emitSettlementRequired(r.Context(), txn, orderRecord); err != nil {
+			if err := s.emitSettlementRequired(r.Context(), txn, orderRecord); err != nil {
 				return err
 			}
-			return emitPaymentRequired(r.Context(), txn, orderRecord)
+			return s.emitPaymentRequired(r.Context(), txn, orderRecord)
 		},
 	})
 
@@ -2064,19 +2087,30 @@ func (s *Service) HandleSubmitDelivery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	var req DeliverySubmitRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	resp, err := s.SubmitDelivery(r.Context(), claims, req)
 	if err != nil {
 		s.writeOrderMutationError(w, "driver delivery submit failed", req.OrderID, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleConfirmOffload is POST /v1/order/confirm-offload.
@@ -2256,12 +2290,12 @@ func (s *Service) afterOrderMutation(ctx context.Context, orderRecord Order) {
 	)
 }
 
-func emitSettlementRequired(ctx context.Context, txn outbox.TxnBuffer, orderRecord Order) error {
-	return outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, settlementRequiredData(orderRecord))
+func (s *Service) emitSettlementRequired(ctx context.Context, txn outbox.TxnBuffer, orderRecord Order) error {
+	return outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, s.settlementRequiredData(ctx, orderRecord))
 }
 
-func emitPaymentRequired(ctx context.Context, txn outbox.TxnBuffer, orderRecord Order) error {
-	return outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, paymentRequiredData(orderRecord))
+func (s *Service) emitPaymentRequired(ctx context.Context, txn outbox.TxnBuffer, orderRecord Order) error {
+	return outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, s.paymentRequiredData(ctx, orderRecord))
 }
 
 func emitPaymentCleared(ctx context.Context, txn outbox.TxnBuffer, orderRecord Order, method string) error {
@@ -2272,8 +2306,8 @@ func emitOrderFinalized(ctx context.Context, txn outbox.TxnBuffer, orderRecord O
 	return outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, orderFinalizedData(orderRecord))
 }
 
-func paymentRequiredData(orderRecord Order) map[string]any {
-	return map[string]any{
+func (s *Service) paymentRequiredData(ctx context.Context, orderRecord Order) map[string]any {
+	data := map[string]any{
 		"type":           events.EventPaymentRequired,
 		"order_id":       orderRecord.OrderID,
 		"supplier_id":    orderRecord.SupplierID,
@@ -2282,13 +2316,36 @@ func paymentRequiredData(orderRecord Order) map[string]any {
 		"amount_minor":   orderRecord.TotalMinor,
 		"currency":       orderRecord.Currency,
 		"payment_method": "CASH",
+		"gateway":        "CASH",
 		"status":         string(orderRecord.Status),
 		"timestamp":      orderRecord.UpdatedAt.Format(time.RFC3339Nano),
 	}
+	if s != nil && s.gatewayPolicy != nil {
+		gateways, acceptor, err := s.gatewayPolicy.AllowedGateways(ctx, orderRecord.SupplierID, orderRecord.WarehouseID)
+		if err == nil {
+			data["payment_acceptor"] = acceptor
+			data["available_card_gateways"] = cardGatewaysOnly(gateways)
+		}
+	}
+	return data
 }
 
-func settlementRequiredData(orderRecord Order) map[string]any {
-	data := paymentRequiredData(orderRecord)
+func cardGatewaysOnly(gateways []string) []string {
+	out := make([]string, 0, len(gateways))
+	for _, gateway := range gateways {
+		if strings.EqualFold(strings.TrimSpace(gateway), "CASH") {
+			continue
+		}
+		out = append(out, gateway)
+	}
+	if len(out) == 0 {
+		return []string{"GLOBAL_PAY"}
+	}
+	return out
+}
+
+func (s *Service) settlementRequiredData(ctx context.Context, orderRecord Order) map[string]any {
+	data := s.paymentRequiredData(ctx, orderRecord)
 	data["type"] = events.EventSettlementRequired
 	return data
 }
@@ -2821,7 +2878,7 @@ func (s *Service) HandleRetailerConfirmCash(w http.ResponseWriter, r *http.Reque
 		}); err != nil {
 			return err
 		}
-		cashPayment := paymentRequiredData(current)
+		cashPayment := s.paymentRequiredData(r.Context(), current)
 		cashPayment["payment_method"] = "CASH"
 		cashPayment["status"] = string(StatusPendingCashCollection)
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateOrder, current.OrderID, events.TopicMain, cashPayment)

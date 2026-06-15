@@ -85,7 +85,14 @@ export default function RetailerSetupPage() {
         throw new Error(errorData?.message || "Setup failed");
       }
       
-      // Force page reload to ensure middleware gets new token with is_configured=true
+      const data = await res.json();
+      if (data?.token) {
+        document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
+      }
+      if (data?.refresh_token) {
+        document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Lax`;
+      }
+
       window.location.href = "/dashboard";
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Setup failed");

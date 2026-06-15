@@ -54,25 +54,39 @@ type UnifiedCheckoutResponse struct {
 
 // CheckoutSnapshot returns order totals for payment initiation.
 func (s *Service) CheckoutSnapshot(ctx context.Context, orderID, retailerID string) (totalMinor int64, currency string, err error) {
+	ctxData, err := s.CheckoutOrderContext(ctx, orderID, retailerID)
+	if err != nil {
+		return 0, "", err
+	}
+	return ctxData.TotalMinor, ctxData.Currency, nil
+}
+
+// CheckoutOrderContext returns order totals and routing metadata for payment flows.
+func (s *Service) CheckoutOrderContext(ctx context.Context, orderID, retailerID string) (CheckoutOrderContext, error) {
 	orderID = strings.TrimSpace(orderID)
 	retailerID = strings.TrimSpace(retailerID)
 	if orderID == "" || retailerID == "" {
-		return 0, "", errors.New("order_id and retailer_id required")
+		return CheckoutOrderContext{}, errors.New("order_id and retailer_id required")
 	}
 	o, found, err := s.repo.GetOrder(ctx, orderID)
 	if err != nil {
-		return 0, "", fmt.Errorf("load order %s: %w", orderID, err)
+		return CheckoutOrderContext{}, fmt.Errorf("load order %s: %w", orderID, err)
 	}
 	if !found {
-		return 0, "", ErrOrderNotFound
+		return CheckoutOrderContext{}, ErrOrderNotFound
 	}
 	if o.RetailerID != retailerID {
-		return 0, "", ErrOrderForbidden
+		return CheckoutOrderContext{}, ErrOrderForbidden
 	}
 	if o.Status == StatusCompleted || o.Status == StatusCancelled {
-		return 0, "", fmt.Errorf("order cannot be paid in status: %s", o.Status)
+		return CheckoutOrderContext{}, fmt.Errorf("order cannot be paid in status: %s", o.Status)
 	}
-	return o.TotalMinor, o.Currency, nil
+	return CheckoutOrderContext{
+		TotalMinor:  o.TotalMinor,
+		Currency:    o.Currency,
+		SupplierID:  o.SupplierID,
+		WarehouseID: o.WarehouseID,
+	}, nil
 }
 
 // HandleUnifiedCheckout serves POST /v1/checkout/unified for cart payloads.
@@ -87,12 +101,20 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	var req UnifiedCheckoutRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	if req.RetailerID != "" && req.RetailerID != claims.Subject {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "retailer_id_mismatch"})
@@ -114,7 +136,9 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-	writeJSON(w, http.StatusCreated, resp)
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusCreated, respBytes)
+	writeJSONBytes(w, http.StatusCreated, respBytes)
 }
 
 // UnifiedCheckout creates one pegasusX-scoped order from the retailer cart.

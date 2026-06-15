@@ -46,7 +46,9 @@ enum class OrderStatus {
     @SerialName("COMPLETED") COMPLETED,
     @SerialName("CANCELLED") CANCELLED,
     @SerialName("QUARANTINE") QUARANTINE,
-    @SerialName("DELIVERED_ON_CREDIT") DELIVERED_ON_CREDIT;
+    @SerialName("DELIVERED_ON_CREDIT") DELIVERED_ON_CREDIT,
+    @SerialName("RECONCILIATION_REQUIRED") RECONCILIATION_REQUIRED,
+    @SerialName("DELAYED") DELAYED;
 
     /** Retailer-friendly label (not the raw backend state name). */
     val displayName: String
@@ -69,6 +71,8 @@ enum class OrderStatus {
             CANCELLED -> "Cancelled"
             QUARANTINE -> "On Hold"
             DELIVERED_ON_CREDIT -> "Delivered (Credit)"
+            RECONCILIATION_REQUIRED -> "Reconciliation Required"
+            DELAYED -> "Delayed"
         }
 
     val isActive: Boolean
@@ -86,7 +90,7 @@ enum class OrderStatus {
             AWAITING_PAYMENT -> 0.83f
             PENDING_CASH_COLLECTION -> 0.83f
             COMPLETED, DELIVERED_ON_CREDIT -> 1.0f
-            CANCELLED, CANCEL_REQUESTED, NO_CAPACITY, QUARANTINE -> 0f
+            CANCELLED, CANCEL_REQUESTED, NO_CAPACITY, QUARANTINE, RECONCILIATION_REQUIRED, DELAYED -> 0f
         }
 
     val ringLabel: String
@@ -119,7 +123,7 @@ enum class OrderStatus {
             IN_TRANSIT -> 3
             ARRIVING, ARRIVED, ARRIVED_SHOP_CLOSED, AWAITING_PAYMENT, PENDING_CASH_COLLECTION -> 4
             COMPLETED, DELIVERED_ON_CREDIT -> 5
-            CANCELLED, CANCEL_REQUESTED, NO_CAPACITY, QUARANTINE -> -1
+            CANCELLED, CANCEL_REQUESTED, NO_CAPACITY, QUARANTINE, RECONCILIATION_REQUIRED, DELAYED -> -1
         }
 
     companion object {

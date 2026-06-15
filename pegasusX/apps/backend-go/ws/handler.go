@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,6 +48,13 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string, firebaseAu
 			return
 		}
 
+		if !roleHubsHaveCapacity(ident, hubs) {
+			log.Warn("ws upgrade rejected: hub at capacity", "role", ident.Role)
+			w.Header().Set("Retry-After", strconv.Itoa(CapacityRetryAfterSeconds()))
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
 		conn, err := upgrader.Upgrade(w, req, nil)
 		if err != nil {
 			log.Error("websocket upgrade failed", "err", err)
@@ -54,9 +62,10 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string, firebaseAu
 		}
 
 		gConn := &gorillaConn{
-			id:    uuid.New().String(),
-			ident: ident,
-			conn:  conn,
+			id:       uuid.New().String(),
+			ident:    ident,
+			conn:     conn,
+			joinedAt: time.Now(),
 		}
 
 		unsubscribeFuncs, ok := subscribeIdentityRooms(ident, gConn, hubs, cfg)
@@ -212,6 +221,34 @@ func subscribeSupplierTelemetry(ident auth.Claims, conn Connection, hubs roleHub
 		unsubscribes = append(unsubscribes, hubs.telemetry.Subscribe("telemetry:supplier:"+ident.SupplierID, conn))
 	}
 	return unsubscribes
+}
+
+func roleHubsHaveCapacity(ident auth.Claims, hubs roleHubs) bool {
+	for _, hub := range roleHubsForIdentity(ident, hubs) {
+		if hub != nil && !hub.HasCapacity() {
+			return false
+		}
+	}
+	return true
+}
+
+func roleHubsForIdentity(ident auth.Claims, hubs roleHubs) []*Hub {
+	switch ident.Role {
+	case auth.RoleRetailer:
+		return []*Hub{hubs.retailer}
+	case auth.RoleAdmin:
+		return []*Hub{hubs.supplier, hubs.warehouse, hubs.factory, hubs.telemetry}
+	case auth.RoleDriver:
+		return []*Hub{hubs.driver, hubs.telemetry}
+	case auth.RolePayload:
+		return []*Hub{hubs.payload}
+	case auth.RoleWarehouseAdmin, auth.RoleWarehouse:
+		return []*Hub{hubs.warehouse, hubs.supplier, hubs.telemetry}
+	case auth.RoleFactoryAdmin, auth.RoleFactory:
+		return []*Hub{hubs.factory, hubs.supplier, hubs.telemetry}
+	default:
+		return nil
+	}
 }
 
 func runConnectionLoop(req *http.Request, conn *gorillaConn, unsubscribes []func(), platformSvc *platform.Service, log *slog.Logger) {

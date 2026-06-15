@@ -17,6 +17,40 @@ import (
 
 const testWSJWTSecret = "ws-test-secret"
 
+func TestRegisterRoutesRejectsWhenHubAtCapacity(t *testing.T) {
+	t.Parallel()
+
+	driverHub := NewHubWithLimits("driver", nil, nil, HubLimits{MaxTotal: 1})
+	telemetryHub := NewHubWithLimits("telemetry", nil, nil, HubLimits{MaxTotal: 1})
+	driverHub.Subscribe("driver:drv-1", newTestConnection("ghost"))
+
+	router := chi.NewRouter()
+	router.Use(testClaimsMiddleware(auth.Claims{
+		Role:       auth.RoleDriver,
+		Subject:    "drv-1",
+		SupplierID: "sup-1",
+	}))
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, driverHub, nil, nil, nil, telemetryHub, RegisterConfig{})
+
+	server := httptest.NewServer(router)
+	defer server.Close()
+
+	url := "ws" + strings.TrimPrefix(server.URL, "http") + "/v1/ws"
+	_, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err == nil {
+		t.Fatal("expected dial failure when hub is at capacity")
+	}
+	if resp == nil {
+		t.Fatal("expected HTTP response on failed upgrade")
+	}
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", resp.StatusCode)
+	}
+	if resp.Header.Get("Retry-After") == "" {
+		t.Fatal("Retry-After header missing on capacity rejection")
+	}
+}
+
 func TestRegisterRoutesSubscribesSupplierToTelemetryRoom(t *testing.T) {
 	t.Parallel()
 

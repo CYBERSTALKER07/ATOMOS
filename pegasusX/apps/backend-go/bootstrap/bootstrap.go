@@ -518,6 +518,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		return loadSupplierEarningsAuthority(ctx, paymentRepo, supplierID, currency, now)
 	})
 	handoffEngine := handoff.FromEnv()
+	var gatewayPolicyReader *payment.SpannerPolicyResolver
+	if spannerClient != nil {
+		gatewayPolicyReader = payment.NewSpannerPolicyResolver(spannerClient)
+	}
 	orderSvc := order.NewService(order.ServiceConfig{
 		Repo:            orderRepo,
 		Cache:           cacheClient,
@@ -534,8 +538,12 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Log:             log,
 		JWTSecret:       cfg.JWTSecret,
 		Handoff:         handoffEngine,
+		Idem:            idemStore,
 	})
 	orderSvc.SetManifestStore(manifestStore)
+	if gatewayPolicyReader != nil {
+		orderSvc.SetGatewayPolicyReader(gatewayPolicyReader)
+	}
 	var optimizerCli *optimizerclient.Client
 	if strings.TrimSpace(cfg.OptimizerBaseURL) != "" && strings.TrimSpace(cfg.InternalAPIKey) != "" {
 		optimizerCli = optimizerclient.New(cfg.OptimizerBaseURL, cfg.InternalAPIKey)
@@ -720,6 +728,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		ClickWebhookSecret:              cfg.ClickWebhookSecret,
 		AirwallexDirectExecutionEnabled: cfg.AirwallexDirectExecutionEnabled,
 		Log:                             log,
+		Policy:                          gatewayPolicyReader,
 	})
 	paymentSvc.BindCartCheckout(orderSvc)
 	paymentSvc.BindOrderCheckoutReader(orderSvc)

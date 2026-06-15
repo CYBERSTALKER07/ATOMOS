@@ -224,7 +224,14 @@ func (s *Service) HandleMobileRegister(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		return
 	}
-	ret := Retailer{RetailerID: reg.RetailerID, Phone: reg.Phone, Name: name, SupplierID: s.supplierID}
+	ret := Retailer{
+		RetailerID: reg.RetailerID,
+		Phone:      reg.Phone,
+		Name:       name,
+		SupplierID: s.supplierID,
+		Lat:        req.Latitude,
+		Lng:        req.Longitude,
+	}
 	s.writeMobileAuthResponse(w, ret)
 }
 

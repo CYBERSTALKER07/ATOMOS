@@ -105,7 +105,8 @@ type Profile struct {
 	SwiftBic          string
 	IBAN              string
 	SelectedGateways  []string
-	RegisteredAt      time.Time
+	PaymentAcceptor     string
+	RegisteredAt        time.Time
 	ConfiguredAt      time.Time
 	UpdatedAt         time.Time
 }
@@ -575,6 +576,7 @@ type BillingSetupRequest struct {
 	SwiftBic         string   `json:"swiftBic"`
 	IBAN             string   `json:"iban,omitempty"`
 	SelectedGateways []string `json:"selectedGateways"`
+	PaymentAcceptor  string   `json:"paymentAcceptor"`
 }
 
 // BillingSetupResponse mirrors what the wizard expects.
@@ -582,6 +584,7 @@ type BillingSetupResponse struct {
 	SupplierID       string   `json:"supplier_id"`
 	IsConfigured     bool     `json:"is_configured"`
 	SelectedGateways []string `json:"selected_gateways"`
+	PaymentAcceptor  string   `json:"payment_acceptor"`
 }
 
 var allowedGateways = map[string]struct{}{
@@ -592,6 +595,11 @@ var allowedGateways = map[string]struct{}{
 }
 
 const defaultCoverageRadiusKm = 10.0
+
+const (
+	PaymentAcceptorSupplier  = "SUPPLIER"
+	PaymentAcceptorWarehouse = "WAREHOUSE"
+)
 
 const (
 	TransferModeTruck    = "TRUCK"
@@ -637,6 +645,11 @@ func (r BillingSetupRequest) Validate() error {
 			return fmt.Errorf("unknown gateway %q", g)
 		}
 	}
+	switch strings.ToUpper(strings.TrimSpace(r.PaymentAcceptor)) {
+	case "", PaymentAcceptorSupplier, PaymentAcceptorWarehouse:
+	default:
+		return fmt.Errorf("unknown payment acceptor %q", r.PaymentAcceptor)
+	}
 	return nil
 }
 
@@ -660,6 +673,7 @@ func (s *Service) ConfigureBilling(ctx context.Context, req BillingSetupRequest)
 	current.SwiftBic = req.SwiftBic
 	current.IBAN = req.IBAN
 	current.SelectedGateways = append([]string(nil), req.SelectedGateways...)
+	current.PaymentAcceptor = normalizePaymentAcceptor(req.PaymentAcceptor)
 	current.IsConfigured = true
 	current.ConfiguredAt = now
 	current.UpdatedAt = now
@@ -686,7 +700,17 @@ func (s *Service) ConfigureBilling(ctx context.Context, req BillingSetupRequest)
 		SupplierID:       s.supplierID,
 		IsConfigured:     true,
 		SelectedGateways: current.SelectedGateways,
+		PaymentAcceptor:  current.PaymentAcceptor,
 	}, nil
+}
+
+func normalizePaymentAcceptor(acceptor string) string {
+	switch strings.ToUpper(strings.TrimSpace(acceptor)) {
+	case PaymentAcceptorWarehouse:
+		return PaymentAcceptorWarehouse
+	default:
+		return PaymentAcceptorSupplier
+	}
 }
 
 // ── HTTP handlers ──────────────────────────────────────────────────────────

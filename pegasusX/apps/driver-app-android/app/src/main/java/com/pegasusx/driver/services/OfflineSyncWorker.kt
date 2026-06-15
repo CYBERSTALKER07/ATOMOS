@@ -47,7 +47,7 @@ class OfflineSyncWorker @AssistedInject constructor(
                 when (mutation.endpoint) {
                     "v1/order/deliver" -> {
                         val req = json.decodeFromString<DeliverySubmitRequest>(mutation.payloadJson)
-                        api.submitDelivery(req, idempotencyKey = mutation.id)
+                        api.submitDelivery(req, idempotencyKey = mutation.idempotencyKey)
                     }
                     else -> {
                         Log.w(TAG, "Unknown endpoint: ${mutation.endpoint}, skipping")

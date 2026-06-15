@@ -32,13 +32,18 @@ type Store interface {
 	Load(ctx context.Context, key string) (Record, bool, error)
 	// Save records a (key → record) mapping. TTL controls retention.
 	Save(ctx context.Context, key string, rec Record, ttl time.Duration) error
+	// Acquire claims the key for in-flight processing. Returns ErrInProgress when
+	// another worker already holds the key.
+	Acquire(ctx context.Context, key, bodyHash string, ttl time.Duration) error
 }
+
+const inProgressStatusCode = -1
 
 // Guard is invoked from a handler. If the key was seen with a different body
 // hash it returns ErrConflict. If the key was seen with the same body it
 // returns the prior record (and ok=true) so the handler can replay it.
-// Otherwise it returns (zero, false, nil) and the caller MUST proceed with
-// real work then call Save with the produced response.
+// Otherwise it acquires the key and returns (zero, false, nil); the caller
+// MUST proceed with real work then call Save with the produced response.
 func Guard(ctx context.Context, store Store, key, bodyHash string) (Record, bool, error) {
 	if store == nil || key == "" {
 		return Record{}, false, nil
@@ -47,13 +52,19 @@ func Guard(ctx context.Context, store Store, key, bodyHash string) (Record, bool
 	if err != nil {
 		return Record{}, false, err
 	}
-	if !found {
-		return Record{}, false, nil
+	if found {
+		if rec.StatusCode == inProgressStatusCode {
+			return Record{}, false, ErrInProgress
+		}
+		if rec.BodyHash != bodyHash {
+			return Record{}, true, ErrConflict
+		}
+		return rec, true, nil
 	}
-	if rec.BodyHash != bodyHash {
-		return Record{}, true, ErrConflict
+	if err := store.Acquire(ctx, key, bodyHash, 60*time.Second); err != nil {
+		return Record{}, false, err
 	}
-	return rec, true, nil
+	return Record{}, false, nil
 }
 
 // InMemoryStore is the scaffold-default Store. Safe for concurrent use; not
@@ -93,6 +104,33 @@ func (s *InMemoryStore) Save(_ context.Context, key string, rec Record, ttl time
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	entry := inMemEntry{rec: rec}
+	if ttl > 0 {
+		entry.expiresAt = time.Now().Add(ttl)
+	}
+	s.records[key] = entry
+	return nil
+}
+
+// Acquire implements Store.
+func (s *InMemoryStore) Acquire(_ context.Context, key, bodyHash string, ttl time.Duration) error {
+	if key == "" {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if e, ok := s.records[key]; ok {
+		if e.expiresAt.IsZero() || time.Now().Before(e.expiresAt) {
+			return ErrInProgress
+		}
+		delete(s.records, key)
+	}
+	entry := inMemEntry{
+		rec: Record{
+			BodyHash:   bodyHash,
+			StatusCode: inProgressStatusCode,
+			StoredAt:   time.Now(),
+		},
+	}
 	if ttl > 0 {
 		entry.expiresAt = time.Now().Add(ttl)
 	}

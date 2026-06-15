@@ -102,6 +102,7 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 		"SwiftBic",
 		"IBAN",
 		"SelectedGatewaysJson",
+		"PaymentAcceptor",
 		"RegisteredAt",
 		"ConfiguredAt",
 		"UpdatedAt",
@@ -118,6 +119,7 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 	var fleetVehicleCount, fleetMaxVU, factoryCount spanner.NullInt64
 	var categoriesJSON, selectedGatewaysJSON []byte
 	var configuredAt spanner.NullTime
+	var paymentAcceptor spanner.NullString
 
 	if err := profileRow.Columns(
 		new(string),
@@ -145,6 +147,7 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 		&p.SwiftBic,
 		&p.IBAN,
 		&selectedGatewaysJSON,
+		&paymentAcceptor,
 		&p.RegisteredAt,
 		&configuredAt,
 		&p.UpdatedAt,
@@ -182,6 +185,9 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 	}
 	if gateways, err := decodeStringSlice(selectedGatewaysJSON); err == nil {
 		p.SelectedGateways = gateways
+	}
+	if paymentAcceptor.Valid {
+		p.PaymentAcceptor = strings.TrimSpace(paymentAcceptor.StringVal)
 	}
 
 	return p, true, nil
@@ -651,6 +657,7 @@ func (r *SpannerRepository) UpdateProfile(ctx context.Context, p Profile, emit f
 			"SwiftBic":               strings.TrimSpace(p.SwiftBic),
 			"IBAN":                   strings.TrimSpace(p.IBAN),
 			"SelectedGatewaysJson":   selectedGatewaysJSON,
+			"PaymentAcceptor":        normalizeSupplierPaymentAcceptor(p.PaymentAcceptor),
 			"RegisteredAt":           registeredAt,
 			"ConfiguredAt":           nullableTime(p.ConfiguredAt),
 			"UpdatedAt":              updatedAt,
@@ -1001,4 +1008,13 @@ func nullableTime(value time.Time) any {
 		return nil
 	}
 	return value.UTC()
+}
+
+func normalizeSupplierPaymentAcceptor(acceptor string) string {
+	switch strings.ToUpper(strings.TrimSpace(acceptor)) {
+	case PaymentAcceptorWarehouse:
+		return PaymentAcceptorWarehouse
+	default:
+		return PaymentAcceptorSupplier
+	}
 }

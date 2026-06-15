@@ -171,7 +171,8 @@ final class FactoryRealtimeClient {
         reconnectAttempt += 1
         publish(.reconnecting)
 
-        let delay = min(30.0, pow(2.0, Double(max(reconnectAttempt - 1, 0))))
+        let baseDelay = min(30.0, pow(2.0, Double(max(reconnectAttempt - 1, 0))))
+        let delay = baseDelay + Double.random(in: 0...(baseDelay / 2))
         let workItem = DispatchWorkItem { [weak self] in
             self?.openSocket(isReconnect: true)
         }

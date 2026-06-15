@@ -57,11 +57,14 @@ class PayloadWebSocket @Inject constructor(
 
     private var socket: WebSocket? = null
     private var reconnectJob: Job? = null
+    private var reconnectAttempt = 0
+    private var pendingRetryAfterMs: Long? = null
     private var token: String? = null
 
     fun connect(authToken: String) {
         if (token == authToken && socket != null) return
         token = authToken
+        reconnectAttempt = 0
         openSocket()
     }
 
@@ -81,6 +84,7 @@ class PayloadWebSocket @Inject constructor(
         val req = Request.Builder().url(url).build()
         socket = okHttp.newWebSocket(req, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                reconnectAttempt = 0
                 _online.value = true
                 scope.launch { _onReconnect.emit(Unit) }
             }
@@ -104,6 +108,7 @@ class PayloadWebSocket @Inject constructor(
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 _online.value = false
+                pendingRetryAfterMs = ReconnectBackoff.retryAfterMs(response)
                 scheduleReconnect()
             }
         })
@@ -112,14 +117,23 @@ class PayloadWebSocket @Inject constructor(
     private fun scheduleReconnect() {
         if (token == null) return
         if (reconnectJob?.isActive == true) return
+        reconnectAttempt += 1
+        val delayMs = ReconnectBackoff.delayMs(
+            reconnectAttempt - 1,
+            RECONNECT_BASE_MS,
+            RECONNECT_MAX_MS,
+            pendingRetryAfterMs,
+        )
+        pendingRetryAfterMs = null
         reconnectJob = scope.launch {
-            delay(RECONNECT_DELAY_MS)
+            delay(delayMs)
             openSocket()
         }
     }
 
     private companion object {
         const val NORMAL_CLOSURE = 1000
-        const val RECONNECT_DELAY_MS = 3_000L
+        const val RECONNECT_BASE_MS = 3_000L
+        const val RECONNECT_MAX_MS = 60_000L
     }
 }

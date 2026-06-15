@@ -131,7 +131,7 @@ class RetailerWebSocket @Inject constructor(
                 if (intentionalClose.get()) return
                 val attempt = reconnectAttempt.getAndIncrement()
                 if (attempt >= MAX_RECONNECT_ATTEMPTS) return
-                val delay = (BASE_DELAY_MS * (1L shl attempt.coerceAtMost(5))).coerceAtMost(MAX_DELAY_MS)
+                val delay = ReconnectBackoff.delayMs(attempt, BASE_DELAY_MS, MAX_DELAY_MS, ReconnectBackoff.retryAfterMs(response))
                 reconnectTask?.cancel(false)
                 reconnectTask = reconnectExecutor.schedule({ connect() }, delay, TimeUnit.MILLISECONDS)
             }

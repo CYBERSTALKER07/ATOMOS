@@ -45,12 +45,24 @@ CREATE TABLE SupplierProfiles (
   SwiftBic                STRING(64),
   IBAN                    STRING(128),
   SelectedGatewaysJson    BYTES(MAX),
+  PaymentAcceptor         STRING(16)    NOT NULL DEFAULT ('SUPPLIER'),
   RegisteredAt            TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   ConfiguredAt            TIMESTAMP,
   UpdatedAt               TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SupplierId);
 
 CREATE INDEX Idx_SupplierProfiles_ByUpdatedAt ON SupplierProfiles(UpdatedAt DESC);
+
+CREATE TABLE PaymentConfigs (
+  PaymentConfigId      STRING(36)    NOT NULL,
+  SupplierId           STRING(36)    NOT NULL,
+  WarehouseId          STRING(36)    NOT NULL,
+  SelectedGatewaysJson BYTES(MAX)   NOT NULL,
+  CreatedAt            TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt            TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (PaymentConfigId);
+
+CREATE UNIQUE NULL_FILTERED INDEX UQ_PaymentConfigs_ByWarehouse ON PaymentConfigs(WarehouseId);
 
 CREATE TABLE SupplierPricingRules (
   SupplierId          STRING(36)    NOT NULL,

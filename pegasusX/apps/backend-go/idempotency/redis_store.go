@@ -54,3 +54,30 @@ func (s *RedisStore) Save(ctx context.Context, key string, rec Record, ttl time.
 	}
 	return s.client.Set(ctx, redisKeyPrefix+key, raw, ttl).Err()
 }
+
+// Acquire implements Store.
+func (s *RedisStore) Acquire(ctx context.Context, key, bodyHash string, ttl time.Duration) error {
+	if s == nil || s.client == nil || key == "" {
+		return nil
+	}
+	if ttl <= 0 {
+		ttl = 60 * time.Second
+	}
+	rec := Record{
+		BodyHash:   bodyHash,
+		StatusCode: inProgressStatusCode,
+		StoredAt:   time.Now(),
+	}
+	raw, err := json.Marshal(rec)
+	if err != nil {
+		return fmt.Errorf("idempotency redis acquire encode: %w", err)
+	}
+	ok, err := s.client.SetNX(ctx, redisKeyPrefix+key, raw, ttl).Result()
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrInProgress
+	}
+	return nil
+}

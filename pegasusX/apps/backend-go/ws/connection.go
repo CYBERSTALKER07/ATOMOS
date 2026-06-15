@@ -90,10 +90,11 @@ func isLocalDevelopmentOrigin(origin string) bool {
 
 // gorillaConn wraps a gorilla/websocket connection to implement ws.Connection.
 type gorillaConn struct {
-	id    string
-	ident auth.Claims
-	conn  *websocket.Conn
-	mu    sync.Mutex
+	id       string
+	ident    auth.Claims
+	conn     *websocket.Conn
+	joinedAt time.Time
+	mu       sync.Mutex
 }
 
 func (c *gorillaConn) ID() string {
@@ -123,6 +124,12 @@ func (c *gorillaConn) ping(timeout time.Duration) error {
 }
 
 func (c *gorillaConn) close() {
+	c.Reap()
+}
+
+// Reap force-closes the socket. Invoked by hub shedding when a fresher session
+// supersedes a stale connection (Desert Protocol).
+func (c *gorillaConn) Reap() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	_ = c.conn.Close()

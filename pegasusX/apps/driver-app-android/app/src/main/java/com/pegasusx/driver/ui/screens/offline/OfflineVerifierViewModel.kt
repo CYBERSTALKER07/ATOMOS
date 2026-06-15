@@ -1,12 +1,18 @@
 package com.pegasusx.driver.ui.screens.offline
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pegasusx.driver.data.local.PendingMutationDao
 import com.pegasusx.driver.data.local.RouteManifestDao
+import com.pegasusx.driver.data.model.DeliverySubmitRequest
+import com.pegasusx.driver.data.model.PendingMutationEntity
 import com.pegasusx.driver.data.model.RouteManifestEntity
 import com.pegasusx.driver.data.remote.DriverApi
+import com.pegasusx.driver.services.OfflineSyncScheduler
 import com.pegasusx.driver.util.sha256Hex
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,6 +24,7 @@ import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
 
 @Serializable
@@ -68,6 +75,8 @@ data class OfflineVerifierUiState(
 class OfflineVerifierViewModel @Inject constructor(
     private val api: DriverApi,
     private val manifestDao: RouteManifestDao,
+    private val pendingMutationDao: PendingMutationDao,
+    @ApplicationContext private val appContext: Context,
     private val json: Json,
 ) : ViewModel() {
 
@@ -222,6 +231,9 @@ class OfflineVerifierViewModel @Inject constructor(
 
         val computedHash = sha256Hex(payload.token)
         if (computedHash == expectedHash) {
+            viewModelScope.launch {
+                enqueueOfflineDelivery(payload.orderId, payload.token)
+            }
             _state.update {
                 it.copy(verificationState = VerificationState.Verified(payload.orderId))
             }
@@ -230,6 +242,23 @@ class OfflineVerifierViewModel @Inject constructor(
                 it.copy(verificationState = VerificationState.Fraud("CRYPTOGRAPHIC MISMATCH"))
             }
         }
+    }
+
+    private suspend fun enqueueOfflineDelivery(orderId: String, scannedToken: String) {
+        val mutationId = UUID.randomUUID().toString()
+        val payload = DeliverySubmitRequest(
+            orderId = orderId,
+            scannedToken = scannedToken,
+        )
+        pendingMutationDao.insert(
+            PendingMutationEntity(
+                id = mutationId,
+                endpoint = "v1/order/deliver",
+                payloadJson = json.encodeToString(payload),
+                idempotencyKey = mutationId,
+            ),
+        )
+        OfflineSyncScheduler.enqueue(appContext)
     }
 
     fun resetTerminal() {

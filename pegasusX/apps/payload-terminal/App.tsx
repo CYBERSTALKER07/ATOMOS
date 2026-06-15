@@ -28,6 +28,12 @@ import { defaultLocale, type Locale } from '../../packages/i18n/locales';
 const API_BASE = (process.env.EXPO_PUBLIC_API_URL?.trim() || '') ||
   (__DEV__ ? 'http://localhost:8180' : 'https://api.pegasus.uz');
 
+function reconnectDelayMs(attempt: number, baseMs = 3_000, maxMs = 60_000): number {
+  const capped = Math.min(Math.max(attempt, 0), 10);
+  const exp = Math.min(baseMs * 2 ** capped, maxMs);
+  return exp + Math.floor(Math.random() * (exp / 2 + 1));
+}
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const defaultPressFeedback = { opacity: 0.82, transform: [{ scale: 0.97 }] } as const;
 
@@ -431,10 +437,12 @@ export default function App() {
     fetchNotifications();
     const wsUrl = `${API_BASE.replace(/^http/, 'ws')}/v1/ws?token=${encodeURIComponent(token)}`;
     let reconnectTimer: ReturnType<typeof setTimeout>;
+    let reconnectAttempt = 0;
     const connect = () => {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
       ws.onopen = () => {
+        reconnectAttempt = 0;
         setIsOnline(true);
         // Flush offline queue on reconnect
         flushOfflineQueue();
@@ -460,7 +468,12 @@ export default function App() {
           }
         } catch {}
       };
-      ws.onclose = () => { setIsOnline(false); reconnectTimer = setTimeout(connect, 3000); };
+      ws.onclose = () => {
+        setIsOnline(false);
+        const delay = reconnectDelayMs(reconnectAttempt);
+        reconnectAttempt += 1;
+        reconnectTimer = setTimeout(connect, delay);
+      };
       ws.onerror = () => { setIsOnline(false); ws.close(); };
     };
     connect();

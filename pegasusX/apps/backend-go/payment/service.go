@@ -207,6 +207,7 @@ type Service struct {
 
 	cartCheckout CartCheckoutHandler
 	orderReader  OrderCheckoutReader
+	policy       PolicyResolver
 
 	globalPayEnv           string
 	globalPayUsername      string
@@ -245,6 +246,8 @@ type ServiceConfig struct {
 	Log   *slog.Logger
 	Now   func() time.Time
 	NewID func(prefix string) string
+
+	Policy PolicyResolver
 }
 
 // CheckoutRequest is the wire payload for checkout endpoints.
@@ -365,6 +368,7 @@ func NewService(c ServiceConfig) *Service {
 		stripeWebhookSecret:    c.StripeWebhookSecret,
 		paymeWebhookSecret:     c.PaymeWebhookSecret,
 		clickWebhookSecret:     c.ClickWebhookSecret,
+		policy:                 c.Policy,
 		log:                    c.Log,
 		now:                    c.Now,
 		newID:                  c.NewID,

@@ -199,11 +199,17 @@ func demoRetailerStoreName() string {
 	return "PegasusX Demo Store"
 }
 
+func retailerProfileConfigured(ret Retailer) bool {
+	return strings.TrimSpace(ret.Name) != "" && (ret.Lat != 0 || ret.Lng != 0)
+}
+
 func (s *Service) writeMobileAuthResponse(w http.ResponseWriter, ret Retailer) {
+	isConfigured := retailerProfileConfigured(ret)
 	claims := auth.Claims{
-		Subject:    ret.RetailerID,
-		Role:       auth.RoleRetailer,
-		SupplierID: ret.SupplierID,
+		Subject:      ret.RetailerID,
+		Role:         auth.RoleRetailer,
+		SupplierID:   ret.SupplierID,
+		IsConfigured: isConfigured,
 	}
 	if claims.SupplierID == "" {
 		claims.SupplierID = s.supplierID
@@ -219,8 +225,9 @@ func (s *Service) writeMobileAuthResponse(w http.ResponseWriter, ret Retailer) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"token":         token,
-		"refresh_token": refresh,
+		"token":          token,
+		"refresh_token":  refresh,
+		"is_configured":  isConfigured,
 		"user": map[string]any{
 			"id":         ret.RetailerID,
 			"name":       coalesceRetailerName(ret.Name),

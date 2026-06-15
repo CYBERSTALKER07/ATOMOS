@@ -55,6 +55,7 @@ class SupplierWebSocket @Inject constructor(
     val messages: SharedFlow<SupplierWSMessage> = _messages.asSharedFlow()
 
     private var currentBaseUrl: String? = null
+    private var pendingRetryAfterMs: Long? = null
 
     fun connect(baseUrl: String) {
         if (!TokenHolder.isLoggedIn) return
@@ -114,6 +115,7 @@ class SupplierWebSocket @Inject constructor(
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             Log.w(TAG, "supplier ws failure", t)
+            pendingRetryAfterMs = ReconnectBackoff.retryAfterMs(response)
             scheduleReconnect()
         }
 
@@ -126,7 +128,13 @@ class SupplierWebSocket @Inject constructor(
         if (intentionalClose.get()) return
         val attempt = reconnectAttempt.incrementAndGet()
         if (attempt > MAX_RECONNECT_ATTEMPTS) return
-        val delay = minOf(BASE_RECONNECT_DELAY_MS * attempt, MAX_RECONNECT_DELAY_MS)
+        val delay = ReconnectBackoff.delayMs(
+            attempt,
+            BASE_RECONNECT_DELAY_MS,
+            MAX_RECONNECT_DELAY_MS,
+            pendingRetryAfterMs,
+        )
+        pendingRetryAfterMs = null
         reconnectTask?.cancel(false)
         reconnectTask = reconnectExecutor.schedule({
             socket = null

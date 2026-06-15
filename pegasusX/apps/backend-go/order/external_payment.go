@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
@@ -56,23 +57,40 @@ func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gat
 }
 
 func (s *Service) tryCompleteManifest(ctx context.Context, manifestID string) error {
-	// 1. Fetch all orders for this manifest
 	orders, err := s.repo.ListManifestOrders(ctx, manifestID)
 	if err != nil {
 		return err
 	}
 
 	allDone := true
+	driverID := ""
 	for _, o := range orders {
 		if !isTerminalStatus(o.Status) {
 			allDone = false
 			break
 		}
+		if driverID == "" && strings.TrimSpace(o.DriverID) != "" {
+			driverID = strings.TrimSpace(o.DriverID)
+		}
 	}
 
-	if allDone {
-		// Just emit an event for manifest completion for now
-		s.log.InfoContext(ctx, "manifest is fully completed via external payment", "manifest_id", manifestID)
+	if !allDone {
+		return nil
+	}
+	if s.manifestStore == nil {
+		s.log.InfoContext(ctx, "manifest fully completed but manifest store unavailable", "manifest_id", manifestID)
+		return nil
+	}
+	if driverID == "" {
+		return fmt.Errorf("manifest %s completed but driver_id missing", manifestID)
+	}
+
+	returned, ok, err := s.manifestStore.ReturnDriver(ctx, driverID, s.now())
+	if err != nil {
+		return err
+	}
+	if ok {
+		s.log.InfoContext(ctx, "manifest completed and driver returned", "manifest_id", manifestID, "driver_id", driverID, "returned_manifest_id", returned.ManifestID)
 	}
 	return nil
 }

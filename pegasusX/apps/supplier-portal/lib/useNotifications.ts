@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { reconnectDelayMs } from '@pegasusx/api-client';
 import { readTokenFromCookie, supplierFetch } from './auth';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
@@ -81,6 +82,7 @@ export function useNotifications() {
   });
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const reconnectAttempt = useRef(0);
   const disposedRef = useRef(false);
 
   const fetchAllInboxPages = useCallback(async (signal?: AbortSignal) => {
@@ -176,6 +178,7 @@ export function useNotifications() {
 
     ws.onopen = () => {
       if (disposedRef.current) return;
+      reconnectAttempt.current = 0;
       void fetchInbox();
     };
 
@@ -226,7 +229,9 @@ export function useNotifications() {
         wsRef.current = null;
       }
       if (disposedRef.current) return;
-      reconnectTimer.current = setTimeout(connectWS, 5000);
+      const delay = reconnectDelayMs(reconnectAttempt.current, { baseMs: 5_000, maxMs: 60_000 });
+      reconnectAttempt.current += 1;
+      reconnectTimer.current = setTimeout(connectWS, delay);
     };
 
     ws.onerror = () => ws.close();

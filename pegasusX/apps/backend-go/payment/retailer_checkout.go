@@ -18,6 +18,7 @@ import (
 // OrderCheckoutReader loads persisted order totals for retailer payment flows.
 type OrderCheckoutReader interface {
 	CheckoutSnapshot(ctx context.Context, orderID, retailerID string) (totalMinor int64, currency string, err error)
+	CheckoutOrderContext(ctx context.Context, orderID, retailerID string) (order.CheckoutOrderContext, error)
 }
 
 // BindOrderCheckoutReader wires order totals for card/cash checkout handlers.
@@ -248,6 +249,33 @@ func (s *Service) initCheckoutSession(ctx context.Context, mode string, req Chec
 	if resolvedCurrency == "" {
 		resolvedCurrency = s.currency
 	}
+
+	warehouseID := ""
+	if s.orderReader != nil {
+		if orderCtx, err := s.orderReader.CheckoutOrderContext(ctx, req.OrderID, req.RetailerID); err == nil {
+			if orderCtx.Currency != "" && resolvedCurrency == s.currency {
+				resolvedCurrency = strings.ToUpper(strings.TrimSpace(orderCtx.Currency))
+			}
+			warehouseID = orderCtx.WarehouseID
+		}
+	}
+
+	policy := NormalizeGatewayPolicy(PaymentAcceptorSupplier, nil, "SUPPLIER_DEFAULT")
+	if s.policy != nil {
+		resolved, err := s.policy.Resolve(ctx, s.supplierID, warehouseID)
+		if err != nil {
+			return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err
+		}
+		policy = resolved
+	}
+
+	req.Gateway = policy.ResolveCardGateway(req.Gateway)
+	if mode != "CASH" {
+		if err := policy.ValidateCardGateway(req.Gateway); err != nil {
+			return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err
+		}
+	}
+
 	executionResult, err := s.execution.Execute(ctx, ExecutionRequest{
 		Gateway:     req.Gateway,
 		Action:      ExecutionActionCheckoutInit,
@@ -258,6 +286,10 @@ func (s *Service) initCheckoutSession(ctx context.Context, mode string, req Chec
 	if err != nil {
 		return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err
 	}
+	if executionResult.PolicySource == "" || executionResult.PolicySource == "SUPPLIER_DEFAULT" {
+		executionResult.PolicySource = policy.PolicySource
+	}
+
 	now := s.now()
 	session := SessionRecord{
 		SessionID:   s.newID("psess"),

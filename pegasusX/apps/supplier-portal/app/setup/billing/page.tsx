@@ -17,14 +17,15 @@ const GATEWAYS = [
 
 type GatewayId = typeof GATEWAYS[number]["id"];
 
-interface BillingState {
+type BillingState = {
   bankName: string;
   accountHolder: string;
   accountNumber: string;
   swiftBic: string;
   iban: string;
   selectedGateways: GatewayId[];
-}
+  paymentAcceptor: "SUPPLIER" | "WAREHOUSE";
+};
 
 const INITIAL: BillingState = {
   bankName: "",
@@ -32,7 +33,8 @@ const INITIAL: BillingState = {
   accountNumber: "",
   swiftBic: "",
   iban: "",
-  selectedGateways: [],
+  selectedGateways: ["GLOBAL_PAY", "CASH"],
+  paymentAcceptor: "SUPPLIER",
 };
 
 export default function BillingSetupPage() {
@@ -133,6 +135,30 @@ export default function BillingSetupPage() {
           <input id="iban" className="md-input-outlined" value={state.iban}
             onChange={(e) => setState((s) => ({ ...s, iban: e.target.value }))} />
         </Field>
+
+        <h2 className="md-typescale-title-large mt-4">Payment acceptor</h2>
+        <p className="md-typescale-body-medium" style={{ color: "var(--color-md-outline)" }}>
+          Choose whether card payments settle to the supplier account or the warehouse node fulfilling the order.
+        </p>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Payment acceptor">
+          {([
+            { id: "SUPPLIER", label: "Supplier accepts payments" },
+            { id: "WAREHOUSE", label: "Warehouse accepts payments" },
+          ] as const).map((option) => {
+            const pressed = state.paymentAcceptor === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                className="md-chip"
+                aria-pressed={pressed}
+                onClick={() => setState((s) => ({ ...s, paymentAcceptor: option.id }))}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
 
         <h2 className="md-typescale-title-large mt-4">Payment gateways</h2>
         <p className="md-typescale-body-medium" style={{ color: "var(--color-md-outline)" }}>

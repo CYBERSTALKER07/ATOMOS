@@ -84,9 +84,10 @@ data class RouteManifest(
 @Serializable
 data class DeliverySubmitRequest(
     @SerialName("order_id") val orderId: String,
-    @SerialName("qr_token") val qrToken: String,
-    val latitude: Double,
-    val longitude: Double
+    @SerialName("qr_token") val qrToken: String = "",
+    @SerialName("scanned_token") val scannedToken: String? = null,
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
 )
 
 @Serializable

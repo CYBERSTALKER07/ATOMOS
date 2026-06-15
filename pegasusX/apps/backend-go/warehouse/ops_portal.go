@@ -1368,18 +1368,6 @@ func (s *Service) HandleOpsTreasury(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Service) HandleOpsPaymentConfig(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"gateways": []map[string]any{
-			{"provider": "GLOBAL_PAY", "mode": "SANDBOX", "is_active": true},
-			{"provider": "CASH", "mode": "LIVE", "is_active": true},
-		},
-	})
-}
 
 func (s *Service) HandleSupplyRequestByID(w http.ResponseWriter, r *http.Request) {
 	warehouseID := warehouseIDFromRequest(r)

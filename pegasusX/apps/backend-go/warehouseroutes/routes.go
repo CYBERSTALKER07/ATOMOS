@@ -71,6 +71,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/warehouse/ops/treasury", d.Service.HandleOpsTreasury)
 		rr.Get("/v1/warehouse/ops/financials", d.Service.HandleOpsFinancials)
 		rr.Get("/v1/warehouse/ops/payment-config", d.Service.HandleOpsPaymentConfig)
+		rr.Post("/v1/warehouse/ops/payment-config", d.Service.HandleOpsPaymentConfig)
 		rr.Get("/v1/warehouse/demand/forecast", d.Service.HandleDemandForecast)
 		rr.Get("/v1/warehouse/supply-requests", d.Service.HandleSupplyRequests)
 		rr.Post("/v1/warehouse/supply-requests", d.Service.HandleSupplyRequests)

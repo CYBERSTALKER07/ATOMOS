@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { supplierApiBaseUrl, supplierFetch } from "@/lib/auth";
+import { reconnectDelayMs, retryAfterSecondsFromResponse } from "@pegasusx/api-client";
 import { parseSupplierWsEventType } from "@/lib/supplier-ws-events";
 
 interface SupplierWebSocketSessionResponse {
@@ -38,6 +39,7 @@ export function useSupplierWsRefresh(
     let reconnectTimer: number | undefined;
     let signalTimer: number | undefined;
     let attempts = 0;
+    let pendingRetryAfterSeconds: number | undefined;
 
     const clearTimers = () => {
       if (reconnectTimer !== undefined) {
@@ -68,7 +70,12 @@ export function useSupplierWsRefresh(
       }
       closeSocket();
       attempts += 1;
-      const delay = Math.min(1000 * 2 ** Math.min(attempts, 4), 10_000) + Math.floor(Math.random() * 250);
+      const delay = reconnectDelayMs(attempts - 1, {
+        baseMs: 1_000,
+        maxMs: 10_000,
+        retryAfterSeconds: pendingRetryAfterSeconds,
+      });
+      pendingRetryAfterSeconds = undefined;
       reconnectTimer = window.setTimeout(() => {
         void connect();
       }, delay);
@@ -88,6 +95,7 @@ export function useSupplierWsRefresh(
           | { error?: string }
           | null;
         if (!response.ok || !payload || typeof (payload as SupplierWebSocketSessionResponse).token !== "string") {
+          pendingRetryAfterSeconds = retryAfterSecondsFromResponse(response);
           throw new Error("ws_session_failed");
         }
 

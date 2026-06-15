@@ -24,7 +24,6 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
-import kotlin.math.min
 
 enum class WarehouseRealtimeStatus {
     IDLE,
@@ -77,6 +76,7 @@ class WarehouseRealtimeClient(
 
     private var webSocket: WebSocket? = null
     private var reconnectAttempt = 0
+    private var pendingRetryAfterMs: Long? = null
     private var reconnectJob: Job? = null
     private var manualDisconnect = true
     private var networkAvailable = hasNetworkConnectivity()
@@ -164,6 +164,7 @@ class WarehouseRealtimeClient(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                pendingRetryAfterMs = ReconnectBackoff.retryAfterMs(response)
                 handleSocketDrop()
             }
         })
@@ -185,7 +186,11 @@ class WarehouseRealtimeClient(
         notifyState(WarehouseRealtimeStatus.RECONNECTING)
         reconnectJob?.cancel()
         reconnectJob = scope.launch {
-            val delayMs = min(30_000L, 1_000L shl (reconnectAttempt - 1).coerceAtMost(4))
+            val delayMs = ReconnectBackoff.delayMs(
+                reconnectAttempt,
+                retryAfterMs = pendingRetryAfterMs,
+            )
+            pendingRetryAfterMs = null
             delay(delayMs)
             if (!manualDisconnect) {
                 connectInternal(isReconnect = true)

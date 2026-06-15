@@ -19,8 +19,6 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.math.min
-import kotlin.math.pow
 
 @Singleton
 class TelemetrySocket @Inject constructor(
@@ -36,6 +34,7 @@ class TelemetrySocket @Inject constructor(
     private var reconnectAttempt = 0
     private var reconnectJob: Job? = null
     private var intentionalDisconnect = false
+    private var pendingRetryAfterMs: Long? = null
     private val scope = CoroutineScope(Dispatchers.IO)
 
     companion object {
@@ -77,6 +76,7 @@ class TelemetrySocket @Inject constructor(
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "Connection failed", t)
+                pendingRetryAfterMs = ReconnectBackoff.retryAfterMs(response)
                 scheduleReconnect()
             }
 
@@ -103,7 +103,13 @@ class TelemetrySocket @Inject constructor(
         }
 
         _connectionState.trySend(ConnectionState.RECONNECTING)
-        val delayMs = min(BASE_DELAY_MS * 2.0.pow(reconnectAttempt - 1).toLong(), MAX_DELAY_MS)
+        val delayMs = ReconnectBackoff.delayMs(
+            reconnectAttempt - 1,
+            BASE_DELAY_MS,
+            MAX_DELAY_MS,
+            pendingRetryAfterMs,
+        )
+        pendingRetryAfterMs = null
         Log.d(TAG, "Reconnecting in ${delayMs}ms (attempt $reconnectAttempt)")
 
         reconnectJob?.cancel()

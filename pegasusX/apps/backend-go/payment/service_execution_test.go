@@ -207,7 +207,24 @@ func newPaymentServiceForExecutionTest(repo *paymentRepoStub) *Service {
 		AdyenWebhookSecret:     "adyen-secret",
 		StripeWebhookSecret:    "stripe-secret",
 		Now:                    func() time.Time { return time.Unix(1_700_000_000, 0).UTC() },
+		Policy:                 testPolicyResolver{},
 	})
+}
+
+type testPolicyResolver struct{}
+
+func (testPolicyResolver) Resolve(_ context.Context, _, _ string) (GatewayPolicy, error) {
+	return NormalizeGatewayPolicy(PaymentAcceptorSupplier, []string{
+		"GLOBAL_PAY", "ADYEN", "AIRWALLEX", "STRIPE", "CASH",
+	}, "SUPPLIER_DEFAULT"), nil
+}
+
+func (testPolicyResolver) AllowedGateways(ctx context.Context, supplierID, warehouseID string) ([]string, string, error) {
+	policy, err := (testPolicyResolver{}).Resolve(ctx, supplierID, warehouseID)
+	if err != nil {
+		return nil, "", err
+	}
+	return policy.AllowedGateways, policy.Acceptor, nil
 }
 
 type paymentRepoStub struct {

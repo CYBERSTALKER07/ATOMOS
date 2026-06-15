@@ -118,6 +118,9 @@ import type {
   WarehouseTransferMutationResponse,
 } from "@pegasusx/types";
 
+export { reconnectDelayMs, parseRetryAfterSeconds, retryAfterSecondsFromResponse } from "./reconnect";
+export type { ReconnectBackoffOptions } from "./reconnect";
+
 export interface ApiClientConfig {
   baseUrl: string;
   getAuthToken?: () => string | null;

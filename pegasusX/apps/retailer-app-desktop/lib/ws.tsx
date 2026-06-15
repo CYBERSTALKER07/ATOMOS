@@ -4,6 +4,12 @@ import React, { createContext, useContext, useEffect, useState, useRef, useCallb
 import type { WsEvent } from '@pegasusx/types';
 import { readToken } from './auth';
 
+function reconnectDelayMs(attempt: number, baseMs = 3_000, maxMs = 60_000): number {
+  const capped = Math.min(Math.max(attempt, 0), 10);
+  const exp = Math.min(baseMs * 2 ** capped, maxMs);
+  return exp + Math.floor(Math.random() * (exp / 2 + 1));
+}
+
 export type WsEventType = WsEvent["type"];
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type WsMessage = (Record<string, any> & { type?: string });
@@ -41,6 +47,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let reconnectTimer: NodeJS.Timeout | null = null;
     let disposed = false;
+    let reconnectAttempt = 0;
     
     function connect() {
       if (disposed) return;
@@ -52,6 +59,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       const ws = new WebSocket(`${WS_URL}?token=${token}`);
       
       ws.onopen = () => {
+        reconnectAttempt = 0;
         setIsConnected(true);
         console.log('Retailer WS connected');
       };
@@ -73,7 +81,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         setIsConnected(false);
         wsRef.current = null;
         if (!disposed) {
-          reconnectTimer = setTimeout(connect, 3000);
+          const delay = reconnectDelayMs(reconnectAttempt);
+          reconnectAttempt += 1;
+          reconnectTimer = setTimeout(connect, delay);
         }
       };
 

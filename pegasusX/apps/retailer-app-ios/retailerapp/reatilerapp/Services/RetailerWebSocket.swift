@@ -368,16 +368,12 @@ final class RetailerWebSocket {
         session?.invalidateAndCancel()
         session = nil
 
-        // Exponential backoff with jitter
+        // Exponential backoff with full jitter (Desert Protocol)
         reconnectAttempts += 1
         let baseDelay = initialReconnectDelay * pow(2.0, Double(reconnectAttempts - 1))
         let maxDelay = min(baseDelay, maxReconnectDelay)
-        
-        // Add random jitter (-10% to +10%)
-        let jitter = Double.random(in: -0.1...0.1) * maxDelay
-        let delayWithJitter = maxDelay + jitter
-        
-        let finalDelay = max(initialReconnectDelay, min(delayWithJitter, maxReconnectDelay))
+        let jitter = Double.random(in: 0...(maxDelay / 2))
+        let finalDelay = min(maxDelay + jitter, maxReconnectDelay)
         
         let workItem = DispatchWorkItem { [weak self] in
             guard let self, self.shouldReconnect else { return }

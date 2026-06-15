@@ -50,17 +50,26 @@ type Hub struct {
 	relay    cache.Backend // Pub/Sub seam; nil disables cross-pod fan-out.
 	log      *slog.Logger
 	instance string
+	limits   HubLimits
 
-	mu    sync.RWMutex
-	rooms map[string]map[string]Connection // room -> connectionID -> conn
+	mu       sync.RWMutex
+	rooms    map[string]map[string]Connection // room -> connectionID -> conn
+	joinedAt map[string]time.Time             // connectionID -> subscribe time
 
 	// failureCount is bumped on every Publish failure. Exposed for metrics.
 	failureCount uint64
+	shedCount    uint64
 }
 
-// NewHub constructs a Hub. relay is the Pub/Sub backend (typically the same
-// Redis Backend used by cache.Cache); pass nil for single-process scaffold.
+// NewHub constructs a Hub with role-default connection limits. relay is the
+// Pub/Sub backend (typically the same Redis Backend used by cache.Cache); pass
+// nil for single-process scaffold.
 func NewHub(name string, relay cache.Backend, log *slog.Logger) *Hub {
+	return NewHubWithLimits(name, relay, log, DefaultHubLimits(name))
+}
+
+// NewHubWithLimits constructs a Hub with explicit shedding/capacity limits.
+func NewHubWithLimits(name string, relay cache.Backend, log *slog.Logger, limits HubLimits) *Hub {
 	if log == nil {
 		log = slog.Default()
 	}
@@ -69,23 +78,38 @@ func NewHub(name string, relay cache.Backend, log *slog.Logger) *Hub {
 		relay:    relay,
 		log:      log,
 		instance: fmt.Sprintf("%s-%d", name, time.Now().UnixNano()),
+		limits:   limits,
 		rooms:    make(map[string]map[string]Connection),
+		joinedAt: make(map[string]time.Time),
 	}
 }
 
-// Subscribe adds conn to room. The caller MUST have validated that conn's
-// identity is allowed to read room (e.g. supplier:<own-id>, driver:<self>,
-// warehouse:<scoped-id>). Returns a function the caller invokes on disconnect.
+// HasCapacity reports whether this hub can accept another connection without
+// exceeding the pod-wide MaxTotal limit.
+func (h *Hub) HasCapacity() bool {
+	if h == nil || h.limits.MaxTotal <= 0 {
+		return true
+	}
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.connectionCountLocked() < h.limits.MaxTotal
+}
+
+// Subscribe adds conn to room. When MaxPerRoom is exceeded the oldest
+// connections in the room are reaped before the new one is retained.
 func (h *Hub) Subscribe(room string, conn Connection) func() {
 	if h == nil || conn == nil || room == "" {
 		return func() {}
 	}
+	now := time.Now()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if _, ok := h.rooms[room]; !ok {
 		h.rooms[room] = make(map[string]Connection)
 	}
 	h.rooms[room][conn.ID()] = conn
+	h.joinedAt[conn.ID()] = now
+	h.shedRoomLocked(room)
 	roomName := room
 	connID := conn.ID()
 	return func() { h.unsubscribe(roomName, connID) }
@@ -100,6 +124,60 @@ func (h *Hub) unsubscribe(room, connID string) {
 			delete(h.rooms, room)
 		}
 	}
+	delete(h.joinedAt, connID)
+}
+
+func (h *Hub) connectionCountLocked() int {
+	conns := 0
+	for _, room := range h.rooms {
+		conns += len(room)
+	}
+	return conns
+}
+
+// shedRoomLocked reaps the oldest connections until the room is within MaxPerRoom.
+// Caller must hold h.mu.
+func (h *Hub) shedRoomLocked(room string) {
+	limit := h.limits.MaxPerRoom
+	if limit <= 0 {
+		return
+	}
+	conns := h.rooms[room]
+	for len(conns) > limit {
+		oldestID := oldestConnectionID(conns, h.joinedAt)
+		if oldestID == "" {
+			break
+		}
+		if c, ok := conns[oldestID]; ok {
+			if reapable, ok := c.(Reapable); ok {
+				reapable.Reap()
+			}
+			delete(conns, oldestID)
+			delete(h.joinedAt, oldestID)
+			h.shedCount++
+			h.log.Debug("ws shed stale connection",
+				"hub", h.name, "room", room, "conn_id", oldestID, "limit", limit)
+		}
+	}
+	if len(conns) == 0 {
+		delete(h.rooms, room)
+	}
+}
+
+func oldestConnectionID(conns map[string]Connection, joinedAt map[string]time.Time) string {
+	var oldestID string
+	var oldest time.Time
+	for id := range conns {
+		at, ok := joinedAt[id]
+		if !ok {
+			return id
+		}
+		if oldestID == "" || at.Before(oldest) {
+			oldestID = id
+			oldest = at
+		}
+	}
+	return oldestID
 }
 
 // AttachRoomsForRetailer subscribes every live connection in retailer:{retailerID}
@@ -256,6 +334,9 @@ func (h *Hub) Stats() HubStats {
 		Rooms:       len(h.rooms),
 		Connections: conns,
 		PubFailures: h.failureCount,
+		ShedCount:   h.shedCount,
+		MaxPerRoom:  h.limits.MaxPerRoom,
+		MaxTotal:    h.limits.MaxTotal,
 	}
 }
 
@@ -265,6 +346,9 @@ type HubStats struct {
 	Rooms       int    `json:"rooms"`
 	Connections int    `json:"connections"`
 	PubFailures uint64 `json:"pub_failures"`
+	ShedCount   uint64 `json:"shed_count"`
+	MaxPerRoom  int    `json:"max_per_room"`
+	MaxTotal    int    `json:"max_total"`
 }
 
 // ErrUnauthorized is returned by helper functions that reject a subscription
