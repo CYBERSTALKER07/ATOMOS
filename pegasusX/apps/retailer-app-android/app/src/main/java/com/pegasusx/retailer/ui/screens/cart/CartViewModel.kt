@@ -87,7 +87,7 @@ data class CartUiState(
 
 private fun checkoutPaymentLabel(gateway: String, options: List<CheckoutPaymentOption>): String {
     return options.find { it.gateway == gateway }?.label ?: when (gateway.uppercase()) {
-        "GLOBAL_PAY" -> "Global Pay"
+        "GLOBAL_PAY" -> "GlobalPay"
         "ADYEN" -> "Adyen"
         "CASH" -> "Cash on Delivery"
         else -> gateway

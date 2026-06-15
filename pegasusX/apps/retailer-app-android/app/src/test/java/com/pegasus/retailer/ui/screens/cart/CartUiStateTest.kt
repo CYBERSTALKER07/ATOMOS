@@ -149,9 +149,9 @@ class CartUiStateTest {
     }
 
     @Test
-    fun selectedPaymentLabel_unknown_fallsBackToCash() {
+    fun selectedPaymentLabel_unknown_returnsGateway() {
         val state = CartUiState(selectedPaymentGateway = "UNKNOWN_GATEWAY")
-        assertEquals("Cash", state.selectedPaymentLabel)
+        assertEquals("UNKNOWN_GATEWAY", state.selectedPaymentLabel)
     }
 
     @Test

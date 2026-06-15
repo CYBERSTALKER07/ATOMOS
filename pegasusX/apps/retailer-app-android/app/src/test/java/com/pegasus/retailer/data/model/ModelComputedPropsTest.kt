@@ -77,8 +77,8 @@ class ModelComputedPropsTest {
 
     @Test
     fun supplier_initials_threeWords() {
-        val s = Supplier(id = "s1", name = "Pegasus")
-        assertEquals("TL", s.initials)
+        val s = Supplier(id = "s1", name = "Fresh Local Teahouse")
+        assertEquals("FL", s.initials)
     }
 
     @Test

@@ -114,6 +114,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseDispatchSettingsE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch settings: %w", err)
 	}
+	if err := runWarehouseStockPolicyE2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("warehouse stock policy: %w", err)
+	}
 	if err := runWarehouseReplenishmentInsightE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse replenishment insight: %w", err)
 	}
@@ -237,6 +240,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	fmt.Println("PX_E2E_PAYMENT_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_DISPATCH_SETTINGS_OK")
+	fmt.Println("PX_E2E_WAREHOUSE_STOCK_POLICY_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_REPLENISHMENT_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_ANALYTICS_OK")
 	fmt.Println("PX_E2E_FACTORY_OK")
@@ -1096,6 +1100,10 @@ func runRetailerCatalogProductsE2E(ctx context.Context, client *http.Client, bas
 	if status != http.StatusOK {
 		return fmt.Errorf("GET catalog/products status %d body %s", status, string(body))
 	}
+	var products []map[string]any
+	if err := json.Unmarshal(body, &products); err != nil {
+		return fmt.Errorf("decode catalog/products: %w", err)
+	}
 	fmt.Println("PX_E2E_RETAILER_CATALOG_PRODUCTS_OK")
 	return nil
 }
@@ -1942,6 +1950,77 @@ func runWarehouseDispatchSettingsE2E(ctx context.Context, client *http.Client, b
 	return nil
 }
 
+func runWarehouseStockPolicyE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	whID := demoWarehouseID()
+	settingsURL := base + "/v1/warehouse/ops/settings?warehouse_id=" + whID
+
+	status, respBody, _, err := clientDo(ctx, client, http.MethodGet, settingsURL, nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse settings get status %d body %s", status, string(respBody))
+	}
+	var settings struct {
+		DefaultOutOfStockPolicy string `json:"default_out_of_stock_policy"`
+		OpsAlwaysAvailable    bool   `json:"ops_always_available"`
+	}
+	if err := json.Unmarshal(respBody, &settings); err != nil {
+		return fmt.Errorf("decode warehouse settings: %w", err)
+	}
+	if settings.DefaultOutOfStockPolicy == "" {
+		return fmt.Errorf("warehouse settings missing default_out_of_stock_policy: %s", string(respBody))
+	}
+	if !settings.OpsAlwaysAvailable {
+		return fmt.Errorf("warehouse settings expected ops_always_available=true: %s", string(respBody))
+	}
+
+	patchBody, _ := json.Marshal(map[string]string{
+		"default_out_of_stock_policy": "ACCEPT_BACKORDER",
+	})
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, settingsURL, patchBody, cookie, "ssmr-wh-stock-policy")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse settings patch status %d body %s", status, string(respBody))
+	}
+
+	invURL := base + "/v1/warehouse/ops/inventory?warehouse_id=" + whID
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, invURL, nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse inventory get status %d body %s", status, string(respBody))
+	}
+	var invResp struct {
+		Items []struct {
+			ProductID       string `json:"product_id"`
+			EffectivePolicy string `json:"effective_policy"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(respBody, &invResp); err != nil {
+		return fmt.Errorf("decode warehouse inventory: %w", err)
+	}
+	if len(invResp.Items) == 0 {
+		return nil
+	}
+	productID := invResp.Items[0].ProductID
+	policyURL := base + "/v1/warehouse/ops/inventory/" + productID + "/policy?warehouse_id=" + whID
+	skuPolicyBody, _ := json.Marshal(map[string]string{
+		"out_of_stock_policy": "INHERIT",
+	})
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, policyURL, skuPolicyBody, cookie, "ssmr-wh-sku-policy-"+productID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse inventory policy patch status %d body %s", status, string(respBody))
+	}
+	return nil
+}
+
 func runWarehouseReplenishmentInsightE2E(ctx context.Context, client *http.Client, base, cookie string) error {
 	whID := demoWarehouseID()
 	listURL := base + "/v1/warehouse/replenishment/insights?warehouse_id=" + whID
@@ -2461,6 +2540,10 @@ func runFactorySupplyRequestE2E(ctx context.Context, client *http.Client, base, 
 		Requests []struct {
 			RequestID string `json:"request_id"`
 			State     string `json:"state"`
+			ItemCount int    `json:"item_count"`
+			Items     []struct {
+				ProductID string `json:"product_id"`
+			} `json:"items"`
 		} `json:"requests"`
 	}
 	if err := json.Unmarshal(respBody, &listResp); err != nil {
@@ -2468,6 +2551,9 @@ func runFactorySupplyRequestE2E(ctx context.Context, client *http.Client, base, 
 	}
 	if len(listResp.Requests) == 0 {
 		return fmt.Errorf("factory supply-requests empty: %s", string(respBody))
+	}
+	if listResp.Requests[0].ItemCount < 0 {
+		return fmt.Errorf("factory supply-requests invalid item_count: %s", string(respBody))
 	}
 
 	var requestID string
