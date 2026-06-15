@@ -14,6 +14,9 @@ import (
 // request body hash.
 var ErrConflict = errors.New("idempotency: key reused with different payload")
 
+// ErrInProgress is returned when the same idempotency key is already being processed.
+var ErrInProgress = errors.New("idempotency: request in progress")
+
 // Record is what we store per key.
 type Record struct {
 	BodyHash   string

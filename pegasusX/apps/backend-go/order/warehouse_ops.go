@@ -134,6 +134,7 @@ func (s *Service) warehouseTransition(
 			OrderID:               current.OrderID,
 			SupplierID:            current.SupplierID,
 			RetailerID:            current.RetailerID,
+			WarehouseID:           current.WarehouseID,
 			DriverID:              current.DriverID,
 			PreviousStatus:        string(prevStatus),
 			Status:                string(current.Status),
@@ -152,7 +153,6 @@ func (s *Service) warehouseTransition(
 	if s.cache != nil {
 		s.cache.Invalidate(ctx, retailerOrdersKey(current.RetailerID), supplierOrdersKey(current.SupplierID))
 	}
-	s.broadcastOrderStatusChanged(ctx, current, prevStatus, reason, current.Version+1)
 	return nil
 }
 

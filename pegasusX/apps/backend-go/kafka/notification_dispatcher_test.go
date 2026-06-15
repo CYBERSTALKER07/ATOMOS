@@ -543,6 +543,43 @@ func TestNotificationDispatcher_PromotionChangedAllowlistFansOnlyListedRetailers
 	}
 }
 
+func TestNotificationDispatcher_OrderEventFansWarehouse(t *testing.T) {
+	t.Parallel()
+
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	warehouseConn := &dispatcherConnSpy{id: "warehouse"}
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	warehouseHub := ws.NewHub("warehouse", nil, nil)
+	supplierHub.Subscribe("supplier:sup-1", supplierConn)
+	warehouseHub.Subscribe("warehouse:wh-1", warehouseConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub:  supplierHub,
+		WarehouseHub: warehouseHub,
+	})
+	payload, _ := json.Marshal(map[string]any{
+		"type":         events.EventOrderStatusChanged,
+		"trace_id":     "trace-order",
+		"order_id":     "ord-1",
+		"supplier_id":  "sup-1",
+		"warehouse_id": "wh-1",
+		"status":       "LOADED",
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(supplierConn.messages) != 1 || len(warehouseConn.messages) != 1 {
+		t.Fatalf("supplier=%d warehouse=%d, want 1 each", len(supplierConn.messages), len(warehouseConn.messages))
+	}
+	var relayed map[string]any
+	if err := json.Unmarshal(warehouseConn.messages[0], &relayed); err != nil {
+		t.Fatalf("unmarshal relayed payload: %v", err)
+	}
+	if relayed["state"] != "LOADED" {
+		t.Fatalf("expected state alias LOADED, got %#v", relayed["state"])
+	}
+}
+
 func TestParseEnvelope_RejectsMalformedJSON(t *testing.T) {
 	t.Parallel()
 	if _, err := ParseEnvelope([]byte("not-json")); err == nil {

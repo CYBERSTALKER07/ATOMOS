@@ -62,7 +62,8 @@ func (r *Repository) FetchDispatchable(ctx context.Context, params FetchParams) 
 	        WHERE o.SupplierId = @supplierId
 	          AND (o.RouteId IS NULL OR o.RouteId = '')
 	          AND (o.ManifestId IS NULL OR o.ManifestId = '')
-	          AND COALESCE(o.Lat, r.Lat, 0) != 0 AND COALESCE(o.Lng, r.Lng, 0) != 0` + dispatchableEligibilitySQL
+	          AND COALESCE(o.Lat, r.Lat, 0) != 0
+	          AND COALESCE(o.Lng, r.Lng, 0) != 0` + dispatchableEligibilitySQL
 
 	queryParams["clearedEntryTypes"] = clearedPaymentEntryTypes
 	queryParams["clearedSessionStatuses"] = clearedPaymentSessionStatuses

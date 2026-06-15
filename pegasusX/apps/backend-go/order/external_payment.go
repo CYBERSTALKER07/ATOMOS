@@ -44,9 +44,6 @@ func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gat
 	}
 
 	s.afterOrderMutation(ctx, orderRecord)
-	s.broadcastOrderStatusChanged(ctx, orderRecord, previousStatus, "external_payment_cleared", orderRecord.Version)
-	s.broadcastPaymentCleared(ctx, orderRecord)
-	s.broadcastOrderFinalized(ctx, orderRecord)
 
 	// Manifest completion logic
 	if orderRecord.ManifestID != "" {

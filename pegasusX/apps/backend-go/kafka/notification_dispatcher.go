@@ -177,7 +177,8 @@ func (d *NotificationDispatcher) handleOrderEvent(ctx context.Context, payload [
 	if d.dropFanout(e.Type, traceID, e.OrderID) {
 		return nil
 	}
-	d.fanOrderParties(ctx, e.SupplierID, e.RetailerID, e.DriverID, payload)
+	payload = enrichOrderWSPayload(payload)
+	d.fanOrderParties(ctx, e.SupplierID, e.RetailerID, e.DriverID, e.WarehouseID, payload)
 	slog.DebugContext(ctx, "fanned out order event", "event_type", e.Type, "order_id", e.OrderID)
 	return nil
 }
@@ -194,8 +195,8 @@ func (d *NotificationDispatcher) handleOrderAssignmentEvent(ctx context.Context,
 	if driverID == "" {
 		driverID = strings.TrimSpace(e.ToDriverID)
 	}
-	d.fanOrderParties(ctx, e.SupplierID, e.RetailerID, driverID, payload)
-	d.broadcastWarehouse(ctx, e.WarehouseID, payload)
+	payload = enrichOrderWSPayload(payload)
+	d.fanOrderParties(ctx, e.SupplierID, e.RetailerID, driverID, e.WarehouseID, payload)
 	if from := strings.TrimSpace(e.FromDriverID); from != "" && from != driverID {
 		d.broadcastDriver(ctx, from, payload)
 	}
@@ -250,7 +251,7 @@ func (d *NotificationDispatcher) handleNegotiationEvent(ctx context.Context, pay
 	if d.dropFanout(e.Type, traceID, e.OrderID) {
 		return nil
 	}
-	d.fanOrderParties(ctx, e.SupplierID, e.RetailerID, e.DriverID, payload)
+	d.fanOrderParties(ctx, e.SupplierID, e.RetailerID, e.DriverID, e.WarehouseID, payload)
 	slog.DebugContext(ctx, "fanned out negotiation event", "event_type", e.Type, "order_id", e.OrderID)
 	return nil
 }
@@ -263,7 +264,7 @@ func (d *NotificationDispatcher) handleShopClosedEvent(ctx context.Context, payl
 	if d.dropFanout(e.Type, traceID, e.OrderID) {
 		return nil
 	}
-	d.fanOrderParties(ctx, e.SupplierID, e.RetailerID, e.DriverID, payload)
+	d.fanOrderParties(ctx, e.SupplierID, e.RetailerID, e.DriverID, e.WarehouseID, payload)
 	slog.DebugContext(ctx, "fanned out shop closed event", "event_type", e.Type, "order_id", e.OrderID)
 	return nil
 }
@@ -355,7 +356,7 @@ func (d *NotificationDispatcher) handleDriverEdgeEvent(ctx context.Context, payl
 	if d.dropFanout(e.Type, traceID, e.OrderID) {
 		return nil
 	}
-	d.fanOrderParties(ctx, e.SupplierID, e.RetailerID, e.DriverID, payload)
+	d.fanOrderParties(ctx, e.SupplierID, e.RetailerID, e.DriverID, e.WarehouseID, payload)
 	return nil
 }
 
@@ -402,7 +403,7 @@ func (d *NotificationDispatcher) handleDeliverySessionEvent(ctx context.Context,
 	if d.dropFanout(e.Type, traceID, e.OrderID) {
 		return nil
 	}
-	d.fanOrderParties(ctx, e.SupplierID, e.RetailerID, e.DriverID, payload)
+	d.fanOrderParties(ctx, e.SupplierID, e.RetailerID, e.DriverID, e.WarehouseID, payload)
 	return nil
 }
 
@@ -444,10 +445,29 @@ func (d *NotificationDispatcher) dropFanout(eventType, traceID, aggregateID stri
 	return true
 }
 
-func (d *NotificationDispatcher) fanOrderParties(ctx context.Context, supplierID, retailerID, driverID string, payload []byte) {
+func (d *NotificationDispatcher) fanOrderParties(ctx context.Context, supplierID, retailerID, driverID, warehouseID string, payload []byte) {
 	d.broadcastSupplier(ctx, supplierID, payload)
 	d.broadcastRetailer(ctx, retailerID, payload)
 	d.broadcastDriver(ctx, driverID, payload)
+	d.broadcastWarehouse(ctx, warehouseID, payload)
+}
+
+// enrichOrderWSPayload adds legacy client aliases on flat Kafka relay payloads.
+func enrichOrderWSPayload(payload []byte) []byte {
+	var envelope map[string]any
+	if err := json.Unmarshal(payload, &envelope); err != nil {
+		return payload
+	}
+	if envelope["type"] == events.EventOrderStatusChanged {
+		if status, ok := envelope["status"].(string); ok && envelope["state"] == nil {
+			envelope["state"] = status
+		}
+	}
+	updated, err := json.Marshal(envelope)
+	if err != nil {
+		return payload
+	}
+	return updated
 }
 
 func (d *NotificationDispatcher) broadcastSupplier(ctx context.Context, supplierID string, payload []byte) {

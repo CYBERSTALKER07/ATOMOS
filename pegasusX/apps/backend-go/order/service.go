@@ -23,6 +23,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
+	"google.golang.org/api/iterator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -600,6 +601,32 @@ func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineIt
 	if len(items) == 0 {
 		return nil, 0, errors.New("line_items required")
 	}
+	if s.spannerClient == nil {
+		var total int64
+		normalized := make([]LineItem, 0, len(items))
+		for i, li := range items {
+			sku := strings.TrimSpace(li.SKU)
+			if sku == "" {
+				return nil, 0, fmt.Errorf("line_items[%d].sku required", i)
+			}
+			if li.Quantity <= 0 {
+				return nil, 0, fmt.Errorf("line_items[%d].quantity must be > 0", i)
+			}
+			if li.UnitPrice < 0 {
+				return nil, 0, fmt.Errorf("line_items[%d].unit_price_minor must be >= 0", i)
+			}
+			item := LineItem{
+				SKU:          sku,
+				Name:         strings.TrimSpace(li.Name),
+				Quantity:     li.Quantity,
+				UnitPrice:    li.UnitPrice,
+				UnitVolumeVU: li.UnitVolumeVU,
+			}
+			total += item.UnitPrice * item.Quantity
+			normalized = append(normalized, item)
+		}
+		return normalized, total, nil
+	}
 	var total int64
 	normalized := make([]LineItem, 0, len(items))
 
@@ -821,20 +848,6 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		)
 	}
 
-	// Best-effort ws fanout. Failures are absorbed by Hub.Broadcast.
-	envelope := wsEnvelope{
-		Type:      events.EventOrderCreated,
-		Timestamp: o.CreatedAt.Format(time.RFC3339Nano),
-		Data:      orderCreatedData(o),
-	}
-	payload, _ := json.Marshal(envelope)
-	if s.retailerHub != nil {
-		s.retailerHub.Broadcast(ctx, "retailer:"+o.RetailerID, payload)
-	}
-	if s.supplierHub != nil {
-		s.supplierHub.Broadcast(ctx, "supplier:"+o.SupplierID, payload)
-	}
-
 	s.log.Info("order created",
 		"order_id", o.OrderID,
 		"supplier_id", o.SupplierID,
@@ -920,7 +933,6 @@ func (s *Service) ConfirmAIOrder(ctx context.Context, retailerID string, req Con
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("confirm ai order %s: %w", orderID, err)
 	}
 	s.afterOrderMutation(ctx, current)
-	s.broadcastOrderStatusChanged(ctx, current, current.Status, "AI_CONFIRMED", current.Version+1)
 	return lifecycleResponse(current, current.Version+1, false), nil
 }
 
@@ -969,7 +981,6 @@ func (s *Service) RejectAIOrder(ctx context.Context, retailerID string, req Reje
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("reject ai order %s: %w", orderID, err)
 	}
 	s.afterOrderMutation(ctx, current)
-	s.broadcastOrderStatusChanged(ctx, current, StatusPending, strings.TrimSpace(req.Reason), current.Version+1)
 	return lifecycleResponse(current, current.Version+1, false), nil
 }
 
@@ -1026,7 +1037,6 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("edit preorder %s: %w", orderID, err)
 	}
 	s.afterOrderMutation(ctx, current)
-	s.broadcastOrderStatusChanged(ctx, current, current.Status, "PREORDER_EDITED", current.Version+1)
 	return lifecycleResponse(current, current.Version+1, false), nil
 }
 
@@ -1073,7 +1083,6 @@ func (s *Service) ConfirmPreorder(ctx context.Context, retailerID string, req Co
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("confirm preorder %s: %w", orderID, err)
 	}
 	s.afterOrderMutation(ctx, current)
-	s.broadcastOrderStatusChanged(ctx, current, current.Status, "PREORDER_CONFIRMED", current.Version+1)
 	return lifecycleResponse(current, current.Version+1, false), nil
 }
 
@@ -1185,7 +1194,6 @@ func (s *Service) AutoConfirmDueOrders(ctx context.Context, limit int) error {
 			continue
 		}
 		s.afterOrderMutation(ctx, updated)
-		s.broadcastOrderStatusChanged(ctx, updated, updated.Status, "PREORDER_AUTO_CONFIRMED", updated.Version+1)
 	}
 	return nil
 }
@@ -1277,19 +1285,6 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 		)
 	}
 
-	envelope := wsEnvelope{
-		Type:      events.EventOrderStatusChanged,
-		Timestamp: current.UpdatedAt.Format(time.RFC3339Nano),
-		Data:      orderStatusChangedData(current, prevStatus, strings.TrimSpace(req.Reason), current.Version+1),
-	}
-	payload, _ := json.Marshal(envelope)
-	if s.retailerHub != nil {
-		s.retailerHub.Broadcast(ctx, "retailer:"+current.RetailerID, payload)
-	}
-	if s.supplierHub != nil {
-		s.supplierHub.Broadcast(ctx, "supplier:"+current.SupplierID, payload)
-	}
-
 	s.log.Info("order status updated",
 		"order_id", current.OrderID,
 		"supplier_id", current.SupplierID,
@@ -1363,11 +1358,6 @@ func (s *Service) AssignOrder(ctx context.Context, claims auth.Claims, orderID s
 	}
 
 	s.afterOrderMutation(ctx, current)
-	s.broadcastOrderEnvelope(ctx, current, wsEnvelope{
-		Type:      eventType,
-		Timestamp: current.UpdatedAt.Format(time.RFC3339Nano),
-		Data:      assignmentEnvelopeData(eventType, current, previousDriverID, previousRouteID),
-	})
 	s.log.Info("order assignment updated",
 		"order_id", current.OrderID,
 		"supplier_id", current.SupplierID,
@@ -1455,9 +1445,6 @@ func (s *Service) SubmitDelivery(ctx context.Context, claims auth.Claims, req De
 	if err != nil {
 		return DeliverySubmitResponse{}, err
 	}
-	if !result.NoChange {
-		s.broadcastOrderFinalized(ctx, result.Order)
-	}
 
 	return DeliverySubmitResponse{
 		Success:  true,
@@ -1482,10 +1469,6 @@ func (s *Service) ConfirmOffload(ctx context.Context, claims auth.Claims, req Co
 	})
 	if err != nil {
 		return ConfirmOffloadResponse{}, err
-	}
-	if !result.NoChange {
-		s.broadcastSettlementRequired(ctx, result.Order)
-		s.broadcastPaymentRequired(ctx, result.Order)
 	}
 
 	paymentMethod := resolveOrderPaymentMethod(ctx, s.spannerClient, result.Order.OrderID)
@@ -1537,8 +1520,6 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 		return DriverOrderResponse{}, err
 	}
 	if !result.NoChange {
-		s.broadcastOrderFinalized(ctx, result.Order)
-
 		// Trigger card payment capture if a capturer is configured and the order is non-zero.
 		// CompleteOrder is only called for non-cash completions.
 		if s.paymentCapturer != nil && result.Order.TotalMinor > 0 {
@@ -1596,10 +1577,6 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 	})
 	if err != nil {
 		return CollectCashResponse{}, err
-	}
-	if !result.NoChange {
-		s.broadcastPaymentCleared(ctx, result.Order)
-		s.broadcastOrderFinalized(ctx, result.Order)
 	}
 	if result.NoChange {
 		distanceM = 0
@@ -1741,6 +1718,7 @@ func emitOrderStatusChanged(ctx context.Context, txn outbox.TxnBuffer, params or
 		OrderID:               params.Order.OrderID,
 		SupplierID:            params.Order.SupplierID,
 		RetailerID:            params.Order.RetailerID,
+		WarehouseID:           params.Order.WarehouseID,
 		DriverID:              params.Order.DriverID,
 		PreviousStatus:        string(params.PreviousStatus),
 		Status:                string(params.Order.Status),
@@ -1750,12 +1728,12 @@ func emitOrderStatusChanged(ctx context.Context, txn outbox.TxnBuffer, params or
 		OrderSource:           string(params.Order.Source),
 		ConfirmationStatus:    string(params.Order.ConfirmationStatus),
 		RequestedDeliveryDate: formatOptionalRFC3339(params.Order.RequestedDeliveryDate),
+		Version:               params.Order.Version,
 	})
 }
 
 func (s *Service) recordDriverTransitionSuccess(ctx context.Context, claims auth.Claims, req driverTransitionRequest, current Order, previousStatus Status) {
 	s.afterOrderMutation(ctx, current)
-	s.broadcastOrderStatusChanged(ctx, current, previousStatus, req.Reason, current.Version+1)
 	s.log.Info("driver order status updated",
 		"order_id", current.OrderID,
 		"supplier_id", current.SupplierID,
@@ -1997,11 +1975,6 @@ func (s *Service) HandleDeliveryScanQR(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !result.NoChange {
-		s.broadcastSettlementRequired(r.Context(), result.Order)
-		s.broadcastPaymentRequired(r.Context(), result.Order)
-	}
-
 	writeJSON(w, http.StatusOK, map[string]any{
 		"valid":    true,
 		"order_id": result.Order.OrderID,
@@ -2209,56 +2182,6 @@ func (s *Service) writeOrderMutationError(w http.ResponseWriter, operation strin
 
 // ── wire shapes ────────────────────────────────────────────────────────────
 
-type wsEnvelope struct {
-	Type      string `json:"type"`
-	Timestamp string `json:"timestamp"`
-	Data      any    `json:"data"`
-}
-
-func orderCreatedData(o Order) map[string]any {
-	data := map[string]any{
-		"order_id":                o.OrderID,
-		"supplier_id":             o.SupplierID,
-		"retailer_id":             o.RetailerID,
-		"warehouse_id":            o.WarehouseID,
-		"status":                  string(o.Status),
-		"order_source":            string(o.Source),
-		"confirmation_status":     string(o.ConfirmationStatus),
-		"requested_delivery_date": formatOptionalRFC3339(o.RequestedDeliveryDate),
-		"total_minor":             o.TotalMinor,
-		"currency":                o.Currency,
-		"h3_cell":                 o.H3Cell,
-	}
-	addReceivingWindowSnapshotFields(data, o)
-	return data
-}
-
-func addReceivingWindowSnapshotFields(data map[string]any, o Order) {
-	if strings.TrimSpace(o.ReceivingWindowOpen) != "" {
-		data["receiving_window_open"] = o.ReceivingWindowOpen
-	}
-	if strings.TrimSpace(o.ReceivingWindowClose) != "" {
-		data["receiving_window_close"] = o.ReceivingWindowClose
-	}
-}
-
-func orderStatusChangedData(o Order, previous Status, reason string, version int64) map[string]any {
-	return map[string]any{
-		"order_id":                o.OrderID,
-		"supplier_id":             o.SupplierID,
-		"retailer_id":             o.RetailerID,
-		"previous_status":         string(previous),
-		"status":                  string(o.Status),
-		"reason":                  reason,
-		"order_source":            string(o.Source),
-		"confirmation_status":     string(o.ConfirmationStatus),
-		"requested_delivery_date": formatOptionalRFC3339(o.RequestedDeliveryDate),
-		"version":                 version,
-		"total_minor":             o.TotalMinor,
-		"currency":                o.Currency,
-	}
-}
-
 func orderAssignedData(orderRecord Order) map[string]any {
 	data := map[string]any{
 		"type":         events.EventOrderAssigned,
@@ -2300,13 +2223,6 @@ func addOptionalAssignmentFields(data map[string]any, orderRecord Order) {
 	}
 }
 
-func assignmentEnvelopeData(eventType string, orderRecord Order, previousDriverID string, previousRouteID string) map[string]any {
-	if eventType == events.EventOrderReassigned {
-		return orderReassignedData(orderRecord, previousDriverID, previousRouteID)
-	}
-	return orderAssignedData(orderRecord)
-}
-
 func assignmentEventType(previousDriverID string) string {
 	if strings.TrimSpace(previousDriverID) != "" {
 		return events.EventOrderReassigned
@@ -2338,82 +2254,6 @@ func (s *Service) afterOrderMutation(ctx context.Context, orderRecord Order) {
 		retailerOrdersKey(orderRecord.RetailerID),
 		supplierOrdersKey(orderRecord.SupplierID),
 	)
-}
-
-func (s *Service) broadcastOrderStatusChanged(ctx context.Context, orderRecord Order, previous Status, reason string, version int64) {
-	envelope := wsEnvelope{
-		Type:      events.EventOrderStatusChanged,
-		Timestamp: orderRecord.UpdatedAt.Format(time.RFC3339Nano),
-		Data:      orderStatusChangedData(orderRecord, previous, reason, version),
-	}
-	s.broadcastOrderEnvelope(ctx, orderRecord, envelope)
-}
-
-func (s *Service) broadcastPaymentRequired(ctx context.Context, orderRecord Order) {
-	envelope := wsEnvelope{
-		Type:      events.EventPaymentRequired,
-		Timestamp: orderRecord.UpdatedAt.Format(time.RFC3339Nano),
-		Data:      paymentRequiredData(orderRecord),
-	}
-	s.broadcastOrderEnvelope(ctx, orderRecord, envelope)
-}
-
-func (s *Service) broadcastCashCollectionRequired(ctx context.Context, orderRecord Order) {
-	data := paymentRequiredData(orderRecord)
-	data["payment_method"] = "CASH"
-	data["status"] = string(StatusPendingCashCollection)
-	envelope := wsEnvelope{
-		Type:      events.EventPaymentRequired,
-		Timestamp: orderRecord.UpdatedAt.Format(time.RFC3339Nano),
-		Data:      data,
-	}
-	payload, err := json.Marshal(envelope)
-	if err != nil {
-		return
-	}
-	if s.driverHub != nil && strings.TrimSpace(orderRecord.DriverID) != "" {
-		s.driverHub.Broadcast(ctx, "driver:"+orderRecord.DriverID, payload)
-	}
-}
-
-func (s *Service) broadcastSettlementRequired(ctx context.Context, orderRecord Order) {
-	envelope := wsEnvelope{
-		Type:      events.EventSettlementRequired,
-		Timestamp: orderRecord.UpdatedAt.Format(time.RFC3339Nano),
-		Data:      settlementRequiredData(orderRecord),
-	}
-	s.broadcastOrderEnvelope(ctx, orderRecord, envelope)
-}
-
-func (s *Service) broadcastPaymentCleared(ctx context.Context, orderRecord Order) {
-	envelope := wsEnvelope{
-		Type:      events.EventPaymentCleared,
-		Timestamp: orderRecord.UpdatedAt.Format(time.RFC3339Nano),
-		Data:      paymentClearedData(orderRecord, "CASH"),
-	}
-	s.broadcastOrderEnvelope(ctx, orderRecord, envelope)
-}
-
-func (s *Service) broadcastOrderFinalized(ctx context.Context, orderRecord Order) {
-	envelope := wsEnvelope{
-		Type:      events.EventOrderFinalized,
-		Timestamp: orderRecord.UpdatedAt.Format(time.RFC3339Nano),
-		Data:      orderFinalizedData(orderRecord),
-	}
-	s.broadcastOrderEnvelope(ctx, orderRecord, envelope)
-}
-
-func (s *Service) broadcastOrderEnvelope(ctx context.Context, orderRecord Order, envelope wsEnvelope) {
-	payload, _ := json.Marshal(envelope)
-	if s.retailerHub != nil {
-		s.retailerHub.Broadcast(ctx, "retailer:"+orderRecord.RetailerID, payload)
-	}
-	if s.supplierHub != nil {
-		s.supplierHub.Broadcast(ctx, "supplier:"+orderRecord.SupplierID, payload)
-	}
-	if s.driverHub != nil && strings.TrimSpace(orderRecord.DriverID) != "" {
-		s.driverHub.Broadcast(ctx, "driver:"+orderRecord.DriverID, payload)
-	}
 }
 
 func emitSettlementRequired(ctx context.Context, txn outbox.TxnBuffer, orderRecord Order) error {
@@ -2972,13 +2812,19 @@ func (s *Service) HandleRetailerConfirmCash(w http.ResponseWriter, r *http.Reque
 	current.UpdatedAt = s.now()
 
 	if err := s.repo.UpdateOrder(r.Context(), current, nil, func(txn outbox.TxnBuffer) error {
-		return emitOrderStatusChanged(r.Context(), txn, orderStatusEmitParams{
+		if err := emitOrderStatusChanged(r.Context(), txn, orderStatusEmitParams{
 			Claims:         claims,
 			Order:          current,
 			PreviousStatus: previousStatus,
 			Reason:         "retailer_selected_cash",
 			ActorID:        claims.Subject,
-		})
+		}); err != nil {
+			return err
+		}
+		cashPayment := paymentRequiredData(current)
+		cashPayment["payment_method"] = "CASH"
+		cashPayment["status"] = string(StatusPendingCashCollection)
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateOrder, current.OrderID, events.TopicMain, cashPayment)
 	}); err != nil {
 		s.log.ErrorContext(r.Context(), "failed to select cash payment", "order_id", orderID, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "update_failed"})
@@ -2986,8 +2832,6 @@ func (s *Service) HandleRetailerConfirmCash(w http.ResponseWriter, r *http.Reque
 	}
 
 	s.afterOrderMutation(r.Context(), current)
-	s.broadcastCashCollectionRequired(r.Context(), current)
-	s.broadcastOrderStatusChanged(r.Context(), current, previousStatus, "retailer_selected_cash", current.Version+1)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"success":  true,
