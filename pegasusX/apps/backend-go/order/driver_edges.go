@@ -183,15 +183,28 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 	var req struct {
 		OrderID       string `json:"order_id"`
 		PhotoProofURL string `json:"photo_proof_url"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.OrderID = strings.TrimSpace(req.OrderID)
 	if req.OrderID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
@@ -213,10 +226,14 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":   result.Order.Status,
 		"order_id": result.Order.OrderID,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
 }
 
 // HandleMissingItems serves POST /v1/delivery/missing-items.
@@ -230,6 +247,21 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req struct {
 		OrderID string `json:"order_id"`
 		Note    string `json:"note"`
@@ -238,11 +270,10 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 			Quantity int64  `json:"quantity"`
 		} `json:"items"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.OrderID = strings.TrimSpace(req.OrderID)
 	if req.OrderID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
@@ -282,7 +313,8 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 		s.log.ErrorContext(r.Context(), "reverse logistics event failed", "err", err)
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"status": "reported"})
+	idemCommitted = true
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]string{"status": "reported"})
 }
 
 // HandleSplitPayment serves POST /v1/delivery/split-payment.

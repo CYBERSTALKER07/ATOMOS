@@ -23,4 +23,12 @@ enum RetailerIdempotency {
     static func cancel(orderId: String) -> String {
         "retailer-cancel:\(orderId)"
     }
+
+    static func confirmPreorder(orderId: String) -> String {
+        "retailer-confirm-preorder:\(orderId)"
+    }
+
+    static func confirmAI(orderId: String) -> String {
+        "retailer-confirm-ai:\(orderId)"
+    }
 }

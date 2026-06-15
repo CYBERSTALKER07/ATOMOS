@@ -53,6 +53,8 @@ class SupplierWebSocket @Inject constructor(
     private val reconnectAttempt = AtomicInteger(0)
     private val _messages = MutableSharedFlow<SupplierWSMessage>(extraBufferCapacity = 32)
     val messages: SharedFlow<SupplierWSMessage> = _messages.asSharedFlow()
+    private val _reconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val reconnects: SharedFlow<Unit> = _reconnects.asSharedFlow()
 
     private var currentBaseUrl: String? = null
     private var pendingRetryAfterMs: Long? = null
@@ -98,7 +100,10 @@ class SupplierWebSocket @Inject constructor(
 
     private val listener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            reconnectAttempt.set(0)
+            val wasReconnect = reconnectAttempt.getAndSet(0) > 0
+            if (wasReconnect) {
+                _reconnects.tryEmit(Unit)
+            }
             Log.i(TAG, "supplier ws connected")
         }
 

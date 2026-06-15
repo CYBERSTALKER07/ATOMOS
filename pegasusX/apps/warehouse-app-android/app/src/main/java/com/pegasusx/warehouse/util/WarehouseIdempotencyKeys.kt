@@ -22,4 +22,11 @@ object WarehouseIdempotencyKeys {
         "warehouse-force-receive:${warehouseId()}:${factoryId.orEmpty()}:$volumeVu:${stableHash(notes.orEmpty())}"
 
     fun receiveTransfer(transferId: String): String = "warehouse-receive-transfer:$transferId"
+
+    fun dispatchLockAcquire(entityType: String = "WAREHOUSE", entityId: String? = null): String {
+        val wh = entityId?.takeIf { it.isNotBlank() } ?: warehouseId()
+        return "warehouse-dispatch-lock-acquire:${warehouseId()}:$entityType:$wh"
+    }
+
+    fun dispatchLockRelease(lockId: String): String = "warehouse-dispatch-lock-release:$lockId"
 }

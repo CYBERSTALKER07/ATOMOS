@@ -242,7 +242,11 @@ final class APIClient {
     }
 
     func confirmAiOrder(orderId: String) async throws {
-        let _: APIResponse<String> = try await post(path: "/v1/retailer/orders/confirm-ai", body: ConfirmAiOrderRequest(orderId: orderId))
+        let _: APIResponse<String> = try await post(
+            path: "/v1/retailer/orders/confirm-ai",
+            body: ConfirmAiOrderRequest(orderId: orderId),
+            headers: ["Idempotency-Key": RetailerIdempotency.confirmAI(orderId: orderId)]
+        )
     }
 
     func rejectAiOrder(orderId: String, reason: String) async throws {
@@ -250,7 +254,11 @@ final class APIClient {
     }
 
     func confirmPreorder(orderId: String) async throws {
-        let _: APIResponse<String> = try await post(path: "/v1/orders/confirm-preorder", body: ConfirmPreorderRequest(orderId: orderId))
+        let _: APIResponse<String> = try await post(
+            path: "/v1/orders/confirm-preorder",
+            body: ConfirmPreorderRequest(orderId: orderId),
+            headers: ["Idempotency-Key": RetailerIdempotency.confirmPreorder(orderId: orderId)]
+        )
     }
 
     func editPreorder(orderId: String, deliveryDate: String, items: [EditPreorderItem]) async throws {

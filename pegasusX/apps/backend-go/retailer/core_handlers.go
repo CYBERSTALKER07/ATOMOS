@@ -667,8 +667,21 @@ func (s *Service) HandleConfirmAIOrder(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
 		return
 	}
+	body, ok := readLimitedBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 	var req order.ConfirmAIOrderRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -677,7 +690,10 @@ func (s *Service) HandleConfirmAIOrder(w http.ResponseWriter, r *http.Request) {
 		writeRetailerOrderLifecycleError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
 }
 
 // HandleRejectAIOrder rejects a retailer AI preorder.
@@ -751,8 +767,21 @@ func (s *Service) HandleConfirmPreorder(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
 		return
 	}
+	body, ok := readLimitedBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 	var req order.ConfirmPreorderRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -761,7 +790,10 @@ func (s *Service) HandleConfirmPreorder(w http.ResponseWriter, r *http.Request) 
 		writeRetailerOrderLifecycleError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
 }
 
 func writeRetailerOrderLifecycleError(w http.ResponseWriter, err error) {

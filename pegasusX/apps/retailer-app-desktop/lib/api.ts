@@ -5,6 +5,7 @@ import { apiFetch } from './auth';
 export async function confirmAiOrder(orderId: string): Promise<Response> {
   return apiFetch('/v1/retailer/orders/confirm-ai', {
     method: 'POST',
+    headers: { 'Idempotency-Key': `retailer-confirm-ai:${orderId}` },
     body: JSON.stringify({ order_id: orderId }),
   });
 }
@@ -19,6 +20,7 @@ export async function rejectAiOrder(orderId: string, reason: string): Promise<Re
 export async function confirmPreorder(orderId: string): Promise<Response> {
   return apiFetch('/v1/orders/confirm-preorder', {
     method: 'POST',
+    headers: { 'Idempotency-Key': `retailer-confirm-preorder:${orderId}` },
     body: JSON.stringify({ order_id: orderId }),
   });
 }

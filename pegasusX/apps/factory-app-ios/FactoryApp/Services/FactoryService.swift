@@ -53,7 +53,16 @@ enum FactoryService {
     }
 
     static func createTransfer(_ req: FactoryCreateTransferRequest) async throws -> FactoryCreateTransferResponse {
-        try await api.post("v1/factory/transfers/create", body: req)
+        try await api.post(
+            "v1/factory/transfers/create",
+            body: req,
+            idempotencyKey: FactoryIdempotency.transferCreate(
+                orderId: req.orderId ?? "",
+                totalVu: Int64(req.totalVu),
+                driverId: req.driverId ?? "",
+                vehicleId: req.vehicleId ?? ""
+            )
+        )
     }
 
     // MARK: - Loading Bay

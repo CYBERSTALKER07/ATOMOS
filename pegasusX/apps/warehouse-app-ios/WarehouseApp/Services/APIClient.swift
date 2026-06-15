@@ -143,13 +143,16 @@ final class APIClient: Sendable {
     }
 
     // MARK: - DELETE
-    func delete<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
+    func delete<T: Decodable>(_ path: String, query: [String: String] = [:], idempotencyKey: String? = nil) async throws -> T {
         var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         if !query.isEmpty {
             components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
         }
         var request = URLRequest(url: components.url!)
         request.httpMethod = "DELETE"
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        }
         await attachToken(&request)
         return try await execute(request)
     }

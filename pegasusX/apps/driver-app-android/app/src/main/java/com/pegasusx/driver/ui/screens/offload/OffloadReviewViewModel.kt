@@ -110,7 +110,7 @@ class OffloadReviewViewModel @Inject constructor(
                     put("order_id", orderId)
                     photoProofUrl?.takeIf { it.isNotBlank() }?.let { put("photo_proof_url", it) }
                 }
-                api.markCreditDelivery(body)
+                api.markCreditDelivery(body, DriverIdempotencyKeys.creditDelivery(orderId))
                 _state.update { it.copy(isSubmitting = false, creditDeliveryRecorded = true) }
             } catch (e: Exception) {
                 _state.update {

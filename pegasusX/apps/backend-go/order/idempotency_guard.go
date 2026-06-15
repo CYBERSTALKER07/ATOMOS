@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -72,6 +73,20 @@ func (s *Service) saveIdempotency(ctx context.Context, r *http.Request, body []b
 		Response:   resp,
 		StoredAt:   time.Now().UTC(),
 	}, 24*time.Hour)
+}
+
+func (s *Service) releaseIdempotency(ctx context.Context, r *http.Request) {
+	key := idempotencyKeyFromRequest(r)
+	if key == "" || s.idem == nil {
+		return
+	}
+	_ = s.idem.Release(ctx, key)
+}
+
+func (s *Service) writeIdempotentJSON(w http.ResponseWriter, r *http.Request, reqBody []byte, code int, resp any) {
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, reqBody, code, respBytes)
+	writeJSONBytes(w, code, respBytes)
 }
 
 func writeJSONBytes(w http.ResponseWriter, code int, body []byte) {

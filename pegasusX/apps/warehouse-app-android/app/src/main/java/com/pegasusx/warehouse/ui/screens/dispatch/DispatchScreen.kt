@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.DispatchPreview
 import com.pegasusx.warehouse.data.model.CreateWarehouseDispatchLockRequest
+import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import com.pegasusx.warehouse.data.model.CreateWarehouseSupplyRequestRequest
 import com.pegasusx.warehouse.data.model.WarehouseDispatchLock
 import com.pegasusx.warehouse.data.model.WarehouseSupplyRequest
@@ -24,6 +25,7 @@ import com.pegasusx.warehouse.data.model.WarehouseSupplyRequestTransitionRequest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeClient
+import com.pegasusx.warehouse.data.remote.reconcileWarehouseSession
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
 import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
@@ -198,7 +200,12 @@ fun DispatchScreen(
 
     fun acquireDispatchLock() {
         scope.launch {
-            runCatching { api.createDispatchLock(CreateWarehouseDispatchLockRequest(lockType = "MANUAL_DISPATCH")) }
+            runCatching {
+                api.createDispatchLock(
+                    CreateWarehouseDispatchLockRequest(lockType = "MANUAL_DISPATCH"),
+                    WarehouseIdempotencyKeys.dispatchLockAcquire(),
+                )
+            }
                 .onSuccess { response ->
                     if (response.isSuccessful && response.body() != null) {
                         val body = response.body()!!
@@ -270,7 +277,12 @@ fun DispatchScreen(
 
     fun releaseDispatchLock(lock: WarehouseDispatchLock) {
         scope.launch {
-            runCatching { api.releaseDispatchLock(lock.lockId) }
+            runCatching {
+                api.releaseDispatchLock(
+                    lock.lockId,
+                    WarehouseIdempotencyKeys.dispatchLockRelease(lock.lockId),
+                )
+            }
                 .onSuccess { response ->
                     if (response.isSuccessful && response.body() != null) {
                         val body = response.body()!!
@@ -305,6 +317,13 @@ fun DispatchScreen(
                                 reloadDispatchLocks()
                                 load()
                             }
+                        }
+                    },
+                    onReconnect = {
+                        scope.launch {
+                            reconcileWarehouseSession(api)
+                            realtimeSignals.bump()
+                            load()
                         }
                     },
                 )

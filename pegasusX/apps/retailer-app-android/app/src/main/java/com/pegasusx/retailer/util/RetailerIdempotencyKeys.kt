@@ -14,5 +14,9 @@ object RetailerIdempotencyKeys {
 
     fun confirmCash(orderId: String): String = "retailer-confirm-cash:$orderId"
 
+    fun confirmPreorder(orderId: String): String = "retailer-confirm-preorder:$orderId"
+
+    fun confirmAI(orderId: String): String = "retailer-confirm-ai:$orderId"
+
     fun cancel(orderId: String): String = "retailer-cancel:$orderId"
 }

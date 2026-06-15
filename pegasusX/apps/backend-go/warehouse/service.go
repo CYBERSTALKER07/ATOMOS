@@ -528,17 +528,25 @@ func (s *Service) HandleDispatchLocks(w http.ResponseWriter, r *http.Request) {
 func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
+		body, ok := readMutationBody(w, r, 64*1024)
+		if !ok {
+			return
+		}
+		key, handled := s.guardMutationReplay(w, r, body)
+		if handled {
+			return
+		}
+
 		var payload struct {
 			EntityType string `json:"entity_type"`
 			EntityID   string `json:"entity_id"`
 			Reason     string `json:"reason"`
 			LockType   string `json:"lock_type"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		if err := json.Unmarshal(body, &payload); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
-		defer r.Body.Close()
 		if strings.TrimSpace(payload.EntityType) == "" {
 			payload.EntityType = "WAREHOUSE"
 		}
@@ -590,12 +598,26 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 
 		s.broadcastWarehouseEvent(r.Context(), warehouseID, eventPayload)
 		s.log.Info("warehouse dispatch lock acquired", "supplier_id", s.supplierID, "warehouse_id", warehouseID, "lock_id", lock.LockID)
-		writeJSON(w, http.StatusCreated, map[string]any{
+		resp := map[string]any{
 			"lock_id":   lock.LockID,
 			"lock_type": lockType,
 			"status":    "ACTIVE",
-		})
+		}
+		respBytes, _ := json.Marshal(resp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write(respBytes)
+		s.storeMutationReplay(r.Context(), key, body, http.StatusCreated, respBytes)
 	case http.MethodDelete:
+		body, ok := readMutationBody(w, r, 64*1024)
+		if !ok {
+			return
+		}
+		key, handled := s.guardMutationReplay(w, r, body)
+		if handled {
+			return
+		}
+
 		lockID := strings.TrimSpace(r.URL.Query().Get("lock_id"))
 		if lockID == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "lock_id required"})
@@ -656,7 +678,12 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 			"timestamp":    s.now().Format(time.RFC3339Nano),
 		})
 		s.log.Info("warehouse dispatch lock released", "supplier_id", s.supplierID, "warehouse_id", warehouseID, "lock_id", lockID)
-		writeJSON(w, http.StatusOK, map[string]any{"status": "released", "lock_id": lockID})
+		resp := map[string]any{"status": "released", "lock_id": lockID}
+		respBytes, _ := json.Marshal(resp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(respBytes)
+		s.storeMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}

@@ -61,6 +61,22 @@ enum DriverIdempotency {
         "driver-split-payment:\(driverId()):\(orderId):\(cashMinor):\(cardMinor)"
     }
 
+    static func creditDelivery(orderId: String) -> String {
+        "driver-credit-delivery:\(driverId()):\(orderId)"
+    }
+
+    static func missingItems(orderId: String) -> String {
+        "driver-missing-items:\(driverId()):\(orderId)"
+    }
+
+    static func reportDamage(orderId: String) -> String {
+        "driver-report-damage:\(driverId()):\(orderId)"
+    }
+
+    static func negotiate(orderId: String) -> String {
+        "driver-negotiate:\(driverId()):\(orderId)"
+    }
+
     private static func stableHash(_ input: String) -> String {
         var hash: UInt32 = 2166136261
         for scalar in input.unicodeScalars {

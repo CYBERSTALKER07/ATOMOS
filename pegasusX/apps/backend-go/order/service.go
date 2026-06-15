@@ -1832,12 +1832,26 @@ func (s *Service) HandleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req UpdateStatusRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	resp, err := s.UpdateStatus(r.Context(), claims, orderID, req)
 	if err != nil {
@@ -1854,7 +1868,10 @@ func (s *Service) HandleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
 }
 
 // ValidateQR checks a scanned delivery token against the order without advancing lifecycle.
@@ -2033,12 +2050,26 @@ func (s *Service) HandleAssignOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req AssignOrderRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	resp, err := s.AssignOrder(r.Context(), claims, orderID, req)
 	if err != nil {
@@ -2054,7 +2085,10 @@ func (s *Service) HandleAssignOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
 }
 
 // HandleMarkArrived is POST /v1/delivery/arrive.
@@ -2773,6 +2807,21 @@ func (s *Service) HandleReportDamage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req struct {
 		OrderID      string `json:"order_id"`
 		DamagedItems []struct {
@@ -2781,11 +2830,10 @@ func (s *Service) HandleReportDamage(w http.ResponseWriter, r *http.Request) {
 		} `json:"damaged_items"`
 		Reason string `json:"reason"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	orderID := strings.TrimSpace(req.OrderID)
 	if orderID == "" {
@@ -2838,7 +2886,8 @@ func (s *Service) HandleReportDamage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !amended {
-		writeJSON(w, http.StatusOK, map[string]any{"success": true, "message": "no_changes"})
+		idemCommitted = true
+		s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{"success": true, "message": "no_changes"})
 		return
 	}
 
@@ -2862,7 +2911,8 @@ func (s *Service) HandleReportDamage(w http.ResponseWriter, r *http.Request) {
 
 	s.afterOrderMutation(r.Context(), current)
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	idemCommitted = true
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"success":        true,
 		"message":        "damage_reported",
 		"adjusted_total": current.TotalMinor,

@@ -22,6 +22,7 @@ final class WarehouseRealtimeClient {
     private var networkAvailable = true
     private var stateHandler: (@MainActor (WarehouseRealtimeStatus) -> Void)?
     private var eventHandler: (@MainActor (WarehouseLiveEvent) -> Void)?
+    private var hasConnectedOnce = false
 
     init(session: URLSession = .shared) {
         self.session = session
@@ -97,8 +98,13 @@ final class WarehouseRealtimeClient {
                 if error != nil {
                     self.handleSocketDrop()
                 } else {
+                    let wasReconnect = self.hasConnectedOnce
+                    self.hasConnectedOnce = true
                     self.reconnectAttempt = 0
                     self.publish(.live)
+                    if wasReconnect {
+                        Task { await WarehouseSessionReconcile.run() }
+                    }
                 }
             }
             self.receiveLoop()

@@ -1,10 +1,7 @@
-package factory
+package retailer
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -14,22 +11,22 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 )
 
-func readLimitedBody(r *http.Request, limit int64) ([]byte, error) {
+func readLimitedBody(w http.ResponseWriter, r *http.Request, limit int64) ([]byte, bool) {
 	body, err := io.ReadAll(io.LimitReader(r.Body, limit))
 	_ = r.Body.Close()
-	return body, err
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return nil, false
+	}
+	return body, true
 }
 
 func idempotencyKeyFromRequest(r *http.Request) string {
-	if key := strings.TrimSpace(r.Header.Get("Idempotency-Key")); key != "" {
-		return key
+	key := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	if key == "" {
+		key = strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
 	}
-	return strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
-}
-
-func sha256HexBytes(body []byte) string {
-	sum := sha256.Sum256(body)
-	return hex.EncodeToString(sum[:])
+	return key
 }
 
 func (s *Service) guardIdempotency(w http.ResponseWriter, r *http.Request, body []byte) bool {
@@ -37,7 +34,7 @@ func (s *Service) guardIdempotency(w http.ResponseWriter, r *http.Request, body 
 	if key == "" || s.idem == nil {
 		return false
 	}
-	hash := sha256HexBytes(body)
+	hash := sha256Hex(body)
 	rec, hit, err := idempotency.Guard(r.Context(), s.idem, key, hash)
 	switch {
 	case errors.Is(err, idempotency.ErrConflict):
@@ -48,7 +45,7 @@ func (s *Service) guardIdempotency(w http.ResponseWriter, r *http.Request, body 
 		return true
 	case err != nil:
 		if s.log != nil {
-			s.log.Warn("factory idempotency guard failed", "err", err)
+			s.log.Warn("retailer idempotency guard failed", "err", err)
 		}
 	case hit:
 		w.Header().Set("Content-Type", "application/json")
@@ -65,23 +62,11 @@ func (s *Service) saveIdempotency(ctx context.Context, r *http.Request, body []b
 		return
 	}
 	_ = s.idem.Save(ctx, key, idempotency.Record{
-		BodyHash:   sha256HexBytes(body),
+		BodyHash:   sha256Hex(body),
 		StatusCode: status,
 		Response:   resp,
-		StoredAt:   time.Now().UTC(),
+		StoredAt:   s.now(),
 	}, 24*time.Hour)
-}
-
-func writeJSONBytes(w http.ResponseWriter, code int, body []byte) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_, _ = w.Write(body)
-}
-
-func (s *Service) writeIdempotentJSON(w http.ResponseWriter, r *http.Request, reqBody []byte, code int, resp any) {
-	respBytes, _ := json.Marshal(resp)
-	s.saveIdempotency(r.Context(), r, reqBody, code, respBytes)
-	writeJSONBytes(w, code, respBytes)
 }
 
 func (s *Service) releaseIdempotency(ctx context.Context, r *http.Request) {
@@ -90,4 +75,10 @@ func (s *Service) releaseIdempotency(ctx context.Context, r *http.Request) {
 		return
 	}
 	_ = s.idem.Release(ctx, key)
+}
+
+func writeJSONBytes(w http.ResponseWriter, code int, body []byte) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_, _ = w.Write(body)
 }

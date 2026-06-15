@@ -67,6 +67,7 @@
 		A7F3B2C1D4E509876543210 /* SupplierPortalFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8E4C3D2E5F609876543211 /* SupplierPortalFeature.swift */; };
 		C9D5E4F3A6B709876543212 /* SupplierPortalLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E6F5A4B7C809876543213 /* SupplierPortalLinks.swift */; };
 		E1F7A6B5C8D909876543214 /* PortalHandoffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A8B7C6D9E009876543215 /* PortalHandoffView.swift */; };
+		S1REC02SUPPLIERSESSION /* SupplierSessionReconcile.swift in Sources */ = {isa = PBXBuildFile; fileRef = S1REC01SUPPLIERSESSION /* SupplierSessionReconcile.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -126,6 +127,7 @@
 		C23AD8BBFDAE01EA9C59D920 /* ExceptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExceptionsView.swift; sourceTree = "<group>"; };
 		C85C0AAC0E5DBD0967B8775E /* ReconciliationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReconciliationView.swift; sourceTree = "<group>"; };
 		C8F10F630B2E3F1350B69329 /* SupplierRealtimeHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierRealtimeHub.swift; sourceTree = "<group>"; };
+		S1REC01SUPPLIERSESSION /* SupplierSessionReconcile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierSessionReconcile.swift; sourceTree = "<group>"; };
 		CA576C7CCAE1103906055835 /* AutoUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoUpdater.swift; sourceTree = "<group>"; };
 		CC1705EED972E29EAC48DB89 /* ManifestsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestsView.swift; sourceTree = "<group>"; };
 		SP7MAN001A2B3C4D5E6F708 /* ManifestDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestDetailView.swift; sourceTree = "<group>"; };
@@ -437,6 +439,7 @@
 				0EEC2781E62806CD90EED914 /* SupplierOperationsService.swift */,
 				EC3BAE35A958AB259ED82A51 /* SupplierRealtimeClient.swift */,
 				C8F10F630B2E3F1350B69329 /* SupplierRealtimeHub.swift */,
+				S1REC01SUPPLIERSESSION /* SupplierSessionReconcile.swift */,
 				26A5456B6AFE441937C5360D /* SupplierService.swift */,
 				0B3A1AC87D201DF9C3CF0988 /* TokenStore.swift */,
 			);
@@ -640,6 +643,7 @@
 				48232690F3F221461CC1F8E1 /* SupplierOpsModels.swift in Sources */,
 				9B02A7D1C5AC16CDD1FA5022 /* SupplierRealtimeClient.swift in Sources */,
 				BA6A5D71CF8FEC4268476E94 /* SupplierRealtimeHub.swift in Sources */,
+				S1REC02SUPPLIERSESSION /* SupplierSessionReconcile.swift in Sources */,
 				CFDADE7F60DF660AF6C43854 /* SupplierSection.swift in Sources */,
 				1E9152DC569633168D18DC9B /* SupplierService.swift in Sources */,
 				741416E1532015A14EDC58BC /* SupplierStateViews.swift in Sources */,

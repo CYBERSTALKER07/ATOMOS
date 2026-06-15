@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/auth';
+import { factoryTransferCreateKey } from '@pegasusx/api-client';
+import { factoryOperatorId } from '@/lib/factory-scope';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
@@ -82,7 +84,16 @@ export default function CreateTransferPage() {
 
       const res = await apiFetch('/v1/factory/transfers/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': factoryTransferCreateKey(
+            factoryOperatorId(),
+            orderId.trim(),
+            Math.round(parsedVu),
+            driverId,
+            vehicleId,
+          ),
+        },
         body: JSON.stringify(body),
       });
       if (!res.ok) {

@@ -232,11 +232,17 @@ interface DriverApi {
 
     // Edge 32: Mark order as delivered on credit
     @POST("v1/delivery/credit-delivery")
-    suspend fun markCreditDelivery(@Body body: Map<String, String>): Map<String, String>
+    suspend fun markCreditDelivery(
+        @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, String>
 
     // Edge 33: Report missing items after seal
     @POST("v1/delivery/missing-items")
-    suspend fun reportMissingItems(@Body body: MissingItemsPayload): MissingItemsResponse
+    suspend fun reportMissingItems(
+        @Body body: MissingItemsPayload,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): MissingItemsResponse
 
     // ── LEO: Ghost Stop Prevention ──
 

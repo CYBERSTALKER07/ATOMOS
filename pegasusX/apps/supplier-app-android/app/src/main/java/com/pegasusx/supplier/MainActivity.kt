@@ -11,6 +11,7 @@ import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.data.remote.SupplierWebSocket
 import com.pegasusx.supplier.data.remote.TokenHolder
+import com.pegasusx.supplier.data.remote.reconcileSupplierSession
 import com.pegasusx.supplier.ui.navigation.SupplierNavigation
 import com.pegasusx.supplier.ui.theme.PegasusSupplierTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -39,6 +40,12 @@ class MainActivity : ComponentActivity() {
                 if (!msg.type.startsWith("SYSTEM")) {
                     realtimeSignals.bump()
                 }
+            }
+        }
+        lifecycleScope.launch {
+            supplierWebSocket.reconnects.collect {
+                reconcileSupplierSession(supplierApi)
+                realtimeSignals.bump()
             }
         }
         setContent {

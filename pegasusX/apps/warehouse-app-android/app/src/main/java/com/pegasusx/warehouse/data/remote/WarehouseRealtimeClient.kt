@@ -82,6 +82,8 @@ class WarehouseRealtimeClient(
     private var networkAvailable = hasNetworkConnectivity()
     private var stateHandler: ((WarehouseRealtimeStatus) -> Unit)? = null
     private var eventHandler: ((WarehouseLiveEvent) -> Unit)? = null
+    private var onReconnectHandler: (() -> Unit)? = null
+    private var hasConnectedOnce = false
 
     init {
         val request = NetworkRequest.Builder()
@@ -93,9 +95,11 @@ class WarehouseRealtimeClient(
     fun connect(
         onStateChange: (WarehouseRealtimeStatus) -> Unit,
         onEvent: (WarehouseLiveEvent) -> Unit,
+        onReconnect: () -> Unit = {},
     ) {
         stateHandler = onStateChange
         eventHandler = onEvent
+        onReconnectHandler = onReconnect
         manualDisconnect = false
         reconnectAttempt = 0
         connectInternal(isReconnect = false)
@@ -142,8 +146,13 @@ class WarehouseRealtimeClient(
         webSocket?.cancel()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                val wasReconnect = hasConnectedOnce
+                hasConnectedOnce = true
                 reconnectAttempt = 0
                 notifyState(WarehouseRealtimeStatus.LIVE)
+                if (wasReconnect) {
+                    mainHandler.post { onReconnectHandler?.invoke() }
+                }
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {

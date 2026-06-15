@@ -155,11 +155,13 @@ interface WarehouseApi {
     @POST("v1/warehouse/dispatch-lock")
     suspend fun createDispatchLock(
         @Body body: CreateWarehouseDispatchLockRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<CreateWarehouseDispatchLockResponse>
 
     @DELETE("v1/warehouse/dispatch-lock")
     suspend fun releaseDispatchLock(
         @Query("lock_id") lockId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<ReleaseWarehouseDispatchLockResponse>
 
     // ── Staff ──

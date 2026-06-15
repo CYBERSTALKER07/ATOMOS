@@ -35,6 +35,8 @@ type Store interface {
 	// Acquire claims the key for in-flight processing. Returns ErrInProgress when
 	// another worker already holds the key.
 	Acquire(ctx context.Context, key, bodyHash string, ttl time.Duration) error
+	// Release drops an in-flight claim without recording a replayable response.
+	Release(ctx context.Context, key string) error
 }
 
 const inProgressStatusCode = -1
@@ -138,5 +140,16 @@ func (s *InMemoryStore) Acquire(_ context.Context, key, bodyHash string, ttl tim
 		entry.expiresAt = time.Now().Add(ttl)
 	}
 	s.records[key] = entry
+	return nil
+}
+
+// Release implements Store.
+func (s *InMemoryStore) Release(_ context.Context, key string) error {
+	if key == "" {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.records, key)
 	return nil
 }

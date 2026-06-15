@@ -45,7 +45,10 @@ interface FactoryApi {
     suspend fun getTransfer(@Path("id") id: String): Response<Transfer>
 
     @POST("v1/factory/transfers/create")
-    suspend fun createTransfer(@Body body: CreateTransferRequest): Response<CreateTransferResponse>
+    suspend fun createTransfer(
+        @Body body: CreateTransferRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<CreateTransferResponse>
 
     @POST("v1/factory/transfers/{id}/transition")
     suspend fun transitionTransfer(

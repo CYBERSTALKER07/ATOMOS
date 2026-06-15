@@ -32,6 +32,14 @@ object DriverIdempotencyKeys {
     fun splitPayment(orderId: String, cashMinor: Long, cardMinor: Long): String =
         "driver-split-payment:${driverId()}:$orderId:$cashMinor:$cardMinor"
 
+    fun creditDelivery(orderId: String): String = "driver-credit-delivery:${driverId()}:$orderId"
+
+    fun missingItems(orderId: String): String = "driver-missing-items:${driverId()}:$orderId"
+
+    fun reportDamage(orderId: String): String = "driver-report-damage:${driverId()}:$orderId"
+
+    fun negotiate(orderId: String): String = "driver-negotiate:${driverId()}:$orderId"
+
     private fun stableHash(input: String): String {
         var hash = 2166136261L
         for (c in input) {

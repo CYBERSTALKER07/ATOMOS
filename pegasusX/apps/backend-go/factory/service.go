@@ -807,16 +807,32 @@ func (s *Service) HandleTransfers(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"transfers": mapped, "total": total})
 	case http.MethodPost:
+		body, err := readLimitedBody(r, 64*1024)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+			return
+		}
+		if s.guardIdempotency(w, r, body) {
+			return
+		}
+		idemCommitted := false
+		defer func() {
+			if !idemCommitted {
+				s.releaseIdempotency(r.Context(), r)
+			}
+		}()
+
 		var req transferCreateRequest
-		if r.Body != nil {
-			_ = json.NewDecoder(r.Body).Decode(&req)
+		if err := json.Unmarshal(body, &req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
 		}
 		if req.TotalVU <= 0 {
 			req.TotalVU = 25
 		}
 		var row TransferRow
 		now := ""
-		err := s.apply(r.Context(), func() error {
+		err = s.apply(r.Context(), func() error {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.ensureDemoDataLocked()
@@ -839,7 +855,8 @@ func (s *Service) HandleTransfers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.invalidateFactoryKeys(r.Context(), factoryTransferListKey(s.supplierID))
-		writeJSON(w, http.StatusCreated, row)
+		idemCommitted = true
+		s.writeIdempotentJSON(w, r, body, http.StatusCreated, row)
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}

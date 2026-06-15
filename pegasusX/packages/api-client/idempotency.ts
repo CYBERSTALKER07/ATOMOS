@@ -202,6 +202,26 @@ export function driverSplitPaymentKey(
   return `driver-split-payment:${driverId}:${orderId}:${cashMinor}:${cardMinor}`;
 }
 
+export function driverCreditDeliveryKey(driverId: string, orderId: string): string {
+  return `driver-credit-delivery:${driverId}:${orderId}`;
+}
+
+export function driverMissingItemsKey(driverId: string, orderId: string): string {
+  return `driver-missing-items:${driverId}:${orderId}`;
+}
+
+export function payloadMissingItemsKey(orderId: string): string {
+  return `payload-missing-items-${orderId}`;
+}
+
+export function driverReportDamageKey(driverId: string, orderId: string): string {
+  return `driver-report-damage:${driverId}:${orderId}`;
+}
+
+export function driverNegotiateKey(driverId: string, orderId: string): string {
+  return `driver-negotiate:${driverId}:${orderId}`;
+}
+
 /** Matches retailer Android/iOS/desktop procurement order-create keys. */
 export function retailerOrderCreateKey(procurementFingerprint: string): string {
   return `retailer-procurement:${procurementFingerprint}`;
@@ -213,6 +233,22 @@ export function retailerConfirmCashKey(orderId: string): string {
 
 export function retailerCancelKey(orderId: string): string {
   return `retailer-cancel:${orderId}`;
+}
+
+export function retailerConfirmPreorderKey(orderId: string): string {
+  return `retailer-confirm-preorder:${orderId}`;
+}
+
+export function retailerConfirmAIKey(orderId: string): string {
+  return `retailer-confirm-ai:${orderId}`;
+}
+
+export function adminOrderAssignKey(orderId: string, driverId: string): string {
+  return `admin-order-assign:${orderId}:${driverId}`;
+}
+
+export function adminOrderStatusPatchKey(orderId: string, status: string): string {
+  return `admin-order-status:${orderId}:${status}`;
 }
 
 export function warehouseEmergencyTransferKey(
@@ -271,4 +307,14 @@ export function factoryManifestCancelTransferKey(manifestId: string, transferId:
 
 export function factoryManifestCancelKey(manifestId: string, reason?: string): string {
   return `factory-manifest-cancel:${manifestId}:${stableHash(reason ?? "")}`;
+}
+
+export function factoryTransferCreateKey(
+  factoryId: string,
+  orderId: string,
+  totalVu: number,
+  driverId = "",
+  vehicleId = "",
+): string {
+  return `factory-transfer-create:${factoryId}:${stableHash(`${orderId}:${totalVu}:${driverId}:${vehicleId}`)}`;
 }

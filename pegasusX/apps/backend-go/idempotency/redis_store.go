@@ -81,3 +81,11 @@ func (s *RedisStore) Acquire(ctx context.Context, key, bodyHash string, ttl time
 	}
 	return nil
 }
+
+// Release implements Store.
+func (s *RedisStore) Release(ctx context.Context, key string) error {
+	if s == nil || s.client == nil || key == "" {
+		return nil
+	}
+	return s.client.Del(ctx, redisKeyPrefix+key).Err()
+}

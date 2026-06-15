@@ -160,12 +160,17 @@ enum WarehouseService {
     static func acquireDispatchLock(lockType: String = "MANUAL_DISPATCH") async throws -> CreateWarehouseDispatchLockResponse {
         try await api.post(
             "v1/warehouse/dispatch-lock",
-            body: CreateWarehouseDispatchLockRequest(lockType: lockType)
+            body: CreateWarehouseDispatchLockRequest(lockType: lockType),
+            idempotencyKey: WarehouseIdempotency.dispatchLockAcquire()
         )
     }
 
     static func releaseDispatchLock(lockId: String) async throws -> ReleaseWarehouseDispatchLockResponse {
-        try await api.delete("v1/warehouse/dispatch-lock", query: ["lock_id": lockId])
+        try await api.delete(
+            "v1/warehouse/dispatch-lock",
+            query: ["lock_id": lockId],
+            idempotencyKey: WarehouseIdempotency.dispatchLockRelease(lockId: lockId)
+        )
     }
 
     // MARK: - Staff

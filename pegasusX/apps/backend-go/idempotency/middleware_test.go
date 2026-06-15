@@ -106,3 +106,34 @@ func TestMiddlewareIgnoresGETWithoutKey(t *testing.T) {
 		t.Fatalf("GET should pass through: calls=%d code=%d", calls.Load(), rec.Code)
 	}
 }
+
+func TestMiddlewareDoesNotCacheErrorResponses(t *testing.T) {
+	store := NewInMemoryStore()
+	var calls atomic.Int32
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(`{"error":"invalid_status_transition"}`))
+	})
+
+	mw := Middleware(store)(handler)
+	body := []byte(`{"status":"CANCELLED"}`)
+
+	do := func() *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPatch, "/v1/order/ord-1/status", bytes.NewReader(body))
+		req.Header.Set("Idempotency-Key", "admin-order-status:ord-1:CANCELLED")
+		rec := httptest.NewRecorder()
+		mw.ServeHTTP(rec, req)
+		return rec
+	}
+
+	first := do()
+	if first.Code != http.StatusConflict || calls.Load() != 1 {
+		t.Fatalf("first status=%d calls=%d", first.Code, calls.Load())
+	}
+
+	second := do()
+	if second.Code != http.StatusConflict || calls.Load() != 2 {
+		t.Fatalf("retry should hit handler again: status=%d calls=%d", second.Code, calls.Load())
+	}
+}

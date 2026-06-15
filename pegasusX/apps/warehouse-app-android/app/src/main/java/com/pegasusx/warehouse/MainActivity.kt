@@ -12,10 +12,13 @@ import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeClient
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
+import com.pegasusx.warehouse.data.remote.reconcileWarehouseSession
 import com.pegasusx.warehouse.ui.navigation.WarehouseNavigation
 import com.pegasusx.warehouse.ui.theme.PegasusWarehouseTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 import org.maplibre.android.MapLibre
 
 @AndroidEntryPoint
@@ -58,6 +61,12 @@ class MainActivity : ComponentActivity() {
             onStateChange = {},
             onEvent = { event ->
                 if (!event.type.startsWith("SYSTEM")) {
+                    realtimeSignals.bump()
+                }
+            },
+            onReconnect = {
+                lifecycleScope.launch {
+                    reconcileWarehouseSession(warehouseApi)
                     realtimeSignals.bump()
                 }
             },

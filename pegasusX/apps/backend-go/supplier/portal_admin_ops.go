@@ -131,16 +131,24 @@ func (s *Service) HandleBroadcast(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+
 	var req struct {
 		Title string `json:"title"`
 		Body  string `json:"body"`
 		Role  string `json:"role"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.Title = strings.TrimSpace(req.Title)
 	req.Body = strings.TrimSpace(req.Body)
 	if req.Title == "" || req.Body == "" {
@@ -164,10 +172,15 @@ func (s *Service) HandleBroadcast(w http.ResponseWriter, r *http.Request) {
 	})
 	s.portalSupplierHub.Broadcast(r.Context(), "supplier:"+sid, payload)
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":      "broadcast_sent",
 		"supplier_id": sid,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
+	s.storeMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
 }
 
 // HandleReplenishmentTrigger serves POST /v1/supplier/replenishment/trigger.

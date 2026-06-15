@@ -38,6 +38,7 @@ import com.pegasusx.factory.data.model.CreateTransferRequest
 import com.pegasusx.factory.data.model.FleetDriverRow
 import com.pegasusx.factory.data.model.FleetVehicleRow
 import com.pegasusx.factory.data.remote.FactoryApi
+import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import com.pegasusx.factory.ui.components.FactoryLoadingState
 import com.pegasusx.factory.ui.components.FactoryStateKind
 import com.pegasusx.factory.ui.components.FactoryStatePane
@@ -100,6 +101,12 @@ fun CreateTransferScreen(
                 val resp = api.createTransfer(
                     CreateTransferRequest(
                         orderId = orderId.trim().ifBlank { null },
+                        totalVu = parsedVu,
+                        driverId = driverId,
+                        vehicleId = vehicleId,
+                    ),
+                    FactoryIdempotencyKeys.transferCreate(
+                        orderId = orderId.trim(),
                         totalVu = parsedVu,
                         driverId = driverId,
                         vehicleId = vehicleId,

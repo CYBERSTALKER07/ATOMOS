@@ -97,12 +97,16 @@ func Middleware(store Store) func(http.Handler) http.Handler {
 
 			next.ServeHTTP(recorder, r)
 
-			_ = store.Save(r.Context(), key, Record{
-				BodyHash:   hashHex,
-				StatusCode: recorder.status,
-				Response:   recorder.body.Bytes(),
-				StoredAt:   time.Now(),
-			}, 24*time.Hour)
+			if recorder.status >= 200 && recorder.status < 300 {
+				_ = store.Save(r.Context(), key, Record{
+					BodyHash:   hashHex,
+					StatusCode: recorder.status,
+					Response:   recorder.body.Bytes(),
+					StoredAt:   time.Now(),
+				}, 24*time.Hour)
+			} else {
+				_ = store.Release(r.Context(), key)
+			}
 		})
 	}
 }

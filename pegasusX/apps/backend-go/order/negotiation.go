@@ -42,15 +42,29 @@ func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req struct {
 		OrderID string                    `json:"order_id"`
 		Items   []ProposedNegotiationItem `json:"items"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.OrderID = strings.TrimSpace(req.OrderID)
 	if req.OrderID == "" || len(req.Items) == 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id and items required"})
@@ -64,7 +78,7 @@ func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Reques
 
 	var supplierID, retailerID string
 
-	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
 			[]string{"Status", "DriverId", "SupplierId", "RetailerId"})
 		if err != nil {
@@ -149,7 +163,8 @@ func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Reques
 		RetailerID: retailerID,
 	})
 
-	writeJSON(w, http.StatusOK, map[string]string{
+	idemCommitted = true
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]string{
 		"status":      "PENDING",
 		"proposal_id": proposalID,
 	})

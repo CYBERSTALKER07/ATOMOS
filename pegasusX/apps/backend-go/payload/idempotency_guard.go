@@ -83,3 +83,11 @@ func (s *Service) writeIdempotentJSON(w http.ResponseWriter, r *http.Request, re
 	s.saveIdempotency(r.Context(), r, reqBody, code, respBytes)
 	writeJSONBytes(w, code, respBytes)
 }
+
+func (s *Service) releaseIdempotency(ctx context.Context, r *http.Request) {
+	key := idempotencyKeyFromRequest(r)
+	if key == "" || s.idem == nil {
+		return
+	}
+	_ = s.idem.Release(ctx, key)
+}

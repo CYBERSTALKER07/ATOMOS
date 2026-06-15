@@ -17,6 +17,7 @@ final class SupplierRealtimeClient {
     private var closed = true
     private var reconnectWorkItem: DispatchWorkItem?
     private var reconnectAttempt = 0
+    private var hasConnectedOnce = false
 
     func connect(onEvent: @escaping (SupplierLiveEvent) -> Void) {
         closed = false
@@ -43,7 +44,12 @@ final class SupplierRealtimeClient {
             task?.cancel(with: .goingAway, reason: nil)
             task = URLSession.shared.webSocketTask(with: url)
             task?.resume()
+            let wasReconnect = hasConnectedOnce
+            hasConnectedOnce = true
             reconnectAttempt = 0
+            if wasReconnect {
+                Task { await SupplierSessionReconcile.run() }
+            }
             receiveLoop(onEvent: onEvent)
         } catch {
             scheduleReconnect(onEvent: onEvent)

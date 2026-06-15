@@ -1061,9 +1061,25 @@ func (s *Service) HandleRecommendReassign(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req recommendReassignRequest
-	if r.Body != nil {
-		_ = json.NewDecoder(r.Body).Decode(&req)
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
 	}
 	req.OrderID = strings.TrimSpace(req.OrderID)
 
@@ -1126,7 +1142,8 @@ func (s *Service) HandleRecommendReassign(w http.ResponseWriter, r *http.Request
 	s.mu.Unlock()
 
 	sort.Slice(truckRecs, func(i, j int) bool { return truckRecs[i].Score > truckRecs[j].Score })
-	writeJSON(w, http.StatusOK, map[string]any{
+	idemCommitted = true
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"order_id":        req.OrderID,
 		"retailer_name":   retailerName,
 		"order_volume_vu": orderVolume,

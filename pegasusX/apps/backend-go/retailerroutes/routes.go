@@ -17,8 +17,9 @@ type Deps struct {
 	Service          *retailer.Service
 	PaymentService   *payment.Service
 	PromotionService *promotion.Service
-	OrderService   interface {
+	OrderService interface {
 		HandleShopClosedResponse(http.ResponseWriter, *http.Request)
+		HandleRetailerCancel(http.ResponseWriter, *http.Request)
 	}
 	FirebaseAuthEnabled bool
 	FirebaseVerifier    auth.FirebaseVerifier
@@ -57,7 +58,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/orders", d.Service.HandleOrdersAlias)
 
 		rr.Post("/v1/orders/request-cancel", d.Service.HandleRequestCancel)
-		rr.Post("/v1/order/cancel", d.Service.HandleCancelOrder)
+		if d.OrderService != nil {
+			rr.Post("/v1/order/cancel", d.OrderService.HandleRetailerCancel)
+		} else {
+			rr.Post("/v1/order/cancel", d.Service.HandleCancelOrder)
+		}
 		// POST /v1/order/create is served by orderroutes (order.Service.HandleCreate)
 		// with Spanner persistence + outbox. Do NOT register a stub here.
 

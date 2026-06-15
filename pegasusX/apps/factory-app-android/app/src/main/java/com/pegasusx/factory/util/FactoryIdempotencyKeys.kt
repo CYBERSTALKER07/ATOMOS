@@ -36,6 +36,16 @@ object FactoryIdempotencyKeys {
     fun cancelManifest(manifestId: String, reason: String = ""): String =
         "factory-manifest-cancel:$manifestId:${stableHash(reason)}"
 
+    fun transferCreate(
+        orderId: String,
+        totalVu: Long,
+        driverId: String = "",
+        vehicleId: String = "",
+    ): String {
+        val fingerprint = "${orderId.trim()}:$totalVu:${driverId.trim()}:${vehicleId.trim()}"
+        return "factory-transfer-create:${factoryId()}:${stableHash(fingerprint)}"
+    }
+
     fun forLifecyclePath(manifestId: String, path: String): String = when (path) {
         "start-loading" -> startLoading(manifestId)
         "seal" -> seal(manifestId)

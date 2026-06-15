@@ -327,13 +327,21 @@ final class APIClient: @unchecked Sendable {
     func markCreditDelivery(orderId: String, photoProofUrl: String? = nil) async throws -> [String: String] {
         var body: [String: String] = ["order_id": orderId]
         if let url = photoProofUrl { body["photo_proof_url"] = url }
-        return try await post("v1/delivery/credit-delivery", body: body)
+        return try await post(
+            "v1/delivery/credit-delivery",
+            body: body,
+            headers: ["Idempotency-Key": DriverIdempotency.creditDelivery(orderId: orderId)]
+        )
     }
 
     /// Edge 33: Report missing items after seal
     func reportMissingItems(orderId: String, missingItems: [MissingItemRequest]) async throws -> MissingItemsResponse {
         struct Req: Encodable { let order_id: String; let missing_items: [MissingItemRequest] }
-        return try await post("v1/delivery/missing-items", body: Req(order_id: orderId, missing_items: missingItems))
+        return try await post(
+            "v1/delivery/missing-items",
+            body: Req(order_id: orderId, missing_items: missingItems),
+            headers: ["Idempotency-Key": DriverIdempotency.missingItems(orderId: orderId)]
+        )
     }
 
     /// Edge 35: Create split payment

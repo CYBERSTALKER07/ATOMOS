@@ -33,4 +33,18 @@ enum WarehouseIdempotency {
     static func receiveTransfer(transferId: String) -> String {
         "warehouse-receive-transfer:\(transferId)"
     }
+
+    static func dispatchLockAcquire(entityType: String = "WAREHOUSE", entityId: String? = nil) -> String {
+        let wh: String
+        if let entityId, !entityId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            wh = entityId.trimmingCharacters(in: .whitespacesAndNewlines)
+        } else {
+            wh = warehouseId()
+        }
+        return "warehouse-dispatch-lock-acquire:\(warehouseId()):\(entityType):\(wh)"
+    }
+
+    static func dispatchLockRelease(lockId: String) -> String {
+        "warehouse-dispatch-lock-release:\(lockId)"
+    }
 }

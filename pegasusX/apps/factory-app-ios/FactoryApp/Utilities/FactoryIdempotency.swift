@@ -56,6 +56,16 @@ enum FactoryIdempotency {
         "factory-manifest-cancel:\(manifestId):\(stableHash(reason))"
     }
 
+    static func transferCreate(
+        orderId: String,
+        totalVu: Int64,
+        driverId: String = "",
+        vehicleId: String = ""
+    ) -> String {
+        let fingerprint = "\(orderId.trimmingCharacters(in: .whitespacesAndNewlines)):\(totalVu):\(driverId.trimmingCharacters(in: .whitespacesAndNewlines)):\(vehicleId.trimmingCharacters(in: .whitespacesAndNewlines))"
+        return "factory-transfer-create:\(factoryId()):\(stableHash(fingerprint))"
+    }
+
     static func forLifecycleAction(_ action: String, manifestId: String) -> String {
         switch action {
         case ManifestLifecycleAction.startLoading.rawValue:
