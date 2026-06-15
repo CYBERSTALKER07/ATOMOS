@@ -243,7 +243,14 @@ fun DispatchScreen(
                     addProperty("force_capacity", forceCapacity)
                     add("routes", routes)
                 }
-                api.executeDispatch(java.util.UUID.randomUUID().toString(), body)
+                val sortedOrderIds = selectedOrderIds.sorted()
+                val routeFingerprint = buildString {
+                    append("""{"mode":"MANUAL","force_capacity":$forceCapacity,"routes":[{"driver_id":"$selectedDriverId","order_ids":""")
+                    append(sortedOrderIds.joinToString(prefix = "[", postfix = "]") { "\"$it\"" })
+                    append("}]}")
+                }
+                val idempotencyKey = WarehouseIdempotencyKeys.dispatch(selectedDriverId, routeFingerprint)
+                api.executeDispatch(idempotencyKey, body)
             }.onSuccess { response ->
                 if (response.isSuccessful && response.body() != null) {
                     val result = response.body()!!

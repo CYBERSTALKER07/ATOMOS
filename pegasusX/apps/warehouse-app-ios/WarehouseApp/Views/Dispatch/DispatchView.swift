@@ -490,7 +490,17 @@ struct DispatchView: View {
         executing = true
         defer { executing = false }
         do {
-            let result = try await WarehouseService.executeDispatch(body: DispatchExecuteRequest(
+            let sortedOrderIds = selectedOrderIds.sorted()
+            let orderIdsJson = sortedOrderIds.map { "\"\($0)\"" }.joined(separator: ",")
+            let routeFingerprint = """
+            {"mode":"MANUAL","force_capacity":\(forceCapacity),"routes":[{"driver_id":"\(selectedDriverId)","order_ids":[\(orderIdsJson)]}]}
+            """
+            let idempotencyKey = WarehouseIdempotency.dispatch(
+                actorId: selectedDriverId,
+                routeFingerprint: routeFingerprint
+            )
+            let result = try await WarehouseService.executeDispatch(
+                body: DispatchExecuteRequest(
                 mode: "MANUAL",
                 forceCapacity: forceCapacity,
                 routes: [
@@ -499,7 +509,9 @@ struct DispatchView: View {
                         orderIds: Array(selectedOrderIds),
                     ),
                 ],
-            ))
+            ),
+                idempotencyKey: idempotencyKey
+            )
             switch result.status {
             case "capacity_exceeded":
                 capacityWarnings = result.capacityWarnings

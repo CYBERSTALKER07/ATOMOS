@@ -209,6 +209,7 @@ interface SupplierApi {
     @POST("v1/supplier/dispatch/execute")
     suspend fun executeDispatch(
         @Query("warehouse_id") warehouseId: String? = null,
+        @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: JsonElement,
     ): Response<JsonElement>
 

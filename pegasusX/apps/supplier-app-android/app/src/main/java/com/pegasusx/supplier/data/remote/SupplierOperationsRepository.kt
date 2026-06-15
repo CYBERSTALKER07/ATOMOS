@@ -55,9 +55,13 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun getDispatchPreview(warehouseId: String? = null): Response<SupplierDispatchPreview> =
         api.getDispatchPreview(warehouseId)
 
-    suspend fun executeDispatch(warehouseId: String? = null): Response<JsonElement> =
+    suspend fun executeDispatch(
+        warehouseId: String? = null,
+        idempotencyKey: String,
+    ): Response<JsonElement> =
         api.executeDispatch(
             warehouseId = warehouseId,
+            idempotencyKey = idempotencyKey,
             body = kotlinx.serialization.json.buildJsonObject {
                 put("mode", kotlinx.serialization.json.JsonPrimitive("AUTO"))
             },

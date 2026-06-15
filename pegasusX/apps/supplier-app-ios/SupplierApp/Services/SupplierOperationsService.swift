@@ -107,7 +107,10 @@ enum SupplierOperationsService {
         try await APIClient.shared.post("v1/supplier/dispatch/preview", body: body)
     }
 
-    static func executeDispatch(warehouseId: String? = nil) async throws {
+    static func executeDispatch(
+        warehouseId: String? = nil,
+        idempotencyKey: String
+    ) async throws {
         var query: [String: String] = [:]
         if let warehouseId, !warehouseId.isEmpty {
             query["warehouse_id"] = warehouseId
@@ -115,7 +118,8 @@ enum SupplierOperationsService {
         try await APIClient.shared.postVoid(
             "v1/supplier/dispatch/execute",
             body: ["mode": "AUTO"],
-            query: query
+            query: query,
+            idempotencyKey: idempotencyKey
         )
     }
 
@@ -316,5 +320,26 @@ enum SupplierOperationsService {
 
     static func broadcast(_ request: SupplierBroadcastRequest) async throws -> SupplierBroadcastResponse {
         try await APIClient.shared.post("v1/supplier/broadcast", body: request)
+    }
+}
+
+/// Deterministic idempotency keys — aligned with @pegasusx/api-client idempotency.ts
+enum SupplierIdempotency {
+    static func dispatch(
+        supplierId: String,
+        warehouseId: String,
+        mode: String,
+        routeFingerprint: String
+    ) -> String {
+        "supplier-dispatch:\(supplierId):\(warehouseId):\(mode):\(stableHash(routeFingerprint))"
+    }
+
+    private static func stableHash(_ input: String) -> String {
+        var hash: UInt32 = 2166136261
+        for scalar in input.unicodeScalars {
+            hash ^= scalar.value
+            hash = hash &* 16777619
+        }
+        return String(hash, radix: 36)
     }
 }

@@ -707,6 +707,9 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	if !s.requireMutationIdempotencyKey(w, r) {
+		return
+	}
 	if s.spannerClient == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "dispatch_unavailable"})
 		return
@@ -719,6 +722,12 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	if handled {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), key)
+		}
+	}()
 
 	whID := warehouseIDFromRequest(r)
 	sid := s.resolveDispatchSupplierID(r.Context(), whID)
@@ -765,6 +774,7 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	}
 	if encoded, err := json.Marshal(out); err == nil {
 		s.storeMutationReplay(r.Context(), key, body, http.StatusOK, encoded)
+		idemCommitted = true
 	}
 	writeJSON(w, http.StatusOK, out)
 }

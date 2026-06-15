@@ -11,6 +11,8 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierDispatchPreview
 import com.pegasusx.supplier.data.model.SupplierTopologyWarehouse
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.remote.TokenHolder
+import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
@@ -132,7 +134,19 @@ fun DispatchPreviewScreen(ops: SupplierOperationsRepository, onBack: () -> Unit)
                             executing = true
                             executeMessage = null
                             try {
-                                val resp = ops.executeDispatch(selectedWarehouseId)
+                                val p = preview
+                                val routeFingerprint = p?.let {
+                                    """{"pending":${it.pendingCount},"drivers":${it.availableDriverCount},"undispatched":${it.undispatchedOrders.size}}"""
+                                } ?: "[]"
+                                val supplierId = TokenHolder.supplierId.orEmpty().ifBlank { "supplier" }
+                                val warehouseId = selectedWarehouseId.orEmpty().ifBlank { "default" }
+                                val idempotencyKey = SupplierIdempotencyKeys.dispatch(
+                                    supplierId,
+                                    warehouseId,
+                                    "AUTO",
+                                    routeFingerprint,
+                                )
+                                val resp = ops.executeDispatch(selectedWarehouseId, idempotencyKey)
                                 executeMessage = if (resp.isSuccessful) {
                                     "Dispatch executed"
                                 } else {

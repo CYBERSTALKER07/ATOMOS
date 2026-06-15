@@ -2,7 +2,55 @@
 
 > **Canonical ecosystem spec:** [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md)
 
-Last updated: 2026-06-05. Tracks production v1 closure — not full Pegasus reference parity.
+Last updated: 2026-06-15. Tracks production v1 closure — not full Pegasus reference parity.
+
+## Session continuity & idempotency (2026-06-15)
+
+Closure audit against handler guards, client keys, WS reconnect reconcile, and middleware behavior.
+
+### Backend handler guards — closed
+
+| Route | Owner |
+|-------|-------|
+| `POST /v1/sync/batch` | `order/sync_batch.go` |
+| `POST /v1/payload/seal` + `seal-completed` | `payload/service.go` |
+| Payload reassign / fleet reassign | `payload/service.go`, `payload/fleet_compat.go` |
+| Warehouse delay / reject / overflow | `order/warehouse_ops.go` |
+| Factory rebalance / cancel / dispatch / transfer create | `factory/service.go` |
+| `POST /v1/delivery/arrive`, `confirm-cash`, `split-payment`, `credit-delivery` | `order/service.go`, `order/driver_edges.go` |
+| Retailer cancel / confirm-preorder / confirm-ai | `order/retailer_cancel.go`, `retailer/core_handlers.go` |
+| Supplier broadcast | `supplier/portal_admin_ops.go` |
+| Warehouse dispatch-lock | `warehouse/service.go` |
+| Admin `POST /v1/orders/{id}/assign`, `PATCH /v1/order/{id}/status` | `order/service.go` |
+| `POST /v1/payloader/recommend-reassign` | `payload/service.go` |
+| Secondary delivery edges (negotiate, report-damage, missing-items, shop-closed, etc.) | `order/negotiation.go`, `order/driver_edges.go`, `order/shop_closed.go` |
+| `POST /v1/supplier/dispatch/execute` | `supplier/dispatch_execute.go` — **requires** `Idempotency-Key` when store is configured |
+
+### Client idempotency keys — mostly closed
+
+| Surface | Status |
+|---------|--------|
+| Retailer order create / cancel / confirm-cash / confirm-preorder / confirm-ai | Wired on Android, iOS, desktop (desktop uses inline strings matching `api-client` format) |
+| Factory rebalance / cancel / dispatch / transfer | `api-client` + factory Android/iOS |
+| Driver delivery edges | `api-client` + driver Android/iOS |
+| Supplier dispatch execute | Portal (`supplierDispatchKey`); native Android/iOS (`SupplierIdempotencyKeys` / `SupplierIdempotency`) |
+| Admin assign / status patch | `api-client` + supplier-portal `AdminOrderOpsPanel` |
+
+### WS session reconcile — closed (major surfaces)
+
+Retailer Android/iOS/desktop, supplier portal + native, warehouse portal + native, factory portal + Android/iOS, driver Android/iOS, payload Android/iOS. Pattern: reconnect → reconcile → clear in-flight spinners → recovery hint.
+
+### Cross-cutting — partial
+
+| Item | Status |
+|------|--------|
+| Middleware caches only 2xx; releases key on 4xx/5xx | **Closed** — `idempotency/middleware.go` |
+| Production idempotency store | Redis when cache backend connects (`bootstrap.go`); in-memory fallback when Redis unavailable |
+| Universal in-flight UI recovery on every screen | **Partial** — major mutation surfaces only |
+| Desktop imports `@pegasusx/api-client` key helpers | **Partial** — inline strings, same format |
+| Warehouse `POST /v1/warehouse/ops/dispatch/execute` requires key | **Closed** — `warehouse/ops_portal.go`; portal + native use `warehouseDispatchKey` |
+
+**Overall:** backend P0/P1 mutation guards ~95%; client keys + reconcile ~85%; full audit including cross-cutting UX ~90%.
 
 ## Priority legend
 

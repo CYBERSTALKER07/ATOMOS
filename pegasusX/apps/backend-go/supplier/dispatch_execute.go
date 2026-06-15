@@ -61,6 +61,11 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	idemKey := idempotencyKeyFromRequest(r)
+	if s.idem != nil && idemKey == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "idempotency_key_required"})
+		return
+	}
 	if s.portalSpanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "dispatch_unavailable"})
 		return
@@ -74,7 +79,6 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 	defer r.Body.Close()
 
 	// Idempotency guard (API flavor): same key + same body → replay; different body → 409.
-	idemKey := idempotencyKeyFromRequest(r)
 	idemCommitted := false
 	if idemKey != "" && s.idem != nil {
 		hash := sha256Hex(body)

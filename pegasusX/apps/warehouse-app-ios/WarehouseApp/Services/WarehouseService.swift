@@ -127,7 +127,7 @@ enum WarehouseService {
         try await api.post("v1/warehouse/ops/dispatch/preview", body: body)
     }
 
-    static func executeDispatch(body: DispatchExecuteRequest, idempotencyKey: String = UUID().uuidString) async throws -> DispatchExecuteResponse {
+    static func executeDispatch(body: DispatchExecuteRequest, idempotencyKey: String) async throws -> DispatchExecuteResponse {
         try await api.post("v1/warehouse/ops/dispatch/execute", body: body, idempotencyKey: idempotencyKey)
     }
 

@@ -68,4 +68,8 @@ enum WarehouseIdempotency {
     static func dispatchLockRelease(lockId: String) -> String {
         "warehouse-dispatch-lock-release:\(lockId)"
     }
+
+    static func dispatch(actorId: String, routeFingerprint: String) -> String {
+        "warehouse-dispatch:\(warehouseId()):\(actorId):\(stableHash(routeFingerprint))"
+    }
 }

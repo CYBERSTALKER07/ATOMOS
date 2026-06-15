@@ -66,7 +66,26 @@ struct DispatchPreviewView: View {
         loading = true
         defer { loading = false }
         do {
-            try await SupplierOperationsService.executeDispatch(warehouseId: selectedWarehouseId)
+            let routeFingerprint: String
+            if let preview {
+                routeFingerprint = """
+                {"pending":\(preview.pendingCount ?? 0),"drivers":\(preview.availableDriverCount ?? 0),"undispatched":\(preview.undispatchedOrderCount ?? 0)}
+                """
+            } else {
+                routeFingerprint = "[]"
+            }
+            let supplierId = TokenStore.shared.supplierId ?? "supplier"
+            let warehouseId = selectedWarehouseId ?? "default"
+            let key = SupplierIdempotency.dispatch(
+                supplierId: supplierId,
+                warehouseId: warehouseId,
+                mode: "AUTO",
+                routeFingerprint: routeFingerprint
+            )
+            try await SupplierOperationsService.executeDispatch(
+                warehouseId: selectedWarehouseId,
+                idempotencyKey: key
+            )
             await load()
         } catch {
             self.error = error.localizedDescription

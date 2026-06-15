@@ -44,4 +44,7 @@ object WarehouseIdempotencyKeys {
 
     fun assignDriverVehicle(driverId: String, vehicleId: String?): String =
         "warehouse-assign-driver-vehicle:${warehouseId()}:$driverId:${vehicleId?.takeIf { it.isNotBlank() } ?: "none"}"
+
+    fun dispatch(actorId: String, routeFingerprint: String): String =
+        "warehouse-dispatch:${warehouseId()}:$actorId:${stableHash(routeFingerprint)}"
 }

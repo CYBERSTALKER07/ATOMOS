@@ -30,6 +30,15 @@ func idempotencyKeyFromRequest(r *http.Request) string {
 	return strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
 }
 
+// requireMutationIdempotencyKey rejects requests that omit a key when a store is configured.
+func (s *Service) requireMutationIdempotencyKey(w http.ResponseWriter, r *http.Request) bool {
+	if s.idem != nil && idempotencyKeyFromRequest(r) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "idempotency_key_required"})
+		return false
+	}
+	return true
+}
+
 func (s *Service) guardMutationReplay(w http.ResponseWriter, r *http.Request, body []byte) (string, bool) {
 	key := idempotencyKeyFromRequest(r)
 	if key == "" || s.idem == nil {
