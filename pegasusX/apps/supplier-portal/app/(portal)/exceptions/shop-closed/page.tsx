@@ -3,14 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
+import { supplierShopClosedResolveKey } from "@pegasusx/api-client";
 import type { ShopClosedAttemptRow } from "@pegasusx/types";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { PortalSurface } from "../../_components/PortalSurface";
 
 const api = createSupplierApi();
-
-function resolveIdempotencyKey(attemptId: string, action: string): string {
-  return `shop-closed-resolve:${attemptId}:${action}`;
-}
 
 export default function ShopClosedExceptionsPage() {
   const [rows, setRows] = useState<ShopClosedAttemptRow[]>([]);
@@ -32,12 +30,20 @@ export default function ShopClosedExceptionsPage() {
     load();
   }, [load]);
 
+  useSupplierSessionReconcile(() => {
+    if (busyId) {
+      setBusyId(null);
+      setError("Connection restored — escalation queue refreshed from server.");
+    }
+    load();
+  });
+
   const resolve = async (attemptId: string, action: "WAIT" | "BYPASS" | "RETURN_TO_DEPOT") => {
     setBusyId(attemptId);
     try {
       const body = await api.resolveSupplierShopClosed(
         { attempt_id: attemptId, action },
-        resolveIdempotencyKey(attemptId, action),
+        supplierShopClosedResolveKey(attemptId, action),
       );
       if (body.queued) {
         setError("Resolution queued for retry when back online.");

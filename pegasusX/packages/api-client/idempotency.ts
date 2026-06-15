@@ -176,6 +176,14 @@ export function driverBypassOffloadKey(driverId: string, orderId: string): strin
   return `driver-bypass-offload:${driverId}:${orderId}`;
 }
 
+export function driverReportShopClosedKey(driverId: string, orderId: string): string {
+  return `driver-report-shop-closed:${driverId}:${orderId}`;
+}
+
+export function supplierShopClosedResolveKey(attemptId: string, action: string): string {
+  return `shop-closed-resolve:${attemptId}:${action}`;
+}
+
 export function driverDepartKey(driverId: string, truckId: string): string {
   return `driver-depart:${driverId}:${truckId}`;
 }

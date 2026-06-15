@@ -15,12 +15,16 @@ import com.pegasusx.driver.data.model.ValidateQRRequest
 import com.pegasusx.driver.data.model.ValidateQRResponse
 import com.pegasusx.driver.data.model.VerifyHandshakeRequest
 import com.pegasusx.driver.data.remote.DriverApi
+import com.pegasusx.driver.data.remote.DriverWebSocket
+import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
+import com.pegasusx.driver.data.remote.reconcileDriverSession
 import dagger.hilt.android.lifecycle.HiltViewModel
 import org.json.JSONObject
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
@@ -38,13 +42,34 @@ data class ScannerUiState(
 @HiltViewModel
 class ScannerViewModel @Inject constructor(
     private val app: Application,
-    private val api: DriverApi
+    private val api: DriverApi,
+    private val driverWebSocket: DriverWebSocket,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ScannerUiState())
     val state: StateFlow<ScannerUiState> = _state.asStateFlow()
 
     private val fusedClient = LocationServices.getFusedLocationProviderClient(app)
+
+    init {
+        viewModelScope.launch {
+            driverWebSocket.onReconnect.collect {
+                recoverInFlightMutation()
+            }
+        }
+    }
+
+    private suspend fun recoverInFlightMutation() {
+        val hadInFlight = _state.value.isSubmitting
+        runCatching { reconcileDriverSession(api) }
+        _state.update {
+            it.copy(
+                isSubmitting = false,
+                isScanning = if (it.validated == null) true else it.isScanning,
+                error = if (hadInFlight) DRIVER_RECONNECT_RECOVERY_HINT else it.error,
+            )
+        }
+    }
 
     fun onQrDetected(rawValue: String) {
         if (!_state.value.isScanning) return

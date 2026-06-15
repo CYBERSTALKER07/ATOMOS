@@ -37,6 +37,10 @@ enum DriverIdempotency {
         "driver-bypass-offload:\(driverId()):\(orderId)"
     }
 
+    static func reportShopClosed(orderId: String) -> String {
+        "driver-report-shop-closed:\(driverId()):\(orderId)"
+    }
+
     static func depart(truckId: String) -> String {
         "driver-depart:\(driverId()):\(truckId)"
     }

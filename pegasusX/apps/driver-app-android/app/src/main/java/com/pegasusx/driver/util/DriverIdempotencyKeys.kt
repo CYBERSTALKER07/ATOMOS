@@ -18,6 +18,8 @@ object DriverIdempotencyKeys {
 
     fun bypassOffload(orderId: String): String = "driver-bypass-offload:${driverId()}:$orderId"
 
+    fun reportShopClosed(orderId: String): String = "driver-report-shop-closed:${driverId()}:$orderId"
+
     fun depart(truckId: String): String = "driver-depart:${driverId()}:$truckId"
 
     fun returnComplete(truckId: String): String = "driver-return-complete:${driverId()}:$truckId"

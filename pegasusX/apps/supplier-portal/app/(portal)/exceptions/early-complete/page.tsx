@@ -6,6 +6,7 @@ import { useState } from "react";
 import { supplierApproveEarlyCompleteKey } from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
 import { ApiError } from "@pegasusx/api-client";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { PortalSurface } from "../../_components/PortalSurface";
 
 const api = createSupplierApi();
@@ -15,6 +16,13 @@ export default function EarlyCompletePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useSupplierSessionReconcile(() => {
+    if (busy) {
+      setBusy(false);
+      setError("Connection restored — verify approval status before retrying.");
+    }
+  });
 
   const approve = async () => {
     const trimmed = driverId.trim();

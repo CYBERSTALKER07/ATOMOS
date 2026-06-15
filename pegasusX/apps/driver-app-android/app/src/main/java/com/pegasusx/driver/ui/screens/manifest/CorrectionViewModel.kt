@@ -14,6 +14,9 @@ import com.pegasusx.driver.data.model.OrderLineItem
 import com.pegasusx.driver.data.model.RejectionReason
 import com.pegasusx.driver.data.model.UpdateOrderDuringDeliveryRequest
 import com.pegasusx.driver.data.remote.DriverApi
+import com.pegasusx.driver.data.remote.DriverWebSocket
+import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
+import com.pegasusx.driver.data.remote.reconcileDriverSession
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,7 +62,8 @@ data class CorrectionUiState(
 class CorrectionViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val app: Application,
-    private val api: DriverApi
+    private val api: DriverApi,
+    private val driverWebSocket: DriverWebSocket,
 ) : ViewModel() {
 
     private val orderId: String = savedStateHandle["orderId"] ?: ""
@@ -76,6 +80,31 @@ class CorrectionViewModel @Inject constructor(
 
     init {
         loadOrderItems()
+        viewModelScope.launch {
+            driverWebSocket.onReconnect.collect {
+                recoverInFlightMutation()
+            }
+        }
+    }
+
+    private suspend fun recoverInFlightMutation() {
+        val hadInFlight = _state.value.isSubmitting
+        runCatching { reconcileDriverSession(api) }
+        runCatching { api.getOrder(orderId) }.onSuccess { order ->
+            val audits = order.items.map { LineItemAudit(item = it, acceptedQty = it.quantity) }
+            _state.update {
+                it.copy(
+                    retailerName = order.retailerName.ifBlank { retailerName },
+                    audits = audits,
+                )
+            }
+        }
+        _state.update {
+            it.copy(
+                isSubmitting = false,
+                error = if (hadInFlight) DRIVER_RECONNECT_RECOVERY_HINT else it.error,
+            )
+        }
     }
 
     private fun loadOrderItems() {

@@ -76,6 +76,10 @@ import type {
   SupplierOrgMembersResponse,
   SupplierOrdersResponse,
   SupplierOrder,
+  AssignOrderRequest,
+  AssignOrderResponse,
+  OrderStatusPatchRequest,
+  OrderStatusPatchResponse,
   SupplierFleetDriverCreateRequest,
   SupplierFleetDriversResponse,
   SupplierFleetVehicleCreateRequest,
@@ -157,6 +161,8 @@ export {
   supplierApproveEarlyCompleteKey,
   driverConfirmPaymentBypassKey,
   driverBypassOffloadKey,
+  driverReportShopClosedKey,
+  supplierShopClosedResolveKey,
   driverDepartKey,
   driverReturnCompleteKey,
   driverSyncBatchKey,
@@ -425,6 +431,30 @@ export class ApiClient {
     idempotencyKey?: string,
   ): Promise<{ order: SupplierOrder }> {
     return this.request<{ order: SupplierOrder }>("/v1/supplier/orders/vet", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** ADMIN / WAREHOUSE_ADMIN / FACTORY_ADMIN — assign driver to order. */
+  async assignOrder(
+    orderId: string,
+    request: AssignOrderRequest,
+    idempotencyKey: string,
+  ): Promise<AssignOrderResponse> {
+    return this.request<AssignOrderResponse>(`/v1/orders/${encodeURIComponent(orderId)}/assign`, "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** ADMIN / RETAILER — patch canonical order status. */
+  async patchOrderStatus(
+    orderId: string,
+    request: OrderStatusPatchRequest,
+    idempotencyKey: string,
+  ): Promise<OrderStatusPatchResponse> {
+    return this.request<OrderStatusPatchResponse>(`/v1/order/${encodeURIComponent(orderId)}/status`, "PATCH", {
       body: request,
       idempotencyKey,
     });

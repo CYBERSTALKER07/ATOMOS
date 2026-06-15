@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
+import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
+import com.pegasusx.driver.data.remote.reconcileDriverSession
 import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,13 +70,33 @@ class ShopClosedWaitingViewModel @Inject constructor(
                 }
             }
         }
+
+        viewModelScope.launch {
+            webSocket.onReconnect.collect {
+                recoverInFlightMutation()
+            }
+        }
+    }
+
+    private suspend fun recoverInFlightMutation() {
+        val hadInFlight = _state.value.isSubmitting
+        runCatching { reconcileDriverSession(api) }
+        _state.update {
+            it.copy(
+                isSubmitting = false,
+                error = if (hadInFlight) DRIVER_RECONNECT_RECOVERY_HINT else it.error,
+            )
+        }
     }
 
     fun reportShopClosed(orderId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
             try {
-                api.reportShopClosed(mapOf("order_id" to orderId))
+                api.reportShopClosed(
+                    mapOf("order_id" to orderId),
+                    DriverIdempotencyKeys.reportShopClosed(orderId),
+                )
                 _state.update { it.copy(isSubmitting = false) }
             } catch (e: Exception) {
                 Log.e("ShopClosed", "Failed to report: ${e.message}")

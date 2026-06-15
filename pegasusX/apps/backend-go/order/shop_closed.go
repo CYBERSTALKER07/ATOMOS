@@ -50,12 +50,26 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req shopClosedReportRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.OrderID = strings.TrimSpace(req.OrderID)
 	if req.OrderID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id required"})
@@ -70,7 +84,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 	var retailerID, supplierID string
 	var gpsLat, gpsLng float64
 
-	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
 			[]string{"Status", "Version", "RetailerId", "SupplierId", "DriverId", "Lat", "Lng"})
 		if err != nil {
@@ -153,10 +167,14 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 	s.invalidateOrderCache(ctx, req.OrderID)
 	go s.scheduleShopClosedEscalation(context.WithoutCancel(ctx), attemptID, req.OrderID, retailerID, supplierID, driverID)
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":     string(StatusArrivedShopClosed),
 		"attempt_id": attemptID,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleShopClosedResponse is POST /v1/retailer/shop-closed-response.
@@ -303,12 +321,26 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req shopClosedResolveRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.AttemptID = strings.TrimSpace(req.AttemptID)
 	req.Action = strings.TrimSpace(req.Action)
 	if req.AttemptID == "" || req.Action == "" {
@@ -327,7 +359,7 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 	var orderID, driverID, retailerID, supplierID, bypassToken, resolution string
 	resolution = "WAITING"
 
-	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "ShopClosedAttempts", spanner.Key{req.AttemptID},
 			[]string{"OrderId", "DriverId", "RetailerId"})
 		if err != nil {
@@ -429,7 +461,10 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 	if bypassToken != "" {
 		resp["bypass_token"] = bypassToken
 	}
-	writeJSON(w, http.StatusOK, resp)
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 func (s *Service) scheduleShopClosedEscalation(ctx context.Context, attemptID, orderID, retailerID, supplierID, driverID string) {

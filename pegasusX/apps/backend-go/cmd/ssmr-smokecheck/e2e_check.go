@@ -522,7 +522,7 @@ func runShopClosedE2E(ctx context.Context, client *http.Client, base string, cfg
 		"latitude":  cfg.DeliveryZoneCenterLat,
 		"longitude": cfg.DeliveryZoneCenterLng,
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/shop-closed", shopBody, driverToken, "")
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/shop-closed", shopBody, driverToken, "driver-report-shop-closed:"+driverID+":"+orderID)
 	if err != nil {
 		return err
 	}

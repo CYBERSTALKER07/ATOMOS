@@ -204,7 +204,10 @@ interface DriverApi {
 
     // Driver reports shop is closed (ARRIVED → ARRIVED_SHOP_CLOSED)
     @POST("v1/delivery/shop-closed")
-    suspend fun reportShopClosed(@Body body: Map<String, String>): Map<String, String>
+    suspend fun reportShopClosed(
+        @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, String>
 
     // Driver uses bypass token to complete offload without retailer QR
     @POST("v1/delivery/bypass-offload")

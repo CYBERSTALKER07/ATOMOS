@@ -1515,6 +1515,20 @@ export interface AssignOrderResponse {
   no_change?: boolean;
 }
 
+export interface OrderStatusPatchRequest {
+  status: string;
+  reason?: string;
+}
+
+export interface OrderStatusPatchResponse {
+  order_id: OrderId;
+  previous_status: string;
+  status: string;
+  version: number;
+  updated_at: string;
+  event_type: string;
+}
+
 export interface RetailerTrackingLineItem {
   product_id: string;
   product_name: string;

@@ -165,6 +165,17 @@ struct ShopClosedWaitingView: View {
         .onDisappear {
             timer?.invalidate()
         }
+        .onChange(of: driverSocketState.reconnectEpoch) { _, _ in
+            Task {
+                let hadInFlight = isReporting || isSubmittingBypass
+                await DriverReconnectRecovery.recoverInFlight(wasInFlight: hadInFlight)
+                if hadInFlight {
+                    isReporting = false
+                    isSubmittingBypass = false
+                    reportError = DriverReconnectRecovery.hint
+                }
+            }
+        }
     }
 
     // MARK: - Computed

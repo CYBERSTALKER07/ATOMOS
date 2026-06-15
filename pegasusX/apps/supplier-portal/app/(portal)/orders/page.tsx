@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiError, supplierVetOrderKey } from '@pegasusx/api-client';
 import { createSupplierApi } from '@/lib/api';
+import { canAdminOrderOps, canAssignOrder, canPatchOrderStatus } from '@/lib/admin-scope';
 import { downloadCsv } from '@/lib/csv';
+import { useSupplierSessionReconcile } from '@/lib/use-supplier-session-reconcile';
 import { ListToolbar } from '@/components/ListToolbar';
+import { AdminOrderOpsPanel } from '@/components/AdminOrderOpsPanel';
 import { useToast } from '@/components/Toast';
 import StatusBadge from '@/components/StatusBadge';
 import { PortalSurface } from '../_components/PortalSurface';
@@ -54,6 +57,9 @@ function liveStatusLabel(order: SupplierOrder) {
 
 export default function OrdersPage() {
   const { push: toast } = useToast();
+  const showAdminOps = useMemo(() => canAdminOrderOps(), []);
+  const canAssign = useMemo(() => canAssignOrder(), []);
+  const canPatchStatus = useMemo(() => canPatchOrderStatus(), []);
   const [orders, setOrders] = useState<SupplierOrder[]>([]);
   const [total, setTotal] = useState(0);
   const [filter, setFilter] = useState<OrderFilter>('ACTIVE');
@@ -63,6 +69,7 @@ export default function OrdersPage() {
   const [exporting, setExporting] = useState(false);
 
   const [vettingId, setVettingId] = useState<string | null>(null);
+  const [adminBusyId, setAdminBusyId] = useState<string | null>(null);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -92,6 +99,14 @@ export default function OrdersPage() {
   useEffect(() => {
     setPage(0);
   }, [filter]);
+
+  useSupplierSessionReconcile(() => {
+    if (adminBusyId) {
+      setAdminBusyId(null);
+      toast('Connection restored — order list refreshed from server.', 'info');
+    }
+    void loadOrders();
+  });
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
@@ -182,7 +197,7 @@ export default function OrdersPage() {
               <th className="md-typescale-label-medium p-4 font-medium">Assignment</th>
               <th className="md-typescale-label-medium p-4 font-medium">Live</th>
               <th className="md-typescale-label-medium p-4 font-medium text-right">Total</th>
-              {filter === 'REVIEW' ? (
+              {filter === 'REVIEW' || showAdminOps ? (
                 <th className="md-typescale-label-medium p-4 font-medium text-right">Actions</th>
               ) : null}
             </tr>
@@ -190,19 +205,19 @@ export default function OrdersPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={filter === 'REVIEW' ? 8 : 7} className="p-8 text-center text-[var(--color-md-outline)]">
+                <td colSpan={filter === 'REVIEW' || showAdminOps ? 8 : 7} className="p-8 text-center text-[var(--color-md-outline)]">
                   Loading supplier orders…
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={filter === 'REVIEW' ? 8 : 7} className="p-8 text-center text-[var(--color-md-error)]">
+                <td colSpan={filter === 'REVIEW' || showAdminOps ? 8 : 7} className="p-8 text-center text-[var(--color-md-error)]">
                   {error}
                 </td>
               </tr>
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan={filter === 'REVIEW' ? 8 : 7} className="p-8 text-center text-[var(--color-md-outline)]">
+                <td colSpan={filter === 'REVIEW' || showAdminOps ? 8 : 7} className="p-8 text-center text-[var(--color-md-outline)]">
                   No {filterLabels[filter].toLowerCase()} at this time.
                 </td>
               </tr>
@@ -237,26 +252,42 @@ export default function OrdersPage() {
                     ) : null}
                   </td>
                   <td className="p-4 text-right">{formatMoney(order)}</td>
-                  {filter === 'REVIEW' ? (
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          className="md-btn md-btn-tonal md-typescale-label-medium px-3 py-1"
-                          disabled={vettingId === order.order_id}
-                          onClick={() => void vetOrder(order.order_id, 'APPROVED')}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          className="md-btn md-btn-outlined md-typescale-label-medium px-3 py-1"
-                          disabled={vettingId === order.order_id}
-                          onClick={() => void vetOrder(order.order_id, 'REJECTED')}
-                        >
-                          Reject
-                        </button>
-                      </div>
+                  {filter === 'REVIEW' || showAdminOps ? (
+                    <td className="p-4 text-right align-top">
+                      {filter === 'REVIEW' ? (
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            className="md-btn md-btn-tonal md-typescale-label-medium px-3 py-1"
+                            disabled={vettingId === order.order_id}
+                            onClick={() => void vetOrder(order.order_id, 'APPROVED')}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="md-btn md-btn-outlined md-typescale-label-medium px-3 py-1"
+                            disabled={vettingId === order.order_id}
+                            onClick={() => void vetOrder(order.order_id, 'REJECTED')}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      ) : null}
+                      {showAdminOps ? (
+                        <AdminOrderOpsPanel
+                          order={order}
+                          busy={adminBusyId === order.order_id}
+                          canAssign={canAssign}
+                          canPatchStatus={canPatchStatus}
+                          onBusyChange={setAdminBusyId}
+                          onSuccess={() => {
+                            toast('Order updated', 'success');
+                            void loadOrders();
+                          }}
+                          onError={(message) => toast(message, 'error')}
+                        />
+                      ) : null}
                     </td>
                   ) : null}
                 </tr>

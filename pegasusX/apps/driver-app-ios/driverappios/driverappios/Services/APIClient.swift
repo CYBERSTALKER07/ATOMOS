@@ -211,7 +211,11 @@ final class APIClient: @unchecked Sendable {
 
     func reportShopClosed(orderId: String) async throws -> [String: String] {
         let body = ["order_id": orderId]
-        return try await post("v1/delivery/shop-closed", body: body)
+        return try await post(
+            "v1/delivery/shop-closed",
+            body: body,
+            headers: ["Idempotency-Key": DriverIdempotency.reportShopClosed(orderId: orderId)]
+        )
     }
 
     func bypassOffload(orderId: String, token: String) async throws -> [String: String] {
