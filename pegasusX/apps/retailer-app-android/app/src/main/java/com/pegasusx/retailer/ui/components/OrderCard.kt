@@ -155,6 +155,8 @@ fun OrderStatus.statusColor(): Color = when (this) {
     OrderStatus.PENDING_CASH_COLLECTION -> StatusOrange
     OrderStatus.QUARANTINE -> StatusOrange
     OrderStatus.DELIVERED_ON_CREDIT -> StatusGreen
+    OrderStatus.RECONCILIATION_REQUIRED -> StatusOrange
+    OrderStatus.DELAYED -> StatusOrange
 }
 
 private fun OrderStatus.badgeColors(): Pair<Color, Color> = when (this) {
@@ -176,4 +178,6 @@ private fun OrderStatus.badgeColors(): Pair<Color, Color> = when (this) {
     OrderStatus.PENDING_CASH_COLLECTION -> StatusOrangeSoft to StatusOrange
     OrderStatus.QUARANTINE -> StatusOrangeSoft to StatusOrange
     OrderStatus.DELIVERED_ON_CREDIT -> StatusGreenSoft to StatusGreen
+    OrderStatus.RECONCILIATION_REQUIRED -> StatusOrangeSoft to StatusOrange
+    OrderStatus.DELAYED -> StatusOrangeSoft to StatusOrange
 }

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { PaymentRequired } from "@pegasusx/types";
-import { useWsEvent, type WsMessage } from "../lib/ws";
+import { useWsEvent, useWebSocket, type WsMessage } from "../lib/ws";
 import { apiFetch } from "../lib/auth";
 import type { CardCheckoutResponse, PendingPaymentSession, PendingPaymentsResponse } from "../lib/types";
 
@@ -97,6 +97,7 @@ function wsMessageToPaymentEvent(msg: WsMessage): PaymentEvent {
 export default function PaymentModal() {
   const router = useRouter();
   const pathname = usePathname();
+  const { reconnectEpoch } = useWebSocket();
   const [event, setEvent] = useState<PaymentEvent | null>(null);
   const [state, setState] = useState<PaymentState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -275,6 +276,46 @@ export default function PaymentModal() {
       cancelled = true;
     };
   }, [pathname, router]);
+
+  useEffect(() => {
+    if (reconnectEpoch === 0) return;
+    let cancelled = false;
+
+    async function reconcilePendingPayment() {
+      try {
+        const res = await apiFetch("/v1/retailer/pending-payments");
+        if (!res.ok) return;
+        const data: PendingPaymentsResponse = await res.json();
+        const pending = data.pending_payments?.[0];
+        if (cancelled) return;
+
+        if (pending) {
+          const refreshed = sessionToPaymentEvent(pending);
+          setEvent((prev) => {
+            if (!prev || prev.order_id === refreshed.order_id) {
+              return refreshed;
+            }
+            return prev;
+          });
+          setState((prev) => (prev === "processing" ? "choosing" : prev));
+          setError(null);
+          return;
+        }
+
+        setEvent(null);
+        setState("idle");
+        setError(null);
+        setCheckoutUrl(null);
+      } catch {
+        // WebSocket delivery remains the primary realtime path.
+      }
+    }
+
+    void reconcilePendingPayment();
+    return () => {
+      cancelled = true;
+    };
+  }, [reconnectEpoch]);
 
   const handleCash = useCallback(async () => {
     if (!event) return;

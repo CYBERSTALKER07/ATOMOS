@@ -22,6 +22,8 @@ type WsEventHandler<T extends string = string> = (msg: WsEventPayload<T>) => voi
 
 type WebSocketContextType = {
   isConnected: boolean;
+  /** Increments after the first successful reconnect (not initial connect). */
+  reconnectEpoch: number;
   lastMessage: WsMessage | null;
   sendMessage: (msg: WsMessage) => void;
   subscribe: <T extends string>(type: T, handler: WsEventHandler<T>) => () => void;
@@ -31,9 +33,11 @@ const WebSocketContext = createContext<WebSocketContextType | undefined>(undefin
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
+  const [reconnectEpoch, setReconnectEpoch] = useState(0);
   const [lastMessage, setLastMessage] = useState<WsMessage | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const listenersRef = useRef<Map<string, Set<WsEventHandler>>>(new Map());
+  const hasConnectedOnceRef = useRef(false);
   
   const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8180/v1/ws';
 
@@ -61,6 +65,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       ws.onopen = () => {
         reconnectAttempt = 0;
         setIsConnected(true);
+        if (hasConnectedOnceRef.current) {
+          setReconnectEpoch((epoch) => epoch + 1);
+        } else {
+          hasConnectedOnceRef.current = true;
+        }
         console.log('Retailer WS connected');
       };
 
@@ -116,7 +125,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <WebSocketContext.Provider value={{ isConnected, lastMessage, sendMessage, subscribe }}>
+    <WebSocketContext.Provider value={{ isConnected, reconnectEpoch, lastMessage, sendMessage, subscribe }}>
       {children}
     </WebSocketContext.Provider>
   );

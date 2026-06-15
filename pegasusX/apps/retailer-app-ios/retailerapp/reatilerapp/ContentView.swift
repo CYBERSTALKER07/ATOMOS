@@ -96,6 +96,7 @@ struct ContentView: View {
     @State private var refreshCenter = RetailerRefreshCenter.shared
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.modelContext) private var modelContext
 
     private let api = APIClient.shared
     private let ws = RetailerWebSocket.shared
@@ -671,11 +672,18 @@ struct ContentView: View {
         }
     }
 
-    private func loadPendingPayments() async {
-        guard paymentEvent == nil else { return }
+    private func loadPendingPayments(reconcile: Bool = false) async {
+        if !reconcile {
+            guard paymentEvent == nil else { return }
+        }
         do {
             let response = try await api.getPendingPayments()
-            guard let session = response.pendingPayments.first else { return }
+            guard let session = response.pendingPayments.first else {
+                if reconcile {
+                    paymentEvent = nil
+                }
+                return
+            }
             paymentEvent = PaymentRequiredEvent(
                 type: "PAYMENT_REQUIRED",
                 orderId: session.orderId,
@@ -721,6 +729,10 @@ struct ContentView: View {
                 break
             case .promotionChanged:
                 break
+            case .transportReconnected:
+                await loadActiveOrders()
+                await loadPendingPayments(reconcile: true)
+                await PendingOrderReplayer.flush(modelContext: modelContext, api: api)
             }
             refreshCenter.trigger()
         }

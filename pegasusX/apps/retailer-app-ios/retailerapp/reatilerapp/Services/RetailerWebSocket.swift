@@ -151,6 +151,7 @@ enum RetailerWSEvent {
     case shopClosedAlert(ShopClosedAlertEvent)
     case cartSyncUpdated(CartSyncUpdatedEvent)
     case promotionChanged(supplierId: String)
+    case transportReconnected
 }
 
 // MARK: - Retailer WebSocket
@@ -222,8 +223,12 @@ final class RetailerWebSocket {
         let wsTask = session.webSocketTask(with: request)
         self.task = wsTask
         wsTask.resume()
+        let wasReconnect = reconnectAttempts > 0
         isConnected = true
         reconnectAttempts = 0
+        if wasReconnect {
+            emit(.transportReconnected)
+        }
         receiveNext()
     }
 

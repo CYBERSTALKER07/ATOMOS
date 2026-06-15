@@ -86,6 +86,9 @@ class RetailerWebSocket @Inject constructor(
     private val _events = MutableSharedFlow<RetailerWSMessage>(extraBufferCapacity = 16)
     val events: SharedFlow<RetailerWSMessage> = _events.asSharedFlow()
 
+    private val _reconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val reconnects: SharedFlow<Unit> = _reconnects.asSharedFlow()
+
     companion object {
         private const val BASE_DELAY_MS = 2_000L
         private const val MAX_DELAY_MS = 60_000L
@@ -114,7 +117,10 @@ class RetailerWebSocket @Inject constructor(
 
         socket = okClient.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                reconnectAttempt.set(0)
+                val wasReconnect = reconnectAttempt.getAndSet(0) > 0
+                if (wasReconnect) {
+                    _reconnects.tryEmit(Unit)
+                }
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {

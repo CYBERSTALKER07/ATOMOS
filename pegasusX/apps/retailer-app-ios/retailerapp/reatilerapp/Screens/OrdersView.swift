@@ -449,6 +449,9 @@ struct OrdersView: View {
                  .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited,
                  .preOrderNudge, .preOrderConfirmationPush:
                 await loadData()
+            case .transportReconnected:
+                await flushPendingOrders()
+                await loadData()
             case .shopClosedAlert, .cartSyncUpdated, .promotionChanged:
                 break
             }

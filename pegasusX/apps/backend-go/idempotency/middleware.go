@@ -30,11 +30,20 @@ func (r *responseRecorder) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
+func isMutatingMethod(method string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		return true
+	default:
+		return false
+	}
+}
+
 // Middleware provides an HTTP middleware that handles idempotency.
 func Middleware(store Store) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if store == nil {
+			if store == nil || !isMutatingMethod(r.Method) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -68,6 +77,8 @@ func Middleware(store Store) func(http.Handler) http.Handler {
 					http.Error(w, `{"error":"request_in_progress"}`, http.StatusConflict)
 					return
 				}
+				http.Error(w, `{"error":"idempotency_guard_failed"}`, http.StatusInternalServerError)
+				return
 			}
 			if hit {
 				w.Header().Set("Content-Type", "application/json")
@@ -75,6 +86,8 @@ func Middleware(store Store) func(http.Handler) http.Handler {
 				_, _ = w.Write(rec.Response)
 				return
 			}
+
+			r = r.WithContext(WithClaimed(r.Context()))
 
 			recorder := &responseRecorder{
 				ResponseWriter: w,

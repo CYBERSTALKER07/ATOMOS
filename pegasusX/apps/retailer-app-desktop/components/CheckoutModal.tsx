@@ -18,8 +18,10 @@ import { apiFetch } from "../lib/auth";
 import { useWebSocket } from "../lib/ws";
 import { useRouter } from "next/navigation";
 import type {
+  ActiveFulfillmentsResponse,
   CardCheckoutResponse,
   CashCheckoutResponse,
+  PendingPaymentsResponse,
   UnifiedCheckoutResponse,
   RetailerProfile,
 } from "../lib/types";
@@ -58,7 +60,7 @@ export default function CheckoutModal({
   const [cardOtpCode, setCardOtpCode] = useState("");
   const [cardSetupError, setCardSetupError] = useState("");
   const router = useRouter();
-  const { subscribe } = useWebSocket();
+  const { subscribe, reconnectEpoch } = useWebSocket();
 
   useEffect(() => {
     if (isOpen) {
@@ -74,6 +76,59 @@ export default function CheckoutModal({
         .catch(() => setHasCardConfigured(false));
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || reconnectEpoch === 0) return;
+    let cancelled = false;
+
+    async function reconcileCheckout() {
+      try {
+        const [fulfillmentRes, pendingRes] = await Promise.all([
+          apiFetch("/v1/retailer/active-fulfillment"),
+          apiFetch("/v1/retailer/pending-payments"),
+        ]);
+        if (cancelled) return;
+
+        const fulfillments = fulfillmentRes.ok
+          ? ((await fulfillmentRes.json()) as ActiveFulfillmentsResponse).fulfillments ?? []
+          : [];
+        const pending = pendingRes.ok
+          ? ((await pendingRes.json()) as PendingPaymentsResponse).pending_payments?.[0]
+          : undefined;
+
+        if (pending) {
+          setLoading(false);
+          setError("");
+          onClose();
+          return;
+        }
+
+        if (fulfillments.length > 0) {
+          setLoading(false);
+          setError("");
+          clearCart();
+          onClose();
+          router.push("/orders");
+          return;
+        }
+
+        if (loading) {
+          setLoading(false);
+          setError("Connection restored. Confirm checkout status before retrying.");
+        }
+      } catch {
+        if (!cancelled && loading) {
+          setLoading(false);
+          setError("Connection restored. Confirm checkout status before retrying.");
+        }
+      }
+    }
+
+    void reconcileCheckout();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, loading, reconnectEpoch, onClose, clearCart, router]);
 
   const handleInitiateCard = async () => {
     setAddingCard(true);

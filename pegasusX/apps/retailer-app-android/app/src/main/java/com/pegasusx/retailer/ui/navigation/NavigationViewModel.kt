@@ -14,7 +14,10 @@ import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.formatRetailerAmount
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.PendingPaymentSession
+import com.pegasusx.retailer.services.PendingOrderSyncScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
 import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -99,6 +102,7 @@ class NavigationViewModel @Inject constructor(
     private val api: PegasusApi,
     private val tokenManager: TokenManager,
     private val retailerWebSocket: RetailerWebSocket,
+    @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NavigationUiState())
@@ -118,6 +122,22 @@ class NavigationViewModel @Inject constructor(
         loadNotificationBadge()
         loadClientPolicy()
         connectWebSocket()
+        observeTransportReconnect()
+        PendingOrderSyncScheduler.enqueue(appContext)
+    }
+
+    private fun observeTransportReconnect() {
+        viewModelScope.launch {
+            retailerWebSocket.reconnects.collect {
+                reconcileAfterReconnect()
+            }
+        }
+    }
+
+    fun reconcileAfterReconnect() {
+        loadActiveOrders()
+        loadPendingPayments(reconcile = true)
+        PendingOrderSyncScheduler.enqueue(appContext)
     }
 
     fun loadNotificationBadge() {
@@ -214,7 +234,7 @@ class NavigationViewModel @Inject constructor(
         }
     }
 
-    fun loadPendingPayments() {
+    fun loadPendingPayments(reconcile: Boolean = false) {
         viewModelScope.launch {
             try {
                 val response = api.getPendingPayments()
@@ -227,6 +247,8 @@ class NavigationViewModel @Inject constructor(
                             loadIssue = null,
                         )
                     }
+                } else if (reconcile && _uiState.value.paymentEvent != null) {
+                    _uiState.update { it.copy(paymentEvent = null) }
                 }
             } catch (e: Exception) {
                 val issue = resolveLoadIssue(e)

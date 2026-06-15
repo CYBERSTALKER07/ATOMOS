@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { WebSocketProvider, useWebSocket } from "../../lib/ws";
+import { WebSocketProvider } from "../../lib/ws";
+import { SessionReconcileListener } from "../../lib/session-reconcile-listener";
 import { NotificationsProvider } from "../../lib/notifications";
 import { clearStoredToken } from "../../lib/bridge";
 import { CartProvider } from "../../lib/cart";
@@ -13,6 +14,7 @@ import ShopClosedModal from "../../components/ShopClosedModal";
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <WebSocketProvider>
+      <SessionReconcileListener />
       <NotificationsProvider>
         <CartProvider>
           <RetailerShell>

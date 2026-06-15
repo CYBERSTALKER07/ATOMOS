@@ -24,6 +24,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/driverroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/enterprise"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	"github.com/pegasusx/pegasusx/apps/backend-go/orderroutes"
@@ -126,6 +127,9 @@ func main() {
 
 	if app.Reliability != nil {
 		r.Use(app.Reliability.Middleware)
+	}
+	if app.Idempotency != nil {
+		r.Use(idempotency.Middleware(app.Idempotency))
 	}
 	var firebaseVerifier auth.FirebaseVerifier
 	if cfg.FirebaseAuthEnabled {

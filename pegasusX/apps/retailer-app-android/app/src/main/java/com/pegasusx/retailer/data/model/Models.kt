@@ -104,7 +104,7 @@ enum class OrderStatus {
             AWAITING_PAYMENT -> "Pay"
             PENDING_CASH_COLLECTION -> "Cash"
             COMPLETED, DELIVERED_ON_CREDIT -> "Done"
-            CANCELLED, CANCEL_REQUESTED, NO_CAPACITY, QUARANTINE -> "X"
+            CANCELLED, CANCEL_REQUESTED, NO_CAPACITY, QUARANTINE, RECONCILIATION_REQUIRED, DELAYED -> "X"
         }
 
     val canCancel: Boolean

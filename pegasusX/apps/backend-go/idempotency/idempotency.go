@@ -48,6 +48,9 @@ func Guard(ctx context.Context, store Store, key, bodyHash string) (Record, bool
 	if store == nil || key == "" {
 		return Record{}, false, nil
 	}
+	if Claimed(ctx) {
+		return Record{}, false, nil
+	}
 	rec, found, err := store.Load(ctx, key)
 	if err != nil {
 		return Record{}, false, err
