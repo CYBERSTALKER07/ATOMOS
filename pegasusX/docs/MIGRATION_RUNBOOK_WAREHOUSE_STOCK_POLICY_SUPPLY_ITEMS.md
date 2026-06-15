@@ -36,11 +36,35 @@ Fresh installs that apply full `schema/spanner.ddl` already include the columns 
 
 ## 3. Spanner DDL — production / staging
 
+**Recommended (repo script):**
+
+```bash
+cd pegasusX
+# Set SPANNER_PROJECT, SPANNER_INSTANCE, SPANNER_DATABASE for target env.
+# Unset SPANNER_EMULATOR_HOST for GCP. Ensure gcloud auth + spanner.databases.updateDdl IAM.
+./scripts/apply_spanner_migration.sh
+```
+
+The script runs `cmd/setup` (idempotent schema convergence) then `cmd/apply-migration --verify` against:
+
+`apps/backend-go/schema/migrations/20250616_warehouse_stock_policy_supply_items.ddl`
+
+**Manual gcloud:**
+
 ```bash
 cd pegasusX/apps/backend-go
 gcloud spanner databases ddl update DATABASE_ID \
   --instance=INSTANCE_ID \
+  --project=PROJECT_ID \
   --ddl-file=schema/migrations/20250616_warehouse_stock_policy_supply_items.ddl
+```
+
+**Go only (after database exists):**
+
+```bash
+cd pegasusX/apps/backend-go
+go run ./cmd/apply-migration --verify
+# or: go run ./cmd/apply-migration --ddl schema/migrations/20250616_warehouse_stock_policy_supply_items.ddl --verify
 ```
 
 Verify:
