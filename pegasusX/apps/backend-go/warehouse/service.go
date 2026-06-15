@@ -155,22 +155,27 @@ type InventoryRow struct {
 
 // SupplyRequest represents one replenishment request row.
 type SupplyRequest struct {
-	RequestID                string `json:"request_id"`
-	SupplierID               string `json:"supplier_id,omitempty"`
-	WarehouseID              string `json:"warehouse_id,omitempty"`
-	FactoryID                string `json:"factory_id,omitempty"`
-	TransferMode             string `json:"transfer_mode,omitempty"`
-	LinkedTransferID         string `json:"linked_transfer_id,omitempty"`
-	Status                   string `json:"status"`
-	State                    string `json:"state,omitempty"`
-	RequestedBy              string `json:"requested_by,omitempty"`
-	CoverageStartDate        string `json:"coverage_start_date,omitempty"`
-	CoverageDays             int    `json:"coverage_days,omitempty"`
-	ProjectedUnits           int64  `json:"projected_units,omitempty"`
-	CommittedUnits           int64  `json:"committed_units,omitempty"`
-	PendingConfirmationUnits int64  `json:"pending_confirmation_units,omitempty"`
-	CreatedAt                string `json:"created_at"`
-	UpdatedAt                string `json:"updated_at"`
+	RequestID                string              `json:"request_id"`
+	SupplierID               string              `json:"supplier_id,omitempty"`
+	WarehouseID              string              `json:"warehouse_id,omitempty"`
+	FactoryID                string              `json:"factory_id,omitempty"`
+	TransferMode             string              `json:"transfer_mode,omitempty"`
+	LinkedTransferID         string              `json:"linked_transfer_id,omitempty"`
+	Status                   string              `json:"status"`
+	State                    string              `json:"state,omitempty"`
+	RequestedBy              string              `json:"requested_by,omitempty"`
+	CoverageStartDate        string              `json:"coverage_start_date,omitempty"`
+	CoverageDays             int                 `json:"coverage_days,omitempty"`
+	ProjectedUnits           int64               `json:"projected_units,omitempty"`
+	CommittedUnits           int64               `json:"committed_units,omitempty"`
+	PendingConfirmationUnits int64               `json:"pending_confirmation_units,omitempty"`
+	Priority                 string              `json:"priority,omitempty"`
+	Notes                    string              `json:"notes,omitempty"`
+	RegionID                 string              `json:"region_id,omitempty"`
+	RequestedDeliveryDate    string              `json:"requested_delivery_date,omitempty"`
+	Items                    []SupplyRequestItem `json:"items,omitempty"`
+	CreatedAt                string              `json:"created_at"`
+	UpdatedAt                string              `json:"updated_at"`
 }
 
 // DispatchLock represents one active dispatch lock.
@@ -349,6 +354,9 @@ func (s *Service) handleCreateSupplyRequest(w http.ResponseWriter, r *http.Reque
 	warehouseID := warehouseIDFromRequest(r)
 	if warehouseID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "warehouse_id required"})
+		return
+	}
+	if s.handleCreateSupplyRequestFromBody(w, r, warehouseID) {
 		return
 	}
 

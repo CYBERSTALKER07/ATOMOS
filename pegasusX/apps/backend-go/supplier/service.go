@@ -123,8 +123,17 @@ type WarehouseNode struct {
 	PrimaryFactoryID      string    `json:"primary_factory_id,omitempty"`
 	IsActive              bool      `json:"is_active"`
 	IsOnShift             bool      `json:"is_on_shift"`
+	DefaultOutOfStockPolicy string  `json:"default_out_of_stock_policy,omitempty"`
+	OperatingSchedule     string    `json:"operating_schedule,omitempty"`
+	InitialInventory      []InventorySeed `json:"initial_inventory,omitempty"`
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"updated_at"`
+}
+
+// InventorySeed is starter stock when a warehouse node is provisioned.
+type InventorySeed struct {
+	ProductID string `json:"product_id"`
+	Quantity  int64  `json:"quantity"`
 }
 
 // FactoryNode is one supplier-owned factory topology node.
@@ -608,6 +617,15 @@ const (
 
 func normalizeTransferMode(mode string) string {
 	return NormalizeTransferMode(mode)
+}
+
+func normalizeOutOfStockPolicy(raw string) string {
+	switch strings.ToUpper(strings.TrimSpace(raw)) {
+	case "ACCEPT_BACKORDER":
+		return "ACCEPT_BACKORDER"
+	default:
+		return "REJECT"
+	}
 }
 
 // NormalizeTransferMode canonicalizes warehouse replenishment transfer mode.

@@ -45,11 +45,14 @@ type SupplierOrderResult struct {
 
 // UnifiedCheckoutResponse matches retailer desktop/Android/iOS contracts.
 type UnifiedCheckoutResponse struct {
-	Status         string                `json:"status"`
-	InvoiceID      string                `json:"invoice_id"`
-	Total          int64                 `json:"total"`
-	Currency       string                `json:"currency"`
-	SupplierOrders []SupplierOrderResult `json:"supplier_orders"`
+	Status               string                `json:"status"`
+	InvoiceID            string                `json:"invoice_id"`
+	Total                int64                 `json:"total"`
+	Currency             string                `json:"currency"`
+	SupplierOrders       []SupplierOrderResult `json:"supplier_orders"`
+	BackorderedItemCount int                   `json:"backordered_item_count,omitempty"`
+	StockWarnings        []StockWarning        `json:"stock_warnings,omitempty"`
+	BackorderOrderID     string                `json:"backorder_order_id,omitempty"`
 }
 
 // CheckoutSnapshot returns order totals for payment initiation.
@@ -138,6 +141,10 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 		case errors.Is(err, ErrInventoryExhausted):
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrInventoryExhausted.Error()})
 		default:
+			if raw, ok := MarshalInventoryCheckoutError(err); ok {
+				writeJSONBytes(w, http.StatusConflict, raw)
+				return
+			}
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		}
 		return
@@ -201,6 +208,9 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 			Currency:     created.Currency,
 			ItemCount:    len(lineItems),
 		}},
+		BackorderedItemCount: created.BackorderedItemCount,
+		StockWarnings:        created.StockWarnings,
+		BackorderOrderID:     created.BackorderOrderID,
 	}, nil
 }
 

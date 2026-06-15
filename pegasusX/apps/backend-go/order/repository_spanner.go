@@ -59,8 +59,8 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 			return err
 		}
 
-		// Phase 2 check: Exhaustion check and increment QuantityReserved for warehouse assigned items
-		if len(o.LineItems) > 0 && o.WarehouseID != "" {
+		// Phase 2 check: reserve on-hand stock for fulfillable quantities (skip backorder rows).
+		if len(o.LineItems) > 0 && o.WarehouseID != "" && o.Source != OrderSourceBackorder {
 			for _, item := range o.LineItems {
 				row, err := txn.ReadRow(ctx, "SupplierInventoryV2",
 					spanner.Key{o.SupplierID, o.WarehouseID, item.SKU},

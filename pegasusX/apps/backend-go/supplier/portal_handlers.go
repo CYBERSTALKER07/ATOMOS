@@ -157,15 +157,23 @@ type supplierPricingRuleUpdateRequest struct {
 }
 
 type topologyWarehouseInput struct {
-	WarehouseID           string   `json:"warehouse_id,omitempty"`
-	Name                  string   `json:"name"`
-	Lat                   float64  `json:"lat"`
-	Lng                   float64  `json:"lng"`
-	CoverageRadiusKm      *float64 `json:"coverage_radius_km,omitempty"`
-	IsActive              *bool    `json:"is_active,omitempty"`
-	IsOnShift             *bool    `json:"is_on_shift,omitempty"`
-	TransferMode          string   `json:"transfer_mode,omitempty"`
-	CoLocateWithFactoryID string   `json:"co_locate_with_factory_id,omitempty"`
+	WarehouseID           string                    `json:"warehouse_id,omitempty"`
+	Name                  string                    `json:"name"`
+	Lat                   float64                   `json:"lat"`
+	Lng                   float64                   `json:"lng"`
+	CoverageRadiusKm      *float64                  `json:"coverage_radius_km,omitempty"`
+	IsActive              *bool                     `json:"is_active,omitempty"`
+	IsOnShift             *bool                     `json:"is_on_shift,omitempty"`
+	TransferMode          string                    `json:"transfer_mode,omitempty"`
+	CoLocateWithFactoryID string                    `json:"co_locate_with_factory_id,omitempty"`
+	DefaultOutOfStockPolicy string                  `json:"default_out_of_stock_policy,omitempty"`
+	OperatingSchedule     json.RawMessage           `json:"operating_schedule,omitempty"`
+	InitialInventory      []topologyInventorySeed   `json:"initial_inventory,omitempty"`
+}
+
+type topologyInventorySeed struct {
+	ProductID string `json:"product_id"`
+	Quantity  int64  `json:"quantity"`
 }
 
 type topologyFactoryInput struct {
@@ -191,6 +199,21 @@ type vetOrderRequest struct {
 }
 
 const maxPricingBps = 10000
+
+func seedsFromTopologyInput(rows []topologyInventorySeed) []InventorySeed {
+	if len(rows) == 0 {
+		return nil
+	}
+	out := make([]InventorySeed, 0, len(rows))
+	for _, row := range rows {
+		pid := strings.TrimSpace(row.ProductID)
+		if pid == "" || row.Quantity <= 0 {
+			continue
+		}
+		out = append(out, InventorySeed{ProductID: pid, Quantity: row.Quantity})
+	}
+	return out
+}
 
 // HandleConfigure marks onboarding as configured/registered and supports the
 // supplier portal completion handoff.
@@ -425,15 +448,18 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 		}
 
 		topology.Warehouses = append(topology.Warehouses, WarehouseNode{
-			WarehouseID:           strings.TrimSpace(wh.WarehouseID),
-			Name:                  name,
-			Lat:                   wh.Lat,
-			Lng:                   wh.Lng,
-			CoverageRadiusKm:      coverage,
-			TransferMode:          normalizeTransferMode(wh.TransferMode),
-			CoLocateWithFactoryID: strings.TrimSpace(wh.CoLocateWithFactoryID),
-			IsActive:              isActive,
-			IsOnShift:             isOnShift,
+			WarehouseID:             strings.TrimSpace(wh.WarehouseID),
+			Name:                    name,
+			Lat:                     wh.Lat,
+			Lng:                     wh.Lng,
+			CoverageRadiusKm:        coverage,
+			TransferMode:            normalizeTransferMode(wh.TransferMode),
+			CoLocateWithFactoryID:     strings.TrimSpace(wh.CoLocateWithFactoryID),
+			IsActive:                isActive,
+			IsOnShift:               isOnShift,
+			DefaultOutOfStockPolicy: strings.TrimSpace(wh.DefaultOutOfStockPolicy),
+			OperatingSchedule:       string(wh.OperatingSchedule),
+			InitialInventory:        seedsFromTopologyInput(wh.InitialInventory),
 		})
 	}
 

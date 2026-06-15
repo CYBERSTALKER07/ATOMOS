@@ -877,6 +877,7 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 				"TransferMode":     normalizeTransferMode(wh.TransferMode),
 				"IsActive":         wh.IsActive,
 				"IsOnShift":        wh.IsOnShift,
+				"DefaultOutOfStockPolicy": normalizeOutOfStockPolicy(wh.DefaultOutOfStockPolicy),
 				"CreatedAt":        createdAt,
 				"UpdatedAt":        now,
 			}
@@ -886,7 +887,24 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 			if primaryFactoryID != "" {
 				row["PrimaryFactoryId"] = primaryFactoryID
 			}
+			if sched := strings.TrimSpace(wh.OperatingSchedule); sched != "" {
+				row["OperatingSchedule"] = spanner.NullJSON{Value: json.RawMessage(sched), Valid: true}
+			}
 			mutations = append(mutations, spanner.InsertOrUpdateMap("Warehouses", row))
+
+			for _, seed := range wh.InitialInventory {
+				if seed.Quantity <= 0 || strings.TrimSpace(seed.ProductID) == "" {
+					continue
+				}
+				mutations = append(mutations, spanner.InsertOrUpdateMap("SupplierInventoryV2", map[string]any{
+					"SupplierId":       supplierID,
+					"WarehouseId":      id,
+					"ProductId":        strings.TrimSpace(seed.ProductID),
+					"QuantityOnHand":   seed.Quantity,
+					"QuantityReserved": int64(0),
+					"UpdatedAt":        now,
+				}))
+			}
 		}
 
 		for _, e := range buf.events {

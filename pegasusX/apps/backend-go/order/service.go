@@ -53,6 +53,7 @@ const (
 	StatusCancelRequested        Status = "CANCEL_REQUESTED"
 	StatusReconciliationRequired Status = "RECONCILIATION_REQUIRED"
 	StatusDelayed                Status = "DELAYED"
+	StatusBackordered            Status = "BACKORDERED"
 
 	deliveryGeofenceMeters = 500.0
 )
@@ -64,6 +65,7 @@ const (
 	OrderSourceManual         OrderSource = "MANUAL"
 	OrderSourceManualPreorder OrderSource = "MANUAL_PREORDER"
 	OrderSourceAIPreorder     OrderSource = "AI_PREORDER"
+	OrderSourceBackorder      OrderSource = "BACKORDER"
 )
 
 // ConfirmationStatus captures whether a future-dated order still needs a
@@ -306,6 +308,9 @@ type CreateResponse struct {
 	CreatedAt             string             `json:"created_at"`
 	ReceivingWindowOpen   string             `json:"receiving_window_open,omitempty"`
 	ReceivingWindowClose  string             `json:"receiving_window_close,omitempty"`
+	BackorderOrderID      string             `json:"backorder_order_id,omitempty"`
+	BackorderedItemCount  int                `json:"backordered_item_count,omitempty"`
+	StockWarnings         []StockWarning     `json:"stock_warnings,omitempty"`
 }
 
 // ConfirmAIOrderRequest confirms an AI-created future order and optionally
@@ -793,6 +798,53 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, fmt.Errorf("%w: no_eligible_warehouse", ErrZoneMiss)
 	}
 
+	var invPlan InventoryPlan
+	if s.spannerClient != nil {
+		invPlan, err = PlanInventoryCheckout(ctx, s.spannerClient, s.supplierID, warehouseID, lineItems)
+		if err != nil {
+			return CreateResponse{}, err
+		}
+		lineItems = invPlan.Fulfillable
+		total = 0
+		for _, li := range lineItems {
+			total += li.Quantity * li.UnitPrice
+		}
+	} else {
+		invPlan.Fulfillable = lineItems
+	}
+
+	if len(lineItems) == 0 && len(invPlan.Backorder) == 0 {
+		return CreateResponse{}, ErrInventoryExhausted
+	}
+
+	// All lines are backordered — single BACKORDERED order (no empty primary).
+	if len(lineItems) == 0 && len(invPlan.Backorder) > 0 {
+		boID, err := s.createBackorderOrder(ctx, retailerID, warehouseID, "", invPlan.Backorder, Order{
+			H3Cell: req.H3Cell,
+			Lat:    req.Lat,
+			Lng:    req.Lng,
+		})
+		if err != nil {
+			return CreateResponse{}, fmt.Errorf("persist backorder: %w", err)
+		}
+		var boTotal int64
+		for _, li := range invPlan.Backorder {
+			boTotal += li.Quantity * li.UnitPrice
+		}
+		return CreateResponse{
+			OrderID:              boID,
+			WarehouseID:          warehouseID,
+			Status:               StatusBackordered,
+			Source:               OrderSourceBackorder,
+			ConfirmationStatus:   ConfirmationStatusConfirmed,
+			TotalMinor:           boTotal,
+			Currency:             s.currency,
+			CreatedAt:            s.now().Format(time.RFC3339Nano),
+			BackorderedItemCount: invPlan.BackorderCount,
+			StockWarnings:        invPlan.Warnings,
+		}, nil
+	}
+
 	o := Order{
 		OrderID:               s.newID(),
 		SupplierID:            s.supplierID,
@@ -851,6 +903,14 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, fmt.Errorf("persist order: %w", err)
 	}
 
+	var backorderOrderID string
+	if len(invPlan.Backorder) > 0 {
+		backorderOrderID, err = s.createBackorderOrder(ctx, retailerID, warehouseID, o.OrderID, invPlan.Backorder, o)
+		if err != nil {
+			s.log.Warn("backorder create failed", "parent_order_id", o.OrderID, "err", err)
+		}
+	}
+
 	// Post-commit cache invalidation: any retailer-orders or supplier-orders
 	// list cache MUST be dropped so the next read sees the new row.
 	if s.cache != nil {
@@ -881,9 +941,68 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		TotalMinor:            o.TotalMinor,
 		Currency:              o.Currency,
 		CreatedAt:             o.CreatedAt.Format(time.RFC3339Nano),
-		ReceivingWindowOpen:   o.ReceivingWindowOpen,
-		ReceivingWindowClose:  o.ReceivingWindowClose,
+		ReceivingWindowOpen:     o.ReceivingWindowOpen,
+		ReceivingWindowClose:    o.ReceivingWindowClose,
+		BackorderOrderID:        backorderOrderID,
+		BackorderedItemCount:    invPlan.BackorderCount,
+		StockWarnings:           invPlan.Warnings,
 	}, nil
+}
+
+func (s *Service) createBackorderOrder(
+	ctx context.Context,
+	retailerID, warehouseID, parentOrderID string,
+	lines []LineItem,
+	parent Order,
+) (string, error) {
+	if len(lines) == 0 {
+		return "", nil
+	}
+	var total int64
+	for _, li := range lines {
+		total += li.Quantity * li.UnitPrice
+	}
+	bo := Order{
+		OrderID:            s.newID(),
+		SupplierID:         s.supplierID,
+		RetailerID:         retailerID,
+		WarehouseID:        warehouseID,
+		Status:             StatusBackordered,
+		Source:             OrderSourceBackorder,
+		ConfirmationStatus: ConfirmationStatusConfirmed,
+		LineItems:          lines,
+		TotalMinor:         total,
+		Currency:           s.currency,
+		H3Cell:             parent.H3Cell,
+		Lat:                parent.Lat,
+		Lng:                parent.Lng,
+		DerivedFromOrderID: parentOrderID,
+		Version:            1,
+		CreatedAt:          s.now(),
+		UpdatedAt:          s.now(),
+	}
+	err := s.repo.CreateOrder(ctx, &bo, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, bo.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:          events.BaseEvent{Type: events.EventOrderCreated, Timestamp: bo.CreatedAt.Format(time.RFC3339Nano)},
+			OrderID:            bo.OrderID,
+			SupplierID:         bo.SupplierID,
+			RetailerID:         bo.RetailerID,
+			WarehouseID:        bo.WarehouseID,
+			Status:             string(bo.Status),
+			OrderSource:        string(bo.Source),
+			ConfirmationStatus: string(bo.ConfirmationStatus),
+			TotalMinor:         bo.TotalMinor,
+			Currency:           bo.Currency,
+			LineItems:          bo.LineItems,
+		})
+	})
+	if err != nil {
+		return "", err
+	}
+	if s.cache != nil {
+		s.cache.Invalidate(ctx, retailerOrdersKey(bo.RetailerID), supplierOrdersKey(bo.SupplierID))
+	}
+	return bo.OrderID, nil
 }
 
 // ConfirmAIOrder confirms an AI-created future order for the retailer.

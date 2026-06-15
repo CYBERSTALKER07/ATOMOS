@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
@@ -185,7 +186,7 @@ func (r *SpannerRepository) CreateSupplyRequest(ctx context.Context, req SupplyR
 	}
 
 	_, err = r.client.ReadWriteTransaction(ctx, func(_ context.Context, txn *spanner.ReadWriteTransaction) error {
-		mutations := []*spanner.Mutation{spanner.InsertOrUpdateMap("WarehouseSupplyRequests", map[string]any{
+		row := map[string]any{
 			"RequestId":                req.RequestID,
 			"SupplierId":               req.SupplierID,
 			"WarehouseId":              req.WarehouseID,
@@ -198,9 +199,33 @@ func (r *SpannerRepository) CreateSupplyRequest(ctx context.Context, req SupplyR
 			"ProjectedUnits":           req.ProjectedUnits,
 			"CommittedUnits":           req.CommittedUnits,
 			"PendingConfirmationUnits": req.PendingConfirmationUnits,
+			"Priority":                 nullableWarehouseString(req.Priority),
+			"Notes":                    nullableWarehouseString(req.Notes),
+			"RegionId":                 nullableWarehouseString(req.RegionID),
 			"CreatedAt":                createdAt,
 			"UpdatedAt":                updatedAt,
-		})}
+		}
+		if strings.TrimSpace(req.RequestedDeliveryDate) != "" {
+			if t, err := time.Parse(time.RFC3339Nano, req.RequestedDeliveryDate); err == nil {
+				row["RequestedDeliveryDate"] = t
+			}
+		}
+		mutations := []*spanner.Mutation{spanner.InsertOrUpdateMap("WarehouseSupplyRequests", row)}
+		for _, item := range req.Items {
+			itemID := strings.TrimSpace(item.ItemID)
+			if itemID == "" {
+				itemID = uuid.NewString()
+			}
+			mutations = append(mutations, spanner.InsertOrUpdateMap("WarehouseSupplyRequestItems", map[string]any{
+				"RequestId":           req.RequestID,
+				"ItemId":              itemID,
+				"ProductId":           item.ProductID,
+				"RequestedQuantity":   item.RequestedQuantity,
+				"RecommendedQuantity": item.RecommendedQty,
+				"UnitVolumeVU":        item.UnitVolumeVU,
+				"CreatedAt":           createdAt,
+			}))
+		}
 		mutations = append(mutations, outboxMutations(buf.events)...)
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))

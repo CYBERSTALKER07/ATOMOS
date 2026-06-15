@@ -255,6 +255,8 @@ CREATE TABLE Warehouses (
   RegionId           STRING(36),
   PaymentConfigId    STRING(36),
   AutoDispatchEnabled BOOL         NOT NULL DEFAULT (FALSE),
+  DefaultOutOfStockPolicy STRING(24) NOT NULL DEFAULT ('REJECT'),
+  OperatingSchedule  JSON,
   CreatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (WarehouseId);
@@ -290,9 +292,26 @@ CREATE TABLE WarehouseSupplyRequests (
   FactoryId                   STRING(36),
   TransferMode                STRING(10),
   LinkedTransferId            STRING(36),
+  Priority                    STRING(16),
+  Notes                       STRING(MAX),
+  RegionId                    STRING(36),
+  RequestedDeliveryDate       TIMESTAMP,
+  DemandBreakdown             JSON,
+  TotalVolumeVU               FLOAT64       NOT NULL DEFAULT (0),
   CreatedAt                   TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt                   TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (RequestId);
+
+CREATE TABLE WarehouseSupplyRequestItems (
+  RequestId            STRING(36)  NOT NULL,
+  ItemId               STRING(36)  NOT NULL,
+  ProductId            STRING(36)  NOT NULL,
+  RequestedQuantity    INT64       NOT NULL,
+  RecommendedQuantity  INT64       NOT NULL DEFAULT (0),
+  UnitVolumeVU         FLOAT64     NOT NULL DEFAULT (0),
+  CreatedAt            TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RequestId, ItemId),
+  INTERLEAVE IN PARENT WarehouseSupplyRequests ON DELETE CASCADE;
 
 CREATE INDEX Idx_WarehouseSupplyRequests_ByWarehouseUpdated ON WarehouseSupplyRequests(WarehouseId, UpdatedAt DESC);
 CREATE INDEX Idx_WarehouseSupplyRequests_BySupplierWarehouseCreated ON WarehouseSupplyRequests(SupplierId, WarehouseId, CreatedAt DESC);
@@ -814,6 +833,8 @@ CREATE TABLE SupplierInventoryV2 (
   H3Cell           STRING(15),
   QuantityOnHand   INT64         NOT NULL DEFAULT (0),
   QuantityReserved INT64         NOT NULL DEFAULT (0),
+  OutOfStockPolicy STRING(24),
+  ReorderThreshold INT64         NOT NULL DEFAULT (0),
   UpdatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SupplierId, WarehouseId, ProductId);
 
@@ -897,3 +918,6 @@ CREATE TABLE OptimizationJobs (
 
 CREATE INDEX Idx_OptimizationJobs_BySupplierStatus ON OptimizationJobs(SupplierId, Status, CreatedAt DESC);
 CREATE NULL_FILTERED INDEX UQ_OptimizationJobs_Idempotency ON OptimizationJobs(SupplierId, IdempotencyKey);
+
+-- Warehouse stock policy: REJECT blocks retailer checkout when short; ACCEPT_BACKORDER allows with delayed fulfillment.
+-- Per-SKU OutOfStockPolicy on SupplierInventoryV2 overrides warehouse DefaultOutOfStockPolicy when set (INHERIT = use warehouse default).

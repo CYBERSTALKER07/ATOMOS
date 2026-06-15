@@ -33,6 +33,7 @@ const NAV: NavSection[] = [
       { href: '/inventory', icon: 'inventory', label: 'Stock' },
       { href: '/products', icon: 'catalog', label: 'Products' },
       { href: '/supply-requests', icon: 'supplyRequests', label: 'Supply Requests' },
+      { href: '/settings', icon: 'settings', label: 'Settings' },
       { href: '/replenishment', icon: 'forecast', label: 'Replenishment' },
       { href: '/demand-forecast', icon: 'forecast', label: 'Demand Forecast' },
     ],
