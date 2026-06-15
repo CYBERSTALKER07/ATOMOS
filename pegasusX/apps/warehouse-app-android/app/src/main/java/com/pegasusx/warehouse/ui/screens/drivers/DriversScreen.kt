@@ -17,6 +17,9 @@ import com.pegasusx.warehouse.data.model.CreateDriverRequest
 import com.pegasusx.warehouse.data.model.Driver
 import com.pegasusx.warehouse.data.model.Vehicle
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
+import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
+import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
 import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseStateKind
 import com.pegasusx.warehouse.ui.components.WarehouseStatePane
@@ -35,6 +38,7 @@ private val DRIVER_UNAVAILABLE_REASON_LABELS = mapOf(
 @Composable
 fun DriversScreen(
     api: WarehouseApi,
+    realtimeSignals: WarehouseRealtimeSignals,
     onBack: (() -> Unit)? = null,
 ) {
     var drivers by remember { mutableStateOf<List<Driver>>(emptyList()) }
@@ -152,6 +156,7 @@ fun DriversScreen(
     if (showCreate) {
         CreateDriverDialog(
             api = api,
+            realtimeSignals = realtimeSignals,
             onDismiss = { showCreate = false },
             onCreated = { pin ->
                 createdPin = pin
@@ -269,6 +274,7 @@ private fun vehicleUnavailableReasonLabel(reason: String): String {
 @Composable
 private fun CreateDriverDialog(
     api: WarehouseApi,
+    realtimeSignals: WarehouseRealtimeSignals,
     onDismiss: () -> Unit,
     onCreated: (String) -> Unit,
 ) {
@@ -277,6 +283,16 @@ private fun CreateDriverDialog(
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    WarehouseReconnectRecoveryEffect(
+        realtimeSignals = realtimeSignals,
+        isBusy = { submitting },
+    ) { hadInFlight ->
+        if (hadInFlight) {
+            submitting = false
+            error = WAREHOUSE_RECONNECT_RECOVERY_HINT
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,

@@ -92,6 +92,7 @@ private struct AdjustInventorySheet: View {
     let item: InventoryItem
     let onAdjusted: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var qty: String
     @State private var submitting = false
     @State private var error: String?
@@ -124,6 +125,12 @@ private struct AdjustInventorySheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
                         .disabled(submitting || Int(qty) == nil)
+                }
+            }
+            .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+                if submitting {
+                    submitting = false
+                    error = "Connection restored — verify status before retrying."
                 }
             }
         }

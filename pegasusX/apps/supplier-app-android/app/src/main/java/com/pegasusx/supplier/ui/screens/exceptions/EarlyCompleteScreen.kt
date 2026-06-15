@@ -7,12 +7,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
+import com.pegasusx.supplier.ui.realtime.SupplierReconnectRecoveryEffect
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.util.SUPPLIER_RECONNECT_RECOVERY_HINT
+import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EarlyCompleteScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
+fun EarlyCompleteScreen(
+    ops: SupplierOperationsRepository,
+    realtimeSignals: SupplierRealtimeSignals,
+    onBack: () -> Unit,
+) {
     var driverId by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -30,7 +38,7 @@ fun EarlyCompleteScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             error = null
             success = null
             try {
-                val key = "supplier-approve-early-complete:$trimmed"
+                val key = SupplierIdempotencyKeys.approveEarlyComplete(trimmed)
                 val resp = ops.approveEarlyComplete(trimmed, key)
                 if (resp.isSuccessful) {
                     success = "Early route complete approved for driver ${trimmed.take(12)}…"
@@ -43,6 +51,16 @@ fun EarlyCompleteScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             } finally {
                 busy = false
             }
+        }
+    }
+
+    SupplierReconnectRecoveryEffect(
+        realtimeSignals = realtimeSignals,
+        isBusy = { busy },
+    ) { hadInFlight ->
+        if (hadInFlight) {
+            busy = false
+            error = SUPPLIER_RECONNECT_RECOVERY_HINT
         }
     }
 

@@ -168,6 +168,19 @@ export function supplierApproveEarlyCompleteKey(driverId: string): string {
   return `supplier-approve-early-complete:${driverId}`;
 }
 
+export function supplierNegotiationResolveKey(proposalId: string, action: string): string {
+  return `supplier-negotiate-resolve:${proposalId}:${action}`;
+}
+
+export function driverRequestEarlyCompleteKey(driverId: string, reason: string): string {
+  return `driver-request-early-complete:${driverId}:${stableHash(reason)}`;
+}
+
+export function driverRouteReorderKey(driverId: string, routeId: string, orderSequence: string[]): string {
+  const sorted = orderSequence.map((id) => id.trim()).filter(Boolean);
+  return `driver-route-reorder:${driverId}:${routeId}:${stableHash(sorted.join(","))}`;
+}
+
 export function driverConfirmPaymentBypassKey(driverId: string, orderId: string): string {
   return `driver-confirm-payment-bypass:${driverId}:${orderId}`;
 }

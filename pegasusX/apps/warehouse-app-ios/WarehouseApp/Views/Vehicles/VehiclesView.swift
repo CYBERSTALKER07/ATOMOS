@@ -145,6 +145,7 @@ struct VehiclesView: View {
 private struct CreateVehicleSheet: View {
     let onCreated: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var label = ""
     @State private var plate = ""
     @State private var selectedClass = "CLASS_A"
@@ -182,6 +183,12 @@ private struct CreateVehicleSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") { create() }
                         .disabled(submitting || label.isEmpty || plate.isEmpty)
+                }
+            }
+            .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+                if submitting {
+                    submitting = false
+                    error = "Connection restored — verify status before retrying."
                 }
             }
         }

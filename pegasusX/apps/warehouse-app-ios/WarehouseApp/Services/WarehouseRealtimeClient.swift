@@ -22,6 +22,7 @@ final class WarehouseRealtimeClient {
     private var networkAvailable = true
     private var stateHandler: (@MainActor (WarehouseRealtimeStatus) -> Void)?
     private var eventHandler: (@MainActor (WarehouseLiveEvent) -> Void)?
+    private var reconnectHandler: (@MainActor () -> Void)?
     private var hasConnectedOnce = false
 
     init(session: URLSession = .shared) {
@@ -51,10 +52,12 @@ final class WarehouseRealtimeClient {
 
     func connect(
         onStateChange: @escaping @MainActor (WarehouseRealtimeStatus) -> Void,
-        onEvent: @escaping @MainActor (WarehouseLiveEvent) -> Void
+        onEvent: @escaping @MainActor (WarehouseLiveEvent) -> Void,
+        onReconnect: @escaping @MainActor () -> Void = {}
     ) {
         stateHandler = onStateChange
         eventHandler = onEvent
+        reconnectHandler = onReconnect
         closed = false
         reconnectAttempt = 0
         openSocket(isReconnect: false)
@@ -104,6 +107,9 @@ final class WarehouseRealtimeClient {
                     self.publish(.live)
                     if wasReconnect {
                         Task { await WarehouseSessionReconcile.run() }
+                        if let reconnectHandler = self.reconnectHandler {
+                            Task { @MainActor in reconnectHandler() }
+                        }
                     }
                 }
             }

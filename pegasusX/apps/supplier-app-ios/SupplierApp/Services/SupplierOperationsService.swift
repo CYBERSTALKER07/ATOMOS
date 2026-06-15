@@ -28,12 +28,26 @@ enum SupplierOperationsService {
         return resp.data
     }
 
-    static func resolveShopClosed(_ request: ShopClosedResolveRequest) async throws -> NegotiationResolveResponse {
-        try await APIClient.shared.post("v1/supplier/shop-closed/resolve", body: request)
+    static func resolveShopClosed(
+        _ request: ShopClosedResolveRequest,
+        idempotencyKey: String
+    ) async throws -> NegotiationResolveResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/shop-closed/resolve",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
     }
 
-    static func resolveNegotiation(_ request: NegotiationResolveRequest) async throws -> NegotiationResolveResponse {
-        try await APIClient.shared.post("v1/supplier/negotiate/resolve", body: request)
+    static func resolveNegotiation(
+        _ request: NegotiationResolveRequest,
+        idempotencyKey: String
+    ) async throws -> NegotiationResolveResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/negotiate/resolve",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
     }
 
     static func manifests() async throws -> [SupplierManifestRow] {

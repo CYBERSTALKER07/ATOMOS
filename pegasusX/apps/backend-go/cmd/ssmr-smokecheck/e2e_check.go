@@ -438,7 +438,7 @@ func runNegotiationE2E(ctx context.Context, client *http.Client, base string, cf
 		"proposal_id": proposeResp.ProposalID,
 		"action":      "APPROVE",
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/supplier/negotiate/resolve", resolveBody, supplierCookie, "ssmr-negotiate-"+proposeResp.ProposalID)
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/supplier/negotiate/resolve", resolveBody, supplierCookie, "supplier-negotiate-resolve:"+proposeResp.ProposalID+":APPROVE")
 	if err != nil {
 		return err
 	}

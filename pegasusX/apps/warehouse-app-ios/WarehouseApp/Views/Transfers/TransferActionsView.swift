@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct TransferActionsView: View {
+    @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var volumeInput = "20"
     @State private var transferIdInput = ""
     @State private var notesInput = ""
@@ -71,6 +72,12 @@ struct TransferActionsView: View {
         }
         .background(LabTheme.background)
         .navigationTitle("Transfer actions")
+        .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+            if busy {
+                busy = false
+                statusMessage = "Connection restored — verify status before retrying."
+            }
+        }
     }
 
     private func run(label: String, _ block: @escaping () async throws -> TransferMutationResponse) {

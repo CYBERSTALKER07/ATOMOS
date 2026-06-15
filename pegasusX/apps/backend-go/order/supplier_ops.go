@@ -63,6 +63,12 @@ func (s *Service) HandleIssuePaymentBypass(w http.ResponseWriter, r *http.Reques
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req struct {
 		OrderID string `json:"order_id"`
@@ -128,7 +134,8 @@ func (s *Service) HandleIssuePaymentBypass(w http.ResponseWriter, r *http.Reques
 		"order_id":     req.OrderID,
 	}
 	respBytes, _ := json.Marshal(resp)
-	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
@@ -156,6 +163,12 @@ func (s *Service) HandleConfirmPaymentBypass(w http.ResponseWriter, r *http.Requ
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req struct {
 		OrderID     string `json:"order_id"`
@@ -248,7 +261,8 @@ func (s *Service) HandleConfirmPaymentBypass(w http.ResponseWriter, r *http.Requ
 	s.invalidateOrderCache(ctx, req.OrderID)
 	resp := map[string]any{"status": "completed", "order_id": req.OrderID}
 	respBytes, _ := json.Marshal(resp)
-	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
@@ -276,6 +290,12 @@ func (s *Service) HandleApproveEarlyComplete(w http.ResponseWriter, r *http.Requ
 	if s.guardIdempotency(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req struct {
 		DriverID string `json:"driver_id"`
@@ -357,6 +377,7 @@ func (s *Service) HandleApproveEarlyComplete(w http.ResponseWriter, r *http.Requ
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
@@ -392,21 +413,35 @@ func (s *Service) HandleRequestEarlyComplete(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req struct {
 		RouteID string `json:"route_id"`
 		Reason  string `json:"reason"`
 		Note    string `json:"note"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	driverID := strings.TrimSpace(claims.Subject)
 	ctx := r.Context()
 	var orderIDs []string
-	err := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	err = s.spannerClient.Single().Query(ctx, spanner.Statement{
 		SQL: `SELECT OrderId FROM Orders
 		      WHERE DriverId = @did AND Status NOT IN ('COMPLETED', 'CANCELLED')
 		      ORDER BY CreatedAt DESC`,
@@ -438,11 +473,15 @@ func (s *Service) HandleRequestEarlyComplete(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cache_write_failed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":      "REQUESTED",
 		"order_count": len(orderIDs),
 		"order_ids":   orderIDs,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 func generatePaymentBypassToken() (string, error) {

@@ -264,7 +264,7 @@ fun SupplierNavigation(
                 key(refreshEpoch) { ExceptionsScreen(ops) { navController.popBackStack() } }
             }
             composable(SupplierRoutes.SHOP_CLOSED) {
-                key(refreshEpoch) { ShopClosedScreen(ops) { navController.popBackStack() } }
+                key(refreshEpoch) { ShopClosedScreen(ops, realtimeSignals) { navController.popBackStack() } }
             }
             // Quantity negotiation disabled ecosystem-wide.
             // composable(SupplierRoutes.NEGOTIATIONS) { ... }
@@ -357,7 +357,7 @@ fun SupplierNavigation(
                 key(refreshEpoch) { ReconciliationScreen(ops) { navController.popBackStack() } }
             }
             composable(SupplierRoutes.EARLY_COMPLETE) {
-                key(refreshEpoch) { EarlyCompleteScreen(ops) { navController.popBackStack() } }
+                key(refreshEpoch) { EarlyCompleteScreen(ops, realtimeSignals) { navController.popBackStack() } }
             }
             composable(SupplierRoutes.ORG_FLEET) {
                 key(refreshEpoch) { OrgFleetScreen(api, ops) { navController.popBackStack() } }

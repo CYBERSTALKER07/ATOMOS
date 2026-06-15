@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ShopClosedView: View {
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var rows: [ShopClosedAttemptRow] = []
     @State private var loading = true
     @State private var error: String?
@@ -36,6 +37,13 @@ struct ShopClosedView: View {
         }
         .navigationTitle("Shop closed")
         .task { await load() }
+        .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+            if busyId != nil {
+                busyId = nil
+                statusMessage = "Connection restored — verify resolution status before retrying."
+            }
+            Task { await load() }
+        }
         .safeAreaInset(edge: .bottom) {
             if let statusMessage {
                 Text(statusMessage)
@@ -66,7 +74,8 @@ struct ShopClosedView: View {
             defer { busyId = nil }
             do {
                 _ = try await SupplierOperationsService.resolveShopClosed(
-                    ShopClosedResolveRequest(attemptId: attemptId, action: action)
+                    ShopClosedResolveRequest(attemptId: attemptId, action: action),
+                    idempotencyKey: "shop-closed-resolve:\(attemptId):\(action)"
                 )
                 statusMessage = "Resolved · \(action)"
                 await load()

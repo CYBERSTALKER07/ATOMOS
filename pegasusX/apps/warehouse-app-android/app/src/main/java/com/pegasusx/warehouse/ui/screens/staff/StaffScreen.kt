@@ -15,6 +15,9 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.CreateStaffRequest
 import com.pegasusx.warehouse.data.model.StaffMember
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
+import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
+import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -22,6 +25,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun StaffScreen(
     api: WarehouseApi,
+    realtimeSignals: WarehouseRealtimeSignals,
     onBack: (() -> Unit)? = null,
 ) {
     var staff by remember { mutableStateOf<List<StaffMember>>(emptyList()) }
@@ -101,6 +105,7 @@ fun StaffScreen(
     if (showCreate) {
         CreateStaffDialog(
             api = api,
+            realtimeSignals = realtimeSignals,
             onDismiss = { showCreate = false },
             onCreated = { pin -> createdPin = pin; showCreate = false; load() },
         )
@@ -125,6 +130,7 @@ fun StaffScreen(
 @Composable
 private fun CreateStaffDialog(
     api: WarehouseApi,
+    realtimeSignals: WarehouseRealtimeSignals,
     onDismiss: () -> Unit,
     onCreated: (String) -> Unit,
 ) {
@@ -134,6 +140,16 @@ private fun CreateStaffDialog(
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    WarehouseReconnectRecoveryEffect(
+        realtimeSignals = realtimeSignals,
+        isBusy = { submitting },
+    ) { hadInFlight ->
+        if (hadInFlight) {
+            submitting = false
+            error = WAREHOUSE_RECONNECT_RECOVERY_HINT
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,

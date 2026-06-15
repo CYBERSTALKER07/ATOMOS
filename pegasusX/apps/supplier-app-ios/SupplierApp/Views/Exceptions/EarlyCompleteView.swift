@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct EarlyCompleteView: View {
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var driverId = ""
     @State private var busy = false
     @State private var error: String?
@@ -32,6 +33,12 @@ struct EarlyCompleteView: View {
             }
         }
         .navigationTitle("Early route complete")
+        .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+            if busy {
+                busy = false
+                error = "Connection restored — verify approval status before retrying."
+            }
+        }
     }
 
     private func approve() async {

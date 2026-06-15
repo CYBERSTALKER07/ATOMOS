@@ -31,6 +31,7 @@ import com.pegasusx.driver.data.model.UpdateOrderDuringDeliveryRequest
 import com.pegasusx.driver.data.remote.ConnectionState
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
+import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
 import com.pegasusx.driver.data.remote.TokenHolder
 import com.pegasusx.driver.util.DriverIdempotencyKeys
 import com.pegasusx.driver.data.remote.reconcileDriverSession
@@ -72,6 +73,7 @@ data class ManifestUiState(
     val routeSteps: List<RouteStep> = emptyList(),
     val navigationCue: NavigationCue? = null,
     val deliveryEdgeMessage: String? = null,
+    val isRequestingEarlyComplete: Boolean = false,
 )
 
 @HiltViewModel
@@ -122,10 +124,21 @@ class ManifestViewModel @Inject constructor(
     }
 
     private fun reconcileAfterReconnect() {
-        viewModelScope.launch {
-            runCatching { reconcileDriverSession(api) }
-            loadManifest()
-            OfflineSyncScheduler.enqueue(appContext)
+        viewModelScope.launch { recoverInFlightMutation() }
+    }
+
+    private suspend fun recoverInFlightMutation() {
+        val hadInFlight = _state.value.isRequestingEarlyComplete
+        runCatching { reconcileDriverSession(api) }
+        loadManifest()
+        OfflineSyncScheduler.enqueue(appContext)
+        if (hadInFlight) {
+            _state.update {
+                it.copy(
+                    isRequestingEarlyComplete = false,
+                    error = DRIVER_RECONNECT_RECOVERY_HINT,
+                )
+            }
         }
     }
 
@@ -373,7 +386,10 @@ class ManifestViewModel @Inject constructor(
         val orderSequence = pendingOrders.map { it.id }
         viewModelScope.launch {
             try {
-                api.reorderStops(ReorderStopsRequest(routeId = routeId, orderSequence = orderSequence))
+                api.reorderStops(
+                    ReorderStopsRequest(routeId = routeId, orderSequence = orderSequence),
+                    DriverIdempotencyKeys.routeReorder(routeId, orderSequence),
+                )
                 loadRouteGeometry(routeId)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = "Reorder failed: ${e.message}")
@@ -384,13 +400,19 @@ class ManifestViewModel @Inject constructor(
 
     fun requestEarlyComplete(reason: String, note: String) {
         viewModelScope.launch {
+            _state.update { it.copy(isRequestingEarlyComplete = true, error = null) }
             try {
-                api.requestEarlyComplete(EarlyCompletePayload(reason = reason, note = note))
+                api.requestEarlyComplete(
+                    EarlyCompletePayload(reason = reason, note = note),
+                    DriverIdempotencyKeys.requestEarlyComplete(reason),
+                )
                 loadManifest()
             } catch (e: Exception) {
-                _state.value = _state.value.copy(
-                    error = e.message ?: "Early complete request failed",
-                )
+                _state.update {
+                    it.copy(error = e.message ?: "Early complete request failed")
+                }
+            } finally {
+                _state.update { it.copy(isRequestingEarlyComplete = false) }
             }
         }
     }

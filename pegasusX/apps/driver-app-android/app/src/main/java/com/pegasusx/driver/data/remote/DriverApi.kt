@@ -174,7 +174,10 @@ interface DriverApi {
 
     // Reorder stops — driver reorders their active route stops
     @POST("v1/fleet/route/reorder")
-    suspend fun reorderStops(@Body request: ReorderStopsRequest): Map<String, String>
+    suspend fun reorderStops(
+        @Body request: ReorderStopsRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, String>
 
     @POST("v1/user/device-token")
     suspend fun registerDeviceToken(@Body body: Map<String, String>): Map<String, String>
@@ -227,7 +230,10 @@ interface DriverApi {
 
     // Edge 27: Request early route completion (fatigue/issue)
     @POST("v1/fleet/route/request-early-complete")
-    suspend fun requestEarlyComplete(@Body body: EarlyCompletePayload): EarlyCompleteRequestResponse
+    suspend fun requestEarlyComplete(
+        @Body body: EarlyCompletePayload,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): EarlyCompleteRequestResponse
 
     // Quantity negotiation disabled ecosystem-wide — backend returns 410 feature_disabled.
     // @POST("v1/delivery/negotiate")

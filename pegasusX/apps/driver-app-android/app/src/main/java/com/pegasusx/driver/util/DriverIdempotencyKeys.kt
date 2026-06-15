@@ -42,6 +42,13 @@ object DriverIdempotencyKeys {
 
     fun negotiate(orderId: String): String = "driver-negotiate:${driverId()}:$orderId"
 
+    fun requestEarlyComplete(reason: String): String = "driver-request-early-complete:${driverId()}:${stableHash(reason)}"
+
+    fun routeReorder(routeId: String, orderSequence: List<String>): String {
+        val seq = orderSequence.map { it.trim() }.filter { it.isNotEmpty() }
+        return "driver-route-reorder:${driverId()}:$routeId:${stableHash(seq.joinToString(","))}"
+    }
+
     private fun stableHash(input: String): String {
         var hash = 2166136261L
         for (c in input) {

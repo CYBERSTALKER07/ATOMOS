@@ -3,6 +3,7 @@ import SwiftUI
 struct SupplyRequestDetailView: View {
     let requestId: String
 
+    @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var request: WarehouseSupplyRequest?
     @State private var loading = true
     @State private var error: String?
@@ -60,6 +61,13 @@ struct SupplyRequestDetailView: View {
             }
         }
         .task(id: requestId) { load() }
+        .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+            if busy {
+                busy = false
+                statusMessage = "Connection restored — verify status before retrying."
+            }
+            load()
+        }
     }
 
     private func load() {

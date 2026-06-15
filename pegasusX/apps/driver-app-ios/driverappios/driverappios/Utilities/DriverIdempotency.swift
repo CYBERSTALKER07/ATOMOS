@@ -81,6 +81,15 @@ enum DriverIdempotency {
         "driver-negotiate:\(driverId()):\(orderId)"
     }
 
+    static func requestEarlyComplete(reason: String) -> String {
+        "driver-request-early-complete:\(driverId()):\(stableHash(reason))"
+    }
+
+    static func routeReorder(routeId: String, orderSequence: [String]) -> String {
+        let seq = orderSequence.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        return "driver-route-reorder:\(driverId()):\(routeId):\(stableHash(seq.joined(separator: ",")))"
+    }
+
     private static func stableHash(_ input: String) -> String {
         var hash: UInt32 = 2166136261
         for scalar in input.unicodeScalars {

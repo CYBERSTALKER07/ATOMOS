@@ -12,7 +12,16 @@ class SupplierRealtimeSignals @Inject constructor() {
     private val _refreshTick = MutableSharedFlow<Long>(extraBufferCapacity = 16)
     val refreshTick: SharedFlow<Long> = _refreshTick.asSharedFlow()
 
+    private val _reconnectTick = MutableSharedFlow<Long>(extraBufferCapacity = 4)
+    val reconnectTick: SharedFlow<Long> = _reconnectTick.asSharedFlow()
+
     fun bump() {
         _refreshTick.tryEmit(System.currentTimeMillis())
+    }
+
+    fun bumpReconnect() {
+        val now = System.currentTimeMillis()
+        _reconnectTick.tryEmit(now)
+        bump()
     }
 }

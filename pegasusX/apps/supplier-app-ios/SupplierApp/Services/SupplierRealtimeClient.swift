@@ -18,10 +18,15 @@ final class SupplierRealtimeClient {
     private var reconnectWorkItem: DispatchWorkItem?
     private var reconnectAttempt = 0
     private var hasConnectedOnce = false
+    private var onReconnectHandler: (@MainActor () -> Void)?
 
-    func connect(onEvent: @escaping (SupplierLiveEvent) -> Void) {
+    func connect(
+        onEvent: @escaping (SupplierLiveEvent) -> Void,
+        onReconnect: @escaping @MainActor () -> Void = {}
+    ) {
         closed = false
         reconnectAttempt = 0
+        onReconnectHandler = onReconnect
         Task { await openSocket(onEvent: onEvent) }
     }
 
@@ -49,6 +54,9 @@ final class SupplierRealtimeClient {
             reconnectAttempt = 0
             if wasReconnect {
                 Task { await SupplierSessionReconcile.run() }
+                if let onReconnectHandler {
+                    Task { @MainActor in onReconnectHandler() }
+                }
             }
             receiveLoop(onEvent: onEvent)
         } catch {

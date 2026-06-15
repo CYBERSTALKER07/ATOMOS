@@ -314,7 +314,11 @@ final class APIClient: @unchecked Sendable {
 
     func reorderStops(routeId: String, orderSequence: [String]) async throws -> RouteReorderResponse {
         let body = ReorderStopsRequest(routeId: routeId, orderSequence: orderSequence)
-        return try await post("v1/fleet/route/reorder", body: body)
+        return try await post(
+            "v1/fleet/route/reorder",
+            body: body,
+            headers: ["Idempotency-Key": DriverIdempotency.routeReorder(routeId: routeId, orderSequence: orderSequence)]
+        )
     }
 
     // MARK: - v3.1 Human-Centric Edges
@@ -322,7 +326,11 @@ final class APIClient: @unchecked Sendable {
     /// Edge 27: Request early route completion (fatigue/issue)
     func requestEarlyComplete(reason: String, note: String) async throws -> EarlyCompleteRequestResponse {
         struct Req: Encodable { let reason: String; let note: String }
-        return try await post("v1/fleet/route/request-early-complete", body: Req(reason: reason, note: note))
+        return try await post(
+            "v1/fleet/route/request-early-complete",
+            body: Req(reason: reason, note: note),
+            headers: ["Idempotency-Key": DriverIdempotency.requestEarlyComplete(reason: reason)]
+        )
     }
 
     // Quantity negotiation disabled ecosystem-wide — backend returns 410 feature_disabled.

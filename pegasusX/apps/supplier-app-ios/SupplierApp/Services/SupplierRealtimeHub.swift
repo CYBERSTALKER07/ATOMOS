@@ -5,8 +5,14 @@ import Observation
 @Observable
 final class SupplierRealtimeHub {
     var refreshEpoch: Int = 0
+    var reconnectEpoch: Int = 0
 
     func bump() {
         refreshEpoch += 1
+    }
+
+    func bumpReconnect() {
+        reconnectEpoch += 1
+        bump()
     }
 }

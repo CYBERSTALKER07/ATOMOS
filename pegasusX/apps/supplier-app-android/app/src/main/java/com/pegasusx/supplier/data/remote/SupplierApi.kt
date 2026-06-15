@@ -159,10 +159,16 @@ interface SupplierApi {
     ): Response<NegotiationPendingResponse>
 
     @POST("v1/supplier/shop-closed/resolve")
-    suspend fun resolveShopClosed(@Body body: ShopClosedResolveRequest): Response<NegotiationResolveResponse>
+    suspend fun resolveShopClosed(
+        @Body body: ShopClosedResolveRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<NegotiationResolveResponse>
 
     @POST("v1/supplier/negotiate/resolve")
-    suspend fun resolveNegotiation(@Body body: NegotiationResolveRequest): Response<NegotiationResolveResponse>
+    suspend fun resolveNegotiation(
+        @Body body: NegotiationResolveRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<NegotiationResolveResponse>
 
     @GET("v1/supplier/manifests")
     suspend fun getManifests(): Response<SupplierManifestsResponse>

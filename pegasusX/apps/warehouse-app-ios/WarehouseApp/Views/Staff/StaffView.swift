@@ -97,6 +97,7 @@ struct StaffView: View {
 private struct CreateStaffSheet: View {
     let onCreated: (String) -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var name = ""
     @State private var phone = ""
     @State private var role = "WAREHOUSE_ADMIN"
@@ -123,6 +124,12 @@ private struct CreateStaffSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") { create() }
                         .disabled(submitting || name.isEmpty || phone.isEmpty)
+                }
+            }
+            .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+                if submitting {
+                    submitting = false
+                    error = "Connection restored — verify status before retrying."
                 }
             }
         }

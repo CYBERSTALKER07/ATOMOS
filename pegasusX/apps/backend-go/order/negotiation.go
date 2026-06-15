@@ -190,16 +190,30 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req struct {
 		ProposalID string `json:"proposal_id"`
 		Action     string `json:"action"`
 		Resolution string `json:"resolution"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.ProposalID = strings.TrimSpace(req.ProposalID)
 	req.Action = strings.TrimSpace(strings.ToUpper(req.Action))
 	req.Resolution = strings.TrimSpace(req.Resolution)
@@ -215,7 +229,7 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 	var orderID, driverID, supplierID, retailerID string
 	var proposedItems []ProposedNegotiationItem
 
-	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "NegotiationProposals", spanner.Key{req.ProposalID},
 			[]string{"OrderId", "DriverId", "Status", "ProposedItems"})
 		if err != nil {
@@ -334,11 +348,15 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 	})
 	s.invalidateOrderCache(ctx, orderID)
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":      req.Action,
 		"proposal_id": req.ProposalID,
 		"order_id":    orderID,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 func applyNegotiatedLineItems(existing []LineItem, proposed []ProposedNegotiationItem) ([]LineItem, int64, error) {

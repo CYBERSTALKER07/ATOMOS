@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct NegotiationsView: View {
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var rows: [NegotiationProposalRow] = []
     @State private var loading = true
     @State private var error: String?
@@ -34,6 +35,13 @@ struct NegotiationsView: View {
         }
         .navigationTitle("Negotiations")
         .task { await load() }
+        .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+            if busyId != nil {
+                busyId = nil
+                statusMessage = "Connection restored — verify status before retrying."
+            }
+            Task { await load() }
+        }
         .safeAreaInset(edge: .bottom) {
             if let statusMessage {
                 Text(statusMessage)
@@ -63,8 +71,10 @@ struct NegotiationsView: View {
         Task {
             defer { busyId = nil }
             do {
+                let key = "supplier-negotiate-resolve:\(proposalId):\(action)"
                 _ = try await SupplierOperationsService.resolveNegotiation(
-                    NegotiationResolveRequest(proposalId: proposalId, action: action, resolution: nil)
+                    NegotiationResolveRequest(proposalId: proposalId, action: action, resolution: nil),
+                    idempotencyKey: key
                 )
                 statusMessage = "Negotiation \(action)"
                 await load()

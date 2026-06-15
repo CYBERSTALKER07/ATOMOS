@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             supplierWebSocket.reconnects.collect {
                 reconcileSupplierSession(supplierApi)
-                realtimeSignals.bump()
+                realtimeSignals.bumpReconnect()
             }
         }
         setContent {

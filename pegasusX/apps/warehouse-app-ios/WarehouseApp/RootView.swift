@@ -35,6 +35,9 @@ struct RootView: View {
             onEvent: { event in
                 guard !event.type.hasPrefix("SYSTEM") else { return }
                 realtimeHub.bump()
+            },
+            onReconnect: {
+                realtimeHub.bumpReconnect()
             }
         )
     }

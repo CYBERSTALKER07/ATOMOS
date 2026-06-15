@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "../lib/auth";
-import { useWsEvent, type WsMessage } from "../lib/ws";
+import { useWebSocket, useWsEvent, type WsMessage } from "../lib/ws";
 
 type ShopClosedAlert = {
   order_id: string;
@@ -49,9 +49,17 @@ function messageToAlert(msg: WsMessage): ShopClosedAlert | null {
 }
 
 export default function ShopClosedModal() {
+  const { reconnectEpoch } = useWebSocket();
   const [alert, setAlert] = useState<ShopClosedAlert | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (reconnectEpoch > 0 && submitting) {
+      setSubmitting(false);
+      setError("Connection restored — verify response before retrying.");
+    }
+  }, [reconnectEpoch, submitting]);
 
   const openAlert = useCallback((msg: WsMessage) => {
     const next = messageToAlert(msg);

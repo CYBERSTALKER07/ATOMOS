@@ -259,15 +259,15 @@ fun WarehouseNavigation(
                 }
 
                 composable(WarehouseRoutes.DRIVERS) {
-                    DriversScreen(api = api, onBack = backFor(WarehouseRoutes.DRIVERS))
+                    DriversScreen(api = api, realtimeSignals = realtimeSignals, onBack = backFor(WarehouseRoutes.DRIVERS))
                 }
 
                 composable(WarehouseRoutes.VEHICLES) {
-                    VehiclesScreen(api = api, onBack = backFor(WarehouseRoutes.VEHICLES))
+                    VehiclesScreen(api = api, realtimeSignals = realtimeSignals, onBack = backFor(WarehouseRoutes.VEHICLES))
                 }
 
                 composable(WarehouseRoutes.INVENTORY) {
-                    InventoryScreen(api = api, onBack = backFor(WarehouseRoutes.INVENTORY))
+                    InventoryScreen(api = api, realtimeSignals = realtimeSignals, onBack = backFor(WarehouseRoutes.INVENTORY))
                 }
 
                 composable(WarehouseRoutes.PRODUCTS) {
@@ -312,7 +312,7 @@ fun WarehouseNavigation(
                 }
 
                 composable(WarehouseRoutes.STAFF) {
-                    StaffScreen(api = api, onBack = backFor(WarehouseRoutes.STAFF))
+                    StaffScreen(api = api, realtimeSignals = realtimeSignals, onBack = backFor(WarehouseRoutes.STAFF))
                 }
 
                 composable(WarehouseRoutes.MORE) {

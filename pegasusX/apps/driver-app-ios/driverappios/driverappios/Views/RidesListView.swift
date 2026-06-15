@@ -9,8 +9,11 @@ import SwiftUI
 /// Tab 2: "Rides" — upcoming routes with full order details, premium card UI
 struct RidesListView: View {
     @Bindable var vm: FleetViewModel
+    @State private var driverSocketState = DriverSocketState.shared
     @State private var loadingMode = false
     @State private var showEarlyComplete = false
+    @State private var isRequestingEarlyComplete = false
+    @State private var earlyCompleteMessage: String?
     var onRequestEarlyComplete: ((String, String) -> Void)?
 
     var body: some View {
@@ -138,9 +141,43 @@ struct RidesListView: View {
         .sheet(isPresented: $showEarlyComplete) {
             EarlyCompleteSheet(onConfirm: { reason, note in
                 showEarlyComplete = false
-                onRequestEarlyComplete?(reason, note)
+                if let onRequestEarlyComplete {
+                    onRequestEarlyComplete(reason, note)
+                } else {
+                    Task { await submitEarlyComplete(reason: reason, note: note) }
+                }
             })
             .presentationDetents([.medium])
+        }
+        .onChange(of: driverSocketState.reconnectEpoch) { _, _ in
+            if isRequestingEarlyComplete {
+                isRequestingEarlyComplete = false
+                earlyCompleteMessage = "Connection restored — verify status before retrying."
+            }
+            Task { await vm.loadMissions() }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if let earlyCompleteMessage {
+                Text(earlyCompleteMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(.bar)
+            }
+        }
+    }
+
+    private func submitEarlyComplete(reason: String, note: String) async {
+        isRequestingEarlyComplete = true
+        earlyCompleteMessage = nil
+        defer { isRequestingEarlyComplete = false }
+        do {
+            _ = try await APIClient.shared.requestEarlyComplete(reason: reason, note: note)
+            earlyCompleteMessage = "Early complete request submitted."
+            await vm.loadMissions()
+        } catch {
+            earlyCompleteMessage = error.localizedDescription
         }
     }
 

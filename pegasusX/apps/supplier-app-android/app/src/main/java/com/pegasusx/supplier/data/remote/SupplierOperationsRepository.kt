@@ -20,11 +20,17 @@ class SupplierOperationsRepository @Inject constructor(
 
     suspend fun getNegotiationsPending(): Response<NegotiationPendingResponse> = api.getNegotiationsPending()
 
-    suspend fun resolveShopClosed(body: ShopClosedResolveRequest): Response<NegotiationResolveResponse> =
-        api.resolveShopClosed(body)
+    suspend fun resolveShopClosed(
+        body: ShopClosedResolveRequest,
+        idempotencyKey: String,
+    ): Response<NegotiationResolveResponse> =
+        api.resolveShopClosed(body, idempotencyKey)
 
-    suspend fun resolveNegotiation(body: NegotiationResolveRequest): Response<NegotiationResolveResponse> =
-        api.resolveNegotiation(body)
+    suspend fun resolveNegotiation(
+        body: NegotiationResolveRequest,
+        idempotencyKey: String,
+    ): Response<NegotiationResolveResponse> =
+        api.resolveNegotiation(body, idempotencyKey)
 
     suspend fun getManifests(): Response<SupplierManifestsResponse> = api.getManifests()
 

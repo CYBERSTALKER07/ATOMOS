@@ -7,6 +7,7 @@ import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
 import { PageSection } from "@/components/PageSection";
 import { createSupplierApi } from "@/lib/api";
 import { decodeJwtPayload, readTokenFromCookie } from "@/lib/auth";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { PortalSurface } from "../_components/PortalSurface";
 import { errorToMessage } from "../../payments/_shared/finance";
 
@@ -35,6 +36,15 @@ export default function OperationsPage() {
   const [replenishing, setReplenishing] = useState(false);
   const [bypassing, setBypassing] = useState(false);
   const [confirmBypass, setConfirmBypass] = useState(false);
+
+  useSupplierSessionReconcile(() => {
+    if (broadcasting || replenishing || bypassing) {
+      setBroadcasting(false);
+      setReplenishing(false);
+      setBypassing(false);
+      setError("Connection restored — verify status before retrying.");
+    }
+  });
 
   useEffect(() => {
     api

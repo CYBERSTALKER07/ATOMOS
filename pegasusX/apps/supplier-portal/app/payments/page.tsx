@@ -2,6 +2,7 @@
 
 import { ApiClient } from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { useEffect, useMemo, useState } from "react";
 import type { FinanceAuthoritySnapshot } from "./_shared/finance";
 import {
@@ -23,6 +24,10 @@ export default function PaymentsAuthorityPage() {
   const [refreshTick, setRefreshTick] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const liveState = useSupplierFinanceLiveRefresh(() => {
+    setRefreshTick((value) => value + 1);
+  });
+
+  useSupplierSessionReconcile(() => {
     setRefreshTick((value) => value + 1);
   });
 

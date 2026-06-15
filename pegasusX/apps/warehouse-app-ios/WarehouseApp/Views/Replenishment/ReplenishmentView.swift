@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ReplenishmentView: View {
+    @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var insights: [ReplenishmentInsight] = []
     @State private var loading = true
     @State private var error: String?
@@ -78,6 +79,13 @@ struct ReplenishmentView: View {
         }
         .task { load() }
         .refreshable { load() }
+        .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+            if actingId != nil {
+                actingId = nil
+                statusMessage = "Connection restored — verify status before retrying."
+            }
+            load()
+        }
     }
 
     private func urgencyTint(_ urgency: String) -> Color {

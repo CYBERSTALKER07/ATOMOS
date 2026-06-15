@@ -11,15 +11,23 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.ShopClosedAttemptRow
 import com.pegasusx.supplier.data.model.ShopClosedResolveRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.ui.realtime.SupplierReconnectRecoveryEffect
+import com.pegasusx.supplier.util.SUPPLIER_RECONNECT_RECOVERY_HINT
+import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShopClosedScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
+fun ShopClosedScreen(
+    ops: SupplierOperationsRepository,
+    realtimeSignals: SupplierRealtimeSignals,
+    onBack: () -> Unit,
+) {
     var rows by remember { mutableStateOf<List<ShopClosedAttemptRow>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -47,7 +55,10 @@ fun ShopClosedScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
         busyId = attemptId
         scope.launch {
             try {
-                val resp = ops.resolveShopClosed(ShopClosedResolveRequest(attemptId, action))
+                val resp = ops.resolveShopClosed(
+                    ShopClosedResolveRequest(attemptId, action),
+                    SupplierIdempotencyKeys.shopClosedResolve(attemptId, action),
+                )
                 if (resp.isSuccessful) {
                     snackbar.showSnackbar("Resolved · $action")
                     load()
@@ -63,6 +74,17 @@ fun ShopClosedScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
     }
 
     LaunchedEffect(Unit) { load() }
+
+    SupplierReconnectRecoveryEffect(
+        realtimeSignals = realtimeSignals,
+        isBusy = { busyId != null },
+    ) { hadInFlight ->
+        if (hadInFlight) {
+            busyId = null
+            scope.launch { snackbar.showSnackbar(SUPPLIER_RECONNECT_RECOVERY_HINT) }
+        }
+        load()
+    }
 
     Scaffold(
         topBar = {

@@ -16,6 +16,9 @@ import com.pegasusx.warehouse.data.model.CreateVehicleRequest
 import com.pegasusx.warehouse.data.model.UpdateVehicleRequest
 import com.pegasusx.warehouse.data.model.Vehicle
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
+import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
+import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
 import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseStateKind
 import com.pegasusx.warehouse.ui.components.WarehouseStatePane
@@ -39,6 +42,7 @@ private fun vehicleUnavailableReasonLabel(reason: String): String =
 @Composable
 fun VehiclesScreen(
     api: WarehouseApi,
+    realtimeSignals: WarehouseRealtimeSignals,
     onBack: (() -> Unit)? = null,
 ) {
     var vehicles by remember { mutableStateOf<List<Vehicle>>(emptyList()) }
@@ -163,6 +167,7 @@ fun VehiclesScreen(
     if (showCreate) {
         CreateVehicleDialog(
             api = api,
+            realtimeSignals = realtimeSignals,
             onDismiss = { showCreate = false },
             onCreated = { showCreate = false; load(); scope.launch { snackbarHostState.showSnackbar("Vehicle created") } },
         )
@@ -198,6 +203,7 @@ fun VehiclesScreen(
 @Composable
 private fun CreateVehicleDialog(
     api: WarehouseApi,
+    realtimeSignals: WarehouseRealtimeSignals,
     onDismiss: () -> Unit,
     onCreated: () -> Unit,
 ) {
@@ -207,6 +213,16 @@ private fun CreateVehicleDialog(
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    WarehouseReconnectRecoveryEffect(
+        realtimeSignals = realtimeSignals,
+        isBusy = { submitting },
+    ) { hadInFlight ->
+        if (hadInFlight) {
+            submitting = false
+            error = WAREHOUSE_RECONNECT_RECOVERY_HINT
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,

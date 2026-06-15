@@ -36,12 +36,26 @@ func (s *Service) HandleFleetRouteReorder(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req fleetReorderRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.RouteID = strings.TrimSpace(req.RouteID)
 	if req.RouteID == "" || len(req.OrderSequence) == 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "route_id_and_order_sequence_required"})
@@ -50,7 +64,7 @@ func (s *Service) HandleFleetRouteReorder(w http.ResponseWriter, r *http.Request
 	driverID := strings.TrimSpace(claims.Subject)
 	ctx := r.Context()
 
-	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		if err := assertDriverOwnsRoute(ctx, txn, driverID, req.RouteID); err != nil {
 			return err
 		}
@@ -108,11 +122,15 @@ func (s *Service) HandleFleetRouteReorder(w http.ResponseWriter, r *http.Request
 				"route_id", req.RouteID, "driver_id", driverID, "err", geomErr)
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":     "REORDERED",
 		"route_id":   req.RouteID,
 		"stop_count": len(req.OrderSequence),
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleBypassOffload serves POST /v1/delivery/bypass-offload (shop-closed bypass).

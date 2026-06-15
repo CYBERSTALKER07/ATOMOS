@@ -213,7 +213,7 @@ fun ManifestScreen(
         val hasPendingOrders = state.orders.any {
             it.state != OrderState.COMPLETED && it.state != OrderState.CANCELLED && it.state != OrderState.QUARANTINE
         }
-        if (hasPendingOrders && !state.isLoading) {
+        if (hasPendingOrders && !state.isLoading && !state.isRequestingEarlyComplete) {
             FloatingActionButton(
                 onClick = { showEarlyCompleteDialog = true },
                 modifier = Modifier
