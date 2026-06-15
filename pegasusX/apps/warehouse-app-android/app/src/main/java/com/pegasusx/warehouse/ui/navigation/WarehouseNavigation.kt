@@ -335,6 +335,7 @@ fun WarehouseNavigation(
                 composable(WarehouseRoutes.TRANSFER_ACTIONS) {
                     TransferActionsScreen(
                         opsRepository = opsRepository,
+                        realtimeSignals = realtimeSignals,
                         onBack = backFor(WarehouseRoutes.TRANSFER_ACTIONS),
                     )
                 }
@@ -342,6 +343,7 @@ fun WarehouseNavigation(
                 composable(WarehouseRoutes.REPLENISHMENT) {
                     ReplenishmentScreen(
                         opsRepository = opsRepository,
+                        realtimeSignals = realtimeSignals,
                         onBack = backFor(WarehouseRoutes.REPLENISHMENT),
                     )
                 }
@@ -383,6 +385,7 @@ fun WarehouseNavigation(
                     SupplyRequestDetailScreen(
                         api = api,
                         opsRepository = opsRepository,
+                        realtimeSignals = realtimeSignals,
                         requestId = id,
                         onBack = backFor(WarehouseRoutes.SUPPLY_REQUEST_DETAIL),
                     )

@@ -12,11 +12,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasusx.warehouse.data.model.ReplenishmentInsight
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
+import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 import com.pegasusx.warehouse.ui.components.WarehouseStateKind
 import com.pegasusx.warehouse.ui.components.WarehouseStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
+import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
+import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -24,6 +27,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ReplenishmentScreen(
     opsRepository: WarehouseOperationsRepository,
+    realtimeSignals: WarehouseRealtimeSignals,
     onBack: (() -> Unit)? = null,
 ) {
     var insights by remember { mutableStateOf<List<ReplenishmentInsight>>(emptyList()) }
@@ -75,6 +79,17 @@ fun ReplenishmentScreen(
     }
 
     LaunchedEffect(Unit) { load() }
+
+    WarehouseReconnectRecoveryEffect(
+        realtimeSignals = realtimeSignals,
+        isBusy = { actingId != null },
+    ) { hadInFlight ->
+        if (hadInFlight) {
+            actingId = null
+            statusMessage = WAREHOUSE_RECONNECT_RECOVERY_HINT
+        }
+        load()
+    }
 
     Scaffold(
         topBar = {

@@ -13,6 +13,9 @@ import com.pegasusx.warehouse.data.model.WarehouseSupplyRequest
 import com.pegasusx.warehouse.data.model.WarehouseSupplyRequestTransitionRequest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
+import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
+import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
+import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -21,6 +24,7 @@ import kotlinx.coroutines.launch
 fun SupplyRequestDetailScreen(
     api: WarehouseApi,
     opsRepository: WarehouseOperationsRepository,
+    realtimeSignals: WarehouseRealtimeSignals,
     requestId: String,
     onBack: (() -> Unit)? = null,
 ) {
@@ -73,6 +77,17 @@ fun SupplyRequestDetailScreen(
     }
 
     LaunchedEffect(requestId) { load() }
+
+    WarehouseReconnectRecoveryEffect(
+        realtimeSignals = realtimeSignals,
+        isBusy = { busy },
+    ) { hadInFlight ->
+        if (hadInFlight) {
+            busy = false
+            statusMessage = WAREHOUSE_RECONNECT_RECOVERY_HINT
+        }
+        load()
+    }
 
     Scaffold(
         topBar = {

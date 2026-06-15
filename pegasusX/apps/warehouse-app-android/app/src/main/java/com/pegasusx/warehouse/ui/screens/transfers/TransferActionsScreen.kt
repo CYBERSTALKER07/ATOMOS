@@ -30,7 +30,10 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.warehouse.data.model.EmergencyTransferRequest
 import com.pegasusx.warehouse.data.model.ForceReceiveRequest
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
+import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
+import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
+import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -38,6 +41,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun TransferActionsScreen(
     opsRepository: WarehouseOperationsRepository,
+    realtimeSignals: WarehouseRealtimeSignals,
     onBack: (() -> Unit)? = null,
 ) {
     var volumeInput by remember { mutableStateOf("20") }
@@ -46,6 +50,16 @@ fun TransferActionsScreen(
     var busy by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    WarehouseReconnectRecoveryEffect(
+        realtimeSignals = realtimeSignals,
+        isBusy = { busy },
+    ) { hadInFlight ->
+        if (hadInFlight) {
+            busy = false
+            scope.launch { snackbarHostState.showSnackbar(WAREHOUSE_RECONNECT_RECOVERY_HINT) }
+        }
+    }
 
     fun runAction(label: String, block: suspend () -> retrofit2.Response<*>) {
         busy = true
