@@ -18,12 +18,14 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
-import { Button, Chip, Skeleton } from "@heroui/react";
+import { Button, Chip } from "@heroui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
 import EmptyState from "../../../components/EmptyState";
+import { PageSection } from "../../../components/PageSection";
+import { ListRowSkeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import { confirmAiOrder, rejectAiOrder } from "../../../lib/api";
@@ -532,19 +534,20 @@ export default function OrdersPage() {
       )}
 
       <div className="flex gap-8 min-h-[520px]">
-        {/* Order List */}
-        <div
-          className="w-[440px] shrink-0 flex flex-col gap-2 overflow-y-auto pr-2"
-          style={{ maxHeight: "calc(100vh - 440px)" }}
+        <PageSection
+          title="Order queue"
+          description={`${filtered.length} orders in ${activeTab.toLowerCase()} view.`}
+          className="w-[440px] shrink-0 !overflow-visible"
         >
+          <div
+            className="flex flex-col gap-2 overflow-y-auto pr-2 !mt-0 !p-0"
+            style={{ maxHeight: "calc(100vh - 440px)" }}
+          >
           <AnimatePresence mode="popLayout">
             {loading ? (
-              [0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-24 rounded-2xl animate-pulse bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)]"
-                />
-              ))
+              <div className="flex flex-col gap-2">
+                <ListRowSkeleton count={4} />
+              </div>
             ) : filtered.length === 0 ? (
               <EmptyState
                 headline={listEmptyState.headline}
@@ -605,10 +608,15 @@ export default function OrdersPage() {
               })
             )}
           </AnimatePresence>
-        </div>
+          </div>
+        </PageSection>
 
-        {/* Detail Panel */}
-        <div className="flex-1 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)] flex flex-col overflow-hidden">
+        <PageSection
+          title="Order details"
+          description={detail ? `Manifest and actions for #${detail.order_id.slice(-8)}.` : "Select an order from the queue."}
+          className="flex-1 min-w-0"
+        >
+        <div className="flex flex-col overflow-hidden !mt-0 !p-0 min-h-[480px]">
           {detail ? (
             <div className="p-8 flex-1 overflow-y-auto">
               <div className="flex items-start justify-between mb-8">
@@ -754,14 +762,16 @@ export default function OrdersPage() {
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center opacity-40 grayscale">
-              <PackageOpen size={64} strokeWidth={1} />
-              <p className="mt-4 md-typescale-body-large">
-                Select an active node
-              </p>
+            <div className="flex-1 flex flex-col items-center justify-center py-16">
+              <EmptyState
+                headline="Select an order"
+                body="Choose a node from the queue to inspect manifest lines and actions."
+                variant="no-orders"
+              />
             </div>
           )}
         </div>
+        </PageSection>
       </div>
     </div>
   );

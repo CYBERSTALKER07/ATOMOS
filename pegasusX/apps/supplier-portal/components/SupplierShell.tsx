@@ -8,6 +8,7 @@ import Icon from './Icon';
 import { useTheme, type ThemeMode } from './ThemeProvider';
 import { PanelLeftClose, PanelLeft } from 'lucide-react';
 import NotificationPanel from './NotificationPanel';
+import ClientPolicyBanner from './ClientPolicyBanner';
 import { useNotifications } from '@/lib/useNotifications';
 import { clearSession, readTokenFromCookie } from '@/lib/auth';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -644,6 +645,7 @@ export default function SupplierShell({ children }: { children: React.ReactNode 
         </AnimatePresence>
 
         <main className="flex-1 overflow-y-auto" style={{ background: 'var(--desk-canvas)' }}>
+          <ClientPolicyBanner />
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={pathname}

@@ -1,25 +1,33 @@
 package com.pegasusx.warehouse.ui.screens.dashboard
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.BuildConfig
 import com.pegasusx.warehouse.data.model.DashboardData
+import com.pegasusx.warehouse.data.model.FleetStatusEntry
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.components.ClientPolicyBanner
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
+import com.pegasusx.warehouse.ui.components.WarehouseKpiBadge
+import com.pegasusx.warehouse.ui.components.WarehouseKpiTile
+import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
+import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
+import com.pegasusx.warehouse.ui.components.WarehouseStateKind
+import com.pegasusx.warehouse.ui.components.WarehouseStatePane
+import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.navigation.WarehouseRoutes
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -29,19 +37,21 @@ private data class KpiCard(
     val icon: ImageVector,
     val route: String,
     val value: (DashboardData) -> String,
+    val danger: (DashboardData) -> Boolean = { false },
+    val highlight: (DashboardData) -> Boolean = { false },
 )
 
 private val kpiCards = listOf(
-    KpiCard("Active Orders", Icons.Default.ShoppingCart, WarehouseRoutes.ORDERS) { it.activeOrders.toString() },
-    KpiCard("Completed Today", Icons.Default.CheckCircle, WarehouseRoutes.ORDERS) { it.completedToday.toString() },
-    KpiCard("Pending Dispatch", Icons.Default.LocalShipping, WarehouseRoutes.DISPATCH) { it.pendingDispatch.toString() },
-    KpiCard("Today Revenue", Icons.Default.AttachMoney, WarehouseRoutes.TREASURY) { "${it.todayRevenue / 1000}K" },
-    KpiCard("Drivers On Route", Icons.Default.DirectionsCar, WarehouseRoutes.DRIVERS) { it.driversOnRoute.toString() },
-    KpiCard("Idle Drivers", Icons.Default.PersonOff, WarehouseRoutes.DRIVERS) { it.driversIdle.toString() },
-    KpiCard("Vehicles", Icons.Default.DirectionsCar, WarehouseRoutes.VEHICLES) { it.totalVehicles.toString() },
-    KpiCard("Low Stock", Icons.Default.Warning, WarehouseRoutes.INVENTORY) { it.lowStockCount.toString() },
-    KpiCard("Staff", Icons.Default.People, WarehouseRoutes.STAFF) { it.totalStaff.toString() },
-    KpiCard("More", Icons.Default.Apps, WarehouseRoutes.MORE) { "…" },
+    KpiCard("Active Orders", Icons.Default.ShoppingCart, WarehouseRoutes.ORDERS, value = { it.activeOrders.toString() }),
+    KpiCard("Completed Today", Icons.Default.CheckCircle, WarehouseRoutes.ORDERS, value = { it.completedToday.toString() }, highlight = { it.completedToday > 0 }),
+    KpiCard("Pending Dispatch", Icons.Default.LocalShipping, WarehouseRoutes.DISPATCH, value = { it.pendingDispatch.toString() }, danger = { it.pendingDispatch > 5 }),
+    KpiCard("Today Revenue", Icons.Default.AttachMoney, WarehouseRoutes.TREASURY, value = { "${it.todayRevenue / 1000}K" }),
+    KpiCard("Drivers On Route", Icons.Default.DirectionsCar, WarehouseRoutes.DRIVERS, value = { it.driversOnRoute.toString() }),
+    KpiCard("Idle Drivers", Icons.Default.PersonOff, WarehouseRoutes.DRIVERS, value = { it.driversIdle.toString() }),
+    KpiCard("Vehicles", Icons.Default.DirectionsCar, WarehouseRoutes.VEHICLES, value = { it.totalVehicles.toString() }),
+    KpiCard("Low Stock", Icons.Default.Warning, WarehouseRoutes.INVENTORY, value = { it.lowStockCount.toString() }, danger = { it.lowStockCount > 0 }),
+    KpiCard("Staff", Icons.Default.People, WarehouseRoutes.STAFF, value = { it.totalStaff.toString() }),
+    KpiCard("More", Icons.Default.Apps, WarehouseRoutes.MORE, value = { "…" }),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -127,16 +137,19 @@ fun DashboardScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.lg))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
+            loading -> WarehouseLoadingState(
+                title = "Loading dashboard…",
+                body = "Warehouse KPIs and fleet snapshot",
+                modifier = Modifier.padding(innerPadding),
+            )
+            error != null -> WarehouseStatePane(
+                kind = WarehouseStateKind.Error,
+                headline = "Dashboard unavailable",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier.padding(innerPadding),
+            )
             else -> Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -155,37 +168,44 @@ fun DashboardScreen(
                     contentPadding = PaddingValues(bottom = PegasusSpacing.lg),
                     horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.weight(1f, fill = false),
                 ) {
-                items(kpiCards.size) { index ->
-                    val card = kpiCards[index]
-                    ElevatedCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onNavigate(card.route) },
-                    ) {
-                        Column(modifier = Modifier.padding(PegasusSpacing.lg)) {
-                            Icon(
-                                imageVector = card.icon,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(24.dp),
-                            )
-                            Spacer(Modifier.height(PegasusSpacing.md))
-                            Text(
-                                text = card.value(data),
-                                style = MaterialTheme.typography.headlineMedium,
-                            )
-                            Spacer(Modifier.height(PegasusSpacing.xs))
-                            Text(
-                                text = card.label,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                    items(kpiCards.size) { index ->
+                        val card = kpiCards[index]
+                        val badge = when {
+                            card.danger(data) -> WarehouseKpiBadge.Alert
+                            card.highlight(data) -> WarehouseKpiBadge.Done
+                            else -> null
                         }
+                        WarehouseKpiTile(
+                            label = card.label,
+                            value = card.value(data),
+                            icon = card.icon,
+                            badge = badge,
+                            onClick = { onNavigate(card.route) },
+                        )
                     }
                 }
+                if (data.fleetStatus.isNotEmpty()) {
+                    FleetStatusBreakdown(data.fleetStatus)
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun FleetStatusBreakdown(entries: List<FleetStatusEntry>) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+        ) {
+            WarehouseSectionTitle("Fleet status tracking")
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                items(entries) { entry ->
+                    WarehouseStatusChip(status = "${entry.status}: ${entry.count}")
+                }
             }
         }
     }

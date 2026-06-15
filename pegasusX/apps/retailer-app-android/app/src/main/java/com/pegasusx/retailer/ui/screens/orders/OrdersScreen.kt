@@ -74,6 +74,8 @@ import com.pegasusx.retailer.ui.components.ShimmerOrderList
 import com.pegasusx.retailer.ui.components.OrderDetailSheet
 import com.pegasusx.retailer.ui.components.OrderStatusBadge
 import com.pegasusx.retailer.ui.components.QROverlay
+import com.pegasusx.retailer.ui.components.RetailerRuntimeBanner
+import com.pegasusx.retailer.ui.components.RetailerRuntimeTone
 import com.pegasusx.retailer.ui.components.statusColor
 import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusOrange
@@ -172,38 +174,16 @@ fun OrdersScreen(
             if (uiState.loadIssue != null) {
                 val loadIssue = requireNotNull(uiState.loadIssue)
                 val issueMessage = uiState.error ?: uiState.syncMessage.orEmpty()
-                val containerColor = when (loadIssue) {
-                    OrdersLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                    OrdersLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                    OrdersLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                val tone = when (loadIssue) {
+                    OrdersLoadIssue.OFFLINE -> RetailerRuntimeTone.Offline
+                    OrdersLoadIssue.RESTRICTED, OrdersLoadIssue.ERROR -> RetailerRuntimeTone.Warning
                 }
-                val contentColor = when (loadIssue) {
-                    OrdersLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
-                    OrdersLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
-                    OrdersLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(containerColor)
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = issueMessage,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = contentColor,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    TextButton(onClick = viewModel::refresh) {
-                        Text("Retry", color = contentColor)
-                    }
-                }
+                RetailerRuntimeBanner(
+                    tone = tone,
+                    message = issueMessage,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    onRetry = viewModel::refresh,
+                )
             }
 
             // ── M3 Icon Tabs ──

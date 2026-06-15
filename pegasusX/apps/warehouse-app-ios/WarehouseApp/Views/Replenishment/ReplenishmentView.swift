@@ -10,30 +10,32 @@ struct ReplenishmentView: View {
     var body: some View {
         Group {
             if loading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                WarehouseLoadingView(
+                    title: "Loading replenishment",
+                    message: "Fetching stock insights and reorder recommendations."
+                )
             } else if let error {
-                ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text(error)
-                } actions: {
-                    Button("Retry") { load() }
-                }
+                WarehouseErrorView(message: error) { load() }
             } else if insights.isEmpty {
-                ContentUnavailableView("No insights", systemImage: "tray", description: Text("No replenishment insights for this warehouse."))
+                WarehouseEmptyView(
+                    title: "No insights",
+                    message: "No replenishment insights for this warehouse."
+                )
             } else {
                 List(insights) { insight in
-                    VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                    VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
                         Text(insight.productName)
                             .font(.headline)
-                        Text("\(insight.urgency) · \(insight.status)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        HStack(spacing: LabTheme.spacingSM) {
+                            WarehouseStatusBadge(text: insight.urgency, tint: urgencyTint(insight.urgency))
+                            WarehouseStatusBadge(text: insight.status)
+                        }
                         Text("Stock \(insight.currentStock) · Reorder \(insight.reorderQuantity)")
                             .font(.caption)
+                            .foregroundStyle(.secondary)
                         Text("Days until stockout: \(insight.daysUntilStockout)")
                             .font(.caption)
+                            .foregroundStyle(.secondary)
                         if insight.status.uppercased() == "OPEN" {
                             HStack {
                                 Button("Approve") {
@@ -76,6 +78,14 @@ struct ReplenishmentView: View {
         }
         .task { load() }
         .refreshable { load() }
+    }
+
+    private func urgencyTint(_ urgency: String) -> Color {
+        switch urgency.uppercased() {
+        case "CRITICAL": return LabTheme.destructive
+        case "URGENT": return LabTheme.warning
+        default: return LabTheme.secondaryLabel
+        }
     }
 
     private func load() {

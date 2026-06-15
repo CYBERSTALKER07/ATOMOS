@@ -12,6 +12,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import Icon from "@/components/Icon";
+import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
 import { createSupplierApi } from "@/lib/api";
 import type {
   SupplierAnalyticsRevenueResponse,
@@ -87,60 +89,133 @@ export default function AnalyticsPage() {
   return (
     <PortalSurface
       title="Analytics"
-      description="Order velocity, revenue trend, and near-term demand signals."
+      description="Financial overview and operational intelligence."
       loading={loading}
+      skeletonVariant="dashboard"
       error={error}
+      actions={
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href={"/analytics/demand" as Route} className="md-btn md-btn-tonal md-typescale-label-large px-4 py-2">
+            Demand forecast
+          </Link>
+          <Link href={"/dispatch" as Route} className="md-btn md-btn-filled md-typescale-label-large px-4 py-2 inline-flex items-center gap-2">
+            <Icon name="dispatch" size={18} />
+            Dispatch room
+          </Link>
+        </div>
+      }
     >
-      <div className="flex flex-wrap gap-3 mb-6">
-        <Link href={"/analytics/demand" as Route} className="md-btn md-btn-tonal md-typescale-label-large px-4 py-2">
-          Demand forecast
-        </Link>
-      </div>
+      {demand && demand.prediction_count > 0 ? (
+        <div
+          className="desk-card p-6 mb-6"
+          style={{
+            background: "color-mix(in srgb, var(--desk-accent) 12%, var(--desk-surface))",
+            borderColor: "color-mix(in srgb, var(--desk-accent) 28%, var(--desk-border))",
+          }}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                style={{ background: "var(--desk-accent)", color: "var(--desk-accent-on)" }}
+              >
+                <Icon name="overview" size={20} />
+              </div>
+              <div>
+                <h2 className="md-typescale-title-medium" style={{ color: "var(--desk-text-primary)" }}>
+                  AI future demand (next 24h)
+                </h2>
+                <p className="md-typescale-body-small" style={{ color: "var(--desk-text-secondary)" }}>
+                  Empathy engine predictions for your catalog
+                </p>
+              </div>
+            </div>
+            <span
+              className="md-chip h-7 px-3"
+              style={{
+                background: "var(--desk-accent)",
+                color: "var(--desk-accent-on)",
+                borderColor: "transparent",
+              }}
+            >
+              {demand.prediction_count} predictions
+            </span>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="md-card p-6">
-          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">30-day revenue</p>
-          <p className="md-typescale-display-small mt-2">
-            {revenue ? formatMoney(revenue.total_minor, revenue.currency) : "—"}
-          </p>
-        </div>
-        <div className="md-card p-6">
-          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Demand predictions</p>
-          <p className="md-typescale-display-small mt-2">{demand?.prediction_count ?? 0}</p>
-        </div>
-        <div className="md-card p-6">
-          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Forecast units (24h)</p>
-          <p className="md-typescale-display-small mt-2">{demand?.total_pallets ?? 0}</p>
-        </div>
-      </div>
+          <KpiStatGrid columns={3}>
+            <KpiStatCard label="Retailers" value={demand.total_retailers} />
+            <KpiStatCard label="Total pallets" value={demand.total_pallets.toLocaleString()} />
+            <KpiStatCard
+              label="Forecast value"
+              value={new Intl.NumberFormat("uz-UZ").format(demand.total_value)}
+            />
+          </KpiStatGrid>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <section className="md-card p-6">
-          <h2 className="md-typescale-title-large">Order velocity (7d)</h2>
+          {demand.items.length > 0 ? (
+            <div className="flex flex-wrap gap-2 mt-4">
+              {demand.items.slice(0, 5).map((item) => (
+                <span
+                  key={item.sku_id}
+                  className="md-chip h-7 px-3 text-xs"
+                  style={{ background: "var(--desk-surface-raised)", color: "var(--desk-text-primary)" }}
+                >
+                  {item.total_qty}× {item.product_name || item.sku_id}
+                </span>
+              ))}
+              {demand.items.length > 5 ? (
+                <span className="md-chip h-7 px-3 text-xs" style={{ color: "var(--desk-text-tertiary)" }}>
+                  +{demand.items.length - 5} more
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+
+          <Link
+            href={"/analytics/demand" as Route}
+            className="md-btn md-btn-filled inline-flex items-center gap-2 mt-5"
+          >
+            View demand forecast
+            <Icon name="right" size={16} />
+          </Link>
+        </div>
+      ) : null}
+
+      <KpiStatGrid columns={3}>
+        <KpiStatCard
+          label="30-day revenue"
+          value={revenue ? formatMoney(revenue.total_minor, revenue.currency) : "—"}
+        />
+        <KpiStatCard label="Demand predictions" value={demand?.prediction_count ?? 0} />
+        <KpiStatCard label="Forecast units (24h)" value={demand?.total_pallets ?? 0} />
+      </KpiStatGrid>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <section className="desk-card p-6">
+          <h2 className="bento-card-title">Order velocity (7d)</h2>
           <div className="h-64 mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={velocityChart}>
-                <CartesianGrid stroke="var(--color-md-outline-variant)" strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis allowDecimals={false} />
+                <CartesianGrid stroke="var(--desk-border)" strokeDasharray="3 3" />
+                <XAxis dataKey="date" tick={{ fill: "var(--desk-text-secondary)", fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fill: "var(--desk-text-secondary)", fontSize: 12 }} />
                 <Tooltip />
-                <Line type="monotone" dataKey="created" stroke="var(--color-md-primary)" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="completed" stroke="var(--color-md-success)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="created" stroke="var(--desk-accent)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="completed" stroke="var(--desk-success)" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </section>
 
-        <section className="md-card p-6">
-          <h2 className="md-typescale-title-large">Revenue trend (30d)</h2>
+        <section className="desk-card p-6">
+          <h2 className="bento-card-title">Revenue trend (30d)</h2>
           <div className="h-64 mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={revenueChart}>
-                <CartesianGrid stroke="var(--color-md-outline-variant)" strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis allowDecimals={false} />
+                <CartesianGrid stroke="var(--desk-border)" strokeDasharray="3 3" />
+                <XAxis dataKey="date" tick={{ fill: "var(--desk-text-secondary)", fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fill: "var(--desk-text-secondary)", fontSize: 12 }} />
                 <Tooltip />
-                <Line type="monotone" dataKey="revenue" stroke="var(--color-md-primary)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="revenue" stroke="var(--desk-accent)" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -148,13 +223,17 @@ export default function AnalyticsPage() {
       </div>
 
       {demand && demand.items.length > 0 ? (
-        <section className="md-card p-6 mt-6">
-          <h2 className="md-typescale-title-large">Top demand SKUs (today)</h2>
-          <ul className="mt-4 divide-y divide-[var(--color-md-outline-variant)]">
-            {demand.items.slice(0, 5).map((item) => (
-              <li key={item.sku_id} className="py-3 md-typescale-body-medium flex justify-between gap-4">
-                <span>{item.product_name || item.sku_id}</span>
-                <span className="text-[var(--color-md-outline)]">{item.total_qty} units</span>
+        <section className="desk-card p-6 mt-6">
+          <h2 className="bento-card-title">Top demand SKUs (today)</h2>
+          <ul className="mt-4 divide-y" style={{ borderColor: "var(--desk-border)" }}>
+            {demand.items.slice(0, 8).map((item) => (
+              <li
+                key={item.sku_id}
+                className="py-3 md-typescale-body-medium flex justify-between gap-4"
+                style={{ borderColor: "var(--desk-border)" }}
+              >
+                <span style={{ color: "var(--desk-text-primary)" }}>{item.product_name || item.sku_id}</span>
+                <span style={{ color: "var(--desk-text-secondary)" }}>{item.total_qty} units</span>
               </li>
             ))}
           </ul>

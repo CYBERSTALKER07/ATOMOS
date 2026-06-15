@@ -64,7 +64,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Product
+import com.pegasusx.retailer.ui.components.ClientPolicyBanner
+import com.pegasusx.retailer.ui.components.RetailerMetricTile
+import com.pegasusx.retailer.ui.components.RetailerRuntimeBanner
+import com.pegasusx.retailer.ui.components.RetailerRuntimeTone
+import com.pegasusx.retailer.ui.components.RetailerSectionHeader
 import com.pegasusx.retailer.ui.components.modifiers.bounceCash
+import com.pegasusx.retailer.ui.theme.PegasusSpacing
 import com.pegasusx.retailer.ui.theme.HexagonShape
 import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusOrange
@@ -76,6 +82,7 @@ private val timeRanges = listOf("Day", "Week", "Month")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
+    clientPolicyMessage: String? = null,
     viewModel: DashboardViewModel = hiltViewModel(),
     onOpenCatalog: () -> Unit = {},
     onOpenOrders: () -> Unit = {},
@@ -104,6 +111,11 @@ fun DashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
+                if (!clientPolicyMessage.isNullOrBlank()) {
+                    item {
+                        ClientPolicyBanner(clientPolicyMessage)
+                    }
+                }
                 if (uiState.loadIssue != null || uiState.isLoading) {
                     item {
                         val loadIssue = uiState.loadIssue
@@ -111,39 +123,16 @@ fun DashboardScreen(
                             loadIssue != null -> uiState.error ?: uiState.syncMessage.orEmpty()
                             else -> "Syncing dashboard data..."
                         }
-                        val containerColor = when (loadIssue) {
-                            DashboardLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                            DashboardLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                            DashboardLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
-                            null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                        val tone = when (loadIssue) {
+                            DashboardLoadIssue.OFFLINE -> RetailerRuntimeTone.Offline
+                            DashboardLoadIssue.RESTRICTED, DashboardLoadIssue.ERROR -> RetailerRuntimeTone.Warning
+                            null -> RetailerRuntimeTone.Refreshing
                         }
-                        val contentColor = when (loadIssue) {
-                            DashboardLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
-                            DashboardLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
-                            DashboardLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
-                            null -> MaterialTheme.colorScheme.onPrimaryContainer
-                        }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(containerColor)
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = syncMessage,
-                                modifier = Modifier.weight(1f),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = contentColor,
-                            )
-                            if (loadIssue != null) {
-                                TextButton(onClick = viewModel::refresh) {
-                                    Text("Retry", color = contentColor)
-                                }
-                            }
-                        }
+                        RetailerRuntimeBanner(
+                            tone = tone,
+                            message = syncMessage,
+                            onRetry = loadIssue?.let { { viewModel.refresh() } },
+                        )
                     }
                 }
 
@@ -171,8 +160,8 @@ fun DashboardScreen(
 
                 if (uiState.recentProducts.isNotEmpty()) {
                     item {
-                        SectionHeader(title = "Quick reorder", icon = Icons.Rounded.History)
-                        Spacer(modifier = Modifier.height(12.dp))
+                        RetailerSectionHeader(title = "Quick reorder", icon = Icons.Rounded.History)
+                        Spacer(modifier = Modifier.height(PegasusSpacing.md))
                         QuickReorderRow(
                             products = uiState.recentProducts,
                             onReorder = onQuickReorder,
@@ -182,7 +171,7 @@ fun DashboardScreen(
 
                 if (uiState.predictions.isNotEmpty()) {
                     item {
-                        SectionHeader(
+                        RetailerSectionHeader(
                             title = "AI predictions",
                             icon = Icons.Rounded.AutoAwesome,
                             count = uiState.predictions.size,
@@ -260,54 +249,24 @@ private fun DashboardOverviewCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
-                MetricPill(
+                RetailerMetricTile(
                     label = "Active orders",
                     value = activeOrderCount.toString(),
                     modifier = Modifier.weight(1f),
                 )
-                MetricPill(
+                RetailerMetricTile(
                     label = "Predictions",
                     value = predictionCount.toString(),
                     modifier = Modifier.weight(1f),
                 )
-                MetricPill(
+                RetailerMetricTile(
                     label = "Recent items",
                     value = recentProductCount.toString(),
                     modifier = Modifier.weight(1f),
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun MetricPill(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
@@ -693,40 +652,3 @@ private fun ConfidenceRing(
     }
 }
 
-@Composable
-private fun SectionHeader(
-    title: String,
-    icon: ImageVector,
-    count: Int? = null,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        if (count != null) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.secondaryContainer,
-            ) {
-                Text(
-                    text = count.toString(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                )
-            }
-        }
-    }
-}

@@ -32,9 +32,11 @@ export default function ManifestsPage() {
       title="Manifests"
       description="Loading manifests, seal, and dispatch lifecycle. Use Dispatch for active queue operations."
       loading={loading}
+      skeletonVariant="table"
       error={error}
-      empty={!loading && manifests.length === 0}
-      emptyMessage="No manifests in the current window. Assign orders from Dispatch when routes are ready."
+      empty={!loading && !error && manifests.length === 0}
+      emptyMessage="No manifests in the current window."
+      emptyIcon="manifests"
     >
       <ListToolbar
         page={pagination.page}

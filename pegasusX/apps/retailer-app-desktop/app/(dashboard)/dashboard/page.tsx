@@ -15,11 +15,13 @@ import {
   AlertTriangle,
   WifiOff,
 } from "lucide-react";
-import { Button, Skeleton } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import EmptyState from "../../../components/EmptyState";
+import { PageSection } from "../../../components/PageSection";
+import { PageSkeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
 import { useOptionalWebSocket } from "../../../lib/ws";
@@ -172,16 +174,7 @@ export default function DashboardPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <Skeleton className="mb-2 h-8 w-64 rounded-lg" />
-            <Skeleton className="mb-8 h-4 w-96 rounded-lg" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              {[0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-32 rounded-2xl animate-pulse bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)]"
-                />
-              ))}
-            </div>
+            <PageSkeleton variant="dashboard" />
           </motion.div>
         ) : (
           <motion.div
@@ -338,22 +331,20 @@ export default function DashboardPage() {
             </BentoGrid>
 
             <div className="grid gap-8 xl:grid-cols-[1.2fr_0.8fr]">
-              <section>
-                <h3 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)] mb-4">
-                  Quick Reorder
-                </h3>
+              <PageSection
+                title="Quick Reorder"
+                description="Stage repeat purchases from your approved catalog."
+              >
                 {reorderProducts.length === 0 ? (
-                  <div className="rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] p-6">
-                    <EmptyState
-                      headline="No products ready for reorder"
-                      body="Catalog feeds are still populating reorder candidates."
-                      variant="no-products"
-                      action="Sync"
-                      onAction={refreshProducts}
-                    />
-                  </div>
+                  <EmptyState
+                    headline="No products ready for reorder"
+                    body="Catalog feeds are still populating reorder candidates."
+                    variant="no-products"
+                    action="Sync"
+                    onAction={refreshProducts}
+                  />
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 !mt-0">
                     {reorderProducts.map((p) => (
                       <motion.button
                         key={p.id}
@@ -387,31 +378,29 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 )}
-              </section>
+              </PageSection>
 
-              <section>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
-                    AI Restock
-                  </h3>
+              <PageSection
+                title="AI Restock"
+                description="High-confidence replenishment signals for this cycle."
+                actions={
                   <Link
                     href="/insights"
                     className="text-[var(--desk-accent)] md-typescale-label-small font-bold uppercase tracking-widest hover:underline"
                   >
                     View All
                   </Link>
-                </div>
-                <div className="flex flex-col gap-3">
+                }
+              >
+                <div className="flex flex-col gap-3 !mt-0">
                   {predictionList.length === 0 ? (
-                    <div className="rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] p-6">
-                      <EmptyState
-                        headline="No AI restock signals"
-                        body="Prediction feed is currently empty for this cycle."
-                        variant="no-predictions"
-                        action="Sync"
-                        onAction={refreshPredictions}
-                      />
-                    </div>
+                    <EmptyState
+                      headline="No AI restock signals"
+                      body="Prediction feed is currently empty for this cycle."
+                      variant="no-predictions"
+                      action="Sync"
+                      onAction={refreshPredictions}
+                    />
                   ) : (
                     predictionList.slice(0, 5).map((forecast) => (
                       <div
@@ -443,7 +432,7 @@ export default function DashboardPage() {
                     ))
                   )}
                 </div>
-              </section>
+              </PageSection>
             </div>
           </motion.div>
         )}

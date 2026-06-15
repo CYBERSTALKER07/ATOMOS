@@ -1,15 +1,19 @@
 "use client";
 
 import type { ReactNode } from "react";
+import EmptyState from "./EmptyState";
+import { PageSkeleton } from "./Skeleton";
 
 type PageChromeProps = {
   title: string;
   description?: string;
   actions?: ReactNode;
   loading?: boolean;
+  skeletonVariant?: "dashboard" | "table" | "form";
   error?: string | null;
   empty?: boolean;
   emptyMessage?: string;
+  emptyIcon?: string;
   children: ReactNode;
 };
 
@@ -18,9 +22,11 @@ export function PageChrome({
   description,
   actions,
   loading,
+  skeletonVariant = "dashboard",
   error,
   empty,
   emptyMessage = "No data yet.",
+  emptyIcon = "inventory",
   children,
 }: PageChromeProps) {
   return (
@@ -34,20 +40,11 @@ export function PageChrome({
       </div>
 
       {loading ? (
-        <div className="md-card p-8" style={{ color: "var(--desk-text-secondary)" }}>
-          Loading…
-        </div>
+        <PageSkeleton variant={skeletonVariant} />
       ) : error ? (
-        <div
-          className="md-card p-6"
-          style={{ color: "var(--desk-danger)", borderColor: "var(--desk-danger)" }}
-        >
-          {error}
-        </div>
+        <EmptyState icon="error" headline="Unable to load" body={error} />
       ) : empty ? (
-        <div className="md-card p-6" style={{ color: "var(--desk-text-secondary)" }}>
-          {emptyMessage}
-        </div>
+        <EmptyState icon={emptyIcon} headline={emptyMessage} />
       ) : (
         children
       )}

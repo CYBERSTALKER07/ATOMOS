@@ -2,7 +2,7 @@
 
 **Scope:** pegasusX only · **Reference:** pegasus `admin-portal` (read-only)  
 **Parent plan:** `VEGETABLE_PLAN.md` §2.1  
-**Last updated:** 2026-06-14
+**Last updated:** 2026-06-15
 
 ## Status model
 
@@ -86,6 +86,52 @@
 
 ---
 
+## Phase 6 — UI/UX parity & cross-cutting client surfaces (SP-6)
+
+| ID | Feature | Backend | Portal | Android | iOS | Status |
+|----|---------|---------|--------|---------|-----|--------|
+| SP6-01 | Client policy banner (`role=ADMIN`) | `GET /v1/platform/client-policy` | `ClientPolicyBanner` in `SupplierShell` | `ClientPolicyBanner` on dashboard | `ClientPolicyBanner` on dashboard | **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_CLIENT_POLICY_OK`) |
+| SP6-02 | Native notification inbox | `GET/POST /v1/user/notifications*` | `NotificationPanel` + WS (existing) | `NotificationInboxScreen` | `NotificationInboxView` | **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_NOTIFICATION_INBOX_OK`) |
+| SP6-03 | Realtime WS refresh | `/v1/ws/supplier` | `useNotifications.ts` + `use-supplier-ws-refresh` | `SupplierWebSocket` + `SupplierRealtimeSignals` | `SupplierRealtimeClient` + hub | **WIRED** (pre-existing) |
+
+---
+
+## Phase 7 portal — Deep supplier-portal UI/UX (SP-7P)
+
+| ID | Feature | pegasus ref | pegasusX portal | Status |
+|----|---------|-------------|-----------------|--------|
+| SP7P-01 | `PageChrome` skeleton + `EmptyState` | `Skeleton.tsx`, `EmptyState.tsx` | `components/Skeleton.tsx`, `EmptyState.tsx`, `PageChrome` variants | **WIRED** |
+| SP7P-02 | KPI tile structure (`KpiStatCard`, `PageSection`) | `md-card-elevated` KPI grid | `KpiStatCard.tsx`, `PageSection.tsx` | **WIRED** |
+| SP7P-03 | Analytics depth (AI demand card, charts, header actions) | `supplier/analytics/page.tsx` | `/analytics` + `/analytics/demand` desk tokens | **WIRED** |
+| SP7P-04 | Operations form spacing + section chrome | — (pegasusX-only hub) | `/operations` `PageSection` + labeled fields | **WIRED** |
+| SP7P-05 | Treasury hub KPI + link cards | payment-config / earnings refs | `/treasury` `KpiStatGrid` + icon link cards | **WIRED** |
+| SP7P-06 | Dispatch toolbar (search wired, dead CTA removed) | `supplier/dispatch/page.tsx` | client-side manifest search; link to `/manifests` | **WIRED** |
+| SP7P-07 | Dashboard billing gate link fix | `payment-config` | `/setup/billing` (was broken `/settings/billing`) | **WIRED** |
+| SP7P-08 | Fleet map chrome | fleet page header | `/fleet` `bento-card-header` parity | **WIRED** |
+
+**SP-7P audit gaps (intentional / blocked):** Fleet CRUD depth (pegasus `supplier/fleet` ~1.5k LOC → pegasusX `/org-fleet`); manifests pick-list tabs + date CSV; dispatch manual control room; analytics `?warehouse_id=` revenue filter (backend gap); per-SKU velocity table (API contract differs); shift toggle on layout.
+
+**Exit:** Component-level desk tokens, skeleton loaders, KPI structure, and section headers on analytics, operations, treasury, dispatch, fleet, manifests. UI-only — no new SSMR.
+
+---
+
+## Phase 7 — Deep native UI/UX parity (SP-7)
+
+| ID | Feature | Android | iOS | Status |
+|----|---------|---------|-----|--------|
+| SP7-01 | Shared KPI / list / status primitives | `SupplierUiComponents.kt` (`SupplierKpiTile`, `SupplierOpsListCard`, `SupplierStatusChip`, `SupplierMetricTile`, `SupplierLeadingIcon`) | `KpiTile`, `SupplierStatusBadge`, `SupplierSectionHeader` | **WIRED** |
+| SP7-02 | Dashboard KPI grid + billing card | `DashboardScreen` — 160dp adaptive grid, icon badges, refresh | `DashboardView` + `KpiTile`, `.refreshable` | **WIRED** |
+| SP7-03 | Orders / Fleet list cards | `OrdersScreen`, `FleetScreen` — row cards, status chips, refresh, formatted amounts | refresh toolbar + grouped cards | **WIRED** |
+| SP7-04 | More hub ListItem discipline | `MoreScreen` — `SupplierLeadingIcon`, titleSmall/bodySmall | `MoreHubView` section headers | **WIRED** |
+| SP7-05 | Operations empathy metrics | `OperationsScreen` — `SupplierMetricTile` grid | `OperationsView` empathy row | **WIRED** |
+| SP7-06 | Analytics KPI grid | `AnalyticsScreen` — adaptive grid + parallel fetch | `AnalyticsView` + refresh | **WIRED** |
+| SP7-07 | Manifest list + detail KPIs | `ManifestsScreen`, `ManifestDetailScreen` — status chips, volume/orders KPI row | manifest views + refresh | **WIRED** |
+| SP7-08 | Loading/error/empty states | `SupplierStatePane` / `SupplierLoadingState` | `SupplierLoadingView` / `SupplierErrorView` | **WIRED** |
+
+**UI audit vs pegasus reference:** No native supplier app in `pegasus/apps/`; Android patterns mirrored from `factory-app-android` (`KpiMetricCard`, icon badges) and `warehouse-app-android` (`AssistChip` status, 160dp grid, refresh top-bar). iOS aligned with factory/warehouse SwiftUI (semantic tints, section headers, adaptive KPI grids).
+
+---
+
 ## Intentional single-tenant deltas (do not close)
 
 - Platform control center, DLQ, KYC, country config (pegasus multi-tenant admin)
@@ -112,8 +158,10 @@ cd pegasusX && make parity-contract-full
 4. ~~Phase 3 staff/org lifecycle + notification inbox fix~~ — **done this session**
 5. ~~Phase 4 intelligence & catalog depth (analytics, CSV import, retailer pricing overrides, import session wizard + async worker)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_ANALYTICS_OK`, `PX_E2E_SUPPLIER_INVENTORY_IMPORT_OK`, `PX_E2E_SUPPLIER_IMPORT_WIZARD_OK`, `PX_E2E_SUPPLIER_IMPORT_ASYNC_OK`, `PX_E2E_RETAILER_PRICING_OVERRIDE_OK`)
 6. ~~Phase 5 cross-cutting depth (native analytics, treasury hub KPIs, operations broadcast/bypass)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_OPERATIONS_OK`, `PX_E2E_SUPPLIER_PAYMENT_BYPASS_OK`)
-7. ~~SSMR / parity verification~~ — **green** (`make test-ssmr-infra`, `make parity-contract-full`)
-8. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3
+7. ~~Phase 6 UI/UX parity (client-policy + native notification inbox)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_CLIENT_POLICY_OK`, `PX_E2E_SUPPLIER_NOTIFICATION_INBOX_OK`)
+8. ~~Phase 7 portal deep UI/UX (SP-7P component-level)~~ — **WIRED** (SP7P-01–SP7P-08; UI-only)
+9. ~~Phase 7 deep native UI/UX (Android + iOS component-level parity)~~ — **WIRED** (SP7-01–SP7-08)
+10. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3
 
 ---
 

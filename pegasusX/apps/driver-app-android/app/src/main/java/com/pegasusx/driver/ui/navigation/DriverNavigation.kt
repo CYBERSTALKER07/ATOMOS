@@ -214,6 +214,7 @@ fun DriverNavigation(
             MainTabView(
                 homeContent = {
                     HomeScreen(
+                        api = api,
                         viewModel = manifestViewModel,
                         onOpenMap = { /* Map tab handled internally by MainTabView */ },
                         onScanQR = { navController.navigate(DriverRoutes.SCANNER) },

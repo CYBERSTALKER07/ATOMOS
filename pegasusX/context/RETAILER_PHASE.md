@@ -1,7 +1,7 @@
 # pegasusX RETAILER Role — Phased Execution Ledger
 
 **Scope:** pegasusX only · **Parent plan:** `VEGETABLE_PLAN.md` §2.5  
-**Last updated:** 2026-06-15
+**Last updated:** 2026-06-15 (RT-6P retailer desktop deep UI parity).
 
 ## Status model
 
@@ -54,6 +54,76 @@
 |----|---------|---------|---------|---------|-----|--------|
 | RT4-01 | Client version policy | `GET /v1/platform/client-policy` | `ClientPolicyBanner` | `NavigationViewModel` + profile | `ProfileView` | **WIRED** |
 | RT4-02 | Firebase OTP | custom token exchange | — | scaffold + comment | — | **WIRED** (graceful degradation only) |
+
+---
+
+## Phase RT-5 — Cross-client policy banner + native notification inbox parity
+
+| ID | Feature | Backend | Desktop | Android | iOS | Status |
+|----|---------|---------|---------|---------|-----|--------|
+| RT5-01 | Client policy banner (`role=RETAILER`) | `GET /v1/platform/client-policy` | `ClientPolicyBanner` in dashboard layout | `ClientPolicyBanner` on home + profile | `ClientPolicyBanner` on dashboard + profile | **E2E_SSMR_GREEN** (`PX_E2E_RETAILER_CLIENT_POLICY_OK`) |
+| RT5-02 | Native notification inbox | `GET /v1/user/notifications`, `POST /v1/user/notifications/read` | `/notifications` page + `NotificationsProvider` | `NotificationInboxScreen` + `mark_all` | `NotificationInboxView` sheet + `mark_all` | **E2E_SSMR_GREEN** (`PX_E2E_RETAILER_NOTIFICATION_INBOX_OK`) |
+| RT5-03 | SSMR markers | smokecheck | — | — | — | **WIRED** |
+
+**Exit:** Retailer client-policy and notification-inbox flows match supplier/warehouse/factory/driver parity pattern on all three surfaces; SSMR emits dedicated retailer markers.
+
+---
+
+## Phase RT-6A — Deep native UI/UX parity (Android)
+
+| ID | Feature | Android | Status |
+|----|---------|---------|--------|
+| RT6A-01 | Shared KPI / list / status primitives | `RetailerUiComponents.kt` (`RetailerKpiTile`, `RetailerMetricTile`, `RetailerListCard`, `RetailerStatusChip`, `RetailerSectionHeader`, `RetailerTagChip`) | **WIRED** |
+| RT6A-02 | Loading/error/empty + runtime banners | `RetailerState.kt` (`RetailerLoadingState`, `RetailerStatePane`, `RetailerRuntimeBanner`) | **WIRED** |
+| RT6A-03 | Dashboard overview KPI row + sections | `DashboardScreen` — `RetailerMetricTile` overview row, `RetailerSectionHeader`, `RetailerRuntimeBanner`, pull-to-refresh | **WIRED** |
+| RT6A-04 | Catalog grid + empathy states | `CatalogScreen` — 160dp adaptive grid, `RetailerSectionHeader`, `RetailerLoadingState` / `RetailerStatePane` | **WIRED** |
+| RT6A-05 | Orders sync banner | `OrdersScreen` — `RetailerRuntimeBanner` + existing tab pager / shimmer / `OrderStatusBadge` | **WIRED** |
+| RT6A-06 | Tracking map refresh + list card | `DeliveryMapScreen` — top-bar `IconButton` refresh, `RetailerLoadingState`, `RetailerListCard` bottom sheet | **WIRED** |
+| RT6A-07 | Profile KPI row + pricing section | `ProfileScreen` — `RetailerMetricTile` stats, `RetailerSectionHeader` pricing rules, `RetailerRuntimeBanner` | **WIRED** |
+| RT6A-08 | Product card tag chips | `ProductCard` — `RetailerTagChip` for variant/size pills | **WIRED** |
+
+**UI audit vs pegasus reference:** pegasus `retailer-app-android` matches pegasusX on dashboard service grid and orders tabs; pegasusX is ahead on catalog all-products browse, sale pricing on `ProductCard`, client-policy banner (RT-5), and notification inbox. RT-6A aligns pegasusX Android with supplier SP-7 / warehouse WH-11A discipline (shared primitives, 160dp adaptive grids, `IconButton` refresh on tracking, empathetic loading copy).
+
+**Exit:** Primary retailer Android screens share M3 discipline with supplier/warehouse native patterns. UI-only — no new SSMR markers.
+
+---
+
+## Phase RT-6 — Deep native UI/UX parity (iOS)
+
+| ID | Feature | Backend | Desktop | Android | iOS | Status |
+|----|---------|---------|---------|---------|-----|--------|
+| RT6-01 | Shared KPI / list / status primitives | — | — | — | `KpiTile`, `RetailerStatusBadge`, `RetailerSectionHeader` | **WIRED** |
+| RT6-02 | Theme tokens (`statusTint`, `readableMaxWidth`) | — | — | — | `AppTheme.statusTint`, `retailerCard()`, `retailerReadableWidth()` | **WIRED** |
+| RT6-03 | Dashboard KPI grid + loading copy | — | — | — | `DashboardView` — adaptive `KpiTile`, `RetailerLoadingView` / `RetailerErrorView` | **WIRED** |
+| RT6-04 | Catalog section headers + error states | — | — | — | `CatalogView` — `RetailerSectionHeader`, `.refreshable`, `RetailerErrorView` | **WIRED** |
+| RT6-05 | Orders status badges | — | — | — | `OrdersView` + `OrderCardView` — `RetailerStatusBadge` | **WIRED** |
+| RT6-06 | Arrival / tracking polish | `GET /v1/retailer/tracking` | — | — | `ArrivalView` — LIVE/WAITING badges, approaching banner, `RetailerEmptyView` | **WIRED** |
+| RT6-07 | Profile KPI grid | — | — | — | `ProfileView` — `KpiTile` stats row | **WIRED** |
+| RT6-08 | Product card sale badge | — | — | — | `ProductCardView` — `RetailerStatusBadge` for sale offers | **WIRED** |
+| RT6-09 | Global refresh toolbar | — | — | — | `ContentView` — `arrow.clockwise` triggers `RetailerRefreshCenter` | **WIRED** |
+| RT6-10 | Loading/error/empty states | — | — | — | `RetailerLoadingView` / `RetailerErrorView` / `RetailerEmptyView` | **WIRED** |
+
+**UI audit vs pegasus reference:** pegasusX iOS is ahead on catalog browse chips (Categories/All/Suppliers), tracking-based `ArrivalView`, sale pricing on `ProductCardView`, and client-policy banners (RT-5). pegasus reference has confirm/reject arrival actions (deprecated — pegasusX uses delivery handoff). RT-6 aligns pegasusX iOS with supplier SP-7 / warehouse WH-11 discipline (shared primitives, semantic tints, refresh toolbar, empathetic loading copy).
+
+**Exit:** Primary retailer iOS screens share SwiftUI discipline with supplier/warehouse native patterns. UI-only — no new SSMR markers.
+
+---
+
+## Phase RT-6P — Deep retailer-app-desktop UI/UX (portal)
+
+| ID | Feature | pegasus ref | pegasusX desktop | Status |
+|----|---------|-------------|------------------|--------|
+| RT6P-01 | `PageChrome` skeleton + desk `Skeleton` | inline HeroUI pulse | `components/Skeleton.tsx`, `PageChrome.tsx` | **WIRED** |
+| RT6P-02 | KPI / section chrome (`KpiStatCard`, `PageSection`) | BentoGrid KPI cards | `KpiStatCard.tsx`, `PageSection.tsx` | **WIRED** |
+| RT6P-03 | Dashboard section polish | Quick reorder + AI restock panels | `PageSection` + `PageSkeleton` loading | **WIRED** |
+| RT6P-04 | Catalog product grid + category suppliers | product cards + filters | `PageSection` browse grid, skeleton chips/loaders | **WIRED** |
+| RT6P-05 | Orders queue + detail chrome | split list/detail | `PageSection` queue + detail, `ListRowSkeleton` | **WIRED** |
+| RT6P-06 | Tracking map + recent receipts | map empty + receipts strip | `PageSection` map/receipts, `EmptyState` on map | **WIRED** |
+| RT6P-07 | Notifications inbox loaders | list skeleton | `ListRowSkeleton` on initial load | **WIRED** |
+
+**RT-6P audit gaps (intentional / blocked):** pegasusX desktop ahead on category-suppliers API, AI order confirm/reject, tracking `recent_receipts`, client-policy banner (RT-5); Firebase phone OTP scaffold only; card Spanner persistence may 503; negotiation disabled ecosystem-wide; B2B dock checkout desktop-primary; procurement page depth vs pegasus not in RT-6P scope; insights/settings/cards use existing BentoGrid (no PageChrome migration — minimal diff).
+
+**Exit:** Component-level desk tokens, skeleton loaders, KPI/section structure on dashboard, catalog, orders, tracking, notifications. UI-only — no new SSMR.
 
 ---
 

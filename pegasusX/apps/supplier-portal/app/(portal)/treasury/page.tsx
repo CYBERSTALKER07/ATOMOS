@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import Icon from "@/components/Icon";
+import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
 import { createSupplierApi } from "@/lib/api";
 import { PortalSurface } from "../_components/PortalSurface";
 import { errorToMessage, formatMinor, loadFinanceAuthoritySnapshot } from "../../payments/_shared/finance";
@@ -41,32 +43,51 @@ export default function TreasuryPage() {
       title="Treasury"
       description="Payments, settlement authority, earnings, and reconciliation health."
       loading={loading}
+      skeletonVariant="dashboard"
       error={error}
     >
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="md-card p-6">
-          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Month earnings</p>
-          <p className="md-typescale-display-small mt-2">{monthEarnings}</p>
-        </div>
-        <div className="md-card p-6">
-          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Settlement groups</p>
-          <p className="md-typescale-display-small mt-2">{settlementRows}</p>
-          <p className="md-typescale-label-small text-[var(--color-md-outline)] mt-1">Source: {financeSource}</p>
-        </div>
-        <div className="md-card p-6">
-          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Reconciliation mismatches</p>
-          <p className="md-typescale-display-small mt-2">{mismatchCount}</p>
-        </div>
-      </div>
+      <KpiStatGrid columns={3}>
+        <KpiStatCard label="Month earnings" value={monthEarnings} />
+        <KpiStatCard
+          label="Settlement groups"
+          value={settlementRows}
+          sub={`Source: ${financeSource}`}
+        />
+        <KpiStatCard
+          label="Reconciliation mismatches"
+          value={mismatchCount}
+          sub={mismatchCount > 0 ? "Review reconciliation" : "All clear"}
+        />
+      </KpiStatGrid>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link href="/payments" className="md-card p-6 block hover:bg-[var(--color-md-surface-container-high)]">
-          <h2 className="md-typescale-title-large">Payments & ledger</h2>
-          <p className="mt-2 text-[var(--color-md-outline)]">Live finance stream, chargebacks, and reconciliation.</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+        <Link
+          href="/payments"
+          className="desk-card p-6 block transition-colors hover:border-[var(--desk-accent)] group"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="bento-card-title">Payments & ledger</h2>
+              <p className="mt-2 md-typescale-body-medium" style={{ color: "var(--desk-text-secondary)" }}>
+                Live finance stream, chargebacks, and reconciliation.
+              </p>
+            </div>
+            <Icon name="payment" size={22} className="opacity-60 group-hover:opacity-100 transition-opacity" />
+          </div>
         </Link>
-        <Link href="/earnings" className="md-card p-6 block hover:bg-[var(--color-md-surface-container-high)]">
-          <h2 className="md-typescale-title-large">Earnings & disputes</h2>
-          <p className="mt-2 text-[var(--color-md-outline)]">Treasury splits and dispute operations.</p>
+        <Link
+          href="/earnings"
+          className="desk-card p-6 block transition-colors hover:border-[var(--desk-accent)] group"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="bento-card-title">Earnings & disputes</h2>
+              <p className="mt-2 md-typescale-body-medium" style={{ color: "var(--desk-text-secondary)" }}>
+                Treasury splits and dispute operations.
+              </p>
+            </div>
+            <Icon name="pricing" size={22} className="opacity-60 group-hover:opacity-100 transition-opacity" />
+          </div>
         </Link>
       </div>
     </PortalSurface>

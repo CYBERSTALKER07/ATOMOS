@@ -36,7 +36,8 @@ struct MainTabView: View {
         TabView(selection: $selectedTab) {
             DashboardView(
                 onOpenSupplyRequests: { selectedTab = .supplyRequests },
-                onOpenPayloadOverride: { selectedTab = .payloadOverride }
+                onOpenPayloadOverride: { selectedTab = .payloadOverride },
+                onOpenInsights: { selectedTab = .insights }
             )
                 .id("\(AppTab.dashboard.rawValue)-\(refreshEpoch)")
                 .tabItem { Label(AppTab.dashboard.rawValue, systemImage: AppTab.dashboard.icon) }

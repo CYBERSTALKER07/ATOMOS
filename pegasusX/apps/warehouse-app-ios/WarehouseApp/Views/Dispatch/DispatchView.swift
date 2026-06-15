@@ -31,16 +31,12 @@ struct DispatchView: View {
         NavigationStack {
             Group {
                 if loading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    WarehouseLoadingView(
+                        title: "Loading dispatch",
+                        message: "Fetching orders, drivers, supply requests, and locks."
+                    )
                 } else if let error {
-                    ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") { load() }
-                    }
+                    WarehouseErrorView(message: error) { load() }
                 } else if let preview {
                     dispatchContent(preview: preview)
                 }
@@ -320,11 +316,7 @@ struct DispatchView: View {
             }
             Spacer()
             VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
-                Text(driver.truckStatus.isEmpty ? "IDLE" : driver.truckStatus)
-                    .font(.caption.bold())
-                    .padding(.horizontal, LabTheme.spacingSM)
-                    .padding(.vertical, LabTheme.spacingXS)
-                    .background(.quaternary, in: Capsule())
+                WarehouseStatusBadge(text: driver.truckStatus.isEmpty ? "IDLE" : driver.truckStatus)
                 if driver.maxVolumeVu > 0 {
                     Text("\(driver.maxVolumeVu, specifier: "%.0f") VU")
                         .font(.caption2)
@@ -349,11 +341,7 @@ struct DispatchView: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Text(request.state)
-                        .font(.caption.bold())
-                        .padding(.horizontal, LabTheme.spacingSM)
-                        .padding(.vertical, LabTheme.spacingXS)
-                        .background(.quaternary, in: Capsule())
+                    WarehouseStatusBadge(text: request.state)
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     if cancellableSupplyStates.contains(request.state) {
@@ -382,11 +370,7 @@ struct DispatchView: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Text(dispatchLockScope(lock))
-                        .font(.caption.bold())
-                        .padding(.horizontal, LabTheme.spacingSM)
-                        .padding(.vertical, LabTheme.spacingXS)
-                        .background(.quaternary, in: Capsule())
+                    WarehouseStatusBadge(text: dispatchLockScope(lock))
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     Button("Release", role: .destructive) {

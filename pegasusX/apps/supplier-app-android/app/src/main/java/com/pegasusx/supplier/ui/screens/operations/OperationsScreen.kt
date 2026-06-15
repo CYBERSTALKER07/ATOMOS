@@ -15,6 +15,8 @@ import com.pegasusx.supplier.data.model.SupplierBroadcastRequest
 import com.pegasusx.supplier.data.model.SupplierEmpathyAdoption
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasusx.supplier.ui.components.SupplierMetricTile
+import com.pegasusx.supplier.ui.components.SupplierSectionTitle
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -164,19 +166,19 @@ fun OperationsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             empathy?.let { adoption ->
-                Text("Empathy adoption", style = MaterialTheme.typography.titleMedium)
+                SupplierSectionTitle("Empathy adoption")
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                    EmpathyStat("Total", adoption.totalPredictions, Modifier.weight(1f))
-                    EmpathyStat("Waiting", adoption.predictionsWaiting, Modifier.weight(1f))
-                    EmpathyStat("Fired", adoption.predictionsFired, Modifier.weight(1f))
+                    SupplierMetricTile("Total", adoption.totalPredictions.toString(), Modifier.weight(1f))
+                    SupplierMetricTile("Waiting", adoption.predictionsWaiting.toString(), Modifier.weight(1f))
+                    SupplierMetricTile("Fired", adoption.predictionsFired.toString(), Modifier.weight(1f))
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                    EmpathyStat("Dormant", adoption.predictionsDormant, Modifier.weight(1f))
-                    EmpathyStat("Rejected", adoption.predictionsRejected, Modifier.weight(1f))
+                    SupplierMetricTile("Dormant", adoption.predictionsDormant.toString(), Modifier.weight(1f))
+                    SupplierMetricTile("Rejected", adoption.predictionsRejected.toString(), Modifier.weight(1f))
                 }
             }
 
-            Text("Operator broadcast", style = MaterialTheme.typography.titleMedium)
+            SupplierSectionTitle("Operator broadcast")
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -217,7 +219,7 @@ fun OperationsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             }
 
             HorizontalDivider()
-            Text("Replenishment", style = MaterialTheme.typography.titleMedium)
+            SupplierSectionTitle("Replenishment")
             Text(
                 "Opens a warehouse supply request against your primary active warehouse.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -228,7 +230,7 @@ fun OperationsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             }
 
             HorizontalDivider()
-            Text("Payment bypass", style = MaterialTheme.typography.titleMedium)
+            SupplierSectionTitle("Payment bypass")
             OutlinedTextField(
                 value = orderId,
                 onValueChange = { orderId = it },
@@ -254,16 +256,6 @@ fun OperationsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             bypassToken?.let { token ->
                 Text("Driver token: $token", style = MaterialTheme.typography.bodyMedium)
             }
-        }
-    }
-}
-
-@Composable
-private fun EmpathyStat(label: String, value: Long, modifier: Modifier = Modifier) {
-    ElevatedCard(modifier) {
-        Column(Modifier.padding(PegasusSpacing.md)) {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-            Text(value.toString(), style = MaterialTheme.typography.titleLarge)
         }
     }
 }

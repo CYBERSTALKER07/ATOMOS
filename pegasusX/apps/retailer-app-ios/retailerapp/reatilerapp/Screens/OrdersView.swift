@@ -30,7 +30,7 @@ struct OrdersView: View {
     @State private var allOrders: [Order] = []
     @State private var predictions: [DemandForecast] = []
     @State private var isLoading = false
-    @State private var loadError = false
+    @State private var loadError: String?
     @State private var selectedOrder: Order?
     @State private var qrOverlayOrder: Order?
 
@@ -69,11 +69,14 @@ struct OrdersView: View {
                 await flushPendingOrders()
             }
             .refreshable { await loadData() }
-            .alert("Failed to Load", isPresented: $loadError) {
+            .alert("Failed to Load", isPresented: Binding(
+                get: { loadError != nil },
+                set: { if !$0 { loadError = nil } }
+            )) {
                 Button("Retry") { Task { await loadData() } }
-                Button("OK", role: .cancel) {}
+                Button("OK", role: .cancel) { loadError = nil }
             } message: {
-                Text("Check your connection and try again.")
+                Text(loadError ?? "Check your connection and try again.")
             }
             .sheet(item: $selectedOrder) { order in
                 OrderDetailSheet(order: order)
@@ -264,14 +267,11 @@ struct OrdersView: View {
 
                 Spacer()
 
-                HStack(spacing: 4) {
-                    Circle().fill(AppTheme.success).frame(width: 6, height: 6)
-                    Text(order.status.displayName).font(.system(size: 11, weight: .bold, design: .rounded))
-                }
-                .foregroundStyle(AppTheme.success)
-                .padding(.horizontal, 10).padding(.vertical, 5)
-                .background(AppTheme.success.opacity(0.08))
-                .clipShape(.capsule)
+                RetailerStatusBadge(
+                    text: order.status.displayName,
+                    tint: AppTheme.statusTint(for: order.status.displayName),
+                    showsLiveDot: true
+                )
             }
 
             // Order Status Timeline
@@ -528,7 +528,7 @@ struct OrdersView: View {
             allOrders = orders
         } catch {
             allOrders = []
-            loadError = true
+            loadError = "Could not load orders. Pull to refresh or try again."
         }
         do {
             let forecasts: [DemandForecast] = try await api.get(path: "/v1/ai/predictions?retailer_id=\(rid)")

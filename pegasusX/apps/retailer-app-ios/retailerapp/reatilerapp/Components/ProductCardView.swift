@@ -30,26 +30,32 @@ struct ProductCardView: View {
                         topTrailingRadius: AppTheme.radiusCard
                     ))
 
-                    // Price tag
-                    if product.displayPrice != "—" {
-                        VStack(alignment: .trailing, spacing: 2) {
-                            if product.hasSaleOffer, let listPrice = product.displayListPrice {
-                                Text(listPrice)
-                                    .font(.system(.caption2, design: .rounded, weight: .medium))
-                                    .foregroundStyle(.white.opacity(0.85))
-                                    .strikethrough()
-                            }
-                            Text(product.displayPrice)
-                                .font(.system(.caption, design: .rounded, weight: .heavy))
-                                .foregroundStyle(.white)
+                    VStack(alignment: .trailing, spacing: AppTheme.spacingXS) {
+                        if product.hasSaleOffer {
+                            RetailerStatusBadge(text: "SALE", tint: AppTheme.destructive)
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(AppTheme.accentGradient)
-                        .clipShape(.capsule)
-                        .padding(AppTheme.spacingSM)
-                        .shadow(color: AppTheme.accent.opacity(0.3), radius: 4, y: 2)
+
+                        // Price tag
+                        if product.displayPrice != "—" {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                if product.hasSaleOffer, let listPrice = product.displayListPrice {
+                                    Text(listPrice)
+                                        .font(.system(.caption2, design: .rounded, weight: .medium))
+                                        .foregroundStyle(.white.opacity(0.85))
+                                        .strikethrough()
+                                }
+                                Text(product.displayPrice)
+                                    .font(.system(.caption, design: .rounded, weight: .heavy))
+                                    .foregroundStyle(.white)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(AppTheme.accentGradient)
+                            .clipShape(.capsule)
+                            .shadow(color: AppTheme.accent.opacity(0.3), radius: 4, y: 2)
+                        }
                     }
+                    .padding(AppTheme.spacingSM)
                 }
 
                 // Product Info

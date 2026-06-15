@@ -1,17 +1,20 @@
 package com.pegasusx.warehouse.ui.screens.supply
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasusx.warehouse.data.model.WarehouseSupplyRequest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
+import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
+import com.pegasusx.warehouse.ui.components.WarehouseStateKind
+import com.pegasusx.warehouse.ui.components.WarehouseStatePane
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -69,43 +72,49 @@ fun SupplyRequestsScreen(
                             }
                         }
                     }
-                    TextButton(onClick = { load() }) { Text("Refresh") }
+                    IconButton(onClick = { load() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
                 },
             )
         },
     ) { padding ->
         when {
-            loading -> Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) { CircularProgressIndicator() }
-
-            error != null -> Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
+            loading -> WarehouseLoadingState(
+                title = "Loading supply requests…",
+                body = "Factory supply queue",
+                modifier = Modifier.padding(padding),
+            )
+            error != null -> WarehouseStatePane(
+                kind = WarehouseStateKind.Error,
+                headline = "Supply requests unavailable",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier.padding(padding),
+            )
+            requests.isEmpty() -> WarehouseStatePane(
+                kind = WarehouseStateKind.Empty,
+                headline = "No supply requests",
+                body = if (stateFilter == "ALL") {
+                    "Submitted factory supply requests will appear here."
+                } else {
+                    "No requests match the $stateFilter filter."
+                },
+                modifier = Modifier.padding(padding),
+            )
+            else -> LazyColumn(
+                modifier = Modifier.padding(padding).fillMaxSize(),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.md))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
-
-            requests.isEmpty() -> Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) { Text("No supply requests") }
-
-            else -> LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
                 items(requests, key = { it.requestId }) { request ->
-                    ListItem(
-                        headlineContent = { Text(request.requestId) },
-                        supportingContent = {
-                            Text("${request.state} · ${request.priority} · ${request.totalVolumeVu} VU")
-                        },
-                        modifier = Modifier.clickable { onRequestClick(request.requestId) },
+                    WarehouseOpsListCard(
+                        headline = request.requestId.take(12),
+                        supporting = "${request.priority} · ${request.totalVolumeVu} VU",
+                        status = request.state,
+                        onClick = { onRequestClick(request.requestId) },
                     )
-                    HorizontalDivider()
                 }
             }
         }

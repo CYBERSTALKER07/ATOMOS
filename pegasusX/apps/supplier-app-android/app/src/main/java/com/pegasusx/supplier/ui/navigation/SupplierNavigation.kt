@@ -41,6 +41,7 @@ import com.pegasusx.supplier.ui.screens.manifests.ManifestDetailScreen
 import com.pegasusx.supplier.ui.screens.manifests.ManifestExceptionsScreen
 import com.pegasusx.supplier.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.supplier.ui.screens.more.MoreScreen
+import com.pegasusx.supplier.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.supplier.ui.screens.operations.OperationsScreen
 import com.pegasusx.supplier.ui.screens.orders.OrdersScreen
 import com.pegasusx.supplier.ui.screens.profile.ProfileScreen
@@ -98,6 +99,7 @@ object SupplierRoutes {
     const val DELIVERY_ZONES = "delivery_zones"
     const val SUPPLY_LANES = "supply_lanes"
     const val PAYMENTS = "payments"
+    const val NOTIFICATIONS = "notifications"
     const val PORTAL_HANDOFF = "portal_handoff/{feature}"
 
     fun portalHandoff(feature: SupplierPortalFeature) = "portal_handoff/${feature.routeKey}"
@@ -206,6 +208,7 @@ fun SupplierNavigation(
                         ops = ops,
                         showBillingBanner = !TokenHolder.isConfigured,
                         onOpenBilling = { navController.navigate(SupplierRoutes.BILLING) },
+                        onOpenNotifications = { navController.navigate(SupplierRoutes.NOTIFICATIONS) },
                     )
                 }
             }
@@ -247,6 +250,7 @@ fun SupplierNavigation(
                     onOrgFleet = { navController.navigate(SupplierRoutes.ORG_FLEET) },
                     onEarnings = { navController.navigate(SupplierRoutes.EARNINGS) },
                     onProfile = { navController.navigate(SupplierRoutes.PROFILE) },
+                    onNotifications = { navController.navigate(SupplierRoutes.NOTIFICATIONS) },
                     onBilling = { navController.navigate(SupplierRoutes.portalHandoff(SupplierPortalFeature.BUSINESS_SETUP)) },
                     onChargebacks = { navController.navigate(SupplierRoutes.portalHandoff(SupplierPortalFeature.CHARGEBACKS)) },
                     onPaymentBypass = { navController.navigate(SupplierRoutes.OPERATIONS) },
@@ -360,6 +364,12 @@ fun SupplierNavigation(
             }
             composable(SupplierRoutes.EARNINGS) { key(refreshEpoch) { EarningsScreen(api = api, ops = ops) } }
             composable(SupplierRoutes.PROFILE) { key(refreshEpoch) { ProfileScreen(api) } }
+            composable(SupplierRoutes.NOTIFICATIONS) {
+                NotificationInboxScreen(
+                    api = api,
+                    onBack = { navController.popBackStack() },
+                )
+            }
             composable(
                 route = SupplierRoutes.PORTAL_HANDOFF,
                 arguments = listOf(navArgument("feature") { type = NavType.StringType }),

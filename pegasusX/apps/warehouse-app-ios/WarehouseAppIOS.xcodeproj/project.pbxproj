@@ -41,6 +41,9 @@
 		C693D3BCC084A0EF533F1059 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1323C12B453CA1132BCAB5BB /* LoginView.swift */; };
 		B1C2D3E4F5061728394A5B6D /* NotificationInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* NotificationInboxView.swift */; };
 		D1E2F30415263748596A7B8C /* ClientPolicyBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F405162738495A6B7C /* ClientPolicyBanner.swift */; };
+		E2F30415263748596A7B8C9D /* KpiTile.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30415263748596A7B8C9D0E /* KpiTile.swift */; };
+		E3F405162738495A6B7C9D0E /* WarehouseStateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F405162738495A6B7C9D0E1F /* WarehouseStateViews.swift */; };
+		E4F5061728394A5B6C7D8E9F /* WarehouseSectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5061728394A5B6C7D8E9F0A /* WarehouseSectionHeader.swift */; };
 		D03E70A76CBFEA79900DCDB1 /* ProductsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6B4415599F87770EB09AE1 /* ProductsView.swift */; };
 		D47F70983FC7C12DAAEEB6D3 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0955B28E6A4EB5B8B03E64F9 /* DashboardView.swift */; };
 		D9CCF999EB8CD7669510CF03 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADC341C9AAD3EFE7ED873269 /* TokenStore.swift */; };
@@ -86,6 +89,9 @@
 		948CD89DFC2A4D9363817EAF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5C /* NotificationInboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationInboxView.swift; sourceTree = "<group>"; };
 		C1D2E3F405162738495A6B7C /* ClientPolicyBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientPolicyBanner.swift; sourceTree = "<group>"; };
+		F30415263748596A7B8C9D0E /* KpiTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KpiTile.swift; sourceTree = "<group>"; };
+		F405162738495A6B7C9D0E1F /* WarehouseStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseStateViews.swift; sourceTree = "<group>"; };
+		F5061728394A5B6C7D8E9F0A /* WarehouseSectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseSectionHeader.swift; sourceTree = "<group>"; };
 		9D77AB43CF3715D84ADF4FB6 /* FleetLiveMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetLiveMapView.swift; sourceTree = "<group>"; };
 		9E6B4415599F87770EB09AE1 /* ProductsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductsView.swift; sourceTree = "<group>"; };
 		ABD577F0B5F08DF94CB384D7 /* WarehousePortalFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehousePortalFeature.swift; sourceTree = "<group>"; };
@@ -144,6 +150,7 @@
 			isa = PBXGroup;
 			children = (
 				61747FD56F8E6A031DC64753 /* WarehouseAdaptiveShell.swift */,
+				F5061728394A5B6C7D8E9F0A /* WarehouseSectionHeader.swift */,
 				2A38306625F489B4D906CF07 /* WarehouseSection.swift */,
 			);
 			path = Layout;
@@ -177,6 +184,8 @@
 			isa = PBXGroup;
 			children = (
 				C1D2E3F405162738495A6B7C /* ClientPolicyBanner.swift */,
+				F30415263748596A7B8C9D0E /* KpiTile.swift */,
+				F405162738495A6B7C9D0E1F /* WarehouseStateViews.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -512,6 +521,9 @@
 				C693D3BCC084A0EF533F1059 /* LoginView.swift in Sources */,
 				B1C2D3E4F5061728394A5B6D /* NotificationInboxView.swift in Sources */,
 				D1E2F30415263748596A7B8C /* ClientPolicyBanner.swift in Sources */,
+				E2F30415263748596A7B8C9D /* KpiTile.swift in Sources */,
+				E3F405162738495A6B7C9D0E /* WarehouseStateViews.swift in Sources */,
+				E4F5061728394A5B6C7D8E9F /* WarehouseSectionHeader.swift in Sources */,
 				F1EC5465A24D24427C9F2D1D /* ManifestsView.swift in Sources */,
 				8E3A118BB4A8F5B1A3C9A769 /* MoreHubView.swift in Sources */,
 				DC25E444D5E978B169F6199A /* OrderDetailView.swift in Sources */,

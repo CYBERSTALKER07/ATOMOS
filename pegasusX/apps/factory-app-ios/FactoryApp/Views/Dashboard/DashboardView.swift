@@ -4,9 +4,11 @@ struct DashboardView: View {
     @Environment(TokenStore.self) private var tokenStore
     let onOpenSupplyRequests: () -> Void
     let onOpenPayloadOverride: () -> Void
+    let onOpenInsights: () -> Void
     @State private var showManifestExceptions = false
     @State private var showManifests = false
     @State private var showAnalytics = false
+    @State private var showCreateTransfer = false
     @State private var realtimeClient = FactoryRealtimeClient()
     @State private var stats = DashboardStats.empty
     @State private var loading = true
@@ -19,8 +21,10 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 if loading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, minHeight: 200)
+                    FactoryLoadingState(
+                        title: "Loading dashboard",
+                        message: "Fetching live factory metrics for loading, fleet, and staffing."
+                    )
                 } else if let error {
                     ContentUnavailableView {
                         Label("Error", systemImage: "exclamationmark.triangle")
@@ -40,7 +44,9 @@ struct DashboardView: View {
                             onOpenPayloadOverride: onOpenPayloadOverride,
                             onOpenManifestExceptions: { showManifestExceptions = true },
                             onOpenManifests: { showManifests = true },
-                            onOpenAnalytics: { showAnalytics = true }
+                            onOpenAnalytics: { showAnalytics = true },
+                            onOpenCreateTransfer: { showCreateTransfer = true },
+                            onOpenInsights: onOpenInsights
                         )
                         Text("Operations at a glance")
                             .font(.headline)
@@ -122,6 +128,11 @@ struct DashboardView: View {
             .sheet(isPresented: $showNotifications) {
                 NotificationInboxView()
             }
+            .sheet(isPresented: $showCreateTransfer) {
+                CreateTransferView { _ in
+                    showCreateTransfer = false
+                }
+            }
         }
     }
 
@@ -199,6 +210,8 @@ private struct WorkflowLaunchCard: View {
     let onOpenManifestExceptions: () -> Void
     let onOpenManifests: () -> Void
     let onOpenAnalytics: () -> Void
+    let onOpenCreateTransfer: () -> Void
+    let onOpenInsights: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
@@ -239,6 +252,18 @@ private struct WorkflowLaunchCard: View {
                 supporting: "Review transfers removed from manifests and DLQ escalations.",
                 actionLabel: "Open exceptions",
                 onTap: onOpenManifestExceptions
+            )
+            WorkflowLaunchRow(
+                title: "Create transfer",
+                supporting: "Stage a new factory-to-warehouse movement with volume and optional fleet assignment.",
+                actionLabel: "Create transfer",
+                onTap: onOpenCreateTransfer
+            )
+            WorkflowLaunchRow(
+                title: "Replenishment insights",
+                supporting: "Warehouse stock velocity and reorder pressure linked to this factory.",
+                actionLabel: "Open insights",
+                onTap: onOpenInsights
             )
             WorkflowLaunchRow(
                 title: "Analytics overview",

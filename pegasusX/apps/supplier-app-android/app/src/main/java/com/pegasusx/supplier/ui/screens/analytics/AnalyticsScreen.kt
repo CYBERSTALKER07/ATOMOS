@@ -1,13 +1,27 @@
 package com.pegasusx.supplier.ui.screens.analytics
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.ui.components.SupplierKpiTile
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasusx.supplier.ui.components.SupplierSectionTitle
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
@@ -15,6 +29,12 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+
+private data class AnalyticsKpi(
+    val label: String,
+    val icon: ImageVector,
+    val value: () -> String,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,6 +99,21 @@ fun AnalyticsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
 
     LaunchedEffect(Unit) { load() }
 
+    val intelligenceKpis = remember(revenueTotal, predictionCount, forecastUnits, velocityCreated) {
+        listOf(
+            AnalyticsKpi("30-day revenue", Icons.Default.AttachMoney) { revenueTotal ?: "—" },
+            AnalyticsKpi("Demand predictions", Icons.Default.TrendingUp) { predictionCount.toString() },
+            AnalyticsKpi("Forecast units (24h)", Icons.Default.ShowChart) { forecastUnits.toString() },
+            AnalyticsKpi("Orders created (velocity)", Icons.Default.LocalShipping) { velocityCreated.toString() },
+        )
+    }
+    val operationalKpis = remember(pendingOrders, inventorySKUs) {
+        listOf(
+            AnalyticsKpi("Pending orders", Icons.Default.LocalShipping) { pendingOrders.toString() },
+            AnalyticsKpi("Inventory SKUs", Icons.Default.Inventory2) { inventorySKUs.toString() },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -88,11 +123,20 @@ fun AnalyticsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    IconButton(onClick = { load() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                },
             )
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading analytics…", "Velocity, revenue, and demand")
+            loading -> SupplierLoadingState(
+                title = "Loading analytics…",
+                body = "Velocity, revenue, and demand",
+                modifier = Modifier.padding(padding),
+            )
             error != null -> SupplierStatePane(
                 kind = SupplierStateKind.Error,
                 headline = "Analytics unavailable",
@@ -101,30 +145,30 @@ fun AnalyticsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            else -> Column(
-                modifier = Modifier.padding(padding).padding(PegasusSpacing.lg),
+            else -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 160.dp),
+                modifier = Modifier
+                    .padding(padding)
+                    .padding(horizontal = PegasusSpacing.lg)
+                    .fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                contentPadding = PaddingValues(bottom = PegasusSpacing.lg),
             ) {
-                Text("Intelligence", style = MaterialTheme.typography.titleMedium)
-                AnalyticsKpi("30-day revenue", revenueTotal ?: "—")
-                AnalyticsKpi("Demand predictions", predictionCount.toString())
-                AnalyticsKpi("Forecast units (24h)", forecastUnits.toString())
-                AnalyticsKpi("Orders created (velocity window)", velocityCreated.toString())
-                HorizontalDivider()
-                Text("Operational snapshot", style = MaterialTheme.typography.titleMedium)
-                AnalyticsKpi("Pending orders", pendingOrders.toString())
-                AnalyticsKpi("Inventory SKUs", inventorySKUs.toString())
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    SupplierSectionTitle("Intelligence")
+                }
+                items(intelligenceKpis, key = { it.label }) { kpi ->
+                    SupplierKpiTile(label = kpi.label, value = kpi.value(), icon = kpi.icon)
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Spacer(Modifier.height(PegasusSpacing.xs))
+                    SupplierSectionTitle("Operational snapshot")
+                }
+                items(operationalKpis, key = { it.label }) { kpi ->
+                    SupplierKpiTile(label = kpi.label, value = kpi.value(), icon = kpi.icon)
+                }
             }
-        }
-    }
-}
-
-@Composable
-private fun AnalyticsKpi(label: String, value: String) {
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(PegasusSpacing.lg)) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
-            Text(value, style = MaterialTheme.typography.headlineMedium)
         }
     }
 }

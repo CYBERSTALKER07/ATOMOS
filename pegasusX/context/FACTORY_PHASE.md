@@ -1,7 +1,7 @@
 # pegasusX FACTORY_ADMIN Role — Phased Execution Ledger
 
 **Scope:** pegasusX only · **Parent plan:** `VEGETABLE_PLAN.md` §2.3  
-**Last updated:** 2026-06-15 (FA-7/8/9 factory cross-client parity batch).
+**Last updated:** 2026-06-15 (FA-10 shell/dashboard parity batch).
 
 ## Status model
 
@@ -68,6 +68,19 @@
 
 ---
 
+## Phase FA-10 — Shell & dashboard UX parity (portal inbox, KPI relabel, native workflow sync)
+
+| ID | Feature | Portal | Android | iOS | Status |
+|----|---------|--------|---------|-----|--------|
+| FA10-01 | Notification inbox top bar | **NotificationPanel** + `useNotifications` | pre-existing | pre-existing | **WIRED** |
+| FA10-02 | Dashboard KPI relabel | Gate Exceptions → `/manifest-exceptions` | pre-existing | pre-existing | **WIRED** |
+| FA10-03 | Dashboard workflow launch grid | manifests + exceptions + analytics action cards | pre-existing | **create transfer + insights rows** | **WIRED** |
+| FA10-04 | Loading state polish | pre-existing | pre-existing | `FactoryLoadingState` on dashboard | **WIRED** |
+
+**Exit:** Factory portal shell matches native notification/mark-read UX; dashboard KPI grid and workflow launches align across portal + Android + iOS; pegasusX additive screens (manifests, analytics, gate exceptions) surfaced from dashboard on all surfaces.
+
+---
+
 ## Verification
 
 ```bash
@@ -86,4 +99,5 @@ cd pegasusX && make test-ssmr-infra   # PX_E2E_FACTORY_* markers
 3. ~~Factory native analytics screens + DTO alignment~~ — FA1-04
 4. ~~Import session wizard + async ai-worker consumer~~ — supplier row
 5. ~~FA-7/8/9 cross-client parity batch~~ — **CLOSED** (2026-06-15)
-6. **Cross-role next** — DRIVER row per `VEGETABLE_PLAN.md` §3
+6. ~~FA-10 shell/dashboard UX parity~~ — **CLOSED** (2026-06-15)
+7. **Cross-role next** — DRIVER row per `VEGETABLE_PLAN.md` §3

@@ -5,12 +5,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasusx.warehouse.data.model.ReplenishmentInsight
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
+import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
+import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
+import com.pegasusx.warehouse.ui.components.WarehouseStateKind
+import com.pegasusx.warehouse.ui.components.WarehouseStatePane
+import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -76,7 +82,9 @@ fun ReplenishmentScreen(
                 title = { Text("Replenishment") },
                 navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
                 actions = {
-                    TextButton(onClick = { load() }) { Text("Refresh") }
+                    IconButton(onClick = { load() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
                 },
             )
         },
@@ -90,32 +98,33 @@ fun ReplenishmentScreen(
         },
     ) { padding ->
         when {
-            loading -> Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) { CircularProgressIndicator() }
-
-            error != null -> Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.md))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
-
-            insights.isEmpty() -> Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) { Text("No replenishment insights", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-
+            loading -> WarehouseLoadingState(
+                title = "Loading replenishment…",
+                body = "Stock insights and reorder signals",
+                modifier = Modifier.padding(padding),
+            )
+            error != null -> WarehouseStatePane(
+                kind = WarehouseStateKind.Error,
+                headline = "Replenishment unavailable",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier.padding(padding),
+            )
+            insights.isEmpty() -> WarehouseStatePane(
+                kind = WarehouseStateKind.Empty,
+                headline = "No replenishment insights",
+                body = "Open insights from the replenishment engine will appear here.",
+                modifier = Modifier.padding(padding),
+            )
             else -> LazyColumn(
                 modifier = Modifier.padding(padding).fillMaxSize(),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
+                item {
+                    WarehouseSectionTitle("Open insights (${insights.size})")
+                }
                 items(insights, key = { it.id }) { insight ->
                     InsightCard(
                         insight = insight,
@@ -138,10 +147,27 @@ private fun InsightCard(
 ) {
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-            Text(insight.productName, style = MaterialTheme.typography.titleMedium)
-            Text("${insight.urgency} · ${insight.status}", style = MaterialTheme.typography.bodySmall)
-            Text("Stock: ${insight.currentStock} · Reorder: ${insight.reorderQuantity}")
-            Text("Days until stockout: ${insight.daysUntilStockout}")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(insight.productName, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                WarehouseStatusChip(status = insight.urgency)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                WarehouseStatusChip(status = insight.status)
+            }
+            Text(
+                "Stock: ${insight.currentStock} · Reorder: ${insight.reorderQuantity}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "Days until stockout: ${insight.daysUntilStockout}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (insight.status.equals("OPEN", ignoreCase = true)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                     Button(onClick = onApprove, enabled = !busy) { Text("Approve") }

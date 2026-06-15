@@ -58,6 +58,13 @@ class CatalogViewModel @Inject constructor(
         }
     }
 
+    fun refresh() {
+        when (_uiState.value.browseMode) {
+            CatalogBrowseMode.ALL_PRODUCTS -> loadAllProducts()
+            CatalogBrowseMode.CATEGORIES -> loadCategories()
+        }
+    }
+
     private fun loadCategories() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }

@@ -3,9 +3,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';
-import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
+import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
+import { PageSection } from '@/components/PageSection';
+import EmptyState from '@/components/EmptyState';
 
 interface TreasuryOverview {
   total_invoiced: number;
@@ -85,6 +87,7 @@ export default function TreasuryPage() {
         title="Treasury"
         description="Invoiced revenue, payouts, and outstanding liabilities for this warehouse."
         loading={loading}
+        skeletonVariant="dashboard"
         actions={
           <div className="flex gap-2">
             {(['overview', 'invoices'] as const).map(v => (
@@ -101,33 +104,26 @@ export default function TreasuryPage() {
         }
       >
       <div className="space-y-6">
-      {/* Overview KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
-          <div className="text-xs text-[var(--muted)] mb-1">Total Invoiced</div>
-          <div className="text-2xl font-bold">{fmt(ov.total_invoiced)} UZS</div>
-        </div>
-        <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
-          <div className="text-xs text-[var(--muted)] mb-1">Paid</div>
-          <div className="text-2xl font-bold text-[var(--success)]">{fmt(ov.total_paid)} UZS</div>
-        </div>
-        <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
-          <div className="text-xs text-[var(--muted)] mb-1">Outstanding</div>
-          <div className="text-2xl font-bold" style={{ color: ov.total_outstanding > 0 ? 'var(--danger)' : 'var(--foreground)' }}>
-            {fmt(ov.total_outstanding)} UZS
-          </div>
-        </div>
-      </div>
+      <KpiStatGrid columns={3}>
+        <KpiStatCard label="Total invoiced" value={`${fmt(ov.total_invoiced)} UZS`} />
+        <KpiStatCard
+          label="Paid"
+          value={`${fmt(ov.total_paid)} UZS`}
+          sub="Settled to date"
+        />
+        <KpiStatCard
+          label="Outstanding"
+          value={`${fmt(ov.total_outstanding)} UZS`}
+          sub={ov.total_outstanding > 0 ? 'Requires collection' : 'All clear'}
+        />
+      </KpiStatGrid>
 
-      {/* Invoices Table */}
       {!loading && view === 'invoices' && (
-        invoices.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-[var(--muted)]">
-            <Icon name="treasury" size={48} className="mb-3 opacity-40" />
-            <p className="text-sm">No invoices found</p>
-          </div>
+        <PageSection title="Invoices" description="Retailer billing rows for this warehouse node.">
+        {invoices.length === 0 ? (
+          <EmptyState variant="no-data" headline="No invoices found" body="Invoices appear when retailers are billed for fulfilled orders." />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto -mx-5 px-5">
             <table className="desk-table w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--border)]">
@@ -162,7 +158,8 @@ export default function TreasuryPage() {
               </tbody>
             </table>
           </div>
-        )
+        )}
+        </PageSection>
       )}
       </div>
       </PageChrome>

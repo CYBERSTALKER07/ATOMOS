@@ -41,8 +41,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.ProductCategory
-import com.pegasusx.retailer.ui.components.PegasusEmptyState
 import com.pegasusx.retailer.ui.components.ProductCard
+import com.pegasusx.retailer.ui.components.RetailerLoadingState
+import com.pegasusx.retailer.ui.components.RetailerSectionHeader
+import com.pegasusx.retailer.ui.components.RetailerStateKind
+import com.pegasusx.retailer.ui.components.RetailerStatePane
+import com.pegasusx.retailer.ui.theme.PegasusSpacing
 import com.pegasusx.retailer.ui.theme.PillShape
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -119,14 +123,14 @@ fun CatalogScreen(
         when {
             isSearching && uiState.filteredProducts.isNotEmpty() -> {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 168.dp),
+                    columns = GridCells.Adaptive(minSize = 160.dp),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        CatalogSectionHeader(
+                        RetailerSectionHeader(
                             title = "Buy results",
                             subtitle = "${uiState.filteredProducts.size} products",
                         )
@@ -141,11 +145,10 @@ fun CatalogScreen(
             }
 
             isSearching -> {
-                PegasusEmptyState(
-                    icon = Icons.Rounded.Inventory2,
-                    title = "No products found",
-                    message = "Try a different name, category, or supplier keyword.",
-                    modifier = Modifier.fillMaxSize(),
+                RetailerStatePane(
+                    kind = RetailerStateKind.NoResults,
+                    headline = "No products found",
+                    body = "Try a different name, category, or supplier keyword.",
                     actionLabel = "Clear search",
                     onAction = { viewModel.onSearchChanged("") },
                 )
@@ -153,31 +156,28 @@ fun CatalogScreen(
 
             uiState.browseMode == CatalogBrowseMode.ALL_PRODUCTS -> {
                 if (uiState.isLoadingProducts && uiState.products.isEmpty()) {
-                    PegasusEmptyState(
-                        icon = Icons.Rounded.Inventory2,
+                    RetailerLoadingState(
                         title = "Loading catalog",
-                        message = "Fetching all products…",
-                        modifier = Modifier.fillMaxSize(),
+                        body = "Fetching all products from connected suppliers…",
                     )
                 } else if (uiState.products.isEmpty()) {
-                    PegasusEmptyState(
-                        icon = Icons.Rounded.Inventory2,
-                        title = "No products",
-                        message = "Connected suppliers have not published catalog SKUs yet.",
-                        modifier = Modifier.fillMaxSize(),
+                    RetailerStatePane(
+                        kind = RetailerStateKind.Empty,
+                        headline = "No products",
+                        body = "Connected suppliers have not published catalog SKUs yet.",
                         actionLabel = "Refresh",
-                        onAction = { viewModel.onBrowseModeSelected(CatalogBrowseMode.ALL_PRODUCTS) },
+                        onAction = viewModel::refresh,
                     )
                 } else {
                     LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 168.dp),
+                        columns = GridCells.Adaptive(minSize = 160.dp),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            CatalogSectionHeader(
+                            RetailerSectionHeader(
                                 title = "All products",
                                 subtitle = "${uiState.products.size} SKUs from connected suppliers",
                             )
@@ -194,14 +194,14 @@ fun CatalogScreen(
 
             else -> {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 164.dp),
+                    columns = GridCells.Adaptive(minSize = 160.dp),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        CatalogSectionHeader(
+                        RetailerSectionHeader(
                             title = "Buy workspace",
                             subtitle = "Pick a category to browse supplier catalogs",
                         )
@@ -215,28 +215,6 @@ fun CatalogScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun CatalogSectionHeader(
-    title: String,
-    subtitle: String,
-) {
-    Column(
-        modifier = Modifier.padding(bottom = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -255,7 +233,7 @@ private fun CategoryCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(152.dp)
-                .padding(16.dp),
+                .padding(PegasusSpacing.lg),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Box(

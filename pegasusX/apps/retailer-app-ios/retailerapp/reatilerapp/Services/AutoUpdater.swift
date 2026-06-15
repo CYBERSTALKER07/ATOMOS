@@ -7,7 +7,7 @@ import UIKit
 /// B2B Enterprise Over-The-Air (OTA) install prompt via `itms-services`.
 /// iOS handles network drop resilience and app replacement natively.
 class AutoUpdater {
-    static val shared = AutoUpdater()
+    static let shared = AutoUpdater()
     
     private let updateManifestURL = URL(string: "https://storage.googleapis.com/pegasusx-ssmr-app-updates/ios/retailer/updater.json")!
     

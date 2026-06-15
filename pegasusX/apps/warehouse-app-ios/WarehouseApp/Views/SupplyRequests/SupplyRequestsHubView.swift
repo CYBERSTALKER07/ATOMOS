@@ -11,27 +11,38 @@ struct SupplyRequestsHubView: View {
     var body: some View {
         Group {
             if loading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                WarehouseLoadingView(
+                    title: "Loading supply requests",
+                    message: "Fetching factory supply pipeline status."
+                )
             } else if let error {
-                ContentUnavailableView("Error", systemImage: "exclamationmark.triangle", description: Text(error))
+                WarehouseErrorView(message: error) { load() }
             } else if filtered.isEmpty {
-                ContentUnavailableView("No requests", systemImage: "tray", description: Text("No supply requests in this state."))
+                WarehouseEmptyView(
+                    title: "No requests",
+                    message: "No supply requests in this state."
+                )
             } else {
                 List(filtered) { request in
                     NavigationLink {
                         SupplyRequestDetailView(requestId: request.requestId)
                     } label: {
-                        VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                            Text(request.requestId)
-                                .font(.headline)
-                            Text(request.state)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            if !request.notes.isEmpty {
-                                Text(request.notes)
-                                    .font(.caption)
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                Text(String(request.requestId.prefix(8)))
+                                    .font(.headline)
+                                Text("\(request.priority) · \(Int(request.totalVolumeVu)) VU")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                if !request.notes.isEmpty {
+                                    Text(request.notes)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                }
                             }
+                            Spacer()
+                            WarehouseStatusBadge(text: request.state)
                         }
                     }
                 }
@@ -52,6 +63,7 @@ struct SupplyRequestsHubView: View {
         }
         .task { load() }
         .refreshable { load() }
+        .onChange(of: stateFilter) { _, _ in load() }
     }
 
     private var filtered: [WarehouseSupplyRequest] {

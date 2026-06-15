@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.warehouse.data.model.EmergencyTransferRequest
 import com.pegasusx.warehouse.data.model.ForceReceiveRequest
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
+import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -81,11 +82,13 @@ fun TransferActionsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
+            WarehouseSectionTitle("Inbound transfer controls")
             Text(
                 "Factory inbound transfer controls for warehouse operators.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            WarehouseSectionTitle("Create or force receive")
             OutlinedTextField(
                 value = volumeInput,
                 onValueChange = { volumeInput = it },
@@ -125,6 +128,7 @@ fun TransferActionsScreen(
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Force receive payload") }
+            WarehouseSectionTitle("Receive by transfer ID")
             OutlinedTextField(
                 value = transferIdInput,
                 onValueChange = { transferIdInput = it },

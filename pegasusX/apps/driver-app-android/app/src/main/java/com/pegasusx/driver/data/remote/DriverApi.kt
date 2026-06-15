@@ -4,6 +4,7 @@ import com.pegasusx.driver.data.model.AmendOrderRequest
 import com.pegasusx.driver.data.model.AmendOrderResponse
 import com.pegasusx.driver.data.model.AuthResponse
 import com.pegasusx.driver.data.model.AvailabilityRequest
+import com.pegasusx.driver.data.model.ClientPolicyResponse
 import com.pegasusx.driver.data.model.CollectCashRequest
 import com.pegasusx.driver.data.model.CollectCashResponse
 import com.pegasusx.driver.data.model.CompleteOrderRequest
@@ -179,6 +180,14 @@ interface DriverApi {
 
     @POST("v1/user/notifications/read")
     suspend fun markNotificationsRead(@Body body: Map<String, @JvmSuppressWildcards Any>): Map<String, String>
+
+    @GET("v1/platform/client-policy")
+    suspend fun getClientPolicy(
+        @Query("role") role: String = "DRIVER",
+        @Query("platform") platform: String,
+        @Query("version") version: String,
+        @Query("channel") channel: String = "production",
+    ): ClientPolicyResponse
 
     @POST("v1/ws/ack")
     suspend fun ackWebSocketCommand(@Body body: Map<String, @JvmSuppressWildcards Any>): Map<String, String>

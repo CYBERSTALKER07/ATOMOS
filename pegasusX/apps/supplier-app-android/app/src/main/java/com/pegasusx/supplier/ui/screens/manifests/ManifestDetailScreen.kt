@@ -1,20 +1,27 @@
 package com.pegasusx.supplier.ui.screens.manifests
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierManifestDetail
 import com.pegasusx.supplier.data.model.SupplierManifestInjectOrderRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.ui.components.SupplierKpiTile
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasusx.supplier.ui.components.SupplierOpsListCard
+import com.pegasusx.supplier.ui.components.SupplierSectionTitle
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasusx.supplier.ui.components.SupplierStatusChip
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -64,12 +71,21 @@ fun ManifestDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    IconButton(onClick = { load() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                },
             )
         },
     ) { padding ->
         val data = detail
         when {
-            loading -> SupplierLoadingState("Loading manifest…", manifestId)
+            loading -> SupplierLoadingState(
+                title = "Loading manifest…",
+                body = manifestId,
+                modifier = Modifier.padding(padding),
+            )
             error != null -> SupplierStatePane(
                 kind = SupplierStateKind.Error,
                 headline = "Manifest unavailable",
@@ -93,11 +109,51 @@ fun ManifestDetailScreen(
                 ) {
                     item {
                         ElevatedCard(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                                Text(data.manifestId, style = MaterialTheme.typography.titleMedium)
-                                Text("${data.status} · ${data.ordersCount} orders", style = MaterialTheme.typography.bodyMedium)
-                                Text(data.driverName.ifBlank { data.driverId ?: "—" }, style = MaterialTheme.typography.bodySmall)
-                                data.vehiclePlate?.let { Text("Vehicle $it", style = MaterialTheme.typography.bodySmall) }
+                            Column(
+                                Modifier.padding(PegasusSpacing.lg),
+                                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(data.manifestId.take(12), style = MaterialTheme.typography.titleMedium)
+                                    SupplierStatusChip(status = state)
+                                }
+                                Text(
+                                    data.driverName.ifBlank { data.driverId ?: "No driver assigned" },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                data.vehiclePlate?.let {
+                                    Text("Vehicle $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                        ) {
+                            SupplierKpiTile(
+                                label = "Orders",
+                                value = data.ordersCount.toString(),
+                                icon = Icons.Default.ShoppingCart,
+                                modifier = Modifier.weight(1f),
+                            )
+                            val volume = data.totalVolumeVu.takeIf { it > 0.0 } ?: data.totalVu.toDouble()
+                            if (volume > 0.0 || data.maxVolumeVu > 0.0) {
+                                SupplierKpiTile(
+                                    label = "Volume",
+                                    value = if (data.maxVolumeVu > 0.0) {
+                                        "%.1f / %.1f VU".format(volume, data.maxVolumeVu)
+                                    } else {
+                                        "%.1f VU".format(volume)
+                                    },
+                                    icon = Icons.Default.LocalShipping,
+                                    modifier = Modifier.weight(1f),
+                                )
                             }
                         }
                     }
@@ -185,14 +241,13 @@ fun ManifestDetailScreen(
                         }
                     }
                     if (data.orders.isNotEmpty()) {
-                        item { Text("Orders", style = MaterialTheme.typography.titleSmall) }
+                        item { SupplierSectionTitle("Orders") }
                         items(data.orders, key = { it.orderId }) { order ->
-                            ElevatedCard(Modifier.fillMaxWidth()) {
-                                Column(Modifier.padding(PegasusSpacing.md)) {
-                                    Text(order.orderId, style = MaterialTheme.typography.bodyMedium)
-                                    Text(order.status.ifBlank { order.state }, style = MaterialTheme.typography.bodySmall)
-                                }
-                            }
+                            SupplierOpsListCard(
+                                headline = order.orderId.take(12),
+                                supporting = order.retailerId?.let { "Retailer $it" } ?: "Manifest order",
+                                status = order.status.ifBlank { order.state },
+                            )
                         }
                     }
                 }

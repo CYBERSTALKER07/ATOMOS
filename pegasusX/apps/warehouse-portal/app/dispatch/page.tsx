@@ -15,6 +15,9 @@ import DispatchPreviewMap from '@/components/DispatchPreviewMap';
 import FleetLiveMapPanel from '@/components/FleetLiveMapPanel';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
+import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
+import { PageSection } from '@/components/PageSection';
+import EmptyState from '@/components/EmptyState';
 
 const TETRIS_BUFFER = 0.95;
 
@@ -175,6 +178,7 @@ export default function DispatchPage() {
         title="Dispatch"
         description="Assign undispatched orders to an available truck. Capacity uses product VU × quantity."
         loading={loading}
+        skeletonVariant="table"
         error={restricted ? 'You do not have permission to view dispatch for this scope.' : loadError}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
@@ -230,22 +234,32 @@ export default function DispatchPage() {
         {executeSuccess && (
           <p className="text-sm mb-4" style={{ color: 'var(--success)' }}>{executeSuccess}</p>
         )}
-        <div className="mb-6 rounded-xl border border-(--border) overflow-hidden" style={{ background: 'var(--background)' }}>
-          <div className="p-4 border-b border-(--border)">
-            <h2 className="text-sm font-semibold flex items-center gap-2">
-              <Icon name="fleet" size={16} className="text-(--muted)" />
-              Live fleet map
-            </h2>
-            <p className="text-xs text-(--muted) mt-1">Sealed manifest polylines and driver GPS for this warehouse node.</p>
-          </div>
-          <FleetLiveMapPanel className="h-80 w-full" />
-        </div>
-        {(optimizerSource || optimizerWarnings.length > 0 || windowConstrainedCount > 0) && (
-          <div className="mb-4 rounded-xl border border-(--border) p-4" style={{ background: 'var(--background)' }}>
-            <h2 className="text-sm font-semibold mb-2">Smart suggest preview</h2>
-            {optimizerSource && (
-              <p className="text-xs text-(--muted)">Source: {optimizerSource}</p>
-            )}
+
+        <KpiStatGrid columns={4}>
+          <KpiStatCard label="Undispatched orders" value={orders.length} sub="Awaiting assignment" />
+          <KpiStatCard label="Available drivers" value={drivers.length} sub="Ready for dispatch" />
+          <KpiStatCard
+            label="Unavailable"
+            value={unavailableDrivers.length}
+            sub={unavailableDrivers.length > 0 ? 'Vehicle or status blocked' : 'All assigned drivers clear'}
+          />
+          <KpiStatCard
+            label="Smart suggest routes"
+            value={proposedRoutes.length}
+            sub={optimizerSource ? `Source: ${optimizerSource}` : 'Optimizer preview'}
+          />
+        </KpiStatGrid>
+
+        <PageSection
+          title="Live fleet map"
+          description="Sealed manifest polylines and driver GPS for this warehouse node."
+          className="mt-6 overflow-hidden"
+        >
+          <FleetLiveMapPanel className="h-80 w-full -mx-5 -mb-5" />
+        </PageSection>
+
+        {(optimizerWarnings.length > 0 || windowConstrainedCount > 0) && (
+          <PageSection title="Smart suggest preview" className="mt-6">
             {windowConstrainedCount > 0 && (
               <p className="text-xs" style={{ color: 'var(--warning)' }}>
                 {windowConstrainedCount} order(s) constrained by receiving window
@@ -254,26 +268,25 @@ export default function DispatchPage() {
             {optimizerWarnings.map(warning => (
               <p key={warning} className="text-xs" style={{ color: 'var(--warning)' }}>{warning}</p>
             ))}
-          </div>
+          </PageSection>
         )}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md-animate-in">
-          <div className="rounded-xl border border-(--border) p-4" style={{ background: 'var(--background)' }}>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold flex items-center gap-2">
-                <Icon name="orders" size={16} className="text-(--muted)" />
-                Undispatched Orders ({orders.length})
-              </h2>
-              {orders.length > 0 && (
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md-animate-in mt-6">
+          <PageSection
+            title={`Undispatched orders (${orders.length})`}
+            actions={
+              orders.length > 0 ? (
                 <label className="flex items-center gap-2 text-xs text-(--muted) cursor-pointer">
                   <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
                   Select all
                 </label>
-              )}
-            </div>
+              ) : undefined
+            }
+          >
             {orders.length === 0 ? (
-              <p className="text-sm text-(--muted) py-6 text-center">All orders dispatched</p>
+              <EmptyState variant="no-data" headline="All orders dispatched" body="No pending orders need assignment right now." />
             ) : (
-              <div className="space-y-2 max-h-80 overflow-y-auto">
+              <div className="space-y-2 max-h-80 overflow-y-auto -mx-5 px-5">
                 {orders.map(order => (
                   <label
                     key={order.order_id}
@@ -298,16 +311,12 @@ export default function DispatchPage() {
                 ))}
               </div>
             )}
-          </div>
+          </PageSection>
 
-          <div className="rounded-xl border border-(--border) p-4" style={{ background: 'var(--background)' }}>
-            <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-              <Icon name="fleet" size={16} className="text-(--muted)" />
-              Available Drivers ({drivers.length})
-            </h2>
+          <PageSection title={`Available drivers (${drivers.length})`}>
             <div className="space-y-4 max-h-80 overflow-y-auto">
               {drivers.length === 0 ? (
-                <p className="text-sm text-(--muted) py-2 text-center">No drivers available</p>
+                <EmptyState variant="no-data" headline="No drivers available" body="All drivers are on route or blocked." />
               ) : (
                 <div className="space-y-2">
                   {drivers.map(driver => (
@@ -327,7 +336,7 @@ export default function DispatchPage() {
 
               <div className="border-t border-(--border) pt-4">
                 <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-(--muted) mb-2">
-                  Vehicle Unavailable ({unavailableDrivers.length})
+                  Vehicle unavailable ({unavailableDrivers.length})
                 </h3>
                 {unavailableDrivers.length === 0 ? (
                   <p className="text-sm text-(--muted) py-2 text-center">No assigned drivers blocked by vehicle availability</p>
@@ -353,20 +362,15 @@ export default function DispatchPage() {
                 )}
               </div>
             </div>
-          </div>
+          </PageSection>
         </div>
 
         {proposedRoutes.length > 0 && (
-          <div className="mt-6 rounded-xl border border-(--border) p-4" style={{ background: 'var(--background)' }}>
-            <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-              <Icon name="dispatch" size={16} className="text-(--muted)" />
-              Smart suggest route map
-            </h2>
+          <PageSection title={`Smart suggest routes (${proposedRoutes.length})`} className="mt-6">
             <DispatchPreviewMap
               routes={proposedRoutes}
-              className="h-80 w-full rounded-lg border border-(--border) overflow-hidden mb-4"
+              className="h-80 w-full rounded-lg border border-(--border) overflow-hidden"
             />
-            <h3 className="text-sm font-semibold mb-3">Smart suggest routes ({proposedRoutes.length})</h3>
             <div className="space-y-3">
               {proposedRoutes.map((route, index) => (
                 <div key={`${route.driver_id || 'route'}-${index}`} className="rounded-lg border border-(--border) p-3">
@@ -383,7 +387,7 @@ export default function DispatchPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </PageSection>
         )}
 
         {capacityPrompt && (

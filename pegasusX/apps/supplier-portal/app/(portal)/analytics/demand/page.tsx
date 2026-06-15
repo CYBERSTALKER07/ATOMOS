@@ -13,6 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierDemandHistoryResponse, SupplierDemandSummaryResponse } from "@pegasusx/types";
 import { PortalSurface } from "../../_components/PortalSurface";
@@ -59,67 +60,58 @@ export default function DemandAnalyticsPage() {
       title="Demand forecast"
       description="Predicted versus actual order volume from supplier analytics authority."
       loading={loading}
+      skeletonVariant="dashboard"
       error={error}
-    >
-      <p className="mb-4 md-typescale-body-medium">
-        <Link href={"/analytics" as Route} className="text-[var(--color-md-primary)] underline">
+      actions={
+        <Link href={"/analytics" as Route} className="md-btn md-btn-text">
           Back to analytics
         </Link>
-      </p>
-
+      }
+    >
       {summary ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="md-card p-6">
-            <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Predictions</p>
-            <p className="md-typescale-display-small mt-2">{summary.prediction_count}</p>
-          </div>
-          <div className="md-card p-6">
-            <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Retailers</p>
-            <p className="md-typescale-display-small mt-2">{summary.total_retailers}</p>
-          </div>
-          <div className="md-card p-6">
-            <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Forecast units</p>
-            <p className="md-typescale-display-small mt-2">{summary.total_pallets}</p>
-          </div>
-        </div>
+        <KpiStatGrid columns={3}>
+          <KpiStatCard label="Predictions" value={summary.prediction_count} />
+          <KpiStatCard label="Retailers" value={summary.total_retailers} />
+          <KpiStatCard label="Forecast units" value={summary.total_pallets} />
+        </KpiStatGrid>
       ) : null}
 
-      <section className="md-card p-6 mb-6">
-        <h2 className="md-typescale-title-large">Predicted vs actual (14d)</h2>
+      <section className="desk-card p-6 mt-6">
+        <h2 className="bento-card-title">Predicted vs actual (14d)</h2>
         <div className="h-72 mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
-              <CartesianGrid stroke="var(--color-md-outline-variant)" strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis allowDecimals={false} />
+              <CartesianGrid stroke="var(--desk-border)" strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fill: "var(--desk-text-secondary)", fontSize: 12 }} />
+              <YAxis allowDecimals={false} tick={{ fill: "var(--desk-text-secondary)", fontSize: 12 }} />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="predicted" stroke="var(--color-md-primary)" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="actual" stroke="var(--color-md-success)" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="predicted" stroke="var(--desk-accent)" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="actual" stroke="var(--desk-success)" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </section>
 
       {history && history.upcoming.length > 0 ? (
-        <section className="md-card p-6 overflow-x-auto">
-          <h2 className="md-typescale-title-large">Upcoming demand rows</h2>
-          <table className="min-w-full text-left mt-4">
+        <section className="desk-card p-6 mt-6 overflow-x-auto">
+          <h2 className="bento-card-title">Upcoming demand rows</h2>
+          <table className="desk-table w-full mt-4">
             <thead>
-              <tr className="md-typescale-label-medium text-[var(--color-md-outline)]">
-                <th className="py-2 pr-4">SKU</th>
-                <th className="py-2 pr-4">Product</th>
-                <th className="py-2 pr-4">Qty</th>
-                <th className="py-2 pr-4">When</th>
+              <tr style={{ color: "var(--desk-text-secondary)" }}>
+                <th className="md-typescale-label-medium p-3 text-left font-medium">SKU</th>
+                <th className="md-typescale-label-medium p-3 text-left font-medium">Product</th>
+                <th className="md-typescale-label-medium p-3 text-left font-medium">Qty</th>
+                <th className="md-typescale-label-medium p-3 text-left font-medium">When</th>
               </tr>
             </thead>
             <tbody>
               {history.upcoming.slice(0, 25).map((row, index) => (
-                <tr key={`${row.sku_id}-${index}`} className="md-typescale-body-medium border-t border-[var(--color-md-outline-variant)]">
-                  <td className="py-2 pr-4 font-mono text-sm">{row.sku_id}</td>
-                  <td className="py-2 pr-4">{row.product_name}</td>
-                  <td className="py-2 pr-4">{row.predicted_qty}</td>
-                  <td className="py-2 pr-4">{row.date || "—"}</td>
+                <tr key={`${row.sku_id}-${index}`} style={{ borderTop: "1px solid var(--desk-border)" }}>
+                  <td className="p-3 md-typescale-body-medium font-mono text-sm">{row.sku_id}</td>
+                  <td className="p-3 md-typescale-body-medium">{row.product_name}</td>
+                  <td className="p-3 md-typescale-body-medium">{row.predicted_qty}</td>
+                  <td className="p-3 md-typescale-body-medium">{row.date || "—"}</td>
                 </tr>
               ))}
             </tbody>

@@ -10,7 +10,7 @@ import { useTheme, type ThemeMode } from './ThemeProvider';
 import { PanelLeftClose, PanelLeft } from 'lucide-react';
 import NotificationPanel from './NotificationPanel';
 import ClientPolicyBanner from './ClientPolicyBanner';
-import { useNotifications } from '@/lib/useNotifications';
+import { useNotifications, type WarehouseWsState } from '@/lib/useNotifications';
 import { clearSession, readTokenFromCookie } from '@/lib/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -86,6 +86,19 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
 }
 
 const BARE_ROUTES = ["/auth/", "/setup/billing"];
+
+function liveIndicatorCopy(state: WarehouseWsState): { label: string; stale: boolean } {
+  switch (state) {
+    case 'connected':
+      return { label: 'Warehouse live', stale: false };
+    case 'reconnecting':
+      return { label: 'Reconnecting…', stale: true };
+    case 'connecting':
+      return { label: 'Connecting…', stale: true };
+    default:
+      return { label: 'Offline', stale: true };
+  }
+}
 
 function SplashScreen({ onComplete }: { onComplete: () => void }) {
   return (
@@ -331,7 +344,8 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
 
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
-  const { items: notifItems, unreadCount, markRead, markAllRead } = useNotifications();
+  const { items: notifItems, unreadCount, markRead, markAllRead, wsState } = useNotifications();
+  const liveIndicator = liveIndicatorCopy(wsState);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
@@ -496,9 +510,21 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
               <Icon name="search" />
             </button>
 
-            <div className="desk-live-indicator hidden lg:inline-flex">
-              <span className="desk-live-dot" />
-              Live
+            <div
+              className="desk-live-indicator hidden lg:inline-flex"
+              style={liveIndicator.stale ? {
+                borderColor: 'color-mix(in oklch, var(--desk-warning) 35%, var(--desk-border))',
+                background: 'color-mix(in oklch, var(--desk-warning) 10%, transparent)',
+              } : undefined}
+            >
+              <span
+                className="desk-live-dot"
+                style={liveIndicator.stale ? {
+                  background: 'var(--desk-warning)',
+                  animation: 'none',
+                } : undefined}
+              />
+              {liveIndicator.label}
             </div>
 
             <div className="relative" ref={notifRef}>

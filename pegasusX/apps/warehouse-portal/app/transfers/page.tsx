@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
+import { PageSection } from '@/components/PageSection';
 import { useToast } from '@/components/Toast';
 import { warehouseOps } from '@/lib/warehouse-ops';
 
@@ -32,8 +33,10 @@ export default function TransfersPage() {
       <PageChrome
         title="Transfer actions"
         description="Factory inbound transfer controls for warehouse operators."
+        skeletonVariant="form"
       >
-        <div className="md-card p-5 space-y-4 max-w-2xl">
+        <PageSection title="Transfer controls" description="Emergency inbound, force receive, and transfer receipt by ID.">
+        <div className="space-y-4 max-w-2xl">
           <label className="block space-y-1">
             <span className="text-sm text-[var(--muted)]">Volume (VU)</span>
             <input
@@ -109,6 +112,7 @@ export default function TransfersPage() {
             Receive transfer
           </button>
         </div>
+        </PageSection>
       </PageChrome>
     </PageTransition>
   );

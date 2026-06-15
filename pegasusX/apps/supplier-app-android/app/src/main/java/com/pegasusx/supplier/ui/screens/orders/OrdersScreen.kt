@@ -3,15 +3,18 @@ package com.pegasusx.supplier.ui.screens.orders
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.SupplierOrder
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasusx.supplier.ui.components.formatMinorAmount
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -41,9 +44,24 @@ fun OrdersScreen(ops: SupplierOperationsRepository) {
 
     LaunchedEffect(Unit) { load() }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Orders") }) }) { padding ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Orders") },
+                actions = {
+                    IconButton(onClick = { load() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                },
+            )
+        },
+    ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading orders…", "Supplier order queue")
+            loading -> SupplierLoadingState(
+                title = "Loading orders…",
+                body = "Supplier order queue",
+                modifier = Modifier.padding(padding),
+            )
             error != null -> SupplierStatePane(
                 kind = SupplierStateKind.Error,
                 headline = "Orders unavailable",
@@ -59,18 +77,24 @@ fun OrdersScreen(ops: SupplierOperationsRepository) {
                 modifier = Modifier.padding(padding),
             )
             else -> LazyColumn(
-                modifier = Modifier.padding(padding).fillMaxSize(),
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize(),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
                 items(orders, key = { it.orderId }) { order ->
-                    ElevatedCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(PegasusSpacing.lg)) {
-                            Text(order.orderId, style = MaterialTheme.typography.titleMedium)
-                            Text("${order.status} · ${order.currency} ${order.totalMinor}", style = MaterialTheme.typography.bodyMedium)
-                            Text("Retailer ${order.retailerId}", style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
+                    val amount = formatMinorAmount(order.totalMinor, order.currency)
+                    SupplierOpsListCard(
+                        headline = order.orderId.take(12),
+                        supporting = buildString {
+                            append(amount)
+                            append(" · Retailer ")
+                            append(order.retailerId.take(8))
+                            order.updatedAt.takeIf { it.isNotBlank() }?.let { append(" · $it") }
+                        },
+                        status = order.status.ifBlank { order.decision },
+                    )
                 }
             }
         }

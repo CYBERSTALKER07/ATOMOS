@@ -2,37 +2,62 @@ import SwiftUI
 
 struct DashboardView: View {
     @Environment(CartManager.self) private var cart
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var activeOrders: [Order] = []
     @State private var predictions: [DemandForecast] = []
     @State private var reorderProducts: [Product] = []
     @State private var isLoading = false
     @State private var preorderingId: String?
+    @State private var clientPolicyMessage: String?
+    @State private var loadError: String?
 
     private let api = APIClient.shared
+
+    private var kpiGridMin: CGFloat {
+        horizontalSizeClass == .regular ? 160 : 140
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: AppTheme.spacingXL) {
-                // Hero Service Grid (Yandex Go style)
-                serviceGrid
-                    .slideIn(delay: 0)
+                ClientPolicyBanner(message: clientPolicyMessage)
 
-                // Quick Reorder
-                quickReorderSection
-                    .slideIn(delay: 0.1)
+                if isLoading && activeOrders.isEmpty && predictions.isEmpty && reorderProducts.isEmpty {
+                    RetailerLoadingView(
+                        title: "Loading home",
+                        message: "Fetching active orders, AI predictions, and quick reorder picks."
+                    )
+                } else if let loadError, activeOrders.isEmpty && predictions.isEmpty {
+                    RetailerErrorView(message: loadError) {
+                        Task { await loadData() }
+                    }
+                } else {
+                    kpiGrid
+                        .slideIn(delay: 0)
 
-                // AI Prediction Cards
-                aiPredictionSection
-                    .slideIn(delay: 0.15)
+                    // Hero Service Grid (Yandex Go style)
+                    serviceGrid
+                        .slideIn(delay: 0.05)
+
+                    // Quick Reorder
+                    quickReorderSection
+                        .slideIn(delay: 0.1)
+
+                    // AI Prediction Cards
+                    aiPredictionSection
+                        .slideIn(delay: 0.15)
+                }
             }
             .padding(.horizontal, AppTheme.spacingLG)
             .padding(.bottom, AppTheme.spacingHuge)
+            .retailerReadableWidth()
         }
         .scrollIndicators(.hidden)
         .background(AppTheme.background)
         .task {
             await loadData()
+            await loadClientPolicy()
         }
         .task(id: refreshCenter.refreshToken) {
             await loadData()
@@ -46,6 +71,41 @@ struct DashboardView: View {
         }
         .refreshable {
             await loadData()
+            await loadClientPolicy()
+        }
+    }
+
+    // MARK: - KPI Grid
+
+    private var kpiGrid: some View {
+        VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
+            RetailerSectionHeader(title: "At a glance", subtitle: "Live retailer KPIs")
+
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: kpiGridMin), spacing: AppTheme.spacingMD)],
+                spacing: AppTheme.spacingMD
+            ) {
+                KpiTile(
+                    title: "Active Orders",
+                    value: "\(activeOrders.count)",
+                    systemImage: "shippingbox.fill",
+                    tint: AppTheme.accent,
+                    chip: activeOrders.isEmpty ? nil : ("LIVE", AppTheme.success)
+                )
+                KpiTile(
+                    title: "AI Predictions",
+                    value: "\(predictions.count)",
+                    systemImage: "sparkles",
+                    tint: AppTheme.info,
+                    chip: predictions.isEmpty ? nil : ("NEW", AppTheme.warning)
+                )
+                KpiTile(
+                    title: "Quick Reorder",
+                    value: "\(reorderProducts.count)",
+                    systemImage: "arrow.clockwise",
+                    tint: AppTheme.success
+                )
+            }
         }
     }
 
@@ -141,7 +201,7 @@ struct DashboardView: View {
 
     private var activeDeliveriesSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
-            sectionHeader(title: "Active Deliveries", icon: "shippingbox.fill", count: activeOrders.count)
+            RetailerSectionHeader(title: "Active Deliveries", icon: "shippingbox.fill", count: activeOrders.count)
 
             if activeOrders.isEmpty {
                 emptyState(icon: "shippingbox", title: "All clear!", message: "No active deliveries right now")
@@ -175,7 +235,7 @@ struct DashboardView: View {
 
     private var quickReorderSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
-            sectionHeader(title: "Quick Reorder", icon: "arrow.clockwise", count: nil)
+            RetailerSectionHeader(title: "Quick Reorder", icon: "arrow.clockwise")
 
             ScrollView(.horizontal) {
                 HStack(spacing: AppTheme.spacingMD) {
@@ -235,7 +295,7 @@ struct DashboardView: View {
 
     private var aiPredictionSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
-            sectionHeader(title: "AI Predictions", icon: "sparkles", count: predictions.count)
+            RetailerSectionHeader(title: "AI Predictions", icon: "sparkles", count: predictions.count)
 
             ForEach(Array(predictions.enumerated()), id: \.element.id) { index, forecast in
                 predictionCard(forecast)
@@ -311,29 +371,6 @@ struct DashboardView: View {
 
     // MARK: - Helpers
 
-    private func sectionHeader(title: String, icon: String, count: Int?) -> some View {
-        HStack(spacing: AppTheme.spacingSM) {
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppTheme.textSecondary)
-
-            Text(title)
-                .font(.system(.headline, design: .rounded))
-                .foregroundStyle(AppTheme.textPrimary)
-
-            if let count {
-                Text("\(count)")
-                    .font(.system(.caption2, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 20, height: 20)
-                    .background(AppTheme.accent)
-                    .clipShape(.circle)
-            }
-
-            Spacer()
-        }
-    }
-
     private func emptyState(icon: String, title: String, message: String) -> some View {
         VStack(spacing: AppTheme.spacingMD) {
             ZStack {
@@ -369,11 +406,13 @@ struct DashboardView: View {
     private func loadData() async {
         let rid = AuthManager.shared.currentUser?.id ?? ""
         isLoading = true
+        loadError = nil
         do {
             let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
             activeOrders = orders.filter { $0.status.isActive }
         } catch {
             activeOrders = []
+            loadError = "Could not load dashboard data. Pull to refresh or try again."
         }
 
         do {
@@ -390,6 +429,38 @@ struct DashboardView: View {
             reorderProducts = []
         }
         isLoading = false
+    }
+
+    private func loadClientPolicy() async {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        do {
+            struct ClientPolicy: Decodable {
+                let outdated: Bool?
+                let forceUpdate: Bool?
+                let minimumVersion: String?
+                enum CodingKeys: String, CodingKey {
+                    case outdated
+                    case forceUpdate = "force_update"
+                    case minimumVersion = "minimum_version"
+                }
+            }
+            let policy: ClientPolicy = try await api.get(
+                path: "/v1/platform/client-policy?role=RETAILER&platform=ios&version=\(version)&channel=production"
+            )
+            if policy.outdated == true || policy.forceUpdate == true {
+                let prefix = policy.forceUpdate == true ? "Update required" : "Update available"
+                if let min = policy.minimumVersion, !min.isEmpty {
+                    clientPolicyMessage = "\(prefix) — minimum version \(min)"
+                } else {
+                    clientPolicyMessage = prefix
+                }
+            } else {
+                clientPolicyMessage = nil
+            }
+        } catch {
+            // Policy fetch is optional on local/dev stacks.
+            clientPolicyMessage = nil
+        }
     }
 
     private func cancelOrder(_ orderId: String) async {

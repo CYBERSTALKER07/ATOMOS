@@ -166,6 +166,9 @@ export default function App() {
   const [manifest, setManifest] = useState<ManifestItem[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [sealedOrderIds, setSealedOrderIds] = useState<Set<string>>(new Set());
+  const [sealedOrdersByTruck, setSealedOrdersByTruck] = useState<Record<string, string[]>>({});
+  const [batchReadyManifestIds, setBatchReadyManifestIds] = useState<string[]>([]);
+  const [batchSealing, setBatchSealing] = useState(false);
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
@@ -878,6 +881,40 @@ export default function App() {
     } catch {}
   }, [token, activeTruck]);
 
+  const refreshBatchReadyManifests = useCallback(async () => {
+    if (!token || !activeTruck) return;
+    try {
+      const data = await PayloadTerminalApi.getSupplierManifests(token, 'LOADING');
+      const loadingManifests: Array<{ manifest_id: string; truck_id?: string }> = data.manifests || [];
+      const sealedByTruck = { ...sealedOrdersByTruck };
+      if (sealedOrderIds.size > 0) {
+        sealedByTruck[activeTruck] = Array.from(sealedOrderIds);
+      }
+      const ready: string[] = [];
+      for (const m of loadingManifests) {
+        const truckId = m.truck_id;
+        if (!truckId) continue;
+        let truckOrders: LiveOrder[];
+        if (truckId === activeTruck) {
+          truckOrders = orders;
+        } else {
+          const res = await authFetch(
+            `/v1/payloader/orders?vehicle_id=${encodeURIComponent(truckId)}&state=LOADED`,
+          );
+          if (!res.ok) continue;
+          truckOrders = await res.json();
+        }
+        const sealed = new Set(sealedByTruck[truckId] || []);
+        if (truckOrders.length > 0 && truckOrders.every(o => sealed.has(o.order_id))) {
+          ready.push(m.manifest_id);
+        }
+      }
+      setBatchReadyManifestIds(Array.from(new Set(ready)));
+    } catch {
+      // Best-effort; batch seal is optional when manifests API is unavailable.
+    }
+  }, [token, activeTruck, sealedOrderIds, sealedOrdersByTruck, orders]);
+
   useEffect(() => { fetchTruckManifest(); }, [fetchTruckManifest]);
 
   useEffect(() => {
@@ -894,7 +931,12 @@ export default function App() {
       fetchManifest(activeTruck);
       fetchTruckManifest();
     }
-  }, [token, isOnline, activeTruck, fetchTrucks, fetchNotifications, fetchManifest, fetchTruckManifest]);
+  }, [token, isOnline, activeTruck, fetchTrucks, fetchNotifications, fetchManifest, fetchTruckManifest, refreshBatchReadyManifests]);
+
+  useEffect(() => {
+    if (!token) return;
+    refreshBatchReadyManifests();
+  }, [token, activeTruck, sealedOrderIds, orders, refreshBatchReadyManifests]);
 
   useEffect(() => {
     if (!token) return;
@@ -1108,6 +1150,12 @@ export default function App() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const next = new Set(sealedOrderIds).add(selectedOrderId);
       setSealedOrderIds(next);
+      if (activeTruck) {
+        setSealedOrdersByTruck(prev => ({
+          ...prev,
+          [activeTruck]: Array.from(next),
+        }));
+      }
       if (sealData.dispatch_code) {
         setDispatchCodes(prev => ({ ...prev, [selectedOrderId]: sealData.dispatch_code }));
       }
@@ -1137,6 +1185,33 @@ export default function App() {
       showToast(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
     } finally {
       setIsSealing(false);
+    }
+  };
+
+  const handleFinalizeBatchSeal = async () => {
+    if (batchReadyManifestIds.length < 2 || batchSealing || !token) return;
+    setBatchSealing(true);
+    const manifestCount = batchReadyManifestIds.length;
+    try {
+      const data = await PayloadTerminalApi.sealCompletedManifests(
+        token,
+        batchReadyManifestIds,
+        buildPayloadIdempotencyKey('supplier-seal-batch', batchReadyManifestIds.join('-')),
+      );
+      setBatchReadyManifestIds([]);
+      setAllSealed(true);
+      setManifestState('SEALED');
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showToast(
+        tx('payload.alert.manifest_sealed_title'),
+        `${data.sealed_count ?? manifestCount} truck(s) sealed. Route finalized.`,
+        'success',
+        3600,
+      );
+    } catch (e: unknown) {
+      showToast(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
+    } finally {
+      setBatchSealing(false);
     }
   };
 
@@ -1464,6 +1539,18 @@ export default function App() {
             <Text style={{ color: T.colors.sidebarSecondary, fontFamily: T.typography.mono.fontFamily, fontSize: 11 }}>
               {activeTruck}
             </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 }}>
+              <View style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: isOnline ? '#22C55E' : '#EF4444',
+              }} />
+              <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 10, color: T.colors.sidebarSecondary }}>
+                {isOnline ? (isIOS ? 'Live sync' : 'LIVE SYNC') : (isIOS ? 'Offline' : 'OFFLINE')}
+                {offlineQueue.length > 0 ? ` · ${offlineQueue.length} queued` : ''}
+              </Text>
+            </View>
           </View>
           <Pressable
             onPress={() => {
@@ -1510,6 +1597,34 @@ export default function App() {
             </Pressable>
           ))}
         </View>
+
+        {batchReadyManifestIds.length > 1 && (
+          <View style={{
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            borderBottomWidth: 0.5,
+            borderBottomColor: T.colors.sidebarSeparator,
+            backgroundColor: `${T.colors.accent}12`,
+          }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: T.colors.sidebarLabel, marginBottom: 8 }}>
+              {batchReadyManifestIds.length} trucks ready to finalize
+            </Text>
+            <Pressable
+              onPress={handleFinalizeBatchSeal}
+              disabled={batchSealing}
+              style={{
+                paddingVertical: 10,
+                alignItems: 'center',
+                backgroundColor: batchSealing ? T.colors.fillSecondary : T.colors.accent,
+                borderRadius: T.radius.button,
+              }}
+            >
+              <Text style={{ fontWeight: '700', fontSize: 11, color: batchSealing ? T.colors.tertiaryLabel : '#FFFFFF' }}>
+                {batchSealing ? (isIOS ? 'Finalizing…' : 'FINALIZING…') : (isIOS ? 'Seal all trucks' : 'SEAL ALL TRUCKS')}
+              </Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* LEO: Volume Progress Bar + Manifest State */}
         {manifestId && (

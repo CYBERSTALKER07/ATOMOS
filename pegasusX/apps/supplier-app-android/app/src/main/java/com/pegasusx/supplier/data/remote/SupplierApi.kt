@@ -292,4 +292,24 @@ interface SupplierApi {
 
     @DELETE("v1/supplier/promotions/{promotionId}")
     suspend fun deactivatePromotion(@Path("promotionId") promotionId: String): Response<Map<String, String>>
+
+    // ── Notifications + client policy ──
+    @GET("v1/user/notifications")
+    suspend fun getNotifications(
+        @Query("limit") limit: Int = 50,
+        @Query("offset") offset: Int = 0,
+    ): Response<NotificationsResponse>
+
+    @POST("v1/user/notifications/read")
+    suspend fun markNotificationsRead(
+        @Body body: MarkNotificationsReadRequest,
+    ): Response<Map<String, String>>
+
+    @GET("v1/platform/client-policy")
+    suspend fun getClientPolicy(
+        @Query("role") role: String = "ADMIN",
+        @Query("platform") platform: String,
+        @Query("version") version: String,
+        @Query("channel") channel: String = "production",
+    ): Response<ClientPolicyResponse>
 }

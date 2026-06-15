@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { Button, Skeleton } from "@heroui/react";
+import { Button } from "@heroui/react";
 import {
   Truck,
   Package,
@@ -15,6 +15,9 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
+import EmptyState from "../../../components/EmptyState";
+import { PageSection } from "../../../components/PageSection";
+import { Skeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { useWsEvent, useOptionalWebSocket, type WsMessage } from "../../../lib/ws";
 import type {
@@ -439,11 +442,11 @@ export default function TrackingPage() {
       </BentoGrid>
 
       {recentReceipts.length > 0 && (
-        <div className="mb-4 rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] p-4">
-          <h2 className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-3">
-            Recent receipts
-          </h2>
-          <div className="space-y-2 max-h-40 overflow-y-auto">
+        <PageSection
+          title="Recent receipts"
+          description="Completed deliveries from the tracking feed."
+        >
+          <div className="space-y-2 max-h-40 overflow-y-auto !mt-0">
             {recentReceipts.slice(0, 6).map((receipt) => (
               <div
                 key={receipt.order_id}
@@ -463,7 +466,7 @@ export default function TrackingPage() {
               </div>
             ))}
           </div>
-        </div>
+        </PageSection>
       )}
 
       {suppliers.length > 1 && (
@@ -488,7 +491,12 @@ export default function TrackingPage() {
         </div>
       )}
 
-      <div className="relative flex-1 min-h-[500px] rounded-3xl overflow-hidden border border-[var(--desk-border)] shadow-[var(--shadow-md)] bg-[var(--desk-surface)]">
+      <PageSection
+        title="Live map"
+        description="Driver positions for active inbound deliveries."
+        className="flex-1 min-h-[500px] flex flex-col"
+      >
+      <div className="relative flex-1 min-h-[500px] rounded-2xl overflow-hidden border border-[var(--desk-border)] !mt-0 !p-0">
         <AnimatePresence mode="popLayout">
           {loading && orders.length === 0 ? (
             <motion.div
@@ -497,27 +505,30 @@ export default function TrackingPage() {
               animate={{ opacity: 1 }}
               className="absolute inset-0 z-20 bg-[var(--desk-surface)]"
             >
-              <Skeleton className="w-full h-full" />
+              <Skeleton className="w-full h-full" style={{ borderRadius: 0 }} />
             </motion.div>
           ) : visibleOrders.length === 0 ? (
             <motion.div
               key="empty"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[var(--desk-surface-subtle)]/80 backdrop-blur-sm"
+              className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--desk-surface-subtle)]/80 backdrop-blur-sm p-6"
             >
-              <div className="w-20 h-20 rounded-3xl bg-[var(--desk-surface)] border border-[var(--desk-border)] flex items-center justify-center shadow-lg">
-                <Truck
-                  size={40}
-                  className="text-[var(--desk-text-tertiary)] opacity-40"
-                />
-              </div>
-              <p className="md-typescale-title-medium font-bold text-[var(--desk-text-secondary)]">
-                {emptyStateTitle}
-              </p>
-              <p className="max-w-md text-center md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase font-bold tracking-widest">
-                {emptyStateMessage}
-              </p>
+              <EmptyState
+                headline={emptyStateTitle}
+                body={emptyStateMessage}
+                variant={
+                  loadIssue === "restricted"
+                    ? "restricted"
+                    : loadIssue === "offline"
+                      ? "offline"
+                      : loadIssue === "error"
+                        ? "error"
+                        : "no-orders"
+                }
+                action={loadIssue ? "Retry" : undefined}
+                onAction={loadIssue ? refreshAll : undefined}
+              />
             </motion.div>
           ) : null}
         </AnimatePresence>
@@ -645,6 +656,7 @@ export default function TrackingPage() {
           )}
         </AnimatePresence>
       </div>
+      </PageSection>
     </div>
   );
 }

@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.pegasusx.retailer.data.model.Product
+import com.pegasusx.retailer.ui.components.RetailerTagChip
 import com.pegasusx.retailer.ui.theme.PillShape
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
 import com.pegasusx.retailer.ui.theme.StatusBlue
@@ -201,13 +202,13 @@ fun ProductCard(
 
                 product.defaultVariant?.let { variant ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TagPill(
+                        RetailerTagChip(
                             text = variant.size,
                             bgColor = StatusBlueSoft,
                             textColor = StatusBlue,
                         )
                         if (variant.packCount > 1) {
-                            TagPill(
+                            RetailerTagChip(
                                 text = variant.pack,
                                 bgColor = StatusGreenSoft,
                                 textColor = StatusGreen,
@@ -226,13 +227,4 @@ fun TagPill(
     bgColor: Color,
     textColor: Color,
     modifier: Modifier = Modifier,
-) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = textColor,
-        modifier = modifier
-            .background(color = bgColor, shape = PillShape)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-    )
-}
+) = RetailerTagChip(text = text, bgColor = bgColor, textColor = textColor, modifier = modifier)

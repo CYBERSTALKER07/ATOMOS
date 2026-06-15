@@ -16,6 +16,10 @@ import com.pegasusx.warehouse.data.model.CreateVehicleRequest
 import com.pegasusx.warehouse.data.model.UpdateVehicleRequest
 import com.pegasusx.warehouse.data.model.Vehicle
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
+import com.pegasusx.warehouse.ui.components.WarehouseStateKind
+import com.pegasusx.warehouse.ui.components.WarehouseStatePane
+import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -97,14 +101,25 @@ fun VehiclesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.lg))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
+            loading -> WarehouseLoadingState(
+                title = "Loading vehicles…",
+                body = "Fleet vehicle roster",
+                modifier = Modifier.padding(innerPadding),
+            )
+            error != null -> WarehouseStatePane(
+                kind = WarehouseStateKind.Error,
+                headline = "Vehicles unavailable",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier.padding(innerPadding),
+            )
+            vehicles.isEmpty() -> WarehouseStatePane(
+                kind = WarehouseStateKind.Empty,
+                headline = "No vehicles",
+                body = "Fleet vehicles will appear here.",
+                modifier = Modifier.padding(innerPadding),
+            )
             else -> LazyColumn(
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
@@ -126,7 +141,7 @@ fun VehiclesScreen(
                                 }
                             }
                             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                                AssistChip(onClick = {}, label = { Text(if (v.isActive) v.status.ifBlank { "AVAILABLE" } else "UNAVAILABLE", style = MaterialTheme.typography.labelSmall) })
+                                WarehouseStatusChip(status = if (v.isActive) v.status.ifBlank { "AVAILABLE" } else "UNAVAILABLE")
                                 OutlinedButton(
                                     onClick = { if (v.isActive) reasonVehicle = v else updateVehicleAvailability(v, true) },
                                     enabled = mutatingVehicleId != v.vehicleId,

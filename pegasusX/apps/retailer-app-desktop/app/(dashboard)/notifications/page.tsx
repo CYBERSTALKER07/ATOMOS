@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, Bell, CheckCheck, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "@heroui/react";
 import EmptyState from "../../../components/EmptyState";
+import { ListRowSkeleton } from "../../../components/Skeleton";
 import { useRetailerNotifications } from "../../../lib/notifications";
 import { useOptionalWebSocket } from "../../../lib/ws";
 
@@ -234,9 +235,7 @@ export default function NotificationsPage() {
       <AnimatePresence mode="popLayout">
         {loading && items.length === 0 ? (
           <motion.div key="loading" className="grid gap-4">
-            {[0, 1, 2, 3].map((item) => (
-              <motion.div key={item} className="bento-card h-24 opacity-50" />
-            ))}
+            <ListRowSkeleton count={4} />
           </motion.div>
         ) : items.length === 0 ? (
           <motion.div

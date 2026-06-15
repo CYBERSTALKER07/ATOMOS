@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.pegasusx.supplier.ui.components.SupplierLeadingIcon
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 
 private data class MoreDestination(
@@ -49,6 +50,7 @@ fun MoreScreen(
     onOrgFleet: () -> Unit,
     onEarnings: () -> Unit,
     onProfile: () -> Unit,
+    onNotifications: () -> Unit,
     onBilling: () -> Unit,
     onChargebacks: () -> Unit,
     onPaymentBypass: () -> Unit,
@@ -87,6 +89,7 @@ fun MoreScreen(
         MoreDestination("Portal operations", "Bypass & broadcast", Icons.Default.Computer, onPaymentBypass),
     )
     val account = listOf(
+        MoreDestination("Notifications", "Inbox & alerts", Icons.Default.Notifications, onNotifications),
         MoreDestination("Catalog", "Product unit VU for dispatch", Icons.Default.Category, onCatalog),
         MoreDestination("Inventory", "SKU levels", Icons.Default.Inventory2, onInventory),
         MoreDestination("Pricing", "Markup and discount rules", Icons.Default.PriceChange, onPricing),
@@ -144,9 +147,15 @@ private fun SectionHeader(title: String) {
 @Composable
 private fun MoreRow(dest: MoreDestination) {
     ListItem(
-        headlineContent = { Text(dest.title) },
-        supportingContent = { Text(dest.subtitle) },
-        leadingContent = { Icon(dest.icon, contentDescription = null) },
+        headlineContent = { Text(dest.title, style = MaterialTheme.typography.titleSmall) },
+        supportingContent = {
+            Text(
+                dest.subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        leadingContent = { SupplierLeadingIcon(icon = dest.icon) },
         modifier = Modifier.clickable(onClick = dest.onClick),
     )
     HorizontalDivider()

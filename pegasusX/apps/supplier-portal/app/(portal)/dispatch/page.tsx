@@ -1,12 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { ApiError } from "@pegasusx/api-client";
 import type { SupplierDispatchPreview, SupplierTopologyWarehouse } from "@pegasusx/types";
-import { useDispatchData } from "./use-dispatch-data";
+import { useDispatchData, type ManifestData } from "./use-dispatch-data";
 import { PortalSurface } from "../_components/PortalSurface";
 import DispatchPreviewMap from "@/components/DispatchPreviewMap";
+import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
+import Icon from "@/components/Icon";
 
 const api = createSupplierApi();
 
@@ -23,6 +26,7 @@ export default function DispatchPage() {
   const [executing, setExecuting] = useState(false);
   const [executeError, setExecuteError] = useState<string | null>(null);
   const [executeSuccess, setExecuteSuccess] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     api
@@ -77,15 +81,22 @@ export default function DispatchPage() {
     }
   }, [loadPreview, refresh, selectedWarehouseId]);
 
-  const draft = manifests.filter((m) => m.status === "DRAFT");
-  const loadingColumn = manifests.filter((m) => m.status === "LOADING");
-  const dispatched = manifests.filter((m) => m.status === "DISPATCHED");
+  const draft = useMemo(() => filterManifests(manifests.filter((m) => m.status === "DRAFT"), searchQuery), [manifests, searchQuery]);
+  const loadingColumn = useMemo(
+    () => filterManifests(manifests.filter((m) => m.status === "LOADING"), searchQuery),
+    [manifests, searchQuery],
+  );
+  const dispatched = useMemo(
+    () => filterManifests(manifests.filter((m) => m.status === "DISPATCHED"), searchQuery),
+    [manifests, searchQuery],
+  );
 
   return (
     <PortalSurface
       title="Dispatch queue"
       description="Manage manifests and dispatch operations."
       loading={loading}
+      skeletonVariant="table"
       error={error}
       actions={
         <div className="flex gap-3">
@@ -99,28 +110,19 @@ export default function DispatchPage() {
           </button>
           <div className="relative">
             <input
-              type="text"
+              type="search"
               placeholder="Search manifest…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="md-input-outlined h-10 w-64 pl-10"
+              aria-label="Search manifests"
             />
-            <svg
-              className="w-5 h-5 absolute left-3 top-2.5"
-              style={{ color: "var(--desk-text-secondary)" }}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
+            <Icon name="search" size={18} className="absolute left-3 top-2.5" style={{ color: "var(--desk-text-secondary)" }} />
           </div>
-          <button type="button" className="md-btn md-btn-filled">
-            Create manifest
-          </button>
+          <Link href="/manifests" className="md-btn md-btn-tonal inline-flex items-center gap-2">
+            <Icon name="manifests" size={18} />
+            Manifests
+          </Link>
         </div>
       }
     >
@@ -164,39 +166,39 @@ export default function DispatchPage() {
         </div>
       ) : null}
 
-      <div className="md-card p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Pending dispatch</p>
-          <p className="md-typescale-headline-small mt-1">{preview?.pending_count ?? "—"}</p>
+      <KpiStatGrid columns={3}>
+        <KpiStatCard label="Pending dispatch" value={preview?.pending_count ?? "—"} />
+        <KpiStatCard label="Available drivers" value={preview?.available_driver_count ?? "—"} />
+        <KpiStatCard label="Unavailable drivers" value={preview?.unavailable_drivers?.length ?? "—"} />
+      </KpiStatGrid>
+
+      {previewError ? (
+        <p className="md-typescale-body-small" style={{ color: "var(--desk-danger)" }}>{previewError}</p>
+      ) : null}
+      {executeError ? (
+        <p className="md-typescale-body-small" style={{ color: "var(--desk-danger)" }}>{executeError}</p>
+      ) : null}
+      {executeSuccess ? (
+        <p className="md-typescale-body-small" style={{ color: "var(--desk-success)" }}>{executeSuccess}</p>
+      ) : null}
+      {preview?.optimizer_warnings && preview.optimizer_warnings.length > 0 ? (
+        <div
+          className="rounded-xl border p-4 space-y-1"
+          style={{
+            borderColor: "var(--desk-warning)",
+            background: "color-mix(in srgb, var(--desk-warning) 8%, var(--desk-surface))",
+          }}
+        >
+          <p className="md-typescale-label-medium" style={{ color: "var(--desk-warning)" }}>
+            Optimizer warnings
+          </p>
+          <ul className="md-typescale-body-small list-disc pl-5 space-y-1" style={{ color: "var(--desk-text-primary)" }}>
+            {preview.optimizer_warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
         </div>
-        <div>
-          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Available drivers</p>
-          <p className="md-typescale-headline-small mt-1">{preview?.available_driver_count ?? "—"}</p>
-        </div>
-        <div>
-          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Unavailable drivers</p>
-          <p className="md-typescale-headline-small mt-1">{preview?.unavailable_drivers?.length ?? "—"}</p>
-        </div>
-        {previewError ? (
-          <p className="md-typescale-body-small text-[var(--color-md-error)] md:col-span-3">{previewError}</p>
-        ) : null}
-        {executeError ? (
-          <p className="md-typescale-body-small text-[var(--color-md-error)] md:col-span-3">{executeError}</p>
-        ) : null}
-        {executeSuccess ? (
-          <p className="md-typescale-body-small text-[var(--color-md-success)] md:col-span-3">{executeSuccess}</p>
-        ) : null}
-        {preview?.optimizer_warnings && preview.optimizer_warnings.length > 0 ? (
-          <div className="md:col-span-3 rounded-lg border border-[var(--color-md-warning)] bg-[var(--color-md-surface-container-low)] p-3 space-y-1">
-            <p className="md-typescale-label-medium text-[var(--color-md-warning)]">Optimizer warnings</p>
-            <ul className="md-typescale-body-small text-[var(--color-md-on-surface)] list-disc pl-5 space-y-1">
-              {preview.optimizer_warnings.map((warning) => (
-                <li key={warning}>{warning}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-      </div>
+      ) : null}
 
       {preview?.proposed_routes && preview.proposed_routes.length > 0 ? (
         <div className="md-card p-4 space-y-3">
@@ -260,7 +262,18 @@ export default function DispatchPage() {
   );
 }
 
-function ManifestCard({ data }: { data: any }) {
+function filterManifests(items: ManifestData[], query: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return items;
+  return items.filter(
+    (m) =>
+      m.id.toLowerCase().includes(q) ||
+      m.driverName.toLowerCase().includes(q) ||
+      m.vehiclePlate.toLowerCase().includes(q),
+  );
+}
+
+function ManifestCard({ data }: { data: ManifestData }) {
   return (
     <div className="md-card p-4 hover:shadow-md transition-shadow cursor-pointer bg-[var(--color-md-surface)]">
       <div className="flex justify-between items-start mb-3">

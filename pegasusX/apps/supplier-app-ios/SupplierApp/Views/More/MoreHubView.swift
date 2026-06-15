@@ -69,6 +69,9 @@ struct MoreHubView: View {
                 }
             }
             Section("Account") {
+                NavigationLink { NotificationInboxView() } label: {
+                    Label("Notifications", systemImage: "bell")
+                }
                 NavigationLink { CatalogView() } label: {
                     Label("Catalog", systemImage: "square.grid.2x2")
                 }
@@ -99,5 +102,6 @@ struct MoreHubView: View {
             }
         }
         .navigationTitle("More")
+        .background(SupplierTheme.background)
     }
 }

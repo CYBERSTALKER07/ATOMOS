@@ -79,15 +79,19 @@ interface NotificationsState {
   loading: boolean;
 }
 
+export type WarehouseWsState = 'connected' | 'connecting' | 'reconnecting' | 'offline';
+
 export function useNotifications() {
   const [state, setState] = useState<NotificationsState>({
     items: [],
     unreadCount: 0,
     loading: true,
   });
+  const [wsState, setWsState] = useState<WarehouseWsState>('offline');
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const disposedRef = useRef(false);
+  const reconnectAttemptRef = useRef(0);
 
   const fetchAllInboxPages = useCallback(async (signal?: AbortSignal) => {
     const pageSize = 100;
@@ -171,9 +175,14 @@ export function useNotifications() {
   const connectWS = useCallback(() => {
     if (disposedRef.current) return;
     const token = readTokenFromCookie();
-    if (!token) return;
+    if (!token) {
+      setWsState('offline');
+      return;
+    }
 
     clearTimeout(reconnectTimer.current);
+    const isReconnect = reconnectAttemptRef.current > 0;
+    setWsState(isReconnect ? 'reconnecting' : 'connecting');
     const wsBase = API.replace(/^http/, 'ws');
     const url = new URL(WAREHOUSE_NOTIFICATIONS_WS_PATH, wsBase);
     url.searchParams.set('token', token);
@@ -182,6 +191,8 @@ export function useNotifications() {
 
     ws.onopen = () => {
       if (disposedRef.current) return;
+      reconnectAttemptRef.current = 0;
+      setWsState('connected');
       void fetchInbox();
     };
 
@@ -232,6 +243,8 @@ export function useNotifications() {
         wsRef.current = null;
       }
       if (disposedRef.current) return;
+      reconnectAttemptRef.current += 1;
+      setWsState('reconnecting');
       reconnectTimer.current = setTimeout(connectWS, 5000);
     };
 
@@ -259,6 +272,12 @@ export function useNotifications() {
       }
     };
 
+    const handleOffline = () => {
+      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+        setWsState('offline');
+      }
+    };
+
     const handleVisible = () => {
       if (document.visibilityState === 'visible') {
         handleWake();
@@ -266,6 +285,7 @@ export function useNotifications() {
     };
 
     window.addEventListener('online', handleWake);
+    window.addEventListener('offline', handleOffline);
     window.addEventListener('focus', handleWake);
     window.addEventListener('pageshow', handleWake);
     document.addEventListener('visibilitychange', handleVisible);
@@ -273,14 +293,17 @@ export function useNotifications() {
       disposedRef.current = true;
       ac.abort();
       window.removeEventListener('online', handleWake);
+      window.removeEventListener('offline', handleOffline);
       window.removeEventListener('focus', handleWake);
       window.removeEventListener('pageshow', handleWake);
       document.removeEventListener('visibilitychange', handleVisible);
       clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
       wsRef.current = null;
+      reconnectAttemptRef.current = 0;
+      setWsState('offline');
     };
   }, [fetchInbox, connectWS]);
 
-  return { ...state, fetchInbox, markRead, markAllRead };
+  return { ...state, wsState, fetchInbox, markRead, markAllRead };
 }

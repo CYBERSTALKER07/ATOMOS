@@ -286,6 +286,7 @@ fun RetailerNavigation(
                 composable(PegasusTab.HOME.name) {
                     Box(Modifier.fillMaxSize()) {
                         DashboardScreen(
+                            clientPolicyMessage = navState.clientPolicyMessage,
                             onOpenCatalog = {
                                 currentTab = PegasusTab.CATALOG
                                 navController.navigate(PegasusTab.CATALOG.name) {

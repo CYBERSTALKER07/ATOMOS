@@ -16,6 +16,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.pegasusx.retailer.ui.components.ClientPolicyBanner
+import com.pegasusx.retailer.ui.components.RetailerMetricTile
+import com.pegasusx.retailer.ui.components.RetailerRuntimeBanner
+import com.pegasusx.retailer.ui.components.RetailerRuntimeTone
+import com.pegasusx.retailer.ui.components.RetailerSectionHeader
+import com.pegasusx.retailer.ui.theme.PegasusSpacing
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
 import com.pegasusx.retailer.ui.theme.SquircleShape
 import androidx.compose.material.icons.Icons
@@ -102,39 +108,16 @@ fun ProfileScreen(
         if (syncMessage != null) {
             item {
                 val loadIssue = uiState.loadIssue
-                val containerColor = when (loadIssue) {
-                    ProfileLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                    ProfileLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                    ProfileLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
-                    null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                val tone = when (loadIssue) {
+                    ProfileLoadIssue.OFFLINE -> RetailerRuntimeTone.Offline
+                    ProfileLoadIssue.RESTRICTED, ProfileLoadIssue.ERROR -> RetailerRuntimeTone.Warning
+                    null -> if (uiState.isLoading) RetailerRuntimeTone.Refreshing else RetailerRuntimeTone.Live
                 }
-                val contentColor = when (loadIssue) {
-                    ProfileLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
-                    ProfileLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
-                    ProfileLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
-                    null -> MaterialTheme.colorScheme.onPrimaryContainer
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(containerColor)
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = syncMessage,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = contentColor,
-                    )
-                    if (!uiState.isLoading) {
-                        TextButton(onClick = viewModel::refresh) {
-                            Text("Retry", color = contentColor)
-                        }
-                    }
-                }
+                RetailerRuntimeBanner(
+                    tone = tone,
+                    message = syncMessage,
+                    onRetry = if (!uiState.isLoading) viewModel::refresh else null,
+                )
             }
         }
 
@@ -155,29 +138,22 @@ fun ProfileScreen(
 
         uiState.clientPolicyMessage?.let { message ->
             item {
-                Text(
-                    message,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                ClientPolicyBanner(
+                    message = message,
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
             }
         }
 
         uiState.pricingRulesSummary?.let { summary ->
             item {
-                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Text(
-                        "Pricing rules",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
+                Column(modifier = Modifier.padding(horizontal = PegasusSpacing.lg)) {
+                    RetailerSectionHeader(title = "Pricing rules")
+                    Spacer(modifier = Modifier.height(PegasusSpacing.xs))
                     Text(
                         summary,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -241,25 +217,20 @@ private fun ProfileHeaderCard(retailerName: String, retailerId: String) {
 @Composable
 private fun StatsRow(orderCount: Int, totalSpent: Long) {
     val spentDisplay = if (totalSpent >= 1000) "$${String.format("%.1f", totalSpent / 1000.0)}k" else "$$totalSpent"
-    Surface(
-        modifier = Modifier.fillMaxWidth()
-            .shadow(3.dp, SoftSquircleShape, ambientColor = Color.Black.copy(alpha = 0.06f), spotColor = Color.Black.copy(alpha = 0.06f)),
-        shape = SoftSquircleShape,
-        color = MaterialTheme.colorScheme.surface,
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
     ) {
-        Row(modifier = Modifier.padding(16.dp)) {
-            StatItem(value = "$orderCount", label = "Orders", modifier = Modifier.weight(1f))
-            StatItem(value = spentDisplay, label = "Spent", modifier = Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun StatItem(value: String, label: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
+        RetailerMetricTile(
+            label = "Orders",
+            value = "$orderCount",
+            modifier = Modifier.weight(1f),
+        )
+        RetailerMetricTile(
+            label = "Spent",
+            value = spentDisplay,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 

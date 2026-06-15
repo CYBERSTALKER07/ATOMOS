@@ -14,6 +14,7 @@
 		21DA2BAB3FC0C5C53A751010 /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0CD3B43FE548CDE96338EE3 /* AnalyticsView.swift */; };
 		2831AA7D0E01D99FFEEED05A /* EarlyCompleteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E089092A5E842AB8F832E97C /* EarlyCompleteView.swift */; };
 		2939DC8BC4630FEB71BFCAC2 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAAADD6814D98F2FC2C477F /* DashboardView.swift */; };
+		CP6BAN001A2B3C4D5E6F701 /* ClientPolicyBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = CP6BAN001A2B3C4D5E6F702 /* ClientPolicyBanner.swift */; };
 		2A034E1E487B20A73EFC1C75 /* PricingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0B618FA26B0FB76D293158E /* PricingView.swift */; };
 		34DC1E87FBEB83E2731D7F10 /* ReconciliationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85C0AAC0E5DBD0967B8775E /* ReconciliationView.swift */; };
 		3A51D70A6E7464F57351C46C /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B3A1AC87D201DF9C3CF0988 /* TokenStore.swift */; };
@@ -31,6 +32,8 @@
 		769D400FC01B7E2F50D4748C /* PromotionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 800F7707DBA49BE481735FD4 /* PromotionsView.swift */; };
 		77770F511CFEDCD5FAD0374E /* ShopClosedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70295F7AE76EAFC2311C0E1F /* ShopClosedView.swift */; };
 		7B9080412F9F005339D9FCB7 /* ManifestsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1705EED972E29EAC48DB89 /* ManifestsView.swift */; };
+		SP7MAN001A2B3C4D5E6F707 /* ManifestDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP7MAN001A2B3C4D5E6F708 /* ManifestDetailView.swift */; };
+		SP7MAN001A2B3C4D5E6F709 /* ManifestExceptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP7MAN001A2B3C4D5E6F70A /* ManifestExceptionsView.swift */; };
 		8251A046CFFAE3841E09284B /* KpiTile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421138A37DC5E059D6E0A644 /* KpiTile.swift */; };
 		82E687746A449CCAECB14AA3 /* ReturnsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C19338A2FAC3766053156BB /* ReturnsView.swift */; };
 		8C16E72DD1E90EEC9E0EF7BB /* AIRecommendationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B801537ED9FBA237CD2ACF1 /* AIRecommendationsView.swift */; };
@@ -44,6 +47,7 @@
 		AD03906D0F78F54818548022 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9FFB54095A63B198144F1D80 /* Assets.xcassets */; };
 		B7B128B838FDE102A19A7D16 /* OrgFleetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99255E119D3C57645066E1EA /* OrgFleetView.swift */; };
 		B8DD86343109B456CD8E7DA1 /* MoreHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51C636CB14CF4B20F955061 /* MoreHubView.swift */; };
+		CP6NOT001A2B3C4D5E6F703 /* NotificationInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CP6NOT001A2B3C4D5E6F704 /* NotificationInboxView.swift */; };
 		BA6A5D71CF8FEC4268476E94 /* SupplierRealtimeHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F10F630B2E3F1350B69329 /* SupplierRealtimeHub.swift */; };
 		C70FAE4C984471734C1543ED /* SupplierTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29985CA974B8C463D2D934CF /* SupplierTheme.swift */; };
 		C8BE665B7530DE2D9B206C66 /* PaymentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AED086993BC29BE4397E5D7 /* PaymentsView.swift */; };
@@ -55,6 +59,7 @@
 		E23AE8135C9852BE23505EAC /* TopologyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE20CFC9300E04F74A699D62 /* TopologyView.swift */; };
 		E706EC9925BC2F972B051845 /* AutoUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA576C7CCAE1103906055835 /* AutoUpdater.swift */; };
 		E7261CA63E53EC71DC811156 /* SupplierAdaptiveShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3400F273AB03B38354283A /* SupplierAdaptiveShell.swift */; };
+		SP7SEC001A2B3C4D5E6F705 /* SupplierSectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = SP7SEC001A2B3C4D5E6F706 /* SupplierSectionHeader.swift */; };
 		F2376B8ED9C921863917A31B /* FleetOrdersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A85D1AEC89533FA4901AEA57 /* FleetOrdersView.swift */; };
 		FAA8394B2AF9F3B102EEED86 /* GeoReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54A021DCDAADC7300E907D60 /* GeoReportView.swift */; };
 		FB3715A6869632A6D31CF73E /* DispatchPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BEDFB0FB4429B0FBC71A5B6 /* DispatchPreviewView.swift */; };
@@ -88,6 +93,7 @@
 		26A5456B6AFE441937C5360D /* SupplierService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierService.swift; sourceTree = "<group>"; };
 		29985CA974B8C463D2D934CF /* SupplierTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierTheme.swift; sourceTree = "<group>"; };
 		2B3400F273AB03B38354283A /* SupplierAdaptiveShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierAdaptiveShell.swift; sourceTree = "<group>"; };
+		SP7SEC001A2B3C4D5E6F706 /* SupplierSectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierSectionHeader.swift; sourceTree = "<group>"; };
 		2BEDFB0FB4429B0FBC71A5B6 /* DispatchPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DispatchPreviewView.swift; sourceTree = "<group>"; };
 		2D2B554F709A9D80742C85AC /* SupplierStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierStateViews.swift; sourceTree = "<group>"; };
 		3B801537ED9FBA237CD2ACF1 /* AIRecommendationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIRecommendationsView.swift; sourceTree = "<group>"; };
@@ -95,6 +101,7 @@
 		3CD70AC3EC5317F4B0403154 /* SupplierAppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierAppTests.swift; sourceTree = "<group>"; };
 		3E7B42B906256F296D332496 /* InventoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryView.swift; sourceTree = "<group>"; };
 		421138A37DC5E059D6E0A644 /* KpiTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KpiTile.swift; sourceTree = "<group>"; };
+		CP6BAN001A2B3C4D5E6F702 /* ClientPolicyBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientPolicyBanner.swift; sourceTree = "<group>"; };
 		54A021DCDAADC7300E907D60 /* GeoReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoReportView.swift; sourceTree = "<group>"; };
 		54CF6D56A1962D9BE153B0EA /* LedgerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerView.swift; sourceTree = "<group>"; };
 		5592228C962DDC50FE72BC5B /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -121,6 +128,8 @@
 		C8F10F630B2E3F1350B69329 /* SupplierRealtimeHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierRealtimeHub.swift; sourceTree = "<group>"; };
 		CA576C7CCAE1103906055835 /* AutoUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoUpdater.swift; sourceTree = "<group>"; };
 		CC1705EED972E29EAC48DB89 /* ManifestsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestsView.swift; sourceTree = "<group>"; };
+		SP7MAN001A2B3C4D5E6F708 /* ManifestDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestDetailView.swift; sourceTree = "<group>"; };
+		SP7MAN001A2B3C4D5E6F70A /* ManifestExceptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestExceptionsView.swift; sourceTree = "<group>"; };
 		DC814B312021BF2568E617B0 /* FleetLiveMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetLiveMapView.swift; sourceTree = "<group>"; };
 		E089092A5E842AB8F832E97C /* EarlyCompleteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EarlyCompleteView.swift; sourceTree = "<group>"; };
 		E3A44198F839F3C4959FDC65 /* SupplyLanesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplyLanesView.swift; sourceTree = "<group>"; };
@@ -132,6 +141,7 @@
 		EE20CFC9300E04F74A699D62 /* TopologyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopologyView.swift; sourceTree = "<group>"; };
 		F0B618FA26B0FB76D293158E /* PricingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PricingView.swift; sourceTree = "<group>"; };
 		F51C636CB14CF4B20F955061 /* MoreHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreHubView.swift; sourceTree = "<group>"; };
+		CP6NOT001A2B3C4D5E6F704 /* NotificationInboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationInboxView.swift; sourceTree = "<group>"; };
 		F96AF3E52C1AA8B8D849BD8F /* SupplierSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierSection.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -354,15 +364,26 @@
 		BF9BDF03637278B98AFDF5CD /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				CP6BAN001A2B3C4D5E6F702 /* ClientPolicyBanner.swift */,
 				421138A37DC5E059D6E0A644 /* KpiTile.swift */,
 				2D2B554F709A9D80742C85AC /* SupplierStateViews.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
 		};
+		CP6NOTGRP01A2B3C4D5E6F705 /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				CP6NOT001A2B3C4D5E6F704 /* NotificationInboxView.swift */,
+			);
+			path = Notifications;
+			sourceTree = "<group>";
+		};
 		C54A803B98E43B81DB4DAB9A /* Manifests */ = {
 			isa = PBXGroup;
 			children = (
+				SP7MAN001A2B3C4D5E6F708 /* ManifestDetailView.swift */,
+				SP7MAN001A2B3C4D5E6F70A /* ManifestExceptionsView.swift */,
 				CC1705EED972E29EAC48DB89 /* ManifestsView.swift */,
 			);
 			path = Manifests;
@@ -397,6 +418,7 @@
 				A727F876AEEB7A647B603A60 /* Network */,
 				A8BB24AF4054E4C56B91BE9A /* Operations */,
 				C60843458F9BB52E2D92C38A /* Orders */,
+				CP6NOTGRP01A2B3C4D5E6F705 /* Notifications */,
 				BD693008C456CBB9932719B1 /* OrgFleet */,
 				F0D3AEADF3674E0F62A0488C /* Pricing */,
 				7415E9D5624BAF1D7013B831 /* Profile */,
@@ -467,6 +489,7 @@
 			isa = PBXGroup;
 			children = (
 				2B3400F273AB03B38354283A /* SupplierAdaptiveShell.swift */,
+				SP7SEC001A2B3C4D5E6F706 /* SupplierSectionHeader.swift */,
 				F96AF3E52C1AA8B8D849BD8F /* SupplierSection.swift */,
 			);
 			path = Layout;
@@ -572,6 +595,7 @@
 				21DA2BAB3FC0C5C53A751010 /* AnalyticsView.swift in Sources */,
 				E706EC9925BC2F972B051845 /* AutoUpdater.swift in Sources */,
 				CCFC1E05B46C4264CE320FAC /* BillingGateView.swift in Sources */,
+				CP6BAN001A2B3C4D5E6F701 /* ClientPolicyBanner.swift in Sources */,
 				75F793AB9B7CD5A8077C4F09 /* CatalogView.swift in Sources */,
 				2939DC8BC4630FEB71BFCAC2 /* DashboardView.swift in Sources */,
 				961CBBCEC7965D6F94079D41 /* DeliveryZonesView.swift in Sources */,
@@ -592,7 +616,10 @@
 				9D28342DD36C7D2819CBD28F /* LedgerView.swift in Sources */,
 				087C24FE99CCE9604DA38C3F /* LoginView.swift in Sources */,
 				7B9080412F9F005339D9FCB7 /* ManifestsView.swift in Sources */,
+				SP7MAN001A2B3C4D5E6F707 /* ManifestDetailView.swift in Sources */,
+				SP7MAN001A2B3C4D5E6F709 /* ManifestExceptionsView.swift in Sources */,
 				B8DD86343109B456CD8E7DA1 /* MoreHubView.swift in Sources */,
+				CP6NOT001A2B3C4D5E6F703 /* NotificationInboxView.swift in Sources */,
 				5A901834E7FBE587502A7DE0 /* NegotiationsView.swift in Sources */,
 				5A1C621A2A44402CDBF0C1C6 /* OperationsView.swift in Sources */,
 				D6E8844CF35A25CA4828F599 /* OrdersView.swift in Sources */,
@@ -607,6 +634,7 @@
 				17FD10D25790FDF49EEE2F2C /* RootView.swift in Sources */,
 				77770F511CFEDCD5FAD0374E /* ShopClosedView.swift in Sources */,
 				E7261CA63E53EC71DC811156 /* SupplierAdaptiveShell.swift in Sources */,
+				SP7SEC001A2B3C4D5E6F705 /* SupplierSectionHeader.swift in Sources */,
 				20C422227E8F7DFED18655A5 /* SupplierModels.swift in Sources */,
 				D07D3F16F0C813D5B51CD864 /* SupplierOperationsService.swift in Sources */,
 				48232690F3F221461CC1F8E1 /* SupplierOpsModels.swift in Sources */,

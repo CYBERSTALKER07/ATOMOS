@@ -20,7 +20,10 @@ struct FleetView: View {
 
                 Group {
                     if loading {
-                        SupplierLoadingView(title: "Loading fleet…")
+                        SupplierLoadingView(
+                            title: "Loading fleet",
+                            message: "Fetching drivers and vehicles for your nodes."
+                        )
                     } else if let error {
                         SupplierErrorView(message: error) { Task { await load() } }
                     } else if segment == 0 {
@@ -54,10 +57,15 @@ struct FleetView: View {
                         Label("Live map", systemImage: "map")
                     }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Refresh", systemImage: "arrow.clockwise") {
+                        Task { await load(silent: true) }
+                    }
+                    .labelStyle(.iconOnly)
+                }
             }
             .task { await load() }
             .refreshable { await load(silent: true) }
-            .onChange(of: segment) { _, _ in }
         }
     }
 
@@ -104,9 +112,10 @@ private struct DriverRow: View {
                 Text(driver.name)
                     .font(.headline)
                 Spacer()
-                Circle()
-                    .fill(driver.isActive ? SupplierTheme.success : .secondary)
-                    .frame(width: 8, height: 8)
+                SupplierStatusBadge(
+                    text: driver.isActive ? "ACTIVE" : "OFFLINE",
+                    tint: driver.isActive ? SupplierTheme.live : SupplierTheme.secondaryLabel
+                )
             }
             Text(driver.phone)
                 .font(.subheadline)

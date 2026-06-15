@@ -36,9 +36,7 @@ struct ProfileView: View {
                 empathyEngineSection.slideIn(delay: 0.09)
 
                 if !clientPolicyMessage.isEmpty {
-                    Text(clientPolicyMessage)
-                        .font(.system(.caption, design: .rounded, weight: .semibold))
-                        .foregroundStyle(.orange)
+                    ClientPolicyBanner(message: clientPolicyMessage)
                         .padding(.horizontal, AppTheme.spacingLG)
                 }
 
@@ -285,32 +283,18 @@ struct ProfileView: View {
     }
 
     private var statsRow: some View {
-        HStack(spacing: AppTheme.spacingMD) {
-            miniStat(value: "\(orderCount)", label: "Orders", icon: "shippingbox.fill", color: AppTheme.accent)
-            miniStat(value: formatSpent(totalSpent, currency: totalSpentCurrency), label: "Spent", icon: "dollarsign.circle.fill", color: AppTheme.success)
-            miniStat(value: "4.9", label: "Rating", icon: "star.fill", color: AppTheme.warning)
+        LazyVGrid(
+            columns: [
+                GridItem(.flexible(), spacing: AppTheme.spacingMD),
+                GridItem(.flexible(), spacing: AppTheme.spacingMD),
+                GridItem(.flexible(), spacing: AppTheme.spacingMD),
+            ],
+            spacing: AppTheme.spacingMD
+        ) {
+            KpiTile(title: "Orders", value: "\(orderCount)", systemImage: "shippingbox.fill", tint: AppTheme.accent)
+            KpiTile(title: "Spent", value: formatSpent(totalSpent, currency: totalSpentCurrency), systemImage: "dollarsign.circle.fill", tint: AppTheme.success)
+            KpiTile(title: "Rating", value: "4.9", systemImage: "star.fill", tint: AppTheme.warning)
         }
-    }
-
-    private func miniStat(value: String, label: String, icon: String, color: Color) -> some View {
-        VStack(spacing: AppTheme.spacingSM) {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-                .foregroundStyle(color)
-
-            Text(value)
-                .font(.system(.headline, design: .rounded, weight: .bold))
-                .foregroundStyle(AppTheme.textPrimary)
-
-            Text(label)
-                .font(.system(.caption2, design: .rounded))
-                .foregroundStyle(AppTheme.textTertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, AppTheme.spacingMD)
-        .background(AppTheme.cardBackground)
-        .clipShape(.rect(cornerRadius: AppTheme.radiusMD))
-        .shadow(color: AppTheme.shadowColor, radius: 4, y: 2)
     }
 
     // MARK: - Preferences

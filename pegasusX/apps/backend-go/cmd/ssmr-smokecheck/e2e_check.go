@@ -93,6 +93,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runRetailerCardInitiateE2E(ctx, client, base, retailerToken); err != nil {
 		return fmt.Errorf("retailer card initiate: %w", err)
 	}
+	if err := runRetailerClientPolicyE2E(ctx, client, base); err != nil {
+		return fmt.Errorf("retailer client policy: %w", err)
+	}
 
 	if err := assertRetailerTracking(ctx, client, base, retailerToken, orderID); err != nil {
 		return fmt.Errorf("retailer tracking: %w", err)
@@ -155,6 +158,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runNotificationInboxE2E(ctx, client, base, cookie, retailerToken); err != nil {
 		return fmt.Errorf("notification inbox: %w", err)
 	}
+	if err := runRetailerNotificationInboxE2E(ctx, client, base, retailerToken); err != nil {
+		return fmt.Errorf("retailer notification inbox: %w", err)
+	}
 	if err := runWarehouseDispatchLock(ctx, client, base, cookie, orderID); err != nil {
 		return fmt.Errorf("warehouse dispatch lock: %w", err)
 	}
@@ -190,6 +196,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runSupplierOperationsE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("supplier operations: %w", err)
 	}
+	if err := runSupplierClientPolicyE2E(ctx, client, base); err != nil {
+		return fmt.Errorf("supplier client policy: %w", err)
+	}
 	if err := runFactoryOps(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("factory ops: %w", err)
 	}
@@ -207,6 +216,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 
 	if err := runClientPolicyE2E(ctx, client, base); err != nil {
 		return fmt.Errorf("client policy e2e: %w", err)
+	}
+	if err := runDriverNotificationInboxE2E(ctx, client, base); err != nil {
+		return fmt.Errorf("driver notification inbox: %w", err)
 	}
 	if err := runCatalogCategorySuppliersE2E(ctx, client, base, retailerToken); err != nil {
 		return fmt.Errorf("catalog category suppliers: %w", err)
@@ -238,6 +250,8 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	fmt.Println("PX_E2E_CATALOG_OK")
 	fmt.Println("PX_E2E_DEVICE_TOKEN_OK")
 	fmt.Println("PX_E2E_DRIVER_EDGES_OK")
+	fmt.Println("PX_E2E_DRIVER_CLIENT_POLICY_OK")
+	fmt.Println("PX_E2E_DRIVER_NOTIFICATION_INBOX_OK")
 	fmt.Println("PX_E2E_REPLENISH_OK")
 	fmt.Println("PX_E2E_REPLENISH_COLOCATE_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_FLEET_MGMT_OK")
@@ -591,10 +605,10 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 	}
 
 	var (
-		manifestID string
-		driverID   string
-		vehicleID  string
-		sealOrder  string
+		manifestID      string
+		driverID        string
+		vehicleID       string
+		sealOrder       string
 		dispatchJourney bool
 	)
 	if dispatch != nil && strings.TrimSpace(dispatch.ManifestID) != "" {
@@ -1019,6 +1033,29 @@ func runSupplierOperationsE2E(ctx context.Context, client *http.Client, base, co
 	return nil
 }
 
+func runSupplierClientPolicyE2E(ctx context.Context, client *http.Client, base string) error {
+	body, err := clientGet(ctx, client, base+"/v1/platform/client-policy?role=ADMIN&platform=web&version=1.0.0&channel=production")
+	if err != nil {
+		return err
+	}
+	var resp struct {
+		Role           string `json:"role"`
+		MinimumVersion string `json:"minimum_version"`
+		Outdated       bool   `json:"outdated"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return fmt.Errorf("decode supplier client policy: %w", err)
+	}
+	if resp.Role != "ADMIN" {
+		return fmt.Errorf("supplier client policy role=%q want ADMIN", resp.Role)
+	}
+	if strings.TrimSpace(resp.MinimumVersion) == "" {
+		return fmt.Errorf("supplier client policy missing minimum_version")
+	}
+	fmt.Println("PX_E2E_SUPPLIER_CLIENT_POLICY_OK")
+	return nil
+}
+
 func runRetailerReceivingWindowE2E(ctx context.Context, client *http.Client, base, retailerToken string) error {
 	updateBody := []byte(`{"receiving_window_open":"10:30","receiving_window_close":"19:45"}`)
 	status, body, _, err := clientDo(ctx, client, http.MethodPut, base+"/v1/retailer/profile", updateBody, retailerToken, "")
@@ -1103,6 +1140,54 @@ func runRetailerCardInitiateE2E(ctx context.Context, client *http.Client, base, 
 	return nil
 }
 
+func runRetailerClientPolicyE2E(ctx context.Context, client *http.Client, base string) error {
+	body, err := clientGet(ctx, client, base+"/v1/platform/client-policy?role=RETAILER&platform=web&version=1.0.0&channel=production")
+	if err != nil {
+		return err
+	}
+	var resp struct {
+		Role           string `json:"role"`
+		MinimumVersion string `json:"minimum_version"`
+		Outdated       bool   `json:"outdated"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return fmt.Errorf("decode retailer client policy: %w", err)
+	}
+	if resp.Role != "RETAILER" {
+		return fmt.Errorf("retailer client policy role=%q want RETAILER", resp.Role)
+	}
+	if strings.TrimSpace(resp.MinimumVersion) == "" {
+		return fmt.Errorf("retailer client policy missing minimum_version")
+	}
+	fmt.Println("PX_E2E_RETAILER_CLIENT_POLICY_OK")
+	return nil
+}
+
+func runRetailerNotificationInboxE2E(ctx context.Context, client *http.Client, base, retailerToken string) error {
+	deadline := time.Now().Add(30 * time.Second)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		lastErr = assertInboxHasRows(ctx, client, base, retailerToken, "retailer")
+		if lastErr == nil {
+			break
+		}
+		time.Sleep(400 * time.Millisecond)
+	}
+	if lastErr != nil {
+		return fmt.Errorf("retailer inbox not ready after kafka fanout window: %w", lastErr)
+	}
+	markBody, _ := json.Marshal(map[string]any{"mark_all": true})
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/user/notifications/read", markBody, retailerToken, "ssmr-retailer-inbox-read")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("retailer mark notifications read status %d body %s", status, string(respBody))
+	}
+	fmt.Println("PX_E2E_RETAILER_NOTIFICATION_INBOX_OK")
+	return nil
+}
+
 func runRetailerPricingOverrideE2E(
 	ctx context.Context,
 	client *http.Client,
@@ -1113,9 +1198,9 @@ func runRetailerPricingOverrideE2E(
 
 	createBody, _ := json.Marshal(map[string]any{
 		"retailer_id": retailerID,
-		"product_id": productID,
-		"price":      overridePrice,
-		"notes":      "SSMR override",
+		"product_id":  productID,
+		"price":       overridePrice,
+		"notes":       "SSMR override",
 	})
 	status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/pricing/retailer-overrides", createBody, cookie, "")
 	if err != nil {
@@ -1292,7 +1377,7 @@ func runSupplierImportWizardE2E(ctx context.Context, client *http.Client, base, 
 		return fmt.Errorf("import session apply status %d body %s", status, string(respBody))
 	}
 	var applied struct {
-		AppliedRows int64 `json:"applied_rows"`
+		AppliedRows int64  `json:"applied_rows"`
 		Status      string `json:"status"`
 	}
 	if err := json.Unmarshal(respBody, &applied); err != nil {
@@ -1920,9 +2005,9 @@ func runWarehouseAnalyticsE2E(ctx context.Context, client *http.Client, base, co
 			return fmt.Errorf("warehouse analytics %s status %d body %s", period, status, string(respBody))
 		}
 		var overview struct {
-			Period           string `json:"period"`
-			TotalOrders      int64  `json:"total_orders"`
-			DailyBreakdown   []struct {
+			Period         string `json:"period"`
+			TotalOrders    int64  `json:"total_orders"`
+			DailyBreakdown []struct {
 				Date string `json:"date"`
 			} `json:"daily_breakdown"`
 			ImportFreshness struct {
@@ -2034,6 +2119,19 @@ func runNotificationInboxE2E(ctx context.Context, client *http.Client, base, sup
 			time.Sleep(400 * time.Millisecond)
 			continue
 		}
+		markBody, _ := json.Marshal(map[string]any{"mark_all": true})
+		status, respBody, _, markErr := clientPost(ctx, client, base+"/v1/user/notifications/read", markBody, supplierCookie, "ssmr-supplier-inbox-read")
+		if markErr != nil {
+			lastSupplierErr = markErr
+			time.Sleep(400 * time.Millisecond)
+			continue
+		}
+		if status != http.StatusOK {
+			lastSupplierErr = fmt.Errorf("supplier mark notifications read status %d body %s", status, string(respBody))
+			time.Sleep(400 * time.Millisecond)
+			continue
+		}
+		fmt.Println("PX_E2E_SUPPLIER_NOTIFICATION_INBOX_OK")
 		if retailerToken != "" {
 			lastRetailerErr = assertInboxHasRows(ctx, client, base, retailerToken, "retailer")
 			if lastRetailerErr != nil {
@@ -2332,15 +2430,15 @@ func putSupplierTopologyColocate(ctx context.Context, client *http.Client, base,
 	body, _ := json.Marshal(map[string]any{
 		"warehouses": []map[string]any{
 			{
-				"warehouse_id":             demoWarehouseID(),
-				"name":                     "SSMR Co-locate WH",
-				"lat":                      cfg.DeliveryZoneCenterLat,
-				"lng":                      cfg.DeliveryZoneCenterLng,
-				"coverage_radius_km":       cfg.DeliveryZoneRadiusKm,
-				"transfer_mode":            "INTERNAL",
+				"warehouse_id":              demoWarehouseID(),
+				"name":                      "SSMR Co-locate WH",
+				"lat":                       cfg.DeliveryZoneCenterLat,
+				"lng":                       cfg.DeliveryZoneCenterLng,
+				"coverage_radius_km":        cfg.DeliveryZoneRadiusKm,
+				"transfer_mode":             "INTERNAL",
 				"co_locate_with_factory_id": factoryID,
-				"is_active":                true,
-				"is_on_shift":              true,
+				"is_active":                 true,
+				"is_on_shift":               true,
 			},
 		},
 		"factories": []map[string]any{
@@ -3422,16 +3520,50 @@ func runClientPolicyE2E(ctx context.Context, client *http.Client, base string) e
 		return err
 	}
 	var resp struct {
+		Role           string `json:"role"`
 		MinimumVersion string `json:"minimum_version"`
 		Outdated       bool   `json:"outdated"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return fmt.Errorf("decode client policy: %w", err)
 	}
+	if resp.Role != "DRIVER" {
+		return fmt.Errorf("driver client policy role=%q want DRIVER", resp.Role)
+	}
 	if resp.MinimumVersion == "" {
 		return fmt.Errorf("client policy missing minimum_version")
 	}
 	fmt.Println("PX_E2E_CLIENT_POLICY_OK")
+	fmt.Println("PX_E2E_DRIVER_CLIENT_POLICY_OK")
+	return nil
+}
+
+func runDriverNotificationInboxE2E(ctx context.Context, client *http.Client, base string) error {
+	token, err := driverBearerToken(ctx, client, base)
+	if err != nil {
+		return err
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		lastErr = assertInboxHasRows(ctx, client, base, token, "driver")
+		if lastErr == nil {
+			break
+		}
+		time.Sleep(400 * time.Millisecond)
+	}
+	if lastErr != nil {
+		return fmt.Errorf("driver inbox not ready after kafka fanout window: %w", lastErr)
+	}
+	markBody, _ := json.Marshal(map[string]any{"mark_all": true})
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/user/notifications/read", markBody, token, "ssmr-driver-inbox-read")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("driver mark notifications read status %d body %s", status, string(respBody))
+	}
+	fmt.Println("PX_E2E_DRIVER_NOTIFICATION_INBOX_OK")
 	return nil
 }
 

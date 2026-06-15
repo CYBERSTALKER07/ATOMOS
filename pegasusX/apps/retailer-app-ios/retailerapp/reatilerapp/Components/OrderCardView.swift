@@ -194,20 +194,11 @@ struct OrderCardView: View {
     // MARK: - Status Badge
 
     private var statusBadge: some View {
-        HStack(spacing: 4) {
-            if order.status.isActive {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 6, height: 6)
-            }
-            Text(order.status.displayName)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-        }
-        .foregroundStyle(statusColor)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .background(statusColor.opacity(0.1))
-        .clipShape(.capsule)
+        RetailerStatusBadge(
+            text: order.status.displayName,
+            tint: statusColor,
+            showsLiveDot: order.status.isActive
+        )
     }
 
     // MARK: - Progress Bar

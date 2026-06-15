@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -74,6 +75,12 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.pegasusx.retailer.data.model.TrackingOrder
+import com.pegasusx.retailer.ui.components.RetailerListCard
+import com.pegasusx.retailer.ui.components.RetailerLoadingState
+import com.pegasusx.retailer.ui.components.RetailerRuntimeBanner
+import com.pegasusx.retailer.ui.components.RetailerRuntimeTone
+import com.pegasusx.retailer.ui.components.RetailerStateKind
+import com.pegasusx.retailer.ui.components.RetailerStatePane
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -144,6 +151,11 @@ fun DeliveryMapScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
             },
+            actions = {
+                IconButton(onClick = viewModel::refresh) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                }
+            },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.surface,
             ),
@@ -157,39 +169,17 @@ fun DeliveryMapScreen(
 
         if (syncMessage != null) {
             val loadIssue = uiState.loadIssue
-            val containerColor = when (loadIssue) {
-                TrackingLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                TrackingLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                TrackingLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
-                null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            val tone = when (loadIssue) {
+                TrackingLoadIssue.OFFLINE -> RetailerRuntimeTone.Offline
+                TrackingLoadIssue.RESTRICTED, TrackingLoadIssue.ERROR -> RetailerRuntimeTone.Warning
+                null -> RetailerRuntimeTone.Refreshing
             }
-            val contentColor = when (loadIssue) {
-                TrackingLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
-                TrackingLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
-                TrackingLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
-                null -> MaterialTheme.colorScheme.onPrimaryContainer
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .background(containerColor, MaterialTheme.shapes.medium)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = syncMessage,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = contentColor,
-                )
-                if (loadIssue != null) {
-                    TextButton(onClick = viewModel::refresh) {
-                        Text("Retry", color = contentColor)
-                    }
-                }
-            }
+            RetailerRuntimeBanner(
+                tone = tone,
+                message = syncMessage,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                onRetry = loadIssue?.let { { viewModel.refresh() } },
+            )
         }
 
         // Supplier filter chips
@@ -219,9 +209,10 @@ fun DeliveryMapScreen(
         // Map
         Box(modifier = Modifier.fillMaxSize()) {
             if (uiState.isLoading && uiState.orders.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+                RetailerLoadingState(
+                    title = "Loading deliveries",
+                    body = "Fetching live driver positions and inbound orders…",
+                )
             } else {
                 GoogleMap(
                     modifier = Modifier.fillMaxSize(),
@@ -313,13 +304,13 @@ fun DeliveryMapScreen(
 
                 // Empty state
                 if (visibleOrders.isEmpty() && !uiState.isLoading) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = uiState.emptyStateMessage,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    RetailerStatePane(
+                        kind = RetailerStateKind.Empty,
+                        headline = "No active deliveries",
+                        body = uiState.emptyStateMessage,
+                        actionLabel = "Refresh",
+                        onAction = viewModel::refresh,
+                    )
                 }
             }
         }
@@ -328,58 +319,20 @@ fun DeliveryMapScreen(
 
 @Composable
 private fun OrderInfoCard(order: TrackingOrder) {
-    Column(
-        modifier = Modifier
-            .padding(16.dp)
-            .fillMaxWidth()
-            .background(
-                MaterialTheme.colorScheme.surfaceContainerHigh,
-                MaterialTheme.shapes.large,
-            )
-            .padding(16.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(
-                        if (order.isApproaching || order.state == "ARRIVED") Color(0xFF34C759)
-                        else MaterialTheme.colorScheme.onSurface,
-                        CircleShape,
-                    ),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = order.supplierName.ifEmpty { "Unknown Supplier" },
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = order.state.replace("_", " ") + if (order.liveLocationAvailable) " • Live GPS" else "",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (order.isApproaching) Color(0xFF34C759) else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = order.items.joinToString { "${it.productName} ×${it.quantity}" }.ifEmpty { "No items" },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = formatAmount(order.totalAmount),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+    val statusLabel = buildString {
+        append(order.state.replace('_', ' '))
+        if (order.liveLocationAvailable) append(" • Live GPS")
     }
+    RetailerListCard(
+        headline = order.supplierName.ifEmpty { "Unknown Supplier" },
+        supporting = buildString {
+            append(order.items.joinToString { "${it.productName} ×${it.quantity}" }.ifEmpty { "No items" })
+            append(" · ")
+            append(formatAmount(order.totalAmount))
+        },
+        status = statusLabel,
+        modifier = Modifier.padding(16.dp),
+    )
 }
 
 private fun formatAmount(amount: Long): String {

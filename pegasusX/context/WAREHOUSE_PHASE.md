@@ -2,7 +2,7 @@
 
 **Scope:** pegasusX only · **Reference:** pegasus `warehouse-portal` (read-only)  
 **Parent plan:** `VEGETABLE_PLAN.md` §2.2 · `Phase Next: Replenishment + Supply`  
-**Last updated:** 2026-06-15 (WH-7/8/9 warehouse cross-client parity batch).
+**Last updated:** 2026-06-15 (WH-11P portal deep component parity).
 
 ## Status model
 
@@ -107,6 +107,76 @@ cd pegasusX && make parity-contract-full
 
 ---
 
+## Phase WH-10 — Dashboard UX parity + live connection (P2)
+
+| ID | Feature | Backend | Portal | Android | iOS | Status |
+|----|---------|---------|--------|---------|-----|--------|
+| WH10-01 | Fleet status breakdown renders | `GET /v1/warehouse/ops/dashboard` (`fleet_status[]`) | dashboard section | `FleetStatusBreakdown` | `FleetStatusBreakdown` | **WIRED** |
+| WH10-02 | KPI ALERT/DONE chips | — | pre-existing | dashboard chips | dashboard chips | **WIRED** |
+| WH10-03 | Dashboard load error taxonomy | — | offline/restricted/error | pre-existing retry | pre-existing retry | **WIRED** |
+| WH10-04 | WS-aware shell live indicator | warehouse WS hub | `useNotifications.wsState` + topbar | dispatch realtime banner (pre-existing) | dispatch realtime banner (pre-existing) | **WIRED** |
+
+**Exit:** Dashboard fleet chips visible on all clients; portal topbar reflects warehouse WS connection state; no new SSMR markers (UI-only parity).
+
+---
+
+## Phase WH-11 — Deep native UI/UX parity (iOS)
+
+| ID | Feature | Android | iOS | Status |
+|----|---------|---------|-----|--------|
+| WH11-01 | Shared KPI / list / status primitives | — (iOS-only batch) | `KpiTile`, `WarehouseStatusBadge`, `WarehouseSectionHeader` | **WIRED** |
+| WH11-02 | Theme tokens (`statusTint`, `readableMaxWidth`) | — | `LabTheme` + `labReadableWidth()` | **WIRED** |
+| WH11-03 | Dashboard KPI grid + fleet status | pre-existing WH-10 | `DashboardView` — adaptive `KpiTile`, section header, state views | **WIRED** |
+| WH11-04 | Dispatch status badges + loading copy | — | `DispatchView` — `WarehouseStatusBadge`, `WarehouseLoadingView` | **WIRED** |
+| WH11-05 | Replenishment urgency badges | — | `ReplenishmentView` — semantic urgency/status chips | **WIRED** |
+| WH11-06 | Supply requests list polish | — | `SupplyRequestsHubView` — badges, retry, filter reload | **WIRED** |
+| WH11-07 | Treasury KPI grid + invoice badges | — | `TreasuryView` — `KpiTile`, `WarehouseStatusBadge` | **WIRED** |
+| WH11-08 | Fleet live map + transfer actions chrome | — | `FleetLiveMapView`, `TransferActionsView` section headers | **WIRED** |
+| WH11-09 | Loading/error/empty states | — | `WarehouseLoadingView` / `WarehouseErrorView` / `WarehouseEmptyView` | **WIRED** |
+
+**UI audit vs pegasus reference:** pegasus `warehouse-app-ios` is thinner (no replenishment/supply/fleet map); pegasusX iOS is ahead on ops depth. WH-11 aligns pegasusX iOS with supplier SP-7 discipline (shared primitives, semantic tints, refresh toolbars, empathetic loading copy).
+
+**Exit:** Primary ops screens use shared warehouse components; no new SSMR markers (UI-only parity).
+
+---
+
+## Phase WH-11A — Deep native UI/UX parity (Android)
+
+| ID | Feature | Android | iOS | Status |
+|----|---------|---------|-----|--------|
+| WH11A-01 | Shared UI kit (`WarehouseUiComponents`, `WarehouseState`) | KPI tiles, metric tiles, status chips, list cards, section titles, loading/error/empty panes | pre-existing WH-11 | **WIRED** |
+| WH11A-02 | Dashboard KPI grid + fleet chips | `DashboardScreen` — `WarehouseKpiTile`, `WarehouseStatusChip` | pre-existing WH-11 | **WIRED** |
+| WH11A-03 | Dispatch ops depth | `DispatchScreen` — state panes, section titles, `WarehouseOpsListCard` / status chips on tabs | — | **WIRED** |
+| WH11A-04 | Replenishment + supply lists | `ReplenishmentScreen`, `SupplyRequestsScreen` | pre-existing WH-11 | **WIRED** |
+| WH11A-05 | Transfers form chrome | `TransferActionsScreen` — `WarehouseSectionTitle` | — | **WIRED** |
+| WH11A-06 | Fleet roster (drivers + vehicles) | `DriversScreen`, `VehiclesScreen` | — | **WIRED** |
+| WH11A-07 | Treasury / financials KPI grid | `TreasuryScreen` — `WarehouseMetricTile`, `WarehouseOpsListCard` | pre-existing WH-11 | **WIRED** |
+
+**UI audit vs pegasus reference:** pegasus `warehouse-app-android` is thinner (no replenishment/supply/fleet map, plain KPI cards, raw `CircularProgressIndicator` loading). pegasusX Android is ahead on ops depth. WH-11A aligns pegasusX Android with supplier SP-7 discipline (shared primitives, 160dp adaptive grids, `IconButton` refresh, empathetic loading copy).
+
+**Exit:** Primary warehouse Android ops screens share M3 discipline with supplier SP-7 patterns. UI-only — no new SSMR markers.
+
+---
+
+## Phase WH-11P — Deep warehouse-portal UI/UX (portal)
+
+| ID | Feature | pegasus ref | pegasusX portal | Status |
+|----|---------|-------------|-----------------|--------|
+| WH11P-01 | `PageChrome` skeleton + `EmptyState` | `Skeleton.tsx`, `EmptyState.tsx` | `PageChrome` variants (`dashboard`/`table`/`form`) | **WIRED** |
+| WH11P-02 | KPI tile structure (`KpiStatCard`, `PageSection`) | desk KPI grid | `KpiStatCard.tsx`, `PageSection.tsx` | **WIRED** |
+| WH11P-03 | Dashboard fleet map + status section chrome | dashboard sections | `PageSection` on map + fleet chips | **WIRED** |
+| WH11P-04 | Dispatch control room KPI + sections | dispatch preview layout | KPI grid + `PageSection` orders/drivers/map | **WIRED** |
+| WH11P-05 | Replenishment insight cards + empty state | — (pegasusX-only page) | KPI summary + `EmptyState` + table section | **WIRED** |
+| WH11P-06 | Treasury KPI grid + invoice section | treasury overview | `KpiStatGrid` + `PageSection` invoices | **WIRED** |
+| WH11P-07 | Supply requests skeleton via PageChrome | supply-requests table | `skeletonVariant="table"` | **WIRED** |
+| WH11P-08 | Transfers form section chrome | — (pegasusX-only) | `PageSection` + `skeletonVariant="form"` | **WIRED** |
+
+**WH-11P audit gaps (intentional / blocked):** Dashboard linked KPI hover cards (pegasusX ahead of pegasus ref); BentoGrid layout (supplier pattern, not pegasus warehouse); drivers/vehicles CRUD depth; manifests pick-list tabs; dispatch auto-execute (warehouse manual-only by design); analytics chart depth (WH-4 closed on native); Firebase OTP login (WH9 deferred).
+
+**Exit:** Component-level desk tokens, skeleton loaders, KPI structure, and section headers on dashboard, dispatch, replenishment, treasury, supply, transfers. UI-only — no new SSMR.
+
+---
+
 ## Next execution batch
 
 1. ~~Replenishment insights durability~~ — WH-1
@@ -116,7 +186,11 @@ cd pegasusX && make parity-contract-full
 5. ~~WH-5 native daily revenue chart~~ — WH-5
 6. ~~WH-6 CSV import staging~~ — WH-6
 7. ~~WH-7/8/9 cross-client parity batch~~ — **CLOSED** (2026-06-15)
-8. **Cross-role next** — Boss-picked role row (FACTORY / DRIVER / PAYLOAD per `VEGETABLE_PLAN.md` §3)
+8. ~~WH-10 dashboard UX + live connection parity~~ — **CLOSED** (2026-06-15)
+9. ~~WH-11 deep native UI/UX parity (iOS component-level)~~ — **CLOSED** (2026-06-15)
+10. ~~WH-11P portal deep UI/UX (component-level)~~ — **CLOSED** (2026-06-15)
+11. ~~WH-11A Android deep UI/UX parity~~ — **CLOSED** (2026-06-15)
+12. **Cross-role next** — Boss-picked role row (FACTORY / DRIVER / PAYLOAD per `VEGETABLE_PLAN.md` §3)
 
 ---
 

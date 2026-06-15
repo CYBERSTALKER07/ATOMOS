@@ -47,6 +47,8 @@ struct SupplierAdaptiveShell: View {
             if let section = sidebarSelection {
                 sectionView(section)
                     .id("\(section.id)-\(effectiveRefreshEpoch)")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(SupplierTheme.background)
             } else {
                 ContentUnavailableView("Select a section", systemImage: "sidebar.left")
             }

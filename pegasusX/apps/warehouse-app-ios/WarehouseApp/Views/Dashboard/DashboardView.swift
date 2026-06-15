@@ -2,48 +2,78 @@ import SwiftUI
 
 struct DashboardView: View {
     @Environment(TokenStore.self) private var tokenStore
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var stats = DashboardData.empty
     @State private var loading = true
     @State private var error: String?
     @State private var clientPolicyMessage: String?
 
-    private let columns = [
-        GridItem(.flexible(), spacing: LabTheme.spacingMD),
-        GridItem(.flexible(), spacing: LabTheme.spacingMD),
-        GridItem(.flexible(), spacing: LabTheme.spacingMD),
-    ]
+    private var gridMin: CGFloat {
+        horizontalSizeClass == .regular ? 180 : 140
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                ClientPolicyBanner(message: clientPolicyMessage)
-                    .padding(.top, LabTheme.spacingSM)
-                if loading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, minHeight: 200)
-                } else if let error {
-                    ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") { load() }
+                Group {
+                    if loading {
+                        WarehouseLoadingView(
+                            title: "Loading dashboard",
+                            message: "Fetching orders, fleet status, and warehouse KPIs."
+                        )
+                    } else if let error {
+                        WarehouseErrorView(message: error) { load() }
+                    } else {
+                        VStack(alignment: .leading, spacing: LabTheme.spacingXL) {
+                            ClientPolicyBanner(message: clientPolicyMessage)
+
+                            FleetLiveMapSection(mapHeight: 300, showsExpand: false)
+
+                            WarehouseSectionHeader(
+                                title: "Operations at a glance",
+                                subtitle: "Live warehouse KPIs"
+                            )
+
+                            LazyVGrid(
+                                columns: [GridItem(.adaptive(minimum: gridMin), spacing: LabTheme.spacingMD)],
+                                spacing: LabTheme.spacingMD
+                            ) {
+                                KpiTile(title: "Active Orders", value: "\(stats.activeOrders)", systemImage: "cart", tint: .accentColor)
+                                KpiTile(
+                                    title: "Completed",
+                                    value: "\(stats.completedToday)",
+                                    systemImage: "checkmark.circle",
+                                    tint: LabTheme.success,
+                                    chip: stats.completedToday > 0 ? ("DONE", LabTheme.success) : nil
+                                )
+                                KpiTile(
+                                    title: "Pending Dispatch",
+                                    value: "\(stats.pendingDispatch)",
+                                    systemImage: "paperplane",
+                                    tint: LabTheme.warning,
+                                    chip: stats.pendingDispatch > 5 ? ("ALERT", LabTheme.destructive) : nil
+                                )
+                                KpiTile(title: "Revenue Today", value: "\(stats.todayRevenue / 1000)K", systemImage: "banknote", tint: .accentColor)
+                                KpiTile(title: "On Route", value: "\(stats.driversOnRoute)", systemImage: "location", tint: LabTheme.live)
+                                KpiTile(title: "Idle Drivers", value: "\(stats.driversIdle)", systemImage: "person.badge.clock", tint: LabTheme.secondaryLabel)
+                                KpiTile(title: "Vehicles", value: "\(stats.totalVehicles)", systemImage: "truck.box", tint: .accentColor)
+                                KpiTile(
+                                    title: "Low Stock",
+                                    value: "\(stats.lowStockCount)",
+                                    systemImage: "exclamationmark.triangle",
+                                    tint: LabTheme.warning,
+                                    chip: stats.lowStockCount > 0 ? ("ALERT", LabTheme.destructive) : nil
+                                )
+                                KpiTile(title: "Staff", value: "\(stats.totalStaff)", systemImage: "person.2", tint: .accentColor)
+                            }
+
+                            if !stats.fleetStatus.isEmpty {
+                                FleetStatusBreakdown(entries: stats.fleetStatus)
+                            }
+                        }
+                        .labReadableWidth()
+                        .padding()
                     }
-                } else {
-                    FleetLiveMapSection(mapHeight: 300, showsExpand: false)
-                        .padding(.horizontal)
-                    LazyVGrid(columns: columns, spacing: LabTheme.spacingMD) {
-                        KpiCard(title: "Active Orders", value: "\(stats.activeOrders)", icon: "cart", index: 0)
-                        KpiCard(title: "Completed", value: "\(stats.completedToday)", icon: "checkmark.circle", index: 1)
-                        KpiCard(title: "Pending Dispatch", value: "\(stats.pendingDispatch)", icon: "paperplane", index: 2)
-                        KpiCard(title: "Revenue Today", value: "\(stats.todayRevenue / 1000)K", icon: "banknote", index: 3)
-                        KpiCard(title: "On Route", value: "\(stats.driversOnRoute)", icon: "location", index: 4)
-                        KpiCard(title: "Idle Drivers", value: "\(stats.driversIdle)", icon: "person.badge.clock", index: 5)
-                        KpiCard(title: "Vehicles", value: "\(stats.totalVehicles)", icon: "truck.box", index: 6)
-                        KpiCard(title: "Low Stock", value: "\(stats.lowStockCount)", icon: "exclamationmark.triangle", index: 7)
-                        KpiCard(title: "Staff", value: "\(stats.totalStaff)", icon: "person.2", index: 8)
-                    }
-                    .padding()
                 }
             }
             .background(LabTheme.background)
@@ -125,27 +155,23 @@ struct DashboardView: View {
     }
 }
 
-// MARK: - KPI Card
-private struct KpiCard: View {
-    let title: String
-    let value: String
-    let icon: String
-    let index: Int
+private struct FleetStatusBreakdown: View {
+    let entries: [FleetStatusEntry]
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 0)
-            Text(value)
-                .font(.title.bold())
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            WarehouseSectionHeader(
+                title: "Fleet status tracking",
+                subtitle: "Manifest and driver states"
+            )
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: LabTheme.spacingSM) {
+                    ForEach(entries, id: \.self) { entry in
+                        WarehouseStatusBadge(text: "\(entry.status): \(entry.count)")
+                    }
+                }
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .labCard()
-        .staggeredAppear(index: index)
     }
 }

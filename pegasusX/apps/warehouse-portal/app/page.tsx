@@ -9,6 +9,8 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import PageTransition from '@/components/PageTransition';
 import FleetLiveMapPanel from '@/components/FleetLiveMapPanel';
+import { PageSection } from '@/components/PageSection';
+import { PageSkeleton } from '@/components/Skeleton';
 
 interface DashboardData {
   active_orders: number;
@@ -21,7 +23,29 @@ interface DashboardData {
   today_revenue: number;
   low_stock_count: number;
   total_staff: number;
-  fleet_status: Record<string, number>;
+  fleet_status: FleetStatusRow[];
+}
+
+type FleetStatusRow = { status: string; count: number };
+
+function normalizeFleetStatus(raw: unknown): FleetStatusRow[] {
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => {
+        if (!item || typeof item !== 'object') return null;
+        const row = item as { status?: string; count?: number };
+        if (!row.status) return null;
+        return { status: row.status, count: Number(row.count ?? 0) };
+      })
+      .filter((row): row is FleetStatusRow => row !== null);
+  }
+  if (raw && typeof raw === 'object') {
+    return Object.entries(raw as Record<string, number>).map(([status, count]) => ({
+      status,
+      count: Number(count),
+    }));
+  }
+  return [];
 }
 
 type DashboardLoadIssue = 'offline' | 'restricted' | 'error';
@@ -37,13 +61,28 @@ export default function WarehouseDashboard() {
     async function load() {
       try {
         const dashboard = await warehouseApi.getWarehouseOpsDashboard();
-        setData(dashboard as unknown as DashboardData);
+        const row = dashboard as Record<string, unknown>;
+        setData({
+          active_orders: Number(row.active_orders ?? 0),
+          completed_today: Number(row.completed_today ?? 0),
+          pending_dispatch: Number(row.pending_dispatch ?? 0),
+          total_drivers: Number(row.total_drivers ?? 0),
+          on_route_drivers: Number(row.drivers_on_route ?? row.on_route_drivers ?? 0),
+          idle_drivers: Number(row.drivers_idle ?? row.idle_drivers ?? 0),
+          total_vehicles: Number(row.total_vehicles ?? 0),
+          today_revenue: Number(row.today_revenue ?? 0),
+          low_stock_count: Number(row.low_stock_count ?? 0),
+          total_staff: Number(row.total_staff ?? 0),
+          fleet_status: normalizeFleetStatus(row.fleet_status),
+        });
         setLoadIssue(null);
       } catch (err) {
         if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
           setLoadIssue('restricted');
-        } else {
+        } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
           setLoadIssue('offline');
+        } else {
+          setLoadIssue('error');
         }
       }
       finally { setLoading(false); }
@@ -53,13 +92,14 @@ export default function WarehouseDashboard() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="md-skeleton md-skeleton-title" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="md-skeleton md-skeleton-card h-[120px] rounded-2xl" />
-          ))}
+      <div className="desk-page">
+        <div className="desk-page-header">
+          <div>
+            <h1 className="desk-page-title">Warehouse dashboard</h1>
+            <p className="desk-page-subtitle">Live node operations, fleet, and inventory at a glance.</p>
+          </div>
         </div>
+        <PageSkeleton variant="dashboard" />
       </div>
     );
   }
@@ -120,7 +160,7 @@ export default function WarehouseDashboard() {
     active_orders: 0, completed_today: 0, pending_dispatch: 0,
     total_drivers: 0, on_route_drivers: 0, idle_drivers: 0,
     total_vehicles: 0, today_revenue: 0, low_stock_count: 0,
-    total_staff: 0, fleet_status: {},
+    total_staff: 0, fleet_status: [],
   };
 
   const fmt = (n: number) => new Intl.NumberFormat('en-US').format(n);
@@ -200,30 +240,18 @@ export default function WarehouseDashboard() {
         ))}
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35 }}
-        className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden"
+      <PageSection
+        title="Live fleet map"
+        description="Active sealed routes and driver positions for this node."
+        className="overflow-hidden"
       >
-        <div className="p-4 border-b border-[var(--border)]">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">Live fleet map</h2>
-          <p className="text-sm text-[var(--muted)] mt-1">Active sealed routes and driver positions for this node.</p>
-        </div>
-        <FleetLiveMapPanel className="h-[360px] w-full" />
-      </motion.div>
+        <FleetLiveMapPanel className="h-[360px] w-full -mx-5 -mb-5" />
+      </PageSection>
 
-      {/* Fleet Status Breakdown */}
-      {Object.keys(d.fleet_status).length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="p-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
-        >
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-4 text-[var(--muted)]">Fleet Status Tracking</h2>
+      {d.fleet_status.length > 0 && (
+        <PageSection title="Fleet status tracking" description="Manifest and driver state breakdown for this node.">
           <div className="flex flex-wrap gap-3">
-            {Object.entries(d.fleet_status).map(([status, count]) => (
+            {d.fleet_status.map(({ status, count }) => (
               <motion.span
                 key={status}
                 whileHover={{ scale: 1.05 }}
@@ -233,7 +261,7 @@ export default function WarehouseDashboard() {
               </motion.span>
             ))}
           </div>
-        </motion.div>
+        </PageSection>
       )}
     </div>
     </PageTransition>

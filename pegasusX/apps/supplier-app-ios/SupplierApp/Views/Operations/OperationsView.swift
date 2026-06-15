@@ -4,6 +4,7 @@ private let broadcastRoles = ["ALL", "DRIVER", "RETAILER", "PAYLOAD"]
 
 struct OperationsView: View {
     @State private var loading = true
+    @State private var error: String?
     @State private var empathy: SupplierEmpathyAdoption?
     @State private var title = ""
     @State private var bodyText = ""
@@ -18,15 +19,58 @@ struct OperationsView: View {
     @State private var statusMessage: String?
 
     var body: some View {
-        Form {
-            if loading && empathy == nil {
-                Section {
-                    SupplierLoadingView(title: "Loading operations…")
+        NavigationStack {
+            Group {
+                if loading && empathy == nil && error == nil {
+                    SupplierLoadingView(
+                        title: "Loading operations",
+                        message: "Fetching empathy adoption and operator tools."
+                    )
+                } else if let error, empathy == nil {
+                    SupplierErrorView(message: error) {
+                        Task { await loadEmpathy() }
+                    }
+                } else {
+                    operationsForm
                 }
             }
+            .background(SupplierTheme.background)
+            .navigationTitle("Operations")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Refresh", systemImage: "arrow.clockwise") {
+                        Task { await loadEmpathy() }
+                    }
+                    .labelStyle(.iconOnly)
+                }
+            }
+            .task { await loadEmpathy() }
+            .refreshable { await loadEmpathy(silent: true) }
+            .confirmationDialog(
+                "Issue payment bypass?",
+                isPresented: $showBypassConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Issue token", role: .destructive) {
+                    Task { await issueBypass() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Order must be AWAITING_PAYMENT. Driver receives a one-time bypass token.")
+            }
+        }
+    }
 
+    private var operationsForm: some View {
+        Form {
             if let empathy {
-                Section("Empathy adoption") {
+                Section {
+                    SupplierSectionHeader(
+                        title: "Empathy adoption",
+                        subtitle: "Prediction lifecycle for your network"
+                    )
+                }
+                Section {
                     LabeledContent("Predictions", value: "\(empathy.totalPredictions)")
                     LabeledContent("Waiting", value: "\(empathy.predictionsWaiting)")
                     LabeledContent("Fired", value: "\(empathy.predictionsFired)")
@@ -35,7 +79,10 @@ struct OperationsView: View {
                 }
             }
 
-            Section("Operator broadcast") {
+            Section {
+                SupplierSectionHeader(title: "Operator broadcast")
+            }
+            Section {
                 TextField("Title", text: $title)
                 TextField("Message", text: $bodyText, axis: .vertical)
                     .lineLimit(3...6)
@@ -51,17 +98,23 @@ struct OperationsView: View {
                     || bodyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
 
-            Section("Replenishment") {
-                Text("Opens a warehouse supply request against your primary active warehouse.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+            Section {
+                SupplierSectionHeader(
+                    title: "Replenishment",
+                    subtitle: "Warehouse supply request against your primary node"
+                )
+            }
+            Section {
                 Button(replenishing ? "Triggering…" : "Trigger replenishment") {
                     runReplenishment()
                 }
                 .disabled(replenishing)
             }
 
-            Section("Payment bypass") {
+            Section {
+                SupplierSectionHeader(title: "Payment bypass")
+            }
+            Section {
                 TextField("Order ID (AWAITING_PAYMENT)", text: $orderId)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -84,30 +137,19 @@ struct OperationsView: View {
                 }
             }
         }
-        .navigationTitle("Operations")
-        .task { await loadEmpathy() }
-        .confirmationDialog(
-            "Issue payment bypass?",
-            isPresented: $showBypassConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("Issue token", role: .destructive) {
-                Task { await issueBypass() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Order must be AWAITING_PAYMENT. Driver receives a one-time bypass token.")
-        }
     }
 
     @MainActor
-    private func loadEmpathy() async {
-        loading = true
+    private func loadEmpathy(silent: Bool = false) async {
+        if !silent { loading = true }
+        error = nil
         defer { loading = false }
         do {
             empathy = try await SupplierOperationsService.empathyAdoption()
         } catch {
-            statusMessage = error.localizedDescription
+            if !silent || empathy == nil {
+                self.error = error.localizedDescription
+            }
         }
     }
 

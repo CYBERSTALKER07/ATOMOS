@@ -2,12 +2,14 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { memo, useEffect, useMemo, useState, useCallback } from 'react';
+import { memo, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import Icon from './Icon';
 import { useTheme, type ThemeMode } from './ThemeProvider';
 import { apiFetch } from '@/lib/auth';
 import ClientPolicyBanner from './ClientPolicyBanner';
+import NotificationPanel from './NotificationPanel';
+import { useNotifications } from '@/lib/useNotifications';
 import { motion } from 'framer-motion';
 
 type NavEntry = { href: string; icon: string; label: string };
@@ -196,6 +198,9 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
   const [collapsed, setCollapsed] = useState(false);
   const [factoryName, setFactoryName] = useState('Factory Portal');
   const [refreshEpoch, setRefreshEpoch] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const { items: notifItems, unreadCount, markRead, markAllRead } = useNotifications();
 
   const currentEntry = useMemo(
     () => ALL_NAV_ITEMS.find((item) => isActiveRoute(pathname, item.href)) ?? ALL_NAV_ITEMS[0],
@@ -290,6 +295,29 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
             <div className="desk-live-indicator hidden lg:inline-flex">
               <span className="desk-live-dot" />
               Factory network live
+            </div>
+
+            <div className="relative" ref={notifRef}>
+              <button
+                className="desk-icon-btn"
+                aria-label="Notifications"
+                onClick={() => setNotifOpen(p => !p)}
+              >
+                <Icon name="notifications" />
+                {unreadCount > 0 && (
+                  <span className="desk-notif-badge">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              <NotificationPanel
+                open={notifOpen}
+                onClose={() => setNotifOpen(false)}
+                items={notifItems}
+                unreadCount={unreadCount}
+                onMarkRead={markRead}
+                onMarkAllRead={markAllRead}
+              />
             </div>
           </div>
         </header>

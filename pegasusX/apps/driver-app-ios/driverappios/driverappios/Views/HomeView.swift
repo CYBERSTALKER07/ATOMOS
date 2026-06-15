@@ -14,11 +14,13 @@ struct HomeView: View {
 
     @State private var appeared = false
     @State private var showNotificationInbox = false
+    @State private var clientPolicyMessage: String?
 
     var body: some View {
         ScrollView {
 
             VStack(alignment: .leading, spacing: 20) {
+                ClientPolicyBanner(message: clientPolicyMessage)
 
                 // MARK: - Greeting
                 HStack(alignment: .top) {
@@ -107,6 +109,51 @@ struct HomeView: View {
         }
         .task {
             await vm.loadMissions()
+            await loadClientPolicy()
+        }
+    }
+
+    private func loadClientPolicy() async {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        do {
+            struct ClientPolicy: Decodable {
+                let outdated: Bool
+                let forceUpdate: Bool
+                let minimumVersion: String
+                let deferReason: String?
+
+                enum CodingKeys: String, CodingKey {
+                    case outdated
+                    case forceUpdate = "force_update"
+                    case minimumVersion = "minimum_version"
+                    case deferReason = "defer_reason"
+                }
+            }
+            var components = URLComponents()
+            components.queryItems = [
+                URLQueryItem(name: "role", value: "DRIVER"),
+                URLQueryItem(name: "platform", value: "ios"),
+                URLQueryItem(name: "version", value: version),
+                URLQueryItem(name: "channel", value: "production"),
+            ]
+            let query = components.percentEncodedQuery.map { "?\($0)" } ?? ""
+            let policy: ClientPolicy = try await APIClient.shared.get(
+                "/v1/platform/client-policy\(query)"
+            )
+            if policy.outdated || policy.forceUpdate {
+                var message = policy.forceUpdate ? "Update required" : "Update available"
+                if !policy.minimumVersion.isEmpty {
+                    message += " — minimum version \(policy.minimumVersion)"
+                }
+                if let deferReason = policy.deferReason, !deferReason.isEmpty {
+                    message += ". \(deferReason)"
+                }
+                clientPolicyMessage = message
+            } else {
+                clientPolicyMessage = nil
+            }
+        } catch {
+            // Policy fetch is optional on local/dev stacks.
         }
     }
 

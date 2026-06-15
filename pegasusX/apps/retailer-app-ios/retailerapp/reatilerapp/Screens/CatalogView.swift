@@ -14,7 +14,7 @@ struct CatalogView: View {
     @State private var products: [Product] = []
     @State private var selectedProduct: Product?
     @State private var isLoading = false
-    @State private var loadError = false
+    @State private var loadError: String?
 
     var onNavigateToSuppliers: () -> Void = {}
 
@@ -51,7 +51,16 @@ struct CatalogView: View {
             Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight)
 
             ScrollView {
-                if isLoading {
+                if isLoading && categories.isEmpty && products.isEmpty {
+                    RetailerLoadingView(
+                        title: "Loading catalog",
+                        message: "Fetching categories and product listings."
+                    )
+                } else if let loadError, categories.isEmpty && products.isEmpty {
+                    RetailerErrorView(message: loadError) {
+                        Task { await loadCategories(); await loadProducts() }
+                    }
+                } else if isLoading {
                     SkeletonProductGrid()
                 } else if isSearching {
                     if filteredProducts.isEmpty {
@@ -79,11 +88,9 @@ struct CatalogView: View {
             await loadCategories()
             await loadProducts()
         }
-        .alert("Failed to Load", isPresented: $loadError) {
-            Button("Retry") { Task { await loadCategories(); await loadProducts() } }
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Could not load catalog. Check your connection.")
+        .refreshable {
+            await loadCategories()
+            await loadProducts()
         }
     }
 
@@ -162,15 +169,11 @@ struct CatalogView: View {
     private var allProductsGrid: some View {
         let cols = [GridItem(.adaptive(minimum: 160), spacing: 14)]
         return VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
-            HStack {
-                Text("All products")
-                    .font(.system(.headline, design: .rounded))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Spacer()
-                Text("\(products.count) items")
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(AppTheme.textTertiary)
-            }
+            RetailerSectionHeader(
+                title: "All products",
+                subtitle: "\(products.count) items",
+                icon: "bag.fill"
+            )
             .padding(.horizontal, AppTheme.spacingLG)
             .padding(.top, AppTheme.spacingMD)
 
@@ -189,16 +192,11 @@ struct CatalogView: View {
 
     private var bentoGrid: some View {
         VStack(spacing: AppTheme.spacingMD) {
-            // Section title
-            HStack {
-                Text("Categories")
-                    .font(.system(.headline, design: .rounded))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Spacer()
-                Text("\(categories.count) types")
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(AppTheme.textTertiary)
-            }
+            RetailerSectionHeader(
+                title: "Categories",
+                subtitle: "\(categories.count) types",
+                icon: "square.grid.2x2"
+            )
             .padding(.horizontal, AppTheme.spacingLG)
             .padding(.top, AppTheme.spacingMD)
 
@@ -407,20 +405,11 @@ struct CatalogView: View {
     // MARK: - No Results
 
     private var noResultsState: some View {
-        VStack(spacing: AppTheme.spacingLG) {
-            Spacer(minLength: 60)
-            ZStack {
-                Circle().fill(AppTheme.surfaceElevated).frame(width: 80, height: 80)
-                Image(systemName: "magnifyingglass").font(.system(size: 32)).foregroundStyle(AppTheme.textTertiary)
-            }
-            Text("No Results")
-                .font(.system(.headline, design: .rounded))
-                .foregroundStyle(AppTheme.textPrimary)
-            Text("No products match \"\(searchText)\"")
-                .font(.system(.subheadline, design: .rounded))
-                .foregroundStyle(AppTheme.textTertiary)
-            Spacer()
-        }
+        RetailerEmptyView(
+            title: "No Results",
+            message: "No products match \"\(searchText)\"",
+            systemImage: "magnifyingglass"
+        )
         .padding(AppTheme.spacingXL)
     }
 
@@ -430,7 +419,10 @@ struct CatalogView: View {
         do {
             let result: [ProductCategory] = try await api.get(path: "/v1/catalog/categories")
             categories = result
-        } catch { categories = []; loadError = true }
+        } catch {
+            categories = []
+            loadError = "Could not load categories. Check your connection and retry."
+        }
     }
 
     private func loadProducts() async {
@@ -438,7 +430,11 @@ struct CatalogView: View {
         do {
             let result: [Product] = try await api.get(path: "/v1/catalog/products")
             products = result
-        } catch { products = []; loadError = true }
+            loadError = nil
+        } catch {
+            products = []
+            loadError = "Could not load products. Check your connection and retry."
+        }
         isLoading = false
     }
 }

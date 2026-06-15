@@ -23,7 +23,7 @@ export function ListToolbar({
 }: ListToolbarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="md-typescale-body-small text-[var(--color-md-outline)]">{totalLabel}</p>
+      <p className="md-typescale-body-small" style={{ color: "var(--desk-text-secondary)" }}>{totalLabel}</p>
       <div className="flex items-center gap-2">
         {onExport ? (
           <button

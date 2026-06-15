@@ -26,6 +26,12 @@ import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeClient
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
+import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
+import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
+import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
+import com.pegasusx.warehouse.ui.components.WarehouseStateKind
+import com.pegasusx.warehouse.ui.components.WarehouseStatePane
+import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeStatus
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import androidx.lifecycle.Lifecycle
@@ -331,14 +337,19 @@ fun DispatchScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.lg))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
+            loading -> WarehouseLoadingState(
+                title = "Loading dispatch…",
+                body = "Orders, drivers, supply, and locks",
+                modifier = Modifier.padding(innerPadding),
+            )
+            error != null -> WarehouseStatePane(
+                kind = WarehouseStateKind.Error,
+                headline = "Dispatch unavailable",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier.padding(innerPadding),
+            )
             preview != null -> Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                 FleetLiveMapSection(
                     ops = opsRepository,
@@ -358,9 +369,11 @@ fun DispatchScreen(
                 when (tab) {
                     0 -> {
                         if (preview!!.undispatchedOrders.isEmpty()) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("All orders dispatched", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            WarehouseStatePane(
+                                kind = WarehouseStateKind.Empty,
+                                headline = "All orders dispatched",
+                                body = "No undispatched orders remain in the preview queue.",
+                            )
                         } else {
                             val selectedDriver = preview!!.availableDrivers.firstOrNull { it.driverId == selectedDriverId }
                             val selectedVolume = preview!!.undispatchedOrders
@@ -453,12 +466,7 @@ fun DispatchScreen(
                                 if (preview!!.proposedRoutes.isNotEmpty() || preview!!.optimizerWarnings.isNotEmpty()) {
                                     item {
                                         Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
-                                            Text(
-                                                "Smart suggest preview",
-                                                style = MaterialTheme.typography.labelLarge,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(top = PegasusSpacing.sm),
-                                            )
+                                            WarehouseSectionTitle("Smart suggest preview")
                                             preview!!.optimizerSource?.let { source ->
                                                 Text("Source: $source", style = MaterialTheme.typography.bodySmall)
                                             }
@@ -496,74 +504,49 @@ fun DispatchScreen(
                     }
                     1 -> {
                         if (preview!!.availableDrivers.isEmpty() && preview!!.unavailableDrivers.isEmpty()) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("No available drivers", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            WarehouseStatePane(
+                                kind = WarehouseStateKind.Empty,
+                                headline = "No drivers",
+                                body = "Available and unavailable drivers will appear here.",
+                            )
                         } else {
                             LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                                 if (preview!!.availableDrivers.isNotEmpty()) {
-                                    item {
-                                        Text(
-                                            "Available",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
+                                    item { WarehouseSectionTitle("Available") }
                                 }
                                 items(preview!!.availableDrivers, key = { it.driverId }) { d ->
-                                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(d.name, style = MaterialTheme.typography.titleSmall)
-                                                Text(
-                                                    d.vehicleLabel.ifBlank { d.phone.ifBlank { d.truckStatus.ifBlank { "No vehicle" } } },
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                )
-                                            }
-                                            AssistChip(onClick = {}, label = { Text(d.truckStatus.ifBlank { "IDLE" }) })
-                                        }
-                                    }
+                                    WarehouseOpsListCard(
+                                        headline = d.name,
+                                        supporting = d.vehicleLabel.ifBlank { d.phone.ifBlank { d.truckStatus.ifBlank { "No vehicle" } } },
+                                        status = d.truckStatus.ifBlank { "IDLE" },
+                                    )
                                 }
                                 if (preview!!.unavailableDrivers.isNotEmpty()) {
-                                    item {
-                                        Text(
-                                            "Vehicle Unavailable",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
+                                    item { WarehouseSectionTitle("Vehicle unavailable") }
                                 }
                                 items(preview!!.unavailableDrivers, key = { "unavailable-${it.driverId}" }) { d ->
-                                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
-                                                Text(d.name, style = MaterialTheme.typography.titleSmall)
-                                                Text(
-                                                    d.vehicleLabel.ifBlank { d.phone.ifBlank { "Assigned vehicle unavailable" } },
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                )
-                                                if (!d.unavailableReason.isNullOrBlank()) {
-                                                    Text(
-                                                        vehicleUnavailableReasonLabel(d.unavailableReason),
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = MaterialTheme.colorScheme.tertiary,
-                                                    )
-                                                }
+                                    WarehouseOpsListCard(
+                                        headline = d.name,
+                                        supporting = buildString {
+                                            append(d.vehicleLabel.ifBlank { d.phone.ifBlank { "Assigned vehicle unavailable" } })
+                                            if (!d.unavailableReason.isNullOrBlank()) {
+                                                append(" · ")
+                                                append(vehicleUnavailableReasonLabel(d.unavailableReason))
                                             }
-                                            AssistChip(onClick = {}, label = { Text(d.truckStatus.ifBlank { "IDLE" }) })
-                                        }
-                                    }
+                                        },
+                                        status = d.truckStatus.ifBlank { "UNAVAILABLE" },
+                                    )
                                 }
                             }
                         }
                     }
                     2 -> {
                         if (supplyRequests.isEmpty()) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("No active supply requests", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            WarehouseStatePane(
+                                kind = WarehouseStateKind.Empty,
+                                headline = "No supply requests",
+                                body = "Active factory supply requests will appear here.",
+                            )
                         } else {
                             LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                                 items(supplyRequests, key = { it.requestId }) { request ->
@@ -572,7 +555,7 @@ fun DispatchScreen(
                                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                                 Text(request.requestId.take(8), style = MaterialTheme.typography.titleSmall)
                                                 Text(
-                                                    "${request.state} · ${request.priority} · ${request.totalVolumeVu.toInt()} VU",
+                                                    "${request.priority} · ${request.totalVolumeVu.toInt()} VU",
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     maxLines = 1,
@@ -580,7 +563,7 @@ fun DispatchScreen(
                                                 )
                                             }
                                             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                                                SuggestionChip(onClick = {}, label = { Text(request.state) })
+                                                WarehouseStatusChip(status = request.state)
                                                 if (request.state in setOf("DRAFT", "SUBMITTED", "ACKNOWLEDGED")) {
                                                     TextButton(onClick = { requestPendingCancellation = request }) {
                                                         Text("Cancel")
@@ -595,9 +578,11 @@ fun DispatchScreen(
                     }
                     3 -> {
                         if (dispatchLocks.isEmpty()) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Dispatch is currently unlocked", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            WarehouseStatePane(
+                                kind = WarehouseStateKind.Empty,
+                                headline = "Dispatch unlocked",
+                                body = "No active dispatch locks for this warehouse scope.",
+                            )
                         } else {
                             LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                                 items(dispatchLocks, key = { it.lockId }) { lock ->
@@ -614,10 +599,7 @@ fun DispatchScreen(
                                                 )
                                             }
                                             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                                                SuggestionChip(
-                                                    onClick = {},
-                                                    label = { Text(lock.warehouseId.ifBlank { "Global" }.take(8)) },
-                                                )
+                                                WarehouseStatusChip(status = "ACTIVE")
                                                 TextButton(onClick = { lockPendingRelease = lock }) {
                                                     Text("Release")
                                                 }

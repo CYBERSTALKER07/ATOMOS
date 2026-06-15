@@ -1,7 +1,7 @@
 # pegasusX PAYLOAD Role — Phased Execution Ledger
 
 **Scope:** pegasusX only · **Parent plan:** `VEGETABLE_PLAN.md` §2.6  
-**Last updated:** 2026-06-15 (PL-1/2/3 payload cross-client parity batch).
+**Last updated:** 2026-06-15 (PL-4 home UX parity batch).
 
 ## Status model
 
@@ -72,6 +72,22 @@
 
 ---
 
+## Phase PL-4 — Home UX parity (KPI headers, connection chrome, batch seal)
+
+| ID | Feature | Backend | Terminal | Android | iOS | Status |
+|----|---------|---------|----------|---------|-----|--------|
+| PL4-01 | Manifest KPI header grid | — | sidebar volume bar (existing) | `ManifestKpiGrid` tactical tiles | `ManifestWorkflow` tactical cards | **WIRED** |
+| PL4-02 | Connection / queue status chrome | WS hub | sidebar live-sync dot + queue hint | `OnlineDot` in top bar | `OnlineDot` in sidebar toolbar | **WIRED** |
+| PL4-03 | Multi-truck batch seal UI | `seal-completed` | sidebar batch action card | `TruckListPane` batch card | `TruckSidebar` batch section | **WIRED** |
+| PL4-04 | Post-seal missing-items action | `POST /v1/delivery/missing-items` | countdown screen | `PostSealCountdownCard` | `PostSealCountdownView` | **WIRED** |
+| PL4-05 | Manifest exceptions inbox | `GET /v1/payloader/manifest-exceptions` | modal panel | `ManifestExceptionsSheet` | `ManifestExceptionsSheet` | **WIRED** (PL-2; verified PL-4) |
+| PL4-06 | Client-policy banner placement | `GET /v1/platform/client-policy` | top of manifest + truck picker | below top bar | above `NavigationSplitView` | **WIRED** (PL-3; verified PL-4) |
+| PL4-07 | HomeScreen structure | — | monolithic `App.tsx` (pegasus pattern) | `ManifestKpiGrid` extracted | `ManifestWorkflow` sections | **WIRED** |
+
+**Exit:** All three payload clients show consistent KPI/action/state panes for manifest workflow; batch seal + connection chrome synced; pegasusX additive features (exceptions, policy, missing-items) present on every surface.
+
+---
+
 ## Verification
 
 ```bash
@@ -97,4 +113,5 @@ cd pegasusX/apps/payload-app-android && ./gradlew compileDebugKotlin
 2. ~~PL-1 production blockers audit~~ — **CLOSED** (2026-06-15)
 3. ~~PL-2 parity wiring~~ — **CLOSED** (notifications/exceptions/offline pre-existing; verified)
 4. ~~PL-3 client policy~~ — **CLOSED** (2026-06-15)
-5. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3
+5. ~~PL-4 home UX parity~~ — **CLOSED** (2026-06-15): KPI grid Android, terminal batch seal + connection chrome
+6. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3

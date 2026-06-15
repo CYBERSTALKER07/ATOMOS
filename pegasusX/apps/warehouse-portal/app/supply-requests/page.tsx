@@ -88,6 +88,8 @@ export default function SupplyRequestsPage() {
       <PageChrome
         title="Supply Requests"
         description="Factory replenishment requests scoped to this warehouse node."
+        loading={loading}
+        skeletonVariant="table"
         error={
           restricted
             ? 'You do not have permission to view supply requests for this scope.'
@@ -164,13 +166,7 @@ export default function SupplyRequestsPage() {
           </motion.div>
         )}
 
-        {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="md-skeleton md-skeleton-row" />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
+        {loading ? null : filtered.length === 0 ? (
           <EmptyState
             variant={filter !== 'ALL' ? 'no-results' : 'no-data'}
             headline="No supply requests found"

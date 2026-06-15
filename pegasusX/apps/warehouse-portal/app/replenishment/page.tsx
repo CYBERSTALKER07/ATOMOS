@@ -7,6 +7,9 @@ import { warehouseApi } from '@/lib/warehouse-api';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
+import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
+import { PageSection } from '@/components/PageSection';
+import EmptyState from '@/components/EmptyState';
 
 export default function ReplenishmentPage() {
   const [insights, setInsights] = useState<WarehouseReplenishmentInsight[]>([]);
@@ -58,12 +61,17 @@ export default function ReplenishmentPage() {
     return 'status-chip--stable';
   };
 
+  const openInsights = insights.filter((i) => i.status === 'OPEN');
+  const criticalCount = insights.filter((i) => i.urgency === 'CRITICAL').length;
+  const warningCount = insights.filter((i) => i.urgency === 'WARNING' || i.urgency === 'HIGH').length;
+
   return (
     <PageTransition>
       <PageChrome
         title="Replenishment insights"
         description="Stock velocity alerts with approve/dismiss actions for this warehouse node."
         loading={loading}
+        skeletonVariant="table"
         error={loadError}
         actions={
           <button
@@ -85,11 +93,26 @@ export default function ReplenishmentPage() {
           <p className="mb-4 text-sm" style={{ color: 'var(--success)' }}>{actionSuccess}</p>
         )}
 
-        {insights.length === 0 && !loading && !loadError ? (
-          <p className="py-8 text-center text-sm text-(--muted)">No replenishment insights at this time.</p>
+        <KpiStatGrid columns={3}>
+          <KpiStatCard label="Open insights" value={openInsights.length} sub="Awaiting warehouse action" />
+          <KpiStatCard
+            label="Critical urgency"
+            value={criticalCount}
+            sub={criticalCount > 0 ? 'Auto-transfer may apply' : 'No critical SKUs'}
+          />
+          <KpiStatCard label="Warning / high" value={warningCount} sub="Monitor burn rate" />
+        </KpiStatGrid>
+
+        {insights.length === 0 ? (
+          <EmptyState
+            variant="no-data"
+            headline="No replenishment insights"
+            body="The replenishment engine will surface stock velocity alerts when burn thresholds are crossed."
+          />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-(--border)" style={{ background: 'var(--background)' }}>
-            <table className="desk-table w-full text-sm">
+          <PageSection title="Insight queue" description="Approve to create factory transfer rows; dismiss to clear." className="mt-6">
+            <div className="overflow-x-auto -mx-5 px-5">
+              <table className="desk-table w-full text-sm">
               <thead>
                 <tr className="border-b border-(--border)">
                   <th className="px-4 py-3 text-left font-medium">Product</th>
@@ -144,7 +167,8 @@ export default function ReplenishmentPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </PageSection>
         )}
       </PageChrome>
     </PageTransition>

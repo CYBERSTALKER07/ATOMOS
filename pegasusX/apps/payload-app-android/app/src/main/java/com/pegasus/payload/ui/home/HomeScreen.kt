@@ -97,6 +97,7 @@ import com.pegasus.payload.data.model.NotificationItem
 import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.data.model.TruckRecommendation
 import com.pegasus.payload.ui.components.ClientPolicyBanner
+import com.pegasus.payload.ui.components.ManifestKpiGrid
 
 /**
  * Master-detail home with Phase 4 loading workflow.
@@ -653,7 +654,7 @@ private fun ManifestDetailPane(
                     hint = "This truck has no DRAFT or LOADING manifest. Wait for dispatch.",
                 )
                 else -> {
-                    ManifestSummaryCard(state.manifest)
+                    ManifestKpiGrid(manifest = state.manifest)
 
                     if (state.error != null) {
                         ErrorBanner(state.error)
@@ -747,41 +748,6 @@ private fun DetailHeader(
         }
         IconButton(onClick = onRefresh) {
             Icon(Icons.Filled.Refresh, contentDescription = "Refresh manifest")
-        }
-    }
-}
-
-@Composable
-private fun ManifestSummaryCard(manifest: Manifest) {
-    val total = manifest.totalVolumeVu
-    val cap = manifest.maxVolumeVu.coerceAtLeast(0.001)
-    val pct = (total / cap).coerceIn(0.0, 1.0).toFloat()
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                StatePill(state = manifest.state)
-                Spacer(Modifier.size(10.dp))
-                Text(
-                    "Manifest ${manifest.manifestId.take(8)}",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
-            Text("Stops: ${manifest.stopCount}", style = MaterialTheme.typography.bodyMedium)
-            Text(
-                "Volume: %.1f / %.1f VU".format(total, manifest.maxVolumeVu),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            LinearProgressIndicator(
-                progress = { pct },
-                modifier = Modifier.fillMaxWidth().height(6.dp),
-            )
-            if (manifest.regionCode.isNotBlank()) {
-                Text("Region: ${manifest.regionCode}", style = MaterialTheme.typography.bodySmall)
-            }
         }
     }
 }
@@ -1186,24 +1152,6 @@ private fun AllSealedSuccessCard(
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-@Composable
-private fun StatePill(state: String) {
-    val (bg, fg) = when (state) {
-        "DRAFT" -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
-        "LOADING" -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
-        "SEALED", "DISPATCHED" -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(bg)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-    ) {
-        Text(state, style = MaterialTheme.typography.labelSmall, color = fg, fontWeight = FontWeight.SemiBold)
-    }
-}
 
 @Composable
 private fun CenteredSpinner() {

@@ -17,6 +17,10 @@ import com.pegasusx.warehouse.data.model.CreateDriverRequest
 import com.pegasusx.warehouse.data.model.Driver
 import com.pegasusx.warehouse.data.model.Vehicle
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
+import com.pegasusx.warehouse.ui.components.WarehouseStateKind
+import com.pegasusx.warehouse.ui.components.WarehouseStatePane
+import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -81,14 +85,25 @@ fun DriversScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.lg))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
+            loading -> WarehouseLoadingState(
+                title = "Loading drivers…",
+                body = "Fleet driver roster",
+                modifier = Modifier.padding(innerPadding),
+            )
+            error != null -> WarehouseStatePane(
+                kind = WarehouseStateKind.Error,
+                headline = "Drivers unavailable",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier.padding(innerPadding),
+            )
+            drivers.isEmpty() -> WarehouseStatePane(
+                kind = WarehouseStateKind.Empty,
+                headline = "No drivers",
+                body = "Fleet drivers will appear here.",
+                modifier = Modifier.padding(innerPadding),
+            )
             else -> LazyColumn(
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
@@ -114,10 +129,7 @@ fun DriversScreen(
                                 }
                             }
                             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                                AssistChip(
-                                    onClick = {},
-                                    label = { Text(driver.truckStatus.ifBlank { "IDLE" }, style = MaterialTheme.typography.labelSmall) },
-                                )
+                                WarehouseStatusChip(status = driver.truckStatus.ifBlank { "IDLE" })
                                 OutlinedButton(
                                     onClick = { assignDriver = driver },
                                     enabled = assigningDriverId != driver.driverId,

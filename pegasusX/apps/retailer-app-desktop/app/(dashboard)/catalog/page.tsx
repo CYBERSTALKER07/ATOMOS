@@ -24,6 +24,8 @@ import CartDrawer from "../../../components/CartDrawer";
 import CheckoutModal from "../../../components/CheckoutModal";
 import ProductDetailDrawer from "../../../components/ProductDetailDrawer";
 import EmptyState from "../../../components/EmptyState";
+import { PageSection } from "../../../components/PageSection";
+import { Skeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import { useCart } from "../../../lib/cart";
@@ -493,7 +495,11 @@ export default function CatalogPage() {
               Category suppliers
             </p>
             {categorySuppliersLoading ? (
-              <p className="text-sm text-[var(--desk-text-secondary)]">Loading suppliers…</p>
+              <div className="flex flex-wrap gap-2">
+                {[0, 1, 2, 3].map((i) => (
+                  <Skeleton key={i} style={{ height: 32, width: 96, borderRadius: 9999 }} />
+                ))}
+              </div>
             ) : categorySuppliersError ? (
               <p className="text-sm text-orange-700">{categorySuppliersError}</p>
             ) : categorySuppliers.length === 0 ? (
@@ -588,18 +594,19 @@ export default function CatalogPage() {
           </div>
         </aside>
 
-        <section className="min-w-0 flex-1">
+        <PageSection
+          title="Browse products"
+          description={`${filteredProducts.length} SKUs match your filters.`}
+          className="flex-1 min-w-0"
+        >
           <AnimatePresence mode="popLayout">
             {loadingProducts ? (
               <motion.div
                 key="loading"
-                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 !mt-0"
               >
                 {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <div
-                    key={i}
-                    className="h-72 rounded-2xl animate-pulse bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)]"
-                  />
+                  <Skeleton key={i} style={{ height: 288, borderRadius: 16 }} />
                 ))}
               </motion.div>
             ) : filteredProducts.length === 0 ? (
@@ -720,7 +727,7 @@ export default function CatalogPage() {
               </motion.div>
             )}
           </AnimatePresence>
-        </section>
+        </PageSection>
       </div>
 
       <CartDrawer

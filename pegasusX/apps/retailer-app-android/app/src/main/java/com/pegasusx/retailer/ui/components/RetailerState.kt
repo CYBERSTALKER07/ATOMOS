@@ -1,0 +1,288 @@
+package com.pegasusx.retailer.ui.components
+
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Login
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import com.pegasusx.retailer.ui.theme.PegasusSpacing
+
+enum class RetailerStateKind {
+    Empty,
+    NoResults,
+    Error,
+    Offline,
+    Restricted,
+    AuthFailure,
+}
+
+enum class RetailerRuntimeTone {
+    Live,
+    Refreshing,
+    Warning,
+    Offline,
+}
+
+@Composable
+fun RetailerLoadingState(
+    title: String,
+    body: String,
+    modifier: Modifier = Modifier,
+) {
+    val transition = rememberInfiniteTransition(label = "retailer-loading")
+    val scale by transition.animateFloat(
+        initialValue = 0.96f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "retailer-loading-scale",
+    )
+
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        ElevatedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 420.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(PegasusSpacing.xl),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .scale(scale)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = body,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun RetailerStatePane(
+    kind: RetailerStateKind,
+    headline: String,
+    body: String,
+    modifier: Modifier = Modifier,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    val transition = rememberInfiniteTransition(label = "retailer-state")
+    val scale by transition.animateFloat(
+        initialValue = 0.98f,
+        targetValue = 1.02f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1200),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "retailer-state-scale",
+    )
+
+    val palette = statePalette(kind)
+
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        ElevatedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 440.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(PegasusSpacing.xl),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .scale(scale)
+                        .background(palette.container, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = palette.icon,
+                        contentDescription = null,
+                        tint = palette.content,
+                    )
+                }
+                Text(
+                    text = headline,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = body,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (actionLabel != null && onAction != null) {
+                    Button(onClick = onAction) {
+                        Text(actionLabel)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RetailerRuntimeBanner(
+    tone: RetailerRuntimeTone,
+    message: String,
+    modifier: Modifier = Modifier,
+    onRetry: (() -> Unit)? = null,
+) {
+    val palette = runtimePalette(tone)
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = palette.container,
+        contentColor = palette.content,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = PegasusSpacing.md, vertical = PegasusSpacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = palette.icon,
+                contentDescription = null,
+                tint = palette.content,
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.weight(1f),
+            )
+            if (onRetry != null) {
+                TextButton(onClick = onRetry) {
+                    Text("Retry", color = palette.content)
+                }
+            }
+        }
+    }
+}
+
+private data class RetailerStatePalette(
+    val icon: ImageVector,
+    val container: Color,
+    val content: Color,
+)
+
+@Composable
+private fun statePalette(kind: RetailerStateKind): RetailerStatePalette {
+    return when (kind) {
+        RetailerStateKind.Empty -> RetailerStatePalette(
+            icon = Icons.Default.Inbox,
+            container = MaterialTheme.colorScheme.surfaceContainerHigh,
+            content = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        RetailerStateKind.NoResults -> RetailerStatePalette(
+            icon = Icons.Default.SearchOff,
+            container = MaterialTheme.colorScheme.surfaceContainerHigh,
+            content = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        RetailerStateKind.Error -> RetailerStatePalette(
+            icon = Icons.Default.ErrorOutline,
+            container = MaterialTheme.colorScheme.errorContainer,
+            content = MaterialTheme.colorScheme.onErrorContainer,
+        )
+        RetailerStateKind.Offline -> RetailerStatePalette(
+            icon = Icons.Default.CloudOff,
+            container = MaterialTheme.colorScheme.surfaceContainerHigh,
+            content = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        RetailerStateKind.Restricted -> RetailerStatePalette(
+            icon = Icons.Default.Lock,
+            container = MaterialTheme.colorScheme.secondaryContainer,
+            content = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+        RetailerStateKind.AuthFailure -> RetailerStatePalette(
+            icon = Icons.Default.Login,
+            container = MaterialTheme.colorScheme.errorContainer,
+            content = MaterialTheme.colorScheme.onErrorContainer,
+        )
+    }
+}
+
+@Composable
+private fun runtimePalette(tone: RetailerRuntimeTone): RetailerStatePalette {
+    return when (tone) {
+        RetailerRuntimeTone.Live -> RetailerStatePalette(
+            icon = Icons.Default.Sync,
+            container = MaterialTheme.colorScheme.surfaceContainer,
+            content = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        RetailerRuntimeTone.Refreshing -> RetailerStatePalette(
+            icon = Icons.Default.Sync,
+            container = MaterialTheme.colorScheme.primaryContainer,
+            content = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+        RetailerRuntimeTone.Warning -> RetailerStatePalette(
+            icon = Icons.Default.ErrorOutline,
+            container = MaterialTheme.colorScheme.errorContainer,
+            content = MaterialTheme.colorScheme.onErrorContainer,
+        )
+        RetailerRuntimeTone.Offline -> RetailerStatePalette(
+            icon = Icons.Default.CloudOff,
+            container = MaterialTheme.colorScheme.tertiaryContainer,
+            content = MaterialTheme.colorScheme.onTertiaryContainer,
+        )
+    }
+}

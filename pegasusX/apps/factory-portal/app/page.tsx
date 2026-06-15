@@ -179,7 +179,7 @@ export default function FactoryDashboard() {
   const secondaryKpis = [
     { label: 'Vehicles Total', value: s.vehicles_total, icon: 'fleet', href: '/fleet', detail: `${s.vehicles_available} available now` },
     { label: 'Staff On Shift', value: s.staff_on_shift, icon: 'staff', href: '/staff', detail: 'Operators currently assigned' },
-    { label: 'Critical Insights', value: s.critical_insights, icon: 'insights', href: '/insights', detail: 'Alerts requiring action', danger: s.critical_insights > 0 },
+    { label: 'Gate Exceptions', value: s.critical_insights, icon: 'warning', href: '/manifest-exceptions', detail: 'Transfers removed during loading', danger: s.critical_insights > 0 },
   ];
   const actionCards = [
     {
@@ -195,10 +195,28 @@ export default function FactoryDashboard() {
       icon: 'transfers',
     },
     {
+      href: '/manifests',
+      title: 'Advance manifest lifecycle',
+      description: 'Move manifests through draft, loading, sealed, dispatched, and completed states.',
+      icon: 'manifests',
+    },
+    {
+      href: '/manifest-exceptions',
+      title: 'Review gate exceptions',
+      description: 'Work transfers removed during loading and DLQ escalations before dispatch stalls.',
+      icon: 'warning',
+    },
+    {
       href: '/insights',
-      title: 'Review factory alerts',
-      description: 'Work through critical insights before they turn into loading delays or fleet bottlenecks.',
+      title: 'Review replenishment insights',
+      description: 'Warehouse stock velocity and reorder pressure linked to this factory node.',
       icon: 'insights',
+    },
+    {
+      href: '/analytics',
+      title: 'Open analytics overview',
+      description: 'Factory throughput, active manifests, exception queue, and lead time.',
+      icon: 'analytics',
     },
   ];
   const readinessCards = [
@@ -235,7 +253,7 @@ export default function FactoryDashboard() {
               The factory desktop is optimized for a shift lead: review transfer readiness, bay throughput, dispatch output, and staffing pressure without hopping between disconnected screens.
             </p>
 
-            <div className="mt-6 grid gap-3 md:grid-cols-3">
+            <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {actionCards.map((card) => (
                 <Link
                   key={card.href}
@@ -338,9 +356,9 @@ export default function FactoryDashboard() {
                 description: `${s.vehicles_available} of ${s.vehicles_total} vehicles are free for assignment right now.`,
               },
               {
-                href: '/insights',
-                title: 'Review insights before bottlenecks grow',
-                description: `${s.critical_insights} critical signal(s) are open in the insights queue.`,
+                href: '/manifest-exceptions',
+                title: 'Review gate exceptions before dispatch',
+                description: `${s.critical_insights} exception(s) need attention in the gate queue.`,
               },
             ].map((step) => (
               <Link key={step.href} href={step.href}>

@@ -89,6 +89,24 @@ enum AppTheme {
     static let iconLG: Double = 24
     static let iconXL: Double = 32
     static let iconHuge: Double = 48
+
+    // MARK: Layout
+    static let readableMaxWidth: CGFloat = 960
+
+    /// Maps order/ops status strings to semantic badge tints (aligned with supplier/warehouse native).
+    static func statusTint(for status: String) -> Color {
+        switch status.uppercased() {
+        case "COMPLETED", "DONE", "ACTIVE", "APPROVED", "ARRIVED", "RECEIVED", "PAID", "LIVE":
+            return success
+        case "PENDING", "AWAITING_PAYMENT", "LOADING", "IN_TRANSIT", "DISPATCHED", "ARRIVING",
+             "OPEN", "SUBMITTED", "WAITING", "AWAITING DISPATCH":
+            return warning
+        case "CANCELLED", "REJECTED", "FAILED", "EXCEPTION", "CRITICAL":
+            return destructive
+        default:
+            return textSecondary
+        }
+    }
 }
 
 // MARK: - Shimmer Effect
@@ -269,5 +287,22 @@ extension View {
 
     func staggeredSlideIn(index: Int, baseDelay: Double = 0.05) -> some View {
         modifier(SlideInModifier(delay: Double(index) * baseDelay))
+    }
+
+    func retailerCard() -> some View {
+        padding(AppTheme.spacingMD)
+            .background {
+                RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
+                    .fill(AppTheme.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
+                            .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
+                    }
+            }
+    }
+
+    func retailerReadableWidth() -> some View {
+        frame(maxWidth: AppTheme.readableMaxWidth)
+            .frame(maxWidth: .infinity)
     }
 }

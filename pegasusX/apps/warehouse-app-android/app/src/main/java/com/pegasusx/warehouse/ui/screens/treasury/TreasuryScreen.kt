@@ -8,12 +8,16 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.Invoice
 import com.pegasusx.warehouse.data.model.TreasuryOverview
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
+import com.pegasusx.warehouse.ui.components.WarehouseMetricTile
+import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
+import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
+import com.pegasusx.warehouse.ui.components.WarehouseStateKind
+import com.pegasusx.warehouse.ui.components.WarehouseStatePane
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -71,84 +75,90 @@ fun TreasuryScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.lg))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
+            loading -> WarehouseLoadingState(
+                title = "Loading treasury…",
+                body = "Financial overview and invoices",
+                modifier = Modifier.padding(innerPadding),
+            )
+            error != null -> WarehouseStatePane(
+                kind = WarehouseStateKind.Error,
+                headline = "Treasury unavailable",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier.padding(innerPadding),
+            )
             else -> Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                 TabRow(selectedTabIndex = tab) {
                     Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Overview") })
-                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Invoices") })
+                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Invoices (${invoices.size})") })
                 }
                 when (tab) {
                     0 -> overview?.let { o ->
-                        LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
+                        LazyColumn(
+                            contentPadding = PaddingValues(PegasusSpacing.lg),
+                            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                        ) {
+                            item { WarehouseSectionTitle("Financial snapshot") }
                             item {
-                                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
-                                    KpiCard("Outstanding", "${fmt.format(o.totalOutstanding)} UZS", Modifier.weight(1f))
-                                    KpiCard("Invoiced", "${fmt.format(o.totalInvoiced)} UZS", Modifier.weight(1f))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    WarehouseMetricTile(
+                                        label = "Outstanding",
+                                        value = "${fmt.format(o.totalOutstanding)} UZS",
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    WarehouseMetricTile(
+                                        label = "Invoiced",
+                                        value = "${fmt.format(o.totalInvoiced)} UZS",
+                                        modifier = Modifier.weight(1f),
+                                    )
                                 }
                             }
                             item {
-                                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
-                                    KpiCard("Paid", "${fmt.format(o.totalPaid)} UZS", Modifier.weight(1f))
-                                    Spacer(Modifier.weight(1f))
-                                }
+                                WarehouseMetricTile(
+                                    label = "Paid",
+                                    value = "${fmt.format(o.totalPaid)} UZS",
+                                    modifier = Modifier.fillMaxWidth(0.5f),
+                                )
                             }
                         }
                     }
                     1 -> {
                         if (invoices.isEmpty()) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("No invoices", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            WarehouseStatePane(
+                                kind = WarehouseStateKind.Empty,
+                                headline = "No invoices",
+                                body = "Retailer invoices will appear here when issued.",
+                            )
                         } else {
-                            LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
+                            LazyColumn(
+                                contentPadding = PaddingValues(PegasusSpacing.lg),
+                                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                            ) {
                                 items(invoices, key = { it.invoiceId }) { inv ->
                                     val displayAmount = if (inv.amount > 0) inv.amount else inv.amountUzs
                                     val displayCurrency = if (inv.currency.isBlank()) "UZS" else inv.currency.uppercase()
-                                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(inv.retailerName, style = MaterialTheme.typography.titleSmall)
-                                                Text("${fmt.format(displayAmount)} $displayCurrency · ${inv.dueDate}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                                val payoutOwner = buildString {
-                                                    append(if (inv.payoutOwnerType.isBlank()) "SUPPLIER" else inv.payoutOwnerType)
-                                                    if (inv.payoutOwnerId.isNotBlank()) {
-                                                        append(":")
-                                                        append(inv.payoutOwnerId.take(8))
-                                                    }
-                                                }
-                                                Text(
-                                                    "Owner $payoutOwner · Fee ${fmt.format(inv.feeAmount)} · Net ${fmt.format(inv.netPayoutAmount)}",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                )
-                                            }
-                                            AssistChip(onClick = {}, label = { Text(inv.status, style = MaterialTheme.typography.labelSmall) })
+                                    val payoutOwner = buildString {
+                                        append(if (inv.payoutOwnerType.isBlank()) "SUPPLIER" else inv.payoutOwnerType)
+                                        if (inv.payoutOwnerId.isNotBlank()) {
+                                            append(":")
+                                            append(inv.payoutOwnerId.take(8))
                                         }
                                     }
+                                    WarehouseOpsListCard(
+                                        headline = inv.retailerName,
+                                        supporting = "${fmt.format(displayAmount)} $displayCurrency · due ${inv.dueDate} · Owner $payoutOwner · Net ${fmt.format(inv.netPayoutAmount)}",
+                                        status = inv.status,
+                                    )
                                 }
                             }
                         }
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun KpiCard(label: String, value: String, modifier: Modifier = Modifier) {
-    ElevatedCard(modifier = modifier) {
-        Column(modifier = Modifier.padding(PegasusSpacing.md)) {
-            Text(value, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(2.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

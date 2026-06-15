@@ -563,6 +563,15 @@ struct ContentView: View {
 
         ToolbarItemGroup(placement: .topBarTrailing) {
             Button {
+                RetailerRefreshCenter.shared.trigger()
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(AppTheme.textPrimary)
+            }
+            .accessibilityLabel("Refresh")
+
+            Button {
                 showCart = true
             } label: {
                 ZStack(alignment: .topTrailing) {

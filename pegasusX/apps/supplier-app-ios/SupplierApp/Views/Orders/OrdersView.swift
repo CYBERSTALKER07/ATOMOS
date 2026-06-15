@@ -18,17 +18,21 @@ struct OrdersView: View {
                 NavigationStack {
                     phoneContent
                         .navigationTitle("Orders")
-                        .toolbar { filterMenu }
+                        .toolbar { ordersToolbar }
                 }
             }
         }
+        .background(SupplierTheme.background)
         .task(id: statusFilter) { await load() }
     }
 
     private var phoneContent: some View {
         Group {
             if loading {
-                SupplierLoadingView(title: "Loading orders…")
+                SupplierLoadingView(
+                    title: "Loading orders",
+                    message: "Fetching your supplier order queue."
+                )
             } else if let error {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else if orders.isEmpty {
@@ -40,13 +44,14 @@ struct OrdersView: View {
                 .listStyle(.insetGrouped)
             }
         }
+        .refreshable { await load(silent: true) }
     }
 
     private var splitContent: some View {
         NavigationSplitView {
             ordersList
                 .navigationTitle("Orders")
-                .toolbar { filterMenu }
+                .toolbar { ordersToolbar }
         } detail: {
             if let selection {
                 OrderDetailPanel(order: selection)
@@ -59,7 +64,10 @@ struct OrdersView: View {
     private var ordersList: some View {
         Group {
             if loading {
-                SupplierLoadingView(title: "Loading orders…")
+                SupplierLoadingView(
+                    title: "Loading orders",
+                    message: "Fetching your supplier order queue."
+                )
             } else if let error {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else if orders.isEmpty {
@@ -72,20 +80,33 @@ struct OrdersView: View {
                 .listStyle(.sidebar)
             }
         }
+        .refreshable { await load(silent: true) }
     }
 
     @ToolbarContentBuilder
-    private var filterMenu: some ToolbarContent {
+    private var ordersToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 ForEach(filters, id: \.self) { filter in
-                    Button(filter.isEmpty ? "All" : filter) {
+                    Button {
                         statusFilter = filter
+                    } label: {
+                        if filter == statusFilter {
+                            Label(filter.isEmpty ? "All" : filter, systemImage: "checkmark")
+                        } else {
+                            Text(filter.isEmpty ? "All" : filter)
+                        }
                     }
                 }
             } label: {
                 Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
             }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button("Refresh", systemImage: "arrow.clockwise") {
+                Task { await load(silent: true) }
+            }
+            .labelStyle(.iconOnly)
         }
     }
 
@@ -111,23 +132,19 @@ private struct OrderRow: View {
     let order: SupplierOrder
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
             HStack {
                 Text(order.orderId)
                     .font(.subheadline.monospaced())
                     .lineLimit(1)
                 Spacer()
-                Text(order.status)
-                    .font(.caption.bold())
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(SupplierTheme.tertiaryBackground, in: Capsule())
+                SupplierStatusBadge(text: order.status)
             }
             Text(MoneyFormat.minor(order.totalMinor, currency: order.currency))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, SupplierTheme.spacingXS)
     }
 }
 
@@ -135,18 +152,22 @@ private struct OrderDetailPanel: View {
     let order: SupplierOrder
 
     var body: some View {
-        List {
-            Section("Order") {
-                LabeledContent("ID", value: order.orderId)
-                LabeledContent("Retailer", value: order.retailerId)
-                LabeledContent("Status", value: order.status)
-                if let decision = order.decision, !decision.isEmpty {
-                    LabeledContent("Decision", value: decision)
+        NavigationStack {
+            List {
+                Section("Order") {
+                    LabeledContent("ID", value: order.orderId)
+                    LabeledContent("Retailer", value: order.retailerId)
+                    LabeledContent("Status") {
+                        SupplierStatusBadge(text: order.status)
+                    }
+                    if let decision = order.decision, !decision.isEmpty {
+                        LabeledContent("Decision", value: decision)
+                    }
+                    LabeledContent("Total", value: MoneyFormat.minor(order.totalMinor, currency: order.currency))
+                    LabeledContent("Updated", value: order.updatedAt)
                 }
-                LabeledContent("Total", value: MoneyFormat.minor(order.totalMinor, currency: order.currency))
-                LabeledContent("Updated", value: order.updatedAt)
             }
+            .navigationTitle("Order")
         }
-        .navigationTitle("Order")
     }
 }
