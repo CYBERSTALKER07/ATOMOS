@@ -605,6 +605,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Currency:      cfg.SeedSupplierCurrency,
 		JWTSecret:     cfg.JWTSecret,
 		JWTIssuer:     cfg.JWTIssuer,
+		Idem:          idemStore,
 	})
 	payloadSvc := payload.NewService(payload.ServiceConfig{
 		Repo:          payloadRepo,
@@ -711,6 +712,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Currency:   cfg.SeedSupplierCurrency,
 		JWTSecret:  cfg.JWTSecret,
 		JWTIssuer:  cfg.JWTIssuer,
+		Idem:       idemStore,
 	})
 	paymentSvc := payment.NewService(payment.ServiceConfig{
 		Repo:                            paymentRepo,

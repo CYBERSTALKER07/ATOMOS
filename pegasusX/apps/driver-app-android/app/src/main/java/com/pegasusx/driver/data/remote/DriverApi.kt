@@ -140,7 +140,10 @@ interface DriverApi {
 
     // Driver depart — starts route, transitions truck to IN_TRANSIT, triggers live ETA
     @POST("v1/fleet/driver/depart")
-    suspend fun depart(@Body request: DepartRequest): Map<String, String>
+    suspend fun depart(
+        @Body request: DepartRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, String>
 
     // End session — go offline with reason code
     @POST("v1/driver/availability")
@@ -164,7 +167,10 @@ interface DriverApi {
 
     // Return complete — RETURNING → AVAILABLE after arriving at warehouse
     @POST("v1/fleet/driver/return-complete")
-    suspend fun returnComplete(@Body request: ReturnCompleteRequest): Map<String, String>
+    suspend fun returnComplete(
+        @Body request: ReturnCompleteRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, String>
 
     // Reorder stops — driver reorders their active route stops
     @POST("v1/fleet/route/reorder")
@@ -202,7 +208,10 @@ interface DriverApi {
 
     // Driver uses bypass token to complete offload without retailer QR
     @POST("v1/delivery/bypass-offload")
-    suspend fun bypassOffload(@Body body: Map<String, String>): Map<String, String>
+    suspend fun bypassOffload(
+        @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, String>
 
     // Driver uses payment bypass token to complete when payment gateway is down
     @POST("v1/delivery/confirm-payment-bypass")

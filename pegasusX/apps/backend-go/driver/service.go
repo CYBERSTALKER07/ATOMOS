@@ -16,6 +16,7 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -94,6 +95,7 @@ type Service struct {
 	returnComplete ReturnCompleteFn
 	routeGeometry  RouteGeometryLookup
 	profileLookup  DriverProfileLookup
+	idem           idempotency.Store
 
 	supplierID string
 	currency   string
@@ -134,6 +136,7 @@ type ServiceConfig struct {
 	JWTIssuer    string
 	Now          func() time.Time
 	FirebaseVerifier auth.FirebaseVerifier
+	Idem             idempotency.Store
 }
 
 // ManifestGateResult is the read-model response for driver ghost-stop checks.
@@ -262,6 +265,7 @@ func NewService(c ServiceConfig) *Service {
 		jwtIssuer:          strings.TrimSpace(c.JWTIssuer),
 		now:                c.Now,
 		firebaseVerifier:   c.FirebaseVerifier,
+		idem:               c.Idem,
 	}
 }
 

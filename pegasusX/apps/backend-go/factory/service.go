@@ -17,6 +17,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 
@@ -42,6 +43,7 @@ type Service struct {
 	factoryHub    *ws.Hub
 	log           *slog.Logger
 	spannerClient *spanner.Client
+	idem          idempotency.Store
 
 	supplierID       string
 	factoryNodeID    string
@@ -82,6 +84,7 @@ type ServiceConfig struct {
 	JWTIssuer        string
 	Now              func() time.Time
 	FirebaseVerifier auth.FirebaseVerifier
+	Idem             idempotency.Store
 }
 
 // TransferRow represents one factory transfer record.
@@ -240,6 +243,7 @@ func NewService(c ServiceConfig) *Service {
 		now:                   c.Now,
 		firebaseVerifier:      c.FirebaseVerifier,
 		spannerClient:         c.Spanner,
+		idem:                  c.Idem,
 		manifestTransfers:     make(map[string][]TransferRow),
 		manifestTransitions:   make(map[string][]ManifestTransition),
 		manifestReassignments: make(map[string][]ManifestReassignment),
@@ -933,9 +937,18 @@ func (s *Service) handleManifestTransition(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	var req transitionRequest
-	if r.Body != nil {
-		_ = json.NewDecoder(r.Body).Decode(&req)
+	if len(body) > 0 {
+		_ = json.Unmarshal(body, &req)
 	}
 
 	eventType := ""
@@ -951,7 +964,7 @@ func (s *Service) handleManifestTransition(w http.ResponseWriter, r *http.Reques
 	}
 
 	var manifest ManifestRow
-	err := s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -998,12 +1011,15 @@ func (s *Service) handleManifestTransition(w http.ResponseWriter, r *http.Reques
 		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":      strings.ToLower(action) + "_applied",
 		"manifest_id": manifest.ManifestID,
 		"state":       manifest.State,
 		"updated_at":  manifest.UpdatedAt,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleFleetDrivers serves GET /v1/factory/fleet/drivers.

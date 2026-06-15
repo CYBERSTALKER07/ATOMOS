@@ -131,15 +131,23 @@ func (s *Service) HandleBypassOffload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	var req struct {
 		OrderID     string `json:"order_id"`
 		BypassToken string `json:"bypass_token"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.OrderID = strings.TrimSpace(req.OrderID)
 	req.BypassToken = strings.TrimSpace(req.BypassToken)
 	if req.OrderID == "" || req.BypassToken == "" {
@@ -150,7 +158,7 @@ func (s *Service) HandleBypassOffload(w http.ResponseWriter, r *http.Request) {
 	driverID := strings.TrimSpace(claims.Subject)
 	ctx := r.Context()
 	now := s.now()
-	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return applyShopClosedBypassOffload(ctx, txn, driverID, req.OrderID, req.BypassToken, now)
 	})
 	if err != nil {
@@ -158,7 +166,10 @@ func (s *Service) HandleBypassOffload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.invalidateOrderCache(ctx, req.OrderID)
-	writeJSON(w, http.StatusOK, map[string]string{"status": "AWAITING_PAYMENT"})
+	resp := map[string]string{"status": "AWAITING_PAYMENT"}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleCreditDelivery serves POST /v1/delivery/credit-delivery.

@@ -1,6 +1,7 @@
 package com.pegasusx.warehouse.data.remote
 
 import com.pegasusx.warehouse.data.model.*
+import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import retrofit2.Response
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -11,13 +12,19 @@ class WarehouseOperationsRepository @Inject constructor(
     private val api: WarehouseApi,
 ) {
     suspend fun emergencyTransfer(body: EmergencyTransferRequest): Response<TransferMutationResponse> =
-        api.emergencyTransfer(body)
+        api.emergencyTransfer(
+            body,
+            WarehouseIdempotencyKeys.emergencyTransfer(body.totalVolumeVu, body.notes),
+        )
 
     suspend fun forceReceive(body: ForceReceiveRequest): Response<TransferMutationResponse> =
-        api.forceReceive(body)
+        api.forceReceive(
+            body,
+            WarehouseIdempotencyKeys.forceReceive(body.totalVolumeVu, body.notes, body.factoryId),
+        )
 
     suspend fun receiveTransfer(transferId: String): Response<TransferMutationResponse> =
-        api.receiveTransfer(transferId)
+        api.receiveTransfer(transferId, WarehouseIdempotencyKeys.receiveTransfer(transferId))
 
     suspend fun getReplenishmentInsights(): Response<ReplenishmentInsightsResponse> =
         api.getReplenishmentInsights()

@@ -268,14 +268,22 @@ func (s *Service) HandleApproveEarlyComplete(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	var req struct {
 		DriverID string `json:"driver_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.DriverID = strings.TrimSpace(req.DriverID)
 	if req.DriverID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "driver_id required"})
@@ -342,11 +350,14 @@ func (s *Service) HandleApproveEarlyComplete(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	s.cache.Invalidate(ctx, cacheKeyEarlyCompletePrefix+req.DriverID)
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":          "approved",
 		"driver_id":       req.DriverID,
 		"orders_approved": approved,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // StoreEarlyCompleteRequest caches a driver early-complete request for supplier approval.

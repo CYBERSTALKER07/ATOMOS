@@ -3,15 +3,12 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { useState } from "react";
+import { supplierApproveEarlyCompleteKey } from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
 import { ApiError } from "@pegasusx/api-client";
 import { PortalSurface } from "../../_components/PortalSurface";
 
 const api = createSupplierApi();
-
-function buildApproveEarlyCompleteIdempotencyKey(driverId: string): string {
-  return `supplier-approve-early-complete:${driverId}`;
-}
 
 export default function EarlyCompletePage() {
   const [driverId, setDriverId] = useState("");
@@ -31,7 +28,7 @@ export default function EarlyCompletePage() {
     try {
       await api.approveSupplierEarlyComplete(
         { driver_id: trimmed },
-        buildApproveEarlyCompleteIdempotencyKey(trimmed),
+        supplierApproveEarlyCompleteKey(trimmed),
       );
       setSuccess(`Early route complete approved for driver ${trimmed.slice(0, 12)}…`);
       setDriverId("");

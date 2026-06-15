@@ -7,7 +7,8 @@ enum WarehouseOperationsService {
     static func emergencyTransfer(totalVolumeVu: Double, notes: String? = nil) async throws -> TransferMutationResponse {
         try await api.post(
             "v1/warehouse/transfers/emergency",
-            body: EmergencyTransferRequest(totalVolumeVu: totalVolumeVu, notes: notes)
+            body: EmergencyTransferRequest(totalVolumeVu: totalVolumeVu, notes: notes),
+            idempotencyKey: WarehouseIdempotency.emergencyTransfer(volumeVu: totalVolumeVu, notes: notes)
         )
     }
 
@@ -18,12 +19,16 @@ enum WarehouseOperationsService {
     ) async throws -> TransferMutationResponse {
         try await api.post(
             "v1/warehouse/transfers/force-receive",
-            body: ForceReceiveRequest(factoryId: factoryId, totalVolumeVu: totalVolumeVu, notes: notes)
+            body: ForceReceiveRequest(factoryId: factoryId, totalVolumeVu: totalVolumeVu, notes: notes),
+            idempotencyKey: WarehouseIdempotency.forceReceive(volumeVu: totalVolumeVu, notes: notes, factoryId: factoryId)
         )
     }
 
     static func receiveTransfer(transferId: String) async throws -> TransferMutationResponse {
-        try await api.postEmpty("v1/warehouse/transfers/\(transferId)/receive")
+        try await api.postEmpty(
+            "v1/warehouse/transfers/\(transferId)/receive",
+            idempotencyKey: WarehouseIdempotency.receiveTransfer(transferId: transferId)
+        )
     }
 
     static func replenishmentInsights() async throws -> [ReplenishmentInsight] {

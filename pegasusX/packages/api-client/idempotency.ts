@@ -151,8 +151,29 @@ export function supplierPaymentBypassKey(orderId: string, reason: string): strin
   return `supplier-payment-bypass:${orderId}:${stableHash(reason)}`;
 }
 
+export function supplierApproveEarlyCompleteKey(driverId: string): string {
+  return `supplier-approve-early-complete:${driverId}`;
+}
+
 export function driverConfirmPaymentBypassKey(driverId: string, orderId: string): string {
   return `driver-confirm-payment-bypass:${driverId}:${orderId}`;
+}
+
+export function driverBypassOffloadKey(driverId: string, orderId: string): string {
+  return `driver-bypass-offload:${driverId}:${orderId}`;
+}
+
+export function driverDepartKey(driverId: string, truckId: string): string {
+  return `driver-depart:${driverId}:${truckId}`;
+}
+
+export function driverReturnCompleteKey(driverId: string, truckId: string): string {
+  return `driver-return-complete:${driverId}:${truckId}`;
+}
+
+/** Matches retailer Android/iOS/desktop procurement order-create keys. */
+export function retailerOrderCreateKey(procurementFingerprint: string): string {
+  return `retailer-procurement:${procurementFingerprint}`;
 }
 
 export function warehouseEmergencyTransferKey(

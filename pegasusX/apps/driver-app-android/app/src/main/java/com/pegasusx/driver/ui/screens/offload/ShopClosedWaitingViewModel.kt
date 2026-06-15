@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
+import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -86,7 +87,10 @@ class ShopClosedWaitingViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
             try {
-                api.bypassOffload(mapOf("order_id" to orderId, "bypass_token" to token))
+                api.bypassOffload(
+                    mapOf("order_id" to orderId, "bypass_token" to token),
+                    DriverIdempotencyKeys.bypassOffload(orderId),
+                )
                 _state.update { it.copy(isSubmitting = false, bypassConfirmed = true) }
             } catch (e: Exception) {
                 Log.e("ShopClosed", "Bypass failed: ${e.message}")

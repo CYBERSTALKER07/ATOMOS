@@ -216,7 +216,11 @@ final class APIClient: @unchecked Sendable {
 
     func bypassOffload(orderId: String, token: String) async throws -> [String: String] {
         let body = ["order_id": orderId, "bypass_token": token]
-        return try await post("v1/delivery/bypass-offload", body: body)
+        return try await post(
+            "v1/delivery/bypass-offload",
+            body: body,
+            headers: ["Idempotency-Key": DriverIdempotency.bypassOffload(orderId: orderId)]
+        )
     }
 
     func confirmPaymentBypass(orderId: String, token: String) async throws -> [String: String] {
@@ -263,7 +267,11 @@ final class APIClient: @unchecked Sendable {
 
     func depart(truckId: String) async throws -> [String: String] {
         let body = DepartRequest(truckId: truckId)
-        return try await post("v1/fleet/driver/depart", body: body)
+        return try await post(
+            "v1/fleet/driver/depart",
+            body: body,
+            headers: ["Idempotency-Key": DriverIdempotency.depart(truckId: truckId)]
+        )
     }
 
     /// LEO: Ghost Stop Prevention — check if manifest is sealed before depart
@@ -277,7 +285,11 @@ final class APIClient: @unchecked Sendable {
 
     func returnComplete(truckId: String) async throws -> [String: String] {
         let body = ReturnCompleteRequest(truckId: truckId)
-        return try await post("v1/fleet/driver/return-complete", body: body)
+        return try await post(
+            "v1/fleet/driver/return-complete",
+            body: body,
+            headers: ["Idempotency-Key": DriverIdempotency.returnComplete(truckId: truckId)]
+        )
     }
 
     // MARK: - Driver Session

@@ -71,8 +71,8 @@ final class APIClient: Sendable {
         return try await execute(request)
     }
 
-    func postEmpty<T: Decodable>(_ path: String) async throws -> T {
-        try await post(path, body: EmptyBody())
+    func postEmpty<T: Decodable>(_ path: String, idempotencyKey: String? = nil) async throws -> T {
+        try await post(path, body: EmptyBody(), idempotencyKey: idempotencyKey)
     }
 
     // MARK: - POST (no response body)

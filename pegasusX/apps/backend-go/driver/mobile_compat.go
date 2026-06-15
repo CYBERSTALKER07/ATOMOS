@@ -99,8 +99,21 @@ func (s *Service) HandleDriverDepart(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
+
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	if s.depart == nil {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "departed"})
+		resp := map[string]string{"status": "departed"}
+		respBytes, _ := json.Marshal(resp)
+		s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+		writeJSONBytes(w, http.StatusOK, respBytes)
 		return
 	}
 
@@ -134,12 +147,15 @@ func (s *Service) HandleDriverDepart(w http.ResponseWriter, r *http.Request) {
 		"manifest_id", result.ManifestID,
 		"orders_dispatched", result.Count,
 	)
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":            "departed",
 		"manifest_id":       result.ManifestID,
 		"orders_dispatched": result.Count,
 		"order_ids":         result.OrderIDs,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleDriverReturnComplete serves POST /v1/fleet/driver/return-complete.
@@ -157,12 +173,24 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	if s.returnComplete == nil {
 		// Graceful degradation — update availability in-memory and return OK.
 		s.mu.Lock()
 		s.availability[driverID] = false
 		s.mu.Unlock()
-		writeJSON(w, http.StatusOK, map[string]string{"status": "returned"})
+		resp := map[string]string{"status": "returned"}
+		respBytes, _ := json.Marshal(resp)
+		s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+		writeJSONBytes(w, http.StatusOK, respBytes)
 		return
 	}
 
@@ -212,12 +240,15 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 		"manifest_id", result.ManifestID,
 		"orders_returned", result.Count,
 	)
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":          "returned",
 		"manifest_id":     result.ManifestID,
 		"orders_returned": result.Count,
 		"order_ids":       result.OrderIDs,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleOrderDeliver serves POST /v1/order/deliver.

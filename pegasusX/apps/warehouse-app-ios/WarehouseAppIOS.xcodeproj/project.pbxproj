@@ -35,6 +35,7 @@
 		A2F79A2D63F8EF033A04EF32 /* FleetLiveMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D77AB43CF3715D84ADF4FB6 /* FleetLiveMapView.swift */; };
 		A3A066A0265DDDFB74E1ECA0 /* WarehouseRealtimeHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5D425691EF7CF86B3C3AE7 /* WarehouseRealtimeHub.swift */; };
 		ACAE70C317EA9EF04415952F /* WarehousePortalLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9AD8CEA475BDD18C968457 /* WarehousePortalLinks.swift */; };
+		B7C8D9E0F112233445566778 /* WarehouseIdempotency.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2031425364758 /* WarehouseIdempotency.swift */; };
 		AFA3E129F61A2DA0655002F3 /* WarehousePortalFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABD577F0B5F08DF94CB384D7 /* WarehousePortalFeature.swift */; };
 		B0ABC1B6F48E708BE85B0101 /* PegasusWarehouseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86CB8FE602CF48790811D3AF /* PegasusWarehouseApp.swift */; };
 		B5BA0CF78AABAB4895BF4DDB /* InventoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40384D8041929DBF46242CFF /* InventoryView.swift */; };
@@ -95,6 +96,7 @@
 		9D77AB43CF3715D84ADF4FB6 /* FleetLiveMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetLiveMapView.swift; sourceTree = "<group>"; };
 		9E6B4415599F87770EB09AE1 /* ProductsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductsView.swift; sourceTree = "<group>"; };
 		ABD577F0B5F08DF94CB384D7 /* WarehousePortalFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehousePortalFeature.swift; sourceTree = "<group>"; };
+		A7B8C9D0E1F2031425364758 /* WarehouseIdempotency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseIdempotency.swift; sourceTree = "<group>"; };
 		ADC341C9AAD3EFE7ED873269 /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
 		B6EFFBD7777A74779592DBCD /* WarehouseAppIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = WarehouseAppIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BEA00335123DBABEE6F0DE8F /* DispatchSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DispatchSettingsView.swift; sourceTree = "<group>"; };
@@ -382,6 +384,7 @@
 			children = (
 				304C3ECD36A18604C024F031 /* FleetDriverMarkerAnimator.swift */,
 				ABD577F0B5F08DF94CB384D7 /* WarehousePortalFeature.swift */,
+				A7B8C9D0E1F2031425364758 /* WarehouseIdempotency.swift */,
 				FE9AD8CEA475BDD18C968457 /* WarehousePortalLinks.swift */,
 			);
 			path = Utilities;
@@ -548,6 +551,7 @@
 				586A5E35B5E72386A388AC4F /* WarehouseOperationsService.swift in Sources */,
 				58C6C45C18E83F6A76AA0FBF /* WarehouseOpsModels.swift in Sources */,
 				AFA3E129F61A2DA0655002F3 /* WarehousePortalFeature.swift in Sources */,
+				B7C8D9E0F112233445566778 /* WarehouseIdempotency.swift in Sources */,
 				ACAE70C317EA9EF04415952F /* WarehousePortalLinks.swift in Sources */,
 				96D2B6C29AF7A94F934A06D9 /* WarehouseRealtimeClient.swift in Sources */,
 				A3A066A0265DDDFB74E1ECA0 /* WarehouseRealtimeHub.swift in Sources */,

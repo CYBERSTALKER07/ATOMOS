@@ -32,4 +32,16 @@ enum DriverIdempotency {
     static func confirmPaymentBypass(orderId: String) -> String {
         "driver-confirm-payment-bypass:\(driverId()):\(orderId)"
     }
+
+    static func bypassOffload(orderId: String) -> String {
+        "driver-bypass-offload:\(driverId()):\(orderId)"
+    }
+
+    static func depart(truckId: String) -> String {
+        "driver-depart:\(driverId()):\(truckId)"
+    }
+
+    static func returnComplete(truckId: String) -> String {
+        "driver-return-complete:\(driverId()):\(truckId)"
+    }
 }

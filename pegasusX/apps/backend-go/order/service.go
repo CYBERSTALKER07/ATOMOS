@@ -1779,12 +1779,21 @@ func (s *Service) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
+
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	var req CreateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	// Subject IS the retailer id for RETAILER-role callers.
 	resp, err := s.Create(r.Context(), claims.Subject, req)
@@ -1801,7 +1810,9 @@ func (s *Service) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	writeJSON(w, http.StatusCreated, resp)
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusCreated, respBytes)
+	writeJSONBytes(w, http.StatusCreated, respBytes)
 }
 
 // HandleUpdateStatus is PATCH /v1/order/{orderID}/status.

@@ -15,4 +15,10 @@ object DriverIdempotencyKeys {
     fun collectCash(orderId: String): String = "driver-collect-cash:${driverId()}:$orderId"
 
     fun confirmPaymentBypass(orderId: String): String = "driver-confirm-payment-bypass:${driverId()}:$orderId"
+
+    fun bypassOffload(orderId: String): String = "driver-bypass-offload:${driverId()}:$orderId"
+
+    fun depart(truckId: String): String = "driver-depart:${driverId()}:$truckId"
+
+    fun returnComplete(truckId: String): String = "driver-return-complete:${driverId()}:$truckId"
 }

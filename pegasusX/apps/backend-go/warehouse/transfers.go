@@ -40,6 +40,15 @@ func (s *Service) HandleEmergencyTransfer(w http.ResponseWriter, r *http.Request
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+
 	whID, err := s.effectiveWarehouseID(ctx, r)
 	if err != nil || whID == "" {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_required"})
@@ -49,7 +58,7 @@ func (s *Service) HandleEmergencyTransfer(w http.ResponseWriter, r *http.Request
 		TotalVolumeVU float64 `json:"total_volume_vu"`
 		Notes         string  `json:"notes"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -65,11 +74,14 @@ func (s *Service) HandleEmergencyTransfer(w http.ResponseWriter, r *http.Request
 
 	if s.memoryTransfersEnabled() {
 		row := s.memoryCreateEmergencyTransfer(whID, factoryID, supplierID, req.TotalVolumeVU, req.Notes)
-		writeJSON(w, http.StatusCreated, map[string]any{
+		resp := map[string]any{
 			"transfer_id": row.TransferID,
 			"state":       row.State,
 			"notes":       row.Notes,
-		})
+		}
+		respBytes, _ := json.Marshal(resp)
+		s.storeMutationReplay(ctx, key, body, http.StatusCreated, respBytes)
+		writeJSON(w, http.StatusCreated, resp)
 		return
 	}
 
@@ -89,11 +101,14 @@ func (s *Service) HandleEmergencyTransfer(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{
+	resp := map[string]any{
 		"transfer_id": transferID,
 		"state":       "APPROVED",
 		"notes":       strings.TrimSpace(req.Notes),
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.storeMutationReplay(ctx, key, body, http.StatusCreated, respBytes)
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 // HandleReceiveTransfer serves POST /v1/warehouse/transfers/{id}/receive.
@@ -110,6 +125,15 @@ func (s *Service) HandleReceiveTransfer(w http.ResponseWriter, r *http.Request) 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+
 	ops, err := s.resolveWarehouseOps(ctx, r)
 	if err != nil || ops == nil {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_required"})
@@ -120,7 +144,10 @@ func (s *Service) HandleReceiveTransfer(w http.ResponseWriter, r *http.Request) 
 		mapTransferError(w, r, transferID, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"transfer_id": transferID, "state": "RECEIVED"})
+	resp := map[string]string{"transfer_id": transferID, "state": "RECEIVED"}
+	respBytes, _ := json.Marshal(resp)
+	s.storeMutationReplay(ctx, key, body, http.StatusOK, respBytes)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleForceReceive serves POST /v1/warehouse/transfers/force-receive.
@@ -132,6 +159,15 @@ func (s *Service) HandleForceReceive(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+
 	whID, err := s.effectiveWarehouseID(ctx, r)
 	if err != nil || whID == "" {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_required"})
@@ -142,7 +178,7 @@ func (s *Service) HandleForceReceive(w http.ResponseWriter, r *http.Request) {
 		TotalVolumeVU float64 `json:"total_volume_vu"`
 		Notes         string  `json:"notes"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -165,11 +201,14 @@ func (s *Service) HandleForceReceive(w http.ResponseWriter, r *http.Request) {
 
 	if s.memoryTransfersEnabled() {
 		row := s.memoryForceReceiveTransfer(factoryID, supplierID, req.TotalVolumeVU, req.Notes)
-		writeJSON(w, http.StatusCreated, map[string]any{
+		resp := map[string]any{
 			"transfer_id": row.TransferID,
 			"state":       row.State,
 			"notes":       row.Notes,
-		})
+		}
+		respBytes, _ := json.Marshal(resp)
+		s.storeMutationReplay(ctx, key, body, http.StatusCreated, respBytes)
+		writeJSON(w, http.StatusCreated, resp)
 		return
 	}
 
@@ -192,11 +231,14 @@ func (s *Service) HandleForceReceive(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{
+	resp := map[string]any{
 		"transfer_id": transferID,
 		"state":       "RECEIVED",
 		"notes":       strings.TrimSpace(req.Notes),
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.storeMutationReplay(ctx, key, body, http.StatusCreated, respBytes)
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 func (s *Service) receiveTransfer(ctx context.Context, ops *auth.WarehouseOps, transferID string) error {

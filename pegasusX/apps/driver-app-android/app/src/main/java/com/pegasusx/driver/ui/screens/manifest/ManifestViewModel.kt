@@ -32,6 +32,7 @@ import com.pegasusx.driver.data.remote.ConnectionState
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.data.remote.TokenHolder
+import com.pegasusx.driver.util.DriverIdempotencyKeys
 import com.pegasusx.driver.data.remote.reconcileDriverSession
 import com.pegasusx.driver.services.OfflineSyncScheduler
 import com.pegasusx.driver.data.repository.ProfileRepository
@@ -325,7 +326,7 @@ class ManifestViewModel @Inject constructor(
                 }
             }
             try {
-                api.depart(DepartRequest(truckId = truckId))
+                api.depart(DepartRequest(truckId = truckId), DriverIdempotencyKeys.depart(truckId))
                 _state.value = _state.value.copy(truckStatus = "IN_TRANSIT")
                 loadManifest()
             } catch (e: Exception) {
@@ -338,7 +339,10 @@ class ManifestViewModel @Inject constructor(
         val truckId = TokenHolder.vehicleId ?: return
         viewModelScope.launch {
             try {
-                api.returnComplete(ReturnCompleteRequest(truckId = truckId))
+                api.returnComplete(
+                    ReturnCompleteRequest(truckId = truckId),
+                    DriverIdempotencyKeys.returnComplete(truckId),
+                )
                 _state.value = _state.value.copy(truckStatus = "AVAILABLE", isReturning = false)
                 loadManifest()
             } catch (e: Exception) {

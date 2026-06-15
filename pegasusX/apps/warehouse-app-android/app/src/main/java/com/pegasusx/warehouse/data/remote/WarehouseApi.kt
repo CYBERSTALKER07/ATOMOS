@@ -175,13 +175,22 @@ interface WarehouseApi {
 
     // ── P1-03 ops depth ──
     @POST("v1/warehouse/transfers/emergency")
-    suspend fun emergencyTransfer(@Body body: EmergencyTransferRequest): Response<TransferMutationResponse>
+    suspend fun emergencyTransfer(
+        @Body body: EmergencyTransferRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<TransferMutationResponse>
 
     @POST("v1/warehouse/transfers/force-receive")
-    suspend fun forceReceive(@Body body: ForceReceiveRequest): Response<TransferMutationResponse>
+    suspend fun forceReceive(
+        @Body body: ForceReceiveRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<TransferMutationResponse>
 
     @POST("v1/warehouse/transfers/{id}/receive")
-    suspend fun receiveTransfer(@Path("id") transferId: String): Response<TransferMutationResponse>
+    suspend fun receiveTransfer(
+        @Path("id") transferId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<TransferMutationResponse>
 
     @GET("v1/warehouse/replenishment/insights")
     suspend fun getReplenishmentInsights(): Response<ReplenishmentInsightsResponse>
