@@ -11,8 +11,11 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierDispatchPreview
 import com.pegasusx.supplier.data.model.SupplierTopologyWarehouse
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.data.remote.TokenHolder
+import com.pegasusx.supplier.util.SUPPLIER_RECONNECT_RECOVERY_HINT
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
+import com.pegasusx.supplier.ui.realtime.SupplierReconnectRecoveryEffect
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
@@ -21,7 +24,11 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DispatchPreviewScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
+fun DispatchPreviewScreen(
+    ops: SupplierOperationsRepository,
+    realtimeSignals: SupplierRealtimeSignals,
+    onBack: () -> Unit,
+) {
     var preview by remember { mutableStateOf<SupplierDispatchPreview?>(null) }
     var warehouses by remember { mutableStateOf<List<SupplierTopologyWarehouse>>(emptyList()) }
     var selectedWarehouseId by remember { mutableStateOf<String?>(null) }
@@ -53,6 +60,16 @@ fun DispatchPreviewScreen(ops: SupplierOperationsRepository, onBack: () -> Unit)
     }
 
     LaunchedEffect(selectedWarehouseId) { load() }
+
+    SupplierReconnectRecoveryEffect(
+        realtimeSignals = realtimeSignals,
+        isBusy = { executing },
+    ) { hadInFlight ->
+        if (hadInFlight) {
+            executing = false
+            executeMessage = SUPPLIER_RECONNECT_RECOVERY_HINT
+        }
+    }
 
     Scaffold(
         topBar = {

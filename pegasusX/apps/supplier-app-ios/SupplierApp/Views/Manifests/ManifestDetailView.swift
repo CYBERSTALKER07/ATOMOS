@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ManifestDetailView: View {
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     let manifestId: String
     @State private var detail: SupplierManifestDetail?
     @State private var loading = true
@@ -23,6 +24,12 @@ struct ManifestDetailView: View {
         }
         .navigationTitle("Manifest")
         .task { await load() }
+        .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+            if busy {
+                busy = false
+                actionError = "Connection restored — verify manifest status before retrying."
+            }
+        }
     }
 
     @ViewBuilder

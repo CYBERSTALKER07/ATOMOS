@@ -287,6 +287,7 @@ fun SupplierNavigation(
                     ManifestDetailScreen(
                         manifestId = manifestId,
                         ops = ops,
+                        realtimeSignals = realtimeSignals,
                         onBack = { navController.popBackStack() },
                     )
                 }
@@ -301,7 +302,12 @@ fun SupplierNavigation(
                 }
             }
             composable(SupplierRoutes.DISPATCH_PREVIEW) {
-                key(refreshEpoch) { DispatchPreviewScreen(ops) { navController.popBackStack() } }
+                key(refreshEpoch) {
+                    DispatchPreviewScreen(
+                        ops = ops,
+                        realtimeSignals = realtimeSignals,
+                    ) { navController.popBackStack() }
+                }
             }
             composable(SupplierRoutes.ACTIVITY) {
                 key(refreshEpoch) { ActivityScreen(ops) { navController.popBackStack() } }

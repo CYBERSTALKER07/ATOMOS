@@ -35,7 +35,8 @@ import com.pegasusx.warehouse.ui.components.WarehouseStateKind
 import com.pegasusx.warehouse.ui.components.WarehouseStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeStatus
-import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
+import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -311,6 +312,19 @@ fun DispatchScreen(
     }
 
     LaunchedEffect(Unit) { load() }
+
+    WarehouseReconnectRecoveryEffect(
+        realtimeSignals = realtimeSignals,
+        isBusy = { executing },
+    ) { hadInFlight ->
+        if (hadInFlight) {
+            executing = false
+            actionMessage = DispatchActionMessage(
+                title = "Connection restored",
+                message = WAREHOUSE_RECONNECT_RECOVERY_HINT,
+            )
+        }
+    }
 
     DisposableEffect(lifecycleOwner, realtimeClient) {
         val observer = LifecycleEventObserver { _, event ->

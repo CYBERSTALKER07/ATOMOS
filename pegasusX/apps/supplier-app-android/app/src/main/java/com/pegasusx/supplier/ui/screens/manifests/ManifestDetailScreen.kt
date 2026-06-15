@@ -15,6 +15,9 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierManifestDetail
 import com.pegasusx.supplier.data.model.SupplierManifestInjectOrderRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
+import com.pegasusx.supplier.util.SUPPLIER_RECONNECT_RECOVERY_HINT
+import com.pegasusx.supplier.ui.realtime.SupplierReconnectRecoveryEffect
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
@@ -31,6 +34,7 @@ import java.util.UUID
 fun ManifestDetailScreen(
     manifestId: String,
     ops: SupplierOperationsRepository,
+    realtimeSignals: SupplierRealtimeSignals,
     onBack: () -> Unit,
 ) {
     var detail by remember { mutableStateOf<SupplierManifestDetail?>(null) }
@@ -58,6 +62,16 @@ fun ManifestDetailScreen(
     }
 
     LaunchedEffect(manifestId) { load() }
+
+    SupplierReconnectRecoveryEffect(
+        realtimeSignals = realtimeSignals,
+        isBusy = { busy },
+    ) { hadInFlight ->
+        if (hadInFlight) {
+            busy = false
+            actionError = SUPPLIER_RECONNECT_RECOVERY_HINT
+        }
+    }
 
     fun idempotency(prefix: String, extra: String = ""): String =
         "$prefix:$manifestId:${extra.ifBlank { UUID.randomUUID().toString() }}"

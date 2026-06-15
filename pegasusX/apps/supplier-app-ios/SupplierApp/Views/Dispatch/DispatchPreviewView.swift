@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct DispatchPreviewView: View {
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var preview: SupplierDispatchPreview?
     @State private var warehouses: [SupplierTopologyWarehouse] = []
     @State private var selectedWarehouseId: String?
     @State private var loading = true
+    @State private var executing = false
     @State private var error: String?
     @State private var showExecuteConfirm = false
 
@@ -45,15 +47,21 @@ struct DispatchPreviewView: View {
                     }
                     Section {
                         Button("Execute auto-dispatch") { showExecuteConfirm = true }
-                            .disabled(loading || preview == nil)
+                            .disabled(loading || executing || preview == nil)
                         Button("Refresh preview") { Task { await load() } }
-                            .disabled(loading)
+                            .disabled(loading || executing)
                     }
                 }
             }
         }
         .navigationTitle("Dispatch preview")
         .task { await load() }
+        .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+            if executing {
+                executing = false
+                error = "Connection restored — verify dispatch status before retrying."
+            }
+        }
         .alert("Execute dispatch?", isPresented: $showExecuteConfirm) {
             Button("Confirm", role: .destructive) { Task { await execute() } }
             Button("Cancel", role: .cancel) {}
@@ -63,8 +71,8 @@ struct DispatchPreviewView: View {
     }
 
     private func execute() async {
-        loading = true
-        defer { loading = false }
+        executing = true
+        defer { executing = false }
         do {
             let routeFingerprint: String
             if let preview {

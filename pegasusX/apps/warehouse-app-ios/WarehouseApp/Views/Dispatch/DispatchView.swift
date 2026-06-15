@@ -3,6 +3,7 @@ import SwiftUI
 private let dispatchTetrisBuffer = 0.95
 
 struct DispatchView: View {
+    @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @Environment(\.scenePhase) private var scenePhase
     @State private var preview: DispatchPreview?
     @State private var supplyRequests: [WarehouseSupplyRequest] = []
@@ -68,6 +69,15 @@ struct DispatchView: View {
                     realtimeClient.disconnect()
                 @unknown default:
                     break
+                }
+            }
+            .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+                if executing {
+                    executing = false
+                    actionAlert = DispatchActionAlert(
+                        title: "Connection restored",
+                        message: "Verify dispatch status before retrying."
+                    )
                 }
             }
             .confirmationDialog("Capacity exceeded", isPresented: $showCapacityDialog, titleVisibility: .visible) {
@@ -420,6 +430,11 @@ struct DispatchView: View {
                 }
             default:
                 break
+            }
+        }, onReconnect: {
+            Task {
+                await WarehouseSessionReconcile.run()
+                realtimeHub.bumpReconnect()
             }
         })
     }

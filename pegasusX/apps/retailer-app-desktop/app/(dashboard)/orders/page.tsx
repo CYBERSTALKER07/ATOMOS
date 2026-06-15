@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWsEvent } from "../../../lib/ws";
 import {
@@ -115,6 +115,18 @@ export default function OrdersPage() {
     selectedId ? "/v1/retailer/tracking" : "",
     15000,
   );
+
+  useEffect(() => {
+    const epoch = ws?.reconnectEpoch ?? 0;
+    if (epoch === 0) return;
+    if (!aiActionPending && !cancelling && !verifying) return;
+    setAiActionPending(false);
+    setCancelling(false);
+    setVerifying(false);
+    setActionError("Connection restored — verify order status before retrying.");
+    void mutateOrders();
+    if (selectedId) void mutateTracking();
+  }, [ws?.reconnectEpoch, aiActionPending, cancelling, verifying, mutateOrders, mutateTracking, selectedId]);
 
   const trackingDetail = useMemo(() => {
     if (!selectedId || !trackingData?.orders) return null;
