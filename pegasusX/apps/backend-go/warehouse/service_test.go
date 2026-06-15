@@ -544,6 +544,9 @@ func (r *warehouseRepoSpy) GetInventoryList(ctx context.Context, warehouseID str
 func (r *warehouseRepoSpy) UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
+func (r *warehouseRepoSpy) UpdateInventoryPolicy(ctx context.Context, warehouseID, productID, policy string, reorderThreshold *int64, emit func(outbox.TxnBuffer) error) error {
+	return nil
+}
 func (r *warehouseRepoSpy) GetLocks(ctx context.Context, warehouseID string) (map[string]DispatchLock, error) {
 	if r.locks == nil {
 		r.locks = make(map[string]DispatchLock)

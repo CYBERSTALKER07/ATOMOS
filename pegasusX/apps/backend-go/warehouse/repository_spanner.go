@@ -24,6 +24,7 @@ type Repository interface {
 
 	GetInventoryList(ctx context.Context, warehouseID string) (map[string]InventoryRow, error)
 	UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error
+	UpdateInventoryPolicy(ctx context.Context, warehouseID, productID, policy string, reorderThreshold *int64, emit func(outbox.TxnBuffer) error) error
 	GetAutoDispatch(ctx context.Context, warehouseID string) (bool, error)
 	UpdateAutoDispatch(ctx context.Context, warehouseID string, enabled bool, emit func(outbox.TxnBuffer) error) error
 	ListAutoDispatchWarehouses(ctx context.Context) ([]AutoDispatchWarehouse, error)
@@ -438,6 +439,9 @@ func (m *inMemoryRepository) GetInventoryList(ctx context.Context, warehouseID s
 func (m *inMemoryRepository) UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
+func (m *inMemoryRepository) UpdateInventoryPolicy(ctx context.Context, warehouseID, productID, policy string, reorderThreshold *int64, emit func(outbox.TxnBuffer) error) error {
+	return nil
+}
 func (m *inMemoryRepository) GetLocks(ctx context.Context, warehouseID string) (map[string]DispatchLock, error) {
 	return nil, nil
 }
@@ -466,9 +470,12 @@ func (m *inMemoryRepository) ListAutoDispatchWarehouses(_ context.Context) ([]Au
 
 func (r *SpannerRepository) GetInventoryList(ctx context.Context, warehouseID string) (map[string]InventoryRow, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT ProductId, QuantityOnHand, UpdatedAt
-			  FROM InventoryLevels
-			  WHERE WarehouseId = @wid`,
+		SQL: `SELECT si.ProductId, si.QuantityOnHand, si.QuantityReserved, si.UpdatedAt,
+		             COALESCE(si.OutOfStockPolicy, ''), COALESCE(si.ReorderThreshold, 0),
+		             COALESCE(w.DefaultOutOfStockPolicy, 'REJECT')
+		      FROM SupplierInventoryV2 si
+		      INNER JOIN Warehouses w ON si.WarehouseId = w.WarehouseId AND si.SupplierId = w.SupplierId
+		      WHERE si.WarehouseId = @wid`,
 		Params: map[string]any{"wid": warehouseID},
 	}
 	iter := r.client.Single().Query(ctx, stmt)
@@ -480,31 +487,88 @@ func (r *SpannerRepository) GetInventoryList(ctx context.Context, warehouseID st
 		if err != nil {
 			break
 		}
-		var pid string
-		var qty int64
+		var pid, productPolicy, warehousePolicy string
+		var qoh, qr, reorder int64
 		var updated time.Time
-		if err := row.Columns(&pid, &qty, &updated); err == nil {
+		if err := row.Columns(&pid, &qoh, &qr, &updated, &productPolicy, &reorder, &warehousePolicy); err == nil {
+			avail := qoh - qr
+			if avail < 0 {
+				avail = 0
+			}
 			out[pid] = InventoryRow{
-				SKU:         pid,
-				ProductName: pid,
-				Quantity:    qty,
-				UpdatedAt:   updated.Format(time.RFC3339),
+				SKU:              pid,
+				ProductName:      pid,
+				Quantity:         avail,
+				QuantityOnHand:   qoh,
+				ReorderThreshold: reorder,
+				OutOfStockPolicy: strings.ToUpper(strings.TrimSpace(productPolicy)),
+				EffectivePolicy:  ResolveOutOfStockPolicy(warehousePolicy, productPolicy),
+				UpdatedAt:        updated.Format(time.RFC3339),
 			}
 		}
 	}
 	return out, nil
 }
 
+func (r *SpannerRepository) loadWarehouseSupplierID(ctx context.Context, warehouseID string) (string, error) {
+	row, err := r.client.Single().ReadRow(ctx, "Warehouses", spanner.Key{warehouseID}, []string{"SupplierId"})
+	if err != nil {
+		return "", err
+	}
+	var supplierID string
+	if err := row.Columns(&supplierID); err != nil {
+		return "", err
+	}
+	return supplierID, nil
+}
+
 func (r *SpannerRepository) UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error {
-	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	supplierID, err := r.loadWarehouseSupplierID(ctx, warehouseID)
+	if err != nil {
+		return err
+	}
+	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		muts := []*spanner.Mutation{
-			spanner.InsertOrUpdateMap("InventoryLevels", map[string]any{
-				"WarehouseId":    warehouseID,
-				"ProductId":      productID,
-				"QuantityOnHand": quantity,
-				"UpdatedAt":      spanner.CommitTimestamp,
+			spanner.InsertOrUpdateMap("SupplierInventoryV2", map[string]any{
+				"SupplierId":       supplierID,
+				"WarehouseId":      warehouseID,
+				"ProductId":        productID,
+				"QuantityOnHand":   quantity,
+				"QuantityReserved": int64(0),
+				"UpdatedAt":        spanner.CommitTimestamp,
 			}),
 		}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			muts = append(muts, outboxMutations(buf.events)...)
+		}
+		return txn.BufferWrite(muts)
+	})
+	return err
+}
+
+func (r *SpannerRepository) UpdateInventoryPolicy(ctx context.Context, warehouseID, productID, policy string, reorderThreshold *int64, emit func(outbox.TxnBuffer) error) error {
+	supplierID, err := r.loadWarehouseSupplierID(ctx, warehouseID)
+	if err != nil {
+		return err
+	}
+	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		update := map[string]any{
+			"SupplierId":  supplierID,
+			"WarehouseId": warehouseID,
+			"ProductId":   productID,
+			"UpdatedAt":   spanner.CommitTimestamp,
+		}
+		if strings.TrimSpace(policy) != "" {
+			update["OutOfStockPolicy"] = policy
+		}
+		if reorderThreshold != nil {
+			update["ReorderThreshold"] = *reorderThreshold
+		}
+		muts := []*spanner.Mutation{spanner.InsertOrUpdateMap("SupplierInventoryV2", update)}
 		if emit != nil {
 			buf := &spannerTxnBuffer{}
 			if err := emit(buf); err != nil {

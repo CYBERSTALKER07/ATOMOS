@@ -418,7 +418,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var catalogSvc *catalog.Service
 	if spannerClient != nil {
 		catalogRepo := catalog.NewSpannerRepository(spannerClient)
-		catalogSvc = catalog.NewService(catalogRepo, cacheClient, log, promotionSvc)
+		catalogSvc = catalog.NewService(catalogRepo, cacheClient, log, promotionSvc, catalog.NewStockEnricher(spannerClient))
 		log.Info("catalog service enabled", "backend", "spanner")
 	}
 

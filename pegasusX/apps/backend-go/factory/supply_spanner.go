@@ -17,15 +17,43 @@ import (
 )
 
 type spannerSupplyRow struct {
-	RequestID    string
-	WarehouseID  string
-	SupplierID   string
-	State        string
-	FactoryID    string
-	TransferMode string
-	ProjectedVU  int64
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	RequestID             string
+	WarehouseID           string
+	SupplierID            string
+	State                 string
+	FactoryID             string
+	TransferMode          string
+	ProjectedVU           int64
+	TotalVolumeVU         float64
+	Priority              string
+	Notes                 string
+	RegionID              string
+	RequestedDeliveryDate spanner.NullTime
+	LinkedTransferID      string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
+
+type factorySupplyItem struct {
+	ItemID            string  `json:"item_id"`
+	ProductID         string  `json:"product_id"`
+	RequestedQuantity int64   `json:"requested_quantity"`
+	RecommendedQty    int64   `json:"recommended_qty,omitempty"`
+	UnitVolumeVU      float64 `json:"unit_volume_vu,omitempty"`
+}
+
+func supplyItemsToDTO(items []factorySupplyItem) []SupplyRequestItem {
+	out := make([]SupplyRequestItem, 0, len(items))
+	for _, item := range items {
+		out = append(out, SupplyRequestItem{
+			ItemID:            item.ItemID,
+			ProductID:         item.ProductID,
+			RequestedQuantity: item.RequestedQuantity,
+			RecommendedQty:    item.RecommendedQty,
+			UnitVolumeVU:      item.UnitVolumeVU,
+		})
+	}
+	return out
 }
 
 func (s *Service) listSupplyRequestsFromSpanner(ctx context.Context) ([]SupplyRequest, error) {
@@ -35,7 +63,9 @@ func (s *Service) listSupplyRequestsFromSpanner(ctx context.Context) ([]SupplyRe
 	factoryID := strings.TrimSpace(s.factoryNodeID)
 	stmt := spanner.Statement{
 		SQL: `SELECT sr.RequestId, sr.WarehouseId, sr.SupplierId, sr.State, sr.ProjectedUnits, sr.CreatedAt, sr.UpdatedAt,
-		             COALESCE(sr.FactoryId, w.PrimaryFactoryId, ''), COALESCE(sr.TransferMode, w.TransferMode, 'TRUCK')
+		             COALESCE(sr.FactoryId, w.PrimaryFactoryId, ''), COALESCE(sr.TransferMode, w.TransferMode, 'TRUCK'),
+		             COALESCE(sr.Priority, 'NORMAL'), COALESCE(sr.Notes, ''), COALESCE(sr.RegionId, ''),
+		             sr.RequestedDeliveryDate, COALESCE(sr.TotalVolumeVU, 0), COALESCE(sr.LinkedTransferId, '')
 		      FROM WarehouseSupplyRequests sr
 		      INNER JOIN Warehouses w ON sr.WarehouseId = w.WarehouseId
 		      WHERE sr.SupplierId = @supplierId
@@ -53,6 +83,7 @@ func (s *Service) listSupplyRequestsFromSpanner(ctx context.Context) ([]SupplyRe
 	defer iter.Stop()
 
 	rows := make([]SupplyRequest, 0, 16)
+	requestIDs := make([]string, 0, 16)
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
@@ -62,18 +93,79 @@ func (s *Service) listSupplyRequestsFromSpanner(ctx context.Context) ([]SupplyRe
 			return nil, fmt.Errorf("list factory supply requests: %w", err)
 		}
 		var rec spannerSupplyRow
-		if err := row.Columns(&rec.RequestID, &rec.WarehouseID, &rec.SupplierID, &rec.State, &rec.ProjectedVU, &rec.CreatedAt, &rec.UpdatedAt, &rec.FactoryID, &rec.TransferMode); err != nil {
+		if err := row.Columns(&rec.RequestID, &rec.WarehouseID, &rec.SupplierID, &rec.State, &rec.ProjectedVU, &rec.CreatedAt, &rec.UpdatedAt, &rec.FactoryID, &rec.TransferMode, &rec.Priority, &rec.Notes, &rec.RegionID, &rec.RequestedDeliveryDate, &rec.TotalVolumeVU, &rec.LinkedTransferID); err != nil {
 			return nil, fmt.Errorf("scan factory supply request: %w", err)
 		}
+		deliveryDate := ""
+		if rec.RequestedDeliveryDate.Valid {
+			deliveryDate = rec.RequestedDeliveryDate.Time.UTC().Format(time.RFC3339)
+		}
+		vu := rec.TotalVolumeVU
+		if vu <= 0 && rec.ProjectedVU > 0 {
+			vu = float64(rec.ProjectedVU)
+		}
 		rows = append(rows, SupplyRequest{
-			RequestID:   rec.RequestID,
-			WarehouseID: rec.WarehouseID,
-			Status:      rec.State,
-			CreatedAt:   rec.CreatedAt.UTC().Format(time.RFC3339Nano),
-			UpdatedAt:   rec.UpdatedAt.UTC().Format(time.RFC3339Nano),
+			RequestID:             rec.RequestID,
+			WarehouseID:           rec.WarehouseID,
+			Status:                rec.State,
+			Priority:              rec.Priority,
+			Notes:                 rec.Notes,
+			RegionID:              rec.RegionID,
+			RequestedDeliveryDate: deliveryDate,
+			TotalVolumeVU:         vu,
+			LinkedTransferID:      rec.LinkedTransferID,
+			CreatedAt:             rec.CreatedAt.UTC().Format(time.RFC3339Nano),
+			UpdatedAt:             rec.UpdatedAt.UTC().Format(time.RFC3339Nano),
 		})
+		requestIDs = append(requestIDs, rec.RequestID)
+	}
+	if len(requestIDs) > 0 {
+		itemsByRequest, err := s.loadSupplyRequestItems(ctx, requestIDs)
+		if err != nil {
+			return nil, err
+		}
+		for i := range rows {
+			rows[i].Items = supplyItemsToDTO(itemsByRequest[rows[i].RequestID])
+		}
 	}
 	return rows, nil
+}
+
+func (s *Service) loadSupplyRequestItems(ctx context.Context, requestIDs []string) (map[string][]factorySupplyItem, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT RequestId, ItemId, ProductId, RequestedQuantity, RecommendedQuantity, UnitVolumeVU
+		      FROM WarehouseSupplyRequestItems
+		      WHERE RequestId IN UNNEST(@ids)
+		      ORDER BY RequestId, ProductId`,
+		Params: map[string]any{"ids": requestIDs},
+	}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	out := make(map[string][]factorySupplyItem)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("load supply request items: %w", err)
+		}
+		var requestID, itemID, productID string
+		var requested, recommended int64
+		var unitVU float64
+		if err := row.Columns(&requestID, &itemID, &productID, &requested, &recommended, &unitVU); err != nil {
+			continue
+		}
+		out[requestID] = append(out[requestID], factorySupplyItem{
+			ItemID:            itemID,
+			ProductID:         productID,
+			RequestedQuantity: requested,
+			RecommendedQty:    recommended,
+			UnitVolumeVU:      unitVU,
+		})
+	}
+	return out, nil
 }
 
 func (s *Service) getSupplyRequestFromSpanner(ctx context.Context, requestID string) (spannerSupplyRow, error) {

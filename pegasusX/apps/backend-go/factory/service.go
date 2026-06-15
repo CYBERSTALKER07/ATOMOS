@@ -204,11 +204,27 @@ type StaffRow struct {
 
 // SupplyRequest represents one supply request row.
 type SupplyRequest struct {
-	RequestID   string `json:"request_id"`
-	Status      string `json:"status"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
-	WarehouseID string `json:"warehouse_id,omitempty"`
+	RequestID             string              `json:"request_id"`
+	Status                string              `json:"status"`
+	CreatedAt             string              `json:"created_at"`
+	UpdatedAt             string              `json:"updated_at"`
+	WarehouseID           string              `json:"warehouse_id,omitempty"`
+	Priority              string              `json:"priority,omitempty"`
+	Notes                 string              `json:"notes,omitempty"`
+	RegionID              string              `json:"region_id,omitempty"`
+	RequestedDeliveryDate string              `json:"requested_delivery_date,omitempty"`
+	TotalVolumeVU         float64             `json:"total_volume_vu,omitempty"`
+	LinkedTransferID      string              `json:"linked_transfer_id,omitempty"`
+	Items                 []SupplyRequestItem `json:"items,omitempty"`
+}
+
+// SupplyRequestItem is one SKU line on a factory supply request.
+type SupplyRequestItem struct {
+	ItemID            string  `json:"item_id"`
+	ProductID         string  `json:"product_id"`
+	RequestedQuantity int64   `json:"requested_quantity"`
+	RecommendedQty    int64   `json:"recommended_qty,omitempty"`
+	UnitVolumeVU      float64 `json:"unit_volume_vu,omitempty"`
 }
 
 // NewService constructs the factory service.
@@ -1766,19 +1782,33 @@ func (s *Service) HandleSupplyRequests(w http.ResponseWriter, r *http.Request) {
 	mapped := make([]map[string]any, len(rows))
 	for i := range rows {
 		row := rows[i]
+		items := make([]map[string]any, 0, len(row.Items))
+		for _, item := range row.Items {
+			items = append(items, map[string]any{
+				"item_id":             item.ItemID,
+				"product_id":          item.ProductID,
+				"requested_quantity":  item.RequestedQuantity,
+				"recommended_qty":     item.RecommendedQty,
+				"unit_volume_vu":      item.UnitVolumeVU,
+			})
+		}
 		mapped[i] = map[string]any{
-			"request_id":        row.RequestID,
-			"warehouse_id":      row.WarehouseID,
-			"factory_id":        s.factoryNodeID,
-			"supplier_id":       s.supplierID,
-			"state":             row.Status,
-			"priority":          "NORMAL",
-			"total_volume_vu":   0.0,
-			"notes":             "",
-			"transfer_order_id": "",
-			"created_by":        "",
-			"created_at":        row.CreatedAt,
-			"updated_at":        row.UpdatedAt,
+			"request_id":              row.RequestID,
+			"warehouse_id":            row.WarehouseID,
+			"factory_id":              s.factoryNodeID,
+			"supplier_id":             s.supplierID,
+			"state":                   row.Status,
+			"priority":                row.Priority,
+			"notes":                   row.Notes,
+			"region_id":               row.RegionID,
+			"requested_delivery_date": row.RequestedDeliveryDate,
+			"total_volume_vu":         row.TotalVolumeVU,
+			"item_count":              len(row.Items),
+			"items":                   items,
+			"transfer_order_id":       row.LinkedTransferID,
+			"created_by":              "",
+			"created_at":              row.CreatedAt,
+			"updated_at":              row.UpdatedAt,
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"requests": mapped})

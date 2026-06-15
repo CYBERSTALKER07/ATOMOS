@@ -77,6 +77,8 @@ export interface Product {
   price: number;
   variants?: Variant[];
   available_stock?: number;
+  is_out_of_stock?: boolean;
+  accepts_backorder?: boolean;
   offer?: ProductOffer;
 }
 
@@ -204,12 +206,22 @@ export interface SupplierOrderResult {
   item_count: number;
 }
 
+export interface StockWarning {
+  sku: string;
+  requested: number;
+  available: number;
+  backorder_qty: number;
+  accepts_backorder: boolean;
+}
+
 export interface UnifiedCheckoutResponse {
   status: string;
   invoice_id: string;
   total: number;
   supplier_orders: SupplierOrderResult[];
   backordered_item_count?: number;
+  backorder_order_id?: string;
+  stock_warnings?: StockWarning[];
 }
 
 export interface CashCheckoutResponse {

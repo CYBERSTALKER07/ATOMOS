@@ -17,6 +17,9 @@ interface InventoryItem {
   quantity: number;
   reorder_threshold: number;
   sku: string;
+  out_of_stock_policy?: string;
+  effective_policy?: string;
+  accepts_backorder?: boolean;
 }
 
 export default function InventoryPage() {
@@ -137,6 +140,19 @@ export default function InventoryPage() {
     };
   }, []);
 
+  async function handlePolicyChange(productId: string, policy: string) {
+    try {
+      const res = await apiFetch(`/v1/warehouse/ops/inventory/${productId}/policy`, {
+        method: 'PATCH',
+        body: JSON.stringify({ out_of_stock_policy: policy }),
+      });
+      if (res.ok) {
+        toast('Stock policy updated', 'success');
+        void load({ silent: true });
+      }
+    } catch { /* handled */ }
+  }
+
   async function handleAdjust(productId: string) {
     const qty = parseInt(adjustVal, 10);
     if (isNaN(qty)) return;
@@ -226,6 +242,7 @@ export default function InventoryPage() {
                   <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">SKU</th>
                   <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Quantity</th>
                   <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Reorder At</th>
+                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">OOS Policy</th>
                   <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Status</th>
                   <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Action</th>
                 </tr>
@@ -245,6 +262,18 @@ export default function InventoryPage() {
                       <td className="py-3 px-4 font-mono text-xs text-[var(--muted)]">{item.sku || '—'}</td>
                       <td className="py-3 px-4 text-right font-mono tabular-nums">{item.quantity}</td>
                       <td className="py-3 px-4 text-right font-mono text-[var(--muted)] tabular-nums">{item.reorder_threshold}</td>
+                      <td className="py-3 px-4">
+                        <select
+                          value={item.out_of_stock_policy || 'INHERIT'}
+                          onChange={(e) => { void handlePolicyChange(item.product_id, e.target.value); }}
+                          className="px-2 py-1 rounded border text-xs outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                          style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)' }}
+                        >
+                          <option value="INHERIT">Inherit warehouse</option>
+                          <option value="REJECT">Reject when OOS</option>
+                          <option value="ACCEPT_BACKORDER">Accept backorder</option>
+                        </select>
+                      </td>
                       <td className="py-3 px-4">
                         {isLow ? (
                           <span className="status-chip status-chip--critical">LOW</span>

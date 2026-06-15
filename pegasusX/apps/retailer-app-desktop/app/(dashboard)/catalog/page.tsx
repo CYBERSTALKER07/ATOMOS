@@ -661,7 +661,10 @@ export default function CatalogPage() {
                         </div>
                       )}
                       <div className="absolute top-3 right-3">
-                        <StockBadge stock={product.available_stock} />
+                        <StockBadge
+                          stock={product.available_stock}
+                          acceptsBackorder={product.accepts_backorder}
+                        />
                       </div>
                     </div>
 
@@ -715,7 +718,8 @@ export default function CatalogPage() {
                           }}
                           isDisabled={
                             product.available_stock != null &&
-                            product.available_stock <= 0
+                            product.available_stock <= 0 &&
+                            !product.accepts_backorder
                           }
                         >
                           Add to Cart
@@ -752,8 +756,21 @@ export default function CatalogPage() {
   );
 }
 
-function StockBadge({ stock }: { stock?: number }) {
+function StockBadge({
+  stock,
+  acceptsBackorder,
+}: {
+  stock?: number;
+  acceptsBackorder?: boolean;
+}) {
   if (stock !== undefined && stock <= 0) {
+    if (acceptsBackorder) {
+      return (
+        <span className="px-2.5 py-1 rounded-lg bg-[var(--desk-warning)] text-white md-typescale-label-small font-bold uppercase tracking-widest shadow-[var(--shadow-sm)]">
+          Backorder
+        </span>
+      );
+    }
     return (
       <span className="px-2.5 py-1 rounded-lg bg-[var(--desk-danger)] text-white md-typescale-label-small font-bold uppercase tracking-widest shadow-[var(--shadow-sm)]">
         Empty

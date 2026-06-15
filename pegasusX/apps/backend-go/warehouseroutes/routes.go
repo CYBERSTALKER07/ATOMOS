@@ -42,6 +42,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 		rr.Get("/v1/warehouse/ops/dashboard", d.Service.HandleDashboard)
 		rr.HandleFunc("/v1/warehouse/ops/inventory", d.Service.HandleInventory)
+		rr.Patch("/v1/warehouse/ops/inventory/{productID}/policy", d.Service.HandleInventoryPolicy)
 		rr.Get("/v1/warehouse/ops/settings", d.Service.HandleOpsSettings)
 		rr.Patch("/v1/warehouse/ops/settings", d.Service.HandleOpsSettings)
 		rr.Get("/v1/warehouse/ops/orders", d.Service.HandleOrders)

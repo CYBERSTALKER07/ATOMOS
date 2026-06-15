@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { downloadCsv } from '@/lib/csv';
 import { usePagination } from '@/lib/use-pagination';
@@ -15,6 +15,14 @@ import FactoryRuntimeBanner from '@/components/FactoryRuntimeBanner';
 import EmptyState from '@/components/EmptyState';
 import { motion } from 'framer-motion';
 
+interface SupplyRequestItem {
+  item_id: string;
+  product_id: string;
+  requested_quantity: number;
+  recommended_qty?: number;
+  unit_volume_vu?: number;
+}
+
 interface SupplyRequest {
   request_id: string;
   warehouse_id: string;
@@ -26,6 +34,7 @@ interface SupplyRequest {
   total_volume_vu: number;
   notes: string;
   item_count?: number;
+  items?: SupplyRequestItem[];
   created_at: string;
 }
 
@@ -82,6 +91,7 @@ export default function SupplyRequestsPage() {
   const [requests, setRequests] = useState<SupplyRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterState>('ALL');
+  const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
   const [transitioning, setTransitioning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -355,6 +365,8 @@ export default function SupplyRequestsPage() {
                   <th className="text-left px-4 py-3 font-medium">Warehouse</th>
                   <th className="text-left px-4 py-3 font-medium">Priority</th>
                   <th className="text-left px-4 py-3 font-medium">State</th>
+                  <th className="text-left px-4 py-3 font-medium">Items</th>
+                  <th className="text-left px-4 py-3 font-medium">Notes</th>
                   <th className="text-left px-4 py-3 font-medium">Volume (VU)</th>
                   <th className="text-left px-4 py-3 font-medium">Delivery Date</th>
                   <th className="text-left px-4 py-3 font-medium">Created</th>
@@ -363,13 +375,14 @@ export default function SupplyRequestsPage() {
               </thead>
               <tbody>
                 {pageItems.map((request, index) => (
+                  <Fragment key={request.request_id}>
                   <motion.tr 
-                    key={request.request_id} 
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="border-t hover:bg-[var(--default)]/50 transition-colors" 
+                    className="border-t hover:bg-[var(--default)]/50 transition-colors cursor-pointer" 
                     style={{ borderColor: 'var(--color-md-outline-variant)' }}
+                    onClick={() => setExpandedRequestId(expandedRequestId === request.request_id ? null : request.request_id)}
                   >
                     <td className="px-4 py-3">
                       <div className="font-medium">{request.warehouse_name || request.warehouse_id.slice(0, 8)}</div>
@@ -387,6 +400,12 @@ export default function SupplyRequestsPage() {
                         {request.state.replace(/_/g, ' ')}
                       </span>
                     </td>
+                    <td className="px-4 py-3 tabular-nums font-mono">
+                      {request.item_count ?? request.items?.length ?? 0}
+                    </td>
+                    <td className="px-4 py-3 text-xs max-w-[180px] truncate" title={request.notes || undefined}>
+                      {request.notes || '—'}
+                    </td>
                     <td className="px-4 py-3 tabular-nums font-mono">{request.total_volume_vu.toLocaleString()}</td>
                     <td className="px-4 py-3 tabular-nums font-mono text-xs">
                       {request.requested_delivery_date ? new Date(request.requested_delivery_date).toLocaleDateString() : '—'}
@@ -394,7 +413,7 @@ export default function SupplyRequestsPage() {
                     <td className="px-4 py-3 text-xs tabular-nums font-mono" style={{ color: 'var(--color-md-on-surface-variant)' }}>
                       {new Date(request.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-2 justify-end">
                         {(ACTIONS[request.state] || []).map((action) => (
                           <motion.button
@@ -412,6 +431,24 @@ export default function SupplyRequestsPage() {
                       </div>
                     </td>
                   </motion.tr>
+                  {expandedRequestId === request.request_id && (request.items?.length ?? 0) > 0 && (
+                    <tr key={`${request.request_id}-items`} className="border-t" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
+                      <td colSpan={9} className="px-4 py-3 bg-[var(--color-md-surface-container-low)]">
+                        <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                          Requested SKUs
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {request.items?.map((item) => (
+                            <div key={item.item_id} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
+                              <div className="font-mono text-xs">{item.product_id}</div>
+                              <div className="tabular-nums">Qty {item.requested_quantity.toLocaleString()}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

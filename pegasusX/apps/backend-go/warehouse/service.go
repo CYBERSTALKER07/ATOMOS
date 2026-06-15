@@ -147,10 +147,14 @@ type ServiceConfig struct {
 
 // InventoryRow represents one stock row.
 type InventoryRow struct {
-	SKU         string `json:"sku"`
-	ProductName string `json:"product_name"`
-	Quantity    int64  `json:"quantity"`
-	UpdatedAt   string `json:"updated_at"`
+	SKU              string `json:"sku"`
+	ProductName      string `json:"product_name"`
+	Quantity         int64  `json:"quantity"`
+	QuantityOnHand   int64  `json:"quantity_on_hand"`
+	ReorderThreshold   int64  `json:"reorder_threshold"`
+	OutOfStockPolicy string `json:"out_of_stock_policy"`
+	EffectivePolicy  string `json:"effective_policy"`
+	UpdatedAt        string `json:"updated_at"`
 }
 
 // SupplyRequest represents one replenishment request row.

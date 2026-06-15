@@ -270,17 +270,26 @@ func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
 		items := make([]map[string]any, 0, len(inventoryList))
 		for sku, row := range inventoryList {
 			qty := row.Quantity
-			isLow := qty < 20
+			threshold := row.ReorderThreshold
+			if threshold <= 0 {
+				threshold = 20
+			}
+			isLow := qty <= threshold
 			if lowOnly && !isLow {
 				continue
 			}
 			items = append(items, map[string]any{
-				"product_id":   sku,
-				"sku_id":       row.SKU,
-				"product_name": row.ProductName,
-				"quantity":     qty,
-				"is_low_stock": isLow,
-				"last_updated": row.UpdatedAt,
+				"product_id":         sku,
+				"sku_id":             row.SKU,
+				"product_name":       row.ProductName,
+				"quantity":           qty,
+				"quantity_on_hand":   row.QuantityOnHand,
+				"reorder_threshold":  threshold,
+				"out_of_stock_policy": row.OutOfStockPolicy,
+				"effective_policy":   row.EffectivePolicy,
+				"accepts_backorder":  row.EffectivePolicy == OutOfStockPolicyAcceptBackorder,
+				"is_low_stock":       isLow,
+				"last_updated":       row.UpdatedAt,
 			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"inventory": items, "items": items})

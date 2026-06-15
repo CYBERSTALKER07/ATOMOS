@@ -24,6 +24,7 @@ import type {
   PendingPaymentsResponse,
   UnifiedCheckoutResponse,
   RetailerProfile,
+  StockWarning,
 } from "../lib/types";
 import type { PaymentGatewayDegradedPayload } from "@pegasusx/types";
 import {
@@ -59,6 +60,7 @@ export default function CheckoutModal({
   const [error, setError] = useState("");
   const [degradedBanner, setDegradedBanner] = useState<{ gateway: string; reason: string } | null>(null);
   const [oosItems, setOosItems] = useState<string[]>([]);
+  const [stockWarnings, setStockWarnings] = useState<StockWarning[]>([]);
   const [hasCardConfigured, setHasCardConfigured] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [pendingCardToken, setPendingCardToken] = useState<string | null>(null);
@@ -203,6 +205,7 @@ export default function CheckoutModal({
     setLoading(true);
     setError("");
     setOosItems([]);
+    setStockWarnings([]);
 
     try {
       const profile = getProfile();
@@ -253,6 +256,15 @@ export default function CheckoutModal({
             "All items are out of stock. Please update your cart.",
           );
         }
+        if (
+          cartRes.status === 409 &&
+          errBody?.code === "PARTIAL_OUT_OF_STOCK_REJECTED"
+        ) {
+          setOosItems(errBody.oos_items || []);
+          throw new Error(
+            "Some items are out of stock and cannot be backordered. Please update your cart.",
+          );
+        }
         if (cartRes.status === 422 && errBody?.error === "payment_gateway_policy_violation") {
           // This happens when unified checkout policy triggers 3C Fallback.
           // We can read it here, although WS will arrive shortly.
@@ -266,6 +278,11 @@ export default function CheckoutModal({
       }
 
       const resData = (await cartRes.json()) as UnifiedCheckoutResponse;
+      if (resData.stock_warnings && resData.stock_warnings.length > 0) {
+        setStockWarnings(resData.stock_warnings);
+      } else {
+        setStockWarnings([]);
+      }
 
       for (const so of resData.supplier_orders) {
         if (method !== "cash" && !degradedBanner) {
@@ -491,6 +508,27 @@ export default function CheckoutModal({
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {stockWarnings.length > 0 && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex gap-3 text-amber-900">
+                  <AlertTriangle size={20} className="shrink-0 mt-0.5" />
+                  <div className="space-y-2">
+                    <h3 className="font-bold text-sm uppercase tracking-wide">
+                      Partial backorder
+                    </h3>
+                    <p className="text-xs font-medium opacity-90">
+                      Some items are out of stock but your warehouse accepts backorders. Fulfillment will proceed when stock arrives.
+                    </p>
+                    <ul className="text-xs space-y-1 font-mono">
+                      {stockWarnings.map((warning) => (
+                        <li key={warning.sku}>
+                          {warning.sku}: {warning.backorder_qty} of {warning.requested} units backordered
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               )}
 

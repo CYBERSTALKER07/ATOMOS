@@ -17,11 +17,12 @@ type Service struct {
 	cache      *cache.Cache
 	log        *slog.Logger
 	promotions *promotion.Service
+	stock      *StockEnricher
 }
 
 // NewService creates a catalog service with the given dependencies.
-func NewService(repo Repository, c *cache.Cache, log *slog.Logger, promotions *promotion.Service) *Service {
-	return &Service{repo: repo, cache: c, log: log, promotions: promotions}
+func NewService(repo Repository, c *cache.Cache, log *slog.Logger, promotions *promotion.Service, stock *StockEnricher) *Service {
+	return &Service{repo: repo, cache: c, log: log, promotions: promotions, stock: stock}
 }
 
 // ListCategories returns all categories for a supplier.
@@ -55,7 +56,10 @@ func (s *Service) CreateCategory(ctx context.Context, cat Category) error {
 // RetailerProduct is a catalog row plus optional promotion metadata.
 type RetailerProduct struct {
 	Product
-	Offer *promotion.ProductOffer `json:"offer,omitempty"`
+	Offer            *promotion.ProductOffer `json:"offer,omitempty"`
+	AvailableStock   *int64                  `json:"available_stock,omitempty"`
+	IsOutOfStock     bool                    `json:"is_out_of_stock,omitempty"`
+	AcceptsBackorder bool                    `json:"accepts_backorder,omitempty"`
 }
 
 // ListProducts returns products for a supplier, optionally filtered.
@@ -134,6 +138,18 @@ func (s *Service) enrichProductsForRetailer(ctx context.Context, retailerID stri
 			offer = promotion.CatalogOffer(now, retailerID, p.ProductID, p.CategoryID, listPrice, promos)
 		}
 		out[i] = RetailerProduct{Product: p, Offer: &offer}
+	}
+	if s.stock != nil && retailerID != "" {
+		snaps := s.stock.Enrich(ctx, retailerID, products)
+		for i := range out {
+			key := out[i].SupplierID + ":" + out[i].ProductID
+			if snap, ok := snaps[key]; ok {
+				avail := snap.AvailableStock
+				out[i].AvailableStock = &avail
+				out[i].IsOutOfStock = snap.IsOutOfStock
+				out[i].AcceptsBackorder = snap.AcceptsBackorder
+			}
+		}
 	}
 	return out, nil
 }
