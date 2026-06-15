@@ -138,7 +138,7 @@ final class APIClient: @unchecked Sendable {
         return try await post(
             "v1/order/deliver",
             body: body,
-            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "submit-delivery", orderId: orderId)]
+            headers: ["Idempotency-Key": DriverIdempotency.deliver(orderId: orderId)]
         )
     }
 
@@ -156,7 +156,7 @@ final class APIClient: @unchecked Sendable {
         return try await post(
             "v1/order/confirm-offload",
             body: body,
-            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "confirm-offload", orderId: orderId)]
+            headers: ["Idempotency-Key": DriverIdempotency.offload(orderId: orderId)]
         )
     }
 
@@ -166,7 +166,7 @@ final class APIClient: @unchecked Sendable {
         let _: Resp = try await post(
             "v1/order/complete",
             body: body,
-            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "complete-order", orderId: orderId)]
+            headers: ["Idempotency-Key": DriverIdempotency.complete(orderId: orderId)]
         )
     }
 
@@ -175,7 +175,7 @@ final class APIClient: @unchecked Sendable {
         return try await post(
             "v1/order/collect-cash",
             body: body,
-            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "collect-cash", orderId: orderId)]
+            headers: ["Idempotency-Key": DriverIdempotency.collectCash(orderId: orderId)]
         )
     }
 
@@ -221,7 +221,11 @@ final class APIClient: @unchecked Sendable {
 
     func confirmPaymentBypass(orderId: String, token: String) async throws -> [String: String] {
         let body = ["order_id": orderId, "bypass_token": token]
-        return try await post("v1/delivery/confirm-payment-bypass", body: body)
+        return try await post(
+            "v1/delivery/confirm-payment-bypass",
+            body: body,
+            headers: ["Idempotency-Key": DriverIdempotency.confirmPaymentBypass(orderId: orderId)]
+        )
     }
 
     // MARK: - WebSocket Command Handshake

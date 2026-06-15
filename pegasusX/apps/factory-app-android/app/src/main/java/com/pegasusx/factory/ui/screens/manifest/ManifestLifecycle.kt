@@ -2,6 +2,7 @@ package com.pegasusx.factory.ui.screens.manifest
 
 import com.pegasusx.factory.data.model.ManifestTransitionRequest
 import com.pegasusx.factory.data.remote.FactoryApi
+import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import retrofit2.Response
 import com.pegasusx.factory.data.model.ManifestTransitionResponse
 
@@ -24,11 +25,12 @@ suspend fun applyManifestLifecycle(
     step: ManifestLifecycleStep,
 ): Response<ManifestTransitionResponse> {
     val body = ManifestTransitionRequest(reason = "factory-app-android")
+    val idempotencyKey = FactoryIdempotencyKeys.forLifecyclePath(manifestId, step.path)
     return when (step.path) {
-        "start-loading" -> api.startManifestLoading(manifestId, body)
-        "seal" -> api.sealManifest(manifestId, body)
-        "dispatch" -> api.dispatchManifest(manifestId, body)
-        "complete" -> api.completeManifest(manifestId, body)
+        "start-loading" -> api.startManifestLoading(manifestId, idempotencyKey, body)
+        "seal" -> api.sealManifest(manifestId, idempotencyKey, body)
+        "dispatch" -> api.dispatchManifest(manifestId, idempotencyKey, body)
+        "complete" -> api.completeManifest(manifestId, idempotencyKey, body)
         else -> error("unsupported manifest lifecycle path: ${step.path}")
     }
 }

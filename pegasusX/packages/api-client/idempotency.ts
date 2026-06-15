@@ -151,6 +151,10 @@ export function supplierPaymentBypassKey(orderId: string, reason: string): strin
   return `supplier-payment-bypass:${orderId}:${stableHash(reason)}`;
 }
 
+export function driverConfirmPaymentBypassKey(driverId: string, orderId: string): string {
+  return `driver-confirm-payment-bypass:${driverId}:${orderId}`;
+}
+
 export function warehouseEmergencyTransferKey(
   warehouseId: string,
   volumeVu: number,
@@ -170,4 +174,20 @@ export function warehouseForceReceiveKey(
 
 export function warehouseReceiveTransferKey(transferId: string): string {
   return `warehouse-receive-transfer:${transferId}`;
+}
+
+export function factoryManifestStartLoadingKey(manifestId: string): string {
+  return `factory-start-loading:${manifestId}`;
+}
+
+export function factoryManifestSealKey(manifestId: string, factoryId: string): string {
+  return `factory-manifest-seal:${factoryId}:${manifestId}`;
+}
+
+export function factoryManifestDispatchKey(manifestId: string, factoryId: string): string {
+  return `factory-manifest-dispatch:${factoryId}:${manifestId}`;
+}
+
+export function factoryManifestCompleteKey(manifestId: string, factoryId: string): string {
+  return `factory-manifest-complete:${factoryId}:${manifestId}`;
 }

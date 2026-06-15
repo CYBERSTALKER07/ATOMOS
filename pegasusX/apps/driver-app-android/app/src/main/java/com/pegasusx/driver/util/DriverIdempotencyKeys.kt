@@ -13,4 +13,6 @@ object DriverIdempotencyKeys {
     fun complete(orderId: String): String = "driver-complete:${driverId()}:$orderId"
 
     fun collectCash(orderId: String): String = "driver-collect-cash:${driverId()}:$orderId"
+
+    fun confirmPaymentBypass(orderId: String): String = "driver-confirm-payment-bypass:${driverId()}:$orderId"
 }

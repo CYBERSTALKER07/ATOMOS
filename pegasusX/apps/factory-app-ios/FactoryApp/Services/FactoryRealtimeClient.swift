@@ -34,10 +34,12 @@ final class FactoryRealtimeClient {
     private var task: URLSessionWebSocketTask?
     private var reconnectWorkItem: DispatchWorkItem?
     private var reconnectAttempt = 0
+    private var hasConnectedOnce = false
     private var closed = true
     private var networkAvailable = true
     private var stateHandler: (@MainActor (FactoryRealtimeStatus) -> Void)?
     private var eventHandler: (@MainActor (FactoryLiveEvent) -> Void)?
+    private var reconnectHandler: (@MainActor () -> Void)?
 
     init(session: URLSession = .shared) {
         self.session = session
@@ -66,12 +68,15 @@ final class FactoryRealtimeClient {
 
     func connect(
         onStateChange: @escaping @MainActor (FactoryRealtimeStatus) -> Void,
-        onEvent: @escaping @MainActor (FactoryLiveEvent) -> Void
+        onEvent: @escaping @MainActor (FactoryLiveEvent) -> Void,
+        onReconnect: @escaping @MainActor () -> Void = {}
     ) {
         stateHandler = onStateChange
         eventHandler = onEvent
+        reconnectHandler = onReconnect
         closed = false
         reconnectAttempt = 0
+        hasConnectedOnce = false
         openSocket(isReconnect: false)
     }
 
@@ -113,8 +118,16 @@ final class FactoryRealtimeClient {
                 if error != nil {
                     self.handleSocketDrop()
                 } else {
+                    let wasReconnect = self.hasConnectedOnce
+                    self.hasConnectedOnce = true
                     self.reconnectAttempt = 0
                     self.publish(.live)
+                    if wasReconnect, let reconnectHandler = self.reconnectHandler {
+                        Task { @MainActor in
+                            await FactorySessionReconcile.run()
+                            reconnectHandler()
+                        }
+                    }
                 }
             }
             self.receiveLoop()

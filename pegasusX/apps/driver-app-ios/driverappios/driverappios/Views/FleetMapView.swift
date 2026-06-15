@@ -293,6 +293,12 @@ struct FleetMapView: View {
         .onChange(of: driverSocketState.connectionState) { _, _ in
             telemetryVM.syncLiveFlags()
         }
+        .onChange(of: driverSocketState.reconnectEpoch) { _, _ in
+            Task {
+                await vm.loadMissions()
+                vm.lastRealtimeRefreshAt = Date()
+            }
+        }
         .onChange(of: driverSocketState.eventSequence) { _, _ in
             vm.handleSocketEvent(driverSocketState.lastEvent)
             telemetryVM.syncLiveFlags()

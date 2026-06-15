@@ -206,7 +206,10 @@ interface DriverApi {
 
     // Driver uses payment bypass token to complete when payment gateway is down
     @POST("v1/delivery/confirm-payment-bypass")
-    suspend fun confirmPaymentBypass(@Body body: Map<String, String>): Map<String, String>
+    suspend fun confirmPaymentBypass(
+        @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, String>
 
     // ── v3.1 Human-Centric Edges ──
 

@@ -7,6 +7,10 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -67,6 +71,10 @@ class DriverWebSocket @Inject constructor(
     private val ackExecutor = Executors.newSingleThreadExecutor()
     private val intentionalClose = AtomicBoolean(false)
     private val reconnectAttempt = AtomicInteger(0)
+    private val hasConnectedOnce = AtomicBoolean(false)
+    private val _onReconnect = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
+    /** Emits when the socket transitions closed → open after the initial connection. */
+    val onReconnect: SharedFlow<Unit> = _onReconnect.asSharedFlow()
     private val _messages = MutableSharedFlow<DriverWSMessage>(extraBufferCapacity = 16)
     val messages: SharedFlow<DriverWSMessage> = _messages.asSharedFlow()
     private val _outdatedState = MutableStateFlow<DriverOutdatedState?>(null)
@@ -77,6 +85,7 @@ class DriverWebSocket @Inject constructor(
     private var currentBaseUrl: String? = null
     private var currentToken: String? = null
     private var pendingRetryAfterMs: Long? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     fun connect(baseUrl: String, driverId: String, token: String) {
         if (socket != null && _connectionState.value == ConnectionState.CONNECTED) return
@@ -84,6 +93,7 @@ class DriverWebSocket @Inject constructor(
         reconnectTask = null
         intentionalClose.set(false)
         reconnectAttempt.set(0)
+        hasConnectedOnce.set(false)
         _outdatedState.value = null
         currentBaseUrl = baseUrl
         currentToken = token
@@ -107,6 +117,9 @@ class DriverWebSocket @Inject constructor(
                 Log.d(TAG, "Connected")
                 reconnectAttempt.set(0)
                 _connectionState.value = ConnectionState.CONNECTED
+                if (hasConnectedOnce.getAndSet(true)) {
+                    scope.launch { _onReconnect.emit(Unit) }
+                }
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {

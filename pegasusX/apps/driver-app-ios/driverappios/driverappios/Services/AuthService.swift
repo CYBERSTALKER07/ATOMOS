@@ -330,6 +330,7 @@ final class DriverSocketState {
     var outdatedNotice: OutdatedNotice?
     var lastEvent: DriverEvent?
     var eventSequence = 0
+    var reconnectEpoch = 0
     var connectionState: SocketConnectionState = .disconnected
 
     private let wsSchemaVersion = 2
@@ -337,6 +338,7 @@ final class DriverSocketState {
     private var reconnectWorkItem: DispatchWorkItem?
     private var shouldReconnect = false
     private var reconnectAttempt = 0
+    private var hasConnectedOnce = false
     private var currentBaseURL: String?
     private var currentToken: String?
 
@@ -352,6 +354,7 @@ final class DriverSocketState {
         currentBaseURL = baseURL
         currentToken = token
         reconnectAttempt = 0
+        hasConnectedOnce = false
         establishConnection()
     }
 
@@ -410,6 +413,13 @@ final class DriverSocketState {
         task.resume()
         reconnectAttempt = 0
         connectionState = .connected
+        if hasConnectedOnce {
+            reconnectEpoch += 1
+            Task {
+                await FleetServiceLive.shared.flushOfflineQueue()
+            }
+        }
+        hasConnectedOnce = true
         listenForMessages()
     }
 

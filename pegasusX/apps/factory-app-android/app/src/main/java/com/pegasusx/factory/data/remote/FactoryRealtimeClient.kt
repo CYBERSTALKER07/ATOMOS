@@ -103,6 +103,8 @@ class FactoryRealtimeClient(
     private var reconnectJob: Job? = null
     private var manualDisconnect = true
     private var networkAvailable = hasNetworkConnectivity()
+    private var hasConnectedOnce = false
+    private var onReconnectHandler: (() -> Unit)? = null
     private var stateHandler: ((FactoryRealtimeStatus) -> Unit)? = null
     private var eventHandler: ((FactoryLiveEvent) -> Unit)? = null
 
@@ -116,11 +118,14 @@ class FactoryRealtimeClient(
     fun connect(
         onStateChange: (FactoryRealtimeStatus) -> Unit = {},
         onEvent: (FactoryLiveEvent) -> Unit,
+        onReconnect: () -> Unit = {},
     ) {
         stateHandler = onStateChange
         eventHandler = onEvent
+        onReconnectHandler = onReconnect
         manualDisconnect = false
         reconnectAttempt = 0
+        hasConnectedOnce = false
         connectInternal(isReconnect = false)
     }
 
@@ -167,8 +172,13 @@ class FactoryRealtimeClient(
         webSocket?.cancel()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                val wasReconnect = hasConnectedOnce
+                hasConnectedOnce = true
                 reconnectAttempt = 0
                 notifyState(FactoryRealtimeStatus.LIVE)
+                if (wasReconnect) {
+                    mainHandler.post { onReconnectHandler?.invoke() }
+                }
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {

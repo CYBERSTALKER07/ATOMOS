@@ -32,10 +32,13 @@ import com.pegasusx.driver.data.remote.ConnectionState
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.data.remote.TokenHolder
-import com.pegasusx.driver.data.remote.shouldRefreshManifestOnWsEvent
+import com.pegasusx.driver.data.remote.reconcileDriverSession
+import com.pegasusx.driver.services.OfflineSyncScheduler
 import com.pegasusx.driver.data.repository.ProfileRepository
 import com.pegasusx.driver.ui.screens.map.resolveActiveOrder
+import com.pegasusx.driver.data.remote.shouldRefreshManifestOnWsEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -72,6 +75,7 @@ data class ManifestUiState(
 
 @HiltViewModel
 class ManifestViewModel @Inject constructor(
+    @ApplicationContext private val appContext: android.content.Context,
     private val app: Application,
     private val api: DriverApi,
     private val orderDao: OrderDao,
@@ -108,6 +112,19 @@ class ManifestViewModel @Inject constructor(
                     _state.value = _state.value.copy(lastWsRefreshAt = System.currentTimeMillis())
                 }
             }
+        }
+        viewModelScope.launch {
+            driverWebSocket.onReconnect.collect {
+                reconcileAfterReconnect()
+            }
+        }
+    }
+
+    private fun reconcileAfterReconnect() {
+        viewModelScope.launch {
+            runCatching { reconcileDriverSession(api) }
+            loadManifest()
+            OfflineSyncScheduler.enqueue(appContext)
         }
     }
 

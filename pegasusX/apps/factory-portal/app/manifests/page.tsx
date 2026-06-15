@@ -10,6 +10,7 @@ import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
 import { PageSection } from '@/components/PageSection';
 import EmptyState from '@/components/EmptyState';
 import { nextManifestLifecycleAction } from '@/lib/manifest-lifecycle';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 
 interface ManifestRow {
   manifest_id: string;
@@ -55,6 +56,10 @@ export default function ManifestsPage() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  useFactorySessionReconcile(() => {
+    void load();
+  });
 
   useEffect(() => {
     const unsubscribe = subscribeFactoryWS({

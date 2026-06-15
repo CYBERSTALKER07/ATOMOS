@@ -98,7 +98,12 @@ enum FactoryService {
 
     static func transitionManifest(id: String, action: String) async throws -> FactoryManifestTransitionResponse {
         struct EmptyBody: Encodable {}
-        return try await api.post("v1/factory/manifests/\(id)/\(action)", body: EmptyBody())
+        let idempotencyKey = FactoryIdempotency.forLifecycleAction(action, manifestId: id)
+        return try await api.post(
+            "v1/factory/manifests/\(id)/\(action)",
+            body: EmptyBody(),
+            idempotencyKey: idempotencyKey
+        )
     }
 
     static func rebalanceManifestTransfer(sourceManifestId: String, targetManifestId: String, transferId: String) async throws -> ManifestRebalanceResponse {

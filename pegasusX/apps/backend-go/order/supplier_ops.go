@@ -55,15 +55,23 @@ func (s *Service) HandleIssuePaymentBypass(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	var req struct {
 		OrderID string `json:"order_id"`
 		Reason  string `json:"reason"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.OrderID = strings.TrimSpace(req.OrderID)
 	if req.OrderID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id required"})
@@ -78,7 +86,7 @@ func (s *Service) HandleIssuePaymentBypass(w http.ResponseWriter, r *http.Reques
 	now := s.now()
 
 	var status string
-	err := s.spannerClient.Single().Query(ctx, spanner.Statement{
+	err = s.spannerClient.Single().Query(ctx, spanner.Statement{
 		SQL:    `SELECT Status FROM Orders WHERE OrderId = @oid AND SupplierId = @sid`,
 		Params: map[string]any{"oid": req.OrderID, "sid": supplierID},
 	}).Do(func(row *spanner.Row) error {
@@ -114,11 +122,14 @@ func (s *Service) HandleIssuePaymentBypass(w http.ResponseWriter, r *http.Reques
 	}
 
 	s.log.InfoContext(ctx, "payment bypass issued", "order_id", req.OrderID, "supplier_id", supplierID)
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":       "bypass_issued",
 		"bypass_token": token,
 		"order_id":     req.OrderID,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleConfirmPaymentBypass serves POST /v1/delivery/confirm-payment-bypass.
@@ -137,15 +148,23 @@ func (s *Service) HandleConfirmPaymentBypass(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	var req struct {
 		OrderID     string `json:"order_id"`
 		BypassToken string `json:"bypass_token"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.OrderID = strings.TrimSpace(req.OrderID)
 	req.BypassToken = strings.TrimSpace(req.BypassToken)
 	if req.OrderID == "" || req.BypassToken == "" {
@@ -227,7 +246,10 @@ func (s *Service) HandleConfirmPaymentBypass(w http.ResponseWriter, r *http.Requ
 
 	s.cache.Invalidate(ctx, cacheKeyPaymentBypassPrefix+req.OrderID)
 	s.invalidateOrderCache(ctx, req.OrderID)
-	writeJSON(w, http.StatusOK, map[string]any{"status": "completed", "order_id": req.OrderID})
+	resp := map[string]any{"status": "completed", "order_id": req.OrderID}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleApproveEarlyComplete serves POST /v1/supplier/route/approve-early-complete.

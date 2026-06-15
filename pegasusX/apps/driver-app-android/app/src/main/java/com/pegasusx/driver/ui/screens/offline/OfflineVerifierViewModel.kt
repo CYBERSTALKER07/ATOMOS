@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.driver.data.local.PendingMutationDao
 import com.pegasusx.driver.data.local.RouteManifestDao
-import com.pegasusx.driver.data.model.DeliverySubmitRequest
 import com.pegasusx.driver.data.model.OfflineDeliveryPayload
 import com.pegasusx.driver.data.model.PendingMutationEntity
 import com.pegasusx.driver.data.model.RouteManifestEntity
@@ -26,7 +25,6 @@ import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 import javax.inject.Inject
 
 @Serializable

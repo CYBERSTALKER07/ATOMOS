@@ -94,24 +94,28 @@ interface FactoryApi {
     @POST("v1/factory/manifests/{id}/start-loading")
     suspend fun startManifestLoading(
         @Path("id") id: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: ManifestTransitionRequest = ManifestTransitionRequest(),
     ): Response<ManifestTransitionResponse>
 
     @POST("v1/factory/manifests/{id}/seal")
     suspend fun sealManifest(
         @Path("id") id: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: ManifestTransitionRequest = ManifestTransitionRequest(),
     ): Response<ManifestTransitionResponse>
 
     @POST("v1/factory/manifests/{id}/dispatch")
     suspend fun dispatchManifest(
         @Path("id") id: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: ManifestTransitionRequest = ManifestTransitionRequest(),
     ): Response<ManifestTransitionResponse>
 
     @POST("v1/factory/manifests/{id}/complete")
     suspend fun completeManifest(
         @Path("id") id: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: ManifestTransitionRequest = ManifestTransitionRequest(),
     ): Response<ManifestTransitionResponse>
 

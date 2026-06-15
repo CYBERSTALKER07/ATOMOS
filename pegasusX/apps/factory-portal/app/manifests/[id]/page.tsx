@@ -8,7 +8,9 @@ import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import FactoryPageState from '@/components/FactoryPageState';
-import { MANIFEST_STATE_ORDER, nextManifestLifecycleAction } from '@/lib/manifest-lifecycle';
+import { MANIFEST_STATE_ORDER, manifestTransitionIdempotencyKey, nextManifestLifecycleAction } from '@/lib/manifest-lifecycle';
+import { factoryOperatorId } from '@/lib/factory-scope';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 
 interface ManifestTransfer {
   transfer_id: string;
@@ -88,6 +90,11 @@ export default function ManifestDetailPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  useFactorySessionReconcile(() => {
+    setActing(false);
+    void load();
+  });
+
   useEffect(() => {
     const unsubscribe = subscribeFactoryWS({
       onMessage: (payload) => {
@@ -105,9 +112,17 @@ export default function ManifestDetailPage() {
     if (!next) return;
     setActing(true);
     try {
+      const idempotencyKey = manifestTransitionIdempotencyKey(
+        detail.manifest.manifest_id,
+        next.path,
+        factoryOperatorId(),
+      );
       const res = await apiFetch(`/v1/factory/manifests/${detail.manifest.manifest_id}/${next.path}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
         body: JSON.stringify({ reason: 'factory-portal' }),
       });
       if (!res.ok) {

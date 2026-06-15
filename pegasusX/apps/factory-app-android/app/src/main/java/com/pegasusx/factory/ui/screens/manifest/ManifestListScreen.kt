@@ -74,13 +74,14 @@ fun ManifestListScreen(
     LaunchedEffect(Unit) { load() }
 
     FactoryRealtimeReloadEffect(
+        api = api,
         eventTypes = setOf(
             FactoryRealtimeEventType.ManifestUpdate,
             FactoryRealtimeEventType.TransferUpdate,
         ),
-    ) {
-        load()
-    }
+        onEvent = { load() },
+        onReconnect = { load() },
+    )
 
     Scaffold(
         topBar = {

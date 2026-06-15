@@ -38,6 +38,8 @@
 		DF47873BDFDE8A9B4BEDDCBC /* ManifestExceptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30E30CF549BA9B629158C18 /* ManifestExceptionsView.swift */; };
 		E34305F5876E7723CD55E9F0 /* FleetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8399214E79359CB730CE3176 /* FleetView.swift */; };
 		FAB0D145289DC722563FCF74 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7084A880E2936D26F7F2B4DC /* Preview Assets.xcassets */; };
+		F1REC02FACTORYSESSION /* FactorySessionReconcile.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1REC01FACTORYSESSION /* FactorySessionReconcile.swift */; };
+		F1DEM02FACTORYIDEMPOTENCY /* FactoryIdempotency.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1DEM01FACTORYIDEMPOTENCY /* FactoryIdempotency.swift */; };
 		FD7166286B124FC8B3D9556A /* AutoUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FCEDB087C2895C22FE8E21 /* AutoUpdater.swift */; };
 /* End PBXBuildFile section */
 
@@ -86,6 +88,8 @@
 		E5104E434E2B1B78926A3710 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		FA446365E92950FF385D6DBC /* StaffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaffView.swift; sourceTree = "<group>"; };
 		FB0231B3E4D7F77C26D58738 /* FactoryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryServiceTests.swift; sourceTree = "<group>"; };
+		F1DEM01FACTORYIDEMPOTENCY /* FactoryIdempotency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryIdempotency.swift; sourceTree = "<group>"; };
+		F1REC01FACTORYSESSION /* FactorySessionReconcile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactorySessionReconcile.swift; sourceTree = "<group>"; };
 		FF6D39172CF94E2AC738E27A /* PegasusFactoryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusFactoryApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -104,9 +108,18 @@
 				3AB755B322A726A294EEC85F /* APIClient.swift */,
 				75C5251859EFAFB4B2107D3E /* FactoryRealtimeClient.swift */,
 				9D2F6B034F3FD70146E20705 /* FactoryService.swift */,
+				F1REC01FACTORYSESSION /* FactorySessionReconcile.swift */,
 				7252B5BD8E968F94AFEB7D5A /* TokenStore.swift */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		F1UTILGROUPFACTORY /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				F1DEM01FACTORYIDEMPOTENCY /* FactoryIdempotency.swift */,
+			);
+			path = Utilities;
 			sourceTree = "<group>";
 		};
 		1B6FC5AE7A52442491F9BCC5 /* Components */ = {
@@ -266,6 +279,7 @@
 				E326B1375DCC0050B01BC421 /* factoryapp */,
 				562E5D75D4C02BB6C94908DE /* Models */,
 				16E2902E953D5D254F991C37 /* Services */,
+				F1UTILGROUPFACTORY /* Utilities */,
 				3FEEA7F5F515A144C2E31EC0 /* Theme */,
 				C0F2EB3811DC07467CD42435 /* Views */,
 			);
@@ -393,8 +407,10 @@
 				40243DBF7537C30F6A47F0CF /* CreateTransferView.swift in Sources */,
 				8A05A5A20037C02B2C229750 /* DashboardView.swift in Sources */,
 				A7B0578A7D77CCE2B46138AE /* FactoryModels.swift in Sources */,
+				F1DEM02FACTORYIDEMPOTENCY /* FactoryIdempotency.swift in Sources */,
 				0742290990B8EC6F43281C17 /* FactoryRealtimeClient.swift in Sources */,
 				87D324445DB50EBDC5896BE4 /* FactoryService.swift in Sources */,
+				F1REC02FACTORYSESSION /* FactorySessionReconcile.swift in Sources */,
 				3DA980241574ECD429F25695 /* FactoryStateViews.swift in Sources */,
 				F1A11UI01FACTORYUICOMPONENTS /* FactoryUiComponents.swift in Sources */,
 				E34305F5876E7723CD55E9F0 /* FleetView.swift in Sources */,

@@ -3,6 +3,7 @@ import SwiftUI
 struct ManifestDetailView: View {
     let manifestId: String
 
+    @State private var realtimeClient = FactoryRealtimeClient()
     @State private var detail: ManifestDetailSnapshot?
     @State private var loading = true
     @State private var acting = false
@@ -73,6 +74,22 @@ struct ManifestDetailView: View {
         }
         .navigationTitle("Manifest")
         .task(id: manifestId) { await load() }
+        .onAppear {
+            realtimeClient.connect(
+                onStateChange: { _ in },
+                onEvent: { event in
+                    guard event.eventType == .manifestUpdate else { return }
+                    Task { await load() }
+                },
+                onReconnect: {
+                    acting = false
+                    Task { await load() }
+                }
+            )
+        }
+        .onDisappear {
+            realtimeClient.disconnect()
+        }
     }
 
     @MainActor

@@ -96,9 +96,15 @@ fun ManifestDetailScreen(
 
     LaunchedEffect(manifestId) { load() }
 
-    FactoryRealtimeReloadEffect(eventTypes = setOf(FactoryRealtimeEventType.ManifestUpdate)) {
-        load()
-    }
+    FactoryRealtimeReloadEffect(
+        api = api,
+        eventTypes = setOf(FactoryRealtimeEventType.ManifestUpdate),
+        onEvent = { load() },
+        onReconnect = {
+            acting = false
+            load()
+        },
+    )
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ManifestsView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var realtimeClient = FactoryRealtimeClient()
     @State private var manifests: [Manifest] = []
     @State private var loading = true
     @State private var error: String?
@@ -67,6 +68,21 @@ struct ManifestsView: View {
             }
         }
         .task { await load() }
+        .onAppear {
+            realtimeClient.connect(
+                onStateChange: { _ in },
+                onEvent: { event in
+                    guard event.eventType == .manifestUpdate || event.eventType == .transferUpdate else { return }
+                    Task { await load() }
+                },
+                onReconnect: {
+                    Task { await load() }
+                }
+            )
+        }
+        .onDisappear {
+            realtimeClient.disconnect()
+        }
     }
 
     @MainActor

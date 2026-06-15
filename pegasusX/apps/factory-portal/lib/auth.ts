@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { isTauri, getStoredToken, storeToken, clearStoredToken } from './bridge';
 import { getFirebaseIdToken, firebaseSignOut } from './firebase';
+import { runFactorySessionReconcile } from './session-reconcile';
 
 export const factoryApiBaseUrl = (
   process.env.NEXT_PUBLIC_API_URL ||
@@ -176,6 +177,7 @@ export function subscribeFactoryWS(options: {
   let socket: WebSocket | null = null;
   let reconnectTimer: number | null = null;
   let reconnectAttempt = 0;
+  let hasConnectedOnce = false;
   let disposed = false;
 
   const clearReconnect = () => {
@@ -201,8 +203,13 @@ export function subscribeFactoryWS(options: {
     socket = new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(token)}`);
 
     socket.onopen = () => {
+      const wasReconnect = hasConnectedOnce;
+      hasConnectedOnce = true;
       reconnectAttempt = 0;
       options.onStatusChange?.('live');
+      if (wasReconnect) {
+        void runFactorySessionReconcile();
+      }
     };
 
     socket.onmessage = event => {

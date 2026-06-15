@@ -181,13 +181,45 @@ final class FleetServiceLive: FleetServiceProtocol {
     /// Attempt to flush all pending offline deliveries to the server.
     /// Call this when network connectivity is restored.
     func flushOfflineQueue() async {
+        await DriverSessionReconcile.run()
         guard let container = modelContainer else { return }
+
         let pending: [OfflineDelivery] = await MainActor.run {
             let store = OfflineDeliveryStore(modelContext: container.mainContext)
             return store.fetchPending()
         }
+        guard !pending.isEmpty else { return }
 
-        for delivery in pending {
+        let driverId = TokenStore.shared.userId ?? ""
+        let bearer = TokenStore.shared.token ?? ""
+        let dtos = pending.map {
+            SyncDeliveryDTO(
+                orderId: $0.orderId,
+                signature: $0.signature,
+                timestamp: $0.timestamp,
+                status: $0.status
+            )
+        }
+
+        if !driverId.isEmpty, !bearer.isEmpty {
+            if let result = try? await SyncServiceLive.shared.uploadBatch(
+                driverId: driverId,
+                deliveries: dtos,
+                bearerToken: bearer
+            ) {
+                await MainActor.run {
+                    let store = OfflineDeliveryStore(modelContext: container.mainContext)
+                    store.deleteSynced(orderIds: result.processed)
+                }
+            }
+        }
+
+        let remaining: [OfflineDelivery] = await MainActor.run {
+            let store = OfflineDeliveryStore(modelContext: container.mainContext)
+            return store.fetchPending()
+        }
+
+        for delivery in remaining {
             do {
                 let location = await currentLocation()
                 let response = try await api.submitDelivery(
@@ -204,7 +236,6 @@ final class FleetServiceLive: FleetServiceProtocol {
                     print("[FleetServiceLive] Flushed offline delivery: \(delivery.orderId)")
                 }
             } catch {
-                // Still offline or server error — stop flushing, retry later
                 print("[FleetServiceLive] Flush failed for \(delivery.orderId), will retry later")
                 break
             }
