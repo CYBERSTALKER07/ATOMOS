@@ -28,6 +28,27 @@ export function retailerCheckoutKey(retailerId: string, cartFingerprint: string)
   return `retailer-checkout:${retailerId}:${stableHash(cartFingerprint)}`;
 }
 
+/** Unified checkout cart session — gateway + sorted line-item fingerprint (mobile + desktop). */
+export function retailerUnifiedCheckoutKey(gateway: string, cartFingerprint: string): string {
+  return `retailer-checkout:${gateway}:${cartFingerprint}`;
+}
+
+export function retailerCardCheckoutKey(orderId: string, gateway: string): string {
+  return `retailer-card-checkout:${orderId}:${gateway}`;
+}
+
+export function retailerCashCheckoutKey(orderId: string): string {
+  return `retailer-cash-checkout:${orderId}`;
+}
+
+export function retailerSupplierAddKey(supplierId: string): string {
+  return `retailer-supplier-add:${supplierId}`;
+}
+
+export function retailerSupplierRemoveKey(supplierId: string): string {
+  return `retailer-supplier-remove:${supplierId}`;
+}
+
 export function supplierDispatchKey(
   supplierId: string,
   warehouseId: string,

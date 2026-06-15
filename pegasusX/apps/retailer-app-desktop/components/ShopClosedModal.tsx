@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "../lib/auth";
+import { retailerShopClosedResponseKey } from "@pegasusx/api-client";
 import { useWebSocket, useWsEvent, type WsMessage } from "../lib/ws";
 
 type ShopClosedAlert = {
@@ -111,7 +112,7 @@ export default function ShopClosedModal() {
         const res = await apiFetch("/v1/retailer/shop-closed-response", {
           method: "POST",
           headers: {
-            "Idempotency-Key": `shop-closed-response:${alert.order_id}:${option}`,
+            "Idempotency-Key": retailerShopClosedResponseKey(alert.order_id, option),
           },
           body: JSON.stringify({
             order_id: alert.order_id,

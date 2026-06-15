@@ -18,6 +18,7 @@ type fakeRedisAdapter struct {
 	pingErr    error
 	pingCalled bool
 	closed     bool
+	nilClient  bool
 }
 
 func (f *fakeRedisAdapter) Ping(_ context.Context) error {
@@ -31,7 +32,10 @@ func (f *fakeRedisAdapter) Close() error {
 }
 
 func (f *fakeRedisAdapter) Client() *redis.Client {
-	return nil
+	if f.nilClient {
+		return nil
+	}
+	return redis.NewClient(&redis.Options{Addr: "127.0.0.1:0"})
 }
 
 func (f *fakeRedisAdapter) Get(_ context.Context, _ string) ([]byte, bool, error) {
@@ -268,5 +272,40 @@ func TestNewApp_StrictModeFailsWhenNotificationDLQUnavailable(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "dlq unavailable") {
 		t.Fatalf("expected dlq strict-mode error, got: %v", err)
+	}
+}
+
+func TestNewApp_StrictModeFailsWhenIdempotencyRedisClientUnavailable(t *testing.T) {
+	stubRuntimeConstructors(t)
+
+	redis := &fakeRedisAdapter{nilClient: true}
+	newRedisRuntimeAdapter = func(_ cache.RedisConfig) (redisRuntimeAdapter, error) {
+		return redis, nil
+	}
+	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
+		return &fakeKafkaPublisher{}, nil
+	}
+	newKafkaRuntimeDLQWriter = func(_ string, _ string) (kafkaRuntimeDLQWriter, error) {
+		return &fakeKafkaDLQWriter{}, nil
+	}
+	newSpannerRuntimeClient = func(_ context.Context, _ string) (*spanner.Client, error) {
+		return nil, errors.New("skip spanner in strict-mode test")
+	}
+
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = true
+
+	app, err := NewApp(context.Background(), cfg)
+	if err == nil {
+		if app != nil {
+			app.Close()
+		}
+		t.Fatalf("expected strict startup error when idempotency redis client is unavailable")
+	}
+	if !strings.Contains(err.Error(), "idempotency redis store unavailable") {
+		t.Fatalf("expected idempotency strict-mode error, got: %v", err)
+	}
+	if !redis.pingCalled {
+		t.Fatalf("expected redis ping check before idempotency strict failure")
 	}
 }

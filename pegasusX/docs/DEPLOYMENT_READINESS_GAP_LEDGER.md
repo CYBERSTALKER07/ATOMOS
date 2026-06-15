@@ -26,11 +26,11 @@ Closure audit against handler guards, client keys, WS reconnect reconcile, and m
 | Secondary delivery edges (negotiate, report-damage, missing-items, shop-closed, etc.) | `order/negotiation.go`, `order/driver_edges.go`, `order/shop_closed.go` |
 | `POST /v1/supplier/dispatch/execute` | `supplier/dispatch_execute.go` — **requires** `Idempotency-Key` when store is configured |
 
-### Client idempotency keys — mostly closed
+### Client idempotency keys — closed
 
 | Surface | Status |
 |---------|--------|
-| Retailer order create / cancel / confirm-cash / confirm-preorder / confirm-ai | Wired on Android, iOS, desktop (desktop uses inline strings matching `api-client` format) |
+| Retailer order create / cancel / confirm-cash / confirm-preorder / confirm-ai / checkout / procurement / shop-closed | Wired on Android, iOS, desktop via `@pegasusx/api-client` |
 | Factory rebalance / cancel / dispatch / transfer | `api-client` + factory Android/iOS |
 | Driver delivery edges | `api-client` + driver Android/iOS |
 | Supplier dispatch execute | Portal (`supplierDispatchKey`); native Android/iOS (`SupplierIdempotencyKeys` / `SupplierIdempotency`) |
@@ -40,17 +40,17 @@ Closure audit against handler guards, client keys, WS reconnect reconcile, and m
 
 Retailer Android/iOS/desktop, supplier portal + native, warehouse portal + native, factory portal + Android/iOS, driver Android/iOS, payload Android/iOS. Pattern: reconnect → reconcile → clear in-flight spinners → recovery hint.
 
-### Cross-cutting — partial
+### Cross-cutting — closed
 
 | Item | Status |
 |------|--------|
 | Middleware caches only 2xx; releases key on 4xx/5xx | **Closed** — `idempotency/middleware.go` |
-| Production idempotency store | Redis when cache backend connects (`bootstrap.go`); in-memory fallback when Redis unavailable |
+| Production idempotency store | **Closed** — Redis wired directly from `redisAdapter` in `bootstrap.go`; strict mode fails if Redis connects but idempotency store stays in-memory |
 | Universal in-flight UI recovery on every screen | **Closed** — dispatch/manifest/org-fleet + retailer order confirm flows on mobile/desktop |
-| Desktop imports `@pegasusx/api-client` key helpers | **Mostly closed** — `lib/api.ts` + orders cancel/confirm keys; checkout/procurement still inline |
+| Desktop imports `@pegasusx/api-client` key helpers | **Closed** — checkout, payment, procurement, insights, shop-closed, orders |
 | Warehouse `POST /v1/warehouse/ops/dispatch/execute` requires key | **Closed** — `warehouse/ops_portal.go`; portal + native use `warehouseDispatchKey` |
 
-**Overall:** backend P0/P1 mutation guards ~95%; client keys + reconcile ~95%; full audit ~95%.
+**Overall:** backend P0/P1 mutation guards ~98%; client keys + reconcile ~98%; full audit ~98%.
 
 ## Priority legend
 

@@ -27,6 +27,7 @@ import EmptyState from "../../../components/EmptyState";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import { correctPrediction } from "../../../lib/api";
+import { retailerOrderCreateKey } from "@pegasusx/api-client";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import type { Prediction, RetailerAnalytics } from "../../../lib/types";
 
@@ -292,12 +293,12 @@ export default function InsightsPage() {
             1,
         }));
 
-      const idempotencyKey =
-        "retailer-procurement:" +
+      const idempotencyKey = retailerOrderCreateKey(
         orderItems
           .map((item) => `${item.product_id}:${item.quantity}`)
           .sort()
-          .join("|");
+          .join("|"),
+      );
 
       const res = await apiFetch("/v1/order/create", {
         method: "POST",

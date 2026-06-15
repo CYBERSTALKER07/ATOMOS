@@ -26,6 +26,11 @@ import type {
   RetailerProfile,
 } from "../lib/types";
 import type { PaymentGatewayDegradedPayload } from "@pegasusx/types";
+import {
+  retailerUnifiedCheckoutKey,
+  retailerCardCheckoutKey,
+  retailerCashCheckoutKey,
+} from "@pegasusx/api-client";
 
 function getProfile(): RetailerProfile | null {
   if (typeof localStorage === "undefined") return null;
@@ -226,7 +231,7 @@ export default function CheckoutModal({
       const cartRes = await apiFetch("/v1/checkout/unified", {
         method: "POST",
         headers: {
-          "Idempotency-Key": `retailer-checkout:${method}:${cartKey}`,
+          "Idempotency-Key": retailerUnifiedCheckoutKey(method, cartKey),
         },
         body: JSON.stringify({
           retailer_id: profile.id,
@@ -267,7 +272,7 @@ export default function CheckoutModal({
           const payRes = await apiFetch("/v1/order/card-checkout", {
             method: "POST",
             headers: {
-              "Idempotency-Key": `retailer-card-checkout:${so.order_id}:${gatewayMap[method]}`,
+              "Idempotency-Key": retailerCardCheckoutKey(so.order_id, gatewayMap[method]),
             },
             body: JSON.stringify({
               order_id: so.order_id,
@@ -296,7 +301,7 @@ export default function CheckoutModal({
           await apiFetch("/v1/order/cash-checkout", {
             method: "POST",
             headers: {
-              "Idempotency-Key": `retailer-cash-checkout:${so.order_id}`,
+              "Idempotency-Key": retailerCashCheckoutKey(so.order_id),
             },
             body: JSON.stringify({ order_id: so.order_id }),
           });

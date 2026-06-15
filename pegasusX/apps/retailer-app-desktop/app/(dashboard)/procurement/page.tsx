@@ -25,6 +25,10 @@ import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
+import {
+  retailerSupplierAddKey,
+  retailerSupplierRemoveKey,
+} from "@pegasusx/api-client";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import type { Supplier, RetailerAnalytics } from "../../../lib/types";
 
@@ -209,7 +213,7 @@ export default function ProcurementPage() {
       try {
         const res = await apiFetch(`/v1/retailer/suppliers/${supplierId}/add`, {
           method: "POST",
-          headers: { "Idempotency-Key": `retailer-supplier-add:${supplierId}` },
+          headers: { "Idempotency-Key": retailerSupplierAddKey(supplierId) },
         });
         if (res.ok) {
           mutateSuppliers();
@@ -233,7 +237,7 @@ export default function ProcurementPage() {
           {
             method: "POST",
             headers: {
-              "Idempotency-Key": `retailer-supplier-remove:${supplierId}`,
+              "Idempotency-Key": retailerSupplierRemoveKey(supplierId),
             },
           },
         );

@@ -249,6 +249,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 
 	cacheBackend := cache.Backend(cache.NewInMemoryBackend())
 	redisEnabled := false
+	var redisAdapter redisRuntimeAdapter
 	redisCfg := cache.RedisConfig{
 		Addr:            cfg.RedisAddr,
 		Password:        cfg.RedisPassword,
@@ -275,6 +276,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		)
 		_ = redisBackend.Close()
 	} else {
+		redisAdapter = redisBackend
 		cbBackend := cache.NewCircuitBreakerBackend(redisBackend, cacheBackend)
 		cacheBackend = cbBackend
 		redisEnabled = true
@@ -286,13 +288,15 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	cacheClient := cache.New(cacheBackend, log)
 	driverLocations := telemetry.NewCacheLastLocationStore(cacheClient, telemetry.DefaultLastLocationTTL)
 	var idemStore idempotency.Store = idempotency.NewInMemoryStore()
-	if redisEnabled {
-		adapter, ok := cacheBackend.(redisRuntimeAdapter)
-		if !ok {
-			log.Warn("cacheBackend is not a redisRuntimeAdapter, cannot use for idempotency store")
-		} else {
-			idemStore = idempotency.NewRedisStore(adapter.Client())
+	if redisAdapter != nil {
+		if client := redisAdapter.Client(); client != nil {
+			idemStore = idempotency.NewRedisStore(client)
 			log.Info("idempotency redis store enabled", "addr", cfg.RedisAddr)
+		}
+	}
+	if cfg.RequireInfraAdapters && redisEnabled {
+		if _, ok := idemStore.(*idempotency.InMemoryStore); ok {
+			return nil, fmt.Errorf("require infra adapters: idempotency redis store unavailable")
 		}
 	}
 	memoryOutboxStore := newInMemoryOutboxStore()

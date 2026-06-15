@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { PaymentRequired } from "@pegasusx/types";
+import { retailerConfirmCashKey, retailerCardCheckoutKey } from "@pegasusx/api-client";
 import { useWsEvent, useWebSocket, type WsMessage } from "../lib/ws";
 import { apiFetch } from "../lib/auth";
 import type { CardCheckoutResponse, PendingPaymentSession, PendingPaymentsResponse } from "../lib/types";
@@ -326,7 +327,7 @@ export default function PaymentModal() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": `retailer-confirm-cash:${event.order_id}`,
+          "Idempotency-Key": retailerConfirmCashKey(event.order_id),
         },
         body: JSON.stringify({ order_id: event.order_id }),
       });
@@ -368,7 +369,7 @@ export default function PaymentModal() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Idempotency-Key": `retailer-card-checkout:${event.order_id}:${gateway}`,
+            "Idempotency-Key": retailerCardCheckoutKey(event.order_id, gateway),
           },
           body: JSON.stringify({ order_id: event.order_id, gateway }),
         });
