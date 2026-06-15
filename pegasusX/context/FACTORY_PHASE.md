@@ -1,7 +1,7 @@
 # pegasusX FACTORY_ADMIN Role — Phased Execution Ledger
 
 **Scope:** pegasusX only · **Parent plan:** `VEGETABLE_PLAN.md` §2.3  
-**Last updated:** 2026-06-14
+**Last updated:** 2026-06-15 (FA-7/8/9 factory cross-client parity batch).
 
 ## Status model
 
@@ -34,12 +34,47 @@
 
 ---
 
+---
+
+## Phase FA-7 — Production blockers (auth refresh, manifest/supply mutations)
+
+| ID | Feature | Portal | Android | iOS | Status |
+|----|---------|--------|---------|-----|--------|
+| FA7-01 | Token refresh | `auth.ts` | `NetworkModule` | `APIClient` | **WIRED** (pre-existing) |
+| FA7-02 | Manifest lifecycle mutations | ✓ | ✓ | ✓ | **WIRED** (pre-existing, SSMR green) |
+| FA7-03 | Supply/transfer transitions | ✓ | ✓ | ✓ | **WIRED** (pre-existing) |
+
+**Exit:** No P0 path drift; factory JWT refresh on all surfaces.
+
+---
+
+## Phase FA-8 — Parity wiring (notifications inbox, analytics depth)
+
+| ID | Feature | Portal | Android | iOS | Status |
+|----|---------|--------|---------|-----|--------|
+| FA8-01 | Notification inbox | portal top bar (pre-existing) | **wired native** | **wired native** | **WIRED** (`PX_E2E_FACTORY_NOTIFICATION_INBOX_OK`) |
+| FA8-02 | Mark all read | ✓ | ✓ | ✓ | **WIRED** |
+| FA8-03 | Analytics overview | `/analytics` | `AnalyticsScreen` | `AnalyticsView` | **WIRED** (FA-1) |
+
+---
+
+## Phase FA-9 — Client policy & platform gating
+
+| ID | Feature | Portal | Android | iOS | SSMR | Status |
+|----|---------|--------|---------|-----|------|--------|
+| FA9-01 | `GET /v1/platform/client-policy?role=FACTORY` | **ClientPolicyBanner** | dashboard banner | dashboard banner | — | **WIRED** |
+| FA9-02 | SSMR marker | — | — | — | `PX_E2E_FACTORY_CLIENT_POLICY_OK` | **WIRED** |
+| FA9-03 | Firebase OTP | login TODO | — | — | — | **Open** (deferred) |
+
+---
+
 ## Verification
 
 ```bash
-cd pegasusX/apps/backend-go && go test ./factory/... ./warehouse/...
-cd pegasusX/apps/ai-worker && go test ./...
-cd pegasusX && make test-ssmr-infra   # PX_E2E_FACTORY_ANALYTICS_OK, PX_E2E_FACTORY_INSIGHTS_OK
+cd pegasusX/apps/backend-go && go build ./cmd/ssmr-smokecheck/
+cd pegasusX/apps/factory-app-android && ./gradlew :app:compileDebugKotlin
+cd pegasusX/apps/factory-app-ios && xcodebuild -scheme FactoryAppIOS -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO build
+cd pegasusX && make test-ssmr-infra   # PX_E2E_FACTORY_* markers
 ```
 
 ---
@@ -49,5 +84,6 @@ cd pegasusX && make test-ssmr-infra   # PX_E2E_FACTORY_ANALYTICS_OK, PX_E2E_FACT
 1. ~~Analytics Spanner overview~~ — FA-1 backend
 2. ~~ai-worker TopicFreezeLocks consumer~~ — PX-FREEZE-01–04
 3. ~~Factory native analytics screens + DTO alignment~~ — FA1-04
-4. ~~Import session wizard + async ai-worker consumer~~ — `apps/ai-worker/import_worker.go` + `PX_E2E_SUPPLIER_IMPORT_ASYNC_OK`
-5. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3
+4. ~~Import session wizard + async ai-worker consumer~~ — supplier row
+5. ~~FA-7/8/9 cross-client parity batch~~ — **CLOSED** (2026-06-15)
+6. **Cross-role next** — DRIVER row per `VEGETABLE_PLAN.md` §3

@@ -7,6 +7,7 @@ import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import Icon from './Icon';
 import { useTheme, type ThemeMode } from './ThemeProvider';
 import { apiFetch } from '@/lib/auth';
+import ClientPolicyBanner from './ClientPolicyBanner';
 import { motion } from 'framer-motion';
 
 type NavEntry = { href: string; icon: string; label: string };
@@ -294,6 +295,7 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
         </header>
 
         <main key={refreshEpoch} className="min-w-0 flex-1 overflow-y-auto" style={{ background: 'var(--desk-canvas)' }}>
+          <ClientPolicyBanner />
           <div className="min-h-full">{children}</div>
         </main>
       </div>

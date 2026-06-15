@@ -11,6 +11,8 @@ struct DashboardView: View {
     @State private var stats = DashboardStats.empty
     @State private var loading = true
     @State private var error: String?
+    @State private var clientPolicyMessage: String?
+    @State private var showNotifications = false
     private let refreshNanos: UInt64 = 30_000_000_000
 
     var body: some View {
@@ -31,6 +33,7 @@ struct DashboardView: View {
                     }
                 } else {
                     VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
+                        ClientPolicyBanner(message: clientPolicyMessage)
                         DashboardHeroCard(stats: stats)
                         WorkflowLaunchCard(
                             onOpenSupplyRequests: onOpenSupplyRequests,
@@ -60,6 +63,12 @@ struct DashboardView: View {
             .navigationTitle("Factory")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
+                    Button("Notifications", systemImage: "bell") {
+                        showNotifications = true
+                    }
+                    .labelStyle(.iconOnly)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Refresh", systemImage: "arrow.clockwise") {
                         Task { await load() }
                     }
@@ -74,6 +83,7 @@ struct DashboardView: View {
             }
             .task {
                 await load()
+                await loadClientPolicy()
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: refreshNanos)
                     await load(silent: true)
@@ -109,6 +119,51 @@ struct DashboardView: View {
                     AnalyticsView()
                 }
             }
+            .sheet(isPresented: $showNotifications) {
+                NotificationInboxView()
+            }
+        }
+    }
+
+    private func loadClientPolicy() async {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        do {
+            struct ClientPolicy: Decodable {
+                let outdated: Bool
+                let forceUpdate: Bool
+                let minimumVersion: String
+                let deferReason: String?
+
+                enum CodingKeys: String, CodingKey {
+                    case outdated
+                    case forceUpdate = "force_update"
+                    case minimumVersion = "minimum_version"
+                    case deferReason = "defer_reason"
+                }
+            }
+            let policy: ClientPolicy = try await APIClient.shared.get(
+                "v1/platform/client-policy",
+                query: [
+                    "role": "FACTORY",
+                    "platform": "ios",
+                    "version": version,
+                    "channel": "production",
+                ],
+            )
+            if policy.outdated || policy.forceUpdate {
+                var message = policy.forceUpdate ? "Update required" : "Update available"
+                if !policy.minimumVersion.isEmpty {
+                    message += " — minimum version \(policy.minimumVersion)"
+                }
+                if let deferReason = policy.deferReason, !deferReason.isEmpty {
+                    message += ". \(deferReason)"
+                }
+                clientPolicyMessage = message
+            } else {
+                clientPolicyMessage = nil
+            }
+        } catch {
+            // Policy fetch is optional on local/dev stacks.
         }
     }
 

@@ -13,7 +13,8 @@ enum FactoryService {
     }
 
     static func refresh() async throws -> AuthResponse {
-        try await api.postVoid("v1/auth/factory/refresh")
+        struct EmptyBody: Encodable {}
+        return try await api.post("v1/auth/factory/refresh", body: EmptyBody())
     }
 
     static func setup(body: [String: String]) async throws {

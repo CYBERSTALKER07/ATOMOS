@@ -15,9 +15,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.pegasusx.factory.BuildConfig
 import com.pegasusx.factory.data.model.DashboardStats
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
+import com.pegasusx.factory.ui.components.ClientPolicyBanner
 import com.pegasusx.factory.ui.components.FactoryLoadingState
 import com.pegasusx.factory.ui.components.FactoryStateKind
 import com.pegasusx.factory.ui.components.FactoryStatePane
@@ -57,7 +59,33 @@ fun DashboardScreen(
     var stats by remember { mutableStateOf(DashboardStats()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    fun loadClientPolicy() {
+        scope.launch {
+            try {
+                val resp = api.getClientPolicy(
+                    platform = "android",
+                    version = BuildConfig.VERSION_NAME,
+                )
+                if (resp.isSuccessful && resp.body() != null) {
+                    val policy = resp.body()!!
+                    if (policy.outdated || policy.forceUpdate) {
+                        clientPolicyMessage = buildString {
+                            append(if (policy.forceUpdate) "Update required" else "Update available")
+                            if (policy.minimumVersion.isNotBlank()) {
+                                append(" — minimum version ${policy.minimumVersion}")
+                            }
+                            policy.deferReason?.takeIf { it.isNotBlank() }?.let { append(". $it") }
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+                // Policy fetch is optional on local/dev stacks.
+            }
+        }
+    }
 
     fun load(silent: Boolean = false) {
         if (!silent) {
@@ -84,6 +112,7 @@ fun DashboardScreen(
 
     LaunchedEffect(Unit) {
         load()
+        loadClientPolicy()
         while (true) {
             delay(DASHBOARD_REFRESH_MS)
             load(silent = true)
@@ -114,6 +143,9 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { onNavigate(FactoryRoutes.NOTIFICATIONS) }) {
+                        Icon(Icons.Default.Notifications, "Notifications")
+                    }
                     IconButton(onClick = { load() }) {
                         Icon(Icons.Default.Refresh, "Refresh")
                     }
@@ -149,6 +181,9 @@ fun DashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    ClientPolicyBanner(clientPolicyMessage)
+                }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     DashboardHeroCard(
                         stats = stats,

@@ -229,6 +229,8 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	fmt.Println("PX_E2E_WAREHOUSE_ANALYTICS_OK")
 	fmt.Println("PX_E2E_FACTORY_OK")
 	fmt.Println("PX_E2E_FACTORY_ANALYTICS_OK")
+	fmt.Println("PX_E2E_FACTORY_CLIENT_POLICY_OK")
+	fmt.Println("PX_E2E_FACTORY_NOTIFICATION_INBOX_OK")
 	fmt.Println("PX_E2E_DELIVERY_OK")
 	fmt.Println("PX_E2E_TELEMETRY_OK")
 	fmt.Println("PX_E2E_PAYLOAD_OK")
@@ -1600,6 +1602,9 @@ func runWarehouseDispatchLock(ctx context.Context, client *http.Client, base, co
 }
 
 func runFactoryOps(ctx context.Context, client *http.Client, base, cookie string) error {
+	if err := runFactoryClientPolicyE2E(ctx, client, base); err != nil {
+		return err
+	}
 	if err := runFactoryAnalyticsOverviewE2E(ctx, client, base, cookie); err != nil {
 		return err
 	}
@@ -1701,6 +1706,32 @@ func runFactoryOps(ctx context.Context, client *http.Client, base, cookie string
 	if err := runFactoryLoadingBayE2E(ctx, client, base, cookie, createdTransfer.TransferID); err != nil {
 		return err
 	}
+	if err := runFactoryNotificationInboxE2E(ctx, client, base); err != nil {
+		return err
+	}
+	return nil
+}
+
+func runFactoryClientPolicyE2E(ctx context.Context, client *http.Client, base string) error {
+	body, err := clientGet(ctx, client, base+"/v1/platform/client-policy?role=FACTORY&platform=web&version=1.0.0&channel=production")
+	if err != nil {
+		return err
+	}
+	var resp struct {
+		Role           string `json:"role"`
+		MinimumVersion string `json:"minimum_version"`
+		Outdated       bool   `json:"outdated"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return fmt.Errorf("decode factory client policy: %w", err)
+	}
+	if resp.Role != "FACTORY" {
+		return fmt.Errorf("factory client policy role=%q want FACTORY", resp.Role)
+	}
+	if strings.TrimSpace(resp.MinimumVersion) == "" {
+		return fmt.Errorf("factory client policy missing minimum_version")
+	}
+	fmt.Println("PX_E2E_FACTORY_CLIENT_POLICY_OK")
 	return nil
 }
 
@@ -1722,28 +1753,64 @@ func runFactoryAnalyticsOverviewE2E(ctx context.Context, client *http.Client, ba
 	return nil
 }
 
-func runFactoryInsightsE2E(ctx context.Context, client *http.Client, base string) error {
+func factoryDemoToken(ctx context.Context, client *http.Client, base string) (string, error) {
 	phone := envOr("FACTORY_DEMO_PHONE", "+998901000099")
 	pin := envOr("FACTORY_DEMO_PIN", "1234")
 	loginBody, _ := json.Marshal(map[string]string{"phone": phone, "pin": pin})
 	status, respBody, _, err := clientPost(ctx, client, base+"/v1/auth/factory/login", loginBody, "", "")
 	if err != nil {
-		return err
+		return "", err
 	}
 	if status != http.StatusOK {
-		return fmt.Errorf("factory login status %d body %s", status, string(respBody))
+		return "", fmt.Errorf("factory login status %d body %s", status, string(respBody))
 	}
 	var loginResp struct {
 		Token string `json:"token"`
 	}
 	if err := json.Unmarshal(respBody, &loginResp); err != nil {
-		return fmt.Errorf("decode factory login: %w", err)
+		return "", fmt.Errorf("decode factory login: %w", err)
 	}
 	if loginResp.Token == "" {
-		return fmt.Errorf("factory login missing token: %s", string(respBody))
+		return "", fmt.Errorf("factory login missing token: %s", string(respBody))
 	}
+	return loginResp.Token, nil
+}
 
-	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/warehouse/replenishment/insights", nil, loginResp.Token, "")
+func runFactoryNotificationInboxE2E(ctx context.Context, client *http.Client, base string) error {
+	token, err := factoryDemoToken(ctx, client, base)
+	if err != nil {
+		return err
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		lastErr = assertInboxHasRows(ctx, client, base, token, "factory")
+		if lastErr == nil {
+			break
+		}
+		time.Sleep(400 * time.Millisecond)
+	}
+	if lastErr != nil {
+		return fmt.Errorf("factory inbox not ready after kafka fanout window: %w", lastErr)
+	}
+	markBody, _ := json.Marshal(map[string]any{"mark_all": true})
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/user/notifications/read", markBody, token, "ssmr-factory-inbox-read")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("factory mark notifications read status %d body %s", status, string(respBody))
+	}
+	fmt.Println("PX_E2E_FACTORY_NOTIFICATION_INBOX_OK")
+	return nil
+}
+
+func runFactoryInsightsE2E(ctx context.Context, client *http.Client, base string) error {
+	token, err := factoryDemoToken(ctx, client, base)
+	if err != nil {
+		return err
+	}
+	status, respBody, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/warehouse/replenishment/insights", nil, token, "")
 	if err != nil {
 		return err
 	}
@@ -1761,7 +1828,7 @@ func runFactoryInsightsE2E(ctx context.Context, client *http.Client, base string
 	}
 	fmt.Println("PX_E2E_FACTORY_INSIGHTS_OK")
 
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/warehouse/replenishment/insights/ins_wh_1/approve", nil, loginResp.Token, "ssmr-factory-insight-approve")
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/warehouse/replenishment/insights/ins_wh_1/approve", nil, token, "ssmr-factory-insight-approve")
 	if err != nil {
 		return err
 	}

@@ -174,7 +174,7 @@ For each role, list its apps (all must stay in sync per doctrine). For each app/
 - **UI/Layout from pegasus ref:** Factory shell/dashboard with WorkflowLaunchRow, KPI cards (relabel to "Gate exceptions" etc. as in pegasusX audits); ManifestList/Detail, ManifestExceptions, StaffDetail, LoadingBay, PayloadOverride, CreateTransfer, TransferList/Detail, Insights. Replicate pegasus factory-portal layouts/patterns into pegasusX factory-portal + enhance ui-kit. Native: identical structure + adaptive (iPad split, Android two-pane).
 - **Cross-sync:** Factory room + supplier + warehouse (transfers) + payload (manifest execution gate) + driver (via manifest). Full MANIFEST_* events + outbox. Payload override rebalance affects multiple manifests.
 - **E2E criteria:** Supply ACK→FULFILL + transfer; manifest full lifecycle + seal + dispatch + complete; payload override + exceptions; driver gate; `PX_E2E_FACTORY_*` + manifest markers.
-- **Status:** Lifecycle durability `implemented` (PX4-A2, PX9-B); role-row UI parity `implemented` (PX12-J) with pegasusX often ahead (additive screens). Analytics/insights native partial.
+- **Status:** Lifecycle durability `implemented` (PX4-A2, PX9-B); role-row UI parity `implemented` (PX12-J) with pegasusX often ahead (additive screens). Analytics/insights native partial. **FA-7/8/9 closed** (2026-06-15): client-policy banners (portal/Android/iOS), native notification inbox (Android/iOS), auth/mutation paths verified — see `context/FACTORY_PHASE.md`. SSMR: `PX_E2E_FACTORY_CLIENT_POLICY_OK`, `PX_E2E_FACTORY_NOTIFICATION_INBOX_OK` + existing factory markers.
 - **Phase:** Payload/manifest adjacent work moves factory row together.
 
 ### 2.4 DRIVER Role

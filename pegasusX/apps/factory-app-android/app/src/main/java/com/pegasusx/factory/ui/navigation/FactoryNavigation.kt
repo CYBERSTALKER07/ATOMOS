@@ -39,6 +39,7 @@ import com.pegasusx.factory.ui.screens.loadingbay.LoadingBayScreen
 import com.pegasusx.factory.ui.screens.manifest.ManifestDetailScreen
 import com.pegasusx.factory.ui.screens.manifest.ManifestListScreen
 import com.pegasusx.factory.ui.screens.exceptions.ManifestExceptionsScreen
+import com.pegasusx.factory.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.factory.ui.screens.override.PayloadOverrideScreen
 import com.pegasusx.factory.ui.screens.staff.StaffDetailScreen
 import com.pegasusx.factory.ui.screens.staff.StaffScreen
@@ -64,6 +65,7 @@ object FactoryRoutes {
     const val MANIFESTS = "manifests"
     const val MANIFEST_DETAIL = "manifests/{id}"
     const val STAFF_DETAIL = "staff/{id}"
+    const val NOTIFICATIONS = "notifications"
 
     fun transferDetail(id: String) = "transfers/$id"
     fun manifestDetail(id: String) = "manifests/$id"
@@ -281,6 +283,13 @@ fun FactoryNavigation(
 
             composable(FactoryRoutes.MANIFEST_EXCEPTIONS) {
                 ManifestExceptionsScreen(
+                    api = api,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(FactoryRoutes.NOTIFICATIONS) {
+                NotificationInboxScreen(
                     api = api,
                     onBack = { navController.popBackStack() },
                 )
