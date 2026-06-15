@@ -15,6 +15,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
@@ -41,6 +42,7 @@ type Service struct {
 	driverHub   *ws.Hub
 	notifSvc    *notifications.Service
 	log         *slog.Logger
+	idem        idempotency.Store
 
 	supplierID       string
 	currency         string
@@ -81,6 +83,7 @@ type ServiceConfig struct {
 	Now              func() time.Time
 	FirebaseVerifier auth.FirebaseVerifier
 	ManifestStore    *manifest.Store
+	Idem               idempotency.Store
 }
 
 type payloaderTruckWire struct {
@@ -211,6 +214,7 @@ func NewService(c ServiceConfig) *Service {
 		driverHub:        c.DriverHub,
 		notifSvc:         c.NotifSvc,
 		log:              c.Log,
+		idem:             c.Idem,
 		supplierID:       c.SupplierID,
 		currency:         c.Currency,
 		jwtSecret:        c.JWTSecret,
@@ -721,6 +725,14 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, err := readLimitedBody(r, 32*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	manifestID := manifestIDParam(r)
 	if manifestID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_required"})
@@ -728,7 +740,7 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req injectOrderRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -743,7 +755,7 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 
 	var manifest ManifestRow
 	now := ""
-	err := s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -831,13 +843,16 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 		"stop_count":      manifest.StopCount,
 	})
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":          "order_injected",
 		"manifest_id":     manifestID,
 		"order_id":        req.OrderID,
 		"total_volume_vu": manifest.TotalVolumeVU,
 		"stop_count":      manifest.StopCount,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleManifestException serves POST /v1/payload/manifest-exception.
@@ -1521,6 +1536,14 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, err := readLimitedBody(r, 8*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	manifestID := manifestIDParam(r)
 	if manifestID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_required"})
@@ -1528,7 +1551,7 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var manifest ManifestRow
-	err := s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1587,7 +1610,7 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":      "PAYLOAD_MANIFEST_SEALED",
 		"manifest_id": manifest.ManifestID,
 		"state":       manifest.State,
@@ -1595,7 +1618,10 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		"stop_count":  manifest.StopCount,
 		"volume_vu":   float64(manifest.TotalVolumeVU),
 		"max_vu":      float64(manifest.MaxVolumeVU),
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleSeal serves POST /v1/payload/seal.

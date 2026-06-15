@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
-import { ApiError } from "@pegasusx/api-client";
+import { ApiError, supplierDispatchKey } from "@pegasusx/api-client";
 import type { SupplierDispatchPreview, SupplierTopologyWarehouse } from "@pegasusx/types";
 import { useDispatchData, type ManifestData } from "./use-dispatch-data";
 import { PortalSurface } from "../_components/PortalSurface";
@@ -52,7 +52,11 @@ export default function DispatchPage() {
     setExecuteError(null);
     setExecuteSuccess(null);
     try {
-      const result = await api.executeSupplierDispatch({ mode: "AUTO" }, warehouseQuery(selectedWarehouseId));
+      const routeFingerprint = JSON.stringify(preview?.routes ?? preview?.proposed_routes ?? []);
+      const supplierId = preview?.supplier_id ?? "supplier";
+      const warehouseId = selectedWarehouseId ?? "default";
+      const idempotencyKey = supplierDispatchKey(supplierId, warehouseId, "AUTO", routeFingerprint);
+      const result = await api.executeSupplierDispatch({ mode: "AUTO" }, warehouseQuery(selectedWarehouseId), idempotencyKey);
       if (result.status === "dispatched") {
         const parts = [
           `Dispatch committed: ${result.manifests_created ?? 0} manifest(s), ${result.orders_assigned ?? 0} order(s).`,
@@ -79,7 +83,7 @@ export default function DispatchPage() {
     } finally {
       setExecuting(false);
     }
-  }, [loadPreview, refresh, selectedWarehouseId]);
+  }, [loadPreview, preview, refresh, selectedWarehouseId]);
 
   const draft = useMemo(() => filterManifests(manifests.filter((m) => m.status === "DRAFT"), searchQuery), [manifests, searchQuery]);
   const loadingColumn = useMemo(

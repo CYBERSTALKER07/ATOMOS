@@ -49,6 +49,8 @@ import com.pegasusx.driver.BuildConfig
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverOutdatedState
 import com.pegasusx.driver.data.remote.DriverWebSocket
+import com.pegasusx.driver.services.OfflineSyncScheduler
+import com.pegasusx.driver.services.OfflineSyncScheduler
 import com.pegasusx.driver.data.remote.TokenHolder
 import com.pegasusx.driver.ui.screens.auth.LoginScreen
 import com.pegasusx.driver.ui.screens.home.HomeScreen
@@ -148,6 +150,7 @@ fun DriverNavigation(
                 mainHandler.post {
                     if (!networkAvailable) {
                         refreshEpoch += 1
+                        OfflineSyncScheduler.enqueue(context)
                     }
                     networkAvailable = true
                 }

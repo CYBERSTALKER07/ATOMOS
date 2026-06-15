@@ -120,6 +120,23 @@ import type {
 
 export { reconnectDelayMs, parseRetryAfterSeconds, retryAfterSecondsFromResponse } from "./reconnect";
 export type { ReconnectBackoffOptions } from "./reconnect";
+export {
+  driverDeliverKey,
+  driverOffloadKey,
+  driverCompleteKey,
+  driverCollectCashKey,
+  retailerCheckoutKey,
+  supplierDispatchKey,
+  warehouseDispatchKey,
+  payloadSealKey,
+  payloadInjectKey,
+  supplierManifestSealKey,
+} from "./idempotency";
+export {
+  SESSION_RECONCILE_ENDPOINTS,
+  reconcileSession,
+} from "./session-reconcile";
+export type { SessionReconcileRole, SessionReconcileEndpoint, SessionReconcileOptions, SessionReconcileResult } from "./session-reconcile";
 
 export interface ApiClientConfig {
   baseUrl: string;
@@ -374,11 +391,12 @@ export class ApiClient {
   async executeSupplierDispatch(
     request: SupplierDispatchExecuteRequest = { mode: "AUTO" },
     query: { warehouse_id?: string } = {},
+    idempotencyKey: string,
   ): Promise<SupplierDispatchExecuteResponse> {
     return this.request<SupplierDispatchExecuteResponse>(
       appendQuery("/v1/supplier/dispatch/execute", query as Record<string, unknown>),
       "POST",
-      { body: request },
+      { body: request, idempotencyKey },
     );
   }
 

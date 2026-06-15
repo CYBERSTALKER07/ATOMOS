@@ -619,6 +619,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		JWTSecret:     cfg.JWTSecret,
 		JWTIssuer:     cfg.JWTIssuer,
 		ManifestStore: manifest.NewStore(spannerClient),
+		Idem:          idemStore,
 	})
 	payloadSvc.SetPortalManifestLister(&supplier.ManifestLister{Service: supplierSvc})
 	payloadSvc.WarmManifestCache(ctx)

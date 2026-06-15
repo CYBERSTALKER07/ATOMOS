@@ -2125,19 +2125,29 @@ func (s *Service) HandleConfirmOffload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	var req ConfirmOffloadRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	resp, err := s.ConfirmOffload(r.Context(), claims, req)
 	if err != nil {
 		s.writeOrderMutationError(w, "driver confirm offload failed", req.OrderID, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleCompleteOrder is POST /v1/order/complete.
@@ -2152,19 +2162,29 @@ func (s *Service) HandleCompleteOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	var req CompleteOrderRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	resp, err := s.CompleteOrder(r.Context(), claims, req)
 	if err != nil {
 		s.writeOrderMutationError(w, "driver complete order failed", req.OrderID, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleCollectCash is POST /v1/order/collect-cash.
@@ -2179,19 +2199,29 @@ func (s *Service) HandleCollectCash(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
 	var req CollectCashRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	resp, err := s.CollectCash(r.Context(), claims, req)
 	if err != nil {
 		s.writeOrderMutationError(w, "driver collect cash failed", req.OrderID, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 func (s *Service) writeOrderMutationError(w http.ResponseWriter, operation string, orderID string, err error) {

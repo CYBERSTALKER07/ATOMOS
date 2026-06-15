@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/packages/handoff"
 )
 
@@ -98,6 +99,18 @@ func (s *Service) processBatchDelivery(ctx context.Context, claims auth.Claims, 
 		return "", errors.New("order_id and signature required")
 	}
 
+	if s.idem != nil {
+		key := "sync-batch:" + orderID + ":" + signature
+		hash := sha256HexBytes([]byte(key))
+		rec, hit, guardErr := idempotency.Guard(ctx, s.idem, key, hash)
+		if guardErr != nil && !errors.Is(guardErr, idempotency.ErrConflict) {
+			return "", guardErr
+		}
+		if hit && rec.StatusCode == http.StatusOK {
+			return orderID, nil
+		}
+	}
+
 	orderRecord, found, err := s.repo.GetOrder(ctx, orderID)
 	if err != nil {
 		return "", err
@@ -125,5 +138,15 @@ func (s *Service) processBatchDelivery(ctx context.Context, claims auth.Claims, 
 	}
 
 	_, err = s.SubmitDelivery(ctx, claims, subReq)
+	if err == nil && s.idem != nil {
+		key := "sync-batch:" + orderID + ":" + signature
+		hash := sha256HexBytes([]byte(key))
+		_ = s.idem.Save(ctx, key, idempotency.Record{
+			BodyHash:   hash,
+			StatusCode: http.StatusOK,
+			Response:   []byte(`{"status":"OK","order_id":"` + orderID + `"}`),
+			StoredAt:   time.Now().UTC(),
+		}, 24*time.Hour)
+	}
 	return orderID, err
 }
