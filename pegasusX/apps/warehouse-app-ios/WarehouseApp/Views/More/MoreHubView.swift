@@ -59,7 +59,7 @@ struct MoreHubView: View {
                 NavigationLink { PortalHandoffView(feature: .profile) } label: {
                     Label("Profile", systemImage: "person.crop.circle")
                 }
-                NavigationLink { PortalHandoffView(feature: .notifications) } label: {
+                NavigationLink { NotificationInboxView() } label: {
                     Label("Notifications", systemImage: "bell")
                 }
                 NavigationLink { PortalHandoffView(feature: .search) } label: {

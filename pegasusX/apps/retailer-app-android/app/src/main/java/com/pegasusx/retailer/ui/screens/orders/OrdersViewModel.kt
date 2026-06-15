@@ -131,14 +131,26 @@ class OrdersViewModel @Inject constructor(
         }
     }
 
-    fun cancelOrder(orderId: String) {
+    fun cancelOrder(orderId: String, status: OrderStatus? = null) {
         if (!cancellingIds.add(orderId)) return
         viewModelScope.launch {
             try {
-                api.cancelOrder(
-                    body = mapOf("order_id" to orderId, "retailer_id" to retailerId),
-                    idempotencyKey = "retailer-cancel:$orderId",
-                )
+                val body = mapOf("order_id" to orderId, "retailer_id" to retailerId)
+                val idempotencyKey = "retailer-cancel:$orderId"
+                try {
+                    api.cancelOrder(body = body, idempotencyKey = idempotencyKey)
+                } catch (first: Exception) {
+                    val shouldRequestCancel = status?.let {
+                        it == OrderStatus.DISPATCHED ||
+                            it == OrderStatus.IN_TRANSIT ||
+                            it == OrderStatus.ARRIVED
+                    } == true
+                    if (!shouldRequestCancel) throw first
+                    api.requestCancelOrder(
+                        body = body + mapOf("reason" to "Retailer requested cancellation"),
+                        idempotencyKey = "retailer-request-cancel:$orderId",
+                    )
+                }
                 refresh()
             } catch (e: Exception) {
                 val issue = resolveLoadIssue(e)

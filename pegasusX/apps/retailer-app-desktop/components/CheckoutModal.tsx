@@ -54,6 +54,9 @@ export default function CheckoutModal({
   const [oosItems, setOosItems] = useState<string[]>([]);
   const [hasCardConfigured, setHasCardConfigured] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
+  const [pendingCardToken, setPendingCardToken] = useState<string | null>(null);
+  const [cardOtpCode, setCardOtpCode] = useState("");
+  const [cardSetupError, setCardSetupError] = useState("");
   const router = useRouter();
   const { subscribe } = useWebSocket();
 
@@ -72,13 +75,51 @@ export default function CheckoutModal({
     }
   }, [isOpen]);
 
-  const handleSetupCard = async () => {
+  const handleInitiateCard = async () => {
     setAddingCard(true);
+    setCardSetupError("");
     try {
-      await apiFetch("/v1/retailer/cards", { method: "POST" });
+      const res = await apiFetch("/v1/retailer/card/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        throw new Error("Could not start card tokenization");
+      }
+      const data = (await res.json()) as { card_token?: string };
+      if (!data.card_token) {
+        throw new Error("Card tokenization session missing");
+      }
+      setPendingCardToken(data.card_token);
+    } catch (err) {
+      setCardSetupError(err instanceof Error ? err.message : "Could not start card tokenization");
+    } finally {
+      setAddingCard(false);
+    }
+  };
+
+  const handleConfirmCard = async () => {
+    if (!pendingCardToken || !cardOtpCode.trim()) return;
+    setAddingCard(true);
+    setCardSetupError("");
+    try {
+      const res = await apiFetch("/v1/retailer/card/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          card_token: pendingCardToken,
+          otp_code: cardOtpCode.trim(),
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Could not confirm card");
+      }
+      setPendingCardToken(null);
+      setCardOtpCode("");
       setHasCardConfigured(true);
     } catch (err) {
-      console.error(err);
+      setCardSetupError(err instanceof Error ? err.message : "Could not confirm card");
     } finally {
       setAddingCard(false);
     }
@@ -346,23 +387,50 @@ export default function CheckoutModal({
                   <div>
                     <h3 className="md-typescale-body-large font-bold text-[var(--desk-text-primary)]">Setup Payment Card</h3>
                     <p className="md-typescale-body-small text-[var(--desk-text-secondary)] mt-1">
-                      Add a card to your account to enable fast and secure digital payments.
+                      Tokenize a card via OTP confirmation (same flow as Settings → Saved Cards).
                     </p>
                   </div>
-                  <div className="space-y-3">
-                    <input type="text" placeholder="Card Number" className="w-full px-4 py-3 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] text-sm" />
-                    <div className="grid grid-cols-2 gap-3">
-                      <input type="text" placeholder="MM/YY" className="w-full px-4 py-3 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] text-sm" />
-                      <input type="text" placeholder="CVC" className="w-full px-4 py-3 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] text-sm" />
-                    </div>
+                  {cardSetupError && (
+                    <p className="text-xs font-semibold text-red-600">{cardSetupError}</p>
+                  )}
+                  {!pendingCardToken ? (
                     <Button
-                      onPress={handleSetupCard}
+                      onPress={() => void handleInitiateCard()}
                       isDisabled={addingCard}
                       className="w-full h-11 bg-[var(--desk-accent)] text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2"
                     >
-                      {addingCard ? <Loader2 size={18} className="animate-spin" /> : "Save Card"}
+                      {addingCard ? <Loader2 size={18} className="animate-spin" /> : "Start card setup"}
                     </Button>
-                  </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="OTP code"
+                        value={cardOtpCode}
+                        onChange={(e) => setCardOtpCode(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] text-sm"
+                      />
+                      <div className="flex gap-3">
+                        <Button
+                          onPress={() => {
+                            setPendingCardToken(null);
+                            setCardOtpCode("");
+                          }}
+                          className="flex-1 h-11 rounded-xl border border-[var(--desk-border)] font-bold"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onPress={() => void handleConfirmCard()}
+                          isDisabled={addingCard || !cardOtpCode.trim()}
+                          className="flex-1 h-11 bg-[var(--desk-accent)] text-white font-bold rounded-xl"
+                        >
+                          {addingCard ? <Loader2 size={18} className="animate-spin" /> : "Confirm card"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

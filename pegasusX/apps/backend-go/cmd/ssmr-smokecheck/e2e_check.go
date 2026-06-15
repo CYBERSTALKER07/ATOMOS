@@ -79,10 +79,19 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runRetailerReceivingWindowE2E(ctx, client, base, retailerToken); err != nil {
 		return fmt.Errorf("retailer receiving window: %w", err)
 	}
+	if err := runRetailerCatalogProductsE2E(ctx, client, base, retailerToken); err != nil {
+		return fmt.Errorf("retailer catalog products: %w", err)
+	}
 
 	orderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
 	if err != nil {
 		return fmt.Errorf("order create: %w", err)
+	}
+	if err := runRetailerCancelE2E(ctx, client, base, retailerToken, orderID, retailerID); err != nil {
+		return fmt.Errorf("retailer cancel: %w", err)
+	}
+	if err := runRetailerCardInitiateE2E(ctx, client, base, retailerToken); err != nil {
+		return fmt.Errorf("retailer card initiate: %w", err)
 	}
 
 	if err := assertRetailerTracking(ctx, client, base, retailerToken, orderID); err != nil {
@@ -116,6 +125,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	}
 	if err := runWarehouseAnalyticsE2E(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("warehouse analytics: %w", err)
+	}
+	if err := runWarehouseClientPolicyE2E(ctx, client, base); err != nil {
+		return fmt.Errorf("warehouse client policy: %w", err)
 	}
 	if err := runReplenishmentSupplyChainE2E(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("replenishment supply chain: %w", err)
@@ -228,9 +240,11 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	fmt.Println("PX_E2E_REPLENISH_COLOCATE_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_FLEET_MGMT_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_FLEET_LIVE_MAP_OK")
+	fmt.Println("PX_E2E_WAREHOUSE_CLIENT_POLICY_OK")
 	fmt.Println("PX_E2E_NOTIFICATION_INBOX_OK")
 	fmt.Println("PX_E2E_DISPATCH_CAPACITY_OK")
 	fmt.Println("PX_E2E_PAYLOAD_SEAL_FLOWS_OK")
+	fmt.Println("PX_E2E_PAYLOAD_CLIENT_POLICY_OK")
 	fmt.Println("PX_E2E_REASSIGN_FLOWS_OK")
 	fmt.Println("PX_E2E_DRIVER_ASSIGN_DETECTION_OK")
 	return nil
@@ -693,6 +707,9 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 		return fmt.Errorf("payloader device token: %w", err)
 	}
 	fmt.Println("PX_E2E_PAYLOAD_DEVICE_TOKEN_OK")
+	if err := runPayloadClientPolicyE2E(ctx, client, base); err != nil {
+		return fmt.Errorf("payload client policy: %w", err)
+	}
 	return nil
 }
 
@@ -1005,6 +1022,58 @@ func runRetailerReceivingWindowE2E(ctx context.Context, client *http.Client, bas
 	}
 
 	fmt.Println("PX_E2E_RETAILER_RECEIVING_WINDOW_OK")
+	return nil
+}
+
+func runRetailerCatalogProductsE2E(ctx context.Context, client *http.Client, base, retailerToken string) error {
+	status, body, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/catalog/products", nil, retailerToken, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("GET catalog/products status %d body %s", status, string(body))
+	}
+	fmt.Println("PX_E2E_RETAILER_CATALOG_PRODUCTS_OK")
+	return nil
+}
+
+func runRetailerCancelE2E(ctx context.Context, client *http.Client, base, retailerToken, orderID, retailerID string) error {
+	cancelBody, _ := json.Marshal(map[string]string{
+		"order_id":    orderID,
+		"retailer_id": retailerID,
+	})
+	status, body, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/order/cancel", cancelBody, retailerToken, "retailer-cancel-smoke:"+orderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("POST order/cancel status %d body %s", status, string(body))
+	}
+	requestBody, _ := json.Marshal(map[string]string{
+		"order_id":    orderID,
+		"retailer_id": retailerID,
+		"reason":      "SSMR smoke request-cancel",
+	})
+	status, body, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/orders/request-cancel", requestBody, retailerToken, "retailer-request-cancel-smoke:"+orderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("POST orders/request-cancel status %d body %s", status, string(body))
+	}
+	fmt.Println("PX_E2E_RETAILER_CANCEL_OK")
+	return nil
+}
+
+func runRetailerCardInitiateE2E(ctx context.Context, client *http.Client, base, retailerToken string) error {
+	status, body, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/retailer/card/initiate", []byte("{}"), retailerToken, "retailer-card-initiate-smoke")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK && status != http.StatusServiceUnavailable {
+		return fmt.Errorf("POST retailer/card/initiate status %d body %s", status, string(body))
+	}
+	fmt.Println("PX_E2E_RETAILER_CARD_INITIATE_OK")
 	return nil
 }
 
@@ -1788,6 +1857,52 @@ func runWarehouseAnalyticsE2E(ctx context.Context, client *http.Client, base, co
 		}
 	}
 	fmt.Println("PX_E2E_WAREHOUSE_ANALYTICS_OK")
+	return nil
+}
+
+func runWarehouseClientPolicyE2E(ctx context.Context, client *http.Client, base string) error {
+	body, err := clientGet(ctx, client, base+"/v1/platform/client-policy?role=WAREHOUSE&platform=web&version=1.0.0&channel=production")
+	if err != nil {
+		return err
+	}
+	var resp struct {
+		Role           string `json:"role"`
+		MinimumVersion string `json:"minimum_version"`
+		Outdated       bool   `json:"outdated"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return fmt.Errorf("decode warehouse client policy: %w", err)
+	}
+	if resp.Role != "WAREHOUSE" {
+		return fmt.Errorf("warehouse client policy role=%q want WAREHOUSE", resp.Role)
+	}
+	if strings.TrimSpace(resp.MinimumVersion) == "" {
+		return fmt.Errorf("warehouse client policy missing minimum_version")
+	}
+	fmt.Println("PX_E2E_WAREHOUSE_CLIENT_POLICY_OK")
+	return nil
+}
+
+func runPayloadClientPolicyE2E(ctx context.Context, client *http.Client, base string) error {
+	body, err := clientGet(ctx, client, base+"/v1/platform/client-policy?role=PAYLOAD&platform=android&version=1.0.0&channel=production")
+	if err != nil {
+		return err
+	}
+	var resp struct {
+		Role           string `json:"role"`
+		MinimumVersion string `json:"minimum_version"`
+		Outdated       bool   `json:"outdated"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return fmt.Errorf("decode payload client policy: %w", err)
+	}
+	if resp.Role != "PAYLOAD" {
+		return fmt.Errorf("payload client policy role=%q want PAYLOAD", resp.Role)
+	}
+	if strings.TrimSpace(resp.MinimumVersion) == "" {
+		return fmt.Errorf("payload client policy missing minimum_version")
+	}
+	fmt.Println("PX_E2E_PAYLOAD_CLIENT_POLICY_OK")
 	return nil
 }
 

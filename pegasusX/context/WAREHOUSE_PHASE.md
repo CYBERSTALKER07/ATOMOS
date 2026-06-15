@@ -2,7 +2,7 @@
 
 **Scope:** pegasusX only · **Reference:** pegasus `warehouse-portal` (read-only)  
 **Parent plan:** `VEGETABLE_PLAN.md` §2.2 · `Phase Next: Replenishment + Supply`  
-**Last updated:** 2026-06-14
+**Last updated:** 2026-06-15 (WH-7/8/9 warehouse cross-client parity batch).
 
 ## Status model
 
@@ -64,14 +64,59 @@ cd pegasusX && make parity-contract-full
 
 ---
 
+**Last updated:** 2026-06-15
+
+---
+
+## Phase WH-7 — Production blockers (auth refresh, transfer/order mutations)
+
+| ID | Feature | Backend | Portal | Android | iOS | Status |
+|----|---------|---------|--------|---------|-----|--------|
+| WH7-01 | Token refresh path | `POST /v1/auth/warehouse/refresh` | `lib/auth.ts` | `NetworkModule` | `APIClient` | **WIRED** (pre-existing; verified) |
+| WH7-02 | Order mutations (delay/reject/overflow) | `POST /v1/warehouse/ops/orders/{id}/*` | `/orders/[id]` | `OrderDetailScreen` | `OrderDetailView` | **WIRED** (pre-existing) |
+| WH7-03 | Transfer actions | `POST /v1/warehouse/transfers/*` | `/transfers` | `TransferActionsScreen` | `TransferActionsView` | **WIRED** (pre-existing) |
+| WH7-04 | Auth refresh on 401 retry | — | `apiFetch` | OkHttp interceptor | `APIClient` | **WIRED** (pre-existing) |
+
+**Exit:** No P0 path bugs found in audit; warehouse row auth + mutations already green via existing SSMR markers.
+
+---
+
+## Phase WH-8 — Parity wiring (notifications inbox, financials, ops depth)
+
+| ID | Feature | Backend | Portal | Android | iOS | Status |
+|----|---------|---------|--------|---------|-----|--------|
+| WH8-01 | Notification inbox (live) | `GET /v1/user/notifications` | `useNotifications` + panel | `NotificationInboxScreen` | `NotificationInboxView` | **WIRED** |
+| WH8-02 | Mark notifications read | `POST /v1/user/notifications/read` | panel actions | inbox mark-all | inbox mark-all | **WIRED** |
+| WH8-03 | Ops financials in treasury | `GET /v1/warehouse/ops/financials` | `/treasury` fallback | `TreasuryScreen` | `TreasuryView` | **WIRED** (pre-existing) |
+| WH8-04 | Dispatch settings + payment config native | ops routes | portal pages | native screens | native screens | **WIRED** (pre-existing) |
+| WH8-05 | Profile / setup portal handoff | setup + JWT profile | `/profile` | portal handoff | portal handoff | **WIRED** (intentional v1) |
+
+**Exit:** Native Android/iOS no longer hand off notifications to portal; unified inbox API wired with graceful 503 copy.
+
+---
+
+## Phase WH-9 — Client policy & platform gating
+
+| ID | Feature | Backend | Portal | Android | iOS | Status |
+|----|---------|---------|--------|---------|-----|--------|
+| WH9-01 | Client version policy | `GET /v1/platform/client-policy?role=WAREHOUSE` | `ClientPolicyBanner` | dashboard banner | dashboard banner | **WIRED** |
+| WH9-02 | SSMR marker | smokecheck | — | — | — | **WIRED** (`PX_E2E_WAREHOUSE_CLIENT_POLICY_OK`) |
+| WH9-03 | Firebase OTP | custom token exchange | login TODO | — | — | **DEFERRED** (graceful only) |
+
+**Exit:** Outdated/force-update surfaces show honest banners on all warehouse clients; SSMR asserts WAREHOUSE role policy tuple.
+
+---
+
 ## Next execution batch
 
 1. ~~Replenishment insights durability~~ — WH-1
 2. ~~Replenishment engine~~ — WH-2
-3. ~~Native fleet live map~~ — **WH-3 verified this session** (implementation pre-existed; SSMR marker + ledger closed)
-4. ~~WH-4 analytics parity remediation~~ — **CLOSED** (P0 backend + P1 native + SSMR).
-5. ~~WH-5 native daily revenue chart + 30d default + import cards~~ — **CLOSED** (all three surfaces; staging DDL `20250615_supplier_import_staging.ddl`).
-6. ~~WH-6 CSV import → staging write path~~ — **CLOSED** (`inventory_import_staging.go`; SSMR asserts `import_anomaly_queue` ≥ 1).
+3. ~~Native fleet live map~~ — WH-3
+4. ~~WH-4 analytics parity remediation~~ — WH-4
+5. ~~WH-5 native daily revenue chart~~ — WH-5
+6. ~~WH-6 CSV import staging~~ — WH-6
+7. ~~WH-7/8/9 cross-client parity batch~~ — **CLOSED** (2026-06-15)
+8. **Cross-role next** — Boss-picked role row (FACTORY / DRIVER / PAYLOAD per `VEGETABLE_PLAN.md` §3)
 
 ---
 

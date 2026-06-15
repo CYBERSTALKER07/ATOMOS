@@ -271,6 +271,21 @@ data class MarkReadRequest(
     @SerialName("mark_all") val markAll: Boolean? = null,
 )
 
+@Serializable
+data class ClientPolicyResponse(
+    val role: String = "",
+    val platform: String = "",
+    val channel: String = "",
+    @SerialName("client_version") val clientVersion: String = "",
+    @SerialName("minimum_version") val minimumVersion: String = "",
+    @SerialName("recommended_version") val recommendedVersion: String = "",
+    @SerialName("force_update") val forceUpdate: Boolean = false,
+    @SerialName("update_url") val updateUrl: String? = null,
+    @SerialName("update_deferred") val updateDeferred: Boolean = false,
+    @SerialName("defer_reason") val deferReason: String? = null,
+    val outdated: Boolean = false,
+)
+
 // ─── WebSocket frames ────────────────────────────────────────────────────────
 // notification_dispatcher.go pushes flat: {type:<eventType>, title, body, channel}.
 // Anything carrying `title` or `body` is rendered as an in-app notification —

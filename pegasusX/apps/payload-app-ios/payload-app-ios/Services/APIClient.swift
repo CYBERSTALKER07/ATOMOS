@@ -213,6 +213,10 @@ final class APIClient: @unchecked Sendable {
         try await post("v1/user/notifications/read", body: MarkReadRequest(notificationIds: ids, markAll: all))
     }
 
+    func clientPolicy(platform: String, version: String) async throws -> ClientPolicyResponse {
+        try await get("v1/platform/client-policy?role=PAYLOAD&platform=\(platform)&version=\(version)&channel=production")
+    }
+
     // MARK: - FCM
     func registerDeviceToken(_ token: String) async throws -> StatusResponse {
         try await post("v1/user/device-token", body: DeviceTokenRequest(token: token, platform: "IOS"))
@@ -251,11 +255,15 @@ final class APIClient: @unchecked Sendable {
         _ path: String,
         body: B,
         authenticated: Bool = true,
-        headers: [String: String] = [:]
+        headers: [String: String] = [:],
+        idempotencyKey: String? = nil
     ) async throws -> T {
         var req = try buildRequest(path: path, method: "POST", authenticated: authenticated)
         for (name, value) in headers {
             req.setValue(value, forHTTPHeaderField: name)
+        }
+        if let idempotencyKey, !idempotencyKey.isEmpty {
+            req.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
         }
         req.httpBody = try encoder.encode(body)
         return try await execute(req)

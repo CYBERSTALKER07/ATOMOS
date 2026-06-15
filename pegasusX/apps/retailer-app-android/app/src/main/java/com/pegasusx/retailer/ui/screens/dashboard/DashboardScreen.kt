@@ -550,10 +550,11 @@ private fun QuickReorderRow(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    if (product.hasSaleOffer && product.displayListPrice != null) {
+                    val listPrice = product.displayListPrice
+                    if (product.hasSaleOffer && listPrice != null) {
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                text = product.displayListPrice,
+                                text = listPrice,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textDecoration = TextDecoration.LineThrough,

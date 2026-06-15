@@ -117,7 +117,7 @@ final class APIClient {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        guard let url = URL(string: "\(baseURL)/v1/auth/refresh") else { return nil }
+        guard let url = URL(string: "\(baseURL)/v1/auth/retailer/refresh") else { return nil }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -292,7 +292,7 @@ final class APIClient {
         let components = URLComponents(string: baseURL + "/v1/retailer/family-members/\(memberId)")!
         var request = URLRequest(url: components.url!)
         request.httpMethod = "DELETE"
-        if let token = UserDefaults.standard.string(forKey: "auth_token") {
+        if let token = authToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         _ = try await dataForRequestWithFallback(request)

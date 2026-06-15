@@ -1,3 +1,5 @@
+// Deprecated: superseded by NotificationInboxView and ActiveDeliveriesView. Not linked from navigation.
+
 import SwiftUI
 
 struct InboxView: View {

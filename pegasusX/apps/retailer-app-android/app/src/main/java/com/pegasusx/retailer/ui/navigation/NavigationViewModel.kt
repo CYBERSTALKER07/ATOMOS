@@ -22,6 +22,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import retrofit2.HttpException
 import javax.inject.Inject
 
@@ -52,6 +55,8 @@ data class NavigationUiState(
     val syncError: String? = null,
     val loadIssue: NavigationLoadIssue? = null,
     val shopClosedAlert: ShopClosedAlert? = null,
+    val unreadNotificationCount: Int = 0,
+    val clientPolicyMessage: String? = null,
 ) {
     val activeOrderCount: Int get() = activeOrders.size
     val floatingStatusText: String
@@ -110,7 +115,46 @@ class NavigationViewModel @Inject constructor(
         }
         loadActiveOrders()
         loadPendingPayments()
+        loadNotificationBadge()
+        loadClientPolicy()
         connectWebSocket()
+    }
+
+    fun loadNotificationBadge() {
+        viewModelScope.launch {
+            try {
+                val page = api.getNotifications(limit = 1, offset = 0)
+                _uiState.update { it.copy(unreadNotificationCount = page.unreadCount) }
+            } catch (_: Exception) {
+                // Badge is best-effort; inbox screen loads full feed.
+            }
+        }
+    }
+
+    fun loadClientPolicy() {
+        viewModelScope.launch {
+            try {
+                val policy = api.getClientPolicy(
+                    platform = "android",
+                    version = com.pegasusx.retailer.BuildConfig.VERSION_NAME,
+                )
+                val outdated = policy.jsonObject["outdated"]?.jsonPrimitive?.boolean == true
+                val force = policy.jsonObject["force_update"]?.jsonPrimitive?.boolean == true
+                val minimum = policy.jsonObject["minimum_version"]?.jsonPrimitive?.content
+                if (outdated || force) {
+                    _uiState.update {
+                        it.copy(
+                            clientPolicyMessage = buildString {
+                                append(if (force) "Update required" else "Update available")
+                                if (!minimum.isNullOrBlank()) append(" — minimum version $minimum")
+                            },
+                        )
+                    }
+                }
+            } catch (_: Exception) {
+                // Policy fetch is optional on local/dev stacks.
+            }
+        }
     }
 
     fun retrySync() {

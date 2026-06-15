@@ -113,7 +113,7 @@ fun OrdersScreen(
                 selectedOrder = null
             },
             onCancel = {
-                viewModel.cancelOrder(order.id)
+                viewModel.cancelOrder(order.id, order.status)
                 selectedOrder = null
             },
         )
@@ -258,7 +258,7 @@ fun OrdersScreen(
                         orders = uiState.pendingOrders,
                         isLoading = uiState.isLoading,
                         onDetailsCash = { selectedOrder = it },
-                        onCancel = viewModel::cancelOrder,
+                        onCancel = { order -> viewModel.cancelOrder(order.id, order.status) },
                     )
                     2 -> AiPlannedList(
                         predictions = uiState.predictions,
@@ -313,7 +313,7 @@ private fun OrderedList(
     orders: List<Order>,
     isLoading: Boolean = false,
     onDetailsCash: (Order) -> Unit,
-    onCancel: (String) -> Unit,
+    onCancel: (Order) -> Unit,
 ) {
     if (isLoading && orders.isEmpty()) {
         ShimmerOrderList()
@@ -328,7 +328,7 @@ private fun OrderedList(
             OrderedCard(
                 order = order,
                 onDetailsCash = { onDetailsCash(order) },
-                onCancel = { onCancel(order.id) },
+                onCancel = { onCancel(order) },
             )
         }
         item { Spacer(modifier = Modifier.height(32.dp)) }

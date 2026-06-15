@@ -127,9 +127,10 @@ fun ProductCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (product.hasSaleOffer && product.displayListPrice != null) {
+                    val listPrice = product.displayListPrice
+                    if (product.hasSaleOffer && listPrice != null) {
                         Text(
-                            text = product.displayListPrice,
+                            text = listPrice,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
                             textDecoration = TextDecoration.LineThrough,

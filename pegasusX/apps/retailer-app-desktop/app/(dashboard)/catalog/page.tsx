@@ -68,6 +68,9 @@ export default function CatalogPage() {
   const [activeSupplier, setActiveSupplier] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [categorySuppliers, setCategorySuppliers] = useState<Supplier[]>([]);
+  const [categorySuppliersLoading, setCategorySuppliersLoading] = useState(false);
+  const [categorySuppliersError, setCategorySuppliersError] = useState<string | null>(null);
 
   const productList = products ?? EMPTY_PRODUCTS;
   const categoryList = categories ?? EMPTY_CATEGORIES;
@@ -235,6 +238,48 @@ export default function CatalogPage() {
       variant: "no-results" as const,
     };
   }, [loadIssue, productList.length]);
+
+  useEffect(() => {
+    if (activeCategory === "All") {
+      setCategorySuppliers([]);
+      setCategorySuppliersError(null);
+      return;
+    }
+    const category = categoryList.find((item) => item.name === activeCategory);
+    if (!category?.id) {
+      setCategorySuppliers([]);
+      return;
+    }
+    let cancelled = false;
+    setCategorySuppliersLoading(true);
+    setCategorySuppliersError(null);
+    void apiFetch(`/v1/catalog/categories/${category.id}/suppliers`)
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`Category suppliers unavailable (${res.status})`);
+        }
+        return (await res.json()) as Supplier[];
+      })
+      .then((rows) => {
+        if (!cancelled) {
+          setCategorySuppliers(Array.isArray(rows) ? rows : []);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setCategorySuppliers([]);
+          setCategorySuppliersError(
+            err instanceof Error ? err.message : "Category suppliers unavailable",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCategorySuppliersLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCategory, categoryList]);
 
   useEffect(() => {
     if (activeSupplier && !supplierList.some((supplier) => supplier.id === activeSupplier)) {
@@ -441,6 +486,40 @@ export default function CatalogPage() {
             </button>
           ))}
         </div>
+
+        {activeCategory !== "All" && (
+          <div className="rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] px-4 py-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2">
+              Category suppliers
+            </p>
+            {categorySuppliersLoading ? (
+              <p className="text-sm text-[var(--desk-text-secondary)]">Loading suppliers…</p>
+            ) : categorySuppliersError ? (
+              <p className="text-sm text-orange-700">{categorySuppliersError}</p>
+            ) : categorySuppliers.length === 0 ? (
+              <p className="text-sm text-[var(--desk-text-tertiary)]">
+                No suppliers mapped to this category yet.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {categorySuppliers.map((supplier) => (
+                  <button
+                    key={supplier.id}
+                    type="button"
+                    onClick={() => setActiveSupplier(supplier.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border ${
+                      activeSupplier === supplier.id
+                        ? "border-[var(--desk-accent)] bg-[var(--desk-accent-soft)] text-[var(--desk-accent)]"
+                        : "border-[var(--desk-border)] text-[var(--desk-text-secondary)]"
+                    }`}
+                  >
+                    {supplier.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {supplierList.length > 0 && (
           <div className="lg:hidden flex flex-wrap items-center gap-2">

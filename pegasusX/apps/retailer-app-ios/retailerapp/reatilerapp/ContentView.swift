@@ -88,7 +88,7 @@ struct ContentView: View {
     @State private var showInsights = false
     @State private var showProcurement = false
     @State private var showNotificationInbox = false
-    @State private var notificationCount = 3
+    @State private var notificationCount = 0
     @State private var cartBounce = false
     @State private var activeOrders: [Order] = []
     @State private var paymentEvent: PaymentRequiredEvent?
@@ -201,6 +201,11 @@ struct ContentView: View {
                 .presentationDragIndicator(.visible)
                 .presentationCompactAdaptation(.sheet)
         }
+        .onChange(of: showNotificationInbox) { _, isOpen in
+            if !isOpen {
+                Task { await loadNotificationCount() }
+            }
+        }
         .onChange(of: cart.totalItems) {
             withAnimation(AnimationConstants.bouncy) { cartBounce = true }
         }
@@ -209,12 +214,14 @@ struct ContentView: View {
             Task {
                 await loadActiveOrders()
                 await loadPendingPayments()
+                await loadNotificationCount()
                 refreshCenter.trigger()
             }
         }
         .task {
             await loadActiveOrders()
             await loadPendingPayments()
+            await loadNotificationCount()
         }
         .task { await connectWebSocket() }
         .sheet(item: $paymentEvent) { event in
@@ -641,6 +648,17 @@ struct ContentView: View {
             activeOrders = result.filter { $0.status.isActive }
         } catch {
             activeOrders = []
+        }
+    }
+
+    private func loadNotificationCount() async {
+        do {
+            let resp: NotificationsResponse = try await api.get(
+                path: "/v1/user/notifications?limit=1&offset=0"
+            )
+            notificationCount = resp.unreadCount
+        } catch {
+            // Keep last known badge; inbox sheet refreshes on open.
         }
     }
 

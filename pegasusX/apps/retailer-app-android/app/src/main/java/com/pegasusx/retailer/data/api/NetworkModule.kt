@@ -100,7 +100,7 @@ private class TokenRefreshAuthenticator(
         }
         val currentToken = tokenManager.getToken() ?: return null
 
-        val refreshUrl = "${BuildConfig.BASE_URL}v1/auth/refresh"
+        val refreshUrl = "${BuildConfig.BASE_URL}v1/auth/retailer/refresh"
         val body = "{}".toRequestBody("application/json".toMediaType())
         val refreshRequest = Request.Builder()
             .url(refreshUrl)

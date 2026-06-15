@@ -54,6 +54,7 @@ import com.pegasusx.warehouse.ui.screens.forecast.DemandForecastScreen
 import com.pegasusx.warehouse.ui.screens.inventory.InventoryScreen
 import com.pegasusx.warehouse.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.warehouse.ui.screens.more.MoreHubScreen
+import com.pegasusx.warehouse.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.warehouse.ui.screens.orders.OrderDetailScreen
 import com.pegasusx.warehouse.ui.screens.orders.OrdersScreen
 import com.pegasusx.warehouse.ui.screens.payment.PaymentConfigScreen
@@ -92,6 +93,7 @@ object WarehouseRoutes {
     const val REPLENISHMENT = "replenishment"
     const val DISPATCH_SETTINGS = "dispatch_settings"
     const val PAYMENT_CONFIG = "payment_config"
+    const val NOTIFICATIONS = "notifications"
     const val SUPPLY_REQUESTS = "supply_requests"
     const val SUPPLY_REQUEST_DETAIL = "supply_requests/{id}"
     const val PORTAL_HANDOFF = "portal/{feature}"
@@ -355,6 +357,13 @@ fun WarehouseNavigation(
                     PaymentConfigScreen(
                         opsRepository = opsRepository,
                         onBack = backFor(WarehouseRoutes.PAYMENT_CONFIG),
+                    )
+                }
+
+                composable(WarehouseRoutes.NOTIFICATIONS) {
+                    NotificationInboxScreen(
+                        api = api,
+                        onBack = backFor(WarehouseRoutes.NOTIFICATIONS),
                     )
                 }
 

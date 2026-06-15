@@ -436,7 +436,7 @@ struct CatalogView: View {
     private func loadProducts() async {
         isLoading = true
         do {
-            let result: [Product] = try await api.get(path: "/v1/products")
+            let result: [Product] = try await api.get(path: "/v1/catalog/products")
             products = result
         } catch { products = []; loadError = true }
         isLoading = false

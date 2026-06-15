@@ -111,4 +111,23 @@ export const PayloadTerminalApi = {
         if (!res.ok) throw new Error('Failed to reassign order');
         return res.json();
     },
+
+    getClientPolicy: async (platform: string, version: string, channel: string = 'production') => {
+        const params = new URLSearchParams({
+            role: 'PAYLOAD',
+            platform,
+            version,
+            channel,
+        });
+        const res = await fetch(`${API_BASE}/v1/platform/client-policy?${params.toString()}`, {
+            headers: { 'X-Trace-Id': crypto.randomUUID() },
+        });
+        if (!res.ok) throw new Error('Failed to fetch client policy');
+        return res.json() as Promise<{
+            outdated: boolean;
+            force_update: boolean;
+            minimum_version: string;
+            defer_reason?: string;
+        }>;
+    },
 };

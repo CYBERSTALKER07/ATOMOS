@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, CreditCard, Loader2, Plus } from "lucide-react";
 import { apiFetch } from "../../../../lib/auth";
+import { deactivateCard, setDefaultCard } from "../../../../lib/api";
 
 type SavedCard = {
   id: string;
@@ -40,6 +41,7 @@ function SavedCardsPageContent() {
   const [pendingToken, setPendingToken] = useState<string | null>(null);
   const [otpCode, setOtpCode] = useState("");
   const [adding, setAdding] = useState(false);
+  const [cardActionId, setCardActionId] = useState<string | null>(null);
 
   const isDeliveryPaymentReturn = returnTo === "delivery_payment";
 
@@ -129,6 +131,38 @@ function SavedCardsPageContent() {
     }
   };
 
+  const handleDeactivate = async (tokenId: string) => {
+    setCardActionId(tokenId);
+    setError(null);
+    try {
+      const res = await deactivateCard(tokenId);
+      if (!res.ok) {
+        throw new Error("Could not deactivate card");
+      }
+      await loadCards();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not deactivate card");
+    } finally {
+      setCardActionId(null);
+    }
+  };
+
+  const handleSetDefault = async (tokenId: string) => {
+    setCardActionId(tokenId);
+    setError(null);
+    try {
+      const res = await setDefaultCard(tokenId);
+      if (!res.ok) {
+        throw new Error("Could not set default card");
+      }
+      await loadCards();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not set default card");
+    } finally {
+      setCardActionId(null);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       <div className="flex items-center gap-3">
@@ -189,7 +223,7 @@ function SavedCardsPageContent() {
           cards.map((card) => (
             <div
               key={card.id}
-              className="flex items-center justify-between rounded-xl border border-[var(--desk-border)] px-4 py-3"
+              className="flex items-center justify-between rounded-xl border border-[var(--desk-border)] px-4 py-3 gap-3"
             >
               <div>
                 <p className="font-bold text-[var(--desk-text-primary)]">
@@ -199,6 +233,26 @@ function SavedCardsPageContent() {
                   {card.type || "CARD"}
                   {card.is_default ? " · Default" : ""}
                 </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {!card.is_default && (
+                  <button
+                    type="button"
+                    disabled={cardActionId === card.id}
+                    onClick={() => void handleSetDefault(card.id)}
+                    className="px-3 h-9 rounded-lg border border-[var(--desk-border)] text-xs font-bold"
+                  >
+                    Set default
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={cardActionId === card.id}
+                  onClick={() => void handleDeactivate(card.id)}
+                  className="px-3 h-9 rounded-lg border border-red-200 text-xs font-bold text-red-700"
+                >
+                  Remove
+                </button>
               </div>
             </div>
           ))

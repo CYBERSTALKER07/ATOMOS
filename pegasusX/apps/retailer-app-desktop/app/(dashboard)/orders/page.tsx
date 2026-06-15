@@ -151,6 +151,65 @@ export default function OrdersPage() {
     }
   }, [mutateOrders, mutateTracking]);
 
+  const cancellableStates = useMemo(
+    () =>
+      new Set([
+        "PENDING",
+        "PENDING_REVIEW",
+        "SCHEDULED",
+        "AUTO_ACCEPTED",
+        "LOADED",
+      ]),
+    [],
+  );
+  const requestCancelStates = useMemo(
+    () => new Set(["DISPATCHED", "IN_TRANSIT", "ARRIVING", "ARRIVED"]),
+    [],
+  );
+
+  const handleCancelOrder = useCallback(
+    async (orderId: string, state: string) => {
+      if (!profile?.id) {
+        setActionError("Retailer profile not found. Please log in again.");
+        return;
+      }
+      setCancelling(true);
+      setActionError(null);
+      try {
+        const useRequestCancel = requestCancelStates.has(state);
+        const endpoint = useRequestCancel
+          ? "/v1/orders/request-cancel"
+          : "/v1/order/cancel";
+        const res = await apiFetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Idempotency-Key": `retailer-${useRequestCancel ? "request-" : ""}cancel:${orderId}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            order_id: orderId,
+            retailer_id: profile.id,
+            reason: "Retailer requested cancellation",
+          }),
+        });
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => null);
+          throw new Error(
+            errBody?.error ||
+              errBody?.message ||
+              `Cancel failed with ${res.status}`,
+          );
+        }
+        await Promise.all([mutateOrders(), mutateTracking()]);
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : "Cancel order failed");
+      } finally {
+        setCancelling(false);
+      }
+    },
+    [mutateOrders, mutateTracking, profile?.id, requestCancelStates],
+  );
+
   const list = orders ?? [];
   const filtered = useMemo(() => {
     if (activeTab === "ACTIVE")
@@ -208,6 +267,10 @@ export default function OrdersPage() {
   const showAiActions =
     detail?.state === "PENDING_REVIEW" ||
     (detail?.order_source === "AI_PREDICTED" && detail?.state === "PENDING");
+  const showCancelAction =
+    !!detail &&
+    (cancellableStates.has(detail.state) ||
+      requestCancelStates.has(detail.state));
 
   const loadIssue = useMemo<LoadIssue | null>(() => {
     const message = actionError ?? ordersError?.message;
@@ -620,6 +683,31 @@ export default function OrdersPage() {
                       <Loader2 size={16} className="animate-spin" />
                     ) : (
                       "Confirm Suggestion"
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {showCancelAction && (
+                <div className="mb-10">
+                  <Button
+                    variant="secondary"
+                    isDisabled={cancelling}
+                    onPress={() => void handleCancelOrder(detail.order_id, detail.state)}
+                    className="h-11 px-5 rounded-xl font-bold text-red-700 border border-red-200"
+                  >
+                    {cancelling ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : requestCancelStates.has(detail.state) ? (
+                      <>
+                        <XCircle size={16} className="mr-2" />
+                        Request cancellation
+                      </>
+                    ) : (
+                      <>
+                        <XCircle size={16} className="mr-2" />
+                        Cancel order
+                      </>
                     )}
                   </Button>
                 </div>

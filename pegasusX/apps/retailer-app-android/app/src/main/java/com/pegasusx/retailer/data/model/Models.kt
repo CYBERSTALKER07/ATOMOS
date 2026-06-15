@@ -804,7 +804,9 @@ data class TrackingOrder(
 
 @Serializable
 data class TrackingResponse(
+    val status: String? = null,
     val orders: List<TrackingOrder> = emptyList(),
+    @SerialName("recent_receipts") val recentReceipts: List<TrackingOrder> = emptyList(),
 )
 
 @Serializable

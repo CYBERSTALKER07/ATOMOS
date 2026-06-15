@@ -33,6 +33,7 @@ data class TrackingUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val activeFulfillmentCount: Int = 0,
+    val recentReceipts: List<TrackingOrder> = emptyList(),
     val loadIssue: TrackingLoadIssue? = null,
 ) {
     /** Orders filtered by selected suppliers. If none selected, show all. */
@@ -113,6 +114,7 @@ class DeliveryTrackingViewModel @Inject constructor(
             _state.value = _state.value.copy(
                 orders = active,
                 suppliers = suppliers,
+                recentReceipts = response.recentReceipts,
                 isLoading = false,
                 error = null,
                 loadIssue = null,

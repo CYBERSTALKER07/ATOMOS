@@ -190,6 +190,7 @@ export default function TrackingPage() {
     () => fulfillmentData?.count ?? orders.length,
     [fulfillmentData?.count, orders.length],
   );
+  const recentReceipts = trackingData?.recent_receipts ?? [];
 
   const loadIssue = useMemo<LoadIssue | null>(() => {
     const errors = [trackingError, fulfillmentError].filter(Boolean) as Array<
@@ -436,6 +437,34 @@ export default function TrackingPage() {
           </div>
         </BentoCard>
       </BentoGrid>
+
+      {recentReceipts.length > 0 && (
+        <div className="mb-4 rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] p-4">
+          <h2 className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-3">
+            Recent receipts
+          </h2>
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {recentReceipts.slice(0, 6).map((receipt) => (
+              <div
+                key={receipt.order_id}
+                className="flex items-center justify-between rounded-xl border border-[var(--desk-border)] px-3 py-2"
+              >
+                <div>
+                  <p className="text-sm font-bold text-[var(--desk-text-primary)]">
+                    {receipt.supplier_name || "Supplier"}
+                  </p>
+                  <p className="text-[10px] font-mono text-[var(--desk-text-tertiary)]">
+                    #{receipt.order_id.slice(-8)}
+                  </p>
+                </div>
+                <span className="text-sm font-bold tabular-nums">
+                  {formatAmount(receipt.total_amount)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {suppliers.length > 1 && (
         <div className="flex flex-wrap items-center gap-2">

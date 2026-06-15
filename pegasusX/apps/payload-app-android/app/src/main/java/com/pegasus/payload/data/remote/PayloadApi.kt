@@ -10,6 +10,7 @@ import com.pegasus.payload.data.model.LoginResponse
 import com.pegasus.payload.data.model.Manifest
 import com.pegasus.payload.data.model.ManifestExceptionRequest
 import com.pegasus.payload.data.model.ManifestExceptionResponse
+import com.pegasus.payload.data.model.ClientPolicyResponse
 import com.pegasus.payload.data.model.ManifestExceptionsResponse
 import com.pegasus.payload.data.model.ManifestsResponse
 import com.pegasus.payload.data.model.MarkReadRequest
@@ -24,6 +25,7 @@ import com.pegasus.payload.data.model.SealOrderRequest
 import com.pegasus.payload.data.model.SealOrderResponse
 import com.pegasus.payload.data.model.StatusResponse
 import com.pegasus.payload.data.model.Truck
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -176,4 +178,13 @@ interface PayloadApi {
 
     @DELETE("v1/user/device-token")
     suspend fun unregisterDeviceToken(@Query("platform") platform: String = "ANDROID"): StatusResponse
+
+    // ── Platform policy ──────────────────────────────────────────────────────
+    @GET("v1/platform/client-policy")
+    suspend fun getClientPolicy(
+        @Query("role") role: String = "PAYLOAD",
+        @Query("platform") platform: String,
+        @Query("version") version: String,
+        @Query("channel") channel: String = "production",
+    ): Response<ClientPolicyResponse>
 }

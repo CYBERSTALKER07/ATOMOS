@@ -13,6 +13,7 @@ import com.pegasus.payload.data.model.NotificationItem
 import com.pegasus.payload.data.model.QueuedAction
 import com.pegasus.payload.data.model.RecommendReassignResponse
 import com.pegasus.payload.data.model.Truck
+import com.pegasus.payload.data.remote.PayloadApi
 import com.pegasus.payload.data.repository.PayloadRepository
 import com.pegasus.payload.services.PayloadWebSocket
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -88,12 +89,14 @@ data class HomeUiState(
     /** LOADING manifests with every order sealed — eligible for seal-completed batch. */
     val batchReadyManifestIds: List<String> = emptyList(),
     val batchSealing: Boolean = false,
+    val clientPolicyMessage: String? = null,
     val error: String? = null,
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: PayloadRepository,
+    private val api: PayloadApi,
     private val secureStore: SecureStore,
     private val webSocket: PayloadWebSocket,
     private val notificationBus: com.pegasus.payload.services.NotificationBus,
@@ -116,6 +119,34 @@ class HomeViewModel @Inject constructor(
         refreshTrucks()
         bootstrapPhase6()
         observeNotificationBus()
+        loadClientPolicy()
+    }
+
+    fun loadClientPolicy() {
+        viewModelScope.launch {
+            runCatching {
+                val resp = api.getClientPolicy(
+                    platform = "android",
+                    version = BuildConfig.VERSION_NAME,
+                )
+                if (resp.isSuccessful && resp.body() != null) {
+                    val policy = resp.body()!!
+                    if (policy.outdated || policy.forceUpdate) {
+                        _state.update {
+                            it.copy(
+                                clientPolicyMessage = buildString {
+                                    append(if (policy.forceUpdate) "Update required" else "Update available")
+                                    if (policy.minimumVersion.isNotBlank()) {
+                                        append(" — minimum version ${policy.minimumVersion}")
+                                    }
+                                    policy.deferReason?.takeIf { it.isNotBlank() }?.let { append(". $it") }
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun observeNotificationBus() {

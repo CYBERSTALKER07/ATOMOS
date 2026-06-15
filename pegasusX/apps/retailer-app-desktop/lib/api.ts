@@ -76,3 +76,43 @@ export async function getPricingRules(): Promise<Response> {
     method: 'GET',
   });
 }
+
+export async function getDetailedAnalytics(from?: string, to?: string): Promise<Response> {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  const qs = params.toString();
+  return apiFetch(`/v1/retailer/analytics/detailed${qs ? `?${qs}` : ''}`, {
+    method: 'GET',
+  });
+}
+
+export async function getClientPolicy(
+  platform: string,
+  version: string,
+  channel = 'production',
+): Promise<Response> {
+  const params = new URLSearchParams({
+    role: 'RETAILER',
+    platform,
+    version,
+    channel,
+  });
+  return apiFetch(`/v1/platform/client-policy?${params.toString()}`, {
+    method: 'GET',
+  });
+}
+
+export async function deactivateCard(tokenId: string): Promise<Response> {
+  return apiFetch('/v1/retailer/card/deactivate', {
+    method: 'POST',
+    body: JSON.stringify({ token_id: tokenId }),
+  });
+}
+
+export async function setDefaultCard(tokenId: string): Promise<Response> {
+  return apiFetch('/v1/retailer/card/default', {
+    method: 'POST',
+    body: JSON.stringify({ token_id: tokenId }),
+  });
+}

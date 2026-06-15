@@ -333,5 +333,13 @@ export interface TrackingOrder {
 }
 
 export interface TrackingResponse {
+  status?: "idle" | "active";
   orders: TrackingOrder[];
+  recent_receipts?: TrackingOrder[];
+  events?: Array<{
+    event_type: string;
+    order_id: string;
+    status?: string;
+    occurred_at: string;
+  }>;
 }

@@ -299,7 +299,7 @@ struct ProcurementView: View {
         isLoading = true
         do { let r: [DemandForecast] = try await api.get(path: "/v1/ai/predictions?retailer_id=\(rid)"); forecasts = r }
         catch { forecasts = [] }
-        do { let p: [Product] = try await api.get(path: "/v1/products"); products = p }
+        do { let p: [Product] = try await api.get(path: "/v1/catalog/products"); products = p }
         catch { products = [] }
         isLoading = false
     }

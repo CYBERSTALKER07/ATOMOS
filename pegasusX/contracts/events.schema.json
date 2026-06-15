@@ -244,6 +244,25 @@
         {
           "properties": {
             "type": {
+              "const": "FACTORY_SUPPLY_REQUEST_UPDATE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FactorySupplyRequestUpdateEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "FREEZE_LOCK_ACQUIRED"
             }
           },
@@ -273,6 +292,44 @@
         }
       ],
       "title": "FreezeLockReleasedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "INVENTORY_IMPORT_STATUS_UPDATE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "InventoryImportStatusUpdateEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "INVENTORY_IMPORT_UPLOADED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "InventoryImportUploadedEnvelope"
     },
     {
       "allOf": [
@@ -719,6 +776,25 @@
         {
           "properties": {
             "type": {
+              "const": "RETAILER_PRICE_OVERRIDE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerPriceOverrideEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "RETAILER_REGISTERED"
             }
           },
@@ -1004,6 +1080,44 @@
         {
           "properties": {
             "type": {
+              "const": "SUPPLY_REQUEST_ACCEPTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplyRequestAcceptedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLY_REQUEST_UPDATE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplyRequestUpdateEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "SYSTEM_APP_OUTDATED"
             }
           },
@@ -1145,8 +1259,11 @@
         "DRIVER_CREATED",
         "DRIVER_LOCATION_UPDATED",
         "FACTORY_CREATED",
+        "FACTORY_SUPPLY_REQUEST_UPDATE",
         "FREEZE_LOCK_ACQUIRED",
         "FREEZE_LOCK_RELEASED",
+        "INVENTORY_IMPORT_STATUS_UPDATE",
+        "INVENTORY_IMPORT_UPLOADED",
         "INVENTORY_SYNC_COMPLETE",
         "MANIFEST_CANCELLED",
         "MANIFEST_COMPLETED",
@@ -1186,6 +1303,8 @@
         "SUPPLIER_MEMBER_ADDED",
         "SUPPLIER_PROFILE_UPDATED",
         "SUPPLIER_UPDATED",
+        "SUPPLY_REQUEST_ACCEPTED",
+        "SUPPLY_REQUEST_UPDATE",
         "SYSTEM_APP_OUTDATED",
         "VEHICLE_CREATED",
         "WAREHOUSE_CREATED",
@@ -1215,8 +1334,11 @@
     "DRIVER_CREATED": "UnknownEventPayload",
     "DRIVER_LOCATION_UPDATED": "UnknownEventPayload",
     "FACTORY_CREATED": "UnknownEventPayload",
+    "FACTORY_SUPPLY_REQUEST_UPDATE": "UnknownEventPayload",
     "FREEZE_LOCK_ACQUIRED": "UnknownEventPayload",
     "FREEZE_LOCK_RELEASED": "UnknownEventPayload",
+    "INVENTORY_IMPORT_STATUS_UPDATE": "UnknownEventPayload",
+    "INVENTORY_IMPORT_UPLOADED": "UnknownEventPayload",
     "INVENTORY_SYNC_COMPLETE": "UnknownEventPayload",
     "MANIFEST_CANCELLED": "UnknownEventPayload",
     "MANIFEST_COMPLETED": "UnknownEventPayload",
@@ -1256,6 +1378,8 @@
     "SUPPLIER_MEMBER_ADDED": "UnknownEventPayload",
     "SUPPLIER_PROFILE_UPDATED": "UnknownEventPayload",
     "SUPPLIER_UPDATED": "UnknownEventPayload",
+    "SUPPLY_REQUEST_ACCEPTED": "UnknownEventPayload",
+    "SUPPLY_REQUEST_UPDATE": "UnknownEventPayload",
     "SYSTEM_APP_OUTDATED": "UnknownEventPayload",
     "VEHICLE_CREATED": "UnknownEventPayload",
     "WAREHOUSE_CREATED": "UnknownEventPayload",

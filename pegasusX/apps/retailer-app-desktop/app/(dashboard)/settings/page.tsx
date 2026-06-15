@@ -30,6 +30,7 @@ import { Button, Chip, Skeleton } from "@heroui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
+import { getPricingRules } from "../../../lib/api";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import type { AutoOrderSettings, RetailerProfile } from "../../../lib/types";
@@ -314,6 +315,28 @@ export default function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [pricingRulesSummary, setPricingRulesSummary] = useState<string | null>(null);
+  const [pricingRulesError, setPricingRulesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void getPricingRules()
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`Pricing rules unavailable (${res.status})`);
+        }
+        const data = (await res.json()) as { summary?: string; status?: string };
+        setPricingRulesSummary(
+          data.summary || data.status || "Supplier pricing rules are active for your account.",
+        );
+        setPricingRulesError(null);
+      })
+      .catch((err: unknown) => {
+        setPricingRulesSummary(null);
+        setPricingRulesError(
+          err instanceof Error ? err.message : "Pricing rules unavailable",
+        );
+      });
+  }, []);
 
   const clearProfileFieldError = useCallback((field: keyof ProfileFieldErrors) => {
     setProfileErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -773,6 +796,18 @@ export default function SettingsPage() {
                   />{" "}
                   Billing & Access
                 </h2>
+                <div className="bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl p-4 shadow-[var(--shadow-sm)] mb-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2">
+                    Pricing rules (read-only)
+                  </p>
+                  {pricingRulesError ? (
+                    <p className="text-sm text-orange-700">{pricingRulesError}</p>
+                  ) : (
+                    <p className="text-sm text-[var(--desk-text-secondary)]">
+                      {pricingRulesSummary ?? "Loading pricing rules…"}
+                    </p>
+                  )}
+                </div>
                 <div className="bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl p-2 shadow-[var(--shadow-sm)]">
                   <button
                     type="button"

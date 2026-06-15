@@ -395,7 +395,22 @@ struct TrackingOrder: Codable, Identifiable, Hashable {
 }
 
 struct TrackingResponse: Codable {
+    let status: String?
     let orders: [TrackingOrder]
+    let recentReceipts: [TrackingOrder]?
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case orders
+        case recentReceipts = "recent_receipts"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        status = try c.decodeIfPresent(String.self, forKey: .status)
+        orders = try c.decodeIfPresent([TrackingOrder].self, forKey: .orders) ?? []
+        recentReceipts = try c.decodeIfPresent([TrackingOrder].self, forKey: .recentReceipts)
+    }
 }
 
 struct ActiveFulfillmentItem: Codable, Identifiable, Hashable {

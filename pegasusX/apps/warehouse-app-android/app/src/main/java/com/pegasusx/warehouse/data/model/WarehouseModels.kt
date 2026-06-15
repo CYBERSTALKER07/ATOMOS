@@ -595,3 +595,44 @@ data class PaymentGateway(
 data class PaymentConfigResponse(
     val gateways: List<PaymentGateway> = emptyList(),
 )
+
+// ── Notifications + client policy ──
+@Serializable
+data class NotificationItem(
+    val id: String = "",
+    val type: String = "",
+    val title: String = "",
+    val body: String = "",
+    val payload: String = "",
+    val channel: String = "",
+    @SerialName("read_at") val readAt: String? = null,
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class NotificationsResponse(
+    val notifications: List<NotificationItem> = emptyList(),
+    @SerialName("unread_count") val unreadCount: Int = 0,
+    @SerialName("has_more") val hasMore: Boolean = false,
+)
+
+@Serializable
+data class MarkNotificationsReadRequest(
+    @SerialName("notification_ids") val notificationIds: List<String>? = null,
+    @SerialName("mark_all") val markAll: Boolean = false,
+)
+
+@Serializable
+data class ClientPolicyResponse(
+    val role: String = "",
+    val platform: String = "",
+    val channel: String = "",
+    @SerialName("client_version") val clientVersion: String = "",
+    @SerialName("minimum_version") val minimumVersion: String = "",
+    @SerialName("recommended_version") val recommendedVersion: String = "",
+    @SerialName("force_update") val forceUpdate: Boolean = false,
+    @SerialName("update_url") val updateUrl: String? = null,
+    @SerialName("update_deferred") val updateDeferred: Boolean = false,
+    @SerialName("defer_reason") val deferReason: String? = null,
+    val outdated: Boolean = false,
+)

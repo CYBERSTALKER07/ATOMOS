@@ -3,7 +3,7 @@
 **Scope:** pegasusX/ ONLY. pegasus/ is read-only reference for UI layouts, design systems, component patterns, code/arch approaches, and feature ideas that are suitable for a **single-tenant** ecosystem (one primary SUPPLIER, thousands of retailers, multiple warehouses/factories under that supplier).  
 **Never edit pegasus/.** All implementation, new files, and status updates happen exclusively inside pegasusX/.
 
-**Last updated:** 2026-06-14 (initial creation from full audit of existing plans, ledgers, code, and Boss directive).  
+**Last updated:** 2026-06-15 (payload PL-1/2/3 cross-client parity batch).  
 **Owner:** Boss / F.R.I.D.A.Y. (single-tenant SSMR/PX12 focus).  
 **Status model (per item):** `TODO` | `IN_PROGRESS` | `WIRED` | `E2E_SSMR_GREEN` | `PROD_CANDIDATE` | `BLOCKED` | `DEFERRED` (intentional v1 delta).  
 **Reconciliation rule:** After every edit batch, update this file + `context/plan.md` + relevant ledgers/gap docs + diagrams in the **same commit set**. Code is ground truth.
@@ -154,7 +154,7 @@ For each role, list its apps (all must stay in sync per doctrine). For each app/
 - **UI/Layout from pegasus ref:** WarehouseShell / KPI dashboard grid (not always Bento); PageChrome + desk-table / dense ops tables for orders/dispatch/manifests/supply-requests/dispatch-locks/transfers; order detail mutation panel (`/orders/[id]`); transfer action panel (pegasusX-only under Operations). Replicate good patterns (chrome, headers) from pegasus warehouse-portal. Enhance pegasusX ui-kit.
 - **Cross-sync:** Warehouse room; interacts with factory (supply), payload (via manifests), driver (assign/execution), supplier (oversight). Supply WS + Kafka consumers. Dispatch locks freeze AI.
 - **E2E criteria:** Supply full state machine + WS; dispatch lock + capacity + execute end-to-end with fleet map updates + driver notification; transfers receive + inventory; order mutations visible to retailer/driver; `PX_E2E_WAREHOUSE_*` + replenishment markers.
-- **Status:** Portal + ops `WIRED`/`E2E` (PX4-A1, PX12-I). **Replenishment insights durability (2026-06-14):** Spanner-backed `ReplenishmentInsights` + approve/dismiss — see `context/WAREHOUSE_PHASE.md` WH1-*. **Replenishment engine + native fleet live map:** WH2–WH3 in `WAREHOUSE_PHASE.md`.
+- **Status:** Portal + ops `WIRED`/`E2E` (PX4-A1, PX12-I). **Replenishment insights durability (2026-06-14):** Spanner-backed `ReplenishmentInsights` + approve/dismiss — see `context/WAREHOUSE_PHASE.md` WH1-*. **Replenishment engine + native fleet live map:** WH2–WH3. **WH-7/8/9 closed (2026-06-15):** client-policy banners (portal/Android/iOS), native notification inbox (Android/iOS), auth/mutation paths verified — see `context/WAREHOUSE_PHASE.md`. SSMR: `PX_E2E_WAREHOUSE_CLIENT_POLICY_OK` + existing warehouse markers.
 
 #### warehouse-app-android + warehouse-app-ios
 - **Depends on:** Same core ops slice (supply, dispatch, fleet map, transfers, order mutations, insights).
@@ -196,8 +196,8 @@ For each role, list its apps (all must stay in sync per doctrine). For each app/
 - **UI/Layout from pegasus ref:** Desktop procurement (richest); mobile catalog-first + tracking. Replicate browse chips (Categories/All/Suppliers), flat grid, search, connect-vendor sheet, receiving window editors, unified checkout. pegasusX parity-ledger notes desktop + mobile catalog/supplier parity closed (2026-06). Use pegasusX ui-kit for web; native platform for mobile.
 - **Cross-sync:** Retailer room; supplier sees orders/exceptions; driver/shopclosed negotiation; payment webhooks settle orders visible to supplier.
 - **E2E criteria:** Reg → catalog → my-suppliers → checkout (card/cash) → tracking → receive/confirm; shopclosed flow; receiving windows respected; `PX_E2E_CATALOG_OK`, order/payment markers.
-- **Status:** Register/order/tracking/catalog suppliers/auto-order `E2E` (PX2, PX12-G/B3). Desktop richest; mobile thinner but closed for v1 per ledgers. **Receiving window edit** on desktop `/settings` + native profile screens — **E2E_SSMR_GREEN** (`PX_E2E_RETAILER_RECEIVING_WINDOW_OK`; see `context/RETAILER_PHASE.md` RT1).
-- **Phase:** Order/catalog/payment adjacent; receiving windows already cross (desktop + mobile).
+- **Status:** Register/order/tracking/catalog suppliers/auto-order `E2E` (PX2, PX12-G/B3). **RT-2/RT-3/RT-4 closed** (2026-06): cancel + request-cancel (desktop/Android), card initiate checkout, catalog path fix (iOS), token refresh, insights/cards/category-suppliers/pricing/tracking receipts, client-policy banners — see `context/RETAILER_PHASE.md`. SSMR: `PX_E2E_RETAILER_RECEIVING_WINDOW_OK`, `PX_E2E_RETAILER_CATALOG_PRODUCTS_OK`, `PX_E2E_RETAILER_CANCEL_OK`, `PX_E2E_RETAILER_CARD_INITIATE_OK`. **Open:** card Spanner persistence (503 scaffold), negotiation disabled, B2B/dock desktop-only, full Firebase OTP, desktop preorder edit UI.
+- **Phase:** Backend card persistence + negotiation re-enable when product directs; iOS Xcode smoke on device.
 
 ### 2.6 PAYLOAD Role
 **Apps:** payload-terminal (Expo), payload-app-ios (iPad), payload-app-android (tablet).  
@@ -206,8 +206,8 @@ For each role, list its apps (all must stay in sync per doctrine). For each app/
 - **Depends on:** 1.7 (manifest full lifecycle + reassign + exceptions + driver gate + multi-truck seal + aggregate seal-complete), 1.10 (payload rooms + device token + policy), 1.4/1.5 (fleet visibility for loading?).
 - **UI/Layout from pegasus ref:** PayloadTerminal Expo + tablet natives. pegasusX audits: byte-identical themes/components except data-layer scoping (`/v1/payloader/*`) + adaptive polish (iPad split column, Android ListDetailPaneScaffold auto-open). Replicate/maintain the good adaptive + state panels. pegasusX packages for shared.
 - **Cross-sync:** Payload room + factory (manifest control) + supplier + warehouse + driver gate. MANIFEST_* events critical. Seal batch affects fleet/driver.
-- **E2E criteria:** Login → manifest list/detail → loading/inject/seal (multi-truck) → dispatch → complete; reassign recommend+apply durable; exceptions; driver gate; device token; `PX_E2E_PAYLOAD_OK` + sub-markers (LIFECYCLE, REASSIGN, DRIVER_GATE, DEVICE_TOKEN, SEAL_FLOWS).
-- **Status:** Lifecycle + reassign + seal flows `WIRED`/`E2E` advancing (PX4-A3, PX9-B, PX-PAY-003, PX-REAS-004). PX-PAY-003 tablet apps now use `seal-completed` + multi-truck batch finalize.
+- **E2E criteria:** Login → manifest list/detail → loading/inject/seal (multi-truck) → dispatch → complete; reassign recommend+apply durable; exceptions; driver gate; device token; `PX_E2E_PAYLOAD_OK` + sub-markers (LIFECYCLE, REASSIGN, DRIVER_GATE, DEVICE_TOKEN, SEAL_FLOWS, CLIENT_POLICY).
+- **Status:** Lifecycle + reassign + seal flows `E2E_SSMR_GREEN` (PX4-A3, PX9-B, PX-PAY-003, PX-REAS-004). **PL-1/2/3 closed** (2026-06-15): API path audit green, notification inbox + exceptions panels on all clients, client-policy banners (terminal/Android/iOS), SSMR `PX_E2E_PAYLOAD_CLIENT_POLICY_OK` — see `context/PAYLOAD_PHASE.md`. **Open:** payloader JWT refresh (no backend route), full Firebase OTP.
 - **Phase:** Any manifest/payload change moves the entire payload row + factory + supplier oversight + driver gate consumers.
 
 ---

@@ -48,7 +48,7 @@ private val operations = listOf(
 private val portalAccount = listOf(
     MoreDestination("Warehouse setup", "Onboarding wizard", Icons.Default.Settings, WarehouseRoutes.portalHandoff(WarehousePortalFeature.SETUP.routeKey)),
     MoreDestination("Profile", "Account settings", Icons.Default.Person, WarehouseRoutes.portalHandoff(WarehousePortalFeature.PROFILE.routeKey)),
-    MoreDestination("Notifications", "Alert inbox", Icons.Default.Notifications, WarehouseRoutes.portalHandoff(WarehousePortalFeature.NOTIFICATIONS.routeKey)),
+    MoreDestination("Notifications", "Alert inbox", Icons.Default.Notifications, WarehouseRoutes.NOTIFICATIONS),
     MoreDestination("Global search", "Portal navigation", Icons.Default.Search, WarehouseRoutes.portalHandoff(WarehousePortalFeature.SEARCH.routeKey)),
 )
 

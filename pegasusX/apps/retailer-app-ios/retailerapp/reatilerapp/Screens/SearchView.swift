@@ -118,7 +118,7 @@ struct SearchView: View {
     }
 
     private func loadProducts() async {
-        do { let r: [Product] = try await api.get(path: "/v1/products"); products = r }
+        do { let r: [Product] = try await api.get(path: "/v1/catalog/products"); products = r }
         catch { products = [] }
     }
 }

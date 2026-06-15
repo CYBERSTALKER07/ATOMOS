@@ -1,20 +1,27 @@
 import SwiftUI
 
 struct ArrivalView: View {
-    @State private var orders: [Order] = []
+    @State private var trackingOrders: [TrackingOrder] = []
     @State private var isLoading = false
-    @State private var updatingIds: Set<String> = []
-    @State private var updateError = false
+    @State private var loadError: String?
 
     private let api = APIClient.shared
+    private let arrivalStates: Set<String> = ["IN_TRANSIT", "DISPATCHED", "ARRIVING", "ARRIVED"]
 
     var body: some View {
         ScrollView {
-            if orders.isEmpty {
+            if isLoading && trackingOrders.isEmpty {
+                ProgressView().padding(.top, 80)
+            } else if let loadError, trackingOrders.isEmpty {
+                Text(loadError)
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .padding(AppTheme.spacingXL)
+            } else if trackingOrders.isEmpty {
                 emptyState
             } else {
                 LazyVStack(spacing: AppTheme.spacingLG) {
-                    ForEach(Array(orders.enumerated()), id: \.element.id) { index, order in
+                    ForEach(Array(trackingOrders.enumerated()), id: \.element.id) { index, order in
                         arrivalCard(order)
                             .staggeredSlideIn(index: index)
                     }
@@ -28,19 +35,11 @@ struct ArrivalView: View {
         .background(AppTheme.background)
         .task { await loadOrders() }
         .refreshable { await loadOrders() }
-        .alert("Update Failed", isPresented: $updateError) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Could not update order status. Please try again.")
-        }
     }
 
-    // MARK: - Arrival Card
-
-    private func arrivalCard(_ order: Order) -> some View {
+    private func arrivalCard(_ order: TrackingOrder) -> some View {
         LabCard {
             VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
-                // Header
                 HStack(alignment: .top) {
                     ZStack {
                         Circle()
@@ -52,72 +51,35 @@ struct ArrivalView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Order #\(order.id.suffix(3))")
+                        Text("Order #\(order.orderId.suffix(8))")
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(AppTheme.textPrimary)
-                        Text(order.status.displayName)
+                        Text(order.state.replacingOccurrences(of: "_", with: " "))
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                     }
 
                     Spacer()
 
-                    // Live indicator
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(order.status == .inTransit ? AppTheme.success : AppTheme.warning)
-                            .frame(width: 7, height: 7)
-                            .shadow(color: (order.status == .inTransit ? AppTheme.success : AppTheme.warning).opacity(0.5), radius: 4)
-                        Text(order.status == .inTransit ? "LIVE" : "WAITING")
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(AppTheme.textSecondary)
+                    NavigationLink {
+                        DeliveryMapView()
+                    } label: {
+                        Label("Track", systemImage: "map")
+                            .font(.system(.caption, design: .rounded, weight: .semibold))
                     }
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(.ultraThinMaterial)
-                    .clipShape(.capsule)
                 }
 
-                // ETA
-                if let eta = order.estimatedDelivery {
-                    HStack(spacing: AppTheme.spacingSM) {
-                        Image(systemName: "clock")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(AppTheme.accent)
-                        CountdownText(targetISO: eta, font: .system(.subheadline, design: .monospaced, weight: .bold), color: AppTheme.accent)
-                        Text("until arrival")
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(AppTheme.textTertiary)
-                        Spacer()
-                    }
-                    .padding(AppTheme.spacingSM)
-                    .background(AppTheme.accentSoft.opacity(0.2))
-                    .clipShape(.rect(cornerRadius: AppTheme.radiusSM))
-                }
-
-                // Items summary
-                Text("\(order.itemCount) items · \(order.displayTotal)")
+                Text("\(order.items.count) items · \(order.totalAmount) UZS")
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(AppTheme.textSecondary)
 
-                Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight)
-
-                // Actions
-                HStack(spacing: AppTheme.spacingMD) {
-                    LabButton("Confirm", variant: .primary, icon: "checkmark.circle") {
-                        Task { await updateStatus(orderId: order.id, status: "COMPLETED") }
-                    }
-                    LabButton("Reject", variant: .destructive, icon: "xmark.circle") {
-                        Task { await updateStatus(orderId: order.id, status: "CANCELLED") }
-                    }
-                }
-                .disabled(updatingIds.contains(order.id))
-                .opacity(updatingIds.contains(order.id) ? 0.5 : 1)
+                Text("Completion is handled through delivery handoff and payment — retailer status patches are not available here.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(AppTheme.textTertiary)
             }
             .padding(AppTheme.spacingLG)
         }
     }
-
-    // MARK: - Empty State
 
     private var emptyState: some View {
         VStack(spacing: AppTheme.spacingLG) {
@@ -129,7 +91,7 @@ struct ArrivalView: View {
             Text("No Active Arrivals")
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
-            Text("Incoming deliveries will appear here")
+            Text("Incoming deliveries will appear here from live tracking.")
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(AppTheme.textTertiary)
             Spacer()
@@ -137,28 +99,17 @@ struct ArrivalView: View {
         .padding(AppTheme.spacingXL)
     }
 
-    // MARK: - API
-
     private func loadOrders() async {
-        let rid = AuthManager.shared.currentUser?.id ?? ""
         isLoading = true
-        do { let r: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders"); orders = r.filter { $0.status.isActive } }
-        catch { orders = [] }
-        isLoading = false
-    }
-
-    private func updateStatus(orderId: String, status: String) async {
-        guard !updatingIds.contains(orderId) else { return }
-        updatingIds.insert(orderId)
-        defer { updatingIds.remove(orderId) }
+        loadError = nil
         do {
-            let _: Order = try await api.patch(path: "/v1/orders/\(orderId)/status", body: ["status": status])
-            Haptics.success()
-            withAnimation(AnimationConstants.fluid) { orders.removeAll { $0.id == orderId } }
+            let response: TrackingResponse = try await api.get(path: "/v1/retailer/tracking")
+            trackingOrders = response.orders.filter { arrivalStates.contains($0.state.uppercased()) }
         } catch {
-            Haptics.error()
-            updateError = true
+            trackingOrders = []
+            loadError = "Could not load live arrivals. Check your connection and retry."
         }
+        isLoading = false
     }
 }
 

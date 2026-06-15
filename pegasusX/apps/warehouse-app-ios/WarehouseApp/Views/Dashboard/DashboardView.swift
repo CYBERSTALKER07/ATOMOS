@@ -5,6 +5,7 @@ struct DashboardView: View {
     @State private var stats = DashboardData.empty
     @State private var loading = true
     @State private var error: String?
+    @State private var clientPolicyMessage: String?
 
     private let columns = [
         GridItem(.flexible(), spacing: LabTheme.spacingMD),
@@ -15,6 +16,8 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
+                ClientPolicyBanner(message: clientPolicyMessage)
+                    .padding(.top, LabTheme.spacingSM)
                 if loading {
                     ProgressView()
                         .frame(maxWidth: .infinity, minHeight: 200)
@@ -55,8 +58,56 @@ struct DashboardView: View {
                     }
                 }
             }
-            .task { load() }
-            .refreshable { load() }
+            .task {
+                load()
+                await loadClientPolicy()
+            }
+            .refreshable {
+                load()
+                await loadClientPolicy()
+            }
+        }
+    }
+
+    private func loadClientPolicy() async {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        do {
+            struct ClientPolicy: Decodable {
+                let outdated: Bool
+                let forceUpdate: Bool
+                let minimumVersion: String
+                let deferReason: String?
+
+                enum CodingKeys: String, CodingKey {
+                    case outdated
+                    case forceUpdate = "force_update"
+                    case minimumVersion = "minimum_version"
+                    case deferReason = "defer_reason"
+                }
+            }
+            let policy: ClientPolicy = try await APIClient.shared.get(
+                "v1/platform/client-policy",
+                query: [
+                    "role": "WAREHOUSE",
+                    "platform": "ios",
+                    "version": version,
+                    "channel": "production",
+                ],
+            )
+            if policy.outdated || policy.forceUpdate {
+                var message = policy.forceUpdate ? "Update required" : "Update available"
+                if !policy.minimumVersion.isEmpty {
+                    message += " — minimum version \(policy.minimumVersion)"
+                }
+                if let deferReason = policy.deferReason, !deferReason.isEmpty {
+                    message += ". \(deferReason)"
+                }
+                clientPolicyMessage = message
+            } else {
+                clientPolicyMessage = nil
+            }
+        } catch {
+            // Policy fetch is optional on local/dev stacks.
         }
     }
 

@@ -32,7 +32,7 @@ enum class WarehouseSection(
     PAYMENT_CONFIG(WarehouseRoutes.PAYMENT_CONFIG, "Payment config", Icons.Default.Payment),
     PORTAL_SETUP(WarehouseRoutes.portalHandoff("setup"), "Warehouse setup", Icons.Default.Settings),
     PORTAL_PROFILE(WarehouseRoutes.portalHandoff("profile"), "Profile", Icons.Default.Person),
-    PORTAL_NOTIFICATIONS(WarehouseRoutes.portalHandoff("notifications"), "Notifications", Icons.Default.Notifications),
+    PORTAL_NOTIFICATIONS(WarehouseRoutes.NOTIFICATIONS, "Notifications", Icons.Default.Notifications),
     PORTAL_SEARCH(WarehouseRoutes.portalHandoff("search"), "Global search", Icons.Default.Search),
     MORE(WarehouseRoutes.MORE, "More", Icons.Default.Apps),
     ;

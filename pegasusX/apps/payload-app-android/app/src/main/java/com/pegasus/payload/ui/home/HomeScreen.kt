@@ -95,6 +95,7 @@ import com.pegasus.payload.data.model.RecommendReassignResponse
 import com.pegasus.payload.data.model.NotificationItem
 import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.data.model.TruckRecommendation
+import com.pegasus.payload.ui.components.ClientPolicyBanner
 
 /**
  * Master-detail home with Phase 4 loading workflow.
@@ -193,8 +194,10 @@ fun HomeScreen(
             )
         },
     ) { padding ->
-        ListDetailPaneScaffold(
-            modifier = Modifier.padding(padding),
+        Column(modifier = Modifier.padding(padding)) {
+            ClientPolicyBanner(state.clientPolicyMessage)
+            ListDetailPaneScaffold(
+            modifier = Modifier.weight(1f),
             directive = navigator.scaffoldDirective,
             value = navigator.scaffoldValue,
             listPane = {

@@ -318,4 +318,12 @@ interface PegasusApi {
 
     @POST("/v1/user/notifications/read")
     suspend fun markNotificationsRead(@Body body: Map<String, @JvmSuppressWildcards Any>): ApiResponse
+
+    @GET("/v1/platform/client-policy")
+    suspend fun getClientPolicy(
+        @Query("role") role: String = "RETAILER",
+        @Query("platform") platform: String,
+        @Query("version") version: String,
+        @Query("channel") channel: String = "production",
+    ): JsonElement
 }

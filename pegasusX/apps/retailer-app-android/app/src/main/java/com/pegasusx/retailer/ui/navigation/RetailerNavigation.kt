@@ -157,12 +157,13 @@ fun RetailerNavigation(
                                     launchSingleTop = true
                                 }
                             }
-                            com.pegasusx.retailer.ui.components.SidebarDestination.PROFILE -> {
+                            com.pegasusx.retailer.ui.components.SidebarDestination.PROFILE,
+                            com.pegasusx.retailer.ui.components.SidebarDestination.SETTINGS -> {
                                 navController.navigate(PegasusTab.PROFILE.name) {
                                     launchSingleTop = true
                                 }
                             }
-                            else -> { /* Settings — future */ }
+                            else -> { /* unhandled sidebar destination */ }
                         }
                         railExpanded = false // Collapse after selection if desired
                     },
@@ -199,7 +200,7 @@ fun RetailerNavigation(
                         }
                     },
                     cartBadge = cartBadge,
-                    notificationBadge = navState.activeOrderCount,
+                    notificationBadge = navState.unreadNotificationCount,
                     avatarInitial = navState.avatarInitial,
                     title = topBarTitle,
                 )
@@ -554,12 +555,13 @@ fun RetailerNavigation(
                                 launchSingleTop = true
                             }
                         }
-                        com.pegasusx.retailer.ui.components.SidebarDestination.PROFILE -> {
+                        com.pegasusx.retailer.ui.components.SidebarDestination.PROFILE,
+                        com.pegasusx.retailer.ui.components.SidebarDestination.SETTINGS -> {
                             navController.navigate(PegasusTab.PROFILE.name) {
                                 launchSingleTop = true
                             }
                         }
-                        else -> { /* Settings — future */ }
+                        else -> { /* unhandled sidebar destination */ }
                     }
                 },
             )

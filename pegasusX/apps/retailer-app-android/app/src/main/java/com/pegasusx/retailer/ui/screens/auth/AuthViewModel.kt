@@ -113,8 +113,24 @@ class AuthViewModel @Inject constructor(
                 tokenManager.saveUserName(response.user.name)
                 // Exchange Firebase custom token (graceful degradation)
                 if (response.firebaseToken.isNotBlank()) {
+                    // Firebase OTP scaffold: exchange custom token when configured.
+                    // Full Firebase phone OTP remains behind env/feature gate — not required for retailer login.
                     val fbIdToken = com.pegasusx.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
                     if (fbIdToken != null) tokenManager.saveFirebaseIdToken(fbIdToken)
+                }
+                try {
+                    api.setupRetailer(
+                        body = mapOf(
+                            "store_name" to storeName,
+                            "owner_name" to ownerName,
+                            "address_text" to addressText,
+                            "latitude" to latitude,
+                            "longitude" to longitude,
+                        ),
+                        idempotencyKey = "retailer-setup:${response.user.id}",
+                    )
+                } catch (_: Exception) {
+                    // Registration already captured core profile; setup is additive best-effort.
                 }
                 _uiState.value = _uiState.value.copy(isLoading = false, isAuthenticated = true, error = null, loadIssue = null)
             } catch (e: Exception) {

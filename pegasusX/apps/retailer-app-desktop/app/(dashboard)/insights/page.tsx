@@ -26,10 +26,23 @@ import MiniSparkline from "../../../components/MiniSparkline";
 import EmptyState from "../../../components/EmptyState";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
+import { correctPrediction } from "../../../lib/api";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import type { Prediction, RetailerAnalytics } from "../../../lib/types";
 
 type LoadIssue = "restricted" | "offline" | "error";
+
+type DetailedAnalytics = {
+  series?: Array<{
+    order_id: string;
+    total_minor: number;
+    currency?: string;
+    created_at: string;
+  }>;
+  by_category?: unknown[];
+  from?: string;
+  to?: string;
+};
 
 const urgencyCfg: Record<
   string,
@@ -55,11 +68,18 @@ export default function InsightsPage() {
     isRefreshing: isAnalyticsRefreshing,
     mutate: refreshAnalytics,
   } = useLiveData<RetailerAnalytics>("/v1/retailer/analytics/expenses");
+  const {
+    data: detailedAnalytics,
+    loading: loadingDetailed,
+    error: detailedError,
+    mutate: refreshDetailed,
+  } = useLiveData<DetailedAnalytics>("/v1/retailer/analytics/detailed");
   const ws = useOptionalWebSocket();
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [correctingId, setCorrectingId] = useState<string | null>(null);
   const [orderResult, setOrderResult] = useState<"success" | "error" | null>(
     null,
   );
@@ -68,15 +88,17 @@ export default function InsightsPage() {
   const topProducts = analytics?.top_products ?? [];
   const totalThisMonth = analytics?.total_this_month ?? 0;
   const monthlyExpenses = analytics?.monthly_expenses ?? [];
-  const isRefreshing = isPredictionsRefreshing || isAnalyticsRefreshing;
+  const detailedSeries = detailedAnalytics?.series ?? [];
+  const isRefreshing = isPredictionsRefreshing || isAnalyticsRefreshing || loadingDetailed;
 
   const refreshAll = useCallback(() => {
     void refreshPred();
     void refreshAnalytics();
-  }, [refreshAnalytics, refreshPred]);
+    void refreshDetailed();
+  }, [refreshAnalytics, refreshDetailed, refreshPred]);
 
   const loadIssue = useMemo<LoadIssue | null>(() => {
-    const errors = [predictionsError, analyticsError].filter(Boolean) as Array<
+    const errors = [predictionsError, analyticsError, detailedError].filter(Boolean) as Array<
       Error & { status?: number }
     >;
     if (errors.length === 0) return null;
@@ -92,7 +114,7 @@ export default function InsightsPage() {
       return "offline";
     }
     return "error";
-  }, [analyticsError, predictionsError]);
+  }, [analyticsError, detailedError, predictionsError]);
 
   const syncBanner = useMemo(() => {
     if (loadIssue === "restricted") {
@@ -226,6 +248,26 @@ export default function InsightsPage() {
       return "";
     }
   }, []);
+
+  const handleCorrectPrediction = useCallback(
+    async (predictionId: string, payload: Record<string, unknown>) => {
+      setCorrectingId(predictionId);
+      try {
+        const res = await correctPrediction(
+          predictionId,
+          payload,
+          `retailer-prediction-correct:${predictionId}`,
+        );
+        if (!res.ok) {
+          throw new Error(`Correction failed with ${res.status}`);
+        }
+        await refreshPred();
+      } finally {
+        setCorrectingId(null);
+      }
+    },
+    [refreshPred],
+  );
 
   const createOrder = useCallback(async () => {
     if (selected.size === 0) return;
@@ -552,18 +594,33 @@ export default function InsightsPage() {
                           </button>
                         </div>
                       ) : (
-                        <div className="text-right">
-                          <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
-                            {(item.predicted_amount ??
-                              item.predictedAmount ??
-                              0
-                            ).toLocaleString()}
-                          </p>
-                          <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
-                            {item.predicted_quantity ??
-                              item.predictedQuantity ??
-                              1} UNITS
-                          </p>
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="text-right">
+                            <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                              {(item.predicted_amount ??
+                                item.predictedAmount ??
+                                0
+                              ).toLocaleString()}
+                            </p>
+                            <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                              {item.predicted_quantity ??
+                                item.predictedQuantity ??
+                                1}{" "}
+                              UNITS
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={correctingId === item.id}
+                            onClick={() =>
+                              void handleCorrectPrediction(item.id, {
+                                status: "REJECTED",
+                              })
+                            }
+                            className="text-[10px] font-bold uppercase tracking-wide text-[var(--desk-text-tertiary)] hover:text-red-600"
+                          >
+                            {correctingId === item.id ? "Updating…" : "Dismiss signal"}
+                          </button>
                         </div>
                       )}
                     </motion.div>
@@ -666,6 +723,38 @@ export default function InsightsPage() {
                       size={14}
                       className="text-[var(--desk-text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity"
                     />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
+            <h3 className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-4">
+              Detailed spend series
+            </h3>
+            {detailedError ? (
+              <p className="text-sm text-[var(--desk-text-tertiary)]">
+                Advanced analytics unavailable right now.
+              </p>
+            ) : detailedSeries.length === 0 ? (
+              <p className="text-sm text-[var(--desk-text-tertiary)]">
+                No completed-order series yet.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {detailedSeries.slice(0, 8).map((row) => (
+                  <div
+                    key={row.order_id}
+                    className="flex items-center justify-between py-2 border-b border-[var(--desk-border)] last:border-0"
+                  >
+                    <span className="text-xs font-mono text-[var(--desk-text-secondary)]">
+                      #{row.order_id.slice(-8)}
+                    </span>
+                    <span className="text-sm font-bold tabular-nums">
+                      {(row.total_minor ?? 0).toLocaleString()}{" "}
+                      {row.currency ?? "UZS"}
+                    </span>
                   </div>
                 ))}
               </div>

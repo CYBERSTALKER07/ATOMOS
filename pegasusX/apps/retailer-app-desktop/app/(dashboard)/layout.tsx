@@ -6,6 +6,7 @@ import { NotificationsProvider } from "../../lib/notifications";
 import { clearStoredToken } from "../../lib/bridge";
 import { CartProvider } from "../../lib/cart";
 import RetailerShell from "../../components/RetailerShell";
+import ClientPolicyBanner from "../../components/ClientPolicyBanner";
 import PaymentModal from "../../components/PaymentModal";
 import ShopClosedModal from "../../components/ShopClosedModal";
 
@@ -14,7 +15,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <WebSocketProvider>
       <NotificationsProvider>
         <CartProvider>
-          <RetailerShell>{children}</RetailerShell>
+          <RetailerShell>
+            <ClientPolicyBanner />
+            {children}
+          </RetailerShell>
           <PaymentModal />
           <ShopClosedModal />
         </CartProvider>

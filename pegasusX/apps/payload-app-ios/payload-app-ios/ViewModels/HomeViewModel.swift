@@ -53,6 +53,7 @@ final class HomeViewModel {
     private(set) var queuedActions: Int = 0
     var showNotificationsPanel: Bool = false
     var queuedNoticeMessage: String?
+    var clientPolicyMessage: String?
     var syncCompleteMessage: String?
 
     // MARK: - Phase 5 state
@@ -495,6 +496,28 @@ final class HomeViewModel {
         online = ws.online
         queuedActions = queue.read().count
         await loadNotifications()
+        await loadClientPolicy()
+    }
+
+    func loadClientPolicy() async {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        do {
+            let policy = try await api.clientPolicy(platform: "ios", version: version)
+            if policy.outdated || policy.forceUpdate {
+                var message = policy.forceUpdate ? "Update required" : "Update available"
+                if !policy.minimumVersion.isEmpty {
+                    message += " — minimum version \(policy.minimumVersion)"
+                }
+                if let deferReason = policy.deferReason, !deferReason.isEmpty {
+                    message += ". \(deferReason)"
+                }
+                clientPolicyMessage = message
+            } else {
+                clientPolicyMessage = nil
+            }
+        } catch {
+            // Policy fetch is optional on local/dev stacks.
+        }
     }
 
     func disconnectPhase6() {

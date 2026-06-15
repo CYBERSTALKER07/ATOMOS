@@ -297,6 +297,22 @@ struct MarkReadRequest: Encodable {
     }
 }
 
+struct ClientPolicyResponse: Decodable {
+    let role: String
+    let outdated: Bool
+    let forceUpdate: Bool
+    let minimumVersion: String
+    let deferReason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case role
+        case outdated
+        case forceUpdate = "force_update"
+        case minimumVersion = "minimum_version"
+        case deferReason = "defer_reason"
+    }
+}
+
 // MARK: - WebSocket frame
 
 /// Backend `kafka/notification_dispatcher.go` pushes a flat
