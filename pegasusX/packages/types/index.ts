@@ -633,6 +633,11 @@ export interface SupplierProfileUpdateRequest {
   categories?: string[];
 }
 
+export interface SupplierTopologyInventorySeed {
+  product_id: string;
+  quantity: number;
+}
+
 export interface SupplierTopologyWarehouseInput {
   warehouse_id?: WarehouseId;
   name: string;
@@ -643,6 +648,9 @@ export interface SupplierTopologyWarehouseInput {
   is_on_shift?: boolean;
   transfer_mode?: "TRUCK" | "INTERNAL";
   co_locate_with_factory_id?: FactoryId;
+  default_out_of_stock_policy?: OutOfStockPolicy;
+  operating_schedule?: Record<string, unknown>;
+  initial_inventory?: SupplierTopologyInventorySeed[];
 }
 
 export interface SupplierTopologyFactoryInput {
@@ -669,6 +677,9 @@ export interface SupplierTopologyWarehouse {
   transfer_mode?: "TRUCK" | "INTERNAL";
   co_locate_with_factory_id?: FactoryId;
   primary_factory_id?: FactoryId;
+  default_out_of_stock_policy?: OutOfStockPolicy;
+  operating_schedule?: Record<string, unknown>;
+  initial_inventory?: SupplierTopologyInventorySeed[];
   created_at: string;
   updated_at: string;
 }

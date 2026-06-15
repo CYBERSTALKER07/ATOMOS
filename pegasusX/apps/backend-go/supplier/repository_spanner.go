@@ -319,7 +319,9 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 
 	warehouseStmt := spanner.Statement{
 		SQL: `SELECT WarehouseId, Name, Lat, Lng, CoverageRadiusKm, IsActive, IsOnShift,
-		      TransferMode, CoLocateWithFactoryId, PrimaryFactoryId, CreatedAt, UpdatedAt
+		      TransferMode, CoLocateWithFactoryId, PrimaryFactoryId,
+		      COALESCE(DefaultOutOfStockPolicy, 'REJECT'), OperatingSchedule,
+		      CreatedAt, UpdatedAt
 		      FROM Warehouses
 		      WHERE SupplierId = @supplierId
 		      ORDER BY WarehouseId`,
@@ -339,6 +341,8 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		var node WarehouseNode
 		var lat, lng, coverage spanner.NullFloat64
 		var transferMode, coLocate, primaryFactory spanner.NullString
+		var policy spanner.NullString
+		var schedule spanner.NullJSON
 		if err := row.Columns(
 			&node.WarehouseID,
 			&node.Name,
@@ -350,6 +354,8 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 			&transferMode,
 			&coLocate,
 			&primaryFactory,
+			&policy,
+			&schedule,
 			&node.CreatedAt,
 			&node.UpdatedAt,
 		); err != nil {
@@ -374,6 +380,14 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		}
 		if primaryFactory.Valid {
 			node.PrimaryFactoryID = primaryFactory.StringVal
+		}
+		if policy.Valid {
+			node.DefaultOutOfStockPolicy = normalizeOutOfStockPolicy(policy.StringVal)
+		}
+		if schedule.Valid {
+			if raw, err := json.Marshal(schedule.Value); err == nil {
+				node.OperatingSchedule = string(raw)
+			}
 		}
 		result.Warehouses = append(result.Warehouses, node)
 	}

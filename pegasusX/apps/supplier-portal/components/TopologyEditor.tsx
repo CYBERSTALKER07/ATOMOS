@@ -3,7 +3,9 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import type {
+  OutOfStockPolicy,
   SupplierTopologyFactory,
+  SupplierTopologyInventorySeed,
   SupplierTopologyResponse,
   SupplierTopologyUpdateRequest,
   SupplierTopologyWarehouse,
@@ -11,6 +13,12 @@ import type {
 import { createSupplierApi } from "@/lib/api";
 
 const api = createSupplierApi();
+
+type InventorySeedDraft = {
+  key: string;
+  product_id: string;
+  quantity: string;
+};
 
 type WarehouseDraft = {
   key: string;
@@ -23,6 +31,8 @@ type WarehouseDraft = {
   is_on_shift: boolean;
   transfer_mode: "TRUCK" | "INTERNAL";
   co_locate_with_factory_id: string;
+  default_out_of_stock_policy: OutOfStockPolicy;
+  initial_inventory: InventorySeedDraft[];
 };
 
 type FactoryDraft = {
@@ -35,6 +45,8 @@ type FactoryDraft = {
 };
 
 function warehouseDraftFromNode(node: SupplierTopologyWarehouse, key: string): WarehouseDraft {
+  const policy: OutOfStockPolicy =
+    node.default_out_of_stock_policy === "ACCEPT_BACKORDER" ? "ACCEPT_BACKORDER" : "REJECT";
   return {
     key,
     warehouse_id: node.warehouse_id,
@@ -46,7 +58,26 @@ function warehouseDraftFromNode(node: SupplierTopologyWarehouse, key: string): W
     is_on_shift: node.is_on_shift,
     transfer_mode: node.transfer_mode === "INTERNAL" ? "INTERNAL" : "TRUCK",
     co_locate_with_factory_id: node.co_locate_with_factory_id ?? "",
+    default_out_of_stock_policy: policy,
+    initial_inventory: (node.initial_inventory ?? []).map((seed, index) => ({
+      key: `${key}-seed-${index}`,
+      product_id: seed.product_id,
+      quantity: String(seed.quantity),
+    })),
   };
+}
+
+function inventorySeedsFromDrafts(rows: InventorySeedDraft[]): SupplierTopologyInventorySeed[] {
+  const out: SupplierTopologyInventorySeed[] = [];
+  for (const row of rows) {
+    const productId = row.product_id.trim();
+    const quantity = Number.parseInt(row.quantity.trim(), 10);
+    if (!productId || !Number.isFinite(quantity) || quantity <= 0) {
+      continue;
+    }
+    out.push({ product_id: productId, quantity });
+  }
+  return out;
 }
 
 function factoryDraftFromNode(node: SupplierTopologyFactory, key: string): FactoryDraft {
@@ -117,6 +148,11 @@ function buildUpdateRequest(warehouses: WarehouseDraft[], factories: FactoryDraf
       const coLocate = draft.co_locate_with_factory_id.trim();
       if (coLocate) {
         body.co_locate_with_factory_id = coLocate;
+      }
+      body.default_out_of_stock_policy = draft.default_out_of_stock_policy;
+      const seeds = inventorySeedsFromDrafts(draft.initial_inventory);
+      if (seeds.length > 0) {
+        body.initial_inventory = seeds;
       }
       return body;
     }),
@@ -221,6 +257,8 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                   is_on_shift: true,
                   transfer_mode: "TRUCK",
                   co_locate_with_factory_id: "",
+                  default_out_of_stock_policy: "REJECT",
+                  initial_inventory: [],
                 },
               ])
             }
@@ -310,6 +348,114 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                     )
                   }
                 />
+              </div>
+              <SelectField
+                label="Default out-of-stock policy"
+                value={warehouse.default_out_of_stock_policy}
+                options={[
+                  { value: "REJECT", label: "Reject orders when out of stock" },
+                  { value: "ACCEPT_BACKORDER", label: "Accept backorders when out of stock" },
+                ]}
+                onChange={(value) =>
+                  setWarehouses((prev) =>
+                    prev.map((row) =>
+                      row.key === warehouse.key
+                        ? { ...row, default_out_of_stock_policy: value as OutOfStockPolicy }
+                        : row,
+                    ),
+                  )
+                }
+              />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="md-typescale-label-medium text-[var(--color-md-outline)]">
+                    Starter inventory (optional)
+                  </div>
+                  <button
+                    type="button"
+                    className="md-btn md-btn-text md-typescale-label-large"
+                    onClick={() =>
+                      setWarehouses((prev) =>
+                        prev.map((row) =>
+                          row.key === warehouse.key
+                            ? {
+                                ...row,
+                                initial_inventory: [
+                                  ...row.initial_inventory,
+                                  { key: `seed-${Date.now()}`, product_id: "", quantity: "0" },
+                                ],
+                              }
+                            : row,
+                        ),
+                      )
+                    }
+                  >
+                    Add SKU
+                  </button>
+                </div>
+                {warehouse.initial_inventory.length === 0 ? (
+                  <p className="md-typescale-body-small text-[var(--color-md-outline)]">
+                    Seed opening stock when this warehouse is saved. Re-saving replaces seeded quantities for listed SKUs.
+                  </p>
+                ) : null}
+                {warehouse.initial_inventory.map((seed) => (
+                  <div key={seed.key} className="grid grid-cols-1 md:grid-cols-[1fr_120px_auto] gap-2 items-end">
+                    <Field
+                      label="Product ID"
+                      value={seed.product_id}
+                      onChange={(value) =>
+                        setWarehouses((prev) =>
+                          prev.map((row) =>
+                            row.key === warehouse.key
+                              ? {
+                                  ...row,
+                                  initial_inventory: row.initial_inventory.map((item) =>
+                                    item.key === seed.key ? { ...item, product_id: value } : item,
+                                  ),
+                                }
+                              : row,
+                          ),
+                        )
+                      }
+                    />
+                    <Field
+                      label="Quantity"
+                      value={seed.quantity}
+                      onChange={(value) =>
+                        setWarehouses((prev) =>
+                          prev.map((row) =>
+                            row.key === warehouse.key
+                              ? {
+                                  ...row,
+                                  initial_inventory: row.initial_inventory.map((item) =>
+                                    item.key === seed.key ? { ...item, quantity: value } : item,
+                                  ),
+                                }
+                              : row,
+                          ),
+                        )
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="md-btn md-btn-text md-typescale-label-large mb-1"
+                      onClick={() =>
+                        setWarehouses((prev) =>
+                          prev.map((row) =>
+                            row.key === warehouse.key
+                              ? {
+                                  ...row,
+                                  initial_inventory: row.initial_inventory.filter((item) => item.key !== seed.key),
+                                }
+                              : row,
+                          ),
+                        )
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
               </div>
               <ToggleRow
                 label="Active"

@@ -1104,6 +1104,12 @@ func runRetailerCatalogProductsE2E(ctx context.Context, client *http.Client, bas
 	if err := json.Unmarshal(body, &products); err != nil {
 		return fmt.Errorf("decode catalog/products: %w", err)
 	}
+	for _, product := range products {
+		if _, ok := product["available_stock"]; ok {
+			fmt.Println("PX_E2E_RETAILER_CATALOG_STOCK_OK")
+			break
+		}
+	}
 	fmt.Println("PX_E2E_RETAILER_CATALOG_PRODUCTS_OK")
 	return nil
 }
@@ -3376,6 +3382,10 @@ func putSupplierTopology(ctx context.Context, client *http.Client, base, cookie 
 				"coverage_radius_km": cfg.DeliveryZoneRadiusKm,
 				"is_active":          true,
 				"is_on_shift":        true,
+				"default_out_of_stock_policy": "REJECT",
+				"initial_inventory": []map[string]any{
+					{"product_id": "SSMR-SKU-1", "quantity": 100},
+				},
 			},
 		},
 		"factories": []map[string]any{
