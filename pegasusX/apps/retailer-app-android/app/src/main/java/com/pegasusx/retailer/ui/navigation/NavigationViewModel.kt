@@ -60,6 +60,7 @@ data class NavigationUiState(
     val syncError: String? = null,
     val loadIssue: NavigationLoadIssue? = null,
     val shopClosedAlert: ShopClosedAlert? = null,
+    val reconnectEpoch: Long = 0,
     val unreadNotificationCount: Int = 0,
     val clientPolicyMessage: String? = null,
 ) {
@@ -140,6 +141,7 @@ class NavigationViewModel @Inject constructor(
         viewModelScope.launch {
             reconcileRetailerSession(api)
         }
+        _uiState.update { it.copy(reconnectEpoch = System.currentTimeMillis()) }
         loadActiveOrders()
         loadPendingPayments(reconcile = true)
         PendingOrderSyncScheduler.enqueue(appContext)

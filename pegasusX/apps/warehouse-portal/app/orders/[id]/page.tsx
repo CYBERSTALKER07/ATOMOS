@@ -55,6 +55,7 @@ export default function OrderDetailPage() {
     void load();
     if (acting) {
       setActing(false);
+      toast('Connection restored — verify order status before retrying.', 'info');
     }
   });
 

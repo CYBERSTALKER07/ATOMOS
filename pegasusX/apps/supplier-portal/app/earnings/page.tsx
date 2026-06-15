@@ -49,6 +49,22 @@ export default function EarningsPage() {
     setRefreshTick((value) => value + 1);
   });
 
+  useSupplierSessionReconcile(() => {
+    if (chargebackState.status === "submitting") {
+      setChargebackState({
+        status: "error",
+        message: "Connection restored — verify chargeback status before retrying.",
+      });
+    }
+    if (reversalState.status === "submitting") {
+      setReversalState({
+        status: "error",
+        message: "Connection restored — verify reversal status before retrying.",
+      });
+    }
+    setRefreshTick((value) => value + 1);
+  });
+
   useEffect(() => {
     let cancelled = false;
 

@@ -541,7 +541,7 @@ func runShopClosedE2E(ctx context.Context, client *http.Client, base string, cfg
 		"order_id": orderID,
 		"response": "OPEN_NOW",
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/retailer/shop-closed-response", responseBody, retailerToken, "")
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/retailer/shop-closed-response", responseBody, retailerToken, "shop-closed-response:"+orderID+":OPEN_NOW")
 	if err != nil {
 		return err
 	}

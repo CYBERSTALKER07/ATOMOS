@@ -5,6 +5,7 @@ struct ShopClosedBanner: View {
     let onRespond: (String) -> Void
     @State private var isSubmitting = false
     @State private var errorText: String? = nil
+    @State private var socket = RetailerWebSocket.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -46,6 +47,12 @@ struct ShopClosedBanner: View {
         .cornerRadius(12)
         .shadow(radius: 5)
         .padding()
+        .onChange(of: socket.reconnectEpoch) { _, _ in
+            if isSubmitting {
+                isSubmitting = false
+                errorText = "Connection restored — verify response before retrying."
+            }
+        }
     }
     
     private func labelForOption(_ option: String) -> String {

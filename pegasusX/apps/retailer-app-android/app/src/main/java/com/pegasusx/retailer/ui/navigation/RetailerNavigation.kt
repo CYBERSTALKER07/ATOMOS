@@ -595,6 +595,13 @@ fun RetailerNavigation(
         var shopClosedSubmitting by remember(shopClosedAlert?.orderId) { mutableStateOf(false) }
         var shopClosedError by remember(shopClosedAlert?.orderId) { mutableStateOf<String?>(null) }
 
+        LaunchedEffect(navState.reconnectEpoch) {
+            if (navState.reconnectEpoch > 0L && shopClosedSubmitting) {
+                shopClosedSubmitting = false
+                shopClosedError = "Connection restored — verify response before retrying."
+            }
+        }
+
         if (shopClosedAlert != null) {
             ShopClosedSheet(
                 alert = shopClosedAlert,

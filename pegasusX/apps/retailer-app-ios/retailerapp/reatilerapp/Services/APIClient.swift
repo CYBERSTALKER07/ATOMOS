@@ -194,7 +194,11 @@ final class APIClient {
                 case response
             }
         }
-        let _: APIResponse<String> = try await post(path: "/v1/retailer/shop-closed-response", body: ShopClosedRequest(orderId: orderId, response: response))
+        let _: APIResponse<String> = try await post(
+            path: "/v1/retailer/shop-closed-response",
+            body: ShopClosedRequest(orderId: orderId, response: response),
+            headers: ["Idempotency-Key": RetailerIdempotency.shopClosedResponse(orderId: orderId, response: response)]
+        )
     }
 
     // MARK: - AI & Preorder Integrations

@@ -193,12 +193,26 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req shopClosedResponseRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	req.OrderID = strings.TrimSpace(req.OrderID)
 	req.Response = strings.TrimSpace(req.Response)
 	if req.OrderID == "" || req.Response == "" {
@@ -217,7 +231,7 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 	newStatus := string(StatusArrivedShopClosed)
 	var attemptID, driverID, supplierID string
 
-	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{
 			SQL: `SELECT AttemptId, DriverId FROM ShopClosedAttempts
 			      WHERE OrderId = @oid AND RetailerId = @rid AND Resolution IS NULL
@@ -302,7 +316,11 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 		Response:   req.Response,
 	})
 	s.invalidateOrderCache(ctx, req.OrderID)
-	writeJSON(w, http.StatusOK, map[string]string{"status": newStatus})
+	resp := map[string]string{"status": newStatus}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleResolveShopClosed is POST /v1/supplier/shop-closed/resolve.

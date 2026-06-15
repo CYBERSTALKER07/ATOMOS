@@ -67,7 +67,7 @@ class MainActivity : ComponentActivity() {
             onReconnect = {
                 lifecycleScope.launch {
                     reconcileWarehouseSession(warehouseApi)
-                    realtimeSignals.bump()
+                    realtimeSignals.bumpReconnect()
                 }
             },
         )

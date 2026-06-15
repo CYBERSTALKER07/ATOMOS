@@ -247,6 +247,10 @@ export function retailerRequestCancelKey(orderId: string): string {
   return `retailer-request-cancel:${orderId}`;
 }
 
+export function retailerShopClosedResponseKey(orderId: string, response: string): string {
+  return `shop-closed-response:${orderId}:${response}`;
+}
+
 export function retailerConfirmPreorderKey(orderId: string): string {
   return `retailer-confirm-preorder:${orderId}`;
 }

@@ -161,6 +161,7 @@ final class RetailerWebSocket {
     static let shared = RetailerWebSocket()
 
     private(set) var isConnected = false
+    private(set) var reconnectEpoch = 0
     private var task: URLSessionWebSocketTask?
     private var session: URLSession?
     private var retailerId: String?
@@ -227,6 +228,7 @@ final class RetailerWebSocket {
         isConnected = true
         reconnectAttempts = 0
         if wasReconnect {
+            reconnectEpoch += 1
             emit(.transportReconnected)
         }
         receiveNext()

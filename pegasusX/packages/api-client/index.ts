@@ -177,6 +177,7 @@ export {
   retailerConfirmCashKey,
   retailerCancelKey,
   retailerRequestCancelKey,
+  retailerShopClosedResponseKey,
   retailerConfirmPreorderKey,
   retailerConfirmAIKey,
   adminOrderAssignKey,

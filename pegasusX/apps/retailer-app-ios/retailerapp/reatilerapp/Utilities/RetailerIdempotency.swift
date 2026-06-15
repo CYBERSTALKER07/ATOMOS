@@ -31,4 +31,8 @@ enum RetailerIdempotency {
     static func confirmAI(orderId: String) -> String {
         "retailer-confirm-ai:\(orderId)"
     }
+
+    static func shopClosedResponse(orderId: String, response: String) -> String {
+        "shop-closed-response:\(orderId):\(response)"
+    }
 }
