@@ -140,7 +140,7 @@ func (s *Service) HandleReceiveTransfer(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := s.receiveTransfer(ctx, ops, transferID); err != nil {
+	if err := s.receiveTransfer(ctx, ops, transferID, parseReceiveItems(body)); err != nil {
 		mapTransferError(w, r, transferID, err)
 		return
 	}
@@ -241,12 +241,15 @@ func (s *Service) HandleForceReceive(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, resp)
 }
 
-func (s *Service) receiveTransfer(ctx context.Context, ops *auth.WarehouseOps, transferID string) error {
+func (s *Service) receiveTransfer(ctx context.Context, ops *auth.WarehouseOps, transferID string, lines []receiveLineInput) error {
 	if s.memoryTransfersEnabled() {
 		s.mu.Lock()
 		s.ensureMemoryDemoReceiveTransferLocked()
 		s.mu.Unlock()
 		return s.memoryReceiveTransfer(ops, transferID)
+	}
+	if len(lines) > 0 && s.spannerClient != nil {
+		return s.receiveTransferWithItems(ctx, ops, transferID, lines)
 	}
 	err := s.repo.UpdateTransferState(ctx, transferID, ops.SupplierID, "RECEIVED", func(txn outbox.TxnBuffer) error {
 		payload := events.WarehouseEvent{

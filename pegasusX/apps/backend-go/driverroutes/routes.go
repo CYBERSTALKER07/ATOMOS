@@ -12,6 +12,10 @@ import (
 // Deps is the narrow dependency contract for driver routes.
 type Deps struct {
 	Service      *driver.Service
+	WarehouseSvc interface {
+		HandleDriverListSupplyTransfers(http.ResponseWriter, *http.Request)
+		HandleDriverArriveSupplyTransfer(http.ResponseWriter, *http.Request)
+	}
 	OrderService interface {
 		HandleReportShopClosed(http.ResponseWriter, *http.Request)
 		HandleConfirmPaymentBypass(http.ResponseWriter, *http.Request)
@@ -55,6 +59,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/fleet/driver/depart", d.Service.HandleDriverDepart)
 		rr.Post("/v1/fleet/driver/return-complete", d.Service.HandleDriverReturnComplete)
 
+		if d.WarehouseSvc != nil {
+			rr.Get("/v1/driver/supply-transfers", d.WarehouseSvc.HandleDriverListSupplyTransfers)
+			rr.Post("/v1/driver/supply-transfers/{id}/arrive", d.WarehouseSvc.HandleDriverArriveSupplyTransfer)
+		}
+
 		// Order & Delivery lifecycle proxies (if OrderService is wired)
 		if d.OrderService != nil {
 			rr.Post("/v1/fleet/route/reorder", d.OrderService.HandleFleetRouteReorder)
@@ -86,7 +95,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		FirebaseVerifier: d.FirebaseVerifier,
 		AllowBypass:      d.AllowAuthBypass,
 	}, func(gr chi.Router) {
-		gr.Use(auth.RequireRole(auth.RoleDriver))
+		gr.Use(auth.RequireRole(auth.RoleDriver, auth.RoleFactoryDriver))
 		mountProtected(gr)
 	})
 }

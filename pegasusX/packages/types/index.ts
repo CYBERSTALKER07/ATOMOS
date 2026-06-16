@@ -120,6 +120,21 @@ export interface RetailerCatalogProductStock {
   available_stock?: number;
   is_out_of_stock?: boolean;
   accepts_backorder?: boolean;
+  show_stock_counts?: boolean;
+  max_quantity?: number;
+}
+
+export interface CheckoutPreviewResponse {
+  ok: boolean;
+  blocked?: boolean;
+  code?: string;
+  message?: string;
+  rejected_skus?: string[];
+  oos_items?: string[];
+  stock_warnings?: StockWarning[];
+  max_quantities?: Record<string, number>;
+  backordered_item_count?: number;
+  show_stock_counts?: boolean;
 }
 
 export interface WarehouseOpsSettings {
@@ -2408,6 +2423,8 @@ export interface WarehouseSupplyRequestItem {
   item_id: string;
   product_id: string;
   requested_quantity: number;
+  shipped_quantity?: number;
+  received_quantity?: number;
   recommended_qty: number;
   unit_volume_vu: number;
 }
@@ -2419,6 +2436,7 @@ export interface WarehouseSupplyRequestDetail extends WarehouseSupplyRequest {
   priority?: string;
   notes?: string;
   transfer_order_id?: string;
+  linked_transfer_id?: string;
   created_by?: string;
 }
 

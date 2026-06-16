@@ -60,6 +60,8 @@ type RetailerProduct struct {
 	AvailableStock   *int64                  `json:"available_stock,omitempty"`
 	IsOutOfStock     bool                    `json:"is_out_of_stock,omitempty"`
 	AcceptsBackorder bool                    `json:"accepts_backorder,omitempty"`
+	ShowStockCounts  bool                    `json:"show_stock_counts,omitempty"`
+	MaxQuantity      *int64                  `json:"max_quantity,omitempty"`
 }
 
 // ListProducts returns products for a supplier, optionally filtered.
@@ -96,49 +98,48 @@ func (s *Service) enrichProductsForRetailer(ctx context.Context, retailerID stri
 	if len(products) == 0 {
 		return []RetailerProduct{}, nil
 	}
-	if s.promotions == nil || retailerID == "" {
-		out := make([]RetailerProduct, len(products))
-		for i, p := range products {
-			out[i] = RetailerProduct{Product: p}
-		}
-		return out, nil
-	}
-	promosBySupplier := make(map[string][]promotion.Promotion)
-	now := s.promotions.Now()
+
 	out := make([]RetailerProduct, len(products))
 	for i, p := range products {
-		promos, ok := promosBySupplier[p.SupplierID]
-		if !ok {
-			var err error
-			promos, err = s.promotions.ActiveForSupplier(ctx, p.SupplierID)
-			if err != nil {
-				return nil, fmt.Errorf("active promotions for supplier %s: %w", p.SupplierID, err)
+		out[i] = RetailerProduct{Product: p}
+	}
+
+	if s.promotions != nil && retailerID != "" {
+		promosBySupplier := make(map[string][]promotion.Promotion)
+		now := s.promotions.Now()
+		for i, p := range products {
+			promos, ok := promosBySupplier[p.SupplierID]
+			if !ok {
+				var err error
+				promos, err = s.promotions.ActiveForSupplier(ctx, p.SupplierID)
+				if err != nil {
+					return nil, fmt.Errorf("active promotions for supplier %s: %w", p.SupplierID, err)
+				}
+				promosBySupplier[p.SupplierID] = promos
 			}
-			promosBySupplier[p.SupplierID] = promos
-		}
-		listPrice := p.PriceMinor
-		isOverride := false
-		if s.promotions != nil && retailerID != "" {
+			listPrice := p.PriceMinor
+			isOverride := false
 			resolved, overridden, err := s.promotions.ResolveListPrice(ctx, p.SupplierID, retailerID, p.ProductID, p.PriceMinor)
 			if err != nil {
 				return nil, fmt.Errorf("resolve retailer price override: %w", err)
 			}
 			listPrice = resolved
 			isOverride = overridden
-		}
-		var offer promotion.ProductOffer
-		if isOverride && listPrice < p.PriceMinor {
-			sale := listPrice
-			offer = promotion.ProductOffer{
-				ProductID:      p.ProductID,
-				ListPriceMinor: p.PriceMinor,
-				SalePriceMinor: &sale,
+			var offer promotion.ProductOffer
+			if isOverride && listPrice < p.PriceMinor {
+				sale := listPrice
+				offer = promotion.ProductOffer{
+					ProductID:      p.ProductID,
+					ListPriceMinor: p.PriceMinor,
+					SalePriceMinor: &sale,
+				}
+			} else {
+				offer = promotion.CatalogOffer(now, retailerID, p.ProductID, p.CategoryID, listPrice, promos)
 			}
-		} else {
-			offer = promotion.CatalogOffer(now, retailerID, p.ProductID, p.CategoryID, listPrice, promos)
+			out[i].Offer = &offer
 		}
-		out[i] = RetailerProduct{Product: p, Offer: &offer}
 	}
+
 	if s.stock != nil && retailerID != "" {
 		snaps := s.stock.Enrich(ctx, retailerID, products)
 		for i := range out {
@@ -148,6 +149,11 @@ func (s *Service) enrichProductsForRetailer(ctx context.Context, retailerID stri
 				out[i].AvailableStock = &avail
 				out[i].IsOutOfStock = snap.IsOutOfStock
 				out[i].AcceptsBackorder = snap.AcceptsBackorder
+				out[i].ShowStockCounts = snap.ShowStockCounts
+				if !snap.AcceptsBackorder {
+					maxQ := avail
+					out[i].MaxQuantity = &maxQ
+				}
 			}
 		}
 	}

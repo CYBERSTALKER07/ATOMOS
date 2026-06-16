@@ -79,6 +79,8 @@ export interface Product {
   available_stock?: number;
   is_out_of_stock?: boolean;
   accepts_backorder?: boolean;
+  show_stock_counts?: boolean;
+  max_quantity?: number | null;
   offer?: ProductOffer;
 }
 
@@ -212,6 +214,19 @@ export interface StockWarning {
   available: number;
   backorder_qty: number;
   accepts_backorder: boolean;
+}
+
+export interface CheckoutPreviewResponse {
+  ok: boolean;
+  blocked?: boolean;
+  code?: string;
+  message?: string;
+  rejected_skus?: string[];
+  oos_items?: string[];
+  stock_warnings?: StockWarning[];
+  max_quantities?: Record<string, number>;
+  backordered_item_count?: number;
+  show_stock_counts?: boolean;
 }
 
 export interface UnifiedCheckoutResponse {

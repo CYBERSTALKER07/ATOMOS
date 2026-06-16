@@ -203,7 +203,8 @@ func (r *SpannerRepository) loadSupplyRequestItems(ctx context.Context, requestI
 		return map[string][]SupplyRequestItem{}, nil
 	}
 	stmt := spanner.Statement{
-		SQL: `SELECT RequestId, ItemId, ProductId, RequestedQuantity, RecommendedQuantity, UnitVolumeVU
+		SQL: `SELECT RequestId, ItemId, ProductId, RequestedQuantity, RecommendedQuantity, UnitVolumeVU,
+		             COALESCE(ShippedQuantity, 0), COALESCE(ReceivedQuantity, 0)
 		      FROM WarehouseSupplyRequestItems
 		      WHERE RequestId IN UNNEST(@ids)
 		      ORDER BY RequestId, ProductId`,
@@ -222,15 +223,17 @@ func (r *SpannerRepository) loadSupplyRequestItems(ctx context.Context, requestI
 			return nil, fmt.Errorf("load warehouse supply request items: %w", err)
 		}
 		var requestID, itemID, productID string
-		var requested, recommended int64
+		var requested, recommended, shipped, received int64
 		var unitVU float64
-		if err := row.Columns(&requestID, &itemID, &productID, &requested, &recommended, &unitVU); err != nil {
+		if err := row.Columns(&requestID, &itemID, &productID, &requested, &recommended, &unitVU, &shipped, &received); err != nil {
 			continue
 		}
 		out[requestID] = append(out[requestID], SupplyRequestItem{
 			ItemID:            itemID,
 			ProductID:         productID,
 			RequestedQuantity: requested,
+			ShippedQuantity:   shipped,
+			ReceivedQuantity:  received,
 			RecommendedQty:    recommended,
 			UnitVolumeVU:      unitVU,
 		})
@@ -784,6 +787,14 @@ func (r *SpannerRepository) UpdateTransferState(ctx context.Context, transferID,
 		if err := row.Columns(&id, &supID, &state, &warehouseCol, &totalVolume); err != nil {
 			return err
 		}
+		prevState := strings.ToUpper(strings.TrimSpace(state))
+		nextState := strings.ToUpper(strings.TrimSpace(newState))
+		if prevState == nextState {
+			return nil
+		}
+		if !isWarehouseTransferTransitionAllowed(prevState, nextState) {
+			return fmt.Errorf("invalid_transfer_state: %s -> %s", prevState, nextState)
+		}
 		warehouseID := ""
 		if warehouseCol.Valid {
 			warehouseID = strings.TrimSpace(warehouseCol.StringVal)
@@ -818,6 +829,22 @@ func (r *SpannerRepository) UpdateTransferState(ctx context.Context, transferID,
 		return txn.BufferWrite(muts)
 	})
 	return err
+}
+
+var warehouseTransferTransitions = map[string]map[string]struct{}{
+	"APPROVED":   {"IN_TRANSIT": {}, "RECEIVED": {}},
+	"IN_TRANSIT": {"ARRIVED": {}, "RECEIVED": {}},
+	"DISPATCHED": {"ARRIVED": {}, "RECEIVED": {}},
+	"ARRIVED":    {"RECEIVED": {}},
+}
+
+func isWarehouseTransferTransitionAllowed(from, to string) bool {
+	allowed, ok := warehouseTransferTransitions[from]
+	if !ok {
+		return to == "RECEIVED" && (from == "IN_TRANSIT" || from == "ARRIVED" || from == "APPROVED")
+	}
+	_, ok = allowed[to]
+	return ok
 }
 
 func (r *SpannerRepository) GetAutoDispatch(ctx context.Context, warehouseID string) (bool, error) {

@@ -40,6 +40,13 @@ type factorySupplyItem struct {
 	RequestedQuantity int64   `json:"requested_quantity"`
 	RecommendedQty    int64   `json:"recommended_qty,omitempty"`
 	UnitVolumeVU      float64 `json:"unit_volume_vu,omitempty"`
+	ShippedQuantity   int64   `json:"shipped_quantity,omitempty"`
+	ReceivedQuantity  int64   `json:"received_quantity,omitempty"`
+}
+
+type fulfillLineInput struct {
+	ItemID          string
+	ShippedQuantity int64
 }
 
 func supplyItemsToDTO(items []factorySupplyItem) []SupplyRequestItem {
@@ -51,6 +58,8 @@ func supplyItemsToDTO(items []factorySupplyItem) []SupplyRequestItem {
 			RequestedQuantity: item.RequestedQuantity,
 			RecommendedQty:    item.RecommendedQty,
 			UnitVolumeVU:      item.UnitVolumeVU,
+			ShippedQuantity:   item.ShippedQuantity,
+			ReceivedQuantity:  item.ReceivedQuantity,
 		})
 	}
 	return out
@@ -133,7 +142,8 @@ func (s *Service) listSupplyRequestsFromSpanner(ctx context.Context) ([]SupplyRe
 
 func (s *Service) loadSupplyRequestItems(ctx context.Context, requestIDs []string) (map[string][]factorySupplyItem, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT RequestId, ItemId, ProductId, RequestedQuantity, RecommendedQuantity, UnitVolumeVU
+		SQL: `SELECT RequestId, ItemId, ProductId, RequestedQuantity, RecommendedQuantity, UnitVolumeVU,
+		             COALESCE(ShippedQuantity, 0), COALESCE(ReceivedQuantity, 0)
 		      FROM WarehouseSupplyRequestItems
 		      WHERE RequestId IN UNNEST(@ids)
 		      ORDER BY RequestId, ProductId`,
@@ -152,9 +162,9 @@ func (s *Service) loadSupplyRequestItems(ctx context.Context, requestIDs []strin
 			return nil, fmt.Errorf("load supply request items: %w", err)
 		}
 		var requestID, itemID, productID string
-		var requested, recommended int64
+		var requested, recommended, shipped, received int64
 		var unitVU float64
-		if err := row.Columns(&requestID, &itemID, &productID, &requested, &recommended, &unitVU); err != nil {
+		if err := row.Columns(&requestID, &itemID, &productID, &requested, &recommended, &unitVU, &shipped, &received); err != nil {
 			continue
 		}
 		out[requestID] = append(out[requestID], factorySupplyItem{
@@ -163,6 +173,8 @@ func (s *Service) loadSupplyRequestItems(ctx context.Context, requestIDs []strin
 			RequestedQuantity: requested,
 			RecommendedQty:    recommended,
 			UnitVolumeVU:      unitVU,
+			ShippedQuantity:   shipped,
+			ReceivedQuantity:  received,
 		})
 	}
 	return out, nil
@@ -238,22 +250,52 @@ func (s *Service) transitionSupplyRequestSpanner(ctx context.Context, requestID,
 	return err
 }
 
-func (s *Service) fulfillSupplyRequestSpanner(ctx context.Context, requestID string) (string, error) {
+func (s *Service) fulfillSupplyRequestSpanner(ctx context.Context, requestID string, shipped []fulfillLineInput, driverID string) (string, error) {
 	rec, err := s.getSupplyRequestFromSpanner(ctx, requestID)
 	if err != nil {
 		return "", err
 	}
+	itemsByRequest, err := s.loadSupplyRequestItems(ctx, []string{requestID})
+	if err != nil {
+		return "", err
+	}
+	lines := itemsByRequest[requestID]
+	if len(lines) == 0 {
+		return "", fmt.Errorf("supply_request_items_missing")
+	}
+	shippedByID := make(map[string]int64, len(shipped))
+	for _, row := range shipped {
+		if id := strings.TrimSpace(row.ItemID); id != "" && row.ShippedQuantity > 0 {
+			shippedByID[id] = row.ShippedQuantity
+		}
+	}
+
 	transferMode := supplier.NormalizeTransferMode(rec.TransferMode)
-	totalVU := float64(rec.ProjectedVU)
+	totalVU := float64(0)
+	for i := range lines {
+		qty := lines[i].RequestedQuantity
+		if v, ok := shippedByID[lines[i].ItemID]; ok && v > 0 {
+			qty = v
+		}
+		lines[i].ShippedQuantity = qty
+		if lines[i].UnitVolumeVU > 0 {
+			totalVU += float64(qty) * lines[i].UnitVolumeVU
+		} else {
+			totalVU += float64(qty)
+		}
+	}
 	if totalVU <= 0 {
-		totalVU = 1
+		totalVU = float64(rec.ProjectedVU)
+		if totalVU <= 0 {
+			totalVU = 1
+		}
 	}
 	factoryID := strings.TrimSpace(rec.FactoryID)
 	if factoryID == "" {
 		factoryID = strings.TrimSpace(s.factoryNodeID)
 	}
 	transferID := uuid.NewString()
-	initialTransferState := "APPROVED"
+	initialTransferState := "IN_TRANSIT"
 	if transferMode == supplier.TransferModeInternal {
 		initialTransferState = "RECEIVED"
 	}
@@ -265,21 +307,33 @@ func (s *Service) fulfillSupplyRequestSpanner(ctx context.Context, requestID str
 				"RequestId":        requestID,
 				"State":            "FULFILLED",
 				"LinkedTransferId": transferID,
+				"TotalVolumeVU":    totalVU,
 				"UpdatedAt":        spanner.CommitTimestamp,
 			}),
-			spanner.InsertOrUpdateMap("FactoryInternalTransfers", map[string]any{
-				"TransferId":    transferID,
-				"FactoryId":       factoryID,
-				"SupplierId":      rec.SupplierID,
-				"WarehouseId":     rec.WarehouseID,
-				"SupplyRequestId": requestID,
-				"TransferMode":    transferMode,
-				"State":           initialTransferState,
-				"TotalVolumeVU":   totalVU,
-				"CreatedAt":       spanner.CommitTimestamp,
-				"UpdatedAt":       spanner.CommitTimestamp,
-			}),
 		}
+		for _, line := range lines {
+			muts = append(muts, spanner.UpdateMap("WarehouseSupplyRequestItems", map[string]any{
+				"RequestId":       requestID,
+				"ItemId":          line.ItemID,
+				"ShippedQuantity": line.ShippedQuantity,
+			}))
+		}
+		transferRow := map[string]any{
+			"TransferId":      transferID,
+			"FactoryId":       factoryID,
+			"SupplierId":      rec.SupplierID,
+			"WarehouseId":     rec.WarehouseID,
+			"SupplyRequestId": requestID,
+			"TransferMode":    transferMode,
+			"State":           initialTransferState,
+			"TotalVolumeVU":   totalVU,
+			"CreatedAt":       spanner.CommitTimestamp,
+			"UpdatedAt":       spanner.CommitTimestamp,
+		}
+		if driverID := strings.TrimSpace(driverID); driverID != "" && transferMode != supplier.TransferModeInternal {
+			transferRow["DriverId"] = driverID
+		}
+		muts = append(muts, spanner.InsertOrUpdateMap("FactoryInternalTransfers", transferRow))
 		evt := events.WarehouseEvent{
 			BaseEvent:        events.BaseEvent{Type: events.EventWarehouseTransferCreated, Timestamp: s.now().Format(time.RFC3339Nano)},
 			TransferID:       transferID,
@@ -306,9 +360,21 @@ func (s *Service) fulfillSupplyRequestSpanner(ctx context.Context, requestID str
 			"PublishedAt":   nil,
 		}))
 		if initialTransferState == "RECEIVED" {
-			if err := inventory.CreditBulkVUInTxn(ctx, txn, rec.WarehouseID, rec.SupplierID, rec.ProjectedVU); err != nil {
-				return err
+			for _, line := range lines {
+				if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, rec.SupplierID, rec.WarehouseID, line.ProductID, line.ShippedQuantity); err != nil {
+					return err
+				}
+				muts = append(muts, spanner.UpdateMap("WarehouseSupplyRequestItems", map[string]any{
+					"RequestId":        requestID,
+					"ItemId":           line.ItemID,
+					"ReceivedQuantity": line.ShippedQuantity,
+				}))
 			}
+			muts = append(muts, spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{
+				"RequestId": requestID,
+				"State":     "RECEIVED",
+				"UpdatedAt": spanner.CommitTimestamp,
+			}))
 			recv := events.WarehouseEvent{
 				BaseEvent:   events.BaseEvent{Type: events.EventWarehouseTransferReceived, Timestamp: s.now().Format(time.RFC3339Nano)},
 				TransferID:  transferID,

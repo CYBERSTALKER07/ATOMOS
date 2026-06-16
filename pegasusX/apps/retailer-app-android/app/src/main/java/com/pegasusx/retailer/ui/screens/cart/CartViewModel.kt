@@ -378,9 +378,12 @@ init {
         _uiState.update { state ->
             val existing = state.items.find { it.id == itemId }
             if (existing != null) {
-                state.copy(items = state.items.map { if (it.id == itemId) it.copy(quantity = it.quantity + 1) else it })
+                val next = existing.quantity + 1
+                val capped = product.cartMaxQuantity?.let { minOf(next, it) } ?: next
+                state.copy(items = state.items.map { if (it.id == itemId) it.copy(quantity = capped) else it })
             } else {
-                state.copy(items = state.items + CartItem(id = itemId, product = product, variant = variant, quantity = 1))
+                val qty = product.cartMaxQuantity?.let { minOf(1, it) } ?: 1
+                state.copy(items = state.items + CartItem(id = itemId, product = product, variant = variant, quantity = qty))
             }
         }
         scheduleCartSyncPush()
@@ -393,7 +396,14 @@ init {
             return
         }
         _uiState.update { state ->
-            state.copy(items = state.items.map { if (it.id == itemId) it.copy(quantity = quantity) else it })
+            state.copy(items = state.items.map { item ->
+                if (item.id != itemId) item
+                else {
+                    val cap = item.product.cartMaxQuantity
+                    val next = if (cap != null) minOf(quantity, cap) else quantity
+                    item.copy(quantity = next)
+                }
+            })
         }
         scheduleCartSyncPush()
         scheduleQuoteRefresh()
@@ -529,11 +539,22 @@ init {
                     paymentGateway = finalGateway,
                     items = lineItems,
                 )
+                val preview = api.checkoutPreview(request)
+                if (preview.blocked) {
+                    _uiState.update {
+                        it.copy(
+                            checkoutPhase = CheckoutPhase.REVIEW,
+                            checkoutError = preview.message ?: "Checkout blocked by stock policy",
+                        )
+                    }
+                    return@launch
+                }
                 val response = api.unifiedCheckout(request, checkoutIdempotencyKey(request))
                 val paymentUrl = completeSupplierOrderPayments(
                     gateway = finalGateway,
                     invoiceId = response.invoiceId,
                     supplierOrders = response.supplierOrders,
+                    backorderOrderId = response.backorderOrderId,
                 )
                 val firstOrderId = response.supplierOrders.firstOrNull()?.orderId
                 _uiState.update {
@@ -607,11 +628,15 @@ init {
         gateway: String,
         invoiceId: String,
         supplierOrders: List<SupplierOrderResult>,
+        backorderOrderId: String? = null,
     ): String? {
         if (supplierOrders.isEmpty()) return null
         val normalizedGateway = gateway.trim().uppercase()
         var paymentUrl: String? = null
         for (supplierOrder in supplierOrders) {
+            if (!backorderOrderId.isNullOrBlank() && supplierOrder.orderId == backorderOrderId) {
+                continue
+            }
             if (normalizedGateway == "CASH") {
                 api.cashCheckout(
                     CashCheckoutRequest(orderId = supplierOrder.orderId),

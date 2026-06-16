@@ -46,14 +46,16 @@ final class CartManager {
     func add(product: Product, variant: Variant, quantity: Int = 1) {
         guard !product.blocksAddToCart else { return }
         let itemId = "\(product.id)-\(variant.id)"
+        let capped = min(quantity, product.cartMaxQuantity ?? quantity)
         if let index = items.firstIndex(where: { $0.id == itemId }) {
-            items[index].quantity += quantity
+            let next = items[index].quantity + capped
+            items[index].quantity = min(next, product.cartMaxQuantity ?? next)
         } else {
             let item = CartItem(
                 id: itemId,
                 product: product,
                 variant: variant,
-                quantity: quantity
+                quantity: capped
             )
             items.append(item)
         }
@@ -73,7 +75,8 @@ final class CartManager {
         if quantity <= 0 {
             items.remove(at: index)
         } else {
-            items[index].quantity = quantity
+            let cap = items[index].product.cartMaxQuantity
+            items[index].quantity = cap != nil ? min(quantity, cap!) : quantity
         }
         Task { await refreshCheckoutQuote() }
     }

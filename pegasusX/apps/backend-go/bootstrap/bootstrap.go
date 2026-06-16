@@ -738,6 +738,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Policy:                          gatewayPolicyReader,
 	})
 	paymentSvc.BindCartCheckout(orderSvc)
+	paymentSvc.BindCheckoutPreview(orderSvc)
 	paymentSvc.BindOrderCheckoutReader(orderSvc)
 	orderSvc.SetPaymentCapturer(paymentSvc)
 	var warehouseRepo warehouse.Repository

@@ -13,6 +13,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@heroui/react";
 import { useCart } from "../lib/cart";
+import { productMaxQuantity } from "../lib/stock-policy";
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -72,7 +73,10 @@ export default function CartDrawer({
             {/* List */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <AnimatePresence mode="popLayout">
-                {items.map((item) => (
+                {items.map((item) => {
+                  const maxQty = productMaxQuantity(item);
+                  const atCap = maxQty != null && item.quantity >= maxQty;
+                  return (
                   <motion.div
                     key={item.product_id}
                     layout
@@ -121,11 +125,17 @@ export default function CartDrawer({
                           <span className="md-typescale-label-small font-bold w-4 text-center tabular-nums">
                             {item.quantity}
                           </span>
+                          {item.show_stock_counts && maxQty != null && (
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--desk-text-tertiary)] ml-1">
+                              Max {maxQty}
+                            </span>
+                          )}
                           <button
                             onClick={() =>
                               updateQuantity(item.product_id, item.quantity + 1)
                             }
-                            className="w-6 h-6 rounded-md bg-[var(--desk-surface)] flex items-center justify-center shadow-sm active:scale-90 transition-all"
+                            disabled={atCap}
+                            className="w-6 h-6 rounded-md bg-[var(--desk-surface)] flex items-center justify-center shadow-sm active:scale-90 transition-all disabled:opacity-40"
                           >
                             <Plus size={12} />
                           </button>
@@ -136,7 +146,8 @@ export default function CartDrawer({
                       </div>
                     </div>
                   </motion.div>
-                ))}
+                  );
+                })}
                 {items.length === 0 && (
                   <motion.div
                     initial={{ opacity: 0 }}

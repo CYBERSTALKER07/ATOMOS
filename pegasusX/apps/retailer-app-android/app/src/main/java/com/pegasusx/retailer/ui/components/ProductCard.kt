@@ -66,14 +66,19 @@ fun ProductCard(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
+            .then(
+                if (product.blocksAddToCart) Modifier else Modifier
+            )
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
-                        isPressedState.value = true
-                        tryAwaitRelease()
-                        isPressedState.value = false
+                        if (!product.blocksAddToCart) {
+                            isPressedState.value = true
+                            tryAwaitRelease()
+                            isPressedState.value = false
+                        }
                     },
-                    onTap = { onClick() },
+                    onTap = { if (!product.blocksAddToCart) onClick() },
                 )
             },
         shape = SoftSquircleShape,

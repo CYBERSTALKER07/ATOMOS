@@ -317,6 +317,11 @@ func (s *Service) HandleSupplyRequestTransition(w http.ResponseWriter, r *http.R
 	var req struct {
 		Action          string `json:"action"`
 		TransferOrderID string `json:"transfer_order_id"`
+		DriverID        string `json:"driver_id"`
+		Items           []struct {
+			ItemID          string `json:"item_id"`
+			ShippedQuantity int64  `json:"shipped_quantity"`
+		} `json:"items"`
 	}
 	if r.Body != nil {
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -343,7 +348,17 @@ func (s *Service) HandleSupplyRequestTransition(w http.ResponseWriter, r *http.R
 			return
 		}
 		if action == "FULFILL" {
-			transferID, err := s.fulfillSupplyRequestSpanner(r.Context(), requestID)
+			shipped := make([]fulfillLineInput, 0, len(req.Items))
+			for _, row := range req.Items {
+				if strings.TrimSpace(row.ItemID) == "" {
+					continue
+				}
+				shipped = append(shipped, fulfillLineInput{
+					ItemID:          strings.TrimSpace(row.ItemID),
+					ShippedQuantity: row.ShippedQuantity,
+				})
+			}
+			transferID, err := s.fulfillSupplyRequestSpanner(r.Context(), requestID, shipped, req.DriverID)
 			if err != nil {
 				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "fulfill_failed"})
 				return

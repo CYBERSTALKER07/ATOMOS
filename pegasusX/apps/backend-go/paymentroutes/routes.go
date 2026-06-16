@@ -25,6 +25,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	mountCheckout := func(rr chi.Router) {
 		rr.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/checkout/b2b", d.Service.HandleB2BCheckout)
+		rr.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/checkout/preview", d.Service.HandleCheckoutPreview)
 		rr.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/checkout/unified", d.Service.HandleUnifiedCheckout)
 	}
 

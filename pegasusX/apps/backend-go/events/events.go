@@ -46,8 +46,9 @@ const (
 	EventFreezeLockAcquired           = "FREEZE_LOCK_ACQUIRED"
 	EventFreezeLockReleased           = "FREEZE_LOCK_RELEASED"
 
-	EventWarehouseTransferCreated  = "WAREHOUSE_TRANSFER_CREATED"
-	EventWarehouseTransferReceived = "WAREHOUSE_TRANSFER_RECEIVED"
+	EventWarehouseTransferCreated     = "WAREHOUSE_TRANSFER_CREATED"
+	EventWarehouseTransferReceived    = "WAREHOUSE_TRANSFER_RECEIVED"
+	EventSupplyTransferApproaching    = "SUPPLY_TRANSFER_APPROACHING"
 
 	EventFactoryCreated            = "FACTORY_CREATED"
 	EventOrderCreated              = "ORDER_CREATED"

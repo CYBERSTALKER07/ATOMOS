@@ -14,6 +14,46 @@ import (
 // ReplenishmentBulkProductID is the synthetic SKU credited when factory transfers arrive.
 const ReplenishmentBulkProductID = "replenishment-bulk-vu"
 
+// CreditSupplierInventoryV2InTxn increments on-hand stock for a warehouse SKU inside an active txn.
+func CreditSupplierInventoryV2InTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID, warehouseID, productID string, qty int64) error {
+	if qty <= 0 {
+		return nil
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	warehouseID = strings.TrimSpace(warehouseID)
+	productID = strings.TrimSpace(productID)
+	if supplierID == "" || warehouseID == "" || productID == "" {
+		return fmt.Errorf("inventory credit: supplier_id, warehouse_id, and product_id required")
+	}
+	row, err := txn.ReadRow(ctx, "SupplierInventoryV2", spanner.Key{supplierID, warehouseID, productID},
+		[]string{"QuantityOnHand", "QuantityReserved"})
+	if err != nil {
+		if spanner.ErrCode(err) != 5 {
+			return fmt.Errorf("inventory credit read: %w", err)
+		}
+		return txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("SupplierInventoryV2", map[string]any{
+			"SupplierId":       supplierID,
+			"WarehouseId":      warehouseID,
+			"ProductId":        productID,
+			"QuantityOnHand":   qty,
+			"QuantityReserved": int64(0),
+			"ReorderThreshold": int64(0),
+			"UpdatedAt":        spanner.CommitTimestamp,
+		})})
+	}
+	var qoh, qr int64
+	if err := row.Columns(&qoh, &qr); err != nil {
+		return err
+	}
+	return txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("SupplierInventoryV2", map[string]any{
+		"SupplierId":     supplierID,
+		"WarehouseId":    warehouseID,
+		"ProductId":      productID,
+		"QuantityOnHand": qoh + qty,
+		"UpdatedAt":      spanner.CommitTimestamp,
+	})})
+}
+
 // CreditBulkVUInTxn increments warehouse bulk replenishment stock inside an active txn.
 func CreditBulkVUInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, warehouseID, supplierID string, units int64) error {
 	if units <= 0 {

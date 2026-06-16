@@ -176,6 +176,9 @@ interface PegasusApi {
     ): RetailerDetailedAnalytics
 
     // ── Checkout ──
+    @POST("/v1/checkout/preview")
+    suspend fun checkoutPreview(@Body body: UnifiedCheckoutRequest): CheckoutPreviewResponse
+
     @POST("/v1/checkout/unified")
     suspend fun unifiedCheckout(
         @Body body: UnifiedCheckoutRequest,

@@ -205,7 +205,8 @@ type Service struct {
 	currency   string
 	execution  *ProviderExecutionRouter
 
-	cartCheckout CartCheckoutHandler
+	cartCheckout    CartCheckoutHandler
+	checkoutPreview CheckoutPreviewHandler
 	orderReader  OrderCheckoutReader
 	policy       PolicyResolver
 
@@ -404,6 +405,19 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	s.handleCheckoutWithBody("UNIFIED", w, requestWithBody(r, body), body)
+}
+
+// HandleCheckoutPreview serves POST /v1/checkout/preview (inventory dry-run).
+func (s *Service) HandleCheckoutPreview(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSONError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method Not Allowed", "/v1/checkout/preview", false, "")
+		return
+	}
+	if s.checkoutPreview == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "checkout_preview_unavailable", "checkout preview handler not configured", "/v1/checkout/preview", false, "")
+		return
+	}
+	s.checkoutPreview.HandleCheckoutPreview(w, r)
 }
 
 // HandleChargeback serves POST /v1/payment/chargeback.

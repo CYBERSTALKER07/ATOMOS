@@ -15,6 +15,7 @@ type StockSnapshot struct {
 	AvailableStock   int64
 	IsOutOfStock     bool
 	AcceptsBackorder bool
+	ShowStockCounts  bool
 	WarehouseID      string
 }
 
@@ -57,11 +58,11 @@ func (e *StockEnricher) Enrich(
 	}
 
 	for supplierID, productIDs := range bySupplier {
-		warehouseID, warehousePolicy, err := resolveNearestWarehouse(ctx, e.client, supplierID, lat, lng)
+		warehouseID, warehousePolicy, showCounts, err := resolveNearestWarehouse(ctx, e.client, supplierID, lat, lng)
 		if err != nil || warehouseID == "" {
 			continue
 		}
-		snaps, err := loadStockSnapshots(ctx, e.client, supplierID, warehouseID, warehousePolicy, productIDs)
+		snaps, err := loadStockSnapshots(ctx, e.client, supplierID, warehouseID, warehousePolicy, showCounts, productIDs)
 		if err != nil {
 			continue
 		}
@@ -87,9 +88,10 @@ func loadRetailerCoordinates(ctx context.Context, client *spanner.Client, retail
 	return 0, 0, nil
 }
 
-func resolveNearestWarehouse(ctx context.Context, client *spanner.Client, supplierID string, lat, lng float64) (string, string, error) {
+func resolveNearestWarehouse(ctx context.Context, client *spanner.Client, supplierID string, lat, lng float64) (string, string, bool, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT WarehouseId, Lat, Lng, CoverageRadiusKm, COALESCE(DefaultOutOfStockPolicy, 'REJECT')
+		SQL: `SELECT WarehouseId, Lat, Lng, CoverageRadiusKm, COALESCE(DefaultOutOfStockPolicy, 'REJECT'),
+		             COALESCE(ShowStockCountsToRetailers, false)
 		      FROM Warehouses
 		      WHERE SupplierId = @supplierId AND IsActive = true`,
 		Params: map[string]any{"supplierId": supplierID},
@@ -99,6 +101,7 @@ func resolveNearestWarehouse(ctx context.Context, client *spanner.Client, suppli
 
 	bestID := ""
 	bestPolicy := "REJECT"
+	bestShowCounts := false
 	bestDist := math.MaxFloat64
 	for {
 		row, err := iter.Next()
@@ -106,11 +109,12 @@ func resolveNearestWarehouse(ctx context.Context, client *spanner.Client, suppli
 			break
 		}
 		if err != nil {
-			return "", "", err
+			return "", "", false, err
 		}
 		var warehouseID, policy string
+		var showCounts bool
 		var wLat, wLng, radius spanner.NullFloat64
-		if err := row.Columns(&warehouseID, &wLat, &wLng, &radius, &policy); err != nil {
+		if err := row.Columns(&warehouseID, &wLat, &wLng, &radius, &policy, &showCounts); err != nil {
 			continue
 		}
 		if !wLat.Valid || !wLng.Valid {
@@ -128,15 +132,17 @@ func resolveNearestWarehouse(ctx context.Context, client *spanner.Client, suppli
 			if bestPolicy == "" {
 				bestPolicy = "REJECT"
 			}
+			bestShowCounts = showCounts
 		}
 	}
-	return bestID, bestPolicy, nil
+	return bestID, bestPolicy, bestShowCounts, nil
 }
 
 func loadStockSnapshots(
 	ctx context.Context,
 	client *spanner.Client,
 	supplierID, warehouseID, warehousePolicy string,
+	showCounts bool,
 	productIDs []string,
 ) (map[string]StockSnapshot, error) {
 	keys := make([]spanner.KeySet, 0, len(productIDs))
@@ -175,6 +181,7 @@ func loadStockSnapshots(
 			AvailableStock:   avail,
 			IsOutOfStock:     avail <= 0,
 			AcceptsBackorder: effectivePolicy == "ACCEPT_BACKORDER",
+			ShowStockCounts:  showCounts,
 			WarehouseID:      warehouseID,
 		}
 	}

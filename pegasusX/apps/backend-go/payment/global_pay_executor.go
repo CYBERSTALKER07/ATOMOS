@@ -41,7 +41,6 @@ func newGlobalPayProviderExecutorWithSimulator(env, serviceID, username, passwor
 }
 
 func (e *globalpayProviderExecutor) getCheckoutBaseURL() string {
-	// If a simulator override is configured (local/dev), always use it.
 	if e.simulatorBase != "" {
 		return strings.TrimRight(e.simulatorBase, "/") + "/sim/globalpay"
 	}
@@ -52,6 +51,20 @@ func (e *globalpayProviderExecutor) getCheckoutBaseURL() string {
 		return "https://checkout-api-staging.globalpay.uz/checkout"
 	default:
 		// "dev" or "local": use the in-process simulator
+		return "http://localhost:8080/sim/globalpay"
+	}
+}
+
+func (e *globalpayProviderExecutor) getBackofficeBaseURL() string {
+	if e.simulatorBase != "" {
+		return strings.TrimRight(e.simulatorBase, "/") + "/sim/globalpay"
+	}
+	switch e.env {
+	case "production":
+		return "https://backoffice-api.globalpay.uz"
+	case "staging":
+		return "https://backoffice-api-staging.globalpay.uz"
+	default:
 		return "http://localhost:8080/sim/globalpay"
 	}
 }
@@ -141,12 +154,58 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 	}
 
 	if req.Action == ExecutionActionCheckoutCapture {
-		// Docs-only implementation of capture using direct gateway API (/payments/v2/payment/perform)
+		if e.username == "" || e.password == "" {
+			return ExecutionResult{
+				ResolvedGateway: "GLOBAL_PAY",
+				Mode:            ExecutionModeDirect,
+				PolicySource:    "SUPPLIER_DEFAULT",
+				ProviderRef:     "gp_capture_stub_" + req.OrderID,
+			}, nil
+		}
+		token, err := e.authenticate(ctx)
+		if err != nil {
+			return ExecutionResult{}, err
+		}
+		paymentID := strings.TrimSpace(req.SessionID)
+		if paymentID == "" {
+			paymentID = strings.TrimSpace(req.OrderID)
+		}
+		url := fmt.Sprintf("%s/payments/v2/payment/%s/perform", e.getBackofficeBaseURL(), paymentID)
+		body, _ := json.Marshal(map[string]any{
+			"action":       "CP",
+			"amount_minor": req.AmountMinor,
+			"currency":     req.Currency,
+		})
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+		if err != nil {
+			return ExecutionResult{}, err
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("Authorization", "Bearer "+token)
+		resp, err := e.httpClient.Do(httpReq)
+		if err != nil {
+			return ExecutionResult{}, MarkRetryable(fmt.Errorf("globalpay capture request failed: %w", err))
+		}
+		defer resp.Body.Close()
+		respBody, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+			return ExecutionResult{}, fmt.Errorf("globalpay capture failed with status %d: %s", resp.StatusCode, string(respBody))
+		}
+		var performResp struct {
+			PaymentID    string `json:"paymentId"`
+			Status       string `json:"status"`
+			IsSuccessful bool   `json:"isSuccessful"`
+		}
+		_ = json.Unmarshal(respBody, &performResp)
+		ref := performResp.PaymentID
+		if ref == "" {
+			ref = paymentID
+		}
 		return ExecutionResult{
 			ResolvedGateway: "GLOBAL_PAY",
 			Mode:            ExecutionModeDirect,
 			PolicySource:    "SUPPLIER_DEFAULT",
-			ProviderRef:     "gp_capture_mock_" + req.OrderID,
+			ProviderRef:     ref,
 		}, nil
 	}
 

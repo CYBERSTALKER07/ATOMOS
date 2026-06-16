@@ -184,6 +184,8 @@ data class Product(
     @JsonNames("available_stock", "availableStock") val availableStock: Int? = null,
     @JsonNames("is_out_of_stock", "isOutOfStock") val isOutOfStockFlag: Boolean = false,
     @JsonNames("accepts_backorder", "acceptsBackorder") val acceptsBackorder: Boolean = false,
+    @JsonNames("show_stock_counts", "showStockCounts") val showStockCounts: Boolean = false,
+    @JsonNames("max_quantity", "maxQuantity") val maxQuantity: Int? = null,
     @JsonNames("price_minor") val priceMinor: Long? = null,
     @SerialName("offer") val offer: ProductOffer? = null,
 ) {
@@ -191,6 +193,13 @@ data class Product(
         get() = (availableStock != null && availableStock <= 0) || isOutOfStockFlag
     val isLowStock: Boolean get() = availableStock != null && availableStock in 1..5
     val blocksAddToCart: Boolean get() = isOutOfStock && !acceptsBackorder
+    val cartMaxQuantity: Int?
+        get() = when {
+            maxQuantity != null && maxQuantity > 0 -> maxQuantity
+            showStockCounts && availableStock != null && availableStock > 0 && !acceptsBackorder -> availableStock
+            availableStock != null && availableStock > 0 && !acceptsBackorder -> availableStock
+            else -> null
+        }
     val defaultVariant: Variant? get() = variants.firstOrNull()
     val hasSaleOffer: Boolean
         get() = offer?.salePriceMinor?.let { it > 0 } == true
@@ -709,6 +718,14 @@ data class StockWarning(
     @SerialName("available") val available: Long = 0,
     @SerialName("backorder_qty") val backorderQty: Long = 0,
     @SerialName("accepts_backorder") val acceptsBackorder: Boolean = false,
+)
+
+@Serializable
+data class CheckoutPreviewResponse(
+    val ok: Boolean = false,
+    val blocked: Boolean = false,
+    val message: String? = null,
+    @SerialName("stock_warnings") val stockWarnings: List<StockWarning> = emptyList(),
 )
 
 @Serializable

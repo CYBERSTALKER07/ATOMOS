@@ -160,6 +160,7 @@ func main() {
 	})
 	driverroutes.RegisterRoutes(r, driverroutes.Deps{
 		Service:             app.DriverService,
+		WarehouseSvc:        app.WarehouseService,
 		OrderService:        app.OrderService,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,

@@ -239,6 +239,8 @@ func (s *Service) writeOrderCheckoutError(w http.ResponseWriter, endpoint string
 		writeJSONError(w, http.StatusNotFound, "order_not_found", "order not found", endpoint, false, "")
 	case errors.Is(err, order.ErrOrderForbidden):
 		writeJSONError(w, http.StatusForbidden, "forbidden", "forbidden", endpoint, false, "")
+	case errors.Is(err, order.ErrBackorderPaymentDeferred):
+		writeJSONError(w, http.StatusUnprocessableEntity, "backorder_payment_deferred", "backorder payment is deferred until fulfillment", endpoint, false, "")
 	default:
 		writeJSONError(w, http.StatusInternalServerError, "order_lookup_failed", err.Error(), endpoint, false, "")
 	}

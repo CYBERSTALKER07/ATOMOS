@@ -3,6 +3,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { apiFetch, readToken } from './auth';
 import { useOptionalWebSocket } from './ws';
+import {
+  clampCartQuantity,
+  stockMetaFromProduct,
+  type StockAwareProduct,
+} from './stock-policy';
+import type { Product } from './types';
 
 export interface CartItem {
   product_id: string;
@@ -11,9 +17,14 @@ export interface CartItem {
   price: number;
   quantity: number;
   image_url?: string;
+  is_out_of_stock?: boolean;
+  accepts_backorder?: boolean;
+  available_stock?: number;
+  show_stock_counts?: boolean;
+  max_quantity?: number | null;
 }
 
-interface AddToCartProduct {
+interface AddToCartProduct extends StockAwareProduct {
   id: string;
   supplier_id: string;
   name: string;
@@ -264,12 +275,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items, pushToServer]);
 
-  const addToCart = (product: AddToCartProduct, quantity = 1) => {
+  const addToCart = (product: AddToCartProduct | Product, quantity = 1) => {
+    const meta = stockMetaFromProduct(product as Product);
+    const cappedQty = clampCartQuantity(meta, quantity);
     setItems((prev) => {
       const existing = prev.find((i) => i.product_id === product.id);
       if (existing) {
+        const mergedMeta: StockAwareProduct = {
+          is_out_of_stock: existing.is_out_of_stock ?? meta.is_out_of_stock,
+          accepts_backorder: existing.accepts_backorder ?? meta.accepts_backorder,
+          available_stock: meta.available_stock ?? existing.available_stock,
+          show_stock_counts: meta.show_stock_counts ?? existing.show_stock_counts,
+          max_quantity: meta.max_quantity ?? existing.max_quantity,
+        };
+        const nextQty = clampCartQuantity(
+          mergedMeta,
+          existing.quantity + cappedQty,
+        );
         return prev.map((i) =>
-          i.product_id === product.id ? { ...i, quantity: i.quantity + quantity } : i
+          i.product_id === product.id
+            ? {
+                ...i,
+                quantity: nextQty,
+                ...mergedMeta,
+              }
+            : i,
         );
       }
       return [
@@ -279,8 +309,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           supplier_id: product.supplier_id,
           name: product.name,
           price: product.price,
-          quantity,
+          quantity: cappedQty,
           image_url: product.image_url,
+          ...meta,
         },
       ];
     });
@@ -296,7 +327,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setItems((prev) =>
-      prev.map((i) => (i.product_id === product_id ? { ...i, quantity } : i))
+      prev.map((i) => {
+        if (i.product_id !== product_id) {
+          return i;
+        }
+        const nextQty = clampCartQuantity(i, quantity);
+        return { ...i, quantity: nextQty };
+      }),
     );
   };
 

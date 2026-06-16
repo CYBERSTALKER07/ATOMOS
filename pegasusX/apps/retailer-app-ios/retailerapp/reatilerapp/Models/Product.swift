@@ -106,6 +106,8 @@ struct Product: Codable, Identifiable, Hashable {
     let availableStock: Int?
     let isOutOfStockFlag: Bool
     let acceptsBackorder: Bool
+    let showStockCounts: Bool
+    let maxQuantity: Int?
     let offer: ProductOffer?
 
     var isOutOfStock: Bool {
@@ -113,6 +115,12 @@ struct Product: Codable, Identifiable, Hashable {
     }
     var isLowStock: Bool { availableStock != nil && (1...5).contains(availableStock!) }
     var blocksAddToCart: Bool { isOutOfStock && !acceptsBackorder }
+    var cartMaxQuantity: Int? {
+        if let maxQuantity, maxQuantity > 0 { return maxQuantity }
+        if showStockCounts, let availableStock, availableStock > 0, !acceptsBackorder { return availableStock }
+        if let availableStock, availableStock > 0, !acceptsBackorder { return availableStock }
+        return nil
+    }
 
     enum CodingKeys: String, CodingKey {
         case id, name, description, nutrition, variants, offer
@@ -137,6 +145,8 @@ struct Product: Codable, Identifiable, Hashable {
         case availableStockCamel = "availableStock"
         case isOutOfStockFlag = "is_out_of_stock"
         case acceptsBackorder = "accepts_backorder"
+        case showStockCounts = "show_stock_counts"
+        case maxQuantity = "max_quantity"
     }
 
     init(
@@ -157,6 +167,8 @@ struct Product: Codable, Identifiable, Hashable {
         availableStock: Int? = nil,
         isOutOfStockFlag: Bool = false,
         acceptsBackorder: Bool = false,
+        showStockCounts: Bool = false,
+        maxQuantity: Int? = nil,
         offer: ProductOffer? = nil
     ) {
         self.id = id
@@ -176,6 +188,8 @@ struct Product: Codable, Identifiable, Hashable {
         self.availableStock = availableStock
         self.isOutOfStockFlag = isOutOfStockFlag
         self.acceptsBackorder = acceptsBackorder
+        self.showStockCounts = showStockCounts
+        self.maxQuantity = maxQuantity
         self.offer = offer
     }
 
@@ -208,6 +222,8 @@ struct Product: Codable, Identifiable, Hashable {
             ?? container.decodeIfPresent(Int.self, forKey: .availableStockCamel)
         isOutOfStockFlag = try container.decodeIfPresent(Bool.self, forKey: .isOutOfStockFlag) ?? false
         acceptsBackorder = try container.decodeIfPresent(Bool.self, forKey: .acceptsBackorder) ?? false
+        showStockCounts = try container.decodeIfPresent(Bool.self, forKey: .showStockCounts) ?? false
+        maxQuantity = try container.decodeIfPresent(Int.self, forKey: .maxQuantity)
         offer = try container.decodeIfPresent(ProductOffer.self, forKey: .offer)
     }
 

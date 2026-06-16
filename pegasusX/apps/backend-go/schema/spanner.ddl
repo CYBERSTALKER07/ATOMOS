@@ -256,6 +256,7 @@ CREATE TABLE Warehouses (
   PaymentConfigId    STRING(36),
   AutoDispatchEnabled BOOL         NOT NULL DEFAULT (FALSE),
   DefaultOutOfStockPolicy STRING(24) NOT NULL DEFAULT ('REJECT'),
+  ShowStockCountsToRetailers BOOL NOT NULL DEFAULT (FALSE),
   OperatingSchedule  JSON,
   CreatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -309,6 +310,9 @@ CREATE TABLE WarehouseSupplyRequestItems (
   RequestedQuantity    INT64       NOT NULL,
   RecommendedQuantity  INT64       NOT NULL DEFAULT (0),
   UnitVolumeVU         FLOAT64     NOT NULL DEFAULT (0),
+  ShippedQuantity      INT64,
+  ReceivedQuantity     INT64,
+  VarianceReason       STRING(MAX),
   CreatedAt            TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (RequestId, ItemId),
   INTERLEAVE IN PARENT WarehouseSupplyRequests ON DELETE CASCADE;

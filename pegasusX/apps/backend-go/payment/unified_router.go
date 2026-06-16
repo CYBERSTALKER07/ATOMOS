@@ -12,9 +12,19 @@ type CartCheckoutHandler interface {
 	HandleUnifiedCheckout(http.ResponseWriter, *http.Request)
 }
 
+// CheckoutPreviewHandler serves POST /v1/checkout/preview.
+type CheckoutPreviewHandler interface {
+	HandleCheckoutPreview(http.ResponseWriter, *http.Request)
+}
+
 // BindCartCheckout wires the order-service cart checkout handler.
 func (s *Service) BindCartCheckout(handler CartCheckoutHandler) {
 	s.cartCheckout = handler
+}
+
+// BindCheckoutPreview wires the order-service checkout preview handler.
+func (s *Service) BindCheckoutPreview(handler CheckoutPreviewHandler) {
+	s.checkoutPreview = handler
 }
 
 func isCartUnifiedCheckoutBody(body []byte) bool {

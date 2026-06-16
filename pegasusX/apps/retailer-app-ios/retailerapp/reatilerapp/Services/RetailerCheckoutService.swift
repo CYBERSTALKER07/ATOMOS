@@ -9,6 +9,13 @@ enum RetailerCheckoutService {
         gateway: String,
         idempotencyKey: String
     ) async throws -> CheckoutResponse {
+        let preview: CheckoutPreviewResponse = try await api.post(
+            path: "/v1/checkout/preview",
+            body: payload
+        )
+        if preview.blocked == true {
+            throw CheckoutPreviewError.blocked(preview.message ?? "Checkout blocked by stock policy")
+        }
         let response: CheckoutResponse = try await api.post(
             path: "/v1/checkout/unified",
             body: payload,
@@ -18,7 +25,8 @@ enum RetailerCheckoutService {
             api: api,
             supplierOrders: response.supplierOrders ?? [],
             gateway: gateway,
-            invoiceId: response.invoiceId
+            invoiceId: response.invoiceId,
+            backorderOrderId: response.backorderOrderId
         )
         return response
     }
@@ -27,12 +35,16 @@ enum RetailerCheckoutService {
         api: APIClient,
         supplierOrders: [CheckoutResponse.SupplierOrderResult],
         gateway: String,
-        invoiceId: String
+        invoiceId: String,
+        backorderOrderId: String? = nil
     ) async throws {
         let normalizedGateway = gateway.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         let isCash = normalizedGateway == "CASH"
 
         for supplierOrder in supplierOrders {
+            if let backorderOrderId, supplierOrder.orderId == backorderOrderId {
+                continue
+            }
             if isCash {
                 let _: CashCheckoutResponse = try await api.post(
                     path: "/v1/order/cash-checkout",
@@ -59,6 +71,21 @@ enum RetailerCheckoutService {
             }
         }
     }
+}
+
+enum CheckoutPreviewError: LocalizedError {
+    case blocked(String)
+    var errorDescription: String? {
+        switch self {
+        case .blocked(let message): return message
+        }
+    }
+}
+
+struct CheckoutPreviewResponse: Decodable {
+    let ok: Bool
+    let blocked: Bool?
+    let message: String?
 }
 
 private struct CashCheckoutRequest: Encodable {

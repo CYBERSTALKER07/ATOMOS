@@ -29,6 +29,7 @@ import { Skeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import { useCart } from "../../../lib/cart";
+import { isCatalogBlocked } from "../../../lib/stock-policy";
 import { useWebSocket } from "../../../lib/ws";
 import type { Product, Category, Supplier } from "../../../lib/types";
 import {
@@ -638,15 +639,21 @@ export default function CatalogPage() {
                 layout
                 className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
               >
-                {filteredProducts.map((product) => (
+                {filteredProducts.map((product) => {
+                  const blocked = isCatalogBlocked(product);
+                  return (
                   <motion.article
                     key={product.id}
                     layout
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    onClick={() => setSelectedProduct(product)}
-                    className="group bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all active:scale-[0.98]"
+                    onClick={() => !blocked && setSelectedProduct(product)}
+                    className={`group bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl overflow-hidden transition-all ${
+                      blocked
+                        ? "opacity-50 grayscale cursor-not-allowed"
+                        : "cursor-pointer hover:shadow-md hover:-translate-y-1 active:scale-[0.98]"
+                    }`}
                   >
                     <div className="relative h-44 bg-[var(--desk-surface-subtle)] overflow-hidden">
                       {product.image_url ? (
@@ -714,20 +721,17 @@ export default function CatalogPage() {
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            addToCart(product);
+                            if (!blocked) addToCart(product);
                           }}
-                          isDisabled={
-                            product.available_stock != null &&
-                            product.available_stock <= 0 &&
-                            !product.accepts_backorder
-                          }
+                          isDisabled={blocked}
                         >
                           Add to Cart
                         </Button>
                       </div>
                     </div>
                   </motion.article>
-                ))}
+                  );
+                })}
               </motion.div>
             )}
           </AnimatePresence>

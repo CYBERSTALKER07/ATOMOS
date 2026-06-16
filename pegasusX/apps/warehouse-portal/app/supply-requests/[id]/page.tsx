@@ -46,6 +46,7 @@ export default function SupplyRequestDetailPage() {
   const [detail, setDetail] = useState<WarehouseSupplyRequestDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [receiveQty, setReceiveQty] = useState<Record<string, number>>({});
   const [socketStatus, setSocketStatus] = useState<WarehouseSocketStatus>('connecting');
   const [restricted, setRestricted] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -60,7 +61,13 @@ export default function SupplyRequestDetailPage() {
       if (!requestId) return;
       const res = await apiFetch(`/v1/warehouse/supply-requests/${requestId}`);
       if (res.ok) {
-        setDetail(await res.json() as WarehouseSupplyRequestDetail);
+        const data = await res.json() as WarehouseSupplyRequestDetail;
+        setDetail(data);
+        const nextQty: Record<string, number> = {};
+        for (const item of data.items ?? []) {
+          nextQty[item.item_id] = item.received_quantity ?? item.shipped_quantity ?? item.requested_quantity;
+        }
+        setReceiveQty(nextQty);
         setRestricted(false);
       } else if (res.status === 403) {
         setRestricted(true);
@@ -102,6 +109,34 @@ export default function SupplyRequestDetailPage() {
       },
     });
   }, [handleWarehouseLiveEvent]);
+
+  async function handleReceiveTransfer() {
+    const transferId = detail?.linked_transfer_id;
+    if (!transferId || !detail?.items?.length) return;
+    setActing(true);
+    try {
+      const res = await apiFetch(`/v1/warehouse/transfers/${transferId}/receive`, {
+        method: 'POST',
+        body: JSON.stringify({
+          items: detail.items.map((item) => ({
+            item_id: item.item_id,
+            received_quantity: receiveQty[item.item_id] ?? item.shipped_quantity ?? item.requested_quantity,
+          })),
+        }),
+      });
+      if (res.ok) {
+        toast('Transfer received', 'success');
+        void loadDetail();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast(data.error || 'Receive failed', 'error');
+      }
+    } catch {
+      toast('Network error', 'error');
+    } finally {
+      setActing(false);
+    }
+  }
 
   async function handleAction(action: string) {
     setActing(true);
@@ -209,6 +244,8 @@ export default function SupplyRequestDetailPage() {
               <tr className="border-b border-[var(--border)]" style={{ background: 'var(--surface)' }}>
                 <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Product</th>
                 <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Requested</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Shipped</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Received</th>
                 <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Recommended</th>
                 <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Unit Volume</th>
               </tr>
@@ -218,10 +255,27 @@ export default function SupplyRequestDetailPage() {
                 <tr key={item.item_id} className="border-b border-[var(--border)] last:border-b-0">
                   <td className="px-4 py-3 font-mono text-xs">{item.product_id}</td>
                   <td className="px-4 py-3 font-mono">{item.requested_quantity}</td>
+                  <td className="px-4 py-3 font-mono">{item.shipped_quantity ?? '—'}</td>
+                  <td className="px-4 py-3 font-mono">
+                    {detail.linked_transfer_id ? (
+                      <input
+                        type="number"
+                        min={0}
+                        className="w-20 rounded border border-[var(--border)] px-2 py-1"
+                        value={receiveQty[item.item_id] ?? item.shipped_quantity ?? item.requested_quantity}
+                        onChange={(e) => setReceiveQty((prev) => ({
+                          ...prev,
+                          [item.item_id]: Number(e.target.value),
+                        }))}
+                      />
+                    ) : (
+                      item.received_quantity ?? '—'
+                    )}
+                  </td>
                   <td className="px-4 py-3 font-mono">{item.recommended_qty}</td>
                   <td className="px-4 py-3 text-[var(--muted)]">{item.unit_volume_vu} VU</td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
@@ -240,6 +294,19 @@ export default function SupplyRequestDetailPage() {
               {acting ? '...' : a.label}
             </button>
           ))}
+        </div>
+      )}
+
+      {detail.linked_transfer_id && ['FULFILLED', 'ARRIVED', 'IN_TRANSIT'].includes(detail.state ?? detail.status ?? '') && (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => void handleReceiveTransfer()}
+            disabled={acting}
+            className="px-4 py-2 rounded-lg text-sm font-semibold button--primary disabled:opacity-50"
+          >
+            {acting ? 'Receiving…' : 'Confirm receipt'}
+          </button>
         </div>
       )}
 

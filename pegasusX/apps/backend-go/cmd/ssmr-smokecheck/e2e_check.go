@@ -82,6 +82,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runRetailerCatalogProductsE2E(ctx, client, base, retailerToken); err != nil {
 		return fmt.Errorf("retailer catalog products: %w", err)
 	}
+	if err := runCheckoutPreviewE2E(ctx, client, base, retailerToken); err != nil {
+		return fmt.Errorf("checkout preview: %w", err)
+	}
 
 	orderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
 	if err != nil {
@@ -1957,6 +1960,34 @@ func runWarehouseDispatchSettingsE2E(ctx context.Context, client *http.Client, b
 	if status != http.StatusOK {
 		return fmt.Errorf("dispatch settings patch status %d body %s", status, string(respBody))
 	}
+	return nil
+}
+
+func runCheckoutPreviewE2E(ctx context.Context, client *http.Client, base, retailerToken string) error {
+	body, _ := json.Marshal(map[string]any{
+		"latitude":  41.31,
+		"longitude": 69.24,
+		"items": []map[string]any{
+			{"sku_id": "sku_demo_1", "quantity": 1, "unit_price": 1000},
+		},
+	})
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/checkout/preview", body, retailerToken, "ssmr-checkout-preview")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("checkout preview status %d body %s", status, string(respBody))
+	}
+	var preview struct {
+		OK bool `json:"ok"`
+	}
+	if err := json.Unmarshal(respBody, &preview); err != nil {
+		return fmt.Errorf("decode checkout preview: %w", err)
+	}
+	if !preview.OK {
+		return fmt.Errorf("checkout preview not ok: %s", string(respBody))
+	}
+	fmt.Println("PX_E2E_CHECKOUT_PREVIEW_OK")
 	return nil
 }
 

@@ -84,6 +84,9 @@ func (s *Service) CheckoutOrderContext(ctx context.Context, orderID, retailerID 
 	if o.Status == StatusCompleted || o.Status == StatusCancelled {
 		return CheckoutOrderContext{}, fmt.Errorf("order cannot be paid in status: %s", o.Status)
 	}
+	if o.Status == StatusBackordered {
+		return CheckoutOrderContext{}, ErrBackorderPaymentDeferred
+	}
 	return CheckoutOrderContext{
 		TotalMinor:  o.TotalMinor,
 		Currency:    o.Currency,

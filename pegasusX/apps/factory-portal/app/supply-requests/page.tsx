@@ -19,6 +19,8 @@ interface SupplyRequestItem {
   item_id: string;
   product_id: string;
   requested_quantity: number;
+  shipped_quantity?: number;
+  received_quantity?: number;
   recommended_qty?: number;
   unit_volume_vu?: number;
 }
@@ -244,12 +246,19 @@ export default function SupplyRequestsPage() {
         ? 'refreshing'
         : 'live';
 
-  const handleTransition = async (requestId: string, action: string) => {
-    setTransitioning(requestId);
+  const handleTransition = async (request: SupplyRequest, action: string) => {
+    setTransitioning(request.request_id);
     try {
-      const res = await apiFetch(`/v1/factory/supply-requests/${requestId}`, {
+      const body: Record<string, unknown> = { action };
+      if (action === 'FULFILL' && request.items?.length) {
+        body.items = request.items.map((item) => ({
+          item_id: item.item_id,
+          shipped_quantity: item.shipped_quantity ?? item.requested_quantity,
+        }));
+      }
+      const res = await apiFetch(`/v1/factory/supply-requests/${request.request_id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ action }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
@@ -420,7 +429,7 @@ export default function SupplyRequestsPage() {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             key={action.action}
-                            onClick={() => void handleTransition(request.request_id, action.action)}
+                            onClick={() => void handleTransition(request, action.action)}
                             disabled={transitioning === request.request_id}
                             className="px-3 py-1 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50 hover-lift active-press"
                             style={{ background: action.color, color: 'white' }}

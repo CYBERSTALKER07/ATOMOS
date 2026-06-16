@@ -33,7 +33,7 @@ func (s *Service) HandleOpsSettings(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) handleGetOpsSettings(w http.ResponseWriter, r *http.Request, warehouseID string) {
 	row, err := s.spannerClient.Single().ReadRow(r.Context(), "Warehouses", spanner.Key{warehouseID},
-		[]string{"WarehouseId", "Name", "RegionId", "DefaultOutOfStockPolicy", "OperatingSchedule", "IsOnShift"})
+		[]string{"WarehouseId", "Name", "RegionId", "DefaultOutOfStockPolicy", "ShowStockCountsToRetailers", "OperatingSchedule", "IsOnShift"})
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "warehouse_not_found"})
 		return
@@ -41,9 +41,10 @@ func (s *Service) handleGetOpsSettings(w http.ResponseWriter, r *http.Request, w
 	var id, name string
 	var regionID spanner.NullString
 	var policy spanner.NullString
+	var showCounts bool
 	var schedule spanner.NullJSON
 	var isOnShift bool
-	if err := row.Columns(&id, &name, &regionID, &policy, &schedule, &isOnShift); err != nil {
+	if err := row.Columns(&id, &name, &regionID, &policy, &showCounts, &schedule, &isOnShift); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "decode_warehouse_failed"})
 		return
 	}
@@ -52,13 +53,14 @@ func (s *Service) handleGetOpsSettings(w http.ResponseWriter, r *http.Request, w
 		_ = json.Unmarshal([]byte(schedule.String()), &sched)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"warehouse_id":                id,
-		"name":                        name,
-		"region_id":                   regionID.StringVal,
-		"default_out_of_stock_policy": ResolveOutOfStockPolicy(policy.StringVal, ""),
-		"operating_schedule":          sched,
-		"is_on_shift":                 isOnShift,
-		"ops_always_available":        true,
+		"warehouse_id":                  id,
+		"name":                          name,
+		"region_id":                     regionID.StringVal,
+		"default_out_of_stock_policy":   ResolveOutOfStockPolicy(policy.StringVal, ""),
+		"show_stock_counts_to_retailers": showCounts,
+		"operating_schedule":            sched,
+		"is_on_shift":                   isOnShift,
+		"ops_always_available":          true,
 	})
 }
 
@@ -79,10 +81,11 @@ func (s *Service) handlePatchOpsSettings(w http.ResponseWriter, r *http.Request,
 	}()
 
 	var req struct {
-		DefaultOutOfStockPolicy *string          `json:"default_out_of_stock_policy"`
-		OperatingSchedule       *json.RawMessage `json:"operating_schedule"`
-		RegionID                *string          `json:"region_id"`
-		IsOnShift               *bool            `json:"is_on_shift"`
+		DefaultOutOfStockPolicy      *string          `json:"default_out_of_stock_policy"`
+		ShowStockCountsToRetailers *bool            `json:"show_stock_counts_to_retailers"`
+		OperatingSchedule          *json.RawMessage `json:"operating_schedule"`
+		RegionID                   *string          `json:"region_id"`
+		IsOnShift                  *bool            `json:"is_on_shift"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -100,6 +103,9 @@ func (s *Service) handlePatchOpsSettings(w http.ResponseWriter, r *http.Request,
 			return
 		}
 		update["DefaultOutOfStockPolicy"] = p
+	}
+	if req.ShowStockCountsToRetailers != nil {
+		update["ShowStockCountsToRetailers"] = *req.ShowStockCountsToRetailers
 	}
 	if req.OperatingSchedule != nil {
 		update["OperatingSchedule"] = spanner.NullJSON{Value: *req.OperatingSchedule, Valid: true}

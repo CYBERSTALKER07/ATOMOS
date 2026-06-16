@@ -21,6 +21,7 @@ import type {
   ActiveFulfillmentsResponse,
   CardCheckoutResponse,
   CashCheckoutResponse,
+  CheckoutPreviewResponse,
   PendingPaymentsResponse,
   UnifiedCheckoutResponse,
   RetailerProfile,
@@ -226,6 +227,40 @@ export default function CheckoutModal({
         unit_price: item.price,
       }));
 
+      const previewRes = await apiFetch("/v1/checkout/preview", {
+        method: "POST",
+        body: JSON.stringify({
+          retailer_id: profile.id,
+          latitude: 0,
+          longitude: 0,
+          items: lineItems,
+        }),
+      });
+      if (!previewRes.ok) {
+        const previewErr = await previewRes.json().catch(() => null);
+        throw new Error(previewErr?.error || "Checkout preview failed");
+      }
+      const preview = (await previewRes.json()) as CheckoutPreviewResponse;
+      if (preview.blocked) {
+        setOosItems(preview.rejected_skus || preview.oos_items || []);
+        throw new Error(
+          preview.message || "Some items cannot be ordered with current stock policy.",
+        );
+      }
+      if (
+        preview.stock_warnings &&
+        preview.stock_warnings.length > 0 &&
+        !window.confirm(
+          `Some items will be backordered (${preview.backordered_item_count ?? preview.stock_warnings.length} line(s)). Delivery may be delayed. Proceed?`,
+        )
+      ) {
+        setLoading(false);
+        return;
+      }
+      if (preview.stock_warnings?.length) {
+        setStockWarnings(preview.stock_warnings);
+      }
+
       const cartKey = lineItems
         .map((item) => `${item.sku_id}:${item.quantity}:${item.unit_price}`)
         .sort()
@@ -285,6 +320,9 @@ export default function CheckoutModal({
       }
 
       for (const so of resData.supplier_orders) {
+        if (resData.backorder_order_id && so.order_id === resData.backorder_order_id) {
+          continue;
+        }
         if (method !== "cash" && !degradedBanner) {
           const payRes = await apiFetch("/v1/order/card-checkout", {
             method: "POST",

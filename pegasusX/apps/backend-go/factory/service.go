@@ -223,6 +223,9 @@ type SupplyRequestItem struct {
 	ItemID            string  `json:"item_id"`
 	ProductID         string  `json:"product_id"`
 	RequestedQuantity int64   `json:"requested_quantity"`
+	ShippedQuantity   int64   `json:"shipped_quantity,omitempty"`
+	ReceivedQuantity  int64   `json:"received_quantity,omitempty"`
+	VarianceReason    string  `json:"variance_reason,omitempty"`
 	RecommendedQty    int64   `json:"recommended_qty,omitempty"`
 	UnitVolumeVU      float64 `json:"unit_volume_vu,omitempty"`
 }

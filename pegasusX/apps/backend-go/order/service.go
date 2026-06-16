@@ -89,6 +89,7 @@ var (
 	ErrServiceabilityUnavailable = errors.New("delivery_perimeter_unavailable")
 	ErrAssignmentRequired        = errors.New("assignment_required")
 	ErrInventoryExhausted        = errors.New("inventory_exhausted")
+	ErrBackorderPaymentDeferred  = errors.New("backorder_payment_deferred")
 )
 
 // LineItem is one line on an order.
@@ -917,6 +918,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		s.cache.Invalidate(ctx,
 			retailerOrdersKey(o.RetailerID),
 			supplierOrdersKey(o.SupplierID),
+			"catalog:products:"+o.SupplierID,
 		)
 	}
 
@@ -1407,6 +1409,12 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 	})
 	if err != nil {
 		return UpdateStatusResponse{}, fmt.Errorf("update order status %s: %w", orderID, err)
+	}
+
+	if nextStatus == StatusCancelled && prevStatus != StatusCancelled {
+		if err := s.releaseOrderReservations(ctx, &current); err != nil {
+			s.log.Warn("release inventory reservation on cancel failed", "order_id", orderID, "err", err)
+		}
 	}
 
 	if s.cache != nil {

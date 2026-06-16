@@ -13,6 +13,7 @@ import {
 import { Button, Chip } from "@heroui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../lib/cart";
+import { isCatalogBlocked } from "../lib/stock-policy";
 import type { Product, Variant } from "../lib/types";
 import {
   productDisplayPrice,
@@ -44,6 +45,7 @@ export default function ProductDetailDrawer({
 
   const variants = product?.variants ?? [];
   const hasVariants = variants.length > 0;
+  const blocked = product ? isCatalogBlocked(product) : false;
 
   return (
     <AnimatePresence>
@@ -191,13 +193,20 @@ export default function ProductDetailDrawer({
 
               <Button
                 onPress={() => {
-                  addToCart(product);
-                  onClose();
+                  if (!blocked) {
+                    addToCart(product);
+                    onClose();
+                  }
                 }}
-                className="w-full h-14 bg-[var(--desk-text-primary)] text-white font-bold rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-95"
+                isDisabled={blocked}
+                className="w-full h-14 bg-[var(--desk-text-primary)] text-white font-bold rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
               >
                 <ShoppingCart size={20} />
-                Stage Node for Procurement
+                {blocked
+                  ? "Out of Stock"
+                  : product.is_out_of_stock && product.accepts_backorder
+                    ? "Add Backorder"
+                    : "Stage Node for Procurement"}
                 <ChevronRight size={20} />
               </Button>
             </div>

@@ -83,6 +83,9 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 
 	// Health / list cards (dev helper)
 	r.Get("/cards", h.handleListCards)
+
+	// Backoffice capture (CP) — mirrors /payments/v2/payment/{id}/perform
+	r.Post("/payments/v2/payment/{paymentID}/perform", h.handlePaymentPerform)
 }
 
 // ── Mock Auth ──────────────────────────────────────────────────────────────
@@ -425,4 +428,18 @@ func buildResultHTML(orderID, status string, card *SimCard) string {
 </div>
 </body>
 </html>`
+}
+
+func (h *Handler) handlePaymentPerform(w http.ResponseWriter, r *http.Request) {
+	paymentID := strings.TrimSpace(chi.URLParam(r, "paymentID"))
+	if paymentID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "payment_id_required"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"paymentId":    paymentID,
+		"status":       "SUCCESS",
+		"paid":         true,
+		"isSuccessful": true,
+	})
 }
