@@ -69,6 +69,7 @@
 		F2376B8ED9C921863917A31B /* FleetOrdersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A85D1AEC89533FA4901AEA57 /* FleetOrdersView.swift */; };
 		FAA8394B2AF9F3B102EEED86 /* GeoReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54A021DCDAADC7300E907D60 /* GeoReportView.swift */; };
 		FB3715A6869632A6D31CF73E /* DispatchPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BEDFB0FB4429B0FBC71A5B6 /* DispatchPreviewView.swift */; };
+		E4C8A1B72F9D3056A8E1B4C7 /* DispatchPreviewMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D9B2C83A0E4167B9F2C5D8 /* DispatchPreviewMapView.swift */; };
 		FB6655F782FC8DE4394220AE /* FleetDriverMarkerAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A513992A121CDF2127E0CE /* FleetDriverMarkerAnimator.swift */; };
 		FC25832A84A967B2DEEE01E5 /* ClientPolicyBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A14CAD6BD4D831470BA28E57 /* ClientPolicyBanner.swift */; };
 /* End PBXBuildFile section */
@@ -96,6 +97,7 @@
 		29985CA974B8C463D2D934CF /* SupplierTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierTheme.swift; sourceTree = "<group>"; };
 		2B3400F273AB03B38354283A /* SupplierAdaptiveShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierAdaptiveShell.swift; sourceTree = "<group>"; };
 		2BEDFB0FB4429B0FBC71A5B6 /* DispatchPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DispatchPreviewView.swift; sourceTree = "<group>"; };
+		F5D9B2C83A0E4167B9F2C5D8 /* DispatchPreviewMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DispatchPreviewMapView.swift; sourceTree = "<group>"; };
 		2D2B554F709A9D80742C85AC /* SupplierStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierStateViews.swift; sourceTree = "<group>"; };
 		3073D93020BCCB7AD12A33EC /* ManifestExceptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestExceptionsView.swift; sourceTree = "<group>"; };
 		3A244A944AFE48B68C739B13 /* SupplierSectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierSectionHeader.swift; sourceTree = "<group>"; };
@@ -357,6 +359,7 @@
 		AF366D43B073478A8D7F3C72 /* Dispatch */ = {
 			isa = PBXGroup;
 			children = (
+				F5D9B2C83A0E4167B9F2C5D8 /* DispatchPreviewMapView.swift */,
 				2BEDFB0FB4429B0FBC71A5B6 /* DispatchPreviewView.swift */,
 			);
 			path = Dispatch;
@@ -638,6 +641,7 @@
 				2939DC8BC4630FEB71BFCAC2 /* DashboardView.swift in Sources */,
 				961CBBCEC7965D6F94079D41 /* DeliveryZonesView.swift in Sources */,
 				FB3715A6869632A6D31CF73E /* DispatchPreviewView.swift in Sources */,
+				E4C8A1B72F9D3056A8E1B4C7 /* DispatchPreviewMapView.swift in Sources */,
 				E838314B66887C2B6F251DE4 /* EANBarcode.swift in Sources */,
 				AC5B29C18653667A12BC9524 /* EANBarcodeScannerView.swift in Sources */,
 				2831AA7D0E01D99FFEEED05A /* EarlyCompleteView.swift in Sources */,

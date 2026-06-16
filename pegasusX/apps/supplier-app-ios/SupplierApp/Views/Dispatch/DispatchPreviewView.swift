@@ -44,6 +44,30 @@ struct DispatchPreviewView: View {
                                 LabeledContent("Undispatched bucket", value: "\(undispatched)")
                             }
                         }
+                        if !preview.proposedRoutes.isEmpty {
+                            Section {
+                                HStack {
+                                    Text("Smart suggest route map")
+                                        .font(.headline)
+                                    Spacer()
+                                    if let source = preview.optimizerSource, !source.isEmpty {
+                                        Text("Source: \(source)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                DispatchPreviewMapView(routes: preview.proposedRoutes)
+                                ForEach(Array(preview.proposedRoutes.enumerated()), id: \.offset) { index, route in
+                                    let label = route.driverName?.isEmpty == false
+                                        ? route.driverName!
+                                        : (route.driverId?.isEmpty == false ? route.driverId! : "Route \(index + 1)")
+                                    let stops = route.stopCount ?? route.orderIds.count
+                                    Text("\(label) · \(stops) stops")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
                     }
                     Section {
                         Button("Execute auto-dispatch") { showExecuteConfirm = true }

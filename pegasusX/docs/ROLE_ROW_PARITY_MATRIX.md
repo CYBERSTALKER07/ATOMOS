@@ -24,7 +24,7 @@ Last updated: 2026-06-15. Canonical reference: `pegasus/`. Delivery tree: `pegas
 | `/supplier/dashboard` | `/(portal)/dashboard` | GET `/v1/supplier/dashboard` | Wired |
 | `/supplier/orders` | `/(portal)/orders` | GET `/v1/supplier/orders` | Wired |
 | `/fleet`, `/supplier/fleet` | `/(portal)/fleet` + dashboard `FleetLiveMap` | GET/POST `/v1/supplier/fleet/*`, `GET /v1/supplier/fleet/live-map` | Wired via org-fleet + live map |
-| `/supplier/dispatch` | `/(portal)/dispatch` | dispatch preview (warehouse) | Partial |
+| `/supplier/dispatch` | `/(portal)/dispatch` | dispatch preview (warehouse) | Wired — route map on portal + Android/iOS |
 | `/supplier/inventory` | `/(portal)/inventory` | GET/PATCH `/v1/supplier/inventory` | Wired |
 | `/supplier/pricing` | `/(portal)/pricing` | GET/PATCH `/v1/supplier/pricing/rules` | Wired |
 | `/supplier/catalog` | `/(portal)/catalog` | catalog routes (supplier) | Portal page |
@@ -111,7 +111,7 @@ Per-role surfaces that must stay wired end-to-end (portal + native + terminal wh
 
 **Intentional portal-only deferrals (v1):** supplier empathy adoption depth on native; warehouse supply forecast create form depth on native (create from Dispatch tab); factory iOS analytics/exceptions as dashboard sheets not tabs.
 
-**Recently closed gaps (2026-06-15):** retailer dock queue on Android + iOS (`DeliveriesHubScreen` / `DeliveriesHubView` with Map | Dock Queue tabs); Android AI Predictions sidebar → `FutureDemandScreen`; global client-policy banner hoisted to Android/iOS nav shells (retailer + supplier); Android catalog supplier filter + `promotions/watch`; desktop offline pending checkout queue (`pending-checkout.ts`); supplier returns resolve on native; supplier broadcast + payment-bypass idempotency on native; iOS supplier dashboard notification bell; iOS iPad sidebar Promotions/Pricing/Returns/Reconciliation/Notifications; driver supply-arrive idempotency; warehouse supply create/cancel/receive idempotency; payload-terminal reassign aligned to `payloader/reassign-order`.
+**Recently closed gaps (2026-06-15):** retailer dock queue on Android + iOS (`DeliveriesHubScreen` / `DeliveriesHubView` with Map | Dock Queue tabs); Android AI Predictions sidebar → `FutureDemandScreen`; global client-policy banner hoisted to Android/iOS nav shells (retailer + supplier); Android catalog supplier filter + `promotions/watch`; desktop offline pending checkout queue (`pending-checkout.ts`); supplier returns resolve on native; supplier broadcast + payment-bypass idempotency on native; iOS supplier dashboard notification bell; iOS iPad sidebar Promotions/Pricing/Returns/Reconciliation/Notifications; supplier dispatch preview route map on Android (MapLibre) + iOS (MapKit); driver supply-arrive idempotency; warehouse supply create/cancel/receive idempotency; payload-terminal reassign aligned to `payloader/reassign-order`.
 
 ## SSMR fleet / dispatch / payload feature IDs (2026-06-14)
 

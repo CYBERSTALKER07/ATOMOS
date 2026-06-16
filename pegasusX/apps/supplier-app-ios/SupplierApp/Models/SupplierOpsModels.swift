@@ -148,15 +148,64 @@ struct SupplierManifestInjectOrderRequest: Encodable {
 
 // MARK: - Dispatch
 
+struct RouteCoordinateWire: Decodable {
+    let lat: Double
+    let lng: Double
+}
+
+struct RouteGeometryWire: Decodable {
+    let routeId: String?
+    let encodedPolyline: String?
+    let coordinates: [RouteCoordinateWire]
+    let source: String
+    let stopCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case routeId = "route_id"
+        case encodedPolyline = "encoded_polyline"
+        case coordinates, source
+        case stopCount = "stop_count"
+    }
+}
+
+struct DispatchProposedRoute: Decodable, Identifiable {
+    var id: String { driverId ?? driverName ?? "\(orderIds.joined(separator: "-"))" }
+    let driverId: String?
+    let driverName: String?
+    let vehicleId: String?
+    let orderIds: [String]
+    let volumeVu: Double?
+    let maxVolumeVu: Double?
+    let stopCount: Int?
+    let routeGeometry: RouteGeometryWire?
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case driverName = "driver_name"
+        case vehicleId = "vehicle_id"
+        case orderIds = "order_ids"
+        case volumeVu = "volume_vu"
+        case maxVolumeVu = "max_volume_vu"
+        case stopCount = "stop_count"
+        case routeGeometry = "route_geometry"
+    }
+}
+
 struct SupplierDispatchPreview: Decodable {
     let pendingCount: Int?
     let availableDriverCount: Int?
     let undispatchedOrderCount: Int?
+    let proposedRoutes: [DispatchProposedRoute]
+    let optimizerSource: String?
+    let optimizerWarnings: [String]
 
     enum CodingKeys: String, CodingKey {
         case pendingCount = "pending_count"
         case availableDriverCount = "available_driver_count"
         case undispatchedOrderCount = "undispatched_orders"
+        case proposedRoutes = "proposed_routes"
+        case optimizerSource = "optimizer_source"
+        case optimizerWarnings = "optimizer_warnings"
     }
 
     init(from decoder: Decoder) throws {
@@ -170,6 +219,9 @@ struct SupplierDispatchPreview: Decodable {
         } else {
             undispatchedOrderCount = nil
         }
+        proposedRoutes = try container.decodeIfPresent([DispatchProposedRoute].self, forKey: .proposedRoutes) ?? []
+        optimizerSource = try container.decodeIfPresent(String.self, forKey: .optimizerSource)
+        optimizerWarnings = try container.decodeIfPresent([String].self, forKey: .optimizerWarnings) ?? []
     }
 }
 
@@ -549,26 +601,6 @@ struct SupplierFleetOrderRow: Decodable, Identifiable {
 }
 
 // MARK: - Fleet live map
-
-struct RouteGeometryWire: Decodable {
-    let routeId: String?
-    let encodedPolyline: String?
-    let coordinates: [RouteCoordinateWire]
-    let source: String
-    let stopCount: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case routeId = "route_id"
-        case encodedPolyline = "encoded_polyline"
-        case coordinates, source
-        case stopCount = "stop_count"
-    }
-}
-
-struct RouteCoordinateWire: Decodable {
-    let lat: Double
-    let lng: Double
-}
 
 struct SupplierDriverLocationWire: Decodable {
     let driverId: String

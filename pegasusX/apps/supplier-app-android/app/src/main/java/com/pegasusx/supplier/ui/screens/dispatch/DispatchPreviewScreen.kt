@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.SupplierDispatchPreview
 import com.pegasusx.supplier.data.model.SupplierTopologyWarehouse
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
@@ -16,6 +17,7 @@ import com.pegasusx.supplier.data.remote.TokenHolder
 import com.pegasusx.supplier.util.SUPPLIER_RECONNECT_RECOVERY_HINT
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import com.pegasusx.supplier.ui.realtime.SupplierReconnectRecoveryEffect
+import com.pegasusx.supplier.ui.components.DispatchPreviewMapLibre
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
@@ -122,6 +124,33 @@ fun DispatchPreviewScreen(
                             Text(
                                 "Undispatched bucket: ${p.undispatchedOrders.size}",
                                 style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                    if (p.proposedRoutes.isNotEmpty()) {
+                        Text("Smart suggest route map", style = MaterialTheme.typography.titleSmall)
+                        p.optimizerSource?.takeIf { it.isNotBlank() }?.let { source ->
+                            Text(
+                                "Source: $source",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        DispatchPreviewMapLibre(
+                            routes = p.proposedRoutes,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(320.dp),
+                        )
+                        p.proposedRoutes.forEachIndexed { index, route ->
+                            val label = route.driverName?.takeIf { it.isNotBlank() }
+                                ?: route.driverId?.takeIf { it.isNotBlank() }
+                                ?: "Route ${index + 1}"
+                            val stops = route.stopCount ?: route.orderIds.size
+                            Text(
+                                "$label · $stops stops",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }

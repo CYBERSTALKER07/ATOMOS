@@ -98,6 +98,10 @@ data class SupplierDispatchPreview(
     @SerialName("unavailable_drivers") val unavailableDrivers: List<JsonElement> = emptyList(),
     @SerialName("pending_count") val pendingCount: Int = 0,
     @SerialName("available_driver_count") val availableDriverCount: Int = 0,
+    @SerialName("proposed_routes") val proposedRoutes: List<DispatchProposedRoute> = emptyList(),
+    @SerialName("optimizer_source") val optimizerSource: String? = null,
+    @SerialName("optimizer_warnings") val optimizerWarnings: List<String> = emptyList(),
+    @SerialName("window_constrained_count") val windowConstrainedCount: Int = 0,
 )
 
 @Serializable
@@ -258,6 +262,18 @@ data class RouteGeometryWire(
     val coordinates: List<RouteCoordinateWire> = emptyList(),
     val source: String = "",
     @SerialName("stop_count") val stopCount: Int? = null,
+)
+
+@Serializable
+data class DispatchProposedRoute(
+    @SerialName("driver_id") val driverId: String? = null,
+    @SerialName("driver_name") val driverName: String? = null,
+    @SerialName("vehicle_id") val vehicleId: String? = null,
+    @SerialName("order_ids") val orderIds: List<String> = emptyList(),
+    @SerialName("volume_vu") val volumeVu: Double? = null,
+    @SerialName("max_volume_vu") val maxVolumeVu: Double? = null,
+    @SerialName("stop_count") val stopCount: Int? = null,
+    @SerialName("route_geometry") val routeGeometry: RouteGeometryWire? = null,
 )
 
 @Serializable
