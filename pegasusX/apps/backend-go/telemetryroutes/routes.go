@@ -29,11 +29,17 @@ type DeliveryTokenResolver interface {
 	ResolveDeliveryToken(ctx context.Context, orderID string) (string, error)
 }
 
+// ReturnApproachChecker evaluates warehouse depot proximity for inbound returns.
+type ReturnApproachChecker interface {
+	CheckWarehouseApproach(ctx context.Context, driverID, supplierID string, lat, lng float64) error
+}
+
 type Deps struct {
 	TelemetryHub        *ws.Hub
 	RetailerHub         *ws.Hub
 	LastLocations       telemetry.LastLocationWriter
 	DeliveryTokens      DeliveryTokenResolver
+	ReturnApproach      ReturnApproachChecker
 	SupplierID          string
 	Log                 *slog.Logger
 	FirebaseAuthEnabled bool
@@ -166,6 +172,18 @@ func (d Deps) handleLocation(w http.ResponseWriter, r *http.Request) {
 				})
 				d.RetailerHub.Broadcast(r.Context(), "retailer:"+loc.NextStopRetailerID, approachPayload)
 			}
+		}
+	}
+
+	if d.ReturnApproach != nil && payload.Data.Lat != 0 && payload.Data.Lng != 0 {
+		if err := d.ReturnApproach.CheckWarehouseApproach(
+			r.Context(),
+			identity.DriverID,
+			identity.SupplierID,
+			payload.Data.Lat,
+			payload.Data.Lng,
+		); err != nil {
+			d.Log.Warn("warehouse return approach check failed", "driver_id", identity.DriverID, "err", err)
 		}
 	}
 

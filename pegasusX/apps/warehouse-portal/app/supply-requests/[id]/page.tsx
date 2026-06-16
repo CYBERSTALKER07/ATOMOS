@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 import { useStableCallback } from '@/lib/useStableCallback';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch, subscribeWarehouseWS, type WarehouseSocketStatus } from '@/lib/auth';
+import {
+  warehouseReceiveTransferKey,
+  warehouseSupplyRequestTransitionKey,
+} from '@pegasusx/api-client';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -117,6 +121,9 @@ export default function SupplyRequestDetailPage() {
     try {
       const res = await apiFetch(`/v1/warehouse/transfers/${transferId}/receive`, {
         method: 'POST',
+        headers: {
+          'Idempotency-Key': warehouseReceiveTransferKey(transferId),
+        },
         body: JSON.stringify({
           items: detail.items.map((item) => ({
             item_id: item.item_id,
@@ -143,6 +150,9 @@ export default function SupplyRequestDetailPage() {
     try {
       const res = await apiFetch(`/v1/warehouse/supply-requests/${id}`, {
         method: 'PATCH',
+        headers: {
+          'Idempotency-Key': warehouseSupplyRequestTransitionKey(id, action),
+        },
         body: JSON.stringify({ action }),
       });
       if (res.ok) {

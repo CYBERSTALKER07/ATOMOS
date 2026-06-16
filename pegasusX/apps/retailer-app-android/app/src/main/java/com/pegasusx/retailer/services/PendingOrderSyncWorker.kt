@@ -7,8 +7,6 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.local.PendingOrderDao
-import com.pegasusx.retailer.data.model.CardCheckoutRequest
-import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.ProcurementOrderRequest
 import com.pegasusx.retailer.data.model.UnifiedCheckoutRequest
 import dagger.assisted.Assisted
@@ -46,11 +44,7 @@ class PendingOrderSyncWorker @AssistedInject constructor(
                 when (order.endpoint) {
                     "/v1/checkout/unified" -> {
                         val request = json.decodeFromString<UnifiedCheckoutRequest>(order.payloadJson)
-                        val response = api.unifiedCheckout(request, order.idempotencyKey)
-                        completeSupplierOrderPayments(
-                            gateway = request.paymentGateway,
-                            supplierOrders = response.supplierOrders,
-                        )
+                        api.unifiedCheckout(request, order.idempotencyKey)
                     }
                     "/v1/order/create" -> {
                         val request = json.decodeFromString<ProcurementOrderRequest>(order.payloadJson)
@@ -86,26 +80,5 @@ class PendingOrderSyncWorker @AssistedInject constructor(
         }
 
         return if (failures > 0) Result.retry() else Result.success()
-    }
-
-    private suspend fun completeSupplierOrderPayments(
-        gateway: String,
-        supplierOrders: List<com.pegasusx.retailer.data.model.SupplierOrderResult>,
-    ) {
-        if (supplierOrders.isEmpty()) return
-        val normalizedGateway = gateway.trim().uppercase()
-        for (supplierOrder in supplierOrders) {
-            if (normalizedGateway == "CASH") {
-                api.cashCheckout(
-                    CashCheckoutRequest(orderId = supplierOrder.orderId),
-                    "retailer-cash-checkout:${supplierOrder.orderId}",
-                )
-            } else {
-                api.cardCheckout(
-                    CardCheckoutRequest(orderId = supplierOrder.orderId, gateway = normalizedGateway),
-                    "retailer-card-checkout:${supplierOrder.orderId}:$normalizedGateway",
-                )
-            }
-        }
     }
 }

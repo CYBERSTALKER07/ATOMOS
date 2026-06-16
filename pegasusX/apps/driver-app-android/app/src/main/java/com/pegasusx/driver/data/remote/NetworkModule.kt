@@ -210,6 +210,12 @@ object TokenHolder {
     fun clear() {
         prefs.edit().clear().apply()
     }
+
+    fun isFactoryScopedDriver(): Boolean {
+        val node = homeNodeType?.trim()?.uppercase()
+        val mode = driverMode?.trim()?.uppercase()
+        return node == "FACTORY" || mode == "FACTORY"
+    }
 }
 
 /** OkHttp Authenticator that attempts token refresh on 401 before clearing credentials. */

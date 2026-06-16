@@ -93,7 +93,7 @@ final class WebSocketClient {
         task = nil
         guard token != nil else { return }
         reconnectAttempt += 1
-        let delaySeconds = reconnectDelaySeconds(attempt: reconnectAttempt - 1, base: 3, max: 60)
+        let delaySeconds = reconnectDelaySeconds(attempt: reconnectAttempt - 1, base: 3, maxDelay: 60)
         reconnectTask?.cancel()
         reconnectTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
@@ -103,8 +103,8 @@ final class WebSocketClient {
     }
 }
 
-private func reconnectDelaySeconds(attempt: Int, base: TimeInterval, max: TimeInterval) -> TimeInterval {
-    let capped = min(max(attempt, 0), 10)
-    let exp = min(base * pow(2.0, Double(capped)), max)
+private func reconnectDelaySeconds(attempt: Int, base: TimeInterval, maxDelay: TimeInterval) -> TimeInterval {
+    let capped = min(Swift.max(attempt, 0), 10)
+    let exp = min(base * pow(2.0, Double(capped)), maxDelay)
     return exp + Double.random(in: 0...(exp / 2))
 }

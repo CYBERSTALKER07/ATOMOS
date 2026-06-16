@@ -327,6 +327,56 @@ struct ClientPolicyResponse: Decodable {
     }
 }
 
+// MARK: - Inbound returns gate
+
+struct InboundReturnRow: Decodable, Identifiable {
+    var id: String { returnId }
+    let returnId: String
+    let orderId: String
+    let skuId: String
+    let productName: String
+    let barcode: String?
+    let expectedQty: Int
+    let receivedQty: Int
+    let reason: String
+    let physicalStatus: String
+    let driverName: String
+    let suggestedDisposition: String
+
+    enum CodingKeys: String, CodingKey {
+        case returnId = "return_id"
+        case orderId = "order_id"
+        case skuId = "sku_id"
+        case productName = "product_name"
+        case barcode
+        case expectedQty = "expected_qty"
+        case receivedQty = "received_qty"
+        case reason
+        case physicalStatus = "physical_status"
+        case driverName = "driver_name"
+        case suggestedDisposition = "suggested_disposition"
+    }
+}
+
+struct InboundReturnListResponse: Decodable {
+    let data: [InboundReturnRow]
+}
+
+struct InboundSessionResponse: Decodable {
+    let sessionId: String
+}
+
+struct InboundScanResponse: Decodable {
+    let matched: Bool
+    let returnId: String?
+    let variance: Bool
+    let message: String?
+}
+
+struct InboundHistoryResponse: Decodable {
+    let data: [InboundReturnRow]
+}
+
 // MARK: - WebSocket frame
 
 /// Backend `kafka/notification_dispatcher.go` pushes a flat

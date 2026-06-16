@@ -15,9 +15,7 @@ settings:
     INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
     TARGETED_DEVICE_FAMILY: "2" # iPad only
-    # Camera usage removed — barcode scanning out of ecosystem scope.
-    # To reinstate: add INFOPLIST_KEY_NSCameraUsageDescription with a user-facing reason
-    # and re-run `xcodegen generate`. See docs/BARCODE_SCANNING.md.
+    INFOPLIST_KEY_NSCameraUsageDescription: "Scan product barcodes during inbound returns"
     INFOPLIST_KEY_NSUserNotificationsUsageDescription: "Receive load-out and dispatch alerts"
 targets:
   payload-app-ios:
@@ -49,6 +47,9 @@ targets:
       - path: payload-app-ios
         excludes:
           - "**/.DS_Store"
+      - path: ../../packages/mobile-ios-barcode
+        includes:
+          - EANBarcodeScannerView.swift
     resources:
       - path: payload-app-ios/Assets.xcassets
     info:

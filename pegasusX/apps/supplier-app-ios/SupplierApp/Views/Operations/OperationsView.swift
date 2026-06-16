@@ -3,6 +3,7 @@ import SwiftUI
 private let broadcastRoles = ["ALL", "DRIVER", "RETAILER", "PAYLOAD"]
 
 struct OperationsView: View {
+    @Environment(TokenStore.self) private var tokenStore
     @State private var loading = true
     @State private var error: String?
     @State private var empathy: SupplierEmpathyAdoption?
@@ -159,12 +160,22 @@ struct OperationsView: View {
         statusMessage = nil
         defer { broadcasting = false }
         do {
+            let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedBody = bodyText.trimmingCharacters(in: .whitespacesAndNewlines)
+            let scopeId = tokenStore.supplierId ?? "supplier"
+            let key = SupplierIdempotency.broadcast(
+                scopeId: scopeId,
+                role: broadcastRole,
+                title: trimmedTitle,
+                body: trimmedBody
+            )
             let response = try await SupplierOperationsService.broadcast(
                 SupplierBroadcastRequest(
-                    title: title.trimmingCharacters(in: .whitespacesAndNewlines),
-                    body: bodyText.trimmingCharacters(in: .whitespacesAndNewlines),
+                    title: trimmedTitle,
+                    body: trimmedBody,
                     role: broadcastRole
-                )
+                ),
+                idempotencyKey: key
             )
             statusMessage = "Broadcast · \(response.status)"
             title = ""
@@ -195,11 +206,15 @@ struct OperationsView: View {
         statusMessage = nil
         defer { bypassing = false }
         do {
+            let trimmedOrderId = orderId.trimmingCharacters(in: .whitespacesAndNewlines)
+            let reason = bypassReason.trimmingCharacters(in: .whitespacesAndNewlines)
+            let key = SupplierIdempotency.paymentBypass(orderId: trimmedOrderId, reason: reason)
             let response = try await SupplierOperationsService.issuePaymentBypass(
                 PaymentBypassRequest(
-                    orderId: orderId.trimmingCharacters(in: .whitespacesAndNewlines),
-                    reason: bypassReason.trimmingCharacters(in: .whitespacesAndNewlines)
-                )
+                    orderId: trimmedOrderId,
+                    reason: reason
+                ),
+                idempotencyKey: key
             )
             bypassToken = response.bypassToken
             statusMessage = "Bypass issued for \(response.orderId)"

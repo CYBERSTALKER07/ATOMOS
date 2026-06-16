@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalShipping
@@ -96,11 +95,29 @@ fun HomeScreen(
     onOfflineVerify: () -> Unit = {},
     onResumeCashCollection: (orderId: String, amount: Long) -> Unit = { _, _ -> },
     onNotificationsClick: () -> Unit = {},
+    onOpenSupplyTransfers: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     val lab = LocalPegasusColors.current
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
+    var returnLines by remember { mutableStateOf<List<com.pegasusx.driver.data.model.ReturnGoodsLine>>(emptyList()) }
+    var returnUnits by remember { mutableStateOf(0L) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(state.isReturning) {
+        if (!state.isReturning) {
+            returnLines = emptyList()
+            returnUnits = 0
+            return@LaunchedEffect
+        }
+        try {
+            val resp = api.getReturnGoods()
+            if (resp.isSuccessful) {
+                returnLines = resp.body()?.items.orEmpty()
+                returnUnits = resp.body()?.totalUnits ?: 0
+            }
+        } catch (_: Exception) { }
+    }
 
     LaunchedEffect(Unit) {
         scope.launch {
@@ -205,7 +222,9 @@ fun HomeScreen(
         StaggeredAppear(index = 3) {
             if (state.isReturning) {
                 ReturningToWarehouseCard(
-                    onNavigate = { viewModel.state.value }, // warehouse coords from backend; fallback to depot
+                    returnLines = returnLines,
+                    totalUnits = returnUnits,
+                    onNavigate = { viewModel.state.value },
                     onArrived = { viewModel.returnComplete() }
                 )
             } else {
@@ -260,6 +279,14 @@ fun HomeScreen(
                         )
                     }
                 }
+            }
+            Spacer(modifier = Modifier.height(PegasusSpacing.s20))
+        }
+
+        // MARK: - Factory supply (factory-scoped drivers)
+        if (TokenHolder.isFactoryScopedDriver()) {
+            StaggeredAppear(index = 6) {
+                FactorySupplyCard(onOpenSupplyTransfers = onOpenSupplyTransfers)
             }
             Spacer(modifier = Modifier.height(PegasusSpacing.s20))
         }
@@ -577,6 +604,8 @@ private fun TransitControlCard(
 
 @Composable
 private fun ReturningToWarehouseCard(
+    returnLines: List<com.pegasusx.driver.data.model.ReturnGoodsLine>,
+    totalUnits: Long,
     onNavigate: () -> Unit,
     onArrived: () -> Unit
 ) {
@@ -609,6 +638,22 @@ private fun ReturningToWarehouseCard(
                 fontWeight = FontWeight.Medium,
                 color = lab.fgTertiary
             )
+            if (totalUnits > 0) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "$totalUnits item(s) to return on truck",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = lab.warning
+                )
+                returnLines.take(4).forEach { line ->
+                    Text(
+                        text = "• ${line.productName} × ${line.quantity} (${line.reason})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = lab.fgTertiary
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(16.dp))
 
             // Navigate to warehouse
@@ -743,6 +788,49 @@ private fun MapButton(pendingCount: Int, onOpenMap: () -> Unit) {
                 contentDescription = null,
                 tint = lab.fgTertiary,
                 modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+// ── Factory Supply Card ──
+
+@Composable
+private fun FactorySupplyCard(onOpenSupplyTransfers: () -> Unit) {
+    val lab = LocalPegasusColors.current
+    val factoryLabel = TokenHolder.factoryName?.takeIf { it.isNotBlank() } ?: "Factory depot"
+
+    PegasusCard(modifier = Modifier.pressable(onClick = onOpenSupplyTransfers)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(PegasusSpacing.s16),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.LocalShipping,
+                contentDescription = null,
+                tint = lab.fg,
+                modifier = Modifier.size(28.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Supply transfers",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = lab.fg,
+                )
+                Text(
+                    text = "$factoryLabel → warehouse legs",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = lab.fgTertiary,
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = lab.fgTertiary,
             )
         }
     }

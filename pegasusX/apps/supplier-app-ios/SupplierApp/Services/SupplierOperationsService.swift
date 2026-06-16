@@ -195,6 +195,36 @@ enum SupplierOperationsService {
         return try await APIClient.shared.get("v1/supplier/orders", query: query)
     }
 
+    static func returns(status: String = "PENDING", limit: Int = 100, offset: Int = 0) async throws -> SupplierReturnsResponse {
+        try await APIClient.shared.get(
+            "v1/supplier/returns",
+            query: [
+                "status": status,
+                "limit": String(limit),
+                "offset": String(offset),
+            ]
+        )
+    }
+
+    static func resolveReturn(
+        returnId: String,
+        resolution: String,
+        notes: String = "",
+        idempotencyKey: String
+    ) async throws {
+        let body = ResolveReturnRequest(
+            returnId: returnId,
+            lineItemId: returnId,
+            resolution: resolution,
+            notes: notes
+        )
+        try await APIClient.shared.postVoid(
+            "v1/supplier/returns/resolve",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
     static func paymentLedger(currency: String? = nil) async throws -> PaymentLedgerResponse {
         var query: [String: String] = [:]
         if let currency, !currency.isEmpty { query["currency"] = currency }
@@ -301,8 +331,15 @@ enum SupplierOperationsService {
         try await APIClient.shared.get("v1/supplier/analytics/demand/today")
     }
 
-    static func issuePaymentBypass(_ request: PaymentBypassRequest) async throws -> PaymentBypassResponse {
-        try await APIClient.shared.post("v1/supplier/orders/payment-bypass", body: request)
+    static func issuePaymentBypass(
+        _ request: PaymentBypassRequest,
+        idempotencyKey: String
+    ) async throws -> PaymentBypassResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/orders/payment-bypass",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
     }
 
     static func approveEarlyComplete(driverId: String) async throws {
@@ -318,13 +355,24 @@ enum SupplierOperationsService {
         try await APIClient.shared.get("v1/supplier/empathy/adoption")
     }
 
-    static func broadcast(_ request: SupplierBroadcastRequest) async throws -> SupplierBroadcastResponse {
-        try await APIClient.shared.post("v1/supplier/broadcast", body: request)
+    static func broadcast(
+        _ request: SupplierBroadcastRequest,
+        idempotencyKey: String
+    ) async throws -> SupplierBroadcastResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/broadcast",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
     }
 }
 
 /// Deterministic idempotency keys — aligned with @pegasusx/api-client idempotency.ts
 enum SupplierIdempotency {
+    static func resolveReturn(returnId: String, resolution: String) -> String {
+        "supplier-resolve-return:\(returnId):\(resolution.uppercased())"
+    }
+
     static func dispatch(
         supplierId: String,
         warehouseId: String,
@@ -332,6 +380,14 @@ enum SupplierIdempotency {
         routeFingerprint: String
     ) -> String {
         "supplier-dispatch:\(supplierId):\(warehouseId):\(mode):\(stableHash(routeFingerprint))"
+    }
+
+    static func broadcast(scopeId: String, role: String, title: String, body: String) -> String {
+        "supplier-broadcast:\(scopeId):\(stableHash("\(role):\(title):\(body)"))"
+    }
+
+    static func paymentBypass(orderId: String, reason: String) -> String {
+        "supplier-payment-bypass:\(orderId):\(stableHash(reason))"
     }
 
     private static func stableHash(_ input: String) -> String {

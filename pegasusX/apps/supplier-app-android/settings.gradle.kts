@@ -21,3 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "PegasusXSupplier"
 include(":app")
+include(":barcode-scanner")
+project(":barcode-scanner").projectDir = file("../../packages/mobile-android-barcode-scanner")

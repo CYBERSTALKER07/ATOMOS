@@ -17,6 +17,8 @@ import * as Updates from 'expo-updates';
 import { buildManifest, type LiveOrder, type ManifestItem } from './utils/manifest';
 import { PayloadTerminalApi } from './api';
 import { authFetch, clearPayloaderSession, savePayloaderSession, setTokenRefreshListener } from './authSession';
+import { payloadApplyReassignKey } from './utils/idempotency';
+import { InboundReturnsPanel } from './inboundReturns';
 import { reconcilePayloadSession } from './session-reconcile';
 import { defaultLocale, type Locale } from '../../packages/i18n/locales';
 
@@ -183,6 +185,7 @@ export default function App() {
   const [batchSealing, setBatchSealing] = useState(false);
 
   // UI state
+  const [workspaceMode, setWorkspaceMode] = useState<'outbound' | 'inbound'>('outbound');
   const [isLoading, setIsLoading] = useState(false);
   const [isSealing, setIsSealing] = useState(false);
   const [allSealed, setAllSealed] = useState(false);
@@ -797,15 +800,16 @@ export default function App() {
     if (!reDispatchOrderId || !token) return;
     setIsReassigning(true);
     try {
-      // RouteId == DriverId in this codebase; vehicle is bound to the driver.
-      const res = await authFetch('/v1/fleet/reassign', {
+      const res = await authFetch('/v1/payloader/reassign-order', {
         method: 'POST',
         headers: {
-          'Idempotency-Key': buildPayloadIdempotencyKey('fleet-reassign', reDispatchOrderId),
+          'Content-Type': 'application/json',
+          'Idempotency-Key': payloadApplyReassignKey(reDispatchOrderId, newDriverId),
         },
         body: JSON.stringify({
-          order_ids: [reDispatchOrderId],
-          new_route_id: newDriverId,
+          order_id: reDispatchOrderId,
+          to_driver_id: newDriverId,
+          reason: 'payload-redispatch',
         }),
       });
       if (!res.ok) {
@@ -1482,6 +1486,17 @@ export default function App() {
   }
 
   if (!activeTruck) {
+    if (workspaceMode === 'inbound') {
+      return (
+        <InboundReturnsPanel
+          theme={T}
+          isIOS={isIOS}
+          isOnline={isOnline}
+          onBack={() => setWorkspaceMode('outbound')}
+          showToast={(title, message, kind) => showToast(title, message, kind === 'success' ? 'success' : kind === 'error' ? 'error' : 'info')}
+        />
+      );
+    }
     return (
       <View style={{ flex: 1, backgroundColor: T.colors.background }}>
         {renderClientPolicyBanner()}
@@ -1495,11 +1510,18 @@ export default function App() {
               {workerName}
             </Text>
           </View>
-          <Pressable onPress={handleLogout} style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
-            <Text style={{ color: T.colors.sidebarSecondary, fontSize: 12, fontWeight: '600', letterSpacing: 0.3 }}>
-              {tx('common.action.sign_out')}
-            </Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Pressable onPress={() => setWorkspaceMode('inbound')} style={{ paddingHorizontal: 16, paddingVertical: 8, marginRight: 8 }}>
+              <Text style={{ color: T.colors.sidebarLabel, fontSize: 12, fontWeight: '700', letterSpacing: 0.3 }}>
+                {isIOS ? 'Inbound Returns' : 'INBOUND RETURNS'}
+              </Text>
+            </Pressable>
+            <Pressable onPress={handleLogout} style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+              <Text style={{ color: T.colors.sidebarSecondary, fontSize: 12, fontWeight: '600', letterSpacing: 0.3 }}>
+                {tx('common.action.sign_out')}
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Truck selector */}

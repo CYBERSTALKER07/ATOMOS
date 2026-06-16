@@ -10,7 +10,6 @@ struct DashboardView: View {
     @State private var isLoading = false
     @State private var preorderingId: String?
     @State private var orderActionPending = false
-    @State private var clientPolicyMessage: String?
     @State private var loadError: String?
     @State private var socket = RetailerWebSocket.shared
 
@@ -23,8 +22,6 @@ struct DashboardView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: AppTheme.spacingXL) {
-                ClientPolicyBanner(message: clientPolicyMessage)
-
                 if isLoading && activeOrders.isEmpty && predictions.isEmpty && reorderProducts.isEmpty {
                     RetailerLoadingView(
                         title: "Loading home",
@@ -59,7 +56,6 @@ struct DashboardView: View {
         .background(AppTheme.background)
         .task {
             await loadData()
-            await loadClientPolicy()
         }
         .task(id: refreshCenter.refreshToken) {
             await loadData()
@@ -73,7 +69,6 @@ struct DashboardView: View {
         }
         .refreshable {
             await loadData()
-            await loadClientPolicy()
         }
         .onChange(of: socket.reconnectEpoch) { _, _ in
             if orderActionPending {
@@ -438,38 +433,6 @@ struct DashboardView: View {
             reorderProducts = []
         }
         isLoading = false
-    }
-
-    private func loadClientPolicy() async {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        do {
-            struct ClientPolicy: Decodable {
-                let outdated: Bool?
-                let forceUpdate: Bool?
-                let minimumVersion: String?
-                enum CodingKeys: String, CodingKey {
-                    case outdated
-                    case forceUpdate = "force_update"
-                    case minimumVersion = "minimum_version"
-                }
-            }
-            let policy: ClientPolicy = try await api.get(
-                path: "/v1/platform/client-policy?role=RETAILER&platform=ios&version=\(version)&channel=production"
-            )
-            if policy.outdated == true || policy.forceUpdate == true {
-                let prefix = policy.forceUpdate == true ? "Update required" : "Update available"
-                if let min = policy.minimumVersion, !min.isEmpty {
-                    clientPolicyMessage = "\(prefix) — minimum version \(min)"
-                } else {
-                    clientPolicyMessage = prefix
-                }
-            } else {
-                clientPolicyMessage = nil
-            }
-        } catch {
-            // Policy fetch is optional on local/dev stacks.
-            clientPolicyMessage = nil
-        }
     }
 
     private func cancelOrder(_ orderId: String) async {

@@ -88,6 +88,8 @@ import kotlinx.coroutines.launch
 fun DeliveryMapScreen(
     viewModel: DeliveryTrackingViewModel,
     onBack: () -> Unit,
+    embedded: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.state.collectAsState()
     val context = LocalContext.current
@@ -142,24 +144,25 @@ fun DeliveryMapScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Top bar
-        TopAppBar(
-            title = { Text("Delivery Tracking") },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-            },
-            actions = {
-                IconButton(onClick = viewModel::refresh) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-            ),
-        )
+    Column(modifier = modifier.fillMaxSize()) {
+        if (!embedded) {
+            TopAppBar(
+                title = { Text("Delivery Tracking") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = viewModel::refresh) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+            )
+        }
 
         val syncMessage = when {
             uiState.loadIssue != null -> uiState.error ?: uiState.emptyStateMessage

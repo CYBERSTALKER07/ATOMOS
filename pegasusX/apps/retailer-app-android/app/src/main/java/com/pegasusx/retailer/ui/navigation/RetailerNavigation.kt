@@ -71,7 +71,9 @@ import com.pegasusx.retailer.ui.screens.analytics.AnalyticsScreen
 import com.pegasusx.retailer.ui.screens.autoorder.AutoOrderScreen
 import com.pegasusx.retailer.ui.screens.product.ProductDetailScreen
 import com.pegasusx.retailer.ui.screens.suppliers.SupplierCatalogScreen
-import com.pegasusx.retailer.ui.screens.tracking.DeliveryMapScreen
+import com.pegasusx.retailer.ui.components.ClientPolicyBanner
+import com.pegasusx.retailer.ui.screens.predictions.FutureDemandScreen
+import com.pegasusx.retailer.ui.screens.tracking.DeliveriesHubScreen
 import com.pegasusx.retailer.ui.screens.notifications.NotificationInboxScreen
 import kotlinx.coroutines.launch
 
@@ -134,8 +136,14 @@ fun RetailerNavigation(
                                 }
                             }
                             com.pegasusx.retailer.ui.components.SidebarDestination.AI_PREDICTIONS -> {
-                                currentTab = PegasusTab.ORDERS
-                                navController.navigate(PegasusTab.ORDERS.name) {
+                                navController.navigate("FUTURE_DEMAND") {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                            com.pegasusx.retailer.ui.components.SidebarDestination.DOCK -> {
+                                currentTab = PegasusTab.MAP
+                                navController.navigate("DOCK") {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
                                 }
@@ -235,6 +243,7 @@ fun RetailerNavigation(
             },
         ) { innerPadding ->
             Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                ClientPolicyBanner(message = navState.clientPolicyMessage)
                 RetailerOperationsStrip(
                     navState = navState,
                     navSyncMessage = navSyncMessage,
@@ -286,7 +295,6 @@ fun RetailerNavigation(
                 composable(PegasusTab.HOME.name) {
                     Box(Modifier.fillMaxSize()) {
                         DashboardScreen(
-                            clientPolicyMessage = navState.clientPolicyMessage,
                             onOpenCatalog = {
                                 currentTab = PegasusTab.CATALOG
                                 navController.navigate(PegasusTab.CATALOG.name) {
@@ -365,7 +373,12 @@ fun RetailerNavigation(
                 composable(PegasusTab.ORDERS.name) { Box(Modifier.fillMaxSize()) { OrdersScreen() } }
                 composable(PegasusTab.MAP.name) {
                     Box(Modifier.fillMaxSize()) {
-                        DeliveryMapScreen(viewModel = hiltViewModel(), onBack = { navController.popBackStack() })
+                        DeliveriesHubScreen()
+                    }
+                }
+                composable("DOCK") {
+                    Box(Modifier.fillMaxSize()) {
+                        DeliveriesHubScreen(initialTabIndex = 1)
                     }
                 }
                 composable(PegasusTab.PROFILE.name) {
@@ -422,6 +435,11 @@ fun RetailerNavigation(
                 composable("ANALYTICS") { Box(Modifier.fillMaxSize()) { AnalyticsScreen() } }
                 composable("PROCUREMENT") { Box(Modifier.fillMaxSize()) { ProcurementScreen() } }
                 composable("AUTO_ORDER") { Box(Modifier.fillMaxSize()) { AutoOrderScreen() } }
+                composable("FUTURE_DEMAND") {
+                    Box(Modifier.fillMaxSize()) {
+                        FutureDemandScreen(onBack = { navController.popBackStack() })
+                    }
+                }
                 composable("NOTIFICATIONS") {
                     Box(Modifier.fillMaxSize()) {
                         NotificationInboxScreen(onBack = { navController.popBackStack() })
@@ -533,8 +551,14 @@ fun RetailerNavigation(
                             }
                         }
                         com.pegasusx.retailer.ui.components.SidebarDestination.AI_PREDICTIONS -> {
-                            currentTab = PegasusTab.ORDERS
-                            navController.navigate(PegasusTab.ORDERS.name) {
+                            navController.navigate("FUTURE_DEMAND") {
+                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                            }
+                        }
+                        com.pegasusx.retailer.ui.components.SidebarDestination.DOCK -> {
+                            currentTab = PegasusTab.MAP
+                            navController.navigate("DOCK") {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true
                             }

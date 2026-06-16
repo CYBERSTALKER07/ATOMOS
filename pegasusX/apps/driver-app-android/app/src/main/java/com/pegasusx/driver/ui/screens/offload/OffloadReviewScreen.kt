@@ -32,7 +32,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -249,6 +250,22 @@ fun OffloadReviewScreen(
                                     }
                                 )
                             }
+                        }
+                        if (audit.reason == RejectionReason.OTHER) {
+                            OutlinedTextField(
+                                value = audit.customReason,
+                                onValueChange = { viewModel.updateCustomReason(index, it) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 32.dp, top = 8.dp),
+                                placeholder = { Text("Describe the issue") },
+                                singleLine = false,
+                                minLines = 2,
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = lab.card,
+                                    unfocusedContainerColor = lab.card,
+                                ),
+                            )
                         }
                     }
                 }

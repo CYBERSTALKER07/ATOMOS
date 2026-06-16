@@ -149,12 +149,14 @@ fun DispatchScreen(
     fun createSupplyRequest(factoryId: String, priority: String, notes: String) {
         scope.launch {
             runCatching {
+                val key = WarehouseIdempotencyKeys.createSupplyRequest(factoryId, priority, notes)
                 api.createSupplyRequest(
+                    key,
                     CreateWarehouseSupplyRequestRequest(
                         factoryId = factoryId,
                         priority = priority,
                         notes = notes,
-                    )
+                    ),
                 )
             }.onSuccess { response ->
                 if (response.isSuccessful && response.body() != null) {
@@ -177,8 +179,10 @@ fun DispatchScreen(
     fun cancelSupplyRequest(request: WarehouseSupplyRequest) {
         scope.launch {
             runCatching {
+                val key = WarehouseIdempotencyKeys.supplyRequestTransition(request.requestId, "CANCEL")
                 api.transitionSupplyRequest(
                     request.requestId,
+                    key,
                     WarehouseSupplyRequestTransitionRequest(action = "CANCEL"),
                 )
             }.onSuccess { response ->

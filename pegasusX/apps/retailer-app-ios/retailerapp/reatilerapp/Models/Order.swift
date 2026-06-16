@@ -396,6 +396,16 @@ struct TrackingOrder: Codable, Identifiable, Hashable {
     var hasDriverLocation: Bool {
         liveLocationAvailable && driverLatitude != nil && driverLongitude != nil
     }
+
+    var deliveryQRCodePayload: String? {
+        guard !deliveryToken.isEmpty else { return nil }
+        let payload = RetailerDeliveryQRPayload(order_id: orderId, token: deliveryToken)
+        guard let data = try? JSONEncoder().encode(payload),
+              let encoded = String(data: data, encoding: .utf8) else {
+            return deliveryToken
+        }
+        return encoded
+    }
 }
 
 struct TrackingResponse: Codable {

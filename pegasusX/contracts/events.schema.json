@@ -225,6 +225,25 @@
         {
           "properties": {
             "type": {
+              "const": "DRIVER_RETURN_APPROACHING"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DriverReturnApproachingEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "FACTORY_CREATED"
             }
           },
@@ -605,6 +624,25 @@
         {
           "properties": {
             "type": {
+              "const": "ORDER_AMENDED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderAmendedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "ORDER_ASSIGNED"
             }
           },
@@ -805,6 +843,25 @@
         }
       ],
       "title": "RetailerRegisteredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETURN_RECEIVED_AT_WAREHOUSE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ReturnReceivedAtWarehouseEnvelope"
     },
     {
       "allOf": [
@@ -1061,6 +1118,44 @@
         {
           "properties": {
             "type": {
+              "const": "SUPPLIER_RETURN_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierReturnCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_RETURN_RESOLVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierReturnResolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "SUPPLIER_UPDATED"
             }
           },
@@ -1109,6 +1204,25 @@
         }
       ],
       "title": "SupplyRequestUpdateEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLY_TRANSFER_APPROACHING"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplyTransferApproachingEnvelope"
     },
     {
       "allOf": [
@@ -1258,6 +1372,7 @@
         "DRIVER_AVAILABILITY_CHANGED",
         "DRIVER_CREATED",
         "DRIVER_LOCATION_UPDATED",
+        "DRIVER_RETURN_APPROACHING",
         "FACTORY_CREATED",
         "FACTORY_SUPPLY_REQUEST_UPDATE",
         "FREEZE_LOCK_ACQUIRED",
@@ -1278,6 +1393,7 @@
         "MISSING_ITEMS_REPORTED",
         "NEGOTIATION_PROPOSED",
         "NEGOTIATION_RESOLVED",
+        "ORDER_AMENDED",
         "ORDER_ASSIGNED",
         "ORDER_CREATED",
         "ORDER_FINALIZED",
@@ -1289,6 +1405,7 @@
         "PROMOTION_CHANGED",
         "RETAILER_PRICE_OVERRIDE",
         "RETAILER_REGISTERED",
+        "RETURN_RECEIVED_AT_WAREHOUSE",
         "ROUTE_CREATED",
         "ROUTE_REORDERED",
         "SETTLEMENT_REQUIRED",
@@ -1302,9 +1419,12 @@
         "SUPPLIER_CREATED",
         "SUPPLIER_MEMBER_ADDED",
         "SUPPLIER_PROFILE_UPDATED",
+        "SUPPLIER_RETURN_CREATED",
+        "SUPPLIER_RETURN_RESOLVED",
         "SUPPLIER_UPDATED",
         "SUPPLY_REQUEST_ACCEPTED",
         "SUPPLY_REQUEST_UPDATE",
+        "SUPPLY_TRANSFER_APPROACHING",
         "SYSTEM_APP_OUTDATED",
         "VEHICLE_CREATED",
         "WAREHOUSE_CREATED",
@@ -1333,6 +1453,7 @@
     "DRIVER_AVAILABILITY_CHANGED": "UnknownEventPayload",
     "DRIVER_CREATED": "UnknownEventPayload",
     "DRIVER_LOCATION_UPDATED": "UnknownEventPayload",
+    "DRIVER_RETURN_APPROACHING": "UnknownEventPayload",
     "FACTORY_CREATED": "UnknownEventPayload",
     "FACTORY_SUPPLY_REQUEST_UPDATE": "UnknownEventPayload",
     "FREEZE_LOCK_ACQUIRED": "UnknownEventPayload",
@@ -1353,6 +1474,7 @@
     "MISSING_ITEMS_REPORTED": "UnknownEventPayload",
     "NEGOTIATION_PROPOSED": "UnknownEventPayload",
     "NEGOTIATION_RESOLVED": "UnknownEventPayload",
+    "ORDER_AMENDED": "UnknownEventPayload",
     "ORDER_ASSIGNED": "UnknownEventPayload",
     "ORDER_CREATED": "UnknownEventPayload",
     "ORDER_FINALIZED": "UnknownEventPayload",
@@ -1364,6 +1486,7 @@
     "PROMOTION_CHANGED": "UnknownEventPayload",
     "RETAILER_PRICE_OVERRIDE": "UnknownEventPayload",
     "RETAILER_REGISTERED": "UnknownEventPayload",
+    "RETURN_RECEIVED_AT_WAREHOUSE": "UnknownEventPayload",
     "ROUTE_CREATED": "UnknownEventPayload",
     "ROUTE_REORDERED": "UnknownEventPayload",
     "SETTLEMENT_REQUIRED": "UnknownEventPayload",
@@ -1377,9 +1500,12 @@
     "SUPPLIER_CREATED": "UnknownEventPayload",
     "SUPPLIER_MEMBER_ADDED": "UnknownEventPayload",
     "SUPPLIER_PROFILE_UPDATED": "UnknownEventPayload",
+    "SUPPLIER_RETURN_CREATED": "UnknownEventPayload",
+    "SUPPLIER_RETURN_RESOLVED": "UnknownEventPayload",
     "SUPPLIER_UPDATED": "UnknownEventPayload",
     "SUPPLY_REQUEST_ACCEPTED": "UnknownEventPayload",
     "SUPPLY_REQUEST_UPDATE": "UnknownEventPayload",
+    "SUPPLY_TRANSFER_APPROACHING": "UnknownEventPayload",
     "SYSTEM_APP_OUTDATED": "UnknownEventPayload",
     "VEHICLE_CREATED": "UnknownEventPayload",
     "WAREHOUSE_CREATED": "UnknownEventPayload",

@@ -109,7 +109,8 @@ data class AmendItemPayload(
     @SerialName("product_id") val productId: String,
     @SerialName("accepted_qty") val acceptedQty: Int,
     @SerialName("rejected_qty") val rejectedQty: Int,
-    val reason: String // "DAMAGED", "MISSING", "WRONG_ITEM", "OTHER"
+    val reason: String, // "DAMAGED", "MISSING", "WRONG_ITEM", "OTHER"
+    @SerialName("custom_reason") val customReason: String? = null,
 )
 
 @Serializable
@@ -224,6 +225,50 @@ data class DepartRequest(
 @Serializable
 data class ReturnCompleteRequest(
     @SerialName("truck_id") val truckId: String
+)
+
+@Serializable
+data class ReturnGoodsLine(
+    @SerialName("return_id") val returnId: String,
+    @SerialName("order_id") val orderId: String,
+    @SerialName("sku_id") val skuId: String,
+    @SerialName("product_name") val productName: String,
+    val quantity: Long = 0,
+    val reason: String = "",
+)
+
+@Serializable
+data class ReturnGoodsResponse(
+    val items: List<ReturnGoodsLine> = emptyList(),
+    @SerialName("total_units") val totalUnits: Long = 0,
+    @SerialName("line_count") val lineCount: Int = 0,
+)
+
+@Serializable
+data class SupplyTransferRow(
+    @SerialName("transfer_id") val transferId: String,
+    @SerialName("warehouse_id") val warehouseId: String,
+    @SerialName("supply_request_id") val supplyRequestId: String? = null,
+    val state: String,
+    @SerialName("total_volume_vu") val totalVolumeVu: Double = 0.0,
+)
+
+@Serializable
+data class SupplyTransfersResponse(
+    val transfers: List<SupplyTransferRow> = emptyList(),
+)
+
+@Serializable
+data class ArriveSupplyTransferRequest(
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+)
+
+@Serializable
+data class ArriveSupplyTransferResponse(
+    @SerialName("transfer_id") val transferId: String,
+    val state: String,
+    @SerialName("event_type") val eventType: String? = null,
 )
 
 @Serializable

@@ -27,6 +27,7 @@ data class OffloadLineAudit(
     val accepted: Int,
     val rejected: Int = 0,
     val reason: RejectionReason = RejectionReason.DAMAGED,
+    val customReason: String = "",
     val excluded: Boolean = false
 ) {
     val acceptedTotal: Long get() = item.unitPrice * accepted
@@ -126,7 +127,18 @@ class OffloadReviewViewModel @Inject constructor(
     fun updateReason(index: Int, reason: RejectionReason) {
         _state.update { current ->
             val audits = current.audits.toMutableList()
-            audits[index] = audits[index].copy(reason = reason)
+            audits[index] = audits[index].copy(
+                reason = reason,
+                customReason = if (reason == RejectionReason.OTHER) audits[index].customReason else "",
+            )
+            current.copy(audits = audits)
+        }
+    }
+
+    fun updateCustomReason(index: Int, value: String) {
+        _state.update { current ->
+            val audits = current.audits.toMutableList()
+            audits[index] = audits[index].copy(customReason = value)
             current.copy(audits = audits)
         }
     }
@@ -156,14 +168,28 @@ class OffloadReviewViewModel @Inject constructor(
                 // If items were excluded, amend first
                 val current = _state.value
                 if (current.hasRejections) {
+                    val rejectedAudits = current.audits.filter { it.rejected > 0 }
+                    val missingOtherReason = rejectedAudits.firstOrNull {
+                        it.reason == RejectionReason.OTHER && it.customReason.isBlank()
+                    }
+                    if (missingOtherReason != null) {
+                        _state.update {
+                            it.copy(
+                                isSubmitting = false,
+                                error = "Describe the issue for ${missingOtherReason.item.productName}",
+                            )
+                        }
+                        return@launch
+                    }
                     val amendPayload = AmendOrderRequest(
                         orderId = orderId,
-                        items = current.audits.filter { it.rejected > 0 }.map { audit ->
+                        items = rejectedAudits.map { audit ->
                             AmendItemPayload(
                                 productId = audit.item.productId,
                                 acceptedQty = audit.accepted,
                                 rejectedQty = audit.rejected,
-                                reason = audit.reason.name
+                                reason = audit.reason.name,
+                                customReason = audit.customReason.takeIf { it.isNotBlank() },
                             )
                         }
                     )

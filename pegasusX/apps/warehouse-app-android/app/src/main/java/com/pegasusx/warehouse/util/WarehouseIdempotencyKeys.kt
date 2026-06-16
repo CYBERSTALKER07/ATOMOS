@@ -47,4 +47,18 @@ object WarehouseIdempotencyKeys {
 
     fun dispatch(actorId: String, routeFingerprint: String): String =
         "warehouse-dispatch:${warehouseId()}:$actorId:${stableHash(routeFingerprint)}"
+
+    fun inboundScan(barcode: String, sessionId: String): String =
+        "warehouse-inbound-scan:${warehouseId()}:${stableHash(barcode)}:$sessionId"
+
+    fun inboundConfirm(returnIds: List<String>, disposition: String): String {
+        val sorted = returnIds.sorted().joinToString(",")
+        return "warehouse-inbound-confirm:${warehouseId()}:$disposition:${stableHash(sorted)}"
+    }
+
+    fun createSupplyRequest(factoryId: String, priority: String, notes: String): String =
+        "warehouse-create-supply-request:${warehouseId()}:$factoryId:$priority:${stableHash(notes)}"
+
+    fun supplyRequestTransition(requestId: String, action: String): String =
+        "warehouse-supply-transition:$requestId:${action.uppercase()}"
 }

@@ -2579,6 +2579,9 @@ func (s *Service) paymentRequiredData(ctx context.Context, orderRecord Order) ma
 		"status":         string(orderRecord.Status),
 		"timestamp":      orderRecord.UpdatedAt.Format(time.RFC3339Nano),
 	}
+	if driverID := strings.TrimSpace(orderRecord.DriverID); driverID != "" {
+		data["driver_id"] = driverID
+	}
 	originalAmount := orderOriginalAmountMinor(orderRecord)
 	if originalAmount > orderRecord.TotalMinor {
 		data["original_amount"] = originalAmount
@@ -2614,7 +2617,7 @@ func (s *Service) settlementRequiredData(ctx context.Context, orderRecord Order)
 }
 
 func paymentClearedData(orderRecord Order, method string) map[string]any {
-	return map[string]any{
+	data := map[string]any{
 		"type":           events.EventPaymentCleared,
 		"order_id":       orderRecord.OrderID,
 		"supplier_id":    orderRecord.SupplierID,
@@ -2627,10 +2630,14 @@ func paymentClearedData(orderRecord Order, method string) map[string]any {
 		"status":         string(orderRecord.Status),
 		"timestamp":      orderRecord.UpdatedAt.Format(time.RFC3339Nano),
 	}
+	if driverID := strings.TrimSpace(orderRecord.DriverID); driverID != "" {
+		data["driver_id"] = driverID
+	}
+	return data
 }
 
 func orderFinalizedData(orderRecord Order) map[string]any {
-	return map[string]any{
+	data := map[string]any{
 		"type":         events.EventOrderFinalized,
 		"order_id":     orderRecord.OrderID,
 		"supplier_id":  orderRecord.SupplierID,
@@ -2641,6 +2648,10 @@ func orderFinalizedData(orderRecord Order) map[string]any {
 		"status":       string(orderRecord.Status),
 		"timestamp":    orderRecord.UpdatedAt.Format(time.RFC3339Nano),
 	}
+	if driverID := strings.TrimSpace(orderRecord.DriverID); driverID != "" {
+		data["driver_id"] = driverID
+	}
+	return data
 }
 
 func moneyData(orderRecord Order) map[string]any {
@@ -2943,6 +2954,9 @@ func (s *Service) applyOrderAmendments(ctx context.Context, current Order, req A
 					RejectedQty: rejectedQty,
 					Reason:      reason,
 					DriverNotes: supplierReturnNotes(reason, amend.CustomReason, req.DriverNotes),
+					ManifestID:  strings.TrimSpace(current.ManifestID),
+					DriverID:    strings.TrimSpace(current.DriverID),
+					WarehouseID: strings.TrimSpace(current.WarehouseID),
 				})
 			}
 			line.Quantity = acceptedQty
@@ -2962,7 +2976,7 @@ func (s *Service) applyOrderAmendments(ctx context.Context, current Order, req A
 
 	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
 		payload := map[string]any{
-			"type":            "ORDER_AMENDED",
+			"type":            events.EventOrderAmended,
 			"order_id":        current.OrderID,
 			"driver_id":       strings.TrimSpace(actorID),
 			"previous_total":  previousTotal,
@@ -2973,7 +2987,34 @@ func (s *Service) applyOrderAmendments(ctx context.Context, current Order, req A
 			"amended_items":   req.Items,
 			"timestamp":       current.UpdatedAt.Format(time.RFC3339Nano),
 		}
-		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, payload)
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, payload); err != nil {
+			return err
+		}
+		if len(pendingReturns) > 0 {
+			for _, pr := range pendingReturns {
+				returnPayload, err := json.Marshal(map[string]any{
+					"type":            events.EventSupplierReturnCreated,
+					"return_id":       pr.ReturnID,
+					"order_id":        current.OrderID,
+					"sku_id":          pr.SKU,
+					"quantity":        pr.RejectedQty,
+					"reason":          pr.Reason,
+					"manifest_id":     strings.TrimSpace(current.ManifestID),
+					"driver_id":       strings.TrimSpace(current.DriverID),
+					"warehouse_id":    strings.TrimSpace(current.WarehouseID),
+					"supplier_id":     strings.TrimSpace(current.SupplierID),
+					"physical_status": "PENDING",
+					"timestamp":       current.UpdatedAt.Format(time.RFC3339Nano),
+				})
+				if err != nil {
+					return err
+				}
+				if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, returnPayload); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
 	}); err != nil {
 		return AmendOrderResponse{}, fmt.Errorf("amend order %s: %w", orderID, err)
 	}
@@ -3084,58 +3125,45 @@ func (s *Service) HandleReportDamage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	damageMap := make(map[string]int64)
+	origQtyBySKU := make(map[string]int64, len(current.LineItems))
+	for _, line := range current.LineItems {
+		origQtyBySKU[strings.TrimSpace(line.SKU)] = line.Quantity
+	}
+	amendItems := make([]AmendItemRequest, 0, len(req.DamagedItems))
 	for _, item := range req.DamagedItems {
-		if item.Quantity > 0 {
-			damageMap[item.SKU] += item.Quantity
+		sku := strings.TrimSpace(item.SKU)
+		if sku == "" || item.Quantity <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_damaged_item"})
+			return
 		}
-	}
-
-	var newTotal int64
-	var amended bool
-	for i, item := range current.LineItems {
-		if dmg, ok := damageMap[item.SKU]; ok {
-			if dmg > item.Quantity {
-				writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("damage quantity exceeds item quantity for sku %s", item.SKU)})
-				return
-			}
-			current.LineItems[i].Quantity -= dmg
-			amended = true
+		origQty, ok := origQtyBySKU[sku]
+		if !ok || item.Quantity > origQty {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("damage quantity exceeds item quantity for sku %s", sku)})
+			return
 		}
-		newTotal += current.LineItems[i].Quantity * current.LineItems[i].UnitPrice
-	}
-
-	if !amended {
-		idemCommitted = true
-		s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{"success": true, "message": "no_changes"})
-		return
-	}
-
-	current.TotalMinor = newTotal
-	current.UpdatedAt = s.now()
-
-	if err := s.repo.UpdateOrder(r.Context(), current, nil, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
-			BaseEvent: events.BaseEvent{Type: "ORDER_DAMAGE_REPORTED", Timestamp: current.UpdatedAt.Format(time.RFC3339Nano), Version: current.Version + 1},
-			OrderID:   current.OrderID,
-			DriverID:  claims.Subject,
-			Action:    "report_damage",
-			Reason:    req.Reason,
-			LineItems: current.LineItems,
+		amendItems = append(amendItems, AmendItemRequest{
+			ProductID:   sku,
+			AcceptedQty: origQty - item.Quantity,
+			RejectedQty: item.Quantity,
+			Reason:      "DAMAGED",
 		})
-	}); err != nil {
-		s.log.ErrorContext(r.Context(), "failed to report damage", "order_id", orderID, "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "update_failed"})
-		return
 	}
 
-	s.afterOrderMutation(r.Context(), current)
+	amendResp, err := s.applyOrderAmendments(r.Context(), current, AmendOrderRequest{
+		OrderID:     orderID,
+		Items:       amendItems,
+		DriverNotes: req.Reason,
+	}, claims.Subject)
+	if err != nil {
+		s.writeOrderMutationError(w, "report damage amend failed", orderID, err)
+		return
+	}
 
 	idemCommitted = true
 	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"success":        true,
 		"message":        "damage_reported",
-		"adjusted_total": current.TotalMinor,
+		"adjusted_total": amendResp.AdjustedTotal,
 	})
 }
 

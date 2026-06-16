@@ -21,6 +21,11 @@ enum class CatalogBrowseMode {
     ALL_PRODUCTS,
 }
 
+data class CatalogSupplierFilter(
+    val id: String,
+    val name: String,
+)
+
 data class CatalogUiState(
     val isLoading: Boolean = false,
     val isLoadingProducts: Boolean = false,
@@ -30,8 +35,17 @@ data class CatalogUiState(
     val searchQuery: String = "",
     val isSearching: Boolean = false,
     val browseMode: CatalogBrowseMode = CatalogBrowseMode.CATEGORIES,
+    val selectedSupplierId: String? = null,
+    val supplierFilters: List<CatalogSupplierFilter> = emptyList(),
     val error: String? = null,
-)
+) {
+    val displayedProducts: List<Product>
+        get() {
+            val base = if (searchQuery.length >= 2) filteredProducts else products
+            val supplierId = selectedSupplierId?.takeIf { it.isNotBlank() } ?: return base
+            return base.filter { it.supplierId == supplierId }
+        }
+}
 
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
@@ -50,8 +64,12 @@ class CatalogViewModel @Inject constructor(
         viewModelScope.launch {
             retailerWebSocket.events
                 .filter { it.type == "PROMOTION_CHANGED" }
-                .collect {
-                    if (_uiState.value.browseMode == CatalogBrowseMode.ALL_PRODUCTS) {
+                .collect { msg ->
+                    val selected = _uiState.value.selectedSupplierId
+                    if (
+                        _uiState.value.browseMode == CatalogBrowseMode.ALL_PRODUCTS &&
+                        (msg.supplierId.isBlank() || selected.isNullOrBlank() || msg.supplierId == selected)
+                    ) {
                         loadAllProducts()
                     }
                 }
@@ -62,6 +80,18 @@ class CatalogViewModel @Inject constructor(
         when (_uiState.value.browseMode) {
             CatalogBrowseMode.ALL_PRODUCTS -> loadAllProducts()
             CatalogBrowseMode.CATEGORIES -> loadCategories()
+        }
+    }
+
+    fun onSupplierFilterSelected(supplierId: String?) {
+        val normalized = supplierId?.takeIf { it.isNotBlank() }
+        _uiState.update { it.copy(selectedSupplierId = normalized) }
+        if (!normalized.isNullOrBlank()) {
+            viewModelScope.launch {
+                runCatching {
+                    api.watchSupplierPromotions(mapOf("supplier_id" to normalized))
+                }
+            }
         }
     }
 
@@ -78,7 +108,12 @@ class CatalogViewModel @Inject constructor(
     }
 
     fun onBrowseModeSelected(mode: CatalogBrowseMode) {
-        _uiState.update { it.copy(browseMode = mode) }
+        _uiState.update {
+            it.copy(
+                browseMode = mode,
+                selectedSupplierId = if (mode == CatalogBrowseMode.ALL_PRODUCTS) it.selectedSupplierId else null,
+            )
+        }
         if (mode == CatalogBrowseMode.ALL_PRODUCTS && _uiState.value.products.isEmpty()) {
             loadAllProducts()
         }
@@ -89,7 +124,30 @@ class CatalogViewModel @Inject constructor(
             _uiState.update { it.copy(isLoadingProducts = true) }
             try {
                 val products = api.getCatalogProducts(retailerId = retailerId.takeIf { it.isNotBlank() })
-                _uiState.update { it.copy(isLoadingProducts = false, products = products, error = null) }
+                val supplierMap = LinkedHashMap<String, String>()
+                for (product in products) {
+                    val supplierId = product.supplierId?.takeIf { it.isNotBlank() } ?: continue
+                    supplierMap[supplierId] = product.supplierName?.takeIf { it.isNotBlank() }
+                        ?: supplierMap[supplierId]
+                        ?: supplierId.take(8)
+                }
+                val filters = supplierMap.map { CatalogSupplierFilter(it.key, it.value) }
+                    .sortedBy { it.name.lowercase() }
+                val retainedSupplierId = _uiState.value.selectedSupplierId?.takeIf { id -> id in supplierMap }
+                _uiState.update {
+                    it.copy(
+                        isLoadingProducts = false,
+                        products = products,
+                        supplierFilters = filters,
+                        selectedSupplierId = retainedSupplierId,
+                        error = null,
+                    )
+                }
+                retainedSupplierId?.let { supplierId ->
+                    runCatching {
+                        api.watchSupplierPromotions(mapOf("supplier_id" to supplierId))
+                    }
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoadingProducts = false, products = emptyList(), error = e.message) }
             }

@@ -72,7 +72,7 @@ final class SupplierRealtimeClient {
             Task { await self.openSocket(onEvent: onEvent) }
         }
         reconnectAttempt += 1
-        let delay = reconnectDelaySeconds(attempt: reconnectAttempt - 1, base: 3, max: 60)
+        let delay = reconnectDelaySeconds(attempt: reconnectAttempt - 1, base: 3, maxDelay: 60)
         reconnectWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
@@ -117,8 +117,8 @@ final class SupplierRealtimeClient {
     }
 }
 
-private func reconnectDelaySeconds(attempt: Int, base: TimeInterval, max: TimeInterval) -> TimeInterval {
-    let capped = min(max(attempt, 0), 10)
-    let exp = min(base * pow(2.0, Double(capped)), max)
+private func reconnectDelaySeconds(attempt: Int, base: TimeInterval, maxDelay: TimeInterval) -> TimeInterval {
+    let capped = min(Swift.max(attempt, 0), 10)
+    let exp = min(base * pow(2.0, Double(capped)), maxDelay)
     return exp + Double.random(in: 0...(exp / 2))
 }

@@ -1,119 +1,158 @@
 # Barcode / QR Code Scanning — Ecosystem Policy
 
-**Last audited:** 2026-04-15
-**Status:** Barcode scanning is **out of scope** for new surfaces. Existing production flows that use QR/barcode scanning are preserved; no new scanner surfaces should be built without explicit product approval.
+**Last audited:** 2026-06-15
+**Status:** Barcode scanning is **approved for return-gate EAN on payload + warehouse roles only**. Driver QR delivery-proof scanners remain preserved. No other surfaces may add scanning without updating this doc and product sign-off.
 
 ---
 
 ## Why this doc exists
 
-An ecosystem-wide audit was requested to confirm barcode/QR scanning is not silently spreading to surfaces that do not need it. This doc records:
+This doc records:
 
-1. Which apps **actively use** barcode/QR scanning today (and why).
-2. Which apps had **scaffolding** (deps, plist keys, README references) that has been **removed**.
-3. Which apps are **confirmed clean**.
-4. How to **reinstate** scanning if a future product decision reverses this.
+1. Which apps **actively use** barcode/QR scanning (and why).
+2. **Approved return-gate EAN** surfaces (payload + warehouse).
+3. **Per-platform stack** and client UX contract.
+4. Which apps are **confirmed clean** (no scanner).
+5. When a **commercial SDK** (e.g. Scandit) would make sense.
 
 ---
 
-## 1. Active production scanners (PRESERVED)
+## 1. Driver delivery scanners (PRESERVED — QR only)
 
-These are wired into live delivery-verification flows. Removing them would break the flow. They remain in place.
+These are wired into live delivery-verification flows. Do not remove without a product decision and replacement flow.
 
 | App | File(s) | Purpose |
 |-----|---------|---------|
-| `apps/driver-app-android` | `ui/screens/scanner/ScannerScreen.kt`, `ui/screens/scanner/ScannerViewModel.kt` | Driver QR code scan for retailer delivery confirmation. Wired via `DriverRoutes.SCANNER` and the Scan QR CTA on `HomeScreen`. Uses CameraX + ML Kit `barcode-scanning:17.3.0`. |
-| `apps/driverappios` | `Views/QRScannerView.swift` (+ `QRCameraPreview`), `ViewModels/ScannerViewModel.swift` | Driver QR scan → `/v1/driver/validate-qr`. Used inside `FleetMapView` delivery sheet. AVFoundation-based. |
-| `apps/driverappios` | `Views/OfflineVerifierView.swift`, `ViewModels/OfflineVerifierViewModel.swift` (`handleBarcodeScan(_:)`) | Offline manifest verifier — reads retailer token via camera when offline, queued via `OfflineDelivery` SwiftData model. |
+| `pegasusX/apps/driver-app-android` | `ui/screens/scanner/ScannerScreen.kt`, `ScannerViewModel.kt` | Driver QR scan for retailer delivery confirmation. CameraX + ML Kit `barcode-scanning:17.3.0`. |
+| `pegasusX/apps/driver-app-ios` | `Views/QRScannerView.swift`, `ViewModels/ScannerViewModel.swift` | Driver QR scan → `/v1/driver/validate-qr`. AVFoundation-based. |
+| `pegasusX/apps/driver-app-ios` | `Views/OfflineVerifierView.swift` | Offline manifest verifier — retailer token via camera when offline. |
 
-**Do not rip these out** without a product-side decision and a replacement flow (manual token entry, NFC tap, etc.). They are the canonical delivery-proof mechanism for the DRIVER role.
-
----
-
-## 2. Removed scaffolding (no production impact)
-
-The following were speculative stubs / aspirational deps. They never served real traffic and have been removed.
-
-| App | What was removed | Why it was safe to remove |
-|-----|------------------|---------------------------|
-| `apps/payload-app-android/app/build.gradle.kts` | `androidx.camera:camera-{core,camera2,lifecycle,view}:1.4.1` + `com.google.mlkit:barcode-scanning:17.3.0` | No Kotlin file in the app referenced these deps. Phase 8 "barcode scan" was aspirational. |
-| `apps/retailer-app-android/app/build.gradle.kts` | `androidx.camera:camera-{camera2,lifecycle,view}:1.4.1` + `com.google.mlkit:barcode-scanning:17.3.0` | No Kotlin file referenced these deps. |
-| `apps/payload-app-ios/project.yml` | `INFOPLIST_KEY_NSCameraUsageDescription: "Scan SKU barcodes during loading"` | No SwiftUI view used VisionKit / DataScanner / AVFoundation. App will not prompt for camera permission. |
-| `apps/payload-app-android/README.md` | Phase 8 "Barcode scan + tablet polish" row → renamed to "Tablet polish (barcode deferred)"; removed "CameraX 1.4.1 + ML Kit barcode 17.3 (Phase 8)" architecture bullet | Documentation drift — removed feature was never built. |
-| `apps/payload-app-ios/README.md` | Phase 8 "VisionKit barcode scan + tablet polish" row → renamed "Tablet polish"; removed "VisionKit DataScannerViewController (Phase 8)" architecture bullet | Same as above. |
+**Symbology:** QR codes only (not EAN). Do not extend driver QR to other roles.
 
 ---
 
-## 3. Confirmed clean (no barcode/scanner anywhere)
+## 2. Approved return-gate EAN surfaces
 
-Grepped and verified at audit time:
+Product-approved for **reverse logistics** (driver returns → warehouse gate). Symbologies: **EAN-8, EAN-13, GTIN-12/14** (backend normalizes via `returns.NormalizeBarcode`).
 
-- `apps/factory-app-android/` — no `camera|barcode|mlkit|scanner|QrCode` matches.
-- `apps/factory-app-ios/` — no `Camera|Barcode|VisionKit|DataScanner|QRScanner` matches.
-- `apps/factory-portal/` — only minified vendor chunks (Firebase TOTP QR URL generator, `@nodelib/fs.scandir`, AppKit/Foundation generated headers). No product code path.
-- `apps/payload-terminal/` (Expo) — no `expo-camera` / `expo-barcode` / `vision-camera` in `package.json`.
-- `apps/warehouse-app-android/`, `apps/warehouse-app-ios/`, `apps/warehouse-portal/` — no matches.
-- `apps/retailer-app-ios/`, `apps/retailer-app-desktop/` — no matches.
+| App | Camera | Manual / wedge | API endpoints |
+|-----|--------|----------------|---------------|
+| `pegasusX/apps/payload-app-android` | Yes (shared `EanBarcodeScannerPreview`) | Yes | `POST /v1/returns/inbound/sessions`, `POST /v1/returns/inbound/scan`, `POST /v1/returns/inbound/confirm` |
+| `pegasusX/apps/payload-app-ios` | Yes (`EANBarcodeScannerView`) | Yes | Same |
+| `pegasusX/apps/payload-terminal` (Expo) | Optional (`expo-camera`) | Yes | Same |
+| `pegasusX/apps/warehouse-app-android` | Yes (shared module) | Yes | Same |
+| `pegasusX/apps/warehouse-app-ios` | Yes (`EANBarcodeScannerView`) | Yes | Same |
+| `pegasusX/apps/warehouse-portal` | No | USB/BT keyboard wedge | Same |
 
-**Factory admin (the unified Factory Admin + Payloader surface)** was explicitly re-verified per request and is 100% clean on both Android and iOS.
+**Supplier catalog EAN capture** (link retail barcode to product — not return-gate scan):
+
+| App | Camera | Manual entry | API |
+|-----|--------|--------------|-----|
+| `pegasusX/apps/supplier-app-android` | Yes (shared `EanBarcodeScannerPreview`) | Yes | `POST /v1/catalog/products`, `PUT /v1/catalog/products/{id}` with `barcode` |
+| `pegasusX/apps/supplier-app-ios` | Yes (`EANBarcodeScannerView`) | Yes | Same |
+| `pegasusX/apps/supplier-portal` | No | Yes | Same |
+
+**Catalog lookup (optional):** `GET /v1/catalog/barcode/{ean}`
+
+**Idempotency:** All mutating scan/confirm calls MUST send `Idempotency-Key` header. Reuse per-app helpers (`PayloadIdempotencyKeys`, `PayloadIdempotency`, `WarehouseIdempotency`).
+
+**Offline:** When `online == false`, enqueue scan payload to the app's offline queue (`returns/inbound/scan` endpoint). Drain on reconnect.
 
 ---
 
-## 4. How to reinstate scanning on a specific surface
+## 3. Per-platform stack (canonical versions)
 
-If product reverses this decision for an app, follow the steps for that platform.
+Do **not** adopt a cross-platform barcode framework (no React Native Vision Camera, no ecosystem-wide ZXing wrapper, no Scandit by default).
 
-### Android (e.g., `payload-app-android`, `retailer-app-android`)
+| Platform | Stack | Notes |
+|----------|-------|-------|
+| **Android** | `androidx.camera:camera-*:1.4.1` + `com.google.mlkit:barcode-scanning:17.3.0` | Shared module: `pegasusX/packages/mobile-android-barcode-scanner` |
+| **iOS** | VisionKit `DataScannerViewController` (iOS 16+, preferred) | Shared source: `pegasusX/packages/mobile-ios-barcode/EANBarcodeScannerView.swift` |
+| **iOS fallback** | AVFoundation `.ean13` / `.ean8` metadata | Used when DataScanner unavailable |
+| **Expo** | `expo-camera` `CameraView` + `barcodeScannerSettings.barcodeTypes: ['ean13','ean8']` | Requires dev-client rebuild |
+| **Web** | `<input>` + hardware wedge (scanner acts as keyboard) | No camera dependency |
 
-1. Add to `app/build.gradle.kts` in the `dependencies` block:
-   ```kotlin
-   implementation("androidx.camera:camera-core:1.4.1")
-   implementation("androidx.camera:camera-camera2:1.4.1")
-   implementation("androidx.camera:camera-lifecycle:1.4.1")
-   implementation("androidx.camera:camera-view:1.4.1")
-   implementation("com.google.mlkit:barcode-scanning:17.3.0")
-   ```
-2. Add to `app/src/main/AndroidManifest.xml`:
-   ```xml
-   <uses-permission android:name="android.permission.CAMERA" />
-   <uses-feature android:name="android.hardware.camera" android:required="false" />
-   ```
-3. Request camera permission at runtime (`Manifest.permission.CAMERA`) before launching the scanner screen.
-4. Copy the scanner screen template from `apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/scanner/` (ScannerScreen.kt + ScannerViewModel.kt) and adapt package paths.
-5. Wire the route in the app's `*Navigation.kt` and add the CTA on the home screen.
-6. `./gradlew :app:assembleDebug` to verify.
+---
 
-### iOS (e.g., `payload-app-ios`)
+## 4. Client scan UX contract (normative)
 
-1. In `project.yml` under `settings.base`, add:
-   ```yaml
-   INFOPLIST_KEY_NSCameraUsageDescription: "<user-facing reason>"
-   ```
-2. Run `xcodegen generate` from the app directory.
-3. Copy `apps/driverappios/driverappios/Views/QRScannerView.swift` (includes `QRCameraPreview` UIViewRepresentable) into the target's `Views/` folder.
-4. Copy `apps/driverappios/driverappios/ViewModels/ScannerViewModel.swift` (AVFoundation permission check + handleScan).
-5. For VisionKit DataScanner (iOS 16+), prefer `DataScannerViewController` via a UIViewControllerRepresentable wrapper — simpler than AVFoundation but iOS 16+ only and requires `com.apple.developer.visionkit` entitlement indirectly handled by Xcode.
-6. Build via Xcode or `xcodebuild -scheme <app> -destination 'generic/platform=iOS'`.
+All return-gate EAN surfaces MUST implement:
+
+1. **Debounce** duplicate reads (~1.5s for the same code).
+2. **Haptic / vibrate** on successful decode.
+3. **Auto-submit** to `POST /v1/returns/inbound/scan` after decode (keep manual text field as fallback).
+4. **Idempotency-Key** on every scan and confirm mutation.
+5. **Offline enqueue** when network is unavailable (payload apps).
+6. **EAN-first filtering** — prefer EAN-8/EAN-13 over other symbologies.
+
+---
+
+## 5. Confirmed clean (no barcode/scanner)
+
+- `apps/retailer-app-android/`, `apps/retailer-app-ios/`, `apps/retailer-app-desktop/`
+- `apps/factory-app-android/`, `apps/factory-app-ios/`, `apps/factory-portal/`
+
+---
+
+## 6. When Scandit (or similar commercial SDK) makes sense
+
+**Consider a commercial SDK when:**
+
+- Labels are damaged, partial, or unreadable under phone cameras in production lighting.
+- Scan SLA requires sub-200ms decode at high volume (dedicated scan lanes).
+- Symbologies beyond EAN are required (Code128 pallets, GS1 DataMatrix, PDF417).
+- Integrating dedicated Zebra/Honeywell scan engines with vendor SDKs.
+
+**Not justified for:**
+
+- Standard indoor warehouse gate EAN scanning with phone/tablet cameras under normal lighting.
+- The current return-gate MVP (EAN-8/13 on retail product labels).
+
+---
+
+## 7. How to add scanning to an approved surface
+
+### Android
+
+1. Add `implementation(project(":barcode-scanner"))` in app `build.gradle.kts` and `include` the module in `settings.gradle.kts`.
+2. Add `CAMERA` permission to `AndroidManifest.xml`.
+3. Use `@Composable EanBarcodeScannerPreview(onBarcode, modifier, enabled)` from the shared module.
+4. Wire scan handler to `POST /v1/returns/inbound/scan` with idempotency key.
+
+### iOS
+
+1. Add `INFOPLIST_KEY_NSCameraUsageDescription` in `project.yml`.
+2. Add `pegasusX/packages/mobile-ios-barcode/EANBarcodeScannerView.swift` to the app target.
+3. Embed `EANBarcodeScannerView` in the inbound returns screen; on decode call scan API.
 
 ### Expo (`payload-terminal`)
 
 1. `npx expo install expo-camera`
-2. In `app.json` add `"plugins": [["expo-camera", { "cameraPermission": "<user-facing reason>" }]]`.
-3. Use the `<CameraView>` component with `barcodeScannerSettings={{ barcodeTypes: ['qr', 'ean13', ...] }}` and an `onBarcodeScanned` handler.
-4. Rebuild the dev client (`npx expo prebuild --clean && npx expo run:ios`).
+2. Add `expo-camera` plugin in `app.json` with camera permission string.
+3. Use `CameraView` with `barcodeScannerSettings` and `onBarcodeScanned`.
+4. Rebuild dev client.
+
+### Web (`warehouse-portal`)
+
+1. Auto-focus scan input on load.
+2. Submit on Enter (wedge scanners append Enter after barcode).
+3. No camera library.
 
 ---
 
-## 5. Policy for new work
+## 8. Policy for new work
 
-- **Do not** add `mlkit:barcode-scanning`, `androidx.camera:*`, `AVCaptureMetadataOutput`, `DataScannerViewController`, `expo-camera`, or any QR/barcode scanning dependency to a surface without updating this doc AND getting product sign-off.
-- **Do not** re-enable Phase 8 in any payload-app README as "barcode scan". Phase 8 is tablet polish only until further notice.
-- The driver apps keep their scanners — do not extend QR scanning to new roles opportunistically.
+- **Do not** add barcode scanning to surfaces not listed in sections 1–2 without updating this doc AND product sign-off.
+- **Do not** add Scandit or cross-platform barcode abstractions without the criteria in section 6.
+- Driver apps keep QR scanners — do not change them to EAN or extend QR to new roles.
+- New `mlkit:barcode-scanning`, `androidx.camera:*`, `expo-camera`, or VisionKit usage outside approved apps is a policy violation.
 
 ---
 
-## 6. Contact / decision log
+## 9. Decision log
 
 | Date | Decision | Owner |
 |------|----------|-------|
-| 2026-04-15 | Remove unused barcode scaffolding from payload-app (Android/iOS), retailer-app-android; preserve active driver-app scanners. | Boss (product) |
+| 2026-04-15 | Remove unused barcode scaffolding from payload-app (Android/iOS), retailer-app-android; preserve active driver-app scanners. | Product |
+| 2026-06-15 | Approve return-gate EAN on payload + warehouse surfaces; standardize per-platform native stacks; driver QR unchanged. | Product |
+| 2026-06-17 | Approve supplier native catalog EAN capture (camera + manual) on create/edit product. | Product |

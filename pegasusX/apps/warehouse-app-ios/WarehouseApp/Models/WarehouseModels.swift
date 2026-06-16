@@ -734,6 +734,91 @@ struct ReturnListResponse: Decodable {
     }
 }
 
+struct InboundReturnRow: Decodable, Identifiable {
+    var id: String { returnId }
+    let returnId: String
+    let orderId: String
+    let productName: String
+    let expectedQty: Int
+    let receivedQty: Int
+    let reason: String
+    let physicalStatus: String
+    let driverName: String
+    let barcode: String?
+
+    enum CodingKeys: String, CodingKey {
+        case returnId = "return_id"
+        case orderId = "order_id"
+        case productName = "product_name"
+        case expectedQty = "expected_qty"
+        case receivedQty = "received_qty"
+        case reason
+        case physicalStatus = "physical_status"
+        case driverName = "driver_name"
+        case barcode
+    }
+}
+
+struct InboundReturnListResponse: Decodable {
+    let data: [InboundReturnRow]
+}
+
+struct InboundSessionResponse: Decodable {
+    let sessionId: String
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+    }
+}
+
+struct InboundScanBody: Encodable {
+    let barcode: String
+    let qty: Int
+    let sessionId: String
+
+    enum CodingKeys: String, CodingKey {
+        case barcode, qty
+        case sessionId = "session_id"
+    }
+}
+
+struct InboundConfirmLine: Encodable {
+    let returnId: String
+    let disposition: String
+
+    enum CodingKeys: String, CodingKey {
+        case returnId = "return_id"
+        case disposition
+    }
+}
+
+struct InboundConfirmBody: Encodable {
+    let lines: [InboundConfirmLine]
+    let sessionId: String
+
+    enum CodingKeys: String, CodingKey {
+        case lines
+        case sessionId = "session_id"
+    }
+}
+
+struct InboundConfirmResponse: Decodable {
+    let status: String?
+}
+
+struct InboundScanResponse: Decodable {
+    let matched: Bool
+    let returnId: String?
+    let variance: Bool
+    let message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case matched
+        case returnId = "return_id"
+        case variance, message
+    }
+}
+
 // MARK: - Treasury
 
 struct TreasuryOverview: Decodable {

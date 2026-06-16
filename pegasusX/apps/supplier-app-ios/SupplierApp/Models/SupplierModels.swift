@@ -107,6 +107,55 @@ struct SupplierOrder: Decodable, Identifiable, Hashable {
     }
 }
 
+struct SupplierReturnRow: Decodable, Identifiable, Hashable {
+    var id: String { returnId }
+    let returnId: String
+    let orderId: String
+    let skuId: String
+    let productName: String
+    let quantity: Int64
+    let unitPrice: Int64
+    let status: String
+    let physicalStatus: String
+    let receivedQty: Int64
+    let reason: String
+    let driverName: String
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case returnId = "return_id"
+        case orderId = "order_id"
+        case skuId = "sku_id"
+        case productName = "product_name"
+        case quantity
+        case unitPrice = "unit_price"
+        case status
+        case physicalStatus = "physical_status"
+        case receivedQty = "received_qty"
+        case reason
+        case driverName = "driver_name"
+        case createdAt = "created_at"
+    }
+}
+
+struct SupplierReturnsResponse: Decodable {
+    let data: [SupplierReturnRow]
+}
+
+struct ResolveReturnRequest: Encodable {
+    let returnId: String
+    let lineItemId: String
+    let resolution: String
+    let notes: String
+
+    enum CodingKeys: String, CodingKey {
+        case returnId = "return_id"
+        case lineItemId = "line_item_id"
+        case resolution
+        case notes
+    }
+}
+
 // MARK: - Fleet
 
 struct FleetDriversResponse: Decodable {
@@ -202,6 +251,7 @@ struct CatalogProduct: Decodable, Identifiable {
     let unit: String
     let unitVolumeVu: Double
     let imageUrl: String?
+    let barcode: String?
     let isActive: Bool
     let version: Int64
 
@@ -216,6 +266,7 @@ struct CatalogProduct: Decodable, Identifiable {
         case unit
         case unitVolumeVu = "unit_volume_vu"
         case imageUrl = "image_url"
+        case barcode
         case isActive = "is_active"
         case version
     }
@@ -253,6 +304,7 @@ struct CatalogProductCreateRequest: Encodable {
     let stockQuantity: Int64
     let unit: String
     let imageUrl: String?
+    let barcode: String?
 
     enum CodingKeys: String, CodingKey {
         case categoryId = "category_id"
@@ -264,6 +316,7 @@ struct CatalogProductCreateRequest: Encodable {
         case stockQuantity = "stock_quantity"
         case unit
         case imageUrl = "image_url"
+        case barcode
     }
 }
 
@@ -274,6 +327,7 @@ struct CatalogProductUpdateRequest: Encodable {
     let unit: String
     let unitVolumeVu: Double
     let imageUrl: String?
+    let barcode: String?
     let isActive: Bool
     let version: Int64
 
@@ -284,6 +338,7 @@ struct CatalogProductUpdateRequest: Encodable {
         case unit
         case unitVolumeVu = "unit_volume_vu"
         case imageUrl = "image_url"
+        case barcode
         case isActive = "is_active"
         case version
     }

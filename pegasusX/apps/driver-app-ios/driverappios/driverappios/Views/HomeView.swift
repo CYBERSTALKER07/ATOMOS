@@ -14,6 +14,7 @@ struct HomeView: View {
 
     @State private var appeared = false
     @State private var showNotificationInbox = false
+    @State private var showSupplyTransfers = false
     @State private var clientPolicyMessage: String?
 
     var body: some View {
@@ -77,25 +78,31 @@ struct HomeView: View {
                         .staggeredAppear(index: 1)
                 }
 
+                // MARK: - Factory supply
+                if TokenStore.shared.isFactoryScopedDriver {
+                    factorySupplyCard
+                        .staggeredAppear(index: 2)
+                }
+
                 // MARK: - Transit Control Card
                 transitControlCard
-                    .staggeredAppear(index: 2)
+                    .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 3 : 2)
 
                 // MARK: - Today Summary Card
                 todaySummary
-                    .staggeredAppear(index: 3)
+                    .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 4 : 3)
 
                 // MARK: - Open Map CTA
                 mapButton
-                    .staggeredAppear(index: 4)
+                    .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 5 : 4)
 
                 // MARK: - Quick Actions
                 quickActions
-                    .staggeredAppear(index: 5)
+                    .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 6 : 5)
 
                 // MARK: - Recent Activity
                 recentActivity
-                    .staggeredAppear(index: 6)
+                    .staggeredAppear(index: TokenStore.shared.isFactoryScopedDriver ? 7 : 6)
             }
             .padding(.horizontal, LabTheme.s16)
             .padding(.bottom, 20)
@@ -104,6 +111,11 @@ struct HomeView: View {
         .background(LabTheme.bg)
         .sheet(isPresented: $showNotificationInbox) {
             DriverNotificationInboxView()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showSupplyTransfers) {
+            SupplyTransfersView()
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
@@ -248,6 +260,19 @@ struct HomeView: View {
                     .foregroundStyle(LabTheme.fgTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
+                if vm.returnGoodsTotalUnits > 0 {
+                    Text("\(vm.returnGoodsTotalUnits) item(s) to return on truck")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(LabTheme.warning)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    ForEach(vm.returnGoodsLines.prefix(5)) { line in
+                        Text("· \(line.productName) ×\(line.quantity)")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(LabTheme.fgSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+
                 VStack(spacing: 8) {
                     Button {
                         Haptics.medium()
@@ -349,6 +374,36 @@ struct HomeView: View {
         }
         .padding(LabTheme.s20)
         .labCard()
+    }
+
+    // MARK: - Factory Supply
+
+    private var factorySupplyCard: some View {
+        Button {
+            Haptics.medium()
+            showSupplyTransfers = true
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "shippingbox.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(LabTheme.fg)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Supply transfers")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(LabTheme.fg)
+                    Text("\(TokenStore.shared.factoryName ?? "Factory depot") → warehouse legs")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(LabTheme.fgSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(LabTheme.fgTertiary)
+            }
+            .padding(LabTheme.s16)
+            .labCard()
+        }
+        .buttonStyle(.pressable)
     }
 
     // MARK: - Navigate to Warehouse

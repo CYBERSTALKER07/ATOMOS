@@ -2,7 +2,7 @@
 
 > **Canonical cross-role spec:** [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md) — use this matrix for screen-level parity; use the master plan for end-to-end flows, comms, and verification gates.
 
-Last updated: 2026-06-11. Canonical reference: `pegasus/`. Delivery tree: `pegasusX/`.
+Last updated: 2026-06-15. Canonical reference: `pegasus/`. Delivery tree: `pegasusX/`.
 
 ## Summary
 
@@ -75,6 +75,43 @@ cd pegasusX && make validate-launch-readiness
 cd pegasusX && bash scripts/parity/role_row_contract_check.sh
 cd pegasusX && make backend-build
 ```
+
+## Barcode catalog + inbound return gate parity (2026-06-15)
+
+Policy: [`pegasus/docs/BARCODE_SCANNING.md`](../../pegasus/docs/BARCODE_SCANNING.md) — EAN/GTIN only at return gate; supplier catalog `Products.Barcode` required for scan match.
+
+| Surface | Catalog EAN capture | Inbound gate scan | History tab | EAN on rows | Idempotency-Key | Offline scan queue |
+|---------|--------------------|--------------------|-------------|---------------|-----------------|-------------------|
+| supplier-portal `/catalog` | Manual create + inline edit + checksum validation | — | — | — | — | — |
+| supplier-app Android/iOS | Camera + manual (`CatalogBarcodeField`) | — | — | — | — | — |
+| payload-terminal inbound | — | Manual + camera | Yes | Yes | Yes | Yes (SecureStore queue) |
+| payload-app Android/iOS | — | Camera + manual | Yes | Yes | Yes | Yes (Android VM queue; iOS `OfflineQueue`) |
+| warehouse-portal `/returns` | — | Wedge/manual + Enter | Yes | Yes | Yes | — (desktop wedge) |
+| warehouse-app Android/iOS | — | Camera + manual | Yes | Yes | Yes | — |
+
+Shared primitives: `@pegasusx/validation` `normalizeEanBarcode`, `@pegasusx/api-client` `warehouseInboundScanKey` / `payloadInboundScanKey`, Android `mobile-android-barcode-scanner`, iOS `mobile-ios-barcode`.
+
+## Cross-platform operational parity (2026-06-15)
+
+Per-role surfaces that must stay wired end-to-end (portal + native + terminal where applicable):
+
+| Capability | SUPPLIER | RETAILER | DRIVER | WAREHOUSE | FACTORY | PAYLOAD |
+|------------|----------|----------|--------|-----------|---------|---------|
+| Returns / dispute resolve | portal + Android + iOS | — | — | gate (see above) | — | gate inbound |
+| Fleet live map | portal + Android + iOS | — | — | portal + Android + iOS | — | — |
+| Dispatch preview/execute | portal + Android + iOS | — | — | portal + Android + iOS | portal + Android + iOS | — |
+| Supply requests | — | — | arrive (Android + iOS) | portal + Android + iOS | portal + Android + iOS | — |
+| Manifest lifecycle | portal read | — | — | — | portal + Android + iOS | terminal + Android + iOS |
+| Reassign (redispatch) | — | — | — | — | — | terminal + Android + iOS (`/v1/payloader/reassign-order`) |
+| Treasury / invoices | portal | desktop | — | portal + Android + iOS | portal | — |
+| Notifications inbox | portal + Android + iOS (dashboard bell on both native) | mobile + desktop | Android + iOS | portal + Android + iOS | portal + Android (+ iOS sheet) | Android + iOS |
+| Client policy banner | portal + native (global shell) | all clients (global shell) | Android + iOS | portal + native | portal + native | terminal + native |
+| Idempotency on mutations | dispatch, resolve, broadcast, payment-bypass | checkout, orders | delivery edges, supply arrive | dispatch, supply, inbound gate | manifest, transfer | seal, reassign, inbound |
+| Dock inbound queue (supplier-grouped, QR reveal) | — | desktop + Android + iOS | — | — | — | — |
+
+**Intentional portal-only deferrals (v1):** supplier empathy adoption depth on native; warehouse supply forecast create form depth on native (create from Dispatch tab); factory iOS analytics/exceptions as dashboard sheets not tabs.
+
+**Recently closed gaps (2026-06-15):** retailer dock queue on Android + iOS (`DeliveriesHubScreen` / `DeliveriesHubView` with Map | Dock Queue tabs); Android AI Predictions sidebar → `FutureDemandScreen`; global client-policy banner hoisted to Android/iOS nav shells (retailer + supplier); Android catalog supplier filter + `promotions/watch`; desktop offline pending checkout queue (`pending-checkout.ts`); supplier returns resolve on native; supplier broadcast + payment-bypass idempotency on native; iOS supplier dashboard notification bell; iOS iPad sidebar Promotions/Pricing/Returns/Reconciliation/Notifications; driver supply-arrive idempotency; warehouse supply create/cancel/receive idempotency; payload-terminal reassign aligned to `payloader/reassign-order`.
 
 ## SSMR fleet / dispatch / payload feature IDs (2026-06-14)
 

@@ -4,17 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.api.RetailerWebSocket
+import com.pegasusx.retailer.data.local.PendingOrderEntity
 import com.pegasusx.retailer.data.local.PendingOrderDao
 import com.pegasusx.retailer.data.local.TokenManager
-import com.pegasusx.retailer.data.model.CardCheckoutRequest
 import com.pegasusx.retailer.data.model.CartItem
-import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.CheckoutLineItem
 import com.pegasusx.retailer.data.model.CheckoutQuoteLine
 import com.pegasusx.retailer.data.model.CheckoutQuoteRequest
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.data.model.StockWarning
-import com.pegasusx.retailer.data.model.SupplierOrderResult
 import com.pegasusx.retailer.data.model.UnifiedCheckoutRequest
 import com.pegasusx.retailer.data.model.Variant
 import com.pegasusx.retailer.ui.components.CheckoutPhase
@@ -350,12 +348,7 @@ init {
         for (order in pending) {
             try {
                 val request = Json.decodeFromString<UnifiedCheckoutRequest>(order.payloadJson)
-                val response = api.unifiedCheckout(request, order.idempotencyKey)
-                completeSupplierOrderPayments(
-                    gateway = request.paymentGateway,
-                    invoiceId = response.invoiceId,
-                    supplierOrders = response.supplierOrders,
-                )
+                api.unifiedCheckout(request, order.idempotencyKey)
                 pendingOrderDao.deleteById(order.id)
                 _uiState.update { it.copy(syncError = null, loadIssue = null) }
             } catch (e: Exception) {
@@ -508,6 +501,7 @@ init {
     fun processPayment() {
         viewModelScope.launch {
             _uiState.update { it.copy(checkoutPhase = CheckoutPhase.PROCESSING, checkoutError = null, stockWarnings = emptyList()) }
+            var checkoutRequest: UnifiedCheckoutRequest? = null
             try {
                 val state = _uiState.value
                 val retailerId = tokenManager.getUserId() ?: ""
@@ -539,6 +533,7 @@ init {
                     paymentGateway = finalGateway,
                     items = lineItems,
                 )
+                checkoutRequest = request
                 val preview = api.checkoutPreview(request)
                 if (preview.blocked) {
                     _uiState.update {
@@ -550,18 +545,12 @@ init {
                     return@launch
                 }
                 val response = api.unifiedCheckout(request, checkoutIdempotencyKey(request))
-                val paymentUrl = completeSupplierOrderPayments(
-                    gateway = finalGateway,
-                    invoiceId = response.invoiceId,
-                    supplierOrders = response.supplierOrders,
-                    backorderOrderId = response.backorderOrderId,
-                )
                 val firstOrderId = response.supplierOrders.firstOrNull()?.orderId
                 _uiState.update {
                     it.copy(
                         stockWarnings = response.stockWarnings,
                         lastOrderId = firstOrderId ?: response.invoiceId,
-                        paymentUrlToOpen = paymentUrl,
+                        paymentUrlToOpen = null,
                         checkoutPhase = CheckoutPhase.COMPLETE,
                     )
                 }
@@ -606,10 +595,18 @@ init {
                     )
                 }
             } catch (e: Exception) {
+                val request = checkoutRequest
+                if (e is IOException && request != null) {
+                    queuePendingCheckout(request, checkoutIdempotencyKey(request))
+                }
                 _uiState.update {
                     it.copy(
                         checkoutPhase = CheckoutPhase.REVIEW,
-                        checkoutError = resolveCheckoutErrorMessage(e, "Checkout failed"),
+                        checkoutError = if (e is IOException && request != null) {
+                            "Network issue during checkout. Saved for automatic retry when you reconnect."
+                        } else {
+                            resolveCheckoutErrorMessage(e, "Checkout failed")
+                        },
                     )
                 }
             }
@@ -624,42 +621,20 @@ init {
         _uiState.update { it.copy(paymentUrlToOpen = null) }
     }
 
-    private suspend fun completeSupplierOrderPayments(
-        gateway: String,
-        invoiceId: String,
-        supplierOrders: List<SupplierOrderResult>,
-        backorderOrderId: String? = null,
-    ): String? {
-        if (supplierOrders.isEmpty()) return null
-        val normalizedGateway = gateway.trim().uppercase()
-        var paymentUrl: String? = null
-        for (supplierOrder in supplierOrders) {
-            if (!backorderOrderId.isNullOrBlank() && supplierOrder.orderId == backorderOrderId) {
-                continue
-            }
-            if (normalizedGateway == "CASH") {
-                api.cashCheckout(
-                    CashCheckoutRequest(orderId = supplierOrder.orderId),
-                    "retailer-cash-checkout:${supplierOrder.orderId}",
-                )
-            } else {
-                val card = api.cardCheckout(
-                    CardCheckoutRequest(orderId = supplierOrder.orderId, gateway = normalizedGateway),
-                    "retailer-card-checkout:${supplierOrder.orderId}:$normalizedGateway",
-                )
-                if (card.paymentUrl.isNotBlank()) {
-                    paymentUrl = card.paymentUrl
-                }
-            }
-        }
-        return paymentUrl
-    }
-
     private fun checkoutIdempotencyKey(request: UnifiedCheckoutRequest): String {
         val itemKey = request.items
             .sortedBy { it.skuId }
             .joinToString("|") { "${it.skuId}:${it.quantity}:${it.unitPrice}" }
         return "retailer-checkout:${request.paymentGateway}:$itemKey"
+    }
+
+    private suspend fun queuePendingCheckout(request: UnifiedCheckoutRequest, idempotencyKey: String) {
+        pendingOrderDao.insert(
+            PendingOrderEntity(
+                payloadJson = Json.encodeToString(request),
+                idempotencyKey = idempotencyKey,
+            ),
+        )
     }
 
     private fun resolveLoadIssue(error: Exception): CartLoadIssue {

@@ -192,12 +192,14 @@ struct AmendItemPayload: Codable {
     let acceptedQty: Int
     let rejectedQty: Int
     let reason: String
+    let customReason: String?
 
     enum CodingKeys: String, CodingKey {
         case productId = "product_id"
         case acceptedQty = "accepted_qty"
         case rejectedQty = "rejected_qty"
         case reason
+        case customReason = "custom_reason"
     }
 }
 

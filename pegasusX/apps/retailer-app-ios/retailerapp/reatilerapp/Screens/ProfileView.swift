@@ -11,7 +11,6 @@ struct ProfileView: View {
     @State private var profilePhone: String = ""
     @State private var profileLocation: String = ""
     @State private var pricingRulesSummary: String = ""
-    @State private var clientPolicyMessage: String = ""
 
     @Environment(AuthManager.self) private var auth
 
@@ -34,11 +33,6 @@ struct ProfileView: View {
 
                 // Empathy Engine — Global Auto-Order
                 empathyEngineSection.slideIn(delay: 0.09)
-
-                if !clientPolicyMessage.isEmpty {
-                    ClientPolicyBanner(message: clientPolicyMessage)
-                        .padding(.horizontal, AppTheme.spacingLG)
-                }
 
                 if !pricingRulesSummary.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
@@ -455,34 +449,6 @@ struct ProfileView: View {
             }
         } catch {
             pricingRulesSummary = ""
-        }
-        do {
-            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-            struct ClientPolicy: Decodable {
-                let outdated: Bool?
-                let forceUpdate: Bool?
-                let minimumVersion: String?
-                enum CodingKeys: String, CodingKey {
-                    case outdated
-                    case forceUpdate = "force_update"
-                    case minimumVersion = "minimum_version"
-                }
-            }
-            let policy: ClientPolicy = try await api.get(
-                path: "/v1/platform/client-policy?role=RETAILER&platform=ios&version=\(version)&channel=production"
-            )
-            if policy.outdated == true || policy.forceUpdate == true {
-                let prefix = policy.forceUpdate == true ? "Update required" : "Update available"
-                if let min = policy.minimumVersion, !min.isEmpty {
-                    clientPolicyMessage = "\(prefix) — minimum version \(min)"
-                } else {
-                    clientPolicyMessage = prefix
-                }
-            } else {
-                clientPolicyMessage = ""
-            }
-        } catch {
-            clientPolicyMessage = ""
         }
     }
 

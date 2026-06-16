@@ -376,6 +376,7 @@ func (s *Service) HandleSupplyRequestTransition(w http.ResponseWriter, r *http.R
 				"request_id":         requestID,
 				"state":              "FULFILLED",
 				"linked_transfer_id": transferID,
+				"transfer_mode":      rec.TransferMode,
 				"updated_at":         nowTS,
 			})
 			return

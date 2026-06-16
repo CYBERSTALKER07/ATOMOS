@@ -13,6 +13,9 @@ type SupplierReturn struct {
 	RejectedQty int64
 	Reason      string
 	DriverNotes string
+	ManifestID  string
+	DriverID    string
+	WarehouseID string
 }
 
 var validAmendReasons = map[string]struct{}{

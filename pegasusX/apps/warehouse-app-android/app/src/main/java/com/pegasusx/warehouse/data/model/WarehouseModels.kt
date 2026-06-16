@@ -311,6 +311,24 @@ data class ReturnListResponse(
     val items: List<ReturnItem> = emptyList(),
 )
 
+@Serializable
+data class InboundReturnRow(
+    @SerialName("return_id") val returnId: String,
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("product_name") val productName: String = "",
+    @SerialName("expected_qty") val expectedQty: Long = 0,
+    @SerialName("received_qty") val receivedQty: Long = 0,
+    val reason: String = "",
+    @SerialName("physical_status") val physicalStatus: String = "",
+    @SerialName("driver_name") val driverName: String = "",
+    val barcode: String = "",
+)
+
+@Serializable
+data class InboundReturnListResponse(
+    val data: List<InboundReturnRow> = emptyList(),
+)
+
 // ── Treasury ──
 @Serializable
 data class TreasuryOverview(

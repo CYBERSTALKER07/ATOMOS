@@ -52,6 +52,8 @@ type Deps struct {
 //	POST /v1/supplier/replenishment/trigger
 //	GET  /v1/supplier/fleet/orders
 //	GET  /v1/supplier/fleet/live-map
+//	GET  /v1/supplier/returns
+//	POST /v1/supplier/returns/resolve
 func RegisterRoutes(r chi.Router, d Deps) {
 	if d.Service == nil {
 		return
@@ -133,6 +135,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/replenishment/trigger", d.Service.HandleReplenishmentTrigger)
 		gr.Get("/v1/supplier/fleet/orders", d.Service.HandleSupplierFleetOrders)
 		gr.Get("/v1/supplier/fleet/live-map", d.Service.HandleSupplierFleetLiveMap)
+		gr.Get("/v1/supplier/returns", d.Service.HandleReturns)
+		gr.Post("/v1/supplier/returns/resolve", d.Service.HandleResolveReturn)
 		if d.NotificationInbox != nil {
 			gr.Get("/v1/user/notifications", d.NotificationInbox.HandleList)
 			gr.Post("/v1/user/notifications/read", d.NotificationInbox.HandleMarkRead)

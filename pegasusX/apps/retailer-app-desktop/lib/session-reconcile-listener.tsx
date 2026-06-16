@@ -11,6 +11,7 @@ export function SessionReconcileListener() {
   useEffect(() => {
     if (reconnectEpoch === 0) return;
     void reconcileRetailerSession().then(() => {
+      void import("./pending-checkout").then(({ flushPendingCheckouts }) => flushPendingCheckouts());
       window.dispatchEvent(
         new CustomEvent("retailer:session-reconciled", { detail: { epoch: reconnectEpoch } }),
       );

@@ -109,6 +109,50 @@ enum WarehouseService {
         try await api.get("v1/warehouse/ops/returns")
     }
 
+    static func inboundReturns(physicalStatus: String = "ARRIVED", limit: Int = 100) async throws -> InboundReturnListResponse {
+        try await api.get(
+            "v1/returns/inbound",
+            query: ["physical_status": physicalStatus, "limit": String(limit)]
+        )
+    }
+
+    static func returnsHistory(limit: Int = 50) async throws -> InboundReturnListResponse {
+        try await api.get("v1/returns/history", query: ["limit": String(limit)])
+    }
+
+    static func createInboundSession() async throws -> String {
+        let resp: InboundSessionResponse = try await api.post("v1/returns/inbound/sessions", body: [String: String]())
+        return resp.sessionId
+    }
+
+    static func scanInboundBarcode(barcode: String, qty: Int = 1, sessionId: String? = nil, idempotencyKey: String) async throws -> InboundScanResponse {
+        let body = InboundScanBody(barcode: barcode, qty: qty, sessionId: sessionId ?? "")
+        return try await api.post("v1/returns/inbound/scan", body: body, idempotencyKey: idempotencyKey)
+    }
+
+    static func scanInboundReturn(returnId: String, qty: Int = 1, sessionId: String? = nil, idempotencyKey: String) async throws -> InboundScanResponse {
+        struct ScanByReturnBody: Encodable {
+            let returnId: String
+            let qty: Int
+            let sessionId: String
+            enum CodingKeys: String, CodingKey {
+                case returnId = "return_id"
+                case qty
+                case sessionId = "session_id"
+            }
+        }
+        let body = ScanByReturnBody(returnId: returnId, qty: qty, sessionId: sessionId ?? "")
+        return try await api.post("v1/returns/inbound/scan", body: body, idempotencyKey: idempotencyKey)
+    }
+
+    static func confirmInboundReturns(returnIds: [String], disposition: String, sessionId: String, idempotencyKey: String) async throws -> InboundConfirmResponse {
+        let body = InboundConfirmBody(
+            lines: returnIds.map { InboundConfirmLine(returnId: $0, disposition: disposition) },
+            sessionId: sessionId
+        )
+        return try await api.post("v1/returns/inbound/confirm", body: body, idempotencyKey: idempotencyKey)
+    }
+
     // MARK: - Treasury
     static func treasuryOverview() async throws -> TreasuryOverview {
         try await api.get("v1/warehouse/ops/treasury", query: ["view": "overview"])
@@ -159,14 +203,16 @@ enum WarehouseService {
                 notes: notes,
                 items: [],
                 useDemandForecast: true
-            )
+            ),
+            idempotencyKey: WarehouseIdempotency.createSupplyRequest(factoryId: factoryId, priority: priority, notes: notes)
         )
     }
 
     static func cancelSupplyRequest(id: String) async throws -> WarehouseSupplyRequestTransitionResponse {
         try await api.patch(
             "v1/warehouse/supply-requests/\(id)",
-            body: WarehouseSupplyRequestTransitionRequest(action: "CANCEL", transferOrderId: nil)
+            body: WarehouseSupplyRequestTransitionRequest(action: "CANCEL", transferOrderId: nil),
+            idempotencyKey: WarehouseIdempotency.supplyRequestTransition(requestId: id, action: "CANCEL")
         )
     }
 

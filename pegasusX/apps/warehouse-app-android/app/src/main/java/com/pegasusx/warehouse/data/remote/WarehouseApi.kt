@@ -103,6 +103,34 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/returns")
     suspend fun getReturns(): Response<ReturnListResponse>
 
+    @GET("v1/returns/inbound")
+    suspend fun getInboundReturns(
+        @Query("physical_status") physicalStatus: String = "ARRIVED",
+        @Query("limit") limit: Int = 100,
+    ): Response<InboundReturnListResponse>
+
+    @POST("v1/returns/inbound/sessions")
+    suspend fun createInboundSession(
+        @Body body: com.google.gson.JsonObject = com.google.gson.JsonObject(),
+    ): Response<com.google.gson.JsonObject>
+
+    @POST("v1/returns/inbound/scan")
+    suspend fun scanInboundReturn(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: com.google.gson.JsonObject,
+    ): Response<com.google.gson.JsonObject>
+
+    @POST("v1/returns/inbound/confirm")
+    suspend fun confirmInboundReturns(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: com.google.gson.JsonObject,
+    ): Response<com.google.gson.JsonObject>
+
+    @GET("v1/returns/history")
+    suspend fun getReturnsHistory(
+        @Query("limit") limit: Int = 50,
+    ): Response<InboundReturnListResponse>
+
     // ── Treasury ──
     @GET("v1/warehouse/ops/treasury")
     suspend fun getTreasuryOverview(
@@ -150,12 +178,14 @@ interface WarehouseApi {
 
     @POST("v1/warehouse/supply-requests")
     suspend fun createSupplyRequest(
+        @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: CreateWarehouseSupplyRequestRequest,
     ): Response<CreateWarehouseSupplyRequestResponse>
 
     @PATCH("v1/warehouse/supply-requests/{id}")
     suspend fun transitionSupplyRequest(
         @Path("id") id: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: WarehouseSupplyRequestTransitionRequest,
     ): Response<WarehouseSupplyRequestTransitionResponse>
 

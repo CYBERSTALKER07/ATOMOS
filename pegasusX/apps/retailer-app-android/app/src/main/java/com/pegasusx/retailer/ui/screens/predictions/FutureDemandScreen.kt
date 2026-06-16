@@ -1,0 +1,145 @@
+package com.pegasusx.retailer.ui.screens.predictions
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.pegasusx.retailer.data.model.DemandForecast
+import com.pegasusx.retailer.ui.screens.orders.AiPlannedCard
+import com.pegasusx.retailer.ui.components.PegasusEmptyState
+import com.pegasusx.retailer.ui.components.RetailerRuntimeBanner
+import com.pegasusx.retailer.ui.components.RetailerRuntimeTone
+import com.pegasusx.retailer.ui.screens.orders.OrdersViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FutureDemandScreen(
+    onBack: () -> Unit = {},
+    viewModel: OrdersViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    var correctionForecast by remember { mutableStateOf<DemandForecast?>(null) }
+    var correctionAmount by remember { mutableStateOf("") }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text("AI Predictions") },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+        )
+
+        uiState.syncMessage?.let { message ->
+            RetailerRuntimeBanner(
+                tone = RetailerRuntimeTone.Warning,
+                message = message,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                onRetry = viewModel::refresh,
+            )
+        }
+
+        if (uiState.isLoading && uiState.predictions.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                PegasusEmptyState(
+                    icon = Icons.Rounded.AutoAwesome,
+                    title = "Loading predictions",
+                    message = "Fetching AI demand forecasts for your store.",
+                )
+            }
+        } else if (uiState.predictions.isEmpty()) {
+            PegasusEmptyState(
+                icon = Icons.Rounded.AutoAwesome,
+                title = "No AI Predictions",
+                message = "AI-predicted orders based on your history will appear here.",
+            )
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            ) {
+                itemsIndexed(uiState.predictions, key = { _, f -> f.id }) { _, forecast ->
+                    AiPlannedCard(
+                        forecast = forecast,
+                        onPreorder = { viewModel.requestPreorder(forecast) },
+                        onCorrect = {
+                            correctionForecast = forecast
+                            correctionAmount = forecast.predictedQuantity.toString()
+                        },
+                        onReject = { viewModel.rejectPrediction(forecast.id) },
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                item { Spacer(modifier = Modifier.height(32.dp)) }
+            }
+        }
+    }
+
+    correctionForecast?.let { forecast ->
+        AlertDialog(
+            onDismissRequest = { correctionForecast = null },
+            title = { Text("Correct Prediction") },
+            text = {
+                Column {
+                    Text("${forecast.productName} — AI predicted ${forecast.predictedQuantity} units")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = correctionAmount,
+                        onValueChange = { correctionAmount = it.filter { ch -> ch.isDigit() } },
+                        label = { Text("Correct amount") },
+                        singleLine = true,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        correctionAmount.toLongOrNull()?.let { amount ->
+                            viewModel.correctPrediction(forecast.id, amount)
+                        }
+                        correctionForecast = null
+                    },
+                ) { Text("Submit", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.rejectPrediction(forecast.id)
+                        correctionForecast = null
+                    },
+                ) { Text("Reject") }
+            },
+        )
+    }
+}

@@ -106,7 +106,8 @@ final class CorrectionViewModel {
                     lineItemId: $0.id,
                     rejectedQty: $0.status == .REJECTED_DAMAGED ? $0.quantity : 0,
                     status: $0.status,
-                    reason: $0.status == .REJECTED_DAMAGED ? reason(for: $0.id).rawValue : ""
+                    reason: $0.status == .REJECTED_DAMAGED ? reason(for: $0.id).rawValue : "",
+                    customReason: nil as String?
                 )
             }
             try await fleetService.amendOrder(

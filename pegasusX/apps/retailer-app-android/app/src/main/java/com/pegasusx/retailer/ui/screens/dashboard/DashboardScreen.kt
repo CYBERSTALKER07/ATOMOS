@@ -64,7 +64,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Product
-import com.pegasusx.retailer.ui.components.ClientPolicyBanner
 import com.pegasusx.retailer.ui.components.RetailerMetricTile
 import com.pegasusx.retailer.ui.components.RetailerRuntimeBanner
 import com.pegasusx.retailer.ui.components.RetailerRuntimeTone
@@ -82,7 +81,6 @@ private val timeRanges = listOf("Day", "Week", "Month")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    clientPolicyMessage: String? = null,
     viewModel: DashboardViewModel = hiltViewModel(),
     onOpenCatalog: () -> Unit = {},
     onOpenOrders: () -> Unit = {},
@@ -111,11 +109,6 @@ fun DashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
-                if (!clientPolicyMessage.isNullOrBlank()) {
-                    item {
-                        ClientPolicyBanner(clientPolicyMessage)
-                    }
-                }
                 if (uiState.loadIssue != null || uiState.isLoading) {
                     item {
                         val loadIssue = uiState.loadIssue

@@ -22,6 +22,11 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     case supplyLanes = "Supply lanes"
     case catalog = "Catalog"
     case inventory = "Inventory"
+    case promotions = "Promotions"
+    case pricing = "Pricing"
+    case returns = "Returns"
+    case reconciliation = "Reconciliation"
+    case notifications = "Notifications"
     case earnings = "Earnings"
     case profile = "Profile"
 
@@ -50,6 +55,11 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         case .supplyLanes: "arrow.triangle.swap"
         case .catalog: "square.grid.2x2"
         case .inventory: "archivebox"
+        case .promotions: "tag"
+        case .pricing: "dollarsign.circle"
+        case .returns: "arrow.uturn.backward"
+        case .reconciliation: "scalemass"
+        case .notifications: "bell"
         case .earnings: "chart.line.uptrend.xyaxis"
         case .profile: "building.2"
         }
@@ -67,7 +77,7 @@ enum SupplierSection: String, CaseIterable, Identifiable {
 
     static var opsSections: [SupplierSection] {
         // Quantity negotiation disabled ecosystem-wide.
-        [.exceptions, .shopClosed, .manifests, .dispatchPreview, .activity, .fleetOrders, .ledger, .payments, .operations]
+        [.exceptions, .shopClosed, .manifests, .dispatchPreview, .activity, .fleetOrders, .ledger, .payments, .reconciliation, .operations]
     }
 
     static var intelligenceSections: [SupplierSection] {
@@ -79,6 +89,6 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     }
 
     static var accountSections: [SupplierSection] {
-        [.catalog, .inventory, .earnings, .profile]
+        [.catalog, .inventory, .promotions, .pricing, .returns, .notifications, .earnings, .profile]
     }
 }

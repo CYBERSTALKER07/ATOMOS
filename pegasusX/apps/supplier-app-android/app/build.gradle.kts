@@ -173,6 +173,9 @@ dependencies {
     // MapLibre (fleet live map polylines)
     implementation("org.maplibre.gl:android-sdk:11.7.1")
 
+    // Barcode scanning for catalog EAN capture
+    implementation(project(":barcode-scanner"))
+
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

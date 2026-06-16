@@ -296,6 +296,10 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
+    func getReturnGoods() async throws -> ReturnGoodsResponse {
+        try await get("v1/driver/return-goods")
+    }
+
     // MARK: - Driver Session
 
     func setAvailability(available: Bool, reason: String? = nil, note: String? = nil) async throws {
@@ -368,6 +372,24 @@ final class APIClient: @unchecked Sendable {
             "v1/delivery/split-payment",
             body: Req(order_id: orderId, cash_minor: cashMinor, card_minor: cardMinor, currency: currency),
             headers: ["Idempotency-Key": DriverIdempotency.splitPayment(orderId: orderId, cashMinor: cashMinor, cardMinor: cardMinor)]
+        )
+    }
+
+    // MARK: - Factory Supply Transfers
+
+    func getSupplyTransfers() async throws -> SupplyTransfersResponse {
+        try await get("v1/driver/supply-transfers")
+    }
+
+    func arriveSupplyTransfer(transferId: String, latitude: Double, longitude: Double) async throws -> ArriveSupplyTransferResponse {
+        struct Body: Encodable {
+            let latitude: Double
+            let longitude: Double
+        }
+        return try await post(
+            "v1/driver/supply-transfers/\(transferId)/arrive",
+            body: Body(latitude: latitude, longitude: longitude),
+            idempotencyKey: DriverIdempotency.supplyTransferArrive(transferId: transferId)
         )
     }
 
@@ -652,5 +674,69 @@ private struct ReturnCompleteRequest: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case truckId = "truck_id"
+    }
+}
+
+struct SupplyTransferRow: Decodable, Identifiable {
+    let transferId: String
+    let warehouseId: String
+    let supplyRequestId: String?
+    let state: String
+    let totalVolumeVu: Double
+
+    var id: String { transferId }
+
+    enum CodingKeys: String, CodingKey {
+        case transferId = "transfer_id"
+        case warehouseId = "warehouse_id"
+        case supplyRequestId = "supply_request_id"
+        case state
+        case totalVolumeVu = "total_volume_vu"
+    }
+}
+
+struct SupplyTransfersResponse: Decodable {
+    let transfers: [SupplyTransferRow]
+}
+
+struct ArriveSupplyTransferResponse: Decodable {
+    let transferId: String
+    let state: String
+    let eventType: String?
+
+    enum CodingKeys: String, CodingKey {
+        case transferId = "transfer_id"
+        case state
+        case eventType = "event_type"
+    }
+}
+
+struct ReturnGoodsLine: Decodable, Identifiable {
+    var id: String { returnId }
+    let returnId: String
+    let orderId: String
+    let skuId: String
+    let productName: String
+    let quantity: Int64
+    let reason: String
+
+    enum CodingKeys: String, CodingKey {
+        case returnId = "return_id"
+        case orderId = "order_id"
+        case skuId = "sku_id"
+        case productName = "product_name"
+        case quantity, reason
+    }
+}
+
+struct ReturnGoodsResponse: Decodable {
+    let items: [ReturnGoodsLine]
+    let totalUnits: Int64
+    let lineCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case items
+        case totalUnits = "total_units"
+        case lineCount = "line_count"
     }
 }

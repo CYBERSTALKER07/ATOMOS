@@ -138,6 +138,7 @@ data class CatalogProductCreateRequest(
     @SerialName("stock_quantity") val stockQuantity: Long = 0,
     val unit: String = "UNIT",
     @SerialName("image_url") val imageUrl: String? = null,
+    val barcode: String? = null,
 )
 
 @Serializable
@@ -150,6 +151,7 @@ data class CatalogProduct(
     val unit: String = "UNIT",
     @SerialName("unit_volume_vu") val unitVolumeVu: Double = 1.0,
     @SerialName("image_url") val imageUrl: String? = null,
+    val barcode: String? = null,
     @SerialName("is_active") val isActive: Boolean = true,
     val version: Long = 0,
 )
@@ -162,6 +164,7 @@ data class CatalogProductUpdateRequest(
     val unit: String,
     @SerialName("unit_volume_vu") val unitVolumeVu: Double,
     @SerialName("image_url") val imageUrl: String? = null,
+    val barcode: String? = null,
     @SerialName("is_active") val isActive: Boolean,
     val version: Long,
 )
@@ -263,4 +266,33 @@ data class BillingSetupResponse(
     @SerialName("supplier_id") val supplierId: String,
     @SerialName("is_configured") val isConfigured: Boolean,
     @SerialName("selected_gateways") val selectedGateways: List<String> = emptyList(),
+)
+
+@Serializable
+data class SupplierReturnRow(
+    @SerialName("return_id") val returnId: String,
+    @SerialName("order_id") val orderId: String,
+    @SerialName("sku_id") val skuId: String,
+    @SerialName("product_name") val productName: String,
+    val quantity: Long = 0,
+    @SerialName("unit_price") val unitPrice: Long = 0,
+    val status: String = "",
+    @SerialName("physical_status") val physicalStatus: String = "",
+    @SerialName("received_qty") val receivedQty: Long = 0,
+    val reason: String = "",
+    @SerialName("driver_name") val driverName: String = "",
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class SupplierReturnsResponse(
+    val data: List<SupplierReturnRow> = emptyList(),
+)
+
+@Serializable
+data class ResolveReturnRequest(
+    @SerialName("return_id") val returnId: String,
+    @SerialName("line_item_id") val lineItemId: String,
+    val resolution: String,
+    val notes: String = "",
 )

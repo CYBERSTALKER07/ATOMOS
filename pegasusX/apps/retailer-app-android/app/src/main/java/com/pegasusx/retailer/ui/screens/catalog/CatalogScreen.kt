@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -176,13 +177,36 @@ fun CatalogScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxSize(),
                     ) {
+                        if (uiState.supplierFilters.isNotEmpty()) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(bottom = 4.dp),
+                                ) {
+                                    item {
+                                        FilterChip(
+                                            selected = uiState.selectedSupplierId.isNullOrBlank(),
+                                            onClick = { viewModel.onSupplierFilterSelected(null) },
+                                            label = { Text("All suppliers") },
+                                        )
+                                    }
+                                    items(uiState.supplierFilters, key = { it.id }) { supplier ->
+                                        FilterChip(
+                                            selected = uiState.selectedSupplierId == supplier.id,
+                                            onClick = { viewModel.onSupplierFilterSelected(supplier.id) },
+                                            label = { Text(supplier.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             RetailerSectionHeader(
                                 title = "All products",
-                                subtitle = "${uiState.products.size} SKUs from connected suppliers",
+                                subtitle = "${uiState.displayedProducts.size} SKUs from connected suppliers",
                             )
                         }
-                        items(uiState.products, key = { it.id }) { product ->
+                        items(uiState.displayedProducts, key = { it.id }) { product ->
                             ProductCard(
                                 product = product,
                                 onClick = { onProductCash(product.id) },

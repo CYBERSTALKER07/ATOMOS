@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -48,10 +49,17 @@ import com.pegasusx.driver.ui.theme.formattedAmount
 @Composable
 fun PaymentWaitingScreen(
     onComplete: () -> Unit,
+    onCashCollectionRequired: (orderId: String, amount: Long) -> Unit = { _, _ -> },
     viewModel: PaymentWaitingViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
     val lab = LocalPegasusColors.current
+
+    LaunchedEffect(Unit) {
+        viewModel.cashCollectionRequired.collect {
+            onCashCollectionRequired(state.orderId, state.amount)
+        }
+    }
 
     if (state.completed) {
         onComplete()
@@ -128,6 +136,13 @@ fun PaymentWaitingScreen(
                 color = lab.fgTertiary,
                 textAlign = TextAlign.Center
             )
+        } else if (state.isCompleting) {
+            Spacer(modifier = Modifier.height(32.dp))
+            CircularProgressIndicator(
+                color = lab.fg,
+                modifier = Modifier.size(28.dp),
+                strokeWidth = 2.dp
+            )
         }
 
         state.error?.let { error ->
@@ -135,32 +150,18 @@ fun PaymentWaitingScreen(
             Text(text = error, color = StatusRed, fontSize = 12.sp, textAlign = TextAlign.Center)
         }
 
-        Spacer(modifier = Modifier.height(40.dp))
-
-        Button(
-            onClick = { viewModel.completeOrder() },
-            enabled = state.paymentSettled && !state.isCompleting,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = MaterialTheme.shapes.medium,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = StatusGreen,
-                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-            )
-        ) {
-            if (state.isCompleting) {
-                CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Text(
-                    text = "Complete Delivery",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                )
+        if (state.error != null && state.paymentSettled) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = { viewModel.completeOrder() },
+                enabled = !state.isCompleting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.buttonColors(containerColor = StatusGreen),
+            ) {
+                Text(text = "Retry Complete Delivery", fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
         }
     }

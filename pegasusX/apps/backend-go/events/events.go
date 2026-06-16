@@ -96,6 +96,11 @@ const (
 	EventCommandReceived           = "COMMAND_RECEIVED"
 	EventCommandSettled            = "COMMAND_SETTLED"
 	EventSystemAppOutdated         = "SYSTEM_APP_OUTDATED"
+	EventOrderAmended              = "ORDER_AMENDED"
+	EventSupplierReturnCreated     = "SUPPLIER_RETURN_CREATED"
+	EventSupplierReturnResolved    = "SUPPLIER_RETURN_RESOLVED"
+	EventDriverReturnApproaching   = "DRIVER_RETURN_APPROACHING"
+	EventReturnReceivedAtWarehouse = "RETURN_RECEIVED_AT_WAREHOUSE"
 )
 
 // AggregateTypes used in OutboxEvents.AggregateType.

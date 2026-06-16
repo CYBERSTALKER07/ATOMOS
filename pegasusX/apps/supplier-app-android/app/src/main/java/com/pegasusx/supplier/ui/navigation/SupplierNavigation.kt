@@ -1,6 +1,13 @@
 package com.pegasusx.supplier.ui.navigation
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
+import com.pegasusx.supplier.BuildConfig
+import com.pegasusx.supplier.data.remote.TokenHolder
+import com.pegasusx.supplier.ui.components.ClientPolicyBanner
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Dashboard
@@ -20,7 +27,6 @@ import androidx.navigation.navArgument
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasusx.supplier.data.remote.TokenHolder
 import kotlinx.coroutines.flow.collectLatest
 import com.pegasusx.supplier.ui.screens.auth.LoginScreen
 import com.pegasusx.supplier.ui.screens.billing.BillingScreen
@@ -156,6 +162,39 @@ fun SupplierNavigation(
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val showBottomBar = currentRoute in tabs.map { it.route }
+    var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    fun loadClientPolicy() {
+        scope.launch {
+            try {
+                val resp = api.getClientPolicy(
+                    platform = "android",
+                    version = BuildConfig.VERSION_NAME,
+                )
+                if (resp.isSuccessful && resp.body() != null) {
+                    val policy = resp.body()!!
+                    clientPolicyMessage = if (policy.outdated || policy.forceUpdate) {
+                        buildString {
+                            append(if (policy.forceUpdate) "Update required" else "Update available")
+                            if (policy.minimumVersion.isNotBlank()) {
+                                append(" — minimum version ${policy.minimumVersion}")
+                            }
+                            policy.deferReason?.takeIf { it.isNotBlank() }?.let { append(". $it") }
+                        }
+                    } else {
+                        null
+                    }
+                }
+            } catch (_: Exception) {
+                // Policy fetch is optional on local/dev stacks.
+            }
+        }
+    }
+
+    LaunchedEffect(sessionEpoch, refreshEpoch) {
+        if (loggedIn) loadClientPolicy()
+    }
 
     Scaffold(
         bottomBar = {
@@ -179,11 +218,13 @@ fun SupplierNavigation(
             }
         },
     ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = start,
-            modifier = Modifier.padding(padding),
-        ) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            ClientPolicyBanner(clientPolicyMessage)
+            NavHost(
+                navController = navController,
+                startDestination = start,
+                modifier = Modifier.weight(1f),
+            ) {
             composable(SupplierRoutes.BILLING) {
                 BillingScreen(
                     api = api,
@@ -386,6 +427,7 @@ fun SupplierNavigation(
                     PortalHandoffScreen(feature) { navController.popBackStack() }
                 }
             }
+        }
         }
     }
 }

@@ -6,6 +6,7 @@ import { createSupplierApi } from "@/lib/api";
 import { ListToolbar } from "@/components/ListToolbar";
 import { usePagination } from "@/lib/use-pagination";
 import { PortalSurface } from "../_components/PortalSurface";
+import { normalizeEanBarcode } from "@pegasusx/validation";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -18,6 +19,7 @@ type CatalogProduct = {
   currency: string;
   unit: string;
   unit_volume_vu: number;
+  barcode?: string;
   image_url?: string;
   is_active: boolean;
   version: number;
@@ -34,6 +36,7 @@ type CreateProductForm = {
   description: string;
   price_minor: string;
   unit_volume_vu: string;
+  barcode: string;
 };
 
 const EMPTY_CREATE_FORM: CreateProductForm = {
@@ -42,6 +45,7 @@ const EMPTY_CREATE_FORM: CreateProductForm = {
   description: "",
   price_minor: "",
   unit_volume_vu: "1",
+  barcode: "",
 };
 
 export default function CatalogPage() {
@@ -52,6 +56,7 @@ export default function CatalogPage() {
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [draftVU, setDraftVU] = useState<Record<string, string>>({});
+  const [draftBarcode, setDraftBarcode] = useState<Record<string, string>>({});
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createForm, setCreateForm] = useState<CreateProductForm>(EMPTY_CREATE_FORM);
@@ -83,6 +88,7 @@ export default function CatalogPage() {
       setProducts(Array.isArray(rows) ? rows : []);
       setCategories(Array.isArray(cats) ? cats : []);
       setDraftVU({});
+      setDraftBarcode({});
       setCreateForm(current => ({
         ...current,
         category_id: current.category_id || cats[0]?.category_id || "",
@@ -155,13 +161,34 @@ export default function CatalogPage() {
     }
   }
 
-  async function saveUnitVolume(product: CatalogProduct) {
-    const raw = draftVU[product.product_id] ?? String(product.unit_volume_vu ?? 1);
-    const parsed = Number.parseFloat(raw);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
+  async function saveProductEdits(product: CatalogProduct) {
+    const rawVu = draftVU[product.product_id] ?? String(product.unit_volume_vu ?? 1);
+    const parsedVu = Number.parseFloat(rawVu);
+    if (!Number.isFinite(parsedVu) || parsedVu <= 0) {
       setError("Unit volume must be a positive number.");
       return;
     }
+
+    const barcodeRaw = draftBarcode[product.product_id] ?? product.barcode ?? "";
+    const trimmedBarcode = barcodeRaw.trim();
+    let normalizedBarcode: string | undefined;
+    if (trimmedBarcode) {
+      const result = normalizeEanBarcode(trimmedBarcode);
+      if (!result.ok) {
+        setError(
+          result.error === "invalid_barcode_checksum"
+            ? "Barcode checksum is invalid."
+            : "Barcode must be 8–14 digits (EAN/GTIN).",
+        );
+        return;
+      }
+      normalizedBarcode = result.code;
+    }
+
+    const vuDirty = rawVu !== String(product.unit_volume_vu ?? 1);
+    const barcodeDirty = trimmedBarcode !== (product.barcode ?? "").trim();
+    if (!vuDirty && !barcodeDirty) return;
+
     setSavingId(product.product_id);
     setError(null);
     try {
@@ -173,7 +200,8 @@ export default function CatalogPage() {
           price_minor: product.price_minor,
           currency: product.currency,
           unit: product.unit,
-          unit_volume_vu: parsed,
+          unit_volume_vu: parsedVu,
+          barcode: normalizedBarcode ?? "",
           is_active: product.is_active,
           version: product.version,
         }),
@@ -186,8 +214,13 @@ export default function CatalogPage() {
         delete next[product.product_id];
         return next;
       });
+      setDraftBarcode(prev => {
+        const next = { ...prev };
+        delete next[product.product_id];
+        return next;
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save unit volume");
+      setError(err instanceof Error ? err.message : "Failed to save product");
     } finally {
       setSavingId(null);
     }
@@ -210,6 +243,20 @@ export default function CatalogPage() {
       setCreateError("Unit VU must be a positive number.");
       return;
     }
+    const trimmedBarcode = createForm.barcode.trim();
+    let normalizedBarcode: string | undefined;
+    if (trimmedBarcode) {
+      const result = normalizeEanBarcode(trimmedBarcode);
+      if (!result.ok) {
+        setCreateError(
+          result.error === "invalid_barcode_checksum"
+            ? "Barcode checksum is invalid."
+            : "Barcode must be 8–14 digits (EAN/GTIN).",
+        );
+        return;
+      }
+      normalizedBarcode = result.code;
+    }
     setCreating(true);
     setCreateError(null);
     try {
@@ -229,6 +276,7 @@ export default function CatalogPage() {
           unit_volume_vu: unitVolume,
           stock_quantity: 0,
           unit: "UNIT",
+          ...(normalizedBarcode ? { barcode: normalizedBarcode } : {}),
           ...(imageUrl ? { image_url: imageUrl } : {}),
         }),
       });
@@ -350,6 +398,16 @@ export default function CatalogPage() {
               )}
             </div>
           </label>
+          <label className="flex flex-col gap-1 md-typescale-body-medium">
+            EAN / GTIN barcode (optional)
+            <input
+              value={createForm.barcode}
+              onChange={event => setCreateForm(prev => ({ ...prev, barcode: event.target.value }))}
+              placeholder="8–14 digit retail barcode"
+              className="px-3 py-2 rounded border font-mono"
+              style={{ background: "var(--field-background)", borderColor: "var(--field-border)" }}
+            />
+          </label>
           <label className="flex flex-col gap-1 md-typescale-body-medium md:col-span-2">
             Description (optional)
             <textarea
@@ -413,6 +471,7 @@ export default function CatalogPage() {
               <th className="px-4 py-3 md-typescale-label-large">Product</th>
               <th className="px-4 py-3 md-typescale-label-large">Image</th>
               <th className="px-4 py-3 md-typescale-label-large">Category</th>
+              <th className="px-4 py-3 md-typescale-label-large">Barcode</th>
               <th className="px-4 py-3 md-typescale-label-large text-right">Price (minor)</th>
               <th className="px-4 py-3 md-typescale-label-large text-right">Unit VU</th>
               <th className="px-4 py-3 md-typescale-label-large text-right">Actions</th>
@@ -421,7 +480,10 @@ export default function CatalogPage() {
           <tbody>
             {pagination.pageItems.map(product => {
               const vuValue = draftVU[product.product_id] ?? String(product.unit_volume_vu ?? 1);
-              const dirty = vuValue !== String(product.unit_volume_vu ?? 1);
+              const barcodeValue = draftBarcode[product.product_id] ?? product.barcode ?? "";
+              const vuDirty = vuValue !== String(product.unit_volume_vu ?? 1);
+              const barcodeDirty = barcodeValue.trim() !== (product.barcode ?? "").trim();
+              const dirty = vuDirty || barcodeDirty;
               return (
                 <tr key={product.product_id} className="border-b border-[var(--color-md-outline-variant)]">
                   <td className="px-4 py-3">
@@ -454,6 +516,23 @@ export default function CatalogPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 font-mono text-sm">{product.category_id}</td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={barcodeValue}
+                      onChange={event =>
+                        setDraftBarcode(prev => ({ ...prev, [product.product_id]: event.target.value }))
+                      }
+                      placeholder="EAN / GTIN"
+                      className="w-36 px-2 py-1 rounded border font-mono text-sm"
+                      style={{
+                        background: "var(--field-background)",
+                        borderColor: "var(--field-border)",
+                        color: "var(--field-foreground)",
+                      }}
+                    />
+                  </td>
                   <td className="px-4 py-3 text-right font-mono text-sm">
                     {product.price_minor} {product.currency}
                   </td>
@@ -478,10 +557,10 @@ export default function CatalogPage() {
                     <button
                       type="button"
                       disabled={!dirty || savingId === product.product_id}
-                      onClick={() => void saveUnitVolume(product)}
+                      onClick={() => void saveProductEdits(product)}
                       className="md-btn md-btn-tonal md-typescale-label-medium px-3 py-1 disabled:opacity-50"
                     >
-                      {savingId === product.product_id ? "Saving…" : "Save VU"}
+                      {savingId === product.product_id ? "Saving…" : "Save"}
                     </button>
                   </td>
                 </tr>

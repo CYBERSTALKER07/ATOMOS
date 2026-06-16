@@ -47,6 +47,8 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     var isTransitActive = false
     var truckStatus: String = "AVAILABLE"
     var isReturning = false
+    var returnGoodsLines: [ReturnGoodsLine] = []
+    var returnGoodsTotalUnits: Int64 = 0
 
     /// Orders that have already been auto-transitioned to ARRIVED (one-shot guard)
     private var arrivedIds: Set<String> = []
@@ -378,11 +380,25 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
             _ = try await APIClient.shared.returnComplete(truckId: vehicleId)
             truckStatus = "AVAILABLE"
             isReturning = false
+            returnGoodsLines = []
+            returnGoodsTotalUnits = 0
             isTransitActive = false
             isTelemetryLive = false
             await loadMissions()
         } catch {
             // Silent — driver can retry
+        }
+    }
+
+    func loadReturnGoods() async {
+        guard isReturning else { return }
+        do {
+            let resp = try await APIClient.shared.getReturnGoods()
+            returnGoodsLines = resp.items
+            returnGoodsTotalUnits = resp.totalUnits
+        } catch {
+            returnGoodsLines = []
+            returnGoodsTotalUnits = 0
         }
     }
 
@@ -494,6 +510,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         } else if allDone && isTransitActive {
             truckStatus = "RETURNING"
             isReturning = true
+            Task { await loadReturnGoods() }
         } else if hasLoaded {
             truckStatus = "READY"
             isReturning = false

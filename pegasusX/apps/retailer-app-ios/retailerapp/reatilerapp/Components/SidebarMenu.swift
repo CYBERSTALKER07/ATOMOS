@@ -201,6 +201,7 @@ enum SidebarDestination: String, CaseIterable {
     case insights
     case autoOrder
     case futureDemand
+    case dock
     case inbox
     case profile
     case settings
@@ -218,6 +219,7 @@ enum SidebarDestination: String, CaseIterable {
         case .insights: "Insights"
         case .autoOrder: "Auto-Order"
         case .futureDemand: "AI Predictions"
+        case .dock: "Dock Queue"
         case .inbox: "Inbox"
         case .profile: "Profile"
         case .settings: "Settings"
@@ -232,6 +234,7 @@ enum SidebarDestination: String, CaseIterable {
         case .insights: "chart.line.uptrend.xyaxis"
         case .autoOrder: "wand.and.stars"
         case .futureDemand: "sparkles"
+        case .dock: "shippingbox.and.arrow.down"
         case .inbox: "tray"
         case .profile: "person"
         case .settings: "gearshape"

@@ -1,6 +1,8 @@
 package com.pegasusx.driver.data.remote
 
-import com.pegasusx.driver.data.model.AmendOrderRequest
+import com.pegasusx.driver.data.model.ArriveSupplyTransferRequest
+import com.pegasusx.driver.data.model.ArriveSupplyTransferResponse
+import com.pegasusx.driver.data.model.SupplyTransfersResponse
 import com.pegasusx.driver.data.model.AmendOrderResponse
 import com.pegasusx.driver.data.model.AuthResponse
 import com.pegasusx.driver.data.model.AvailabilityRequest
@@ -166,6 +168,9 @@ interface DriverApi {
     suspend fun getFleetManifest(): kotlinx.serialization.json.JsonObject
 
     // Return complete — RETURNING → AVAILABLE after arriving at warehouse
+    @GET("v1/driver/return-goods")
+    suspend fun getReturnGoods(): ReturnGoodsResponse
+
     @POST("v1/fleet/driver/return-complete")
     suspend fun returnComplete(
         @Body request: ReturnCompleteRequest,
@@ -282,4 +287,15 @@ interface DriverApi {
         @Body request: SyncBatchRequest,
         @Header("Idempotency-Key") idempotencyKey: String,
     ): SyncBatchResponse
+
+    // Factory-driver supply legs (factory → warehouse)
+    @GET("v1/driver/supply-transfers")
+    suspend fun getSupplyTransfers(): SupplyTransfersResponse
+
+    @POST("v1/driver/supply-transfers/{id}/arrive")
+    suspend fun arriveSupplyTransfer(
+        @Path("id") transferId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: ArriveSupplyTransferRequest,
+    ): ArriveSupplyTransferResponse
 }

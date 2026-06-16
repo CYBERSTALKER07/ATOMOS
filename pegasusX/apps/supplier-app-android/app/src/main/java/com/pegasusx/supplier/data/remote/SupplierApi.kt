@@ -60,6 +60,19 @@ interface SupplierApi {
         @Query("offset") offset: Int? = null,
     ): Response<SupplierOrdersResponse>
 
+    @GET("v1/supplier/returns")
+    suspend fun getReturns(
+        @Query("status") status: String = "PENDING",
+        @Query("limit") limit: Int = 100,
+        @Query("offset") offset: Int = 0,
+    ): Response<SupplierReturnsResponse>
+
+    @POST("v1/supplier/returns/resolve")
+    suspend fun resolveReturn(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: ResolveReturnRequest,
+    ): Response<JsonElement>
+
     @POST("v1/supplier/orders/vet")
     suspend fun vetOrder(
         @Header("Idempotency-Key") idempotencyKey: String,
@@ -67,7 +80,10 @@ interface SupplierApi {
     ): Response<JsonElement>
 
     @POST("v1/supplier/orders/payment-bypass")
-    suspend fun issuePaymentBypass(@Body body: PaymentBypassRequest): Response<PaymentBypassResponse>
+    suspend fun issuePaymentBypass(
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+        @Body body: PaymentBypassRequest,
+    ): Response<PaymentBypassResponse>
 
     @GET("v1/supplier/analytics/velocity")
     suspend fun getAnalyticsVelocity(): Response<SupplierAnalyticsVelocityResponse>
@@ -263,7 +279,10 @@ interface SupplierApi {
     suspend fun getEmpathyAdoption(): Response<SupplierEmpathyAdoption>
 
     @POST("v1/supplier/broadcast")
-    suspend fun postBroadcast(@Body body: SupplierBroadcastRequest): Response<SupplierBroadcastResponse>
+    suspend fun postBroadcast(
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+        @Body body: SupplierBroadcastRequest,
+    ): Response<SupplierBroadcastResponse>
 
     @GET("v1/supplier/ws-session")
     suspend fun getWsSession(): Response<SupplierWsSessionResponse>

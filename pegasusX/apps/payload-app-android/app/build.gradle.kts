@@ -172,9 +172,8 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
-    // Barcode scanning removed from ecosystem scope — see docs/BARCODE_SCANNING.md
-    // To reinstate: re-add CameraX 1.4.1 + com.google.mlkit:barcode-scanning:17.3.0
-    // and add android.permission.CAMERA to AndroidManifest.xml.
+    // Barcode scanning (shared module: CameraX + ML Kit)
+    implementation(project(":barcode-scanner"))
 
     // Firebase Cloud Messaging
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))

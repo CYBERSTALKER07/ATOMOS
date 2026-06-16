@@ -190,4 +190,34 @@ interface PayloadApi {
         @Query("version") version: String,
         @Query("channel") channel: String = "production",
     ): Response<ClientPolicyResponse>
+
+    // ── Inbound returns gate ─────────────────────────────────────────────────
+    @GET("v1/returns/inbound")
+    suspend fun getInboundReturns(
+        @Query("physical_status") physicalStatus: String = "ARRIVED",
+        @Query("limit") limit: Int = 100,
+    ): Response<Map<String, @JvmSuppressWildcards Any>>
+
+    @POST("v1/returns/inbound/sessions")
+    suspend fun createInboundSession(
+        @Body body: Map<String, @JvmSuppressWildcards Any> = emptyMap(),
+    ): Response<Map<String, @JvmSuppressWildcards Any>>
+
+    @POST("v1/returns/inbound/scan")
+    suspend fun scanInboundReturn(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): Response<Map<String, @JvmSuppressWildcards Any>>
+
+    @POST("v1/returns/inbound/confirm")
+    suspend fun confirmInboundReturns(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): Response<Map<String, @JvmSuppressWildcards Any>>
+
+    @GET("v1/returns/history")
+    suspend fun getReturnsHistory(@Query("limit") limit: Int = 50): Response<Map<String, @JvmSuppressWildcards Any>>
+
+    @GET("v1/catalog/barcode/{ean}")
+    suspend fun lookupBarcode(@Path("ean") ean: String): Response<Map<String, @JvmSuppressWildcards Any>>
 }

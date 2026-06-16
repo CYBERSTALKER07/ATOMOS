@@ -52,6 +52,18 @@ Retailer Android/iOS/desktop, supplier portal + native, warehouse portal + nativ
 
 **Overall:** backend P0/P1 mutation guards ~98%; client keys + reconcile ~98%; full audit ~98%.
 
+### Cross-platform parity sweep (2026-06-15)
+
+| Gap | Status |
+|-----|--------|
+| Supplier returns resolve on Android/iOS (portal had write-off/restock; native was list-only) | **Closed** — `POST /v1/supplier/returns/resolve` + `supplierResolveReturnKey` on all three |
+| Driver supply transfer arrive without `Idempotency-Key` | **Closed** — `driverSupplyTransferArriveKey` on Android + iOS |
+| Warehouse supply create/cancel/receive without idempotency (portal + native) | **Closed** — `warehouseCreateSupplyRequestKey`, `warehouseSupplyRequestTransitionKey`, `warehouseReceiveTransferKey` |
+| Payload-terminal reassign used `/v1/fleet/reassign` while tablet native uses `/v1/payloader/reassign-order` | **Closed** — terminal aligned to payloader endpoint + `payloadApplyReassignKey` |
+| Barcode catalog + inbound return gate row parity | **Closed** — see `ROLE_ROW_PARITY_MATRIX.md` § Barcode catalog |
+
+**Remaining intentional deltas:** retailer dock (desktop-only); warehouse native supply hub lacks full forecast create form (create via Dispatch); factory iOS notifications/analytics/exceptions as dashboard sheets not dedicated tabs.
+
 ## Priority legend
 
 | Priority | Meaning |

@@ -579,7 +579,7 @@ private fun OrderedCard(
 
 // ── AI Planned Card (Future forecasts with execution date) ──
 @Composable
-private fun AiPlannedCard(
+internal fun AiPlannedCard(
     forecast: DemandForecast,
     onPreorder: () -> Unit,
     onCorrect: () -> Unit,

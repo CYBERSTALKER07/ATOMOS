@@ -19,8 +19,6 @@ import { useWebSocket } from "../lib/ws";
 import { useRouter } from "next/navigation";
 import type {
   ActiveFulfillmentsResponse,
-  CardCheckoutResponse,
-  CashCheckoutResponse,
   CheckoutPreviewResponse,
   PendingPaymentsResponse,
   UnifiedCheckoutResponse,
@@ -28,11 +26,11 @@ import type {
   StockWarning,
 } from "../lib/types";
 import type { PaymentGatewayDegradedPayload } from "@pegasusx/types";
+import { retailerUnifiedCheckoutKey } from "@pegasusx/api-client";
 import {
-  retailerUnifiedCheckoutKey,
-  retailerCardCheckoutKey,
-  retailerCashCheckoutKey,
-} from "@pegasusx/api-client";
+  enqueuePendingCheckout,
+  pendingCheckoutQueuedMessage,
+} from "../lib/pending-checkout";
 
 function getProfile(): RetailerProfile | null {
   if (typeof localStorage === "undefined") return null;
@@ -265,19 +263,22 @@ export default function CheckoutModal({
         .map((item) => `${item.sku_id}:${item.quantity}:${item.unit_price}`)
         .sort()
         .join("|");
+      const idempotencyKey = retailerUnifiedCheckoutKey(method, cartKey);
+
+      const checkoutPayload = {
+        retailer_id: profile.id,
+        payment_gateway: gatewayMap[method] || "GLOBAL_PAY",
+        latitude: 0,
+        longitude: 0,
+        items: lineItems,
+      };
 
       const cartRes = await apiFetch("/v1/checkout/unified", {
         method: "POST",
         headers: {
-          "Idempotency-Key": retailerUnifiedCheckoutKey(method, cartKey),
+          "Idempotency-Key": idempotencyKey,
         },
-        body: JSON.stringify({
-          retailer_id: profile.id,
-          payment_gateway: gatewayMap[method] || "GLOBAL_PAY",
-          latitude: 0,
-          longitude: 0,
-          items: lineItems,
-        }),
+        body: JSON.stringify(checkoutPayload),
       });
 
       if (!cartRes.ok) {
@@ -319,55 +320,51 @@ export default function CheckoutModal({
         setStockWarnings([]);
       }
 
-      for (const so of resData.supplier_orders) {
-        if (resData.backorder_order_id && so.order_id === resData.backorder_order_id) {
-          continue;
-        }
-        if (method !== "cash" && !degradedBanner) {
-          const payRes = await apiFetch("/v1/order/card-checkout", {
-            method: "POST",
-            headers: {
-              "Idempotency-Key": retailerCardCheckoutKey(so.order_id, gatewayMap[method]),
-            },
-            body: JSON.stringify({
-              order_id: so.order_id,
-              gateway: gatewayMap[method],
-              amount: so.total,
-              return_url: "retailer-app://orders",
-            }),
-          });
-          if (!payRes.ok) {
-            const payErrBody = await payRes.json().catch(() => null);
-            if (payRes.status === 422 && payErrBody?.error === "payment_gateway_policy_violation") {
-               setDegradedBanner({ gateway: gatewayMap[method], reason: payErrBody.message || "Gateway temporarily blocked." });
-               setMethod("cash");
-               throw new Error(payErrBody.message || "Card gateway rejected. Please use cash for remaining orders.");
-            }
-            throw new Error(
-              `Payment initiation failed for order ${so.order_id}`,
-            );
-          }
-          const payData = (await payRes.json()) as CardCheckoutResponse;
-          if (payData.payment_url) {
-            window.open(payData.payment_url, "_blank");
-          }
-        } else {
-          // Cash fallback / default
-          await apiFetch("/v1/order/cash-checkout", {
-            method: "POST",
-            headers: {
-              "Idempotency-Key": retailerCashCheckoutKey(so.order_id),
-            },
-            body: JSON.stringify({ order_id: so.order_id }),
-          });
-        }
-      }
-
       clearCart();
       onClose();
       router.push("/orders");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Checkout failed");
+      const retryable =
+        err instanceof TypeError ||
+        (err instanceof Error &&
+          /failed to fetch|network|load failed|offline/i.test(err.message));
+      if (retryable) {
+        try {
+          const profile = getProfile();
+          if (profile) {
+            const gatewayMap: Record<string, string> = {
+              global_pay: "GLOBAL_PAY",
+              adyen: "ADYEN",
+              airwallex: "AIRWALLEX",
+              cash: "CASH",
+            };
+            const lineItems = items.map((item) => ({
+              sku_id: item.product_id,
+              quantity: item.quantity,
+              unit_price: item.price,
+            }));
+            const cartKey = lineItems
+              .map((item) => `${item.sku_id}:${item.quantity}:${item.unit_price}`)
+              .sort()
+              .join("|");
+            enqueuePendingCheckout(
+              {
+                retailer_id: profile.id,
+                payment_gateway: gatewayMap[method] || "GLOBAL_PAY",
+                latitude: 0,
+                longitude: 0,
+                items: lineItems,
+              },
+              retailerUnifiedCheckoutKey(method, cartKey),
+            );
+          }
+        } catch {
+          // Best-effort queue.
+        }
+        setError(pendingCheckoutQueuedMessage(err));
+      } else {
+        setError(err instanceof Error ? err.message : "Checkout failed");
+      }
     } finally {
       setLoading(false);
     }

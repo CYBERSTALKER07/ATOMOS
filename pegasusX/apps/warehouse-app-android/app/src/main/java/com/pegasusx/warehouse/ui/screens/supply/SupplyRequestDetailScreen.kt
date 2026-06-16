@@ -13,6 +13,7 @@ import com.pegasusx.warehouse.data.model.WarehouseSupplyRequest
 import com.pegasusx.warehouse.data.model.WarehouseSupplyRequestTransitionRequest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
+import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
 import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
@@ -58,8 +59,10 @@ fun SupplyRequestDetailScreen(
         busy = true
         scope.launch {
             try {
+                val key = WarehouseIdempotencyKeys.supplyRequestTransition(requestId, "CANCEL")
                 val resp = api.transitionSupplyRequest(
                     requestId,
+                    key,
                     WarehouseSupplyRequestTransitionRequest(action = "CANCEL"),
                 )
                 if (resp.isSuccessful) {

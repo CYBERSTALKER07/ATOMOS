@@ -16,6 +16,7 @@ settings:
     INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
     TARGETED_DEVICE_FAMILY: "1,2"
+    INFOPLIST_KEY_NSCameraUsageDescription: "Scan product barcodes during inbound returns"
     INFOPLIST_KEY_NSUserNotificationsUsageDescription: "Receive warehouse operations alerts"
 targets:
   WarehouseAppIOS:
@@ -26,6 +27,9 @@ targets:
       - path: WarehouseApp
         excludes:
           - "**/.DS_Store"
+      - path: ../../packages/mobile-ios-barcode
+        includes:
+          - EANBarcodeScannerView.swift
     resources:
       - path: WarehouseApp/Assets.xcassets
     info:

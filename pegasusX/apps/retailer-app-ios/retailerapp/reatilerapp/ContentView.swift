@@ -10,13 +10,14 @@ import SwiftUI
 // MARK: - Tab Enums
 
 enum AppTab: String, CaseIterable {
-    case home, catalog, orders, profile, suppliers
+    case home, catalog, orders, deliveries, profile, suppliers
 
     var title: String {
         switch self {
         case .home: "Home"
         case .catalog: "Catalog"
         case .orders: "Orders"
+        case .deliveries: "Deliveries"
         case .profile: "Profile"
         case .suppliers: "Suppliers"
         }
@@ -27,6 +28,7 @@ enum AppTab: String, CaseIterable {
         case .home: "house"
         case .catalog: "square.grid.2x2"
         case .orders: "shippingbox"
+        case .deliveries: "map"
         case .profile: "person.circle"
         case .suppliers: "building.2"
         }
@@ -34,7 +36,7 @@ enum AppTab: String, CaseIterable {
 }
 
 enum SideMenuTab: String, Hashable, CaseIterable {
-    case home, catalog, orders, suppliers
+    case home, catalog, orders, deliveries, suppliers
     case insights, procurement, futureDemand, autoOrder, profile
 
     var title: String {
@@ -42,6 +44,7 @@ enum SideMenuTab: String, Hashable, CaseIterable {
         case .home: "Home"
         case .catalog: "Catalog"
         case .orders: "Orders"
+        case .deliveries: "Deliveries"
         case .suppliers: "Suppliers"
         case .insights: "Insights"
         case .procurement: "Procurement"
@@ -56,6 +59,7 @@ enum SideMenuTab: String, Hashable, CaseIterable {
         case .home: "house"
         case .catalog: "square.grid.2x2"
         case .orders: "shippingbox"
+        case .deliveries: "map"
         case .suppliers: "building.2"
         case .insights: "chart.bar.xaxis"
         case .procurement: "chart.bar"
@@ -94,6 +98,7 @@ struct ContentView: View {
     @State private var paymentEvent: PaymentRequiredEvent?
     @State private var shopClosedAlert: ShopClosedAlertEvent?
     @State private var refreshCenter = RetailerRefreshCenter.shared
+    @State private var clientPolicyMessage: String?
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.modelContext) private var modelContext
@@ -104,18 +109,21 @@ struct ContentView: View {
     /// Show floating bar only on main pages
     private var showFloatingBar: Bool {
         if horizontalSizeClass == .regular {
-            return sideMenuSelection == .home || sideMenuSelection == .orders || sideMenuSelection == .suppliers
+            return sideMenuSelection == .home || sideMenuSelection == .orders || sideMenuSelection == .suppliers || sideMenuSelection == .deliveries
         } else {
-            return selectedTab == .home || selectedTab == .orders || selectedTab == .suppliers
+            return selectedTab == .home || selectedTab == .orders || selectedTab == .suppliers || selectedTab == .deliveries
         }
     }
 
     var body: some View {
-        Group {
-            if horizontalSizeClass == .regular {
-                ipadLayout
-            } else {
-                iphoneLayout
+        VStack(spacing: 0) {
+            ClientPolicyBanner(message: clientPolicyMessage)
+            Group {
+                if horizontalSizeClass == .regular {
+                    ipadLayout
+                } else {
+                    iphoneLayout
+                }
             }
         }
         .sheet(isPresented: $showFutureDemand) {
@@ -132,7 +140,7 @@ struct ContentView: View {
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
                             NavigationLink {
-                                DeliveryMapView()
+                                DeliveriesHubView()
                             } label: {
                                 Image(systemName: "map")
                                     .font(.system(.subheadline, weight: .semibold))
@@ -223,6 +231,10 @@ struct ContentView: View {
             await loadActiveOrders()
             await loadPendingPayments()
             await loadNotificationCount()
+            await loadClientPolicy()
+        }
+        .task(id: ws.reconnectEpoch) {
+            await loadClientPolicy()
         }
         .task { await connectWebSocket() }
         .sheet(item: $paymentEvent) { event in
@@ -331,7 +343,7 @@ struct ContentView: View {
                                 .transition(.opacity)
                         }
 
-                        ForEach([SideMenuTab.home, .catalog, .orders, .suppliers], id: \.self) { tab in
+                        ForEach([SideMenuTab.home, .catalog, .orders, .deliveries, .suppliers], id: \.self) { tab in
                             sidebarItem(for: tab)
                         }
 
@@ -444,6 +456,11 @@ struct ContentView: View {
         case .home: tabContent(.home)
         case .catalog: tabContent(.catalog)
         case .orders: tabContent(.orders)
+        case .deliveries:
+            NavigationStack {
+                DeliveriesHubView()
+                    .toolbar { standardToolbar }
+            }
         case .suppliers: tabContent(.suppliers)
         case .profile: tabContent(.profile)
         case .insights:
@@ -515,6 +532,7 @@ struct ContentView: View {
                 case .catalog:
                     CatalogView(onNavigateToSuppliers: navigateToSuppliersTab)
                 case .orders: OrdersView()
+                case .deliveries: DeliveriesHubView()
                 case .profile: ProfileView()
                 case .suppliers: MySuppliersView()
                 }
@@ -641,6 +659,14 @@ struct ContentView: View {
             }
         case .autoOrder: showAutoOrder = true
         case .futureDemand: showFutureDemand = true
+        case .dock:
+            if horizontalSizeClass == .regular {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    sideMenuSelection = .deliveries
+                }
+            } else {
+                selectedTab = .deliveries
+            }
         case .inbox: showNotificationInbox = true
         case .profile: selectedTab = .profile
         case .insights: showInsights = true
@@ -700,6 +726,37 @@ struct ContentView: View {
         }
     }
 
+    private func loadClientPolicy() async {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        do {
+            struct ClientPolicy: Decodable {
+                let outdated: Bool?
+                let forceUpdate: Bool?
+                let minimumVersion: String?
+                enum CodingKeys: String, CodingKey {
+                    case outdated
+                    case forceUpdate = "force_update"
+                    case minimumVersion = "minimum_version"
+                }
+            }
+            let policy: ClientPolicy = try await api.get(
+                path: "/v1/platform/client-policy?role=RETAILER&platform=ios&version=\(version)&channel=production"
+            )
+            if policy.outdated == true || policy.forceUpdate == true {
+                let prefix = policy.forceUpdate == true ? "Update required" : "Update available"
+                if let min = policy.minimumVersion, !min.isEmpty {
+                    clientPolicyMessage = "\(prefix) — minimum version \(min)"
+                } else {
+                    clientPolicyMessage = prefix
+                }
+            } else {
+                clientPolicyMessage = nil
+            }
+        } catch {
+            clientPolicyMessage = nil
+        }
+    }
+
     // MARK: - WebSocket
 
     private func connectWebSocket() async {
@@ -733,6 +790,7 @@ struct ContentView: View {
                 await RetailerSessionReconcile.run(api: api)
                 await loadActiveOrders()
                 await loadPendingPayments(reconcile: true)
+                await loadClientPolicy()
                 await PendingOrderReplayer.flush(modelContext: modelContext, api: api)
             }
             refreshCenter.trigger()

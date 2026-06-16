@@ -15,23 +15,30 @@ struct SupplierAdaptiveShell: View {
     @State private var sidebarSelection: SupplierSection? = .dashboard
     @State private var compactTab: CompactTab = .dashboard
     @State private var refreshEpoch = 0
+    @State private var clientPolicyMessage: String?
 
     private var effectiveRefreshEpoch: Int { refreshEpoch + realtimeHub.refreshEpoch }
     @State private var pathMonitor: NWPathMonitor?
     @State private var wasOffline = false
 
     var body: some View {
-        Group {
-            if horizontalSizeClass == .regular {
-                regularShell
-            } else {
-                compactShell
+        VStack(spacing: 0) {
+            ClientPolicyBanner(message: clientPolicyMessage)
+            Group {
+                if horizontalSizeClass == .regular {
+                    regularShell
+                } else {
+                    compactShell
+                }
             }
         }
         .onAppear { startNetworkMonitor() }
         .onDisappear {
             pathMonitor?.cancel()
             pathMonitor = nil
+        }
+        .task(id: effectiveRefreshEpoch) {
+            await loadClientPolicy()
         }
     }
 
@@ -127,6 +134,16 @@ struct SupplierAdaptiveShell: View {
             CatalogView()
         case .inventory:
             InventoryView()
+        case .promotions:
+            PromotionsView()
+        case .pricing:
+            PricingView()
+        case .returns:
+            ReturnsView()
+        case .reconciliation:
+            ReconciliationView()
+        case .notifications:
+            NotificationInboxView()
         case .earnings:
             EarningsView()
         case .profile:
@@ -149,5 +166,48 @@ struct SupplierAdaptiveShell: View {
         }
         monitor.start(queue: DispatchQueue(label: "com.pegasusx.supplier.network"))
         pathMonitor = monitor
+    }
+
+    @MainActor
+    private func loadClientPolicy() async {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        do {
+            struct ClientPolicy: Decodable {
+                let outdated: Bool
+                let forceUpdate: Bool
+                let minimumVersion: String
+                let deferReason: String?
+
+                enum CodingKeys: String, CodingKey {
+                    case outdated
+                    case forceUpdate = "force_update"
+                    case minimumVersion = "minimum_version"
+                    case deferReason = "defer_reason"
+                }
+            }
+            let policy: ClientPolicy = try await APIClient.shared.get(
+                "v1/platform/client-policy",
+                query: [
+                    "role": "ADMIN",
+                    "platform": "ios",
+                    "version": version,
+                    "channel": "production",
+                ],
+            )
+            if policy.outdated || policy.forceUpdate {
+                var message = policy.forceUpdate ? "Update required" : "Update available"
+                if !policy.minimumVersion.isEmpty {
+                    message += " — minimum version \(policy.minimumVersion)"
+                }
+                if let deferReason = policy.deferReason, !deferReason.isEmpty {
+                    message += ". \(deferReason)"
+                }
+                clientPolicyMessage = message
+            } else {
+                clientPolicyMessage = nil
+            }
+        } catch {
+            // Policy fetch is optional on local/dev stacks.
+        }
     }
 }

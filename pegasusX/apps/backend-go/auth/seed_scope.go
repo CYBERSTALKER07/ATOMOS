@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	defaultSmokeSKU         = "SSMR-SKU-1"
+	defaultSmokeSKU          = "SSMR-SKU-1"
+	defaultSmokeBarcode      = "5901234123457"
 	defaultSmokeInventoryQOH = int64(10000)
 )
 
@@ -29,6 +30,7 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 	centerLat, centerLng := deliveryZoneCenter()
 	coverageKm := deliveryZoneRadiusKm()
 	sku := smokeSKU()
+	barcode := smokeBarcode()
 
 	password := strings.TrimSpace(os.Getenv("SSMR_SMOKE_SUPPLIER_PASSWORD"))
 	if password == "" {
@@ -138,6 +140,7 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 				"SupplierId":    supplierID,
 				"CategoryId":    "ssmr-demo-category",
 				"Name":          "SSMR Demo SKU",
+				"Barcode":       barcode,
 				"PriceMinor":    int64(50000),
 				"Currency":      "UZS",
 				"StockQuantity": defaultSmokeInventoryQOH,
@@ -262,6 +265,13 @@ func smokeSKU() string {
 		return sku
 	}
 	return defaultSmokeSKU
+}
+
+func smokeBarcode() string {
+	if bc := strings.TrimSpace(os.Getenv("SSMR_SMOKE_BARCODE")); bc != "" {
+		return bc
+	}
+	return defaultSmokeBarcode
 }
 
 func deliveryZoneCenter() (float64, float64) {

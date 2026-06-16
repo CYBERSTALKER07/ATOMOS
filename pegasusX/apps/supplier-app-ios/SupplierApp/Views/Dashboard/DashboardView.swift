@@ -6,7 +6,6 @@ struct DashboardView: View {
     @State private var dashboard: SupplierDashboard?
     @State private var loading = true
     @State private var error: String?
-    @State private var clientPolicyMessage: String?
 
     private var gridMin: CGFloat {
         horizontalSizeClass == .regular ? 200 : 150
@@ -27,8 +26,6 @@ struct DashboardView: View {
                         }
                     } else if let dashboard {
                         VStack(alignment: .leading, spacing: SupplierTheme.spacingXL) {
-                            ClientPolicyBanner(message: clientPolicyMessage)
-
                             if !tokenStore.isConfigured {
                                 billingBanner
                             }
@@ -76,6 +73,13 @@ struct DashboardView: View {
             .toolbar {
                 signOutToolbar
                 ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        NotificationInboxView()
+                    } label: {
+                        Image(systemName: "bell")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Refresh", systemImage: "arrow.clockwise") {
                         Task { await load(silent: true) }
                     }
@@ -85,7 +89,6 @@ struct DashboardView: View {
             .refreshable { await load(silent: true) }
             .task {
                 await load()
-                await loadClientPolicy()
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 30_000_000_000)
                     await load(silent: true)
@@ -120,49 +123,6 @@ struct DashboardView: View {
                 tokenStore.clear()
             }
             .labelStyle(.iconOnly)
-        }
-    }
-
-    @MainActor
-    private func loadClientPolicy() async {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        do {
-            struct ClientPolicy: Decodable {
-                let outdated: Bool
-                let forceUpdate: Bool
-                let minimumVersion: String
-                let deferReason: String?
-
-                enum CodingKeys: String, CodingKey {
-                    case outdated
-                    case forceUpdate = "force_update"
-                    case minimumVersion = "minimum_version"
-                    case deferReason = "defer_reason"
-                }
-            }
-            let policy: ClientPolicy = try await APIClient.shared.get(
-                "v1/platform/client-policy",
-                query: [
-                    "role": "ADMIN",
-                    "platform": "ios",
-                    "version": version,
-                    "channel": "production",
-                ],
-            )
-            if policy.outdated || policy.forceUpdate {
-                var message = policy.forceUpdate ? "Update required" : "Update available"
-                if !policy.minimumVersion.isEmpty {
-                    message += " — minimum version \(policy.minimumVersion)"
-                }
-                if let deferReason = policy.deferReason, !deferReason.isEmpty {
-                    message += ". \(deferReason)"
-                }
-                clientPolicyMessage = message
-            } else {
-                clientPolicyMessage = nil
-            }
-        } catch {
-            // Policy fetch is optional on local/dev stacks.
         }
     }
 

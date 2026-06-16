@@ -82,11 +82,7 @@ struct FleetMapView: View {
                                 driverId: vm.driverId,
                                 onConfirm: { result in
                                     offloadResponse = result
-                                    if result.paymentMethod.uppercased() == "CASH" {
-                                        navPath.append("cash-collection")
-                                    } else {
-                                        navPath.append("payment-waiting")
-                                    }
+                                    navPath.append("payment-waiting")
                                 },
                                 onCancel: { navPath = NavigationPath() },
                                 onShopClosed: { orderId in
@@ -108,6 +104,9 @@ struct FleetMapView: View {
                                     vm.markCompleted(offload.orderId)
                                     navPath = NavigationPath()
                                     withAnimation(Anim.snappy) { phase = .pickingOrder; selectedMission = nil }
+                                },
+                                onCashCollectionRequired: {
+                                    navPath.append("cash-collection")
                                 }
                             )
                             .toolbar(.hidden, for: .navigationBar)

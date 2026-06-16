@@ -11,6 +11,9 @@ object SupplierIdempotencyKeys {
     fun negotiationResolve(proposalId: String, action: String): String =
         "supplier-negotiate-resolve:$proposalId:$action"
 
+    fun resolveReturn(returnId: String, resolution: String): String =
+        "supplier-resolve-return:$returnId:${resolution.uppercase()}"
+
     fun dispatch(
         supplierId: String,
         warehouseId: String,
@@ -18,6 +21,12 @@ object SupplierIdempotencyKeys {
         routeFingerprint: String,
     ): String =
         "supplier-dispatch:$supplierId:$warehouseId:$mode:${stableHash(routeFingerprint)}"
+
+    fun broadcast(scopeId: String, role: String, title: String, body: String): String =
+        "supplier-broadcast:$scopeId:${stableHash("$role:$title:$body")}"
+
+    fun paymentBypass(orderId: String, reason: String): String =
+        "supplier-payment-bypass:$orderId:${stableHash(reason)}"
 
     /** FNV-1a 32-bit — matches api-client `stableHash`. */
     private fun stableHash(input: String): String {

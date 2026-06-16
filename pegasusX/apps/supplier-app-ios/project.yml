@@ -16,6 +16,7 @@ settings:
     INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
     TARGETED_DEVICE_FAMILY: "1,2"
+    INFOPLIST_KEY_NSCameraUsageDescription: "Scan product barcodes when adding catalog EAN/GTIN"
 targets:
   SupplierAppIOS:
     type: application
@@ -25,6 +26,10 @@ targets:
       - path: SupplierApp
         excludes:
           - "**/.DS_Store"
+      - path: ../../packages/mobile-ios-barcode
+        includes:
+          - EANBarcodeScannerView.swift
+          - EANBarcode.swift
     resources:
       - path: SupplierApp/Assets.xcassets
     info:

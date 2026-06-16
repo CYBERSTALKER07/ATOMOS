@@ -23,6 +23,7 @@ type Product struct {
 	StockQuantity int64     `json:"stock_quantity" spanner:"StockQuantity"`
 	Unit          string    `json:"unit" spanner:"Unit"`
 	UnitVolumeVU  float64   `json:"unit_volume_vu" spanner:"UnitVolumeVU"`
+	Barcode       string    `json:"barcode,omitempty" spanner:"Barcode"`
 	IsActive      bool      `json:"is_active" spanner:"IsActive"`
 	Version       int64     `json:"version" spanner:"Version"`
 	CreatedAt     time.Time `json:"created_at" spanner:"CreatedAt"`
@@ -263,6 +264,7 @@ func (r *SpannerRepository) CreateProduct(ctx context.Context, p Product) error 
 			"StockQuantity": p.StockQuantity,
 			"Unit":          p.Unit,
 			"UnitVolumeVU":  normalizeUnitVolumeVU(p.UnitVolumeVU),
+			"Barcode":       spanner.NullString{StringVal: p.Barcode, Valid: strings.TrimSpace(p.Barcode) != ""},
 			"IsActive":      p.IsActive,
 			"Version":       int64(1),
 			"CreatedAt":     spanner.CommitTimestamp,
@@ -300,6 +302,7 @@ func (r *SpannerRepository) UpdateProduct(ctx context.Context, p Product) error 
 			"StockQuantity": p.StockQuantity,
 			"Unit":          p.Unit,
 			"UnitVolumeVU":  normalizeUnitVolumeVU(p.UnitVolumeVU),
+			"Barcode":       spanner.NullString{StringVal: p.Barcode, Valid: strings.TrimSpace(p.Barcode) != ""},
 			"IsActive":      p.IsActive,
 			"Version":       currentVersion + 1,
 			"UpdatedAt":     spanner.CommitTimestamp,

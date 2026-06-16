@@ -32,6 +32,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotionroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/returnsroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailerroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
@@ -188,6 +189,14 @@ func main() {
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 	})
+	returnsDeps := returnsroutes.Deps{
+		Service:             app.ReturnsService,
+		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
+		FirebaseVerifier:    firebaseVerifier,
+	}
+	returnsroutes.RegisterRoutes(r, returnsDeps)
+	returnsroutes.RegisterDriverRoutes(r, returnsDeps)
+	returnsroutes.RegisterSupplierHistory(r, returnsDeps)
 	supplierroutes.RegisterRoutes(r, supplierroutes.Deps{
 		Service:           app.SupplierService,
 		OrderService:      app.OrderService,
@@ -226,6 +235,7 @@ func main() {
 		RetailerHub:         app.RetailerHub,
 		LastLocations:       app.DriverLocations,
 		DeliveryTokens:      app.OrderService,
+		ReturnApproach:      app.ReturnsService,
 		SupplierID:          app.Supplier.SupplierID,
 		Log:                 slog.Default(),
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,

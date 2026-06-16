@@ -62,6 +62,7 @@ import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.Composable
@@ -110,6 +111,7 @@ import com.pegasus.payload.ui.components.PayloadStatusChip
 @Composable
 fun HomeScreen(
     onLogout: () -> Unit,
+    onInboundReturns: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -174,6 +176,9 @@ fun HomeScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onInboundReturns) {
+                        Icon(Icons.Filled.Undo, contentDescription = "Inbound returns")
+                    }
                     IconButton(onClick = { viewModel.toggleExceptionsPanel() }) {
                         Icon(Icons.Filled.Warning, contentDescription = "Manifest exceptions")
                     }

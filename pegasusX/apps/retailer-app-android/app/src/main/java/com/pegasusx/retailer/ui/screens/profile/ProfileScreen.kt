@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.pegasusx.retailer.ui.components.ClientPolicyBanner
 import com.pegasusx.retailer.ui.components.RetailerMetricTile
 import com.pegasusx.retailer.ui.components.RetailerRuntimeBanner
 import com.pegasusx.retailer.ui.components.RetailerRuntimeTone
@@ -134,15 +133,6 @@ fun ProfileScreen(
                 onGlobalToggle = viewModel::toggleGlobalAutoOrder,
                 isUpdating = uiState.isUpdatingSettings,
             )
-        }
-
-        uiState.clientPolicyMessage?.let { message ->
-            item {
-                ClientPolicyBanner(
-                    message = message,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-            }
         }
 
         uiState.pricingRulesSummary?.let { summary ->

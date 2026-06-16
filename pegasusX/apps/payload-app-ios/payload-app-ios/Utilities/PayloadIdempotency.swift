@@ -28,4 +28,13 @@ enum PayloadIdempotency {
     static func applyReassign(orderId: String, toDriverId: String) -> String {
         key(action: "reassign-order", entityId: "\(orderId)-\(toDriverId)")
     }
+
+    static func inboundScan(barcode: String, sessionId: String) -> String {
+        key(action: "inbound-scan", entityId: "\(barcode)-\(sessionId)")
+    }
+
+    static func inboundConfirm(returnIds: [String], disposition: String) -> String {
+        let sorted = returnIds.sorted().joined(separator: ",")
+        return key(action: "inbound-confirm", entityId: "\(disposition)-\(sorted)")
+    }
 }

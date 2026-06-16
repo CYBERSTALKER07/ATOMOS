@@ -15,6 +15,7 @@ struct HomeView: View {
     @State private var viewModel = HomeViewModel()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var showInjectSheet = false
+    @State private var showInboundReturns = false
     @State private var exceptionTargetOrderId: String?
 
     var body: some View {
@@ -51,6 +52,14 @@ struct HomeView: View {
                                     }
                                 }
                         }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            showInboundReturns = true
+                        } label: {
+                            Image(systemName: "arrow.uturn.backward.circle")
+                        }
+                        .accessibilityLabel("Inbound returns")
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
@@ -105,6 +114,9 @@ struct HomeView: View {
                     }
                 }
             )
+        }
+        .sheet(isPresented: $showInboundReturns) {
+            InboundReturnsView(online: viewModel.online)
         }
         .sheet(item: Binding(
             get: { exceptionTargetOrderId.map { ExceptionTarget(id: $0) } },

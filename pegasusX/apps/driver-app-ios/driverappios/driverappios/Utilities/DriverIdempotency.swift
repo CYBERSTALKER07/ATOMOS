@@ -90,6 +90,10 @@ enum DriverIdempotency {
         return "driver-route-reorder:\(driverId()):\(routeId):\(stableHash(seq.joined(separator: ",")))"
     }
 
+    static func supplyTransferArrive(transferId: String) -> String {
+        "driver-supply-arrive:\(driverId()):\(transferId)"
+    }
+
     private static func stableHash(_ input: String) -> String {
         var hash: UInt32 = 2166136261
         for scalar in input.unicodeScalars {

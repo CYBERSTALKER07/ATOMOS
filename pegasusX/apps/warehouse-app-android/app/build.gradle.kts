@@ -170,6 +170,9 @@ dependencies {
     // MapLibre (fleet live map polylines)
     implementation("org.maplibre.gl:android-sdk:11.7.1")
 
+    // Barcode scanning (shared module: CameraX + ML Kit)
+    implementation(project(":barcode-scanner"))
+
     // Core
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.core:core-splashscreen:1.0.1")

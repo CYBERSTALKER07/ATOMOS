@@ -144,6 +144,7 @@ class NavigationViewModel @Inject constructor(
         _uiState.update { it.copy(reconnectEpoch = System.currentTimeMillis()) }
         loadActiveOrders()
         loadPendingPayments(reconcile = true)
+        loadClientPolicy()
         PendingOrderSyncScheduler.enqueue(appContext)
     }
 

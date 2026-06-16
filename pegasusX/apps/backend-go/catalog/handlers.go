@@ -131,6 +131,7 @@ func (s *Service) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
 		StockQuantity int64   `json:"stock_quantity"`
 		Unit          string  `json:"unit"`
 		UnitVolumeVU  float64 `json:"unit_volume_vu"`
+		Barcode       string  `json:"barcode"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -160,6 +161,7 @@ func (s *Service) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
 		StockQuantity: req.StockQuantity,
 		Unit:          unit,
 		UnitVolumeVU:  req.UnitVolumeVU,
+		Barcode:       strings.TrimSpace(req.Barcode),
 		IsActive:      true,
 	}
 	if err := s.CreateProduct(r.Context(), p); err != nil {
@@ -186,6 +188,7 @@ func (s *Service) HandleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 		StockQuantity int64    `json:"stock_quantity"`
 		Unit          string   `json:"unit"`
 		UnitVolumeVU  *float64 `json:"unit_volume_vu"`
+		Barcode       *string  `json:"barcode"`
 		IsActive      *bool    `json:"is_active"`
 		Version       int64  `json:"version"`
 	}
@@ -224,6 +227,9 @@ func (s *Service) HandleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.UnitVolumeVU != nil {
 		existing.UnitVolumeVU = *req.UnitVolumeVU
+	}
+	if req.Barcode != nil {
+		existing.Barcode = strings.TrimSpace(*req.Barcode)
 	}
 	if req.IsActive != nil {
 		existing.IsActive = *req.IsActive

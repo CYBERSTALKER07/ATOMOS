@@ -20,6 +20,7 @@ struct OffloadReviewView: View {
 
     @State private var rejectedQty: [String: Int] = [:]
     @State private var rejectionReasons: [String: RejectionReason] = [:]
+    @State private var customReasons: [String: String] = [:]
     @State private var isSubmitting = false
     @State private var errorMessage: String?
     @State private var driverSocketState = DriverSocketState.shared
@@ -104,6 +105,7 @@ struct OffloadReviewView: View {
                                             rejectedQty[item.id] = nextRejected
                                             if nextRejected == 0 {
                                                 rejectionReasons.removeValue(forKey: item.id)
+                                                customReasons.removeValue(forKey: item.id)
                                             }
                                         }
                                     } label: {
@@ -162,6 +164,15 @@ struct OffloadReviewView: View {
                                         .padding(.vertical, 8)
                                         .background(LabTheme.fg.opacity(0.06), in: Capsule())
                                     }
+                                }
+                                if selectedReason(for: item) == .OTHER {
+                                    TextField("Describe the issue", text: Binding(
+                                        get: { customReasons[item.id] ?? "" },
+                                        set: { customReasons[item.id] = $0 }
+                                    ), axis: .vertical)
+                                    .lineLimit(2...4)
+                                    .textFieldStyle(.roundedBorder)
+                                    .padding(.leading, 0)
                                 }
                             }
                         }
@@ -296,11 +307,24 @@ struct OffloadReviewView: View {
             // Build amendment items from stepper state
             let hasRejections = rejectedQty.values.contains { $0 > 0 }
             if hasRejections {
-                let amendItems: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus, reason: String)] = response.items.map { item in
+                let missingOther = response.items.first { item in
+                    let rejected = rejectedQty[item.id] ?? 0
+                    return rejected > 0 && selectedReason(for: item) == .OTHER && (customReasons[item.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                }
+                if let missingOther {
+                    isSubmitting = false
+                    errorMessage = "Describe the issue for \(missingOther.productName)"
+                    return
+                }
+
+                let amendItems: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus, reason: String, customReason: String?)] = response.items.map { item in
                     let rejected = rejectedQty[item.id] ?? 0
                     let status: LineItemStatus = rejected == item.quantity ? .REJECTED_DAMAGED : .DELIVERED
                     let reason = rejected > 0 ? selectedReason(for: item).rawValue : ""
-                    return (lineItemId: item.productId, rejectedQty: rejected, status: status, reason: reason)
+                    let customReason = rejected > 0 && selectedReason(for: item) == .OTHER
+                        ? customReasons[item.id]?.trimmingCharacters(in: .whitespacesAndNewlines)
+                        : nil
+                    return (lineItemId: item.productId, rejectedQty: rejected, status: status, reason: reason, customReason: customReason)
                 }
                 do {
                     try await fleetService.amendOrder(

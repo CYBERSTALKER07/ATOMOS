@@ -99,6 +99,12 @@ final class TokenStore {
 
     var isAuthenticated: Bool { token != nil }
 
+    var isFactoryScopedDriver: Bool {
+        let node = homeNodeType?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let mode = driverMode?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        return node == "FACTORY" || mode == "FACTORY"
+    }
+
     private let tokenKey = "\(AuthNamespace.primaryPrefix).token"
     private let userKey  = "\(AuthNamespace.primaryPrefix).userId"
     private let nameKey  = "\(AuthNamespace.primaryPrefix).driverName"
@@ -303,6 +309,8 @@ final class DriverSocketState {
         let response: String?
         let bypassToken: String?
         let attemptId: String?
+        let status: String?
+        let state: String?
     }
 
     private struct DriverEnvelope: Decodable {
@@ -317,6 +325,8 @@ final class DriverSocketState {
         let client_schema_version: Int?
         let blocked_event_type: String?
         let message: String?
+        let status: String?
+        let state: String?
     }
 
     static let shared = DriverSocketState()
@@ -486,7 +496,9 @@ final class DriverSocketState {
             orderId: envelope.order_id,
             response: envelope.response,
             bypassToken: envelope.bypass_token,
-            attemptId: envelope.attempt_id
+            attemptId: envelope.attempt_id,
+            status: envelope.status,
+            state: envelope.state
         )
         eventSequence += 1
     }

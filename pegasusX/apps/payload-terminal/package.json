@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "expo": "~55.0.4",
+    "expo-camera": "~17.0.10",
     "expo-haptics": "~55.0.8",
     "expo-screen-orientation": "~55.0.8",
     "expo-secure-store": "~55.0.9",

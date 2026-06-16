@@ -68,6 +68,7 @@ import com.pegasusx.driver.ui.screens.profile.ProfileScreen
 import com.pegasusx.driver.ui.screens.scanner.ScannerScreen
 import com.pegasusx.driver.ui.screens.notifications.DriverNotificationInboxScreen
 import com.pegasusx.driver.ui.screens.offline.OfflineVerifierScreen
+import com.pegasusx.driver.ui.screens.supply.SupplyTransfersScreen
 import com.pegasusx.driver.ui.theme.MotionTokens
 
 object DriverRoutes {
@@ -81,6 +82,7 @@ object DriverRoutes {
     const val CASH_COLLECTION = "cash_collection/{orderId}/{amount}"
     const val SHOP_CLOSED_WAITING = "shop_closed_waiting/{orderId}"
     const val OFFLINE_VERIFIER = "offline_verifier"
+    const val SUPPLY_TRANSFERS = "supply_transfers"
 
     fun correctionRoute(orderId: String, retailerName: String): String {
         val encodedName = URLEncoder.encode(retailerName.ifBlank { "_" }, "UTF-8")
@@ -226,6 +228,7 @@ fun DriverNavigation(
                             navController.navigate(DriverRoutes.cashCollectionRoute(orderId, amount))
                         },
                         onNotificationsClick = { navController.navigate(DriverRoutes.NOTIFICATIONS) { launchSingleTop = true } },
+                        onOpenSupplyTransfers = { navController.navigate(DriverRoutes.SUPPLY_TRANSFERS) },
                     )
                 },
                 mapContent = {
@@ -267,6 +270,10 @@ fun DriverNavigation(
             OfflineVerifierScreen(onBack = { navController.popBackStack() })
         }
 
+        composable(DriverRoutes.SUPPLY_TRANSFERS) {
+            SupplyTransfersScreen(onBack = { navController.popBackStack() })
+        }
+
         composable(DriverRoutes.SCANNER) {
             ScannerScreen(
                 onClose = { navController.popBackStack() },
@@ -294,15 +301,9 @@ fun DriverNavigation(
                 onClose = { navController.popBackStack() },
                 onOffloadConfirmed = { response ->
                     navController.popBackStack()
-                    if (response.paymentMethod.equals("CASH", ignoreCase = true)) {
-                        navController.navigate(
-                            DriverRoutes.cashCollectionRoute(response.orderId, response.amount)
-                        )
-                    } else {
-                        navController.navigate(
-                            DriverRoutes.paymentWaitingRoute(response.orderId, response.amount)
-                        )
-                    }
+                    navController.navigate(
+                        DriverRoutes.paymentWaitingRoute(response.orderId, response.amount)
+                    )
                 },
                 onShopClosed = { orderId ->
                     navController.popBackStack()
@@ -321,7 +322,11 @@ fun DriverNavigation(
             PaymentWaitingScreen(
                 onComplete = {
                     navController.popBackStack(DriverRoutes.MAIN, inclusive = false)
-                }
+                },
+                onCashCollectionRequired = { orderId, amount ->
+                    navController.popBackStack()
+                    navController.navigate(DriverRoutes.cashCollectionRoute(orderId, amount))
+                },
             )
         }
 

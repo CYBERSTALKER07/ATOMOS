@@ -154,6 +154,17 @@ class SupplierOperationsRepository @Inject constructor(
         offset: Int? = null,
     ): Response<SupplierOrdersResponse> = api.getOrders(status, filter, limit, offset)
 
+    suspend fun getReturns(
+        status: String = "PENDING",
+        limit: Int = 100,
+        offset: Int = 0,
+    ): Response<SupplierReturnsResponse> = api.getReturns(status, limit, offset)
+
+    suspend fun resolveReturn(
+        body: ResolveReturnRequest,
+        idempotencyKey: String,
+    ): Response<kotlinx.serialization.json.JsonElement> = api.resolveReturn(idempotencyKey, body)
+
     suspend fun updateProfile(body: Map<String, String>): Response<SupplierProfile> =
         api.updateProfile(body)
 
@@ -182,9 +193,15 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun getEmpathyAdoption(): Response<SupplierEmpathyAdoption> =
         api.getEmpathyAdoption()
 
-    suspend fun postBroadcast(body: SupplierBroadcastRequest): Response<SupplierBroadcastResponse> =
-        api.postBroadcast(body)
+    suspend fun postBroadcast(
+        body: SupplierBroadcastRequest,
+        idempotencyKey: String,
+    ): Response<SupplierBroadcastResponse> =
+        api.postBroadcast(idempotencyKey, body)
 
-    suspend fun issuePaymentBypass(body: PaymentBypassRequest): Response<PaymentBypassResponse> =
-        api.issuePaymentBypass(body)
+    suspend fun issuePaymentBypass(
+        body: PaymentBypassRequest,
+        idempotencyKey: String,
+    ): Response<PaymentBypassResponse> =
+        api.issuePaymentBypass(idempotencyKey, body)
 }

@@ -218,6 +218,27 @@ export function supplierShopClosedResolveKey(attemptId: string, action: string):
   return `shop-closed-resolve:${attemptId}:${action}`;
 }
 
+export function supplierResolveReturnKey(returnId: string, resolution: string): string {
+  return `supplier-resolve-return:${returnId}:${resolution.trim().toUpperCase()}`;
+}
+
+export function driverSupplyTransferArriveKey(driverId: string, transferId: string): string {
+  return `driver-supply-arrive:${driverId}:${transferId}`;
+}
+
+export function warehouseCreateSupplyRequestKey(
+  warehouseId: string,
+  factoryId: string,
+  priority: string,
+  notes: string,
+): string {
+  return `warehouse-create-supply-request:${warehouseId}:${factoryId}:${priority}:${stableHash(notes)}`;
+}
+
+export function warehouseSupplyRequestTransitionKey(requestId: string, action: string): string {
+  return `warehouse-supply-transition:${requestId}:${action.trim().toUpperCase()}`;
+}
+
 export function driverDepartKey(driverId: string, truckId: string): string {
   return `driver-depart:${driverId}:${truckId}`;
 }
@@ -395,4 +416,26 @@ export function factoryTransferCreateKey(
 
 export function factoryTransferTransitionKey(transferId: string, targetState: string): string {
   return `factory-transfer-transition:${transferId}:${targetState.trim().toUpperCase()}`;
+}
+
+export function warehouseInboundScanKey(warehouseId: string, barcode: string, sessionId: string): string {
+  return `warehouse-inbound-scan:${warehouseId}:${stableHash(barcode)}:${sessionId}`;
+}
+
+export function warehouseInboundConfirmKey(
+  warehouseId: string,
+  returnIds: string[],
+  disposition: string,
+): string {
+  const sorted = [...returnIds].map((id) => id.trim()).filter(Boolean).sort().join(",");
+  return `warehouse-inbound-confirm:${warehouseId}:${disposition}:${stableHash(sorted)}`;
+}
+
+export function payloadInboundScanKey(barcode: string, sessionId: string): string {
+  return `payload-inbound-scan-${barcode}-${sessionId}`;
+}
+
+export function payloadInboundConfirmKey(returnIds: string[], disposition: string): string {
+  const sorted = [...returnIds].map((id) => id.trim()).filter(Boolean).sort().join(",");
+  return `payload-inbound-confirm-${disposition}-${sorted}`;
 }

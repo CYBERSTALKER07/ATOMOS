@@ -49,6 +49,9 @@ object DriverIdempotencyKeys {
         return "driver-route-reorder:${driverId()}:$routeId:${stableHash(seq.joinToString(","))}"
     }
 
+    fun supplyTransferArrive(transferId: String): String =
+        "driver-supply-arrive:${driverId()}:$transferId"
+
     private fun stableHash(input: String): String {
         var hash = 2166136261L
         for (c in input) {

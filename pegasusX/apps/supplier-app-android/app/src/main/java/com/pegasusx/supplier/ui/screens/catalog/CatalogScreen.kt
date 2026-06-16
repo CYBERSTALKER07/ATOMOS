@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.pegasus.barcode.EanBarcode
 import com.pegasusx.supplier.data.model.CatalogCategory
 import com.pegasusx.supplier.data.model.CatalogProduct
 import com.pegasusx.supplier.data.model.CatalogProductCreateRequest
@@ -68,12 +69,14 @@ fun CatalogScreen(api: SupplierApi) {
     var categories by remember { mutableStateOf(emptyList<CatalogCategory>()) }
     var currency by remember { mutableStateOf("UZS") }
     val draftVU = remember { mutableStateMapOf<String, String>() }
+    val draftBarcode = remember { mutableStateMapOf<String, String>() }
     var savingId by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
     var createName by remember { mutableStateOf("") }
     var createPrice by remember { mutableStateOf("") }
     var createVu by remember { mutableStateOf("1") }
+    var createBarcode by remember { mutableStateOf("") }
     var createCategoryId by remember { mutableStateOf("") }
     var createImageUri by remember { mutableStateOf<Uri?>(null) }
     var createImageLabel by remember { mutableStateOf<String?>(null) }
@@ -110,6 +113,7 @@ fun CatalogScreen(api: SupplierApi) {
                         unit = product.unit,
                         unitVolumeVu = product.unitVolumeVu,
                         imageUrl = imageUrl,
+                        barcode = product.barcode,
                         isActive = product.isActive,
                         version = product.version,
                     ),
@@ -143,6 +147,7 @@ fun CatalogScreen(api: SupplierApi) {
                 products = if (resp.isSuccessful) resp.body().orEmpty() else emptyList()
                 if (!resp.isSuccessful) error = "Failed (${resp.code()})"
                 draftVU.clear()
+                draftBarcode.clear()
             } catch (e: Exception) {
                 error = e.message
             } finally {
@@ -179,6 +184,14 @@ fun CatalogScreen(api: SupplierApi) {
             savingId = product.productId
             error = null
             try {
+                val barcodeRaw = draftBarcode[product.productId] ?: product.barcode.orEmpty()
+                val barcode = barcodeRaw.trim().takeIf { it.isNotEmpty() }?.let {
+                    EanBarcode.normalize(it) ?: run {
+                        error = "Invalid EAN/GTIN barcode."
+                        savingId = null
+                        return@launch
+                    }
+                }
                 val resp = api.updateCatalogProduct(
                     product.productId,
                     CatalogProductUpdateRequest(
@@ -187,6 +200,7 @@ fun CatalogScreen(api: SupplierApi) {
                         currency = product.currency,
                         unit = product.unit,
                         unitVolumeVu = parsed,
+                        barcode = barcode,
                         isActive = product.isActive,
                         version = product.version,
                     ),
@@ -200,6 +214,7 @@ fun CatalogScreen(api: SupplierApi) {
                     if (row.productId == updated.productId) updated else row
                 }
                 draftVU.remove(product.productId)
+                draftBarcode.remove(product.productId)
             } catch (e: Exception) {
                 error = e.message
             } finally {
@@ -224,6 +239,12 @@ fun CatalogScreen(api: SupplierApi) {
             createError = "Unit VU must be positive."
             return
         }
+        val barcode = createBarcode.trim().takeIf { it.isNotEmpty() }?.let {
+            EanBarcode.normalize(it) ?: run {
+                createError = "Invalid EAN/GTIN barcode."
+                return
+            }
+        }
         scope.launch {
             creating = true
             createError = null
@@ -242,6 +263,7 @@ fun CatalogScreen(api: SupplierApi) {
                         currency = currency,
                         unitVolumeVu = unitVolume,
                         imageUrl = imageUrl,
+                        barcode = barcode,
                     ),
                 )
                 if (!resp.isSuccessful) {
@@ -252,6 +274,7 @@ fun CatalogScreen(api: SupplierApi) {
                 createName = ""
                 createPrice = ""
                 createVu = "1"
+                createBarcode = ""
                 createImageUri = null
                 createImageLabel = null
                 load()
@@ -305,7 +328,11 @@ fun CatalogScreen(api: SupplierApi) {
                     }
                     items(products, key = { it.productId }) { product ->
                         val vuValue = draftVU[product.productId] ?: product.unitVolumeVu.toString()
-                        val dirty = vuValue != product.unitVolumeVu.toString()
+                        val barcodeValue = draftBarcode[product.productId]
+                            ?: product.barcode.orEmpty()
+                        val vuDirty = vuValue != product.unitVolumeVu.toString()
+                        val barcodeDirty = barcodeValue != product.barcode.orEmpty()
+                        val dirty = vuDirty || barcodeDirty
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(
                                 modifier = Modifier.padding(PegasusSpacing.lg),
@@ -339,6 +366,11 @@ fun CatalogScreen(api: SupplierApi) {
                                         },
                                     )
                                 }
+                                CatalogBarcodeField(
+                                    value = barcodeValue,
+                                    onValueChange = { draftBarcode[product.productId] = it },
+                                    enabled = savingId != product.productId,
+                                )
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -424,6 +456,11 @@ fun CatalogScreen(api: SupplierApi) {
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
+                    )
+                    CatalogBarcodeField(
+                        value = createBarcode,
+                        onValueChange = { createBarcode = it },
+                        enabled = !creating,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                         TextButton(onClick = { createImagePicker.launch("image/*") }) {

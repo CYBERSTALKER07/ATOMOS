@@ -117,6 +117,11 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleOrderEvent(ctx, msg.Value, traceID)
 	case events.EventDriverLocationUpdated:
 		return d.handleTelemetryLocation(ctx, msg.Value, traceID)
+	case events.EventOrderAmended:
+		return d.handleOrderEvent(ctx, msg.Value, traceID)
+	case events.EventSupplierReturnCreated, events.EventSupplierReturnResolved,
+		events.EventDriverReturnApproaching, events.EventReturnReceivedAtWarehouse:
+		return d.handleReturnGateEvent(ctx, msg.Value, traceID)
 	default:
 		if strings.HasPrefix(envelope.Type, "MANIFEST_") {
 			return d.handleManifestEvent(ctx, msg.Value, traceID)
@@ -301,6 +306,13 @@ func (d *NotificationDispatcher) handleSupplierFinanceEvent(ctx context.Context,
 	}
 	d.broadcastSupplier(ctx, e.SupplierID, payload)
 	d.broadcastRetailer(ctx, e.RetailerID, payload)
+	var meta struct {
+		DriverID string `json:"driver_id"`
+	}
+	_ = json.Unmarshal(payload, &meta)
+	if strings.TrimSpace(meta.DriverID) != "" {
+		d.broadcastDriver(ctx, strings.TrimSpace(meta.DriverID), payload)
+	}
 	slog.DebugContext(ctx, "fanned out finance event", "event_type", e.Type, "order_id", e.OrderID)
 	return nil
 }
@@ -543,4 +555,27 @@ func (d *NotificationDispatcher) broadcastPayload(ctx context.Context, supplierI
 		d.deps.PayloadHub.Broadcast(ctx, "payload:"+supplierID, payload)
 	}
 	d.persistInbox(ctx, supplierID, "PAYLOAD", payload)
+}
+
+func (d *NotificationDispatcher) handleReturnGateEvent(ctx context.Context, payload []byte, traceID string) error {
+	env, err := decodePartyEnvelope(payload)
+	if err != nil {
+		return err
+	}
+	if d.dropFanout(env.Type, traceID, env.dedupAggregateID()) {
+		return nil
+	}
+	if env.supplierID() != "" {
+		d.broadcastSupplier(ctx, env.supplierID(), payload)
+	}
+	if env.warehouseID() != "" {
+		d.broadcastWarehouse(ctx, env.warehouseID(), payload)
+		if d.deps.PayloadHub != nil {
+			d.deps.PayloadHub.Broadcast(ctx, "warehouse:"+env.warehouseID(), payload)
+		}
+	}
+	if env.DriverID != "" && d.deps.DriverHub != nil {
+		d.deps.DriverHub.Broadcast(ctx, "driver:"+strings.TrimSpace(env.DriverID), payload)
+	}
+	return nil
 }

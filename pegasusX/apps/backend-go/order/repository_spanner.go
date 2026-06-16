@@ -237,13 +237,20 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 				continue
 			}
 			mutations = append(mutations, spanner.InsertMap("SupplierReturns", map[string]any{
-				"ReturnId":    returnID,
-				"OrderId":     o.OrderID,
-				"SkuId":       strings.TrimSpace(ret.SKU),
-				"RejectedQty": ret.RejectedQty,
-				"Reason":      strings.TrimSpace(ret.Reason),
-				"DriverNotes": nullableString(ret.DriverNotes),
-				"CreatedAt":   spanner.CommitTimestamp,
+				"ReturnId":       returnID,
+				"OrderId":        o.OrderID,
+				"SkuId":          strings.TrimSpace(ret.SKU),
+				"RejectedQty":    ret.RejectedQty,
+				"Reason":         strings.TrimSpace(ret.Reason),
+				"DriverNotes":    nullableString(ret.DriverNotes),
+				"Status":         "PENDING",
+				"ManifestId":     nullableString(ret.ManifestID),
+				"DriverId":       nullableString(ret.DriverID),
+				"WarehouseId":    nullableString(ret.WarehouseID),
+				"ExpectedQty":    ret.RejectedQty,
+				"ReceivedQty":    int64(0),
+				"PhysicalStatus": "PENDING",
+				"CreatedAt":      spanner.CommitTimestamp,
 			}))
 		}
 

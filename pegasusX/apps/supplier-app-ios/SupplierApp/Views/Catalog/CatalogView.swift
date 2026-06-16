@@ -4,6 +4,7 @@ import SwiftUI
 struct CatalogView: View {
     @State private var products: [CatalogProduct] = []
     @State private var draftVU: [String: String] = [:]
+    @State private var draftBarcode: [String: String] = [:]
     @State private var loading = true
     @State private var error: String?
     @State private var savingId: String?
@@ -75,8 +76,15 @@ struct CatalogView: View {
             get: { draftVU[product.productId] ?? String(product.unitVolumeVu) },
             set: { draftVU[product.productId] = $0 }
         )
+        let barcodeBinding = Binding(
+            get: { draftBarcode[product.productId] ?? product.barcode ?? "" },
+            set: { draftBarcode[product.productId] = $0 }
+        )
         let currentVU = draftVU[product.productId] ?? String(product.unitVolumeVu)
-        let dirty = currentVU != String(product.unitVolumeVu)
+        let currentBarcode = draftBarcode[product.productId] ?? product.barcode ?? ""
+        let vuDirty = currentVU != String(product.unitVolumeVu)
+        let barcodeDirty = currentBarcode != (product.barcode ?? "")
+        let dirty = vuDirty || barcodeDirty
 
         return VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
             Text(product.name)
@@ -105,6 +113,7 @@ struct CatalogView: View {
             ) { data in
                 await saveProductImage(product, imageData: data)
             }
+            CatalogBarcodeField(value: barcodeBinding, enabled: savingId != product.productId)
             HStack {
                 TextField("Unit VU", text: vuBinding)
                     .keyboardType(.decimalPad)
@@ -127,6 +136,7 @@ struct CatalogView: View {
         do {
             products = try await SupplierService.catalogProducts()
             draftVU = [:]
+            draftBarcode = [:]
         } catch {
             if !silent { self.error = error.localizedDescription }
         }
@@ -139,6 +149,18 @@ struct CatalogView: View {
         guard let parsed = Double(raw), parsed > 0 else {
             error = "Unit VU must be a positive number."
             return
+        }
+        let barcodeRaw = (draftBarcode[product.productId] ?? product.barcode ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let barcode: String?
+        if barcodeRaw.isEmpty {
+            barcode = nil
+        } else {
+            guard let normalized = EANBarcode.normalize(barcodeRaw) else {
+                error = "Invalid EAN/GTIN barcode."
+                return
+            }
+            barcode = normalized
         }
         savingId = product.productId
         error = nil
@@ -153,6 +175,7 @@ struct CatalogView: View {
                     unit: product.unit,
                     unitVolumeVu: parsed,
                     imageUrl: product.imageUrl,
+                    barcode: barcode,
                     isActive: product.isActive,
                     version: product.version
                 )
@@ -161,6 +184,7 @@ struct CatalogView: View {
                 row.productId == updated.productId ? updated : row
             }
             draftVU.removeValue(forKey: product.productId)
+            draftBarcode.removeValue(forKey: product.productId)
         } catch {
             self.error = error.localizedDescription
         }
@@ -182,6 +206,7 @@ struct CatalogView: View {
                     unit: product.unit,
                     unitVolumeVu: product.unitVolumeVu,
                     imageUrl: imageUrl,
+                    barcode: product.barcode,
                     isActive: product.isActive,
                     version: product.version
                 )
@@ -231,6 +256,7 @@ private struct CatalogCreateSheet: View {
     @State private var name = ""
     @State private var priceMinor = ""
     @State private var unitVu = "1"
+    @State private var barcode = ""
     @State private var categories: [CatalogCategory] = []
     @State private var categoryId = ""
     @State private var currency = "UZS"
@@ -255,6 +281,7 @@ private struct CatalogCreateSheet: View {
                         .keyboardType(.numberPad)
                     TextField("Unit VU", text: $unitVu)
                         .keyboardType(.decimalPad)
+                    CatalogBarcodeField(value: $barcode, enabled: !creating)
                     PhotosPicker(selection: $photoItem, matching: .images) {
                         Label(imageData == nil ? "Add image" : "Image selected", systemImage: "photo")
                     }
@@ -316,6 +343,17 @@ private struct CatalogCreateSheet: View {
             error = "Unit VU must be positive."
             return
         }
+        let barcodeValue: String?
+        let trimmedBarcode = barcode.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedBarcode.isEmpty {
+            barcodeValue = nil
+        } else {
+            guard let normalized = EANBarcode.normalize(trimmedBarcode) else {
+                error = "Invalid EAN/GTIN barcode."
+                return
+            }
+            barcodeValue = normalized
+        }
         creating = true
         error = nil
         defer { creating = false }
@@ -334,7 +372,8 @@ private struct CatalogCreateSheet: View {
                     unitVolumeVu: vu,
                     stockQuantity: 0,
                     unit: "UNIT",
-                    imageUrl: imageUrl
+                    imageUrl: imageUrl,
+                    barcode: barcodeValue
                 )
             )
             onCreated()

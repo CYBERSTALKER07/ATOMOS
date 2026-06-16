@@ -225,6 +225,73 @@ final class APIClient: @unchecked Sendable {
         try await get("v1/platform/client-policy?role=PAYLOAD&platform=\(platform)&version=\(version)&channel=production")
     }
 
+    // MARK: - Inbound returns gate
+    func inboundReturns(physicalStatus: String = "ARRIVED", limit: Int = 100) async throws -> InboundReturnListResponse {
+        try await get("v1/returns/inbound?physical_status=\(physicalStatus)&limit=\(limit)")
+    }
+
+    func createInboundSession() async throws -> InboundSessionResponse {
+        try await post("v1/returns/inbound/sessions", body: EmptyBody())
+    }
+
+    func scanInboundBarcode(barcode: String, qty: Int = 1, sessionId: String) async throws -> InboundScanResponse {
+        struct ScanBody: Encodable {
+            let barcode: String
+            let qty: Int
+            let sessionId: String
+            enum CodingKeys: String, CodingKey {
+                case barcode, qty
+                case sessionId = "session_id"
+            }
+        }
+        let key = PayloadIdempotency.inboundScan(barcode: barcode, sessionId: sessionId)
+        return try await post(
+            "v1/returns/inbound/scan",
+            body: ScanBody(barcode: barcode, qty: qty, sessionId: sessionId),
+            headers: ["Idempotency-Key": key]
+        )
+    }
+
+    func confirmInboundReturns(
+        returnIds: [String],
+        disposition: String,
+        sessionId: String,
+        quantities: [String: Int] = [:]
+    ) async throws -> StatusResponse {
+        struct Line: Encodable {
+            let returnId: String
+            let disposition: String
+            let qty: Int?
+            enum CodingKeys: String, CodingKey {
+                case returnId = "return_id"
+                case disposition, qty
+            }
+        }
+        struct ConfirmBody: Encodable {
+            let lines: [Line]
+            let sessionId: String
+            enum CodingKeys: String, CodingKey {
+                case lines
+                case sessionId = "session_id"
+            }
+        }
+        let key = PayloadIdempotency.inboundConfirm(returnIds: returnIds, disposition: disposition)
+        return try await post(
+            "v1/returns/inbound/confirm",
+            body: ConfirmBody(
+                lines: returnIds.map { rid in
+                    Line(returnId: rid, disposition: disposition, qty: quantities[rid])
+                },
+                sessionId: sessionId
+            ),
+            headers: ["Idempotency-Key": key]
+        )
+    }
+
+    func returnsHistory(limit: Int = 50) async throws -> InboundHistoryResponse {
+        try await get("v1/returns/history?limit=\(limit)")
+    }
+
     // MARK: - FCM
     func registerDeviceToken(_ token: String) async throws -> StatusResponse {
         try await post("v1/user/device-token", body: DeviceTokenRequest(token: token, platform: "IOS"))

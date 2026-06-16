@@ -7,6 +7,7 @@
 
 import Foundation
 
+@MainActor
 enum WarehouseIdempotency {
     private static func warehouseId() -> String {
         let id = TokenStore.shared.warehouseId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -71,5 +72,22 @@ enum WarehouseIdempotency {
 
     static func dispatch(actorId: String, routeFingerprint: String) -> String {
         "warehouse-dispatch:\(warehouseId()):\(actorId):\(stableHash(routeFingerprint))"
+    }
+
+    static func inboundScan(barcode: String, sessionId: String) -> String {
+        "warehouse-inbound-scan:\(warehouseId()):\(stableHash(barcode)):\(sessionId)"
+    }
+
+    static func inboundConfirm(returnIds: [String], disposition: String) -> String {
+        let sorted = returnIds.sorted().joined(separator: ",")
+        return "warehouse-inbound-confirm:\(warehouseId()):\(disposition):\(stableHash(sorted))"
+    }
+
+    static func createSupplyRequest(factoryId: String, priority: String, notes: String) -> String {
+        "warehouse-create-supply-request:\(warehouseId()):\(factoryId):\(priority):\(stableHash(notes))"
+    }
+
+    static func supplyRequestTransition(requestId: String, action: String) -> String {
+        "warehouse-supply-transition:\(requestId):\(action.uppercased())"
     }
 }

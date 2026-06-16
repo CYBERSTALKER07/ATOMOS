@@ -69,6 +69,7 @@ enum TypeEnum: String {
     case supplierUpdated
     case supplyRequestAccepted
     case supplyRequestUpdate
+    case supplyTransferApproaching
     case systemAppOutdated
     case vehicleCreated
     case warehouseCreated

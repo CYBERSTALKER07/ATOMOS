@@ -41,6 +41,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
+	"github.com/pegasusx/pegasusx/apps/backend-go/returns"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
 	"github.com/pegasusx/pegasusx/apps/backend-go/storage"
@@ -135,6 +136,7 @@ type App struct {
 	PayloadService         *payload.Service
 	PaymentService         *payment.Service
 	WarehouseService       *warehouse.Service
+	ReturnsService         *returns.Service
 	OrderService           *order.Service
 	HandoffEngine          *handoff.Engine
 	DriverLocations        telemetry.LastLocationStore
@@ -629,6 +631,14 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	payloadSvc.SetPortalManifestLister(&supplier.ManifestLister{Service: supplierSvc})
 	payloadSvc.WarmManifestCache(ctx)
 	factorySvc.WarmManifestCache(ctx)
+	returnsSvc := returns.NewService(returns.ServiceConfig{
+		Spanner:      spannerClient,
+		Cache:        cacheClient,
+		PayloadHub:   payloadHub,
+		WarehouseHub: warehouseHub,
+		SupplierHub:  supplierHub,
+		Log:          log,
+	})
 	var driverOrderList driver.DriverOrderQuery
 	var driverOrderGet driver.DriverOrderGetQuery
 	var driverProfileLookup driver.DriverProfileLookup
@@ -655,6 +665,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			returned, ok, err := manifestStore.ReturnDriver(ctx, driverID, time.Now().UTC())
 			if err != nil || !ok {
 				return driver.ReturnCompleteResult{}, ok, err
+			}
+			if returnsSvc != nil {
+				if hookErr := returnsSvc.OnDriverReturnComplete(ctx, returned); hookErr != nil {
+					log.WarnContext(ctx, "return-complete physical hook failed", "err", hookErr, "driver_id", driverID)
+				}
 			}
 			return driver.ReturnCompleteResult{
 				ManifestID: returned.ManifestID,
@@ -914,6 +929,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		PayloadService:         payloadSvc,
 		PaymentService:         paymentSvc,
 		WarehouseService:       warehouseSvc,
+		ReturnsService:         returnsSvc,
 		OrderService:           orderSvc,
 		HandoffEngine:          handoffEngine,
 		DriverLocations:        driverLocations,

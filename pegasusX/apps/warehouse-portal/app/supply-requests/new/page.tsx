@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { warehouseCreateSupplyRequestKey, warehouseSupplyRequestTransitionKey } from '@pegasusx/api-client';
 import { apiFetch } from '@/lib/auth';
+import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -74,8 +76,17 @@ export default function NewSupplyRequestPage() {
         body.items = manualItems;
       }
 
+      const warehouseId = warehouseHomeNodeId() || 'warehouse';
       const res = await apiFetch('/v1/warehouse/supply-requests', {
         method: 'POST',
+        headers: {
+          'Idempotency-Key': warehouseCreateSupplyRequestKey(
+            warehouseId,
+            factoryId.trim(),
+            useForecast ? 'FORECAST' : 'MANUAL',
+            notes,
+          ),
+        },
         body: JSON.stringify(body),
       });
 

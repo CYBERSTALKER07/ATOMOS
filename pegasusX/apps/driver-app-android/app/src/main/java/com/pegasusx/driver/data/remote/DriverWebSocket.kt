@@ -42,7 +42,10 @@ data class DriverWSMessage(
     val message: String? = null,
     val response: String? = null,
     @SerialName("bypass_token") val bypassToken: String? = null,
-    @SerialName("attempt_id") val attemptId: String? = null
+    @SerialName("attempt_id") val attemptId: String? = null,
+    val status: String? = null,
+    val state: String? = null,
+    @SerialName("payment_method") val paymentMethod: String? = null
 )
 
 data class DriverOutdatedState(

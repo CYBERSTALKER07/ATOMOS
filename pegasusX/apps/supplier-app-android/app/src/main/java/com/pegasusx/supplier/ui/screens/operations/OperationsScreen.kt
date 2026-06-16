@@ -17,7 +17,8 @@ import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierMetricTile
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
-import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.data.remote.TokenHolder
+import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
 
 private val broadcastRoles = listOf("ALL", "DRIVER", "RETAILER", "PAYLOAD")
@@ -65,7 +66,14 @@ fun OperationsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
         broadcasting = true
         scope.launch {
             try {
-                val resp = ops.postBroadcast(SupplierBroadcastRequest(title.trim(), body.trim(), broadcastRole))
+                val trimmedTitle = title.trim()
+                val trimmedBody = body.trim()
+                val scopeId = TokenHolder.supplierId.orEmpty().ifBlank { "supplier" }
+                val key = SupplierIdempotencyKeys.broadcast(scopeId, broadcastRole, trimmedTitle, trimmedBody)
+                val resp = ops.postBroadcast(
+                    SupplierBroadcastRequest(trimmedTitle, trimmedBody, broadcastRole),
+                    key,
+                )
                 if (resp.isSuccessful) {
                     snackbar.showSnackbar("Broadcast sent")
                     title = ""
@@ -110,7 +118,9 @@ fun OperationsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
         bypassToken = null
         scope.launch {
             try {
-                val resp = ops.issuePaymentBypass(PaymentBypassRequest(trimmed, bypassReason.trim()))
+                val reason = bypassReason.trim()
+                val key = SupplierIdempotencyKeys.paymentBypass(trimmed, reason)
+                val resp = ops.issuePaymentBypass(PaymentBypassRequest(trimmed, reason), key)
                 if (resp.isSuccessful) {
                     bypassToken = resp.body()?.bypassToken
                     snackbar.showSnackbar("Bypass token issued")
