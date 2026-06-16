@@ -44,7 +44,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,13 +54,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pegasusx.driver.BuildConfig
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.OrderState
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.TokenHolder
 import com.pegasusx.driver.services.TelemetryService
-import com.pegasusx.driver.ui.components.ClientPolicyBanner
 import com.pegasusx.driver.ui.components.DriverLoadingState
 import com.pegasusx.driver.ui.components.DriverSectionTitle
 import com.pegasusx.driver.ui.components.DriverStateKind
@@ -99,10 +96,8 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val lab = LocalPegasusColors.current
-    var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
     var returnLines by remember { mutableStateOf<List<com.pegasusx.driver.data.model.ReturnGoodsLine>>(emptyList()) }
     var returnUnits by remember { mutableStateOf(0L) }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(state.isReturning) {
         if (!state.isReturning) {
@@ -117,28 +112,6 @@ fun HomeScreen(
                 returnUnits = resp.body()?.totalUnits ?: 0
             }
         } catch (_: Exception) { }
-    }
-
-    LaunchedEffect(Unit) {
-        scope.launch {
-            try {
-                val policy = api.getClientPolicy(
-                    platform = "android",
-                    version = BuildConfig.VERSION_NAME,
-                )
-                if (policy.outdated || policy.forceUpdate) {
-                    clientPolicyMessage = buildString {
-                        append(if (policy.forceUpdate) "Update required" else "Update available")
-                        if (policy.minimumVersion.isNotBlank()) {
-                            append(" — minimum version ${policy.minimumVersion}")
-                        }
-                        policy.deferReason?.takeIf { it.isNotBlank() }?.let { append(". $it") }
-                    }
-                }
-            } catch (_: Exception) {
-                // Policy fetch is optional on local/dev stacks.
-            }
-        }
     }
 
     if (state.isLoading) {
@@ -166,7 +139,6 @@ fun HomeScreen(
             .padding(horizontal = PegasusSpacing.s16)
             .padding(bottom = 100.dp)
     ) {
-        ClientPolicyBanner(clientPolicyMessage)
         // MARK: - Greeting + Notification Bell
         StaggeredAppear(index = 0) {
             Row(

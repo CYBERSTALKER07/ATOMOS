@@ -307,7 +307,11 @@ class ManifestViewModel @Inject constructor(
     fun transitionOrder(orderId: String, newState: OrderState) {
         viewModelScope.launch {
             try {
-                api.transitionState(orderId, mapOf("state" to newState.name))
+                api.transitionState(
+                    orderId,
+                    mapOf("state" to newState.name),
+                    DriverIdempotencyKeys.transitionState(orderId, newState.name),
+                )
                 loadManifest()
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message)

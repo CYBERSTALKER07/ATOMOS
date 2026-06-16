@@ -1,5 +1,6 @@
 package com.pegasusx.driver.util
 
+import com.pegasusx.driver.data.model.AmendItemPayload
 import com.pegasusx.driver.data.remote.TokenHolder
 
 /** Deterministic idempotency keys — aligned with @pegasusx/api-client idempotency.ts */
@@ -51,6 +52,18 @@ object DriverIdempotencyKeys {
 
     fun supplyTransferArrive(transferId: String): String =
         "driver-supply-arrive:${driverId()}:$transferId"
+
+    fun amendOrder(orderId: String, items: List<AmendItemPayload>): String {
+        val fingerprint = items
+            .sortedBy { it.productId }
+            .joinToString("|") { "${it.productId}:${it.acceptedQty}:${it.rejectedQty}:${it.reason}" }
+        return "driver-amend:${driverId()}:$orderId:${stableHash(fingerprint)}"
+    }
+
+    fun transitionState(orderId: String, newState: String): String {
+        val state = newState.trim().uppercase()
+        return "driver-transition-state:${driverId()}:$orderId:$state"
+    }
 
     private fun stableHash(input: String): String {
         var hash = 2166136261L

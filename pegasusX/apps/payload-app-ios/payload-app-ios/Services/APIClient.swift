@@ -146,23 +146,25 @@ final class APIClient: @unchecked Sendable {
     }
 
     func supplierStartLoading(manifestId: String) async throws -> StatusResponse {
-        let key = deterministicIdempotencyKey(action: "supplier_start_loading", entityId: manifestId)
-        return try await post("v1/supplier/manifests/\(manifestId)/start-loading", body: [String: String](), idempotencyKey: key)
+        try await post(
+            "v1/supplier/manifests/\(manifestId)/start-loading",
+            body: [String: String](),
+            idempotencyKey: PayloadIdempotency.supplierStartLoading(manifestId: manifestId)
+        )
     }
 
     func supplierSealManifest(manifestId: String) async throws -> SealManifestResponse {
-        let key = deterministicIdempotencyKey(action: "supplier_seal_manifest", entityId: manifestId)
+        let key = PayloadIdempotency.key(action: "supplier-seal-manifest", entityId: manifestId)
         return try await post("v1/supplier/manifests/\(manifestId)/seal", body: [String: String](), idempotencyKey: key)
     }
 
     func sealCompletedManifests(manifestIds: [String]) async throws -> SealCompletedManifestsResponse {
         let ids = Array(Set(manifestIds.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }))
         guard !ids.isEmpty else { throw APIError.httpError(400) }
-        let key = deterministicIdempotencyKey(action: "seal_completed", entityId: ids.sorted().joined(separator: ","))
         return try await post(
             "v1/payloader/manifests/seal-completed",
             body: SealCompletedManifestsRequest(manifestIds: ids),
-            idempotencyKey: key
+            idempotencyKey: PayloadIdempotency.sealCompleted(manifestIds: ids)
         )
     }
 
@@ -172,8 +174,11 @@ final class APIClient: @unchecked Sendable {
 
     func supplierInjectOrder(manifestId: String, orderId: String) async throws -> StatusResponse {
         let payload = ["order_id": orderId]
-        let key = deterministicIdempotencyKey(action: "supplier_inject", entityId: "\(manifestId)_\(orderId)")
-        return try await post("v1/supplier/manifests/\(manifestId)/inject-order", body: payload, idempotencyKey: key)
+        return try await post(
+            "v1/supplier/manifests/\(manifestId)/inject-order",
+            body: payload,
+            idempotencyKey: PayloadIdempotency.supplierInjectOrder(manifestId: manifestId, orderId: orderId)
+        )
     }
 
     // MARK: - Per-order seal / exception
@@ -183,13 +188,16 @@ final class APIClient: @unchecked Sendable {
         try await post(
             "v1/payload/seal",
             body: SealOrderRequest(orderId: orderId, terminalId: terminalId, manifestCleared: true),
-            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "payload-seal", entityId: orderId)]
+            headers: ["Idempotency-Key": PayloadIdempotency.orderSeal(orderId: orderId)]
         )
     }
     func manifestException(manifestId: String, orderId: String, reason: String, metadata: String = "") async throws -> ManifestExceptionResponse {
         let payload = ["manifest_id": manifestId, "order_id": orderId, "reason": reason, "metadata": metadata]
-        let key = deterministicIdempotencyKey(action: "manifest_exception", entityId: "\(manifestId)_\(orderId)")
-        return try await post("v1/payload/manifest-exception", body: payload, idempotencyKey: key)
+        return try await post(
+            "v1/payload/manifest-exception",
+            body: payload,
+            idempotencyKey: PayloadIdempotency.manifestException(manifestId: manifestId, orderId: orderId)
+        )
     }
 
     func manifestExceptionsList(limit: Int = 50, offset: Int = 0) async throws -> ManifestExceptionsResponse {
@@ -200,8 +208,14 @@ final class APIClient: @unchecked Sendable {
         try await post(
             "v1/delivery/missing-items",
             body: MissingItemsRequest(orderId: orderId, missingItems: items),
-            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "missing-items", entityId: orderId)]
+            headers: ["Idempotency-Key": PayloadIdempotency.missingItems(orderId: orderId)]
         )
+    }
+
+    /// Best-effort GET drain after WS reconnect — matches Android/Expo session reconcile.
+    func reconcileSession() async {
+        _ = try? await trucks()
+        let _: ManifestsResponse? = try? await get("v1/payloader/manifests")
     }
 
     // MARK: - Fleet reassign

@@ -17,9 +17,19 @@ import * as Updates from 'expo-updates';
 import { buildManifest, type LiveOrder, type ManifestItem } from './utils/manifest';
 import { PayloadTerminalApi } from './api';
 import { authFetch, clearPayloaderSession, savePayloaderSession, setTokenRefreshListener } from './authSession';
-import { payloadApplyReassignKey } from './utils/idempotency';
+import {
+  payloadApplyReassignKey,
+  payloadManifestExceptionKey,
+  payloadMissingItemsKey,
+  payloadOrderSealKey,
+  payloadRecommendReassignKey,
+  payloadSealCompletedKey,
+  payloadSupplierInjectKey,
+  payloadSupplierStartLoadingKey,
+} from './utils/idempotency';
 import { InboundReturnsPanel } from './inboundReturns';
 import { reconcilePayloadSession } from './session-reconcile';
+import { registerPayloadPushTokens } from './pushRegistration';
 import { defaultLocale, type Locale } from '../../packages/i18n/locales';
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -332,6 +342,7 @@ export default function App() {
           setToken(saved);
           setWorkerName(name || 'Payloader');
           if (sid) setSupplierId(sid);
+          void registerPayloadPushTokens();
         }
         // Restore offline queue
         const queueStr = await SecureStore.getItemAsync('offline_queue');
@@ -389,6 +400,7 @@ export default function App() {
       setToken(data.token);
       setWorkerName(data.name || 'Payloader');
       if (data.supplier_id) setSupplierId(data.supplier_id);
+      void registerPayloadPushTokens();
     } catch (e: unknown) {
       showToast(tx('auth.error.login_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
     } finally {
@@ -433,8 +445,13 @@ export default function App() {
   }, [token]);
 
   useEffect(() => {
+    fetchClientPolicy();
+  }, [fetchClientPolicy]);
+
+  useEffect(() => {
     if (!token) return;
     fetchClientPolicy();
+    void registerPayloadPushTokens();
   }, [token, fetchClientPolicy]);
 
   useEffect(() => {
@@ -457,6 +474,13 @@ export default function App() {
             setIsStartingLoad(false);
             setIsSealingManifest(false);
             setIsInjecting(false);
+            await fetchTrucks();
+            await fetchNotifications();
+            if (activeTruck) {
+              await fetchManifest(activeTruck);
+              await fetchTruckManifest();
+            }
+            await refreshBatchReadyManifests();
           }
           await flushOfflineQueue();
         })();
@@ -531,8 +555,6 @@ export default function App() {
       ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
       : { 'Content-Type': 'application/json', 'X-Trace-Id': traceId };
   };
-  const buildPayloadIdempotencyKey = (action: string, entityId: string) =>
-    `payload-${action}-${entityId}`;
   const authHeaders = getAuthHeaders();
 
   const clearToastTimer = useCallback(() => {
@@ -780,7 +802,7 @@ export default function App() {
       const res = await authFetch('/v1/payloader/recommend-reassign', {
         method: 'POST',
         headers: {
-          'Idempotency-Key': buildPayloadIdempotencyKey('recommend-reassign', orderId),
+          'Idempotency-Key': payloadRecommendReassignKey(orderId),
         },
         body: JSON.stringify({ order_id: orderId }),
       });
@@ -1008,7 +1030,7 @@ export default function App() {
       await PayloadTerminalApi.supplierStartLoading(
         token,
         manifestId,
-        buildPayloadIdempotencyKey('supplier-start-loading', manifestId),
+        payloadSupplierStartLoadingKey(manifestId),
       );
       setManifestState('LOADING');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1028,7 +1050,7 @@ export default function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Idempotency-Key': buildPayloadIdempotencyKey('manifest-exception', `${manifestId}-${orderId}`),
+          'Idempotency-Key': payloadManifestExceptionKey(manifestId, orderId),
         },
         body: JSON.stringify({ manifest_id: manifestId, order_id: orderId, reason }),
       });
@@ -1061,7 +1083,7 @@ export default function App() {
       const data = await PayloadTerminalApi.sealCompletedManifests(
         token,
         [manifestId],
-        buildPayloadIdempotencyKey('supplier-seal-manifest', manifestId),
+        payloadSealCompletedKey([manifestId]),
       );
       const sealed = Array.isArray(data.results)
         ? data.results.find((row: { manifest_id?: string; status?: string }) => row.manifest_id === manifestId && row.status === 'sealed')
@@ -1094,7 +1116,7 @@ export default function App() {
         token,
         manifestId,
         trimmed,
-        buildPayloadIdempotencyKey('supplier-inject-order', `${manifestId}-${trimmed}`),
+        payloadSupplierInjectKey(manifestId, trimmed),
       );
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast(
@@ -1114,7 +1136,7 @@ export default function App() {
       if (!isOnline) {
         // Offline: queue the action
         const action: QueuedAction = {
-          id: buildPayloadIdempotencyKey('supplier-inject-order', `${manifestId}-${injectOrderId.trim()}`),
+          id: payloadSupplierInjectKey(manifestId, injectOrderId.trim()),
           endpoint: `/v1/supplier/manifests/${manifestId}/inject-order`,
           method: 'POST',
           body: JSON.stringify({ order_id: injectOrderId.trim() }),
@@ -1186,7 +1208,7 @@ export default function App() {
       const res = await authFetch('/v1/payload/seal', {
         method: 'POST',
         headers: {
-          'Idempotency-Key': buildPayloadIdempotencyKey('payload-seal', selectedOrderId),
+          'Idempotency-Key': payloadOrderSealKey(selectedOrderId),
         },
         body: JSON.stringify({
           order_id: selectedOrderId,
@@ -1245,7 +1267,7 @@ export default function App() {
       const data = await PayloadTerminalApi.sealCompletedManifests(
         token,
         batchReadyManifestIds,
-        buildPayloadIdempotencyKey('supplier-seal-batch', batchReadyManifestIds.join('-')),
+        payloadSealCompletedKey(batchReadyManifestIds),
       );
       setBatchReadyManifestIds([]);
       setAllSealed(true);
@@ -1315,7 +1337,7 @@ export default function App() {
                       await authFetch('/v1/delivery/missing-items', {
                         method: 'POST',
                         headers: {
-                          'Idempotency-Key': buildPayloadIdempotencyKey('missing-items', postSealOrderId ?? 'unknown-order'),
+                          'Idempotency-Key': payloadMissingItemsKey(postSealOrderId ?? 'unknown-order'),
                         },
                         body: JSON.stringify({ order_id: postSealOrderId, items: [], source: 'PAYLOAD_TERMINAL' }),
                       });
@@ -1408,7 +1430,9 @@ export default function App() {
   // ── Render: AWAITING TRUCK SELECTION ─────────────────────────────────────
   if (!token) {
     return (
-      <View style={{ flex: 1, backgroundColor: T.colors.background, alignItems: 'center', justifyContent: 'center', padding: 48 }}>
+      <View style={{ flex: 1, backgroundColor: T.colors.background }}>
+        {renderClientPolicyBanner()}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 48 }}>
         <Text style={{ fontWeight: '700', fontSize: 14, color: T.colors.tertiaryLabel, letterSpacing: 0.5, marginBottom: 32 }}>
           {tx('auth.login.payload_terminal')}
         </Text>
@@ -1481,6 +1505,7 @@ export default function App() {
           </Text>
         </Pressable>
         {renderUiToast()}
+        </View>
       </View>
     );
   }
@@ -1590,6 +1615,18 @@ export default function App() {
   }
 
   // ── Render: MANIFEST VIEW ─────────────────────────────────────────────────
+  if (workspaceMode === 'inbound') {
+    return (
+      <InboundReturnsPanel
+        theme={T}
+        isIOS={isIOS}
+        isOnline={isOnline}
+        onBack={() => setWorkspaceMode('outbound')}
+        showToast={(title, message, kind) => showToast(title, message, kind === 'success' ? 'success' : kind === 'error' ? 'error' : 'info')}
+      />
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: T.colors.background, flexDirection: 'column' }}>
       {renderClientPolicyBanner()}
@@ -1608,6 +1645,12 @@ export default function App() {
             </Text>
             <ConnectionStrip isOnline={isOnline} queuedCount={offlineQueue.length} theme={T} />
           </View>
+          <Pressable
+            onPress={() => setWorkspaceMode('inbound')}
+            style={{ padding: 6, marginRight: 4 }}
+          >
+            <MaterialIcons name="undo" size={20} color={T.colors.sidebarLabel} />
+          </Pressable>
           <Pressable
             onPress={() => {
               setShowExceptionsPanel(true);

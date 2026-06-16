@@ -53,7 +53,6 @@ final class HomeViewModel {
     private(set) var queuedActions: Int = 0
     var showNotificationsPanel: Bool = false
     var queuedNoticeMessage: String?
-    var clientPolicyMessage: String?
     var syncCompleteMessage: String?
 
     // MARK: - Phase 5 state
@@ -500,28 +499,6 @@ final class HomeViewModel {
         online = ws.online
         queuedActions = queue.read().count
         await loadNotifications()
-        await loadClientPolicy()
-    }
-
-    func loadClientPolicy() async {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        do {
-            let policy = try await api.clientPolicy(platform: "ios", version: version)
-            if policy.outdated || policy.forceUpdate {
-                var message = policy.forceUpdate ? "Update required" : "Update available"
-                if !policy.minimumVersion.isEmpty {
-                    message += " — minimum version \(policy.minimumVersion)"
-                }
-                if let deferReason = policy.deferReason, !deferReason.isEmpty {
-                    message += ". \(deferReason)"
-                }
-                clientPolicyMessage = message
-            } else {
-                clientPolicyMessage = nil
-            }
-        } catch {
-            // Policy fetch is optional on local/dev stacks.
-        }
     }
 
     func disconnectPhase6() {
@@ -531,9 +508,19 @@ final class HomeViewModel {
 
     func loadNotifications() async {
         do {
-            let resp = try await api.notifications(limit: 100, offset: 0)
-            notifications = resp.notifications
-            unreadCount = resp.unreadCount
+            var items: [NotificationItem] = []
+            var offset = 0
+            let pageSize = 100
+            var unread = 0
+            while offset < 2500 {
+                let resp = try await api.notifications(limit: pageSize, offset: offset)
+                items.append(contentsOf: resp.notifications)
+                unread = resp.unreadCount
+                if resp.notifications.count < pageSize { break }
+                offset += pageSize
+            }
+            notifications = items
+            unreadCount = unread
         } catch {
             // soft-fail; surface via error only on user-initiated retry
         }
@@ -617,9 +604,7 @@ final class HomeViewModel {
     }
 
     private func reconcileSession() async {
-        _ = try? await api.trucks()
-        _ = try? await api.supplierManifests(state: "DRAFT")
-        _ = try? await api.loadingManifests()
+        await api.reconcileSession()
     }
 
     private func recoverInFlightMutations() {

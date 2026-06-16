@@ -65,7 +65,12 @@ enum WarehouseService {
     static func updateVehicleAvailability(vehicleId: String, isActive: Bool, unavailableReason: String? = nil) async throws -> VehicleMutationResponse {
         try await api.patch(
             "v1/warehouse/ops/vehicles/\(vehicleId)",
-            body: UpdateVehicleRequest(isActive: isActive, unavailableReason: unavailableReason)
+            body: UpdateVehicleRequest(isActive: isActive, unavailableReason: unavailableReason),
+            idempotencyKey: WarehouseIdempotency.updateVehicle(
+                vehicleId: vehicleId,
+                isActive: isActive,
+                unavailableReason: unavailableReason
+            )
         )
     }
 
@@ -256,7 +261,10 @@ enum WarehouseService {
     }
 
     static func replenishmentInsightAction(insightId: String, action: String) async throws -> ReplenishmentInsightActionResponse {
-        try await api.postEmpty("v1/warehouse/replenishment/insights/\(insightId)/\(action)")
+        try await api.postEmpty(
+            "v1/warehouse/replenishment/insights/\(insightId)/\(action)",
+            idempotencyKey: WarehouseIdempotency.replenishmentInsightAction(insightId: insightId, action: action)
+        )
     }
 
     static func emergencyTransfer(body: EmergencyTransferRequest) async throws -> TransferMutationResponse {
@@ -304,7 +312,8 @@ enum WarehouseService {
     static func patchDispatchSettings(enabled: Bool) async throws {
         try await api.patchVoid(
             "v1/warehouse/ops/dispatch/settings",
-            body: DispatchSettingsPatchRequest(autoDispatchEnabled: enabled)
+            body: DispatchSettingsPatchRequest(autoDispatchEnabled: enabled),
+            idempotencyKey: WarehouseIdempotency.dispatchSettings(autoDispatchEnabled: enabled)
         )
     }
 }

@@ -19,9 +19,7 @@ struct HomeView: View {
     @State private var exceptionTargetOrderId: String?
 
     var body: some View {
-        VStack(spacing: 0) {
-            ClientPolicyBanner(message: viewModel.clientPolicyMessage)
-            NavigationSplitView(columnVisibility: $columnVisibility) {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             TruckSidebar(viewModel: viewModel)
                 .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 420)
                 .navigationTitle("Vehicles")
@@ -234,7 +232,6 @@ struct HomeView: View {
             }
         }
         .onDisappear { viewModel.disconnectPhase6() }
-        }
     }
 }
 

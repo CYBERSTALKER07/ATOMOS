@@ -24,6 +24,22 @@ export function driverCollectCashKey(orderId: string, driverId: string): string 
   return `driver-collect-cash:${driverId}:${orderId}`;
 }
 
+export function driverAmendOrderKey(
+  orderId: string,
+  driverId: string,
+  itemFingerprint: string,
+): string {
+  return `driver-amend:${driverId}:${orderId}:${stableHash(itemFingerprint)}`;
+}
+
+export function driverTransitionStateKey(
+  orderId: string,
+  driverId: string,
+  newState: string,
+): string {
+  return `driver-transition-state:${driverId}:${orderId}:${newState.trim().toUpperCase()}`;
+}
+
 export function retailerCheckoutKey(retailerId: string, cartFingerprint: string): string {
   return `retailer-checkout:${retailerId}:${stableHash(cartFingerprint)}`;
 }
@@ -365,6 +381,32 @@ export function warehouseAssignDriverVehicleKey(
   vehicleId: string,
 ): string {
   return `warehouse-assign-driver-vehicle:${warehouseId}:${driverId}:${vehicleId || "none"}`;
+}
+
+export function warehouseUpdateVehicleKey(
+  warehouseId: string,
+  vehicleId: string,
+  isActive: boolean,
+  unavailableReason?: string,
+): string {
+  const reason = isActive ? "active" : (unavailableReason ?? "MANUAL_HOLD").trim().toUpperCase();
+  return `warehouse-update-vehicle:${warehouseId}:${vehicleId}:${isActive}:${reason}`;
+}
+
+export function warehouseInventoryPolicyKey(
+  warehouseId: string,
+  productId: string,
+  policy: string,
+): string {
+  return `warehouse-inventory-policy:${warehouseId}:${productId}:${policy.trim().toUpperCase()}`;
+}
+
+export function warehouseReplenishmentInsightActionKey(insightId: string, action: string): string {
+  return `warehouse-replenishment-action:${insightId}:${action.trim().toLowerCase()}`;
+}
+
+export function warehouseDispatchSettingsKey(warehouseId: string, autoDispatchEnabled: boolean): string {
+  return `warehouse-dispatch-settings:${warehouseId}:${autoDispatchEnabled}`;
 }
 
 export function factoryManifestStartLoadingKey(manifestId: string): string {

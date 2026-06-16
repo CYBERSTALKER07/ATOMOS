@@ -4,6 +4,7 @@ import SwiftUI
 struct LabWarehouseApp: App {
     @State private var tokenStore = TokenStore.shared
     @State private var realtimeHub = WarehouseRealtimeHub()
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
         WindowGroup {

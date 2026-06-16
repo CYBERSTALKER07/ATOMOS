@@ -202,6 +202,10 @@ export {
   warehouseCreateVehicleKey,
   warehouseAdjustInventoryKey,
   warehouseAssignDriverVehicleKey,
+  warehouseUpdateVehicleKey,
+  warehouseInventoryPolicyKey,
+  warehouseReplenishmentInsightActionKey,
+  warehouseDispatchSettingsKey,
   factoryManifestStartLoadingKey,
   factoryManifestSealKey,
   factoryManifestDispatchKey,
@@ -980,10 +984,12 @@ export class ApiClient {
     insightId: string,
     action: "approve" | "dismiss",
     query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
   ): Promise<WarehouseReplenishmentInsightActionResponse> {
     return this.request<WarehouseReplenishmentInsightActionResponse>(
       appendQuery(`/v1/warehouse/replenishment/insights/${insightId}/${action}`, query as Record<string, unknown>),
       "POST",
+      { idempotencyKey },
     );
   }
 
@@ -999,11 +1005,12 @@ export class ApiClient {
   async patchWarehouseDispatchSettings(
     request: WarehouseDispatchSettingsPatchRequest,
     query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
   ): Promise<{ status: string }> {
     return this.request<{ status: string }>(
       appendQuery("/v1/warehouse/ops/dispatch/settings", query as Record<string, unknown>),
       "PATCH",
-      { body: request },
+      { body: request, idempotencyKey },
     );
   }
 

@@ -187,7 +187,9 @@ struct LoginView: View {
                     Haptics.success()
                     onAuthenticated()
                 }
-                if let pushToken = UserDefaults.standard.string(forKey: "pegasus_push_token"), !pushToken.isEmpty {
+                if let pushToken = PushNotificationManager.shared.deviceToken
+                    ?? UserDefaults.standard.string(forKey: "pegasus_push_token"),
+                   !pushToken.isEmpty {
                     try? await APIClient.shared.registerDeviceToken(token: pushToken)
                 }
             } catch let apiError as APIError {

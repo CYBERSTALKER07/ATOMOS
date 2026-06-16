@@ -40,7 +40,10 @@ enum WarehouseOperationsService {
         insightId: String,
         action: String
     ) async throws -> ReplenishmentInsightActionResponse {
-        try await api.postEmpty("v1/warehouse/replenishment/insights/\(insightId)/\(action)")
+        try await api.postEmpty(
+            "v1/warehouse/replenishment/insights/\(insightId)/\(action)",
+            idempotencyKey: WarehouseIdempotency.replenishmentInsightAction(insightId: insightId, action: action)
+        )
     }
 
     static func opsFinancials(period: String? = nil) async throws -> OpsFinancialsResponse {
@@ -52,21 +55,24 @@ enum WarehouseOperationsService {
     static func delayOrder(orderId: String, reason: String? = nil) async throws -> WarehouseOrderMutationResponse {
         try await api.post(
             "v1/warehouse/ops/orders/\(orderId)/delay",
-            body: WarehouseOrderMutationRequest(reason: reason)
+            body: WarehouseOrderMutationRequest(reason: reason),
+            idempotencyKey: WarehouseIdempotency.orderDelay(orderId: orderId)
         )
     }
 
     static func rejectOrder(orderId: String, reason: String) async throws -> WarehouseOrderMutationResponse {
         try await api.post(
             "v1/warehouse/ops/orders/\(orderId)/reject",
-            body: WarehouseOrderMutationRequest(reason: reason)
+            body: WarehouseOrderMutationRequest(reason: reason),
+            idempotencyKey: WarehouseIdempotency.orderReject(orderId: orderId, reason: reason)
         )
     }
 
     static func overflowOrder(orderId: String, reason: String? = nil) async throws -> WarehouseOrderMutationResponse {
         try await api.post(
             "v1/warehouse/ops/orders/\(orderId)/overflow",
-            body: WarehouseOrderMutationRequest(reason: reason)
+            body: WarehouseOrderMutationRequest(reason: reason),
+            idempotencyKey: WarehouseIdempotency.orderOverflow(orderId: orderId)
         )
     }
 

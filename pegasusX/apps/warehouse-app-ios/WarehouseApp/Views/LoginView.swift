@@ -79,6 +79,11 @@ struct LoginView: View {
             do {
                 let auth = try await WarehouseService.login(phone: phone, pin: pin)
                 tokenStore.store(auth: auth)
+                if let pushToken = PushNotificationManager.shared.deviceToken
+                    ?? UserDefaults.standard.string(forKey: "pegasus_push_token"),
+                   !pushToken.isEmpty {
+                    try? await APIClient.shared.registerDeviceToken(token: pushToken)
+                }
             } catch {
                 if let apiError = error as? APIError, case .httpError(404) = apiError {
                     self.error = "No account found. Register your warehouse on the web portal."

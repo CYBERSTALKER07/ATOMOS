@@ -163,6 +163,11 @@ final class APIClient: Sendable {
         return try await execute(request)
     }
 
+    func registerDeviceToken(token: String, platform: String = "ios") async throws {
+        let body = ["token": token, "platform": platform]
+        let _: [String: String] = try await post("v1/user/device-token", body: body)
+    }
+
     // MARK: - Execute with 401 retry
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response) = try await dataForRequestWithFallback(request)

@@ -6,6 +6,7 @@ import { ApiError } from '@pegasusx/api-client';
 import { subscribeWarehouseWS, type WarehouseSocketStatus } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseOps } from '@/lib/warehouse-ops';
+import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
@@ -70,11 +71,12 @@ export default function DispatchLocksPage() {
   });
 
   async function handleAcquire() {
+    const warehouseId = warehouseHomeNodeId() || 'warehouse';
     try {
       await warehouseOps.acquireDispatchLock(
-        'warehouse-scope',
+        warehouseId,
         'WAREHOUSE',
-        'warehouse-scope',
+        warehouseId,
         'manual_dispatch',
       );
       toast('Dispatch lock acquired', 'success');

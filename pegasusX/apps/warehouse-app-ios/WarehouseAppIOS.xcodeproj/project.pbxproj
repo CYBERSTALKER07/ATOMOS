@@ -40,6 +40,8 @@
 		A2F79A2D63F8EF033A04EF32 /* FleetLiveMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D77AB43CF3715D84ADF4FB6 /* FleetLiveMapView.swift */; };
 		A3A066A0265DDDFB74E1ECA0 /* WarehouseRealtimeHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5D425691EF7CF86B3C3AE7 /* WarehouseRealtimeHub.swift */; };
 		ACAE70C317EA9EF04415952F /* WarehousePortalLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9AD8CEA475BDD18C968457 /* WarehousePortalLinks.swift */; };
+		A1B2C3D45E6F708192A3B4C5 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C6 /* AppDelegate.swift */; };
+		B2C3D4E56F708192A3B4C5D7 /* PushNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3C4D5E6F708192A3B4C5D8 /* PushNotificationManager.swift */; };
 		AFA3E129F61A2DA0655002F3 /* WarehousePortalFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABD577F0B5F08DF94CB384D7 /* WarehousePortalFeature.swift */; };
 		B0ABC1B6F48E708BE85B0101 /* PegasusWarehouseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86CB8FE602CF48790811D3AF /* PegasusWarehouseApp.swift */; };
 		B5BA0CF78AABAB4895BF4DDB /* InventoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40384D8041929DBF46242CFF /* InventoryView.swift */; };
@@ -99,6 +101,8 @@
 		A5483DF7C844BA0DF1BA8867 /* KpiTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KpiTile.swift; sourceTree = "<group>"; };
 		ABD577F0B5F08DF94CB384D7 /* WarehousePortalFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehousePortalFeature.swift; sourceTree = "<group>"; };
 		ADC341C9AAD3EFE7ED873269 /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F708192A3B4C6 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		2B3C4D5E6F708192A3B4C5D8 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 		B6EFFBD7777A74779592DBCD /* WarehouseAppIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = WarehouseAppIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BEA00335123DBABEE6F0DE8F /* DispatchSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DispatchSettingsView.swift; sourceTree = "<group>"; };
 		BEDF5DC0D1406795DE0A4736 /* WarehouseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseService.swift; sourceTree = "<group>"; };
@@ -423,7 +427,9 @@
 		F5B07F89A901FB321C233EB5 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				1A2B3C4D5E6F708192A3B4C6 /* AppDelegate.swift */,
 				FBD5278073B1CAAE9E0F8BAA /* APIClient.swift */,
+				2B3C4D5E6F708192A3B4C5D8 /* PushNotificationManager.swift */,
 				ADC341C9AAD3EFE7ED873269 /* TokenStore.swift */,
 				1F9D6324029B6317393A54C7 /* WarehouseOperationsService.swift */,
 				F0B20495C6FC5D2DB422FEC5 /* WarehouseRealtimeClient.swift */,
@@ -540,6 +546,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E669C875AC849610CE44BD49 /* APIClient.swift in Sources */,
+				A1B2C3D45E6F708192A3B4C5 /* AppDelegate.swift in Sources */,
 				1A6575E659D3664446DA9B06 /* AnalyticsView.swift in Sources */,
 				6BA5666C405873005E70A4F8 /* AutoUpdater.swift in Sources */,
 				06145AB262C686E3FBFEE91B /* CRMView.swift in Sources */,
@@ -556,6 +563,7 @@
 				B5BA0CF78AABAB4895BF4DDB /* InventoryView.swift in Sources */,
 				070366C6AC9816F77AF82067 /* KpiTile.swift in Sources */,
 				C693D3BCC084A0EF533F1059 /* LoginView.swift in Sources */,
+				B2C3D4E56F708192A3B4C5D7 /* PushNotificationManager.swift in Sources */,
 				F1EC5465A24D24427C9F2D1D /* ManifestsView.swift in Sources */,
 				8E3A118BB4A8F5B1A3C9A769 /* MoreHubView.swift in Sources */,
 				FC5FA964A3A7D626BDE3DE43 /* NotificationInboxView.swift in Sources */,

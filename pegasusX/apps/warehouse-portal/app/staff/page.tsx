@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { warehouseCreateStaffKey } from '@pegasusx/api-client';
 import { apiFetch } from '@/lib/auth';
+import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -59,6 +61,9 @@ export default function StaffPage() {
       const res = await apiFetch('/v1/warehouse/ops/staff', {
         method: 'POST',
         body: JSON.stringify(body),
+        headers: {
+          'Idempotency-Key': warehouseCreateStaffKey(warehouseHomeNodeId() || 'warehouse', formPhone),
+        },
       });
 
       if (res.ok) {

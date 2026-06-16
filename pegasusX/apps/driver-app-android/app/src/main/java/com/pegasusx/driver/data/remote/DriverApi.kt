@@ -99,7 +99,10 @@ interface DriverApi {
 
     // Amend order — batch line-item reconciliation at delivery
     @POST("v1/order/amend")
-    suspend fun amendOrder(@Body request: AmendOrderRequest): AmendOrderResponse
+    suspend fun amendOrder(
+        @Body request: AmendOrderRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): AmendOrderResponse
 
     // Validate QR token — returns order info for review
     @POST("v1/order/validate-qr")
@@ -130,7 +133,8 @@ interface DriverApi {
     @PATCH("v1/orders/{id}/state")
     suspend fun transitionState(
         @Path("id") orderId: String,
-        @Body body: Map<String, String>
+        @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): Order
 
     // Mark arrived — driver enters 100m geofence (IN_TRANSIT → ARRIVED)

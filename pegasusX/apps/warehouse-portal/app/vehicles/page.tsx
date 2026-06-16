@@ -7,7 +7,12 @@ import type {
   WarehouseVehicleUnavailableReason,
   WarehouseVehicleMutationResponse,
 } from '@pegasusx/types';
+import {
+  warehouseCreateVehicleKey,
+  warehouseUpdateVehicleKey,
+} from '@pegasusx/api-client';
 import { apiFetch } from '@/lib/auth';
+import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -73,10 +78,14 @@ export default function VehiclesPage() {
     e.preventDefault();
     setCreating(true);
     setError('');
+    const warehouseId = warehouseHomeNodeId() || 'warehouse';
     try {
       const res = await apiFetch('/v1/warehouse/ops/vehicles', {
         method: 'POST',
         body: JSON.stringify(form),
+        headers: {
+          'Idempotency-Key': warehouseCreateVehicleKey(warehouseId, form.license_plate),
+        },
       });
       if (!res.ok) {
         throw new Error('Unable to create vehicle');
@@ -94,11 +103,20 @@ export default function VehiclesPage() {
 	async function handleToggleAvailability(vehicle: WarehouseFleetVehicle, nextActive: boolean) {
     setMutatingVehicleId(vehicle.vehicle_id);
     setError('');
+    const warehouseId = warehouseHomeNodeId() || 'warehouse';
     try {
 	    const unavailableReason = vehicleReasons[vehicle.vehicle_id] || vehicle.unavailable_reason || 'MANUAL_HOLD';
       const res = await apiFetch(`/v1/warehouse/ops/vehicles/${vehicle.vehicle_id}`, {
         method: 'PATCH',
 		  body: JSON.stringify(nextActive ? { is_active: true } : { is_active: false, unavailable_reason: unavailableReason }),
+        headers: {
+          'Idempotency-Key': warehouseUpdateVehicleKey(
+            warehouseId,
+            vehicle.vehicle_id,
+            nextActive,
+            nextActive ? undefined : unavailableReason,
+          ),
+        },
       });
       if (!res.ok) {
         throw new Error('Unable to update vehicle availability');

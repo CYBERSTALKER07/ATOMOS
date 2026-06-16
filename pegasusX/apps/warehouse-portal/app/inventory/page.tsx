@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useStableCallback } from '@/lib/useStableCallback';
 import { apiFetch, subscribeWarehouseWS, type WarehouseSocketStatus } from '@/lib/auth';
+import { warehouseAdjustInventoryKey, warehouseInventoryPolicyKey } from '@pegasusx/api-client';
+import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -141,10 +143,14 @@ export default function InventoryPage() {
   }, []);
 
   async function handlePolicyChange(productId: string, policy: string) {
+    const warehouseId = warehouseHomeNodeId() || 'warehouse';
     try {
       const res = await apiFetch(`/v1/warehouse/ops/inventory/${productId}/policy`, {
         method: 'PATCH',
         body: JSON.stringify({ out_of_stock_policy: policy }),
+        headers: {
+          'Idempotency-Key': warehouseInventoryPolicyKey(warehouseId, productId, policy),
+        },
       });
       if (res.ok) {
         toast('Stock policy updated', 'success');
@@ -156,10 +162,14 @@ export default function InventoryPage() {
   async function handleAdjust(productId: string) {
     const qty = parseInt(adjustVal, 10);
     if (isNaN(qty)) return;
+    const warehouseId = warehouseHomeNodeId() || 'warehouse';
     try {
       const res = await apiFetch('/v1/warehouse/ops/inventory', {
         method: 'PATCH',
         body: JSON.stringify({ product_id: productId, quantity: qty }),
+        headers: {
+          'Idempotency-Key': warehouseAdjustInventoryKey(warehouseId, productId, qty),
+        },
       });
       if (res.ok) {
         setAdjusting(null);

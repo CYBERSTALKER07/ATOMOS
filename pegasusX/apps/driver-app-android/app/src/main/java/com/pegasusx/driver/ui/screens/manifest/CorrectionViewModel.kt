@@ -17,6 +17,7 @@ import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
 import com.pegasusx.driver.data.remote.reconcileDriverSession
+import com.pegasusx.driver.util.DriverIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -199,7 +200,10 @@ class CorrectionViewModel @Inject constructor(
                             )
                         }
                 )
-                val response = api.amendOrder(payload)
+                val response = api.amendOrder(
+                    payload,
+                    DriverIdempotencyKeys.amendOrder(orderId, payload.items),
+                )
                 if (response.success) {
                     _state.update { it.copy(isSubmitting = false, submitSuccess = true) }
                 } else {
@@ -215,7 +219,11 @@ class CorrectionViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
             try {
-                api.transitionState(orderId, mapOf("state" to "COMPLETED"))
+                api.transitionState(
+                    orderId,
+                    mapOf("state" to "COMPLETED"),
+                    DriverIdempotencyKeys.transitionState(orderId, "COMPLETED"),
+                )
                 _state.update { it.copy(isSubmitting = false, submitSuccess = true) }
             } catch (e: Exception) {
                 _state.update { it.copy(isSubmitting = false, error = e.message ?: "Failed to complete delivery") }

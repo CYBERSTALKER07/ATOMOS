@@ -45,6 +45,20 @@ object WarehouseIdempotencyKeys {
     fun assignDriverVehicle(driverId: String, vehicleId: String?): String =
         "warehouse-assign-driver-vehicle:${warehouseId()}:$driverId:${vehicleId?.takeIf { it.isNotBlank() } ?: "none"}"
 
+    fun updateVehicle(vehicleId: String, isActive: Boolean, unavailableReason: String? = null): String {
+        val reason = if (isActive) "active" else (unavailableReason?.trim()?.uppercase() ?: "MANUAL_HOLD")
+        return "warehouse-update-vehicle:${warehouseId()}:$vehicleId:$isActive:$reason"
+    }
+
+    fun inventoryPolicy(productId: String, policy: String): String =
+        "warehouse-inventory-policy:${warehouseId()}:$productId:${policy.trim().uppercase()}"
+
+    fun replenishmentInsightAction(insightId: String, action: String): String =
+        "warehouse-replenishment-action:$insightId:${action.trim().lowercase()}"
+
+    fun dispatchSettings(autoDispatchEnabled: Boolean): String =
+        "warehouse-dispatch-settings:${warehouseId()}:$autoDispatchEnabled"
+
     fun dispatch(actorId: String, routeFingerprint: String): String =
         "warehouse-dispatch:${warehouseId()}:$actorId:${stableHash(routeFingerprint)}"
 
@@ -61,4 +75,11 @@ object WarehouseIdempotencyKeys {
 
     fun supplyRequestTransition(requestId: String, action: String): String =
         "warehouse-supply-transition:$requestId:${action.uppercase()}"
+
+    fun orderDelay(orderId: String): String = "warehouse-order-delay:$orderId"
+
+    fun orderReject(orderId: String, reason: String): String =
+        "warehouse-order-reject:$orderId:${stableHash(reason)}"
+
+    fun orderOverflow(orderId: String): String = "warehouse-order-overflow:$orderId"
 }

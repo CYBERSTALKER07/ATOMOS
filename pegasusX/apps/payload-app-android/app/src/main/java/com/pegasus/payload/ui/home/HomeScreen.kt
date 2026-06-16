@@ -90,7 +90,6 @@ import com.pegasus.payload.data.model.RecommendReassignResponse
 import com.pegasus.payload.data.model.NotificationItem
 import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.data.model.TruckRecommendation
-import com.pegasus.payload.ui.components.ClientPolicyBanner
 import com.pegasus.payload.ui.components.ManifestKpiGrid
 import com.pegasus.payload.ui.components.PayloadConnectionStatus
 import com.pegasus.payload.ui.components.PayloadInlineLoading
@@ -202,10 +201,8 @@ fun HomeScreen(
             )
         },
     ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
-            ClientPolicyBanner(state.clientPolicyMessage)
-            ListDetailPaneScaffold(
-            modifier = Modifier.weight(1f),
+        ListDetailPaneScaffold(
+            modifier = Modifier.padding(padding).fillMaxSize(),
             directive = navigator.scaffoldDirective,
             value = navigator.scaffoldValue,
             listPane = {
@@ -299,7 +296,6 @@ fun HomeScreen(
                 onDismiss = viewModel::toggleExceptionsPanel,
                 onRefresh = viewModel::loadManifestExceptions,
             )
-        }
         }
     }
 }

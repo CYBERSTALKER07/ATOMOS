@@ -9,6 +9,7 @@ import SwiftUI
 @main
 struct LabDriverApp: App {
     @State private var tokenStore = TokenStore.shared
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
         WindowGroup {
@@ -20,24 +21,35 @@ struct LabDriverApp: App {
 }
 
 /// Auth-gated root: shows LoginView or MainTabView based on token state.
+/// Client-policy banner is global across login + authenticated shells.
 struct RootView: View {
     @Environment(TokenStore.self) private var tokenStore
     @State private var driverSocketState = DriverSocketState.shared
+    @State private var clientPolicyMessage: String?
 
     var body: some View {
-        Group {
-            if tokenStore.isAuthenticated {
-                MainTabView()
+        VStack(spacing: 0) {
+            ClientPolicyBanner(message: clientPolicyMessage)
+            Group {
+                if tokenStore.isAuthenticated {
+                    MainTabView()
+                        .transition(.opacity)
+                } else {
+                    LoginView {
+                        // onAuthenticated — token is already saved by LoginView
+                    }
                     .transition(.opacity)
-            } else {
-                LoginView {
-                    // onAuthenticated — token is already saved by LoginView
                 }
-                .transition(.opacity)
             }
         }
         .buttonStyle(.pressable)
         .animation(Anim.snappy, value: tokenStore.isAuthenticated)
+        .task(id: tokenStore.isAuthenticated) {
+            await loadClientPolicy()
+        }
+        .task {
+            await PushNotificationManager.shared.requestAuthorization()
+        }
         .task(id: tokenStore.token) {
             if let token = tokenStore.token {
                 driverSocketState.startMonitoring(
@@ -58,6 +70,52 @@ struct RootView: View {
                     }
                 )
             }
+        }
+    }
+
+    @MainActor
+    private func loadClientPolicy() async {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        do {
+            struct ClientPolicy: Decodable {
+                let outdated: Bool
+                let forceUpdate: Bool
+                let minimumVersion: String
+                let deferReason: String?
+
+                enum CodingKeys: String, CodingKey {
+                    case outdated
+                    case forceUpdate = "force_update"
+                    case minimumVersion = "minimum_version"
+                    case deferReason = "defer_reason"
+                }
+            }
+            var components = URLComponents()
+            components.queryItems = [
+                URLQueryItem(name: "role", value: "DRIVER"),
+                URLQueryItem(name: "platform", value: "ios"),
+                URLQueryItem(name: "version", value: version),
+                URLQueryItem(name: "channel", value: "production"),
+            ]
+            let query = components.percentEncodedQuery.map { "?\($0)" } ?? ""
+            let policy: ClientPolicy = try await APIClient.shared.get(
+                "/v1/platform/client-policy\(query)"
+            )
+            if policy.outdated || policy.forceUpdate {
+                var message = policy.forceUpdate ? "Update required" : "Update available"
+                if !policy.minimumVersion.isEmpty {
+                    message += " — minimum version \(policy.minimumVersion)"
+                }
+                if let deferReason = policy.deferReason, !deferReason.isEmpty {
+                    message += ". \(deferReason)"
+                }
+                clientPolicyMessage = message
+                AutoUpdater.checkForUpdates()
+            } else {
+                clientPolicyMessage = nil
+            }
+        } catch {
+            // Policy fetch is optional on local/dev stacks.
         }
     }
 }

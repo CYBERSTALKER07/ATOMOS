@@ -75,6 +75,11 @@ fun VehiclesScreen(
                 val resp = api.updateVehicle(
                     vehicle.vehicleId,
                     UpdateVehicleRequest(isActive = isActive, unavailableReason = unavailableReason),
+                    WarehouseIdempotencyKeys.updateVehicle(
+                        vehicle.vehicleId,
+                        isActive,
+                        unavailableReason,
+                    ),
                 )
                 if (resp.isSuccessful) {
                     load()

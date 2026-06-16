@@ -56,6 +56,23 @@ enum WarehouseIdempotency {
         return "warehouse-assign-driver-vehicle:\(warehouseId()):\(driverId):\(vid)"
     }
 
+    static func updateVehicle(vehicleId: String, isActive: Bool, unavailableReason: String? = nil) -> String {
+        let reason = isActive ? "active" : (unavailableReason?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() ?? "MANUAL_HOLD")
+        return "warehouse-update-vehicle:\(warehouseId()):\(vehicleId):\(isActive):\(reason)"
+    }
+
+    static func inventoryPolicy(productId: String, policy: String) -> String {
+        "warehouse-inventory-policy:\(warehouseId()):\(productId):\(policy.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())"
+    }
+
+    static func replenishmentInsightAction(insightId: String, action: String) -> String {
+        "warehouse-replenishment-action:\(insightId):\(action.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())"
+    }
+
+    static func dispatchSettings(autoDispatchEnabled: Bool) -> String {
+        "warehouse-dispatch-settings:\(warehouseId()):\(autoDispatchEnabled)"
+    }
+
     static func dispatchLockAcquire(entityType: String = "WAREHOUSE", entityId: String? = nil) -> String {
         let wh: String
         if let entityId, !entityId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -89,5 +106,17 @@ enum WarehouseIdempotency {
 
     static func supplyRequestTransition(requestId: String, action: String) -> String {
         "warehouse-supply-transition:\(requestId):\(action.uppercased())"
+    }
+
+    static func orderDelay(orderId: String) -> String {
+        "warehouse-order-delay:\(orderId)"
+    }
+
+    static func orderReject(orderId: String, reason: String) -> String {
+        "warehouse-order-reject:\(orderId):\(stableHash(reason))"
+    }
+
+    static func orderOverflow(orderId: String) -> String {
+        "warehouse-order-overflow:\(orderId)"
     }
 }

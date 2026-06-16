@@ -13,13 +13,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.pegasusx.warehouse.BuildConfig
 import com.pegasusx.warehouse.data.model.DashboardData
 import com.pegasusx.warehouse.data.model.FleetStatusEntry
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
-import com.pegasusx.warehouse.ui.components.ClientPolicyBanner
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
 import com.pegasusx.warehouse.ui.components.WarehouseKpiBadge
 import com.pegasusx.warehouse.ui.components.WarehouseKpiTile
@@ -66,33 +64,7 @@ fun DashboardScreen(
     var data by remember { mutableStateOf(DashboardData()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-
-    fun loadClientPolicy() {
-        scope.launch {
-            try {
-                val resp = api.getClientPolicy(
-                    platform = "android",
-                    version = BuildConfig.VERSION_NAME,
-                )
-                if (resp.isSuccessful && resp.body() != null) {
-                    val policy = resp.body()!!
-                    if (policy.outdated || policy.forceUpdate) {
-                        clientPolicyMessage = buildString {
-                            append(if (policy.forceUpdate) "Update required" else "Update available")
-                            if (policy.minimumVersion.isNotBlank()) {
-                                append(" — minimum version ${policy.minimumVersion}")
-                            }
-                            policy.deferReason?.takeIf { it.isNotBlank() }?.let { append(". $it") }
-                        }
-                    }
-                }
-            } catch (_: Exception) {
-                // Policy fetch is optional on local/dev stacks.
-            }
-        }
-    }
 
     fun load() {
         loading = true
@@ -115,7 +87,6 @@ fun DashboardScreen(
 
     LaunchedEffect(Unit) {
         load()
-        loadClientPolicy()
     }
 
     Scaffold(
@@ -157,7 +128,6 @@ fun DashboardScreen(
                     .padding(horizontal = PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
-                ClientPolicyBanner(clientPolicyMessage)
                 FleetLiveMapSection(
                     ops = opsRepository,
                     realtimeSignals = realtimeSignals,

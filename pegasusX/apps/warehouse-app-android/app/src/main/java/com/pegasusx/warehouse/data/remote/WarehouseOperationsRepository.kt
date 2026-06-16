@@ -33,7 +33,11 @@ class WarehouseOperationsRepository @Inject constructor(
         insightId: String,
         action: String,
     ): Response<ReplenishmentInsightActionResponse> =
-        api.replenishmentInsightAction(insightId, action)
+        api.replenishmentInsightAction(
+            insightId,
+            action,
+            WarehouseIdempotencyKeys.replenishmentInsightAction(insightId, action),
+        )
 
     suspend fun getOpsFinancials(period: String? = null): Response<OpsFinancialsResponse> =
         api.getOpsFinancials(period)
@@ -42,19 +46,31 @@ class WarehouseOperationsRepository @Inject constructor(
         orderId: String,
         reason: String? = null,
     ): Response<WarehouseOrderMutationResponse> =
-        api.delayOrder(orderId, WarehouseOrderMutationRequest(reason))
+        api.delayOrder(
+            orderId,
+            WarehouseOrderMutationRequest(reason),
+            WarehouseIdempotencyKeys.orderDelay(orderId),
+        )
 
     suspend fun rejectOrder(
         orderId: String,
         reason: String,
     ): Response<WarehouseOrderMutationResponse> =
-        api.rejectOrder(orderId, WarehouseOrderMutationRequest(reason))
+        api.rejectOrder(
+            orderId,
+            WarehouseOrderMutationRequest(reason),
+            WarehouseIdempotencyKeys.orderReject(orderId, reason),
+        )
 
     suspend fun overflowOrder(
         orderId: String,
         reason: String? = null,
     ): Response<WarehouseOrderMutationResponse> =
-        api.overflowOrder(orderId, WarehouseOrderMutationRequest(reason))
+        api.overflowOrder(
+            orderId,
+            WarehouseOrderMutationRequest(reason),
+            WarehouseIdempotencyKeys.orderOverflow(orderId),
+        )
 
     suspend fun refreshToken(refreshToken: String): Response<AuthResponse> =
         api.refreshToken(RefreshTokenRequest(refreshToken))
@@ -66,7 +82,10 @@ class WarehouseOperationsRepository @Inject constructor(
         api.getDispatchSettings()
 
     suspend fun patchDispatchSettings(enabled: Boolean): Response<Map<String, String>> =
-        api.patchDispatchSettings(DispatchSettingsPatchRequest(autoDispatchEnabled = enabled))
+        api.patchDispatchSettings(
+            DispatchSettingsPatchRequest(autoDispatchEnabled = enabled),
+            WarehouseIdempotencyKeys.dispatchSettings(enabled),
+        )
 
     suspend fun getSupplyRequest(id: String): Response<WarehouseSupplyRequest> =
         api.getSupplyRequest(id)

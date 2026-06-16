@@ -10,6 +10,7 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -18,6 +19,8 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,10 +39,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.pegasusx.warehouse.BuildConfig
 import com.pegasusx.warehouse.data.remote.TokenHolder
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
+import com.pegasusx.warehouse.service.AutoUpdater
+import com.pegasusx.warehouse.ui.components.ClientPolicyBanner
 import com.pegasusx.warehouse.ui.components.WarehouseBottomBar
 import com.pegasusx.warehouse.ui.components.WarehouseNavigationDrawer
 import com.pegasusx.warehouse.ui.screens.analytics.AnalyticsScreen
@@ -69,6 +75,7 @@ import com.pegasusx.warehouse.ui.screens.transfers.TransferActionsScreen
 import com.pegasusx.warehouse.ui.screens.treasury.TreasuryScreen
 import com.pegasusx.warehouse.ui.screens.vehicles.VehiclesScreen
 import com.pegasusx.warehouse.ui.portal.WarehousePortalFeature
+import kotlinx.coroutines.launch
 
 object WarehouseRoutes {
     const val LOGIN = "login"
@@ -121,11 +128,52 @@ fun WarehouseNavigation(
     val context = LocalContext.current
     var refreshEpoch by remember { mutableIntStateOf(0) }
     var networkAvailable by remember { mutableStateOf(true) }
+    var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val autoUpdater = remember { AutoUpdater(context.applicationContext) }
     val useDrawer = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val showShell = currentRoute != null && currentRoute != WarehouseRoutes.LOGIN
     var lastNavWasTab by remember { mutableStateOf(true) }
+
+    DisposableEffect(autoUpdater) {
+        onDispose { autoUpdater.cleanup() }
+    }
+
+    fun loadClientPolicy() {
+        scope.launch {
+            try {
+                val resp = api.getClientPolicy(
+                    platform = "android",
+                    version = BuildConfig.VERSION_NAME,
+                )
+                if (resp.isSuccessful && resp.body() != null) {
+                    val policy = resp.body()!!
+                    clientPolicyMessage = if (policy.outdated || policy.forceUpdate) {
+                        buildString {
+                            append(if (policy.forceUpdate) "Update required" else "Update available")
+                            if (policy.minimumVersion.isNotBlank()) {
+                                append(" — minimum version ${policy.minimumVersion}")
+                            }
+                            policy.deferReason?.takeIf { it.isNotBlank() }?.let { append(". $it") }
+                        }
+                    } else {
+                        null
+                    }
+                    if (policy.outdated || policy.forceUpdate) {
+                        autoUpdater.checkForUpdates(BuildConfig.VERSION_CODE)
+                    }
+                }
+            } catch (_: Exception) {
+                // Policy fetch is optional on local/dev stacks.
+            }
+        }
+    }
+
+    LaunchedEffect(refreshEpoch) {
+        loadClientPolicy()
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -407,7 +455,9 @@ fun WarehouseNavigation(
     }
 
     if (showShell) {
-        Row(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            ClientPolicyBanner(clientPolicyMessage)
+            Row(Modifier.weight(1f)) {
             if (useDrawer) {
                 WarehouseNavigationDrawer(
                     selectedRoute = currentRoute,
@@ -427,8 +477,12 @@ fun WarehouseNavigation(
             ) { innerPadding ->
                 navHost(Modifier.padding(innerPadding).fillMaxSize())
             }
+            }
         }
     } else {
-        navHost(Modifier.fillMaxSize())
+        Column(Modifier.fillMaxSize()) {
+            ClientPolicyBanner(clientPolicyMessage)
+            navHost(Modifier.weight(1f).fillMaxSize())
+        }
     }
 }

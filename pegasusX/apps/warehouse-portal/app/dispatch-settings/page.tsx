@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError } from '@pegasusx/api-client';
+import { ApiError, warehouseDispatchSettingsKey } from '@pegasusx/api-client';
 import { warehouseApi } from '@/lib/warehouse-api';
+import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -36,7 +37,11 @@ export default function DispatchSettingsPage() {
     setSaveError(null);
     setSaveSuccess(null);
     try {
-      await warehouseApi.patchWarehouseDispatchSettings({ auto_dispatch_enabled: next });
+      await warehouseApi.patchWarehouseDispatchSettings(
+        { auto_dispatch_enabled: next },
+        {},
+        warehouseDispatchSettingsKey(warehouseHomeNodeId() || 'warehouse', next),
+      );
       setAutoDispatchEnabled(next);
       setSaveSuccess(next ? 'Auto dispatch enabled for this warehouse.' : 'Auto dispatch disabled for this warehouse.');
     } catch (err) {

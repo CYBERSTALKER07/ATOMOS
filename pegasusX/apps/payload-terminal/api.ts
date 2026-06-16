@@ -115,4 +115,14 @@ export const PayloadTerminalApi = {
             defer_reason?: string;
         }>;
     },
+
+    registerDeviceToken: async (token: string, platform: string) => {
+        const res = await authFetch('/v1/user/device-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, platform }),
+        });
+        if (!res.ok) throw new Error('Failed to register device token');
+        return res.json();
+    },
 };

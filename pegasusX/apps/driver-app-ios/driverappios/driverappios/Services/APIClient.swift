@@ -143,7 +143,11 @@ final class APIClient: @unchecked Sendable {
     }
 
     func amendOrder(request: AmendOrderRequest) async throws -> AmendOrderResponse {
-        try await post("v1/order/amend", body: request)
+        try await post(
+            "v1/order/amend",
+            body: request,
+            headers: ["Idempotency-Key": DriverIdempotency.amendOrder(orderId: request.orderId, items: request.items)]
+        )
     }
 
     func validateQR(orderId: String, scannedToken: String) async throws -> ValidateQRResponse {
@@ -181,7 +185,11 @@ final class APIClient: @unchecked Sendable {
 
     func transitionState(orderId: String, newState: String) async throws -> Order {
         let body = ["state": newState]
-        return try await patch("v1/orders/\(orderId)/state", body: body)
+        return try await patch(
+            "v1/orders/\(orderId)/state",
+            body: body,
+            headers: ["Idempotency-Key": DriverIdempotency.transitionState(orderId: orderId, newState: newState)]
+        )
     }
 
     // MARK: - Dynamic Delivery Handshake

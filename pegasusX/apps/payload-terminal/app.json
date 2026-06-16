@@ -38,6 +38,13 @@
       "expo-secure-store",
       "expo-updates",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#ffffff"
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "Scan product barcodes during inbound returns"

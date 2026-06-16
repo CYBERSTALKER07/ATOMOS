@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { WarehouseReplenishmentInsight } from '@pegasusx/types';
-import { ApiError } from '@pegasusx/api-client';
+import { ApiError, warehouseReplenishmentInsightActionKey } from '@pegasusx/api-client';
 import { warehouseApi } from '@/lib/warehouse-api';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
@@ -40,7 +40,12 @@ export default function ReplenishmentPage() {
     setActionError(null);
     setActionSuccess(null);
     try {
-      const result = await warehouseApi.postWarehouseReplenishmentInsightAction(insightId, action);
+      const result = await warehouseApi.postWarehouseReplenishmentInsightAction(
+        insightId,
+        action,
+        {},
+        warehouseReplenishmentInsightActionKey(insightId, action),
+      );
       setActionSuccess(
         action === 'approve'
           ? `Insight approved${result.transfer_id ? ` — transfer ${result.transfer_id.slice(0, 8)}` : ''}.`

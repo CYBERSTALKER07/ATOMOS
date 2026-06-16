@@ -193,7 +193,10 @@ class OffloadReviewViewModel @Inject constructor(
                             )
                         }
                     )
-                    val amendResp = api.amendOrder(amendPayload)
+                    val amendResp = api.amendOrder(
+                        amendPayload,
+                        DriverIdempotencyKeys.amendOrder(orderId, amendPayload.items),
+                    )
                     if (!amendResp.success) {
                         _state.update { it.copy(isSubmitting = false, error = amendResp.message) }
                         return@launch

@@ -94,6 +94,19 @@ enum DriverIdempotency {
         "driver-supply-arrive:\(driverId()):\(transferId)"
     }
 
+    static func amendOrder(orderId: String, items: [AmendItemPayload]) -> String {
+        let fingerprint = items
+            .sorted { $0.productId < $1.productId }
+            .map { "\($0.productId):\($0.acceptedQty):\($0.rejectedQty):\($0.reason)" }
+            .joined(separator: "|")
+        return "driver-amend:\(driverId()):\(orderId):\(stableHash(fingerprint))"
+    }
+
+    static func transitionState(orderId: String, newState: String) -> String {
+        let state = newState.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        return "driver-transition-state:\(driverId()):\(orderId):\(state)"
+    }
+
     private static func stableHash(_ input: String) -> String {
         var hash: UInt32 = 2166136261
         for scalar in input.unicodeScalars {

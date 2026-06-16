@@ -99,6 +99,9 @@ struct MainTabView: View {
                     if path.status == .satisfied {
                         if wasOffline {
                             refreshEpoch += 1
+                            Task {
+                                await FleetServiceLive.shared.flushOfflineQueue()
+                            }
                         }
                         wasOffline = false
                     } else {

@@ -62,6 +62,7 @@ interface WarehouseApi {
     suspend fun updateVehicle(
         @Path("id") id: String,
         @Body body: UpdateVehicleRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<VehicleMutationResponse>
 
     // ── Inventory ──
@@ -174,6 +175,7 @@ interface WarehouseApi {
     @PATCH("v1/warehouse/ops/dispatch/settings")
     suspend fun patchDispatchSettings(
         @Body body: DispatchSettingsPatchRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<Map<String, String>>
 
     @POST("v1/warehouse/supply-requests")
@@ -244,6 +246,7 @@ interface WarehouseApi {
     suspend fun replenishmentInsightAction(
         @Path("id") insightId: String,
         @Path("action") action: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<ReplenishmentInsightActionResponse>
 
     @GET("v1/warehouse/ops/financials")
@@ -253,18 +256,21 @@ interface WarehouseApi {
     suspend fun delayOrder(
         @Path("id") orderId: String,
         @Body body: WarehouseOrderMutationRequest = WarehouseOrderMutationRequest(),
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<WarehouseOrderMutationResponse>
 
     @POST("v1/warehouse/ops/orders/{id}/reject")
     suspend fun rejectOrder(
         @Path("id") orderId: String,
         @Body body: WarehouseOrderMutationRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<WarehouseOrderMutationResponse>
 
     @POST("v1/warehouse/ops/orders/{id}/overflow")
     suspend fun overflowOrder(
         @Path("id") orderId: String,
         @Body body: WarehouseOrderMutationRequest = WarehouseOrderMutationRequest(),
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<WarehouseOrderMutationResponse>
 
     @GET("v1/warehouse/ops/fleet/live-map")
@@ -291,4 +297,9 @@ interface WarehouseApi {
         @Query("version") version: String,
         @Query("channel") channel: String = "production",
     ): Response<ClientPolicyResponse>
+
+    @POST("v1/user/device-token")
+    suspend fun registerDeviceToken(
+        @Body body: Map<String, String>,
+    ): Response<Map<String, String>>
 }

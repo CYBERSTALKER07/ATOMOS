@@ -9,7 +9,12 @@ import type {
   WarehouseFleetVehicleListResponse,
   WarehouseVehicleUnavailableReason,
 } from '@pegasusx/types';
+import {
+  warehouseAssignDriverVehicleKey,
+  warehouseCreateDriverKey,
+} from '@pegasusx/api-client';
 import { apiFetch } from '@/lib/auth';
+import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -65,10 +70,14 @@ export default function DriversPage() {
     e.preventDefault();
     setCreating(true);
     setError('');
+    const warehouseId = warehouseHomeNodeId() || 'warehouse';
     try {
       const res = await apiFetch('/v1/warehouse/ops/drivers', {
         method: 'POST',
         body: JSON.stringify(form),
+        headers: {
+          'Idempotency-Key': warehouseCreateDriverKey(warehouseId, form.phone),
+        },
       });
       if (!res.ok) {
         throw new Error('Unable to create driver');
@@ -87,10 +96,14 @@ export default function DriversPage() {
   async function handleAssignVehicle(driverId: string, vehicleId: string) {
     setAssigningDriverId(driverId);
     setError('');
+    const warehouseId = warehouseHomeNodeId() || 'warehouse';
     try {
       const res = await apiFetch(`/v1/warehouse/ops/drivers/${driverId}/assign-vehicle`, {
         method: 'PATCH',
         body: JSON.stringify({ vehicle_id: vehicleId }),
+        headers: {
+          'Idempotency-Key': warehouseAssignDriverVehicleKey(warehouseId, driverId, vehicleId),
+        },
       });
       if (!res.ok) {
         throw new Error('Unable to update driver assignment');

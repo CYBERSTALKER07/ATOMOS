@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.getValue
@@ -50,8 +52,9 @@ import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverOutdatedState
 import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.services.OfflineSyncScheduler
-import com.pegasusx.driver.services.OfflineSyncScheduler
+import com.pegasusx.driver.service.AutoUpdater
 import com.pegasusx.driver.data.remote.TokenHolder
+import com.pegasusx.driver.ui.components.ClientPolicyBanner
 import com.pegasusx.driver.ui.screens.auth.LoginScreen
 import com.pegasusx.driver.ui.screens.home.HomeScreen
 import com.pegasusx.driver.ui.screens.manifest.DeliveryCorrectionScreen
@@ -70,6 +73,7 @@ import com.pegasusx.driver.ui.screens.notifications.DriverNotificationInboxScree
 import com.pegasusx.driver.ui.screens.offline.OfflineVerifierScreen
 import com.pegasusx.driver.ui.screens.supply.SupplyTransfersScreen
 import com.pegasusx.driver.ui.theme.MotionTokens
+import kotlinx.coroutines.launch
 
 object DriverRoutes {
     const val LOGIN = "login"
@@ -119,6 +123,47 @@ fun DriverNavigation(
     val outdatedState by driverWebSocket.outdatedState.collectAsState()
     var refreshEpoch by remember { mutableIntStateOf(0) }
     var networkAvailable by remember { mutableStateOf(true) }
+    var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val autoUpdater = remember { AutoUpdater(context.applicationContext) }
+
+    DisposableEffect(autoUpdater) {
+        onDispose { autoUpdater.cleanup() }
+    }
+
+    fun loadClientPolicy() {
+        scope.launch {
+            try {
+                val resp = api.getClientPolicy(
+                    platform = "android",
+                    version = BuildConfig.VERSION_NAME,
+                )
+                if (resp.isSuccessful && resp.body() != null) {
+                    val policy = resp.body()!!
+                    clientPolicyMessage = if (policy.outdated || policy.forceUpdate) {
+                        buildString {
+                            append(if (policy.forceUpdate) "Update required" else "Update available")
+                            if (policy.minimumVersion.isNotBlank()) {
+                                append(" — minimum version ${policy.minimumVersion}")
+                            }
+                            policy.deferReason?.takeIf { it.isNotBlank() }?.let { append(". $it") }
+                        }
+                    } else {
+                        null
+                    }
+                    if (policy.outdated || policy.forceUpdate) {
+                        autoUpdater.checkForUpdates(BuildConfig.VERSION_CODE)
+                    }
+                }
+            } catch (_: Exception) {
+                // Policy fetch is optional on local/dev stacks.
+            }
+        }
+    }
+
+    LaunchedEffect(refreshEpoch) {
+        loadClientPolicy()
+    }
 
     DisposableEffect(Unit) {
         connectDriverSocketIfPossible(driverWebSocket)
@@ -169,7 +214,9 @@ fun DriverNavigation(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        ClientPolicyBanner(clientPolicyMessage)
+        Box(modifier = Modifier.weight(1f)) {
         key(refreshEpoch) {
             NavHost(
                 navController = navController,
@@ -393,6 +440,7 @@ fun DriverNavigation(
                     }
                 }
             )
+        }
         }
     }
 }

@@ -295,6 +295,7 @@ struct FleetMapView: View {
         .onChange(of: driverSocketState.reconnectEpoch) { _, _ in
             Task {
                 await vm.loadMissions()
+                await FleetServiceLive.shared.flushOfflineQueue()
                 vm.lastRealtimeRefreshAt = Date()
             }
         }

@@ -29,6 +29,35 @@ enum PayloadIdempotency {
         key(action: "reassign-order", entityId: "\(orderId)-\(toDriverId)")
     }
 
+    static func supplierStartLoading(manifestId: String) -> String {
+        key(action: "supplier-start-loading", entityId: manifestId)
+    }
+
+    static func supplierInjectOrder(manifestId: String, orderId: String) -> String {
+        key(action: "supplier-inject-order", entityId: "\(manifestId)-\(orderId)")
+    }
+
+    static func sealCompleted(manifestIds: [String]) -> String {
+        let sorted = manifestIds
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .sorted()
+            .joined(separator: ",")
+        return key(action: "seal-completed", entityId: sorted)
+    }
+
+    static func manifestException(manifestId: String, orderId: String) -> String {
+        key(action: "manifest-exception", entityId: "\(manifestId)-\(orderId)")
+    }
+
+    static func orderSeal(orderId: String) -> String {
+        key(action: "payload-seal", entityId: orderId)
+    }
+
+    static func missingItems(orderId: String) -> String {
+        key(action: "missing-items", entityId: orderId)
+    }
+
     static func inboundScan(barcode: String, sessionId: String) -> String {
         key(action: "inbound-scan", entityId: "\(barcode)-\(sessionId)")
     }
