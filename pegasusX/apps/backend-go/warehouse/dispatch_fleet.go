@@ -18,11 +18,11 @@ func (s *Service) driversOnActiveManifests(ctx context.Context, supplierID, ware
 	return store.DriversOnActiveManifests(ctx, supplierID, warehouseID, driverIDs)
 }
 
-func warehouseDriverTruckStatus(isActive bool, onActiveManifest bool) (truckStatus string, unavailable bool) {
+func warehouseDriverTruckStatus(isActive bool, onInTransit bool) (truckStatus string, unavailable bool) {
 	if !isActive {
 		return "UNAVAILABLE", true
 	}
-	if onActiveManifest {
+	if onInTransit {
 		return "IN_TRANSIT", true
 	}
 	return "AVAILABLE", false

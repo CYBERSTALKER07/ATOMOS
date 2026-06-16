@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,12 +14,11 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
-	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/httppagination"
-	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"google.golang.org/api/iterator"
 )
 
@@ -512,6 +512,14 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 	whID := warehouseIDFromRequest(r)
 	limit, offset := httppagination.ParseLimitOffset(r, 300, 5000)
 
+	var previewBody struct {
+		OrderIDs []string `json:"order_ids"`
+	}
+	if r.Method == http.MethodPost && r.Body != nil {
+		body, _ := io.ReadAll(io.LimitReader(r.Body, 16*1024))
+		_ = json.Unmarshal(body, &previewBody)
+	}
+
 	undispatched := make([]map[string]any, 0)
 	windowConstrained := 0
 	dispatchRows := make([]dispatch.DispatchableOrder, 0)
@@ -525,7 +533,8 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 		})
 		if err == nil {
 			dispatchRows = rows
-			preview := dispatch.BuildPreview(rows)
+			dispatchRows = filterDispatchRowsByOrderIDs(dispatchRows, previewBody.OrderIDs)
+			preview := dispatch.BuildPreview(dispatchRows)
 			undispatched = make([]map[string]any, 0, len(preview.UndispatchedOrders))
 			for _, row := range preview.UndispatchedOrders {
 				totalMinor, _ := row["total_minor"].(int64)
@@ -589,38 +598,22 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 		solveDrivers = append([]PortalDriver(nil), s.drivers...)
 		s.mu.RUnlock()
 	}
-	busy := map[string]bool{}
+	fleetCtx := fleetDispatchContext{InTransit: map[string]bool{}, TopOff: map[string]manifest.DriverManifestCapacity{}}
 	if len(solveDrivers) > 0 {
 		var err error
-		busy, err = s.driversOnActiveManifests(r.Context(), sid, whID, collectWarehouseDriverIDs(solveDrivers))
+		fleetCtx, err = s.loadFleetDispatchContext(r.Context(), sid, whID, collectWarehouseDriverIDs(solveDrivers))
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dispatch_preview_failed"})
 			return
 		}
 	}
+	dispatchRows = filterDispatchRowsByOrderIDs(dispatchRows, previewBody.OrderIDs)
 	for _, d := range solveDrivers {
-		entry := map[string]any{
-			"driver_id":     d.DriverID,
-			"name":          d.Name,
-			"vehicle_id":    d.VehicleID,
-			"vehicle_label": d.VehicleLabel,
-			"vehicle_class": d.VehicleClass,
-			"max_volume_vu": d.MaxVolumeVU,
-		}
-		driverID := strings.TrimSpace(d.DriverID)
-		truckStatus, _ := warehouseDriverTruckStatus(d.IsActive, busy[driverID])
+		entry := driverPreviewEntry(d, fleetCtx)
+		truckStatus, isUnavailable, reason := warehouseDriverAvailability(d, fleetCtx)
 		entry["truck_status"] = truckStatus
-		isUnavailable := !d.IsActive || busy[driverID] || !strings.EqualFold(d.TruckStatus, "AVAILABLE")
 		if isUnavailable {
-			switch {
-			case !d.IsActive:
-				entry["unavailable_reason"] = "INACTIVE"
-			case busy[driverID]:
-				entry["unavailable_reason"] = truckStatus
-			default:
-				entry["truck_status"] = d.TruckStatus
-				entry["unavailable_reason"] = d.TruckStatus
-			}
+			entry["unavailable_reason"] = reason
 			unavailable = append(unavailable, entry)
 		} else {
 			available = append(available, entry)
@@ -628,49 +621,20 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 	}
 
 	response := map[string]any{
-		"preview_ready":            true,
-		"undispatched_orders":      undispatched,
-		"available_drivers":        available,
-		"unavailable_drivers":      unavailable,
-		"window_constrained_count": windowConstrained,
+		"preview_ready":              true,
+		"undispatched_orders":        undispatched,
+		"available_drivers":          available,
+		"unavailable_drivers":        unavailable,
+		"window_constrained_count":   windowConstrained,
+		"fleet_effective_capacity_vu": fleetEffectiveCapacityVU(solveDrivers, fleetCtx),
+	}
+	if len(previewBody.OrderIDs) > 0 {
+		response["selected_orders_volume_vu"] = sumOrderVolumeVU(dispatchRows)
 	}
 	if len(dispatchRows) > 0 && len(solveDrivers) > 0 {
-		driverInputs := make([]dispatch.FleetDriverInput, 0, len(solveDrivers))
-		for _, driver := range solveDrivers {
-			driverID := strings.TrimSpace(driver.DriverID)
-			if driverID == "" || busy[driverID] || !driver.IsActive || !strings.EqualFold(driver.TruckStatus, "AVAILABLE") {
-				continue
-			}
-			driverInputs = append(driverInputs, dispatch.FleetDriverInput{
-				DriverID:     driver.DriverID,
-				DriverName:   driver.Name,
-				VehicleID:    driver.VehicleID,
-				VehicleClass: driver.VehicleClass,
-				MaxVolumeVU:  driver.MaxVolumeVU,
-				IsActive:     driver.IsActive,
-				TruckStatus:  driver.TruckStatus,
-				HomeNodeID:   whID,
-			})
-		}
-		fleet := dispatch.BuildAvailableFleet(driverInputs, nil)
-		depot := dispatch.ResolveDepot(r.Context(), s.spannerClient, whID, dispatch.DepotCoords{
-			Lat: s.fallbackDepotLat,
-			Lng: s.fallbackDepotLng,
-		})
-		job := plan.BuildSolveJob(r.Context(), s.supplierID, whID, depot, dispatchRows, fleet)
-		solve := plan.RunSolvePreview(r.Context(), s.optimizerClient, s.planCounters, job)
-		if len(solve.ProposedRoutes) > 0 {
-			routing.AttachRouteGeometryToProposedRoutes(r.Context(), s.routeGeometryBuilder, routing.LatLng{
-				Lat: depot.Lat,
-				Lng: depot.Lng,
-			}, solve.ProposedRoutes)
-			response["proposed_routes"] = solve.ProposedRoutes
-		}
-		if solve.OptimizerSource != "" {
-			response["optimizer_source"] = solve.OptimizerSource
-		}
-		if len(solve.OptimizerWarnings) > 0 {
-			response["optimizer_warnings"] = solve.OptimizerWarnings
+		planMeta, _ := s.solveDispatchPreview(r.Context(), whID, dispatchRows, fleetCtx, solveDrivers, previewBody.OrderIDs)
+		for k, v := range planMeta {
+			response[k] = v
 		}
 	}
 	w.Header().Set("X-Page-Limit", strconv.Itoa(limit))
@@ -699,6 +663,9 @@ type DispatchCapacityWarning struct {
 	EffectiveMaxVU            float64  `json:"effective_max_vu"`
 	ExcessVU                  float64  `json:"excess_vu,omitempty"`
 	SuggestedUnselectOrderIDs []string `json:"suggested_unselect_order_ids,omitempty"`
+	SuggestedDeferOrderIDs    []string `json:"suggested_defer_order_ids,omitempty"`
+	FleetEffectiveCapacityVU  float64  `json:"fleet_effective_capacity_vu,omitempty"`
+	RequestedVolumeVU         float64  `json:"requested_volume_vu,omitempty"`
 }
 
 type DispatchExecuteRoute struct {
@@ -744,7 +711,10 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	var req struct {
 		Mode          string                 `json:"mode"`
 		Routes        []DispatchExecuteRoute `json:"routes"`
+		OrderIDs      []string               `json:"order_ids"`
 		ForceCapacity bool                   `json:"force_capacity"`
+		AcceptPartial bool                   `json:"accept_partial"`
+		PlanFingerprint string               `json:"plan_fingerprint"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -752,11 +722,14 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	}
 
 	out, err := s.ExecuteDispatch(r.Context(), DispatchExecuteRequest{
-		WarehouseID:   whID,
-		SupplierID:    sid,
-		Mode:          req.Mode,
-		Routes:        req.Routes,
-		ForceCapacity: req.ForceCapacity,
+		WarehouseID:     whID,
+		SupplierID:      sid,
+		Mode:            req.Mode,
+		Routes:          req.Routes,
+		OrderIDs:        req.OrderIDs,
+		ForceCapacity:   req.ForceCapacity,
+		AcceptPartial:   req.AcceptPartial,
+		PlanFingerprint: req.PlanFingerprint,
 	})
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "dispatch execute failed", "warehouse_id", whID, "err", err)

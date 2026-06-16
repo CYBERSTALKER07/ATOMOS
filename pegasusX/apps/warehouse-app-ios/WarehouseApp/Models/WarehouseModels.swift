@@ -931,6 +931,8 @@ struct DispatchPreview: Decodable {
     let optimizerSource: String?
     let optimizerWarnings: [String]
     let windowConstrainedCount: Int
+    let fleetEffectiveCapacityVu: Double
+    let planFingerprint: String?
 
     enum CodingKeys: String, CodingKey {
         case undispatchedOrders = "undispatched_orders"
@@ -940,6 +942,8 @@ struct DispatchPreview: Decodable {
         case optimizerSource = "optimizer_source"
         case optimizerWarnings = "optimizer_warnings"
         case windowConstrainedCount = "window_constrained_count"
+        case fleetEffectiveCapacityVu = "fleet_effective_capacity_vu"
+        case planFingerprint = "plan_fingerprint"
     }
 
     init(from decoder: Decoder) throws {
@@ -951,6 +955,8 @@ struct DispatchPreview: Decodable {
         optimizerSource = try c.decodeIfPresent(String.self, forKey: .optimizerSource)
         optimizerWarnings = try c.decodeIfPresent([String].self, forKey: .optimizerWarnings) ?? []
         windowConstrainedCount = try c.decodeIfPresent(Int.self, forKey: .windowConstrainedCount) ?? 0
+        fleetEffectiveCapacityVu = try c.decodeIfPresent(Double.self, forKey: .fleetEffectiveCapacityVu) ?? 0
+        planFingerprint = try c.decodeIfPresent(String.self, forKey: .planFingerprint)
     }
 }
 
@@ -961,6 +967,7 @@ struct DispatchProposedRoute: Decodable, Identifiable {
     let vehicleId: String?
     let orderIds: [String]
     let volumeVu: Double?
+    let loadedVolume: Double?
     let maxVolumeVu: Double?
     let stopCount: Int?
 
@@ -970,6 +977,7 @@ struct DispatchProposedRoute: Decodable, Identifiable {
         case vehicleId = "vehicle_id"
         case orderIds = "order_ids"
         case volumeVu = "volume_vu"
+        case loadedVolume = "loaded_volume"
         case maxVolumeVu = "max_volume_vu"
         case stopCount = "stop_count"
     }
@@ -1009,6 +1017,9 @@ struct AvailableDriver: Decodable, Identifiable {
     let vehicleLabel: String
     let truckStatus: String
     let maxVolumeVu: Double
+    let usedVolumeVu: Double?
+    let freeVolumeVu: Double?
+    let activeManifestId: String?
     let unavailableReason: String?
 
     enum CodingKeys: String, CodingKey {
@@ -1018,6 +1029,9 @@ struct AvailableDriver: Decodable, Identifiable {
         case vehicleLabel = "vehicle_label"
         case truckStatus = "truck_status"
         case maxVolumeVu = "max_volume_vu"
+        case usedVolumeVu = "used_volume_vu"
+        case freeVolumeVu = "free_volume_vu"
+        case activeManifestId = "active_manifest_id"
         case unavailableReason = "unavailable_reason"
     }
 
@@ -1029,6 +1043,9 @@ struct AvailableDriver: Decodable, Identifiable {
         vehicleLabel = try c.decodeIfPresent(String.self, forKey: .vehicleLabel) ?? ""
         truckStatus = try c.decodeIfPresent(String.self, forKey: .truckStatus) ?? ""
         maxVolumeVu = try c.decodeIfPresent(Double.self, forKey: .maxVolumeVu) ?? 0
+        usedVolumeVu = try c.decodeIfPresent(Double.self, forKey: .usedVolumeVu)
+        freeVolumeVu = try c.decodeIfPresent(Double.self, forKey: .freeVolumeVu)
+        activeManifestId = try c.decodeIfPresent(String.self, forKey: .activeManifestId)
         unavailableReason = try c.decodeIfPresent(String.self, forKey: .unavailableReason)
     }
 }
@@ -1040,6 +1057,7 @@ struct DispatchCapacityWarning: Decodable {
     let effectiveMaxVu: Double
     let excessVu: Double
     let suggestedUnselectOrderIds: [String]
+    let suggestedDeferOrderIds: [String]
 
     enum CodingKeys: String, CodingKey {
         case driverId = "driver_id"
@@ -1048,6 +1066,7 @@ struct DispatchCapacityWarning: Decodable {
         case effectiveMaxVu = "effective_max_vu"
         case excessVu = "excess_vu"
         case suggestedUnselectOrderIds = "suggested_unselect_order_ids"
+        case suggestedDeferOrderIds = "suggested_defer_order_ids"
     }
 
     init(from decoder: Decoder) throws {
@@ -1058,6 +1077,7 @@ struct DispatchCapacityWarning: Decodable {
         effectiveMaxVu = try c.decodeIfPresent(Double.self, forKey: .effectiveMaxVu) ?? 0
         excessVu = try c.decodeIfPresent(Double.self, forKey: .excessVu) ?? 0
         suggestedUnselectOrderIds = try c.decodeIfPresent([String].self, forKey: .suggestedUnselectOrderIds) ?? []
+        suggestedDeferOrderIds = try c.decodeIfPresent([String].self, forKey: .suggestedDeferOrderIds) ?? []
     }
 }
 
@@ -1066,12 +1086,14 @@ struct DispatchExecuteResponse: Decodable {
     let ordersAssigned: Int
     let warnings: [String]
     let capacityWarnings: [DispatchCapacityWarning]
+    let orphanOrderIds: [String]
 
     enum CodingKeys: String, CodingKey {
         case status
         case ordersAssigned = "orders_assigned"
         case warnings
         case capacityWarnings = "capacity_warnings"
+        case orphanOrderIds = "orphan_order_ids"
     }
 
     init(from decoder: Decoder) throws {
@@ -1080,6 +1102,7 @@ struct DispatchExecuteResponse: Decodable {
         ordersAssigned = try c.decodeIfPresent(Int.self, forKey: .ordersAssigned) ?? 0
         warnings = try c.decodeIfPresent([String].self, forKey: .warnings) ?? []
         capacityWarnings = try c.decodeIfPresent([DispatchCapacityWarning].self, forKey: .capacityWarnings) ?? []
+        orphanOrderIds = try c.decodeIfPresent([String].self, forKey: .orphanOrderIds) ?? []
     }
 }
 
@@ -1096,11 +1119,17 @@ struct DispatchExecuteRouteRequest: Encodable {
 struct DispatchExecuteRequest: Encodable {
     let mode: String
     let forceCapacity: Bool
-    let routes: [DispatchExecuteRouteRequest]
+    let acceptPartial: Bool?
+    let orderIds: [String]?
+    let planFingerprint: String?
+    let routes: [DispatchExecuteRouteRequest]?
 
     enum CodingKeys: String, CodingKey {
         case mode
         case forceCapacity = "force_capacity"
+        case acceptPartial = "accept_partial"
+        case orderIds = "order_ids"
+        case planFingerprint = "plan_fingerprint"
         case routes
     }
 }

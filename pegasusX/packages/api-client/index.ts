@@ -870,8 +870,15 @@ export class ApiClient {
     return this.request<WarehouseOrdersResponse>(appendQuery("/v1/warehouse/ops/orders", query as Record<string, unknown>), "GET");
   }
 
-  async previewWarehouseDispatch(query: { warehouse_id?: string } = {}): Promise<WarehouseDispatchPreview> {
-    return this.request<WarehouseDispatchPreview>(appendQuery("/v1/warehouse/ops/dispatch/preview", query as Record<string, unknown>), "POST");
+  async previewWarehouseDispatch(
+    query: { warehouse_id?: string } = {},
+    body: { order_ids?: string[] } = {},
+  ): Promise<WarehouseDispatchPreview> {
+    return this.request<WarehouseDispatchPreview>(
+      appendQuery("/v1/warehouse/ops/dispatch/preview", query as Record<string, unknown>),
+      "POST",
+      { body },
+    );
   }
 
   async executeWarehouseDispatch(

@@ -22,6 +22,8 @@ struct DispatchView: View {
     @State private var selectedDriverId = ""
     @State private var selectedOrderIds: Set<String> = []
     @State private var showCapacityDialog = false
+    @State private var capacityDialogAutoMode = false
+    @State private var showSmartConfirm = false
     @State private var capacityWarnings: [DispatchCapacityWarning] = []
 
     private var capacitySuggestedUnselect: [String] {
@@ -81,10 +83,21 @@ struct DispatchView: View {
                 }
             }
             .confirmationDialog("Capacity exceeded", isPresented: $showCapacityDialog, titleVisibility: .visible) {
-                Button("Dispatch anyway", role: .destructive) {
-                    Task { await runManualDispatch(forceCapacity: true) }
+                Button("Force dispatch", role: .destructive) {
+                    Task {
+                        if capacityDialogAutoMode {
+                            await runSmartDispatch(forceCapacity: true)
+                        } else {
+                            await runManualDispatch(forceCapacity: true)
+                        }
+                    }
                 }
-                if !capacitySuggestedUnselect.isEmpty {
+                if capacityDialogAutoMode {
+                    Button("Accept partial") {
+                        Task { await runSmartDispatch(acceptPartial: true) }
+                    }
+                }
+                if !capacityDialogAutoMode && !capacitySuggestedUnselect.isEmpty {
                     Button("Apply suggestion") {
                         selectedOrderIds.subtract(capacitySuggestedUnselect)
                         showCapacityDialog = false
@@ -92,16 +105,26 @@ struct DispatchView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text(capacityWarnings.map { warning in
+                Text(capacityDialogAutoMode
+                     ? "Smart dispatch cannot fit all orders on available trucks."
+                     : capacityWarnings.map { warning in
                     var lines = [String(format: "%.1f VU loaded / %.1f VU effective max", warning.loadedVu, warning.effectiveMaxVu)]
-                    if warning.excessVu > 0 {
-                        lines.append(String(format: "Excess: %.1f VU", warning.excessVu))
-                    }
                     if !warning.suggestedUnselectOrderIds.isEmpty {
                         lines.append("Suggested unselect: \(warning.suggestedUnselectOrderIds.map { String($0.prefix(8)) }.joined(separator: ", "))")
                     }
+                    if !warning.suggestedDeferOrderIds.isEmpty {
+                        lines.append("Suggested defer: \(warning.suggestedDeferOrderIds.map { String($0.prefix(8)) }.joined(separator: ", "))")
+                    }
                     return lines.joined(separator: "\n")
                 }.joined(separator: "\n\n"))
+            }
+            .confirmationDialog("Run smart dispatch?", isPresented: $showSmartConfirm, titleVisibility: .visible) {
+                Button("Smart Dispatch") {
+                    Task { await runSmartDispatch() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Assign orders using the optimizer across available trucks.")
             }
             .sheet(isPresented: $showCreateSupplyRequest) {
                 CreateSupplyRequestSheet { factoryId, priority, notes in
@@ -204,14 +227,22 @@ struct DispatchView: View {
             let selectedVolume = preview.undispatchedOrders
                 .filter { selectedOrderIds.contains($0.orderId) }
                 .reduce(0.0) { $0 + $1.volumeVu }
-            let effectiveMax = (selectedDriver?.maxVolumeVu ?? 0) * dispatchTetrisBuffer
+            let effectiveMax: Double = {
+                guard let driver = selectedDriver else { return 0 }
+                if let free = driver.freeVolumeVu, free > 0 {
+                    return free * dispatchTetrisBuffer
+                }
+                return driver.maxVolumeVu * dispatchTetrisBuffer
+            }()
             List {
                 Section {
                     Picker("Truck / driver", selection: $selectedDriverId) {
                         Text("Select truck / driver").tag("")
                         ForEach(preview.availableDrivers) { driver in
-                            Text("\(driver.name) · \(driver.maxVolumeVu, specifier: "%.0f") VU max")
-                                .tag(driver.driverId)
+                            let label = (driver.freeVolumeVu ?? 0) > 0
+                                ? "\(driver.name) · \(driver.freeVolumeVu ?? 0, specifier: "%.0f") VU free"
+                                : "\(driver.name) · \(driver.maxVolumeVu, specifier: "%.0f") VU max"
+                            Text(label).tag(driver.driverId)
                         }
                     }
                     if selectedDriver != nil {
@@ -222,11 +253,24 @@ struct DispatchView: View {
                     Button {
                         Task { await runManualDispatch(forceCapacity: false) }
                     } label: {
-                        Text(executing ? "Dispatching…" : "Dispatch (\(selectedOrderIds.count))")
+                        Text(executing ? "Dispatching…" : "Manual (\(selectedOrderIds.count))")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(executing || selectedDriverId.isEmpty || selectedOrderIds.isEmpty)
+                    Button {
+                        showSmartConfirm = true
+                    } label: {
+                        Text("Smart Dispatch")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(executing || preview.undispatchedOrders.isEmpty || preview.availableDrivers.isEmpty)
+                    if preview.fleetEffectiveCapacityVu > 0 {
+                        Text("Fleet \(preview.fleetEffectiveCapacityVu, specifier: "%.1f") VU effective")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Section("Orders") {
                     ForEach(preview.undispatchedOrders) { order in
@@ -269,7 +313,7 @@ struct DispatchView: View {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(route.driverName ?? route.driverId ?? "Driver")
                                     .font(.headline)
-                                Text("\(route.stopCount ?? route.orderIds.count) stops · \(route.volumeVu ?? 0, specifier: "%.1f") VU")
+                                Text("\(route.stopCount ?? route.orderIds.count) stops · \((route.volumeVu ?? route.loadedVolume ?? 0), specifier: "%.1f") VU")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                 Text(route.orderIds.joined(separator: " → "))
@@ -516,20 +560,24 @@ struct DispatchView: View {
             )
             let result = try await WarehouseService.executeDispatch(
                 body: DispatchExecuteRequest(
-                mode: "MANUAL",
-                forceCapacity: forceCapacity,
-                routes: [
-                    DispatchExecuteRouteRequest(
-                        driverId: selectedDriverId,
-                        orderIds: Array(selectedOrderIds),
-                    ),
-                ],
-            ),
+                    mode: "MANUAL",
+                    forceCapacity: forceCapacity,
+                    acceptPartial: nil,
+                    orderIds: sortedOrderIds,
+                    planFingerprint: nil,
+                    routes: [
+                        DispatchExecuteRouteRequest(
+                            driverId: selectedDriverId,
+                            orderIds: sortedOrderIds,
+                        ),
+                    ],
+                ),
                 idempotencyKey: idempotencyKey
             )
             switch result.status {
             case "capacity_exceeded":
                 capacityWarnings = result.capacityWarnings
+                capacityDialogAutoMode = false
                 showCapacityDialog = true
             case "dispatched":
                 actionAlert = DispatchActionAlert(
@@ -544,6 +592,56 @@ struct DispatchView: View {
             }
         } catch {
             actionAlert = DispatchActionAlert(title: "Dispatch Failed", message: describe(error))
+        }
+    }
+
+    private func runSmartDispatch(forceCapacity: Bool = false, acceptPartial: Bool = false) async {
+        guard !executing, let preview else { return }
+        let orderIds = selectedOrderIds.isEmpty
+            ? preview.undispatchedOrders.map(\.orderId)
+            : selectedOrderIds.sorted()
+        guard !orderIds.isEmpty else { return }
+        executing = true
+        defer { executing = false }
+        do {
+            let orderIdsJson = orderIds.map { "\"\($0)\"" }.joined(separator: ",")
+            let routeFingerprint = """
+            {"mode":"AUTO","order_ids":[\(orderIdsJson)],"force_capacity":\(forceCapacity),"accept_partial":\(acceptPartial)}
+            """
+            let idempotencyKey = WarehouseIdempotency.dispatch(
+                actorId: "smart-dispatch",
+                routeFingerprint: routeFingerprint
+            )
+            let result = try await WarehouseService.executeDispatch(
+                body: DispatchExecuteRequest(
+                    mode: "AUTO",
+                    forceCapacity: forceCapacity,
+                    acceptPartial: acceptPartial ? true : nil,
+                    orderIds: orderIds,
+                    planFingerprint: preview.planFingerprint,
+                    routes: nil,
+                ),
+                idempotencyKey: idempotencyKey
+            )
+            switch result.status {
+            case "capacity_exceeded":
+                capacityWarnings = result.capacityWarnings
+                capacityDialogAutoMode = true
+                showCapacityDialog = true
+            case "dispatched":
+                var message = "Assigned \(result.ordersAssigned) order(s)."
+                if !result.orphanOrderIds.isEmpty {
+                    message += " \(result.orphanOrderIds.count) order(s) could not be assigned."
+                }
+                actionAlert = DispatchActionAlert(title: "Smart Dispatch Committed", message: message)
+                selectedOrderIds = []
+                await reloadDispatchPreview()
+            default:
+                let warning = result.warnings.first ?? "Smart dispatch did not commit."
+                actionAlert = DispatchActionAlert(title: "Smart Dispatch Incomplete", message: warning)
+            }
+        } catch {
+            actionAlert = DispatchActionAlert(title: "Smart Dispatch Failed", message: describe(error))
         }
     }
 

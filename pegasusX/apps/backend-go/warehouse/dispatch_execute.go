@@ -16,11 +16,14 @@ import (
 
 // DispatchExecuteRequest is the service-layer input for warehouse dispatch commit.
 type DispatchExecuteRequest struct {
-	WarehouseID   string
-	SupplierID    string
-	Mode          string
-	Routes        []DispatchExecuteRoute
-	ForceCapacity bool
+	WarehouseID     string
+	SupplierID      string
+	Mode            string
+	Routes          []DispatchExecuteRoute
+	OrderIDs        []string
+	ForceCapacity   bool
+	AcceptPartial   bool
+	PlanFingerprint string
 }
 
 // ExecuteDispatch runs the warehouse smart-dispatch optimizer and commits manifests.
@@ -59,6 +62,7 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 		return out, fmt.Errorf("fetch dispatchable: %w", err)
 	}
 	rows = filterLockedOrders(ctx, s, whID, rows)
+	rows = filterDispatchRowsByOrderIDs(rows, req.OrderIDs)
 	if len(rows) == 0 {
 		return out, nil
 	}
@@ -68,32 +72,16 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 		return out, err
 	}
 	solveDrivers = filterLockedDrivers(whID, solveDrivers, s.loadDispatchLocks(ctx, whID))
-	busy, err := s.driversOnActiveManifests(ctx, sid, whID, collectWarehouseDriverIDs(solveDrivers))
+	fleetCtx, err := s.loadFleetDispatchContext(ctx, sid, whID, collectWarehouseDriverIDs(solveDrivers))
 	if err != nil {
-		return out, fmt.Errorf("active manifest drivers: %w", err)
+		return out, fmt.Errorf("fleet dispatch context: %w", err)
 	}
 
 	var driverInputs []dispatch.FleetDriverInput
 	vehicleByDriver := make(map[string]string)
-	for _, driver := range solveDrivers {
-		driverID := strings.TrimSpace(driver.DriverID)
-		if driverID == "" || busy[driverID] {
-			continue
-		}
-		if !driver.IsActive || !strings.EqualFold(driver.TruckStatus, "AVAILABLE") {
-			continue
-		}
-		driverInputs = append(driverInputs, dispatch.FleetDriverInput{
-			DriverID:     driver.DriverID,
-			DriverName:   driver.Name,
-			VehicleID:    driver.VehicleID,
-			VehicleClass: driver.VehicleClass,
-			MaxVolumeVU:  driver.MaxVolumeVU,
-			IsActive:     driver.IsActive,
-			TruckStatus:  driver.TruckStatus,
-			HomeNodeID:   whID,
-		})
-		vehicleByDriver[strings.TrimSpace(driver.DriverID)] = strings.TrimSpace(driver.VehicleID)
+	for _, input := range buildFleetDriverInputs(solveDrivers, fleetCtx, whID) {
+		driverInputs = append(driverInputs, input)
+		vehicleByDriver[strings.TrimSpace(input.DriverID)] = strings.TrimSpace(input.VehicleID)
 	}
 
 	var assignment *dispatch.AssignmentResult
@@ -101,7 +89,7 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 
 	if strings.ToUpper(req.Mode) == "MANUAL" {
 		source = "manual"
-		assignment = buildManualAssignment(rows, solveDrivers, req.Routes)
+		assignment = buildManualAssignment(rows, solveDrivers, fleetCtx, req.Routes)
 	} else {
 		fleet := dispatch.BuildAvailableFleet(driverInputs, nil)
 		if len(fleet) == 0 {
@@ -131,8 +119,9 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 	}
 
 	var capacityWarnings []DispatchCapacityWarning
-	if strings.ToUpper(req.Mode) == "MANUAL" {
-		capacityWarnings = manualCapacityWarnings(assignment.Routes)
+	mode := strings.ToUpper(req.Mode)
+	if mode == "MANUAL" {
+		capacityWarnings = manualCapacityWarnings(assignment.Routes, solveDrivers, fleetCtx)
 		if len(capacityWarnings) > 0 {
 			out.CapacityWarnings = capacityWarnings
 			if !req.ForceCapacity {
@@ -141,6 +130,21 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 				return out, nil
 			}
 			out.Warnings = append(out.Warnings, "capacity_override")
+		}
+	} else if mode == "AUTO" {
+		requestedVU := sumOrderVolumeVU(rows)
+		fleetVU := fleetEffectiveCapacityVU(solveDrivers, fleetCtx)
+		capacityWarnings = autoCapacityWarnings(assignment, solveDrivers, fleetCtx, requestedVU, fleetVU)
+		if len(capacityWarnings) > 0 || len(out.Orphans) > 0 {
+			out.CapacityWarnings = capacityWarnings
+			if !req.ForceCapacity && !req.AcceptPartial {
+				out.Status = "capacity_exceeded"
+				out.Warnings = append(out.Warnings, "capacity_exceeded")
+				return out, nil
+			}
+			if req.ForceCapacity && len(capacityWarnings) > 0 {
+				out.Warnings = append(out.Warnings, "capacity_override")
+			}
 		}
 	}
 
@@ -159,9 +163,27 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 		if driverID == "" || len(route.Orders) == 0 {
 			continue
 		}
+		vehicleID := strings.TrimSpace(vehicleByDriver[driverID])
 		manifestID := uuid.NewString()
 		routeID := uuid.NewString()
-		vehicleID := strings.TrimSpace(vehicleByDriver[driverID])
+		seqBase := int64(0)
+		existingTotalVU := 0.0
+		truckMaxVU := route.MaxVolume
+		isTopOff := false
+		if top := fleetCtx.topOffFor(driverID); top != nil && top.ManifestID != "" {
+			isTopOff = true
+			manifestID = top.ManifestID
+			routeID = top.RouteID
+			seqBase = top.StopCount
+			existingTotalVU = top.TotalVolumeVU
+			if top.MaxVolumeVU > 0 {
+				truckMaxVU = top.MaxVolumeVU
+			}
+		}
+		newVolumeVU := route.LoadedVolume
+		totalVolumeVU := existingTotalVU + newVolumeVU
+		stopCount := seqBase + int64(len(route.Orders))
+
 		batch.Manifests = append(batch.Manifests, manifest.SupplierTruckRow{
 			ManifestID:    manifestID,
 			SupplierID:    sid,
@@ -170,9 +192,9 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 			TruckID:       vehicleID,
 			DriverID:      driverID,
 			State:         warehouseDispatchExecuteManifestState,
-			TotalVolumeVU: route.LoadedVolume,
-			MaxVolumeVU:   route.MaxVolume,
-			StopCount:     int64(len(route.Orders)),
+			TotalVolumeVU: totalVolumeVU,
+			MaxVolumeVU:   truckMaxVU,
+			StopCount:     stopCount,
 			CreatedAt:     now,
 		})
 
@@ -182,11 +204,12 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 			if orderID == "" {
 				continue
 			}
+			seq := seqBase + int64(idx)
 			batch.Orders = append(batch.Orders, manifest.SupplierManifestOrderRow{
 				ManifestID:    manifestID,
 				OrderID:       orderID,
-				SequenceIndex: int64(idx),
-				LoadingOrder:  int64(idx),
+				SequenceIndex: seq,
+				LoadingOrder:  seq,
 				VolumeVU:      stop.Volume,
 				State:         "LOADED",
 				UpdatedAt:     now,
@@ -219,35 +242,37 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 			orderIDs = append(orderIDs, orderID)
 		}
 
-		queued = append(queued,
-			pendingEvent{
-				aggregateType: events.AggregateRoute,
-				aggregateID:   routeID,
-				payload: events.RouteEvent{
-					BaseEvent:   events.BaseEvent{Type: events.EventRouteCreated},
-					RouteID:     routeID,
-					ManifestID:  manifestID,
-					SupplierID:  sid,
-					WarehouseID: whID,
-					DriverID:    driverID,
-					VehicleID:   vehicleID,
-					OrderIDs:    orderIDs,
+		if !isTopOff {
+			queued = append(queued,
+				pendingEvent{
+					aggregateType: events.AggregateRoute,
+					aggregateID:   routeID,
+					payload: events.RouteEvent{
+						BaseEvent:   events.BaseEvent{Type: events.EventRouteCreated},
+						RouteID:     routeID,
+						ManifestID:  manifestID,
+						SupplierID:  sid,
+						WarehouseID: whID,
+						DriverID:    driverID,
+						VehicleID:   vehicleID,
+						OrderIDs:    orderIDs,
+					},
 				},
-			},
-			pendingEvent{
-				aggregateType: events.AggregateManifest,
-				aggregateID:   manifestID,
-				payload: events.ManifestEvent{
-					BaseEvent:   events.BaseEvent{Type: events.EventManifestDraftCreated},
-					ManifestID:  manifestID,
-					RouteID:     routeID,
-					SupplierID:  sid,
-					WarehouseID: whID,
-					DriverID:    driverID,
-					StopCount:   int64(len(orderIDs)),
+				pendingEvent{
+					aggregateType: events.AggregateManifest,
+					aggregateID:   manifestID,
+					payload: events.ManifestEvent{
+						BaseEvent:   events.BaseEvent{Type: events.EventManifestDraftCreated},
+						ManifestID:  manifestID,
+						RouteID:     routeID,
+						SupplierID:  sid,
+						WarehouseID: whID,
+						DriverID:    driverID,
+						StopCount:   stopCount,
+					},
 				},
-			},
-		)
+			)
+		}
 
 		committed = append(committed, DispatchExecuteRoute{
 			ManifestID: manifestID,
@@ -255,8 +280,8 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 			DriverID:   driverID,
 			VehicleID:  vehicleID,
 			OrderIDs:   orderIDs,
-			VolumeVU:   route.LoadedVolume,
-			MaxVolume:  route.MaxVolume,
+			VolumeVU:   newVolumeVU,
+			MaxVolume:  truckMaxVU,
 		})
 		out.OrdersAssigned += len(orderIDs)
 	}
@@ -403,25 +428,29 @@ func filterLockedDrivers(warehouseID string, drivers []PortalDriver, locks map[s
 	return filtered
 }
 
-func buildManualAssignment(rows []dispatch.DispatchableOrder, drivers []PortalDriver, manualRoutes []DispatchExecuteRoute) *dispatch.AssignmentResult {
+func buildManualAssignment(rows []dispatch.DispatchableOrder, drivers []PortalDriver, fleetCtx fleetDispatchContext, manualRoutes []DispatchExecuteRoute) *dispatch.AssignmentResult {
 	assignment := &dispatch.AssignmentResult{}
 	orderMap := make(map[string]dispatch.DispatchableOrder, len(rows))
 	for _, row := range rows {
 		orderMap[row.OrderID] = row
 	}
+	driverMap := make(map[string]PortalDriver, len(drivers))
+	for _, d := range drivers {
+		driverMap[d.DriverID] = d
+	}
 	for _, mr := range manualRoutes {
 		route := dispatch.DispatchRoute{DriverID: mr.DriverID}
-		for _, d := range drivers {
-			if d.DriverID == mr.DriverID {
-				route.MaxVolume = d.MaxVolumeVU
-				break
-			}
+		if d, ok := driverMap[mr.DriverID]; ok {
+			route.MaxVolume = d.MaxVolumeVU
 		}
 		for _, oid := range mr.OrderIDs {
 			if o, ok := orderMap[oid]; ok {
 				route.Orders = append(route.Orders, o.ToGeo())
 				route.LoadedVolume += o.VolumeVU
 			}
+		}
+		if top := fleetCtx.topOffFor(mr.DriverID); top != nil {
+			route.LoadedVolume += top.TotalVolumeVU
 		}
 		if len(route.Orders) > 0 {
 			assignment.Routes = append(assignment.Routes, route)
@@ -430,10 +459,17 @@ func buildManualAssignment(rows []dispatch.DispatchableOrder, drivers []PortalDr
 	return assignment
 }
 
-func manualCapacityWarnings(routes []dispatch.DispatchRoute) []DispatchCapacityWarning {
+func manualCapacityWarnings(routes []dispatch.DispatchRoute, drivers []PortalDriver, fleetCtx fleetDispatchContext) []DispatchCapacityWarning {
+	driverMap := make(map[string]PortalDriver, len(drivers))
+	for _, d := range drivers {
+		driverMap[d.DriverID] = d
+	}
 	warnings := make([]DispatchCapacityWarning, 0)
 	for _, route := range routes {
 		maxVU := route.MaxVolume
+		if d, ok := driverMap[route.DriverID]; ok && d.MaxVolumeVU > 0 {
+			maxVU = d.MaxVolumeVU
+		}
 		if maxVU <= 0 {
 			continue
 		}
@@ -441,7 +477,11 @@ func manualCapacityWarnings(routes []dispatch.DispatchRoute) []DispatchCapacityW
 		if route.LoadedVolume <= effective {
 			continue
 		}
-		suggested, excess := dispatch.SuggestOrdersToUnselect(route)
+		checkRoute := route
+		if top := fleetCtx.topOffFor(route.DriverID); top != nil {
+			checkRoute.LoadedVolume = route.LoadedVolume - top.TotalVolumeVU
+		}
+		suggested, excess := dispatch.SuggestOrdersToUnselect(checkRoute)
 		warnings = append(warnings, DispatchCapacityWarning{
 			DriverID:                  route.DriverID,
 			LoadedVU:                  route.LoadedVolume,
@@ -452,4 +492,60 @@ func manualCapacityWarnings(routes []dispatch.DispatchRoute) []DispatchCapacityW
 		})
 	}
 	return warnings
+}
+
+func autoCapacityWarnings(assignment *dispatch.AssignmentResult, drivers []PortalDriver, fleetCtx fleetDispatchContext, requestedVU, fleetVU float64) []DispatchCapacityWarning {
+	if assignment == nil {
+		return nil
+	}
+	warnings := manualCapacityWarnings(assignment.Routes, drivers, fleetCtx)
+	if len(warnings) > 0 || requestedVU <= fleetVU {
+		return enrichAutoCapacityWarnings(warnings, requestedVU, fleetVU, assignment.Orphans)
+	}
+	if requestedVU > fleetVU {
+		deferrals := orphanOrderIDs(assignment.Orphans)
+		warnings = append(warnings, DispatchCapacityWarning{
+			DriverID:                  "fleet",
+			LoadedVU:                  requestedVU,
+			MaxVolumeVU:               fleetVU / dispatch.TetrisBuffer,
+			EffectiveMaxVU:            fleetVU,
+			ExcessVU:                  requestedVU - fleetVU,
+			SuggestedDeferOrderIDs:    deferrals,
+			FleetEffectiveCapacityVU:  fleetVU,
+			RequestedVolumeVU:         requestedVU,
+		})
+	}
+	return warnings
+}
+
+func enrichAutoCapacityWarnings(warnings []DispatchCapacityWarning, requestedVU, fleetVU float64, orphans []dispatch.GeoOrder) []DispatchCapacityWarning {
+	deferrals := orphanOrderIDs(orphans)
+	for i := range warnings {
+		warnings[i].FleetEffectiveCapacityVU = fleetVU
+		warnings[i].RequestedVolumeVU = requestedVU
+		if len(deferrals) > 0 {
+			warnings[i].SuggestedDeferOrderIDs = deferrals
+		}
+	}
+	if len(deferrals) > 0 && len(warnings) == 0 {
+		warnings = append(warnings, DispatchCapacityWarning{
+			DriverID:                 "fleet",
+			LoadedVU:                 requestedVU,
+			EffectiveMaxVU:           fleetVU,
+			SuggestedDeferOrderIDs:   deferrals,
+			FleetEffectiveCapacityVU: fleetVU,
+			RequestedVolumeVU:        requestedVU,
+		})
+	}
+	return warnings
+}
+
+func orphanOrderIDs(orphans []dispatch.GeoOrder) []string {
+	ids := make([]string, 0, len(orphans))
+	for _, o := range orphans {
+		if id := strings.TrimSpace(o.OrderID); id != "" {
+			ids = append(ids, id)
+		}
+	}
+	return ids
 }

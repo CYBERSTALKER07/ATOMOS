@@ -86,6 +86,12 @@ func RoutesToWire(result *dispatch.AssignmentResult) []map[string]any {
 				"receiving_window_close": stop.ReceivingWindowClose,
 			})
 		}
+		orderIDs := make([]string, 0, len(route.Orders))
+		for _, stop := range route.Orders {
+			if id := stop.OrderID; id != "" {
+				orderIDs = append(orderIDs, id)
+			}
+		}
 		utilPct := 0.0
 		if route.MaxVolume > 0 {
 			utilPct = (route.LoadedVolume / route.MaxVolume) * 100
@@ -93,8 +99,11 @@ func RoutesToWire(result *dispatch.AssignmentResult) []map[string]any {
 		routes = append(routes, map[string]any{
 			"driver_id":     route.DriverID,
 			"loaded_volume": route.LoadedVolume,
+			"volume_vu":     route.LoadedVolume,
 			"max_volume":    route.MaxVolume,
+			"max_volume_vu": route.MaxVolume,
 			"util_pct":      utilPct,
+			"order_ids":     orderIDs,
 			"stops":         stops,
 			"stop_count":    len(stops),
 		})

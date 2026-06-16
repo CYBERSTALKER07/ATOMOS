@@ -1,21 +1,38 @@
 sequenceDiagram
   participant WH as WarehouseAdmin
   participant API as backend_go
+  participant Cache as RedisPlanCache
   participant Opt as ai_worker_OR_tools
   participant DB as Spanner
   participant PL as PayloadTerminal
 
-  WH->>API: POST dispatch_execute MANUAL routes
-  API->>DB: fetch orders drivers vehicles VU
-  API->>API: binpack aggregate capacity TetrisBuffer
-  alt capacity exceeded
-    API-->>WH: capacity_exceeded warnings suggested_unselect
-    WH->>API: POST force_capacity true
-    API->>DB: commit manifests audit DISPATCH_CAPACITY_OVERRIDE
-  else within capacity
-    API->>Opt: optional optimize preview geometry
-    API->>DB: manifests orders outbox ROUTE_CREATED
-    API-->>WH: dispatched
+  WH->>API: POST dispatch/preview order_ids
+  API->>DB: fetch orders drivers manifest residual VU
+  API->>Cache: read warm plan fingerprint
+  alt cache miss
+    API->>Opt: RunSolvePreview H3 cluster VRP
+    Opt-->>API: proposed_routes orphans
+    API->>Cache: store plan TTL 60s
   end
-  PL->>API: list trucks manifests
+  API-->>WH: proposed_routes fleet_effective_capacity_vu
+
+  WH->>API: POST dispatch_execute AUTO
+  API->>Opt: OptimizeAndValidate
+  alt capacity exceeded or orphans
+    API-->>WH: capacity_exceeded defer suggestions
+    WH->>API: accept_partial or force_capacity
+    API->>DB: commit partial manifests audit override
+  else within capacity
+    API->>DB: manifests top-off DRAFT append orders
+    API-->>WH: dispatched orphan_order_ids
+  end
+
+  WH->>API: POST dispatch_execute MANUAL routes
+  API->>API: manualCapacityWarnings TetrisBuffer
+  alt capacity exceeded
+    API-->>WH: suggested_unselect
+    WH->>API: apply selection or force_capacity
+  end
+
+  PL->>API: list trucks manifests free_volume_vu
   PL->>API: seal per truck or seal-completed batch

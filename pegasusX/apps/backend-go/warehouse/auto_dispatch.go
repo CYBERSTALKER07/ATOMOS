@@ -83,9 +83,10 @@ func (s *Service) runAutoDispatchForWarehouse(ctx context.Context, wh AutoDispat
 	}
 
 	result, err := s.ExecuteDispatch(ctx, DispatchExecuteRequest{
-		WarehouseID: warehouseID,
-		SupplierID:  supplierID,
-		Mode:        "AUTO",
+		WarehouseID:   warehouseID,
+		SupplierID:    supplierID,
+		Mode:          "AUTO",
+		AcceptPartial: true,
 	})
 	if err != nil {
 		return err

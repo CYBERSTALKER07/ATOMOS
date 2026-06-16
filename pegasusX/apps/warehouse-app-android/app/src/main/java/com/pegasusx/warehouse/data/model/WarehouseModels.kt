@@ -369,6 +369,8 @@ data class DispatchPreview(
     @SerialName("optimizer_source") val optimizerSource: String? = null,
     @SerialName("optimizer_warnings") val optimizerWarnings: List<String> = emptyList(),
     @SerialName("window_constrained_count") val windowConstrainedCount: Int = 0,
+    @SerialName("fleet_effective_capacity_vu") val fleetEffectiveCapacityVu: Double = 0.0,
+    @SerialName("plan_fingerprint") val planFingerprint: String? = null,
 )
 
 // mirror of backend-go/dispatch/plan.RoutesToWire preview payload
@@ -379,6 +381,7 @@ data class DispatchProposedRoute(
     @SerialName("vehicle_id") val vehicleId: String? = null,
     @SerialName("order_ids") val orderIds: List<String> = emptyList(),
     @SerialName("volume_vu") val volumeVu: Double? = null,
+    @SerialName("loaded_volume") val loadedVolume: Double? = null,
     @SerialName("max_volume_vu") val maxVolumeVu: Double? = null,
     @SerialName("stop_count") val stopCount: Int? = null,
 )
@@ -401,6 +404,9 @@ data class AvailableDriver(
     @SerialName("vehicle_label") val vehicleLabel: String = "",
     @SerialName("truck_status") val truckStatus: String = "",
     @SerialName("max_volume_vu") val maxVolumeVu: Double = 0.0,
+    @SerialName("used_volume_vu") val usedVolumeVu: Double? = null,
+    @SerialName("free_volume_vu") val freeVolumeVu: Double? = null,
+    @SerialName("active_manifest_id") val activeManifestId: String? = null,
     @SerialName("unavailable_reason") val unavailableReason: String? = null,
 )
 
@@ -412,6 +418,7 @@ data class DispatchCapacityWarning(
     @SerialName("effective_max_vu") val effectiveMaxVu: Double = 0.0,
     @SerialName("excess_vu") val excessVu: Double = 0.0,
     @SerialName("suggested_unselect_order_ids") val suggestedUnselectOrderIds: List<String> = emptyList(),
+    @SerialName("suggested_defer_order_ids") val suggestedDeferOrderIds: List<String> = emptyList(),
 )
 
 @Serializable
@@ -420,6 +427,7 @@ data class DispatchExecuteResponse(
     @SerialName("orders_assigned") val ordersAssigned: Int = 0,
     val warnings: List<String> = emptyList(),
     @SerialName("capacity_warnings") val capacityWarnings: List<DispatchCapacityWarning> = emptyList(),
+    @SerialName("orphan_order_ids") val orphanOrderIds: List<String> = emptyList(),
 )
 
 // ── Warehouse Realtime ──

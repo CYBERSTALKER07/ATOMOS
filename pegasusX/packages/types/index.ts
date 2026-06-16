@@ -2322,6 +2322,9 @@ export interface WarehouseDispatchDriver {
   vehicle_id?: string;
   vehicle_class?: string;
   max_volume_vu?: number;
+  used_volume_vu?: number;
+  free_volume_vu?: number;
+  active_manifest_id?: string;
   vehicle_label?: string;
 }
 
@@ -2343,7 +2346,10 @@ export interface WarehouseDispatchProposedRoute {
   order_ids?: string[];
   stops?: WarehouseDispatchProposedStop[];
   volume_vu?: number;
+  loaded_volume?: number;
   max_volume_vu?: number;
+  max_volume?: number;
+  util_pct?: number;
   stop_count?: number;
   route_geometry?: RouteGeometryWire;
 }
@@ -2361,6 +2367,11 @@ export interface WarehouseDispatchPreview {
   optimizer_source?: string;
   optimizer_warnings?: string[];
   window_constrained_count?: number;
+  fleet_effective_capacity_vu?: number;
+  selected_orders_volume_vu?: number;
+  plan_fingerprint?: string;
+  plan_computed_at?: string;
+  plan_stale?: boolean;
 }
 
 export interface WarehouseDispatchCapacityWarning {
@@ -2370,6 +2381,9 @@ export interface WarehouseDispatchCapacityWarning {
   effective_max_vu: number;
   excess_vu?: number;
   suggested_unselect_order_ids?: string[];
+  suggested_defer_order_ids?: string[];
+  fleet_effective_capacity_vu?: number;
+  requested_volume_vu?: number;
 }
 
 export interface WarehouseDispatchExecuteRoute {
@@ -2385,7 +2399,10 @@ export interface WarehouseDispatchExecuteRoute {
 export interface WarehouseDispatchExecuteRequest {
   mode: "MANUAL" | "AUTO" | string;
   routes?: WarehouseDispatchExecuteRoute[];
+  order_ids?: string[];
   force_capacity?: boolean;
+  accept_partial?: boolean;
+  plan_fingerprint?: string;
 }
 
 export interface WarehouseDispatchExecuteResponse {

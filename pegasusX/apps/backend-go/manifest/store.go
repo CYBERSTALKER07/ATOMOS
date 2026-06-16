@@ -383,6 +383,143 @@ func (s *Store) DriversOnActiveManifests(ctx context.Context, supplierID, wareho
 	}
 }
 
+// DriverManifestCapacity is the open dock manifest capacity for one driver (DRAFT/LOADING).
+type DriverManifestCapacity struct {
+	DriverID      string
+	ManifestID    string
+	RouteID       string
+	State         string
+	TotalVolumeVU float64
+	MaxVolumeVU   float64
+	StopCount     int64
+}
+
+// ActiveManifestCapacityByDrivers returns top-off eligible manifest capacity per driver.
+func (s *Store) ActiveManifestCapacityByDrivers(ctx context.Context, supplierID, warehouseID string, driverIDs []string) (map[string]DriverManifestCapacity, error) {
+	out := make(map[string]DriverManifestCapacity, len(driverIDs))
+	if s == nil || s.client == nil || len(driverIDs) == 0 {
+		return out, nil
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	warehouseID = strings.TrimSpace(warehouseID)
+	if supplierID == "" && warehouseID == "" {
+		return out, nil
+	}
+
+	var stmt spanner.Statement
+	if warehouseID != "" {
+		stmt = spanner.Statement{
+			SQL: `SELECT ManifestId, RouteId, DriverId, State, TotalVolumeVU, MaxVolumeVU, StopCount
+			      FROM SupplierTruckManifests@{FORCE_INDEX=Idx_SupplierManifests_ByWarehouse}
+			      WHERE WarehouseId = @warehouseId
+			        AND DriverId IN UNNEST(@driverIds)
+			        AND State IN ('DRAFT', 'LOADING')`,
+			Params: map[string]any{
+				"warehouseId": warehouseID,
+				"driverIds":   driverIDs,
+			},
+		}
+	} else {
+		stmt = spanner.Statement{
+			SQL: `SELECT ManifestId, RouteId, DriverId, State, TotalVolumeVU, MaxVolumeVU, StopCount
+			      FROM SupplierTruckManifests@{FORCE_INDEX=Idx_SupplierManifests_BySupplierId}
+			      WHERE SupplierId = @supplierId
+			        AND DriverId IN UNNEST(@driverIds)
+			        AND State IN ('DRAFT', 'LOADING')`,
+			Params: map[string]any{
+				"supplierId": supplierID,
+				"driverIds":  driverIDs,
+			},
+		}
+	}
+
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return out, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("active manifest capacity: %w", err)
+		}
+		var cap DriverManifestCapacity
+		if err := row.Columns(
+			&cap.ManifestID,
+			&cap.RouteID,
+			&cap.DriverID,
+			&cap.State,
+			&cap.TotalVolumeVU,
+			&cap.MaxVolumeVU,
+			&cap.StopCount,
+		); err != nil {
+			return nil, fmt.Errorf("active manifest capacity scan: %w", err)
+		}
+		if cap.DriverID != "" {
+			out[cap.DriverID] = cap
+		}
+	}
+}
+
+// DriversOnInTransitManifests returns drivers with SEALED or DISPATCHED manifests (not top-off eligible).
+func (s *Store) DriversOnInTransitManifests(ctx context.Context, supplierID, warehouseID string, driverIDs []string) (map[string]bool, error) {
+	out := make(map[string]bool, len(driverIDs))
+	if s == nil || s.client == nil || len(driverIDs) == 0 {
+		return out, nil
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	warehouseID = strings.TrimSpace(warehouseID)
+	if supplierID == "" && warehouseID == "" {
+		return out, nil
+	}
+
+	var stmt spanner.Statement
+	if warehouseID != "" {
+		stmt = spanner.Statement{
+			SQL: `SELECT DISTINCT DriverId
+			      FROM SupplierTruckManifests@{FORCE_INDEX=Idx_SupplierManifests_ByWarehouse}
+			      WHERE WarehouseId = @warehouseId
+			        AND DriverId IN UNNEST(@driverIds)
+			        AND State IN ('SEALED', 'DISPATCHED')`,
+			Params: map[string]any{
+				"warehouseId": warehouseID,
+				"driverIds":   driverIDs,
+			},
+		}
+	} else {
+		stmt = spanner.Statement{
+			SQL: `SELECT DISTINCT DriverId
+			      FROM SupplierTruckManifests@{FORCE_INDEX=Idx_SupplierManifests_BySupplierId}
+			      WHERE SupplierId = @supplierId
+			        AND DriverId IN UNNEST(@driverIds)
+			        AND State IN ('SEALED', 'DISPATCHED')`,
+			Params: map[string]any{
+				"supplierId": supplierID,
+				"driverIds":  driverIDs,
+			},
+		}
+	}
+
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return out, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("drivers on in-transit manifests: %w", err)
+		}
+		var driverID string
+		if err := row.Columns(&driverID); err != nil {
+			return nil, fmt.Errorf("drivers on in-transit manifests scan: %w", err)
+		}
+		if driverID != "" {
+			out[driverID] = true
+		}
+	}
+}
+
 // ListSupplierManifestOrders returns junction rows for one manifest.
 func (s *Store) ListSupplierManifestOrders(ctx context.Context, manifestID string) ([]SupplierManifestOrderRow, error) {
 	if s == nil || s.client == nil {

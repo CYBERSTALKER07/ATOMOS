@@ -48,7 +48,7 @@ func TestManualCapacityWarnings_FlagsOverload(t *testing.T) {
 			{OrderID: "ord-heavy", Volume: 60},
 			{OrderID: "ord-light", Volume: 36},
 		},
-	}})
+	}}, []PortalDriver{{DriverID: "drv-1", MaxVolumeVU: 100}}, fleetDispatchContext{})
 	if len(warnings) != 1 {
 		t.Fatalf("warnings = %#v want 1 overload", warnings)
 	}
@@ -65,7 +65,7 @@ func TestManualCapacityWarnings_AllowsWithinBuffer(t *testing.T) {
 		DriverID:     "drv-1",
 		MaxVolume:    100,
 		LoadedVolume: 90,
-	}})
+	}}, nil, fleetDispatchContext{})
 	if len(warnings) != 0 {
 		t.Fatalf("warnings = %#v want none", warnings)
 	}

@@ -83,6 +83,8 @@ fun DispatchScreen(
     var driverMenuExpanded by remember { mutableStateOf(false) }
     var capacityWarnings by remember { mutableStateOf<List<com.pegasusx.warehouse.data.model.DispatchCapacityWarning>>(emptyList()) }
     var showCapacityDialog by remember { mutableStateOf(false) }
+    var capacityDialogAutoMode by remember { mutableStateOf(false) }
+    var showSmartConfirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }
     val realtimeClient = remember(context) { WarehouseRealtimeClient(context) }
@@ -243,12 +245,15 @@ fun DispatchScreen(
                     add("order_ids", orderIds)
                 }
                 val routes = JsonArray().apply { add(route) }
+                val sortedOrderIds = selectedOrderIds.sorted()
+                val orderIdsBody = JsonArray()
+                sortedOrderIds.forEach { orderIdsBody.add(it) }
                 val body = JsonObject().apply {
                     addProperty("mode", "MANUAL")
                     addProperty("force_capacity", forceCapacity)
+                    add("order_ids", orderIdsBody)
                     add("routes", routes)
                 }
-                val sortedOrderIds = selectedOrderIds.sorted()
                 val routeFingerprint = buildString {
                     append("""{"mode":"MANUAL","force_capacity":$forceCapacity,"routes":[{"driver_id":"$selectedDriverId","order_ids":""")
                     append(sortedOrderIds.joinToString(prefix = "[", postfix = "]") { "\"$it\"" })
@@ -262,6 +267,7 @@ fun DispatchScreen(
                     when (result.status) {
                         "capacity_exceeded" -> {
                             capacityWarnings = result.capacityWarnings
+                            capacityDialogAutoMode = false
                             showCapacityDialog = true
                         }
                         "dispatched" -> {
@@ -282,6 +288,61 @@ fun DispatchScreen(
                 }
             }.onFailure { throwable ->
                 actionMessage = DispatchActionMessage("Dispatch Failed", throwable.message ?: "Network error")
+            }
+            executing = false
+        }
+    }
+
+    fun runSmartDispatch(forceCapacity: Boolean = false, acceptPartial: Boolean = false) {
+        val orders = preview?.undispatchedOrders.orEmpty()
+        val orderIds = if (selectedOrderIds.isNotEmpty()) selectedOrderIds.sorted() else orders.map { it.orderId }
+        if (executing || orderIds.isEmpty()) return
+        executing = true
+        showSmartConfirm = false
+        scope.launch {
+            runCatching {
+                val orderIdsJson = JsonArray()
+                orderIds.forEach { orderIdsJson.add(it) }
+                val body = JsonObject().apply {
+                    addProperty("mode", "AUTO")
+                    add("order_ids", orderIdsJson)
+                    addProperty("force_capacity", forceCapacity)
+                    addProperty("accept_partial", acceptPartial)
+                    preview?.planFingerprint?.let { addProperty("plan_fingerprint", it) }
+                }
+                val routeFingerprint = """{"mode":"AUTO","order_ids":${orderIdsJson},"force_capacity":$forceCapacity,"accept_partial":$acceptPartial}"""
+                val idempotencyKey = WarehouseIdempotencyKeys.dispatch("smart-dispatch", routeFingerprint)
+                api.executeDispatch(idempotencyKey, body)
+            }.onSuccess { response ->
+                if (response.isSuccessful && response.body() != null) {
+                    val result = response.body()!!
+                    when (result.status) {
+                        "capacity_exceeded" -> {
+                            capacityWarnings = result.capacityWarnings
+                            capacityDialogAutoMode = true
+                            showCapacityDialog = true
+                        }
+                        "dispatched" -> {
+                            val orphanNote = if (result.orphanOrderIds.isNotEmpty()) {
+                                " ${result.orphanOrderIds.size} order(s) could not be assigned."
+                            } else ""
+                            actionMessage = DispatchActionMessage(
+                                title = "Smart Dispatch Committed",
+                                message = "Assigned ${result.ordersAssigned} order(s).$orphanNote",
+                            )
+                            selectedOrderIds = emptySet()
+                            load()
+                        }
+                        else -> {
+                            val warning = result.warnings.firstOrNull() ?: "Smart dispatch did not commit."
+                            actionMessage = DispatchActionMessage("Smart Dispatch Incomplete", warning)
+                        }
+                    }
+                } else {
+                    actionMessage = DispatchActionMessage("Smart Dispatch Failed", codeMessage(response.code()))
+                }
+            }.onFailure { throwable ->
+                actionMessage = DispatchActionMessage("Smart Dispatch Failed", throwable.message ?: "Network error")
             }
             executing = false
         }
@@ -423,7 +484,11 @@ fun DispatchScreen(
                             val selectedVolume = preview!!.undispatchedOrders
                                 .filter { selectedOrderIds.contains(it.orderId) }
                                 .sumOf { it.volumeVu }
-                            val effectiveMax = (selectedDriver?.maxVolumeVu ?: 0.0) * DISPATCH_TETRIS_BUFFER
+                            val effectiveMax = when {
+                                selectedDriver?.freeVolumeVu != null && selectedDriver.freeVolumeVu > 0 ->
+                                    selectedDriver.freeVolumeVu * DISPATCH_TETRIS_BUFFER
+                                else -> (selectedDriver?.maxVolumeVu ?: 0.0) * DISPATCH_TETRIS_BUFFER
+                            }
                             Column(modifier = Modifier.fillMaxSize()) {
                                 Column(
                                     modifier = Modifier
@@ -476,7 +541,21 @@ fun DispatchScreen(
                                         enabled = !executing && selectedDriverId.isNotBlank() && selectedOrderIds.isNotEmpty(),
                                         modifier = Modifier.fillMaxWidth(),
                                     ) {
-                                        Text(if (executing) "Dispatching…" else "Dispatch (${selectedOrderIds.size})")
+                                        Text(if (executing) "Dispatching…" else "Manual (${selectedOrderIds.size})")
+                                    }
+                                    OutlinedButton(
+                                        onClick = { showSmartConfirm = true },
+                                        enabled = !executing && preview!!.undispatchedOrders.isNotEmpty() && preview!!.availableDrivers.isNotEmpty(),
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text("Smart Dispatch")
+                                    }
+                                    if (preview!!.fleetEffectiveCapacityVu > 0) {
+                                        Text(
+                                            "Fleet ${"%.1f".format(preview!!.fleetEffectiveCapacityVu)} VU effective",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
                                     }
                                 }
                                 LazyColumn(
@@ -708,26 +787,40 @@ fun DispatchScreen(
         )
     }
 
+    if (showSmartConfirm) {
+        AlertDialog(
+            onDismissRequest = { showSmartConfirm = false },
+            title = { Text("Run smart dispatch?") },
+            text = {
+                val count = if (selectedOrderIds.isNotEmpty()) selectedOrderIds.size else preview?.undispatchedOrders?.size ?: 0
+                Text("Assign $count order(s) using the optimizer across available trucks.")
+            },
+            confirmButton = {
+                Button(onClick = { runSmartDispatch() }) { Text("Smart Dispatch") }
+            },
+            dismissButton = { TextButton(onClick = { showSmartConfirm = false }) { Text("Cancel") } },
+        )
+    }
+
     if (showCapacityDialog) {
         AlertDialog(
             onDismissRequest = { showCapacityDialog = false },
             title = { Text("Capacity exceeded") },
             text = {
                 Column {
-                    Text("Selected orders exceed the truck effective capacity (95% buffer).")
+                    Text(
+                        if (capacityDialogAutoMode) {
+                            "Smart dispatch cannot fit all orders. Accept partial to dispatch feasible routes, or force to override."
+                        } else {
+                            "Selected orders exceed the truck effective capacity (95% buffer)."
+                        },
+                    )
                     capacityWarnings.forEach { warning ->
                         Column(modifier = Modifier.padding(top = PegasusSpacing.sm)) {
                             Text(
                                 "${"%.1f".format(warning.loadedVu)} VU loaded / ${"%.1f".format(warning.effectiveMaxVu)} VU max",
                                 style = MaterialTheme.typography.bodySmall,
                             )
-                            if (warning.excessVu > 0) {
-                                Text(
-                                    "Excess: ${"%.1f".format(warning.excessVu)} VU",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                            }
                             if (warning.suggestedUnselectOrderIds.isNotEmpty()) {
                                 Text(
                                     "Suggested unselect: ${warning.suggestedUnselectOrderIds.joinToString { it.take(8) }}",
@@ -735,25 +828,46 @@ fun DispatchScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
+                            if (warning.suggestedDeferOrderIds.isNotEmpty()) {
+                                Text(
+                                    "Suggested defer: ${warning.suggestedDeferOrderIds.joinToString { it.take(8) }}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
-                    val suggestedIds = capacityWarnings.flatMap { it.suggestedUnselectOrderIds }.toSet()
-                    if (suggestedIds.isNotEmpty()) {
-                        TextButton(onClick = {
-                            selectedOrderIds = selectedOrderIds - suggestedIds
-                            showCapacityDialog = false
-                        }) { Text("Apply suggestion") }
+                    if (!capacityDialogAutoMode) {
+                        val suggestedIds = capacityWarnings.flatMap { it.suggestedUnselectOrderIds }.toSet()
+                        if (suggestedIds.isNotEmpty()) {
+                            TextButton(onClick = {
+                                selectedOrderIds = selectedOrderIds - suggestedIds
+                                showCapacityDialog = false
+                            }) { Text("Apply suggestion") }
+                        }
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
                     showCapacityDialog = false
-                    runManualDispatch(forceCapacity = true)
-                }) { Text("Dispatch anyway") }
+                    if (capacityDialogAutoMode) {
+                        runSmartDispatch(forceCapacity = true)
+                    } else {
+                        runManualDispatch(forceCapacity = true)
+                    }
+                }) { Text("Force dispatch") }
             },
             dismissButton = {
-                TextButton(onClick = { showCapacityDialog = false }) { Text("Cancel") }
+                Row {
+                    if (capacityDialogAutoMode) {
+                        TextButton(onClick = {
+                            showCapacityDialog = false
+                            runSmartDispatch(acceptPartial = true)
+                        }) { Text("Accept partial") }
+                    }
+                    TextButton(onClick = { showCapacityDialog = false }) { Text("Cancel") }
+                }
             },
         )
     }

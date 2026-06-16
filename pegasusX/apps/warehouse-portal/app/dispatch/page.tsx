@@ -25,6 +25,8 @@ import EmptyState from '@/components/EmptyState';
 
 const TETRIS_BUFFER = 0.95;
 
+type CapacityPromptMode = 'manual' | 'auto';
+
 function formatUnavailableReason(reason?: string) {
   if (!reason) {
     return '';
@@ -41,6 +43,10 @@ function formatVU(value: number) {
   return value.toFixed(1);
 }
 
+function routeVolumeVU(route: WarehouseDispatchProposedRoute) {
+  return route.volume_vu ?? route.loaded_volume ?? 0;
+}
+
 export default function DispatchPage() {
   const [orders, setOrders] = useState<WarehouseDispatchOrder[]>([]);
   const [drivers, setDrivers] = useState<WarehouseDispatchDriver[]>([]);
@@ -55,19 +61,27 @@ export default function DispatchPage() {
   const [optimizerSource, setOptimizerSource] = useState<string | null>(null);
   const [optimizerWarnings, setOptimizerWarnings] = useState<string[]>([]);
   const [windowConstrainedCount, setWindowConstrainedCount] = useState(0);
+  const [fleetEffectiveCapacityVU, setFleetEffectiveCapacityVU] = useState(0);
+  const [planFingerprint, setPlanFingerprint] = useState<string | null>(null);
   const [selectedDriverId, setSelectedDriverId] = useState('');
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [capacityPrompt, setCapacityPrompt] = useState<WarehouseDispatchCapacityWarning[] | null>(null);
+  const [capacityPromptMode, setCapacityPromptMode] = useState<CapacityPromptMode>('manual');
+  const [showSmartConfirm, setShowSmartConfirm] = useState(false);
   const [warehouseId, setWarehouseId] = useState(() => warehouseHomeNodeId() || 'warehouse');
 
-  const load = useCallback(async () => {
+  const selectedOrderList = useMemo(() => [...selectedOrderIds].sort(), [selectedOrderIds]);
+
+  const load = useCallback(async (orderFilter?: string[]) => {
     const scopedWarehouseId = warehouseHomeNodeId();
     if (scopedWarehouseId) {
       setWarehouseId(scopedWarehouseId);
     }
     setLoadError(null);
     try {
-      const data = await warehouseApi.previewWarehouseDispatch();
+      const filter = orderFilter ?? selectedOrderList;
+      const body = filter.length > 0 ? { order_ids: filter } : {};
+      const data = await warehouseApi.previewWarehouseDispatch({}, body);
       const nextOrders = data.undispatched_orders || data.orders || [];
       setOrders(nextOrders);
       setDrivers(data.available_drivers || data.drivers || []);
@@ -76,6 +90,8 @@ export default function DispatchPage() {
       setOptimizerSource(data.optimizer_source || null);
       setOptimizerWarnings(data.optimizer_warnings || []);
       setWindowConstrainedCount(data.window_constrained_count || 0);
+      setFleetEffectiveCapacityVU(data.fleet_effective_capacity_vu ?? 0);
+      setPlanFingerprint(data.plan_fingerprint ?? null);
       setSelectedOrderIds(prev => {
         const valid = new Set(nextOrders.map(order => order.order_id));
         return new Set([...prev].filter(id => valid.has(id)));
@@ -90,11 +106,12 @@ export default function DispatchPage() {
       } else {
         setLoadError(err instanceof ApiError ? err.message : 'Failed to load dispatch preview');
       }
+    } finally {
+      setLoading(false);
     }
-    finally { setLoading(false); }
-  }, []);
+  }, [selectedOrderList]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   useEffect(() => {
     let signalTimer: number | undefined;
@@ -145,11 +162,29 @@ export default function DispatchPage() {
   }, [orders, selectedOrderIds]);
 
   const effectiveCapacityVU = useMemo(() => {
-    const max = selectedDriver?.max_volume_vu ?? 0;
+    if (!selectedDriver) {
+      return 0;
+    }
+    if (selectedDriver.free_volume_vu != null && selectedDriver.free_volume_vu > 0) {
+      return selectedDriver.free_volume_vu * TETRIS_BUFFER;
+    }
+    const max = selectedDriver.max_volume_vu ?? 0;
     return max > 0 ? max * TETRIS_BUFFER : 0;
   }, [selectedDriver]);
 
+  const smartTargetVolumeVU = useMemo(() => {
+    if (selectedOrderIds.size > 0) {
+      return selectedVolumeVU;
+    }
+    return orders.reduce((sum, order) => sum + (order.volume_vu ?? 0), 0);
+  }, [orders, selectedOrderIds.size, selectedVolumeVU]);
+
   const allSelected = orders.length > 0 && selectedOrderIds.size === orders.length;
+  const canSmartDispatch = !restricted && orders.length > 0 && drivers.length > 0;
+  const smartStopCount = proposedRoutes.reduce(
+    (sum, route) => sum + (route.stop_count ?? route.order_ids?.length ?? route.stops?.length ?? 0),
+    0,
+  );
 
   const toggleOrder = (orderId: string) => {
     setSelectedOrderIds(prev => {
@@ -171,6 +206,16 @@ export default function DispatchPage() {
     setSelectedOrderIds(new Set(orders.map(order => order.order_id)));
   };
 
+  const applyCapacitySuggestion = () => {
+    const suggested = new Set(
+      (capacityPrompt ?? []).flatMap(w => w.suggested_unselect_order_ids ?? []),
+    );
+    if (suggested.size > 0) {
+      setSelectedOrderIds(prev => new Set([...prev].filter(id => !suggested.has(id))));
+    }
+    setCapacityPrompt(null);
+  };
+
   const runManualDispatch = useCallback(async (forceCapacity = false) => {
     if (!selectedDriverId || selectedOrderIds.size === 0) {
       return;
@@ -184,22 +229,24 @@ export default function DispatchPage() {
         force_capacity: forceCapacity,
         routes: [{
           driver_id: selectedDriverId,
-          order_ids: [...selectedOrderIds].sort(),
+          order_ids: selectedOrderList,
         }],
       });
       const idempotencyKey = warehouseDispatchKey(warehouseId, selectedDriverId, routeFingerprint);
       const result = await warehouseApi.executeWarehouseDispatch({
         mode: 'MANUAL',
         force_capacity: forceCapacity,
+        order_ids: selectedOrderList,
         routes: [{
           driver_id: selectedDriverId,
-          order_ids: [...selectedOrderIds],
+          order_ids: selectedOrderList,
         }],
       }, {}, idempotencyKey);
       if (result.warehouse_id) {
         setWarehouseId(result.warehouse_id);
       }
       if (result.status === 'capacity_exceeded' && result.capacity_warnings?.length) {
+        setCapacityPromptMode('manual');
         setCapacityPrompt(result.capacity_warnings);
         return;
       }
@@ -221,16 +268,77 @@ export default function DispatchPage() {
     } finally {
       setExecuting(false);
     }
-  }, [load, selectedDriverId, selectedOrderIds, warehouseId]);
+  }, [load, selectedDriverId, selectedOrderIds.size, selectedOrderList, warehouseId]);
+
+  const runSmartDispatch = useCallback(async (opts: { forceCapacity?: boolean; acceptPartial?: boolean } = {}) => {
+    const orderIds = selectedOrderList.length > 0 ? selectedOrderList : orders.map(o => o.order_id);
+    if (orderIds.length === 0) {
+      return;
+    }
+    setExecuting(true);
+    setExecuteError(null);
+    setExecuteSuccess(null);
+    setShowSmartConfirm(false);
+    try {
+      const routeFingerprint = JSON.stringify({
+        mode: 'AUTO',
+        order_ids: orderIds,
+        force_capacity: Boolean(opts.forceCapacity),
+        accept_partial: Boolean(opts.acceptPartial),
+        plan_fingerprint: planFingerprint,
+      });
+      const idempotencyKey = warehouseDispatchKey(warehouseId, 'smart-dispatch', routeFingerprint);
+      const result = await warehouseApi.executeWarehouseDispatch({
+        mode: 'AUTO',
+        order_ids: orderIds,
+        force_capacity: opts.forceCapacity,
+        accept_partial: opts.acceptPartial,
+        plan_fingerprint: planFingerprint ?? undefined,
+      }, {}, idempotencyKey);
+      if (result.warehouse_id) {
+        setWarehouseId(result.warehouse_id);
+      }
+      if (result.status === 'capacity_exceeded' && (result.capacity_warnings?.length || result.orphan_order_ids?.length)) {
+        setCapacityPromptMode('auto');
+        setCapacityPrompt(result.capacity_warnings ?? []);
+        return;
+      }
+      if (result.status === 'dispatched') {
+        const parts = [`Smart dispatch assigned ${result.orders_assigned ?? 0} order(s).`];
+        if (result.orphan_order_ids?.length) {
+          parts.push(`${result.orphan_order_ids.length} order(s) could not be assigned.`);
+        }
+        setExecuteSuccess(parts.join(' '));
+        setSelectedOrderIds(new Set());
+        setCapacityPrompt(null);
+        setLoading(true);
+        await load();
+        return;
+      }
+      if (result.warnings?.length) {
+        setExecuteError(result.warnings.join(', '));
+      } else {
+        setExecuteError('Smart dispatch did not commit. Refresh and try again.');
+      }
+    } catch (err) {
+      setExecuteError(err instanceof ApiError ? err.message : 'Smart dispatch failed');
+    } finally {
+      setExecuting(false);
+    }
+  }, [load, orders, planFingerprint, selectedOrderList, warehouseId]);
 
   const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
   const canDispatch = Boolean(selectedDriverId) && selectedOrderIds.size > 0 && !restricted;
+  const suggestedUnselectIds = useMemo(
+    () => new Set((capacityPrompt ?? []).flatMap(w => w.suggested_unselect_order_ids ?? [])),
+    [capacityPrompt],
+  );
 
   return (
     <PageTransition>
       <PageChrome
         title="Dispatch"
-        description="Assign undispatched orders to an available truck. Capacity uses product VU × quantity."
+        description="Manual truck assignment or smart dispatch across the fleet. Capacity uses product VU × quantity."
         loading={loading}
         skeletonVariant="table"
         error={restricted ? 'You do not have permission to view dispatch for this scope.' : loadError}
@@ -246,7 +354,10 @@ export default function DispatchPage() {
               <option value="">Select truck / driver</option>
               {drivers.map(driver => (
                 <option key={driver.driver_id} value={driver.driver_id}>
-                  {(driver.vehicle_label || driver.name)} — {formatVU(driver.max_volume_vu ?? 0)} VU max
+                  {(driver.vehicle_label || driver.name)}
+                  {driver.free_volume_vu != null && driver.free_volume_vu > 0
+                    ? ` — ${formatVU(driver.free_volume_vu)} VU free`
+                    : ` — ${formatVU(driver.max_volume_vu ?? 0)} VU max`}
                 </option>
               ))}
             </select>
@@ -257,13 +368,22 @@ export default function DispatchPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--primary disabled:opacity-50"
             >
               <Icon name="dispatch" size={16} />
-              {executing ? 'Dispatching…' : `Dispatch (${selectedOrderIds.size})`}
+              {executing ? 'Dispatching…' : `Manual (${selectedOrderIds.size})`}
+            </button>
+            <button
+              type="button"
+              disabled={executing || !canSmartDispatch}
+              onClick={() => setShowSmartConfirm(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary disabled:opacity-50"
+            >
+              <Icon name="dispatch" size={16} />
+              Smart Dispatch
             </button>
             <button
               type="button"
               onClick={() => {
                 setLoading(true);
-                load();
+                void load();
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary"
             >
@@ -275,13 +395,27 @@ export default function DispatchPage() {
         {selectedDriver && (
           <div className="mb-4 rounded-xl border border-(--border) p-3 text-sm" style={{ background: 'var(--background)' }}>
             <span className="font-medium">{selectedDriver.name}</span>
-            <span className="text-(--muted)"> — loaded </span>
+            <span className="text-(--muted)"> — selected </span>
             <span className="font-mono">{formatVU(selectedVolumeVU)}</span>
             <span className="text-(--muted)"> / </span>
             <span className="font-mono">{formatVU(effectiveCapacityVU)}</span>
             <span className="text-(--muted)"> VU effective (95% buffer)</span>
+            {selectedDriver.used_volume_vu != null && selectedDriver.used_volume_vu > 0 && (
+              <span className="text-(--muted)"> · {formatVU(selectedDriver.used_volume_vu)} VU already on manifest</span>
+            )}
           </div>
         )}
+
+        {fleetEffectiveCapacityVU > 0 && (
+          <div className="mb-4 rounded-xl border border-(--border) p-3 text-sm" style={{ background: 'var(--background)' }}>
+            <span className="text-(--muted)">Fleet effective capacity </span>
+            <span className="font-mono">{formatVU(fleetEffectiveCapacityVU)}</span>
+            <span className="text-(--muted)"> VU · smart target </span>
+            <span className="font-mono">{formatVU(smartTargetVolumeVU)}</span>
+            <span className="text-(--muted)"> VU</span>
+          </div>
+        )}
+
         {executeError && (
           <p className="text-sm mb-4" style={{ color: 'var(--error)' }}>{executeError}</p>
         )}
@@ -381,7 +515,11 @@ export default function DispatchPage() {
                       </div>
                       <div className="text-right">
                         <span className="status-chip status-chip--stable">{driver.truck_status || 'IDLE'}</span>
-                        <div className="text-xs text-(--muted) mt-1 font-mono">{formatVU(driver.max_volume_vu ?? 0)} VU</div>
+                        <div className="text-xs text-(--muted) mt-1 font-mono">
+                          {driver.free_volume_vu != null && driver.free_volume_vu > 0
+                            ? `${formatVU(driver.free_volume_vu)} VU free`
+                            : `${formatVU(driver.max_volume_vu ?? 0)} VU max`}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -432,7 +570,7 @@ export default function DispatchPage() {
                     <div className="text-sm font-medium">{route.driver_name || route.driver_id || 'Driver'}</div>
                     <div className="text-xs text-(--muted)">
                       {(route.stop_count ?? route.order_ids?.length ?? route.stops?.length ?? 0)} stops
-                      {route.volume_vu != null && ` · ${formatVU(route.volume_vu)} VU`}
+                      {routeVolumeVU(route) > 0 && ` · ${formatVU(routeVolumeVU(route))} VU`}
                     </div>
                   </div>
                   <div className="text-xs text-(--muted) font-mono">
@@ -444,12 +582,41 @@ export default function DispatchPage() {
           </PageSection>
         )}
 
+        {showSmartConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
+            <div className="w-full max-w-md rounded-xl border border-(--border) p-5" style={{ background: 'var(--background)' }}>
+              <h3 className="text-base font-semibold mb-2">Run smart dispatch?</h3>
+              <p className="text-sm text-(--muted) mb-4">
+                {selectedOrderIds.size > 0
+                  ? `Assign ${selectedOrderIds.size} selected order(s) using the optimizer.`
+                  : `Assign all ${orders.length} undispatched order(s) using the optimizer.`}
+                {proposedRoutes.length > 0 && ` ${proposedRoutes.length} route(s), ${smartStopCount} stop(s) in preview.`}
+              </p>
+              <div className="flex justify-end gap-2">
+                <button type="button" className="px-3 py-1.5 rounded-lg text-sm button--secondary" onClick={() => setShowSmartConfirm(false)}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-lg text-sm button--primary"
+                  disabled={executing}
+                  onClick={() => void runSmartDispatch()}
+                >
+                  Smart Dispatch
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {capacityPrompt && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
             <div className="w-full max-w-md rounded-xl border border-(--border) p-5" style={{ background: 'var(--background)' }}>
               <h3 className="text-base font-semibold mb-2">Capacity exceeded</h3>
               <p className="text-sm text-(--muted) mb-4">
-                Selected orders exceed the truck&apos;s effective capacity (95% Tetris buffer). Confirm only if you intend to overload this manifest.
+                {capacityPromptMode === 'auto'
+                  ? 'Smart dispatch cannot fit all orders on available trucks. Accept to dispatch feasible routes and leave the rest undispatched, or force to override capacity.'
+                  : 'Selected orders exceed the truck effective capacity (95% Tetris buffer). Apply the suggestion, force dispatch, or cancel.'}
               </p>
               <ul className="text-sm space-y-2 mb-4">
                 {capacityPrompt.map(warning => (
@@ -460,10 +627,15 @@ export default function DispatchPage() {
                         Suggested unselect: {warning.suggested_unselect_order_ids.join(', ')}
                       </div>
                     ) : null}
+                    {warning.suggested_defer_order_ids?.length ? (
+                      <div className="mt-1 text-(--muted)">
+                        Suggested defer: {warning.suggested_defer_order_ids.join(', ')}
+                      </div>
+                    ) : null}
                   </li>
                 ))}
               </ul>
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 flex-wrap">
                 <button
                   type="button"
                   className="px-3 py-1.5 rounded-lg text-sm button--secondary"
@@ -471,16 +643,42 @@ export default function DispatchPage() {
                 >
                   Cancel
                 </button>
+                {capacityPromptMode === 'manual' && suggestedUnselectIds.size > 0 && (
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 rounded-lg text-sm button--secondary"
+                    onClick={applyCapacitySuggestion}
+                  >
+                    Apply suggestion
+                  </button>
+                )}
+                {capacityPromptMode === 'auto' && (
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 rounded-lg text-sm button--secondary"
+                    disabled={executing}
+                    onClick={() => {
+                      setCapacityPrompt(null);
+                      void runSmartDispatch({ acceptPartial: true });
+                    }}
+                  >
+                    Accept partial
+                  </button>
+                )}
                 <button
                   type="button"
                   className="px-3 py-1.5 rounded-lg text-sm button--primary"
                   disabled={executing}
                   onClick={() => {
                     setCapacityPrompt(null);
-                    void runManualDispatch(true);
+                    if (capacityPromptMode === 'auto') {
+                      void runSmartDispatch({ forceCapacity: true });
+                    } else {
+                      void runManualDispatch(true);
+                    }
                   }}
                 >
-                  Dispatch anyway
+                  Force dispatch
                 </button>
               </div>
             </div>
