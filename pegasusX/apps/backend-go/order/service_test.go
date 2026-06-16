@@ -85,6 +85,7 @@ func (r *testRepo) UpdateOrder(ctx context.Context, o Order, proofs []DeliveryPr
 	}
 	r.updateCalls++
 	r.captured = o
+	r.order = o
 	r.lastProofs = append([]DeliveryProofArtifact(nil), proofs...)
 	if emit != nil {
 		buf := &testTxnBuffer{}

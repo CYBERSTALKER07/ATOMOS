@@ -38,7 +38,7 @@ func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) e
 	return nil
 }
 
-const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, Version, CreatedAt, UpdatedAt`
+const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, OriginalTotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, Version, CreatedAt, UpdatedAt`
 
 // CreateOrder writes the Orders row and any emitted outbox events atomically.
 func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error {
@@ -114,6 +114,7 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 				"ConfirmationStatus":    string(o.ConfirmationStatus),
 				"LineItemsJson":         lineItemsRaw,
 				"TotalMinor":            o.TotalMinor,
+				"OriginalTotalMinor":    originalTotalMinorForInsert(o),
 				"Currency":              o.Currency,
 				"H3Cell":                o.H3Cell,
 				"Lat":                   o.Lat,
@@ -215,6 +216,7 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 				"ConfirmationStatus":    string(o.ConfirmationStatus),
 				"LineItemsJson":         lineItemsRaw,
 				"TotalMinor":            o.TotalMinor,
+				"OriginalTotalMinor":    originalTotalMinorForUpdate(o),
 				"Currency":              o.Currency,
 				"H3Cell":                o.H3Cell,
 				"Lat":                   o.Lat,
@@ -227,6 +229,22 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 				"Version":               o.Version,
 				"UpdatedAt":             o.UpdatedAt,
 			}),
+		}
+
+		for _, ret := range o.PendingSupplierReturns {
+			returnID := strings.TrimSpace(ret.ReturnID)
+			if returnID == "" {
+				continue
+			}
+			mutations = append(mutations, spanner.InsertMap("SupplierReturns", map[string]any{
+				"ReturnId":    returnID,
+				"OrderId":     o.OrderID,
+				"SkuId":       strings.TrimSpace(ret.SKU),
+				"RejectedQty": ret.RejectedQty,
+				"Reason":      strings.TrimSpace(ret.Reason),
+				"DriverNotes": nullableString(ret.DriverNotes),
+				"CreatedAt":   spanner.CommitTimestamp,
+			}))
 		}
 
 		for _, proof := range proofs {
@@ -440,6 +458,7 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		&confirmationRaw,
 		&lineItemsRaw,
 		&orderRecord.TotalMinor,
+		&orderRecord.OriginalTotalMinor,
 		&orderRecord.Currency,
 		&orderRecord.H3Cell,
 		&orderRecord.Lat,
@@ -481,6 +500,9 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 	orderRecord.DerivedFromOrderID = derivedFromOrderID.StringVal
 	orderRecord.ReceivingWindowOpen = receivingWindowOpen.StringVal
 	orderRecord.ReceivingWindowClose = receivingWindowClose.StringVal
+	if orderRecord.OriginalTotalMinor == 0 {
+		orderRecord.OriginalTotalMinor = orderRecord.TotalMinor
+	}
 	if len(lineItemsRaw) > 0 {
 		if err := json.Unmarshal(lineItemsRaw, &orderRecord.LineItems); err != nil {
 			return Order{}, err
@@ -527,4 +549,21 @@ func (r *SpannerRepository) ListManifestOrders(ctx context.Context, manifestID s
 		return nil, fmt.Errorf("list manifest orders %s: %w", manifestID, err)
 	}
 	return res, nil
+}
+
+func originalTotalMinorForInsert(o *Order) int64 {
+	if o == nil {
+		return 0
+	}
+	if o.OriginalTotalMinor > 0 {
+		return o.OriginalTotalMinor
+	}
+	return o.TotalMinor
+}
+
+func originalTotalMinorForUpdate(o Order) int64 {
+	if o.OriginalTotalMinor > 0 {
+		return o.OriginalTotalMinor
+	}
+	return o.TotalMinor
 }

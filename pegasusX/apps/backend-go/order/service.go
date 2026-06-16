@@ -116,6 +116,7 @@ type Order struct {
 	ConfirmationStatus    ConfirmationStatus
 	LineItems             []LineItem
 	TotalMinor            int64
+	OriginalTotalMinor    int64
 	Currency              string
 	H3Cell                string
 	Lat                   float64
@@ -131,6 +132,9 @@ type Order struct {
 	Version               int64
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
+
+	// PendingSupplierReturns is written in the same UpdateOrder transaction and not stored on Orders.
+	PendingSupplierReturns []SupplierReturn `json:"-"`
 }
 
 // DeliveryProofType classifies one immutable delivery handoff proof row.
@@ -2575,6 +2579,10 @@ func (s *Service) paymentRequiredData(ctx context.Context, orderRecord Order) ma
 		"status":         string(orderRecord.Status),
 		"timestamp":      orderRecord.UpdatedAt.Format(time.RFC3339Nano),
 	}
+	originalAmount := orderOriginalAmountMinor(orderRecord)
+	if originalAmount > orderRecord.TotalMinor {
+		data["original_amount"] = originalAmount
+	}
 	if s != nil && s.gatewayPolicy != nil {
 		gateways, acceptor, err := s.gatewayPolicy.AllowedGateways(ctx, orderRecord.SupplierID, orderRecord.WarehouseID)
 		if err == nil {
@@ -2848,10 +2856,11 @@ func validateStatusTransition(current Status, next Status) error {
 
 // AmendItemRequest is one line adjustment from the driver offload review surface.
 type AmendItemRequest struct {
-	ProductID   string `json:"product_id"`
-	AcceptedQty int64  `json:"accepted_qty"`
-	RejectedQty int64  `json:"rejected_qty"`
-	Reason      string `json:"reason"`
+	ProductID    string `json:"product_id"`
+	AcceptedQty  int64  `json:"accepted_qty"`
+	RejectedQty  int64  `json:"rejected_qty"`
+	Reason       string `json:"reason"`
+	CustomReason string `json:"custom_reason"`
 }
 
 // AmendOrderRequest is POST /v1/order/amend.
@@ -2883,6 +2892,15 @@ func (s *Service) AmendOrder(ctx context.Context, claims auth.Claims, req AmendO
 		return AmendOrderResponse{}, err
 	}
 
+	return s.applyOrderAmendments(ctx, current, req, claims.Subject)
+}
+
+func (s *Service) applyOrderAmendments(ctx context.Context, current Order, req AmendOrderRequest, actorID string) (AmendOrderResponse, error) {
+	orderID := strings.TrimSpace(current.OrderID)
+	if !orderAmendable(current.Status) {
+		return AmendOrderResponse{}, fmt.Errorf("order %s cannot be amended from state %s", orderID, current.Status)
+	}
+
 	amendByProduct := make(map[string]AmendItemRequest, len(req.Items))
 	for _, item := range req.Items {
 		key := strings.TrimSpace(item.ProductID)
@@ -2891,44 +2909,76 @@ func (s *Service) AmendOrder(ctx context.Context, claims auth.Claims, req AmendO
 		}
 		amendByProduct[key] = item
 	}
+	if len(amendByProduct) == 0 {
+		return AmendOrderResponse{}, errors.New("items required")
+	}
+
+	origQtyBySKU := make(map[string]int64, len(current.LineItems))
+	for _, line := range current.LineItems {
+		origQtyBySKU[strings.TrimSpace(line.SKU)] = line.Quantity
+	}
 
 	updatedItems := make([]LineItem, 0, len(current.LineItems))
+	pendingReturns := make([]SupplierReturn, 0, len(req.Items))
 	var adjustedTotal int64
 	for _, line := range current.LineItems {
 		key := strings.TrimSpace(line.SKU)
+		origQty := origQtyBySKU[key]
 		if amend, ok := amendByProduct[key]; ok {
-			if amend.AcceptedQty < 0 {
-				return AmendOrderResponse{}, fmt.Errorf("invalid accepted_qty for %s", key)
+			acceptedQty, rejectedQty, err := resolveAmendQuantities(origQty, amend.AcceptedQty, amend.RejectedQty)
+			if err != nil {
+				return AmendOrderResponse{}, fmt.Errorf("%s for sku %s", err.Error(), key)
 			}
-			line.Quantity = amend.AcceptedQty
+			if rejectedQty > 0 {
+				reason := normalizeAmendReason(amend.Reason)
+				if reason == "" {
+					return AmendOrderResponse{}, fmt.Errorf("reason required for rejected quantity on sku %s", key)
+				}
+				if err := validateAmendReason(reason, amend.CustomReason); err != nil {
+					return AmendOrderResponse{}, fmt.Errorf("sku %s: %w", key, err)
+				}
+				pendingReturns = append(pendingReturns, SupplierReturn{
+					ReturnID:    s.newID(),
+					SKU:         key,
+					RejectedQty: rejectedQty,
+					Reason:      reason,
+					DriverNotes: supplierReturnNotes(reason, amend.CustomReason, req.DriverNotes),
+				})
+			}
+			line.Quantity = acceptedQty
 		}
-		lineTotal := line.UnitPrice * line.Quantity
-		adjustedTotal += lineTotal
+		adjustedTotal += line.UnitPrice * line.Quantity
 		updatedItems = append(updatedItems, line)
 	}
 
 	previousTotal := current.TotalMinor
+	if current.OriginalTotalMinor == 0 {
+		current.OriginalTotalMinor = previousTotal
+	}
 	current.LineItems = updatedItems
 	current.TotalMinor = adjustedTotal
+	current.PendingSupplierReturns = pendingReturns
 	current.UpdatedAt = s.now()
 
 	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
 		payload := map[string]any{
-			"type":           "ORDER_AMENDED",
-			"order_id":       current.OrderID,
-			"driver_id":      claims.Subject,
-			"previous_total": previousTotal,
-			"adjusted_total": adjustedTotal,
-			"currency":       current.Currency,
-			"driver_notes":   strings.TrimSpace(req.DriverNotes),
-			"amended_items":  req.Items,
-			"timestamp":      current.UpdatedAt.Format(time.RFC3339Nano),
+			"type":            "ORDER_AMENDED",
+			"order_id":        current.OrderID,
+			"driver_id":       strings.TrimSpace(actorID),
+			"previous_total":  previousTotal,
+			"adjusted_total":  adjustedTotal,
+			"original_amount": current.OriginalTotalMinor,
+			"currency":        current.Currency,
+			"driver_notes":    strings.TrimSpace(req.DriverNotes),
+			"amended_items":   req.Items,
+			"timestamp":       current.UpdatedAt.Format(time.RFC3339Nano),
 		}
 		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, payload)
 	}); err != nil {
 		return AmendOrderResponse{}, fmt.Errorf("amend order %s: %w", orderID, err)
 	}
 
+	current.PendingSupplierReturns = nil
 	s.afterOrderMutation(ctx, current)
 
 	return AmendOrderResponse{

@@ -310,12 +310,62 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
 		return
 	}
-	if err := s.emitDriverEdgeEvent(r.Context(), current, map[string]any{
+	if claims.Role == auth.RoleDriver {
+		if strings.TrimSpace(current.DriverID) == "" || strings.TrimSpace(current.DriverID) != strings.TrimSpace(claims.Subject) {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+			return
+		}
+	}
+	if len(req.Items) == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "items_required"})
+		return
+	}
+
+	origQtyBySKU := make(map[string]int64, len(current.LineItems))
+	for _, line := range current.LineItems {
+		origQtyBySKU[strings.TrimSpace(line.SKU)] = line.Quantity
+	}
+	amendItems := make([]AmendItemRequest, 0, len(req.Items))
+	for _, item := range req.Items {
+		sku := strings.TrimSpace(item.SKU)
+		if sku == "" || item.Quantity <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_missing_item"})
+			return
+		}
+		origQty, ok := origQtyBySKU[sku]
+		if !ok || item.Quantity > origQty {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("missing quantity exceeds item quantity for sku %s", sku)})
+			return
+		}
+		amendItems = append(amendItems, AmendItemRequest{
+			ProductID:   sku,
+			AcceptedQty: origQty - item.Quantity,
+			RejectedQty: item.Quantity,
+			Reason:      "MISSING",
+		})
+	}
+
+	amendResp, err := s.applyOrderAmendments(r.Context(), current, AmendOrderRequest{
+		OrderID:     req.OrderID,
+		Items:       amendItems,
+		DriverNotes: req.Note,
+	}, missingItemsDriverID(claims, current))
+	if err != nil {
+		s.writeOrderMutationError(w, "missing items amend failed", req.OrderID, err)
+		return
+	}
+
+	updated, okRow, err := s.repo.GetOrder(r.Context(), req.OrderID)
+	if err != nil || !okRow {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+		return
+	}
+	if err := s.emitDriverEdgeEvent(r.Context(), updated, map[string]any{
 		"type":        events.EventMissingItemsReported,
 		"order_id":    req.OrderID,
-		"driver_id":   missingItemsDriverID(claims, current),
-		"supplier_id": current.SupplierID,
-		"retailer_id": current.RetailerID,
+		"driver_id":   missingItemsDriverID(claims, updated),
+		"supplier_id": updated.SupplierID,
+		"retailer_id": updated.RetailerID,
 		"note":        req.Note,
 		"items":       req.Items,
 		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
@@ -324,22 +374,25 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "event_failed"})
 		return
 	}
-	
-	// Phase 3: Emit Reverse Logistics requirement
-	if err := s.emitDriverEdgeEvent(r.Context(), current, map[string]any{
-		"type":        "REVERSE_LOGISTICS_REQUIRED",
-		"order_id":    req.OrderID,
-		"warehouse_id": current.WarehouseID,
-		"supplier_id": current.SupplierID,
-		"retailer_id": current.RetailerID,
-		"items":       req.Items,
-		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
+
+	if err := s.emitDriverEdgeEvent(r.Context(), updated, map[string]any{
+		"type":         "REVERSE_LOGISTICS_REQUIRED",
+		"order_id":     req.OrderID,
+		"warehouse_id": updated.WarehouseID,
+		"supplier_id":  updated.SupplierID,
+		"retailer_id":  updated.RetailerID,
+		"items":        req.Items,
+		"timestamp":    s.now().UTC().Format(time.RFC3339Nano),
 	}); err != nil {
 		s.log.ErrorContext(r.Context(), "reverse logistics event failed", "err", err)
 	}
 
 	idemCommitted = true
-	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]string{"status": "reported"})
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
+		"status":          "reported",
+		"adjusted_total":  amendResp.AdjustedTotal,
+		"original_amount": orderOriginalAmountMinor(updated),
+	})
 }
 
 // HandleSplitPayment serves POST /v1/delivery/split-payment.

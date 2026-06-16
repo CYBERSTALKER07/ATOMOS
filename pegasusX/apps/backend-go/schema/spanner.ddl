@@ -154,8 +154,9 @@ CREATE TABLE Orders (
   OrderSource      STRING(24)    NOT NULL,
   ConfirmationStatus STRING(24)  NOT NULL,
   LineItemsJson    BYTES(MAX)    NOT NULL,
-  TotalMinor       INT64         NOT NULL,
-  Currency         STRING(3)     NOT NULL,
+  TotalMinor           INT64         NOT NULL,
+  OriginalTotalMinor   INT64         NOT NULL DEFAULT (0),
+  Currency             STRING(3)     NOT NULL,
   H3Cell           STRING(15),
   Lat              FLOAT64,
   Lng              FLOAT64,
@@ -183,6 +184,19 @@ CREATE INDEX Idx_Orders_ByRouteCreated ON Orders(RouteId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByManifestCreated ON Orders(ManifestId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByH3Cell ON Orders(H3Cell, Status, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByStatusWarehouse ON Orders(Status, WarehouseId, CreatedAt DESC);
+
+CREATE TABLE SupplierReturns (
+  ReturnId     STRING(36)  NOT NULL,
+  OrderId      STRING(36)  NOT NULL,
+  SkuId        STRING(50)  NOT NULL,
+  RejectedQty  INT64       NOT NULL,
+  Reason       STRING(50)  NOT NULL,
+  DriverNotes  STRING(MAX),
+  CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (ReturnId);
+
+CREATE INDEX Idx_SupplierReturns_ByOrder ON SupplierReturns(OrderId);
+CREATE INDEX Idx_SupplierReturns_BySku ON SupplierReturns(SkuId);
 
 CREATE TABLE OrderDeliveryProofs (
   ProofId           STRING(36)    NOT NULL,
