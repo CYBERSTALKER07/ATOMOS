@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @Environment(TokenStore.self) private var tokenStore
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var dashboard: SupplierDashboard?
     @State private var loading = true
@@ -93,6 +94,12 @@ struct DashboardView: View {
                     try? await Task.sleep(nanoseconds: 30_000_000_000)
                     await load(silent: true)
                 }
+            }
+            .onChange(of: realtimeHub.refreshEpoch) { _, _ in
+                Task { await load(silent: true) }
+            }
+            .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+                Task { await load(silent: true) }
             }
         }
     }

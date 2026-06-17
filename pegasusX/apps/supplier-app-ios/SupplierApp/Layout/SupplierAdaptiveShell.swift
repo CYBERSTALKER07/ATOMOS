@@ -14,10 +14,8 @@ struct SupplierAdaptiveShell: View {
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var sidebarSelection: SupplierSection? = .dashboard
     @State private var compactTab: CompactTab = .dashboard
-    @State private var refreshEpoch = 0
     @State private var clientPolicyMessage: String?
 
-    private var effectiveRefreshEpoch: Int { refreshEpoch + realtimeHub.refreshEpoch }
     @State private var pathMonitor: NWPathMonitor?
     @State private var wasOffline = false
 
@@ -37,7 +35,7 @@ struct SupplierAdaptiveShell: View {
             pathMonitor?.cancel()
             pathMonitor = nil
         }
-        .task(id: effectiveRefreshEpoch) {
+        .task(id: realtimeHub.reconnectEpoch) {
             await loadClientPolicy()
         }
     }
@@ -53,7 +51,6 @@ struct SupplierAdaptiveShell: View {
         } detail: {
             if let section = sidebarSelection {
                 sectionView(section)
-                    .id("\(section.id)-\(effectiveRefreshEpoch)")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(SupplierTheme.background)
             } else {
@@ -66,23 +63,19 @@ struct SupplierAdaptiveShell: View {
     private var compactShell: some View {
         TabView(selection: $compactTab) {
             sectionView(.dashboard)
-                .id("dash-\(effectiveRefreshEpoch)")
                 .tabItem { Label("Dashboard", systemImage: SupplierSection.dashboard.icon) }
                 .tag(CompactTab.dashboard)
 
             sectionView(.orders)
-                .id("orders-\(effectiveRefreshEpoch)")
                 .tabItem { Label("Orders", systemImage: SupplierSection.orders.icon) }
                 .tag(CompactTab.orders)
 
             sectionView(.fleet)
-                .id("fleet-\(effectiveRefreshEpoch)")
                 .tabItem { Label("Fleet", systemImage: SupplierSection.fleet.icon) }
                 .tag(CompactTab.fleet)
 
             NavigationStack {
                 MoreHubView()
-                    .id("more-hub-\(effectiveRefreshEpoch)")
             }
             .tabItem { Label("More", systemImage: "ellipsis.circle") }
             .tag(CompactTab.more)
@@ -179,7 +172,9 @@ struct SupplierAdaptiveShell: View {
         monitor.pathUpdateHandler = { path in
             DispatchQueue.main.async {
                 if path.status == .satisfied {
-                    if wasOffline { refreshEpoch += 1 }
+                    if wasOffline {
+                        Task { await SupplierSessionReconcile.run() }
+                    }
                     wasOffline = false
                 } else {
                     wasOffline = true

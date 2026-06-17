@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FleetView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var segment = 0
     @State private var drivers: [FleetDriver] = []
     @State private var vehicles: [FleetVehicle] = []
@@ -66,6 +67,12 @@ struct FleetView: View {
             }
             .task { await load() }
             .refreshable { await load(silent: true) }
+            .onChange(of: realtimeHub.refreshEpoch) { _, _ in
+                Task { await load(silent: true) }
+            }
+            .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+                Task { await load(silent: true) }
+            }
         }
     }
 

@@ -52,6 +52,13 @@ enum TypeEnum: String {
     case orderValidationFailed
     case paymentCleared
     case paymentRequired
+    case preOrderAutoAccepted
+    case preOrderCancelled
+    case preOrderConfirmation
+    case preOrderConfirmed
+    case preOrderEdited
+    case preOrderNotified
+    case preOrderNudge
     case promotionChanged
     case retailerPriceOverride
     case retailerRegistered

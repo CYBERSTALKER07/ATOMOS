@@ -13,6 +13,5 @@ final class SupplierRealtimeHub {
 
     func bumpReconnect() {
         reconnectEpoch += 1
-        bump()
     }
 }

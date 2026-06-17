@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OrdersView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var vm = OrdersViewModel()
 
     var body: some View {
@@ -18,6 +19,12 @@ struct OrdersView: View {
         }
         .background(SupplierTheme.background)
         .task(id: vm.statusFilter) { await vm.load() }
+        .onChange(of: realtimeHub.refreshEpoch) { _, _ in
+            Task { await vm.load(silent: true) }
+        }
+        .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+            Task { await vm.load(silent: true) }
+        }
     }
 
     private var phoneContent: some View {
