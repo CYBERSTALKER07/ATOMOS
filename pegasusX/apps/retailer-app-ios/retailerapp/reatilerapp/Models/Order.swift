@@ -254,7 +254,7 @@ struct Order: Codable, Identifiable, Hashable {
         case version = "version"
     }
 
-    init(id: String, retailerId: String, supplierId: String?, supplierName: String?, status: OrderStatus, items: [OrderLineItem], totalAmount: Int64, currency: String = "UZS", paymentGateway: String = "", paymentStatus: String? = nil, routeId: String? = nil, autoConfirmAt: String? = nil, deliverBefore: String? = nil, orderSource: String?, createdAt: String, updatedAt: String, estimatedDelivery: String?, qrCode: String?, version: Int64 = 0) {
+    init(id: String, retailerId: String, supplierId: String?, supplierName: String?, status: OrderStatus, items: [OrderLineItem], totalAmount: Int64, currency: String = "UZS", paymentGateway: String = "", paymentStatus: String? = nil, routeId: String? = nil, autoConfirmAt: String? = nil, deliverBefore: String? = nil, orderSource: String?, confirmationStatus: String? = nil, deliveryPriority: String? = nil, preorderBadge: String? = nil, createdAt: String, updatedAt: String, estimatedDelivery: String?, qrCode: String?, version: Int64 = 0) {
         self.id = id
         self.retailerId = retailerId
         self.supplierId = supplierId
@@ -269,6 +269,9 @@ struct Order: Codable, Identifiable, Hashable {
         self.autoConfirmAt = autoConfirmAt
         self.deliverBefore = deliverBefore
         self.orderSource = orderSource
+        self.confirmationStatus = confirmationStatus
+        self.deliveryPriority = deliveryPriority
+        self.preorderBadge = preorderBadge
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.estimatedDelivery = estimatedDelivery
