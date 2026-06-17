@@ -1087,7 +1087,7 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/v1/warehouse/ops/vehicles")
 	path = strings.Trim(path, "/")
 	if path != "" {
-		s.handleOpsVehiclePatch(w, r, path)
+		s.handleOpsVehicleByID(w, r, path)
 		return
 	}
 	switch r.Method {
@@ -1096,7 +1096,10 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 		if s.opsVehicles != nil {
 			vehicles, err := s.opsVehicles(r.Context(), whID)
 			if err == nil {
-				writeJSON(w, http.StatusOK, map[string]any{"vehicles": vehicles})
+				writeJSON(w, http.StatusOK, map[string]any{
+					"vehicles": wirePortalVehicles(vehicles),
+					"total":    len(vehicles),
+				})
 				return
 			}
 			s.log.WarnContext(r.Context(), "ops vehicles query failed, falling back", "err", err)
@@ -1105,7 +1108,10 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 		s.mu.RLock()
 		vehicles := append([]PortalVehicle(nil), s.vehicles...)
 		s.mu.RUnlock()
-		writeJSON(w, http.StatusOK, map[string]any{"vehicles": vehicles})
+		writeJSON(w, http.StatusOK, map[string]any{
+			"vehicles": wirePortalVehicles(vehicles),
+			"total":    len(vehicles),
+		})
 	case http.MethodPost:
 		body, ok := readMutationBody(w, r, 64*1024)
 		if !ok {
@@ -1182,6 +1188,64 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Service) handleOpsVehicleByID(w http.ResponseWriter, r *http.Request, vehicleID string) {
+	switch r.Method {
+	case http.MethodGet:
+		s.handleOpsVehicleGet(w, r, vehicleID)
+	case http.MethodPatch:
+		s.handleOpsVehiclePatch(w, r, vehicleID)
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+	}
+}
+
+func (s *Service) handleOpsVehicleGet(w http.ResponseWriter, r *http.Request, vehicleID string) {
+	vehicleID = strings.TrimSpace(vehicleID)
+	if vehicleID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "vehicle_id_required"})
+		return
+	}
+	whID := warehouseIDFromRequest(r)
+	if whID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_required"})
+		return
+	}
+	vehicle, ok, err := s.getOpsVehicle(r.Context(), whID, vehicleID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "vehicle_lookup_failed"})
+		return
+	}
+	if !ok {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "vehicle_not_found"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"vehicle": wirePortalVehicle(vehicle)})
+}
+
+func (s *Service) getOpsVehicle(ctx context.Context, warehouseID, vehicleID string) (PortalVehicle, bool, error) {
+	if s.opsVehicles != nil {
+		vehicles, err := s.opsVehicles(ctx, warehouseID)
+		if err != nil {
+			return PortalVehicle{}, false, err
+		}
+		for _, v := range vehicles {
+			if v.VehicleID == vehicleID {
+				return v, true, nil
+			}
+		}
+		return PortalVehicle{}, false, nil
+	}
+	s.ensurePortalSeed()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, v := range s.vehicles {
+		if v.VehicleID == vehicleID {
+			return v, true, nil
+		}
+	}
+	return PortalVehicle{}, false, nil
+}
+
 func (s *Service) handleOpsVehiclePatch(w http.ResponseWriter, r *http.Request, vehicleID string) {
 	if r.Method != http.MethodPatch {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -1217,6 +1281,15 @@ func (s *Service) handleOpsVehiclePatch(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	now := time.Now().UTC()
+	reason := ""
+	note := ""
+	if !req.IsActive {
+		reason = normalizeWarehouseVehicleReason(req.UnavailableReason)
+		note = strings.TrimSpace(req.UnavailableNote)
+		if reason == VehicleReasonOther && note == "" {
+			note = strings.TrimSpace(req.UnavailableReason)
+		}
+	}
 	if s.spannerClient != nil {
 		if err := s.patchOpsVehicleSpanner(r.Context(), opsVehiclePatchParams{
 			VehicleID:         vehicleID,
@@ -1231,7 +1304,13 @@ func (s *Service) handleOpsVehiclePatch(w http.ResponseWriter, r *http.Request, 
 			return
 		}
 		idemCommitted = true
-		writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "vehicle_id": vehicleID})
+		writeJSON(w, http.StatusOK, map[string]any{
+			"status":             "updated",
+			"vehicle_id":         vehicleID,
+			"is_active":          req.IsActive,
+			"unavailable_reason": reason,
+			"unavailable_note":   note,
+		})
 		return
 	}
 
@@ -1243,19 +1322,16 @@ func (s *Service) handleOpsVehiclePatch(w http.ResponseWriter, r *http.Request, 
 			continue
 		}
 		s.vehicles[i].IsActive = req.IsActive
-		reason := ""
-		note := ""
-		if !req.IsActive {
-			reason = normalizeWarehouseVehicleReason(req.UnavailableReason)
-			note = strings.TrimSpace(req.UnavailableNote)
-			if reason == VehicleReasonOther && note == "" {
-				note = strings.TrimSpace(req.UnavailableReason)
-			}
-		}
 		s.vehicles[i].UnavailableReason = reason
 		s.vehicles[i].UnavailableNote = note
 		idemCommitted = true
-		writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "vehicle_id": vehicleID})
+		writeJSON(w, http.StatusOK, map[string]any{
+			"status":             "updated",
+			"vehicle_id":         vehicleID,
+			"is_active":          req.IsActive,
+			"unavailable_reason": reason,
+			"unavailable_note":   note,
+		})
 		return
 	}
 	writeJSON(w, http.StatusNotFound, map[string]string{"error": "vehicle_not_found"})

@@ -124,6 +124,7 @@ data class Vehicle(
     val status: String = "",
     @SerialName("is_active") val isActive: Boolean = true,
     @SerialName("unavailable_reason") val unavailableReason: String? = null,
+    @SerialName("unavailable_note") val unavailableNote: String? = null,
     @SerialName("assigned_driver_id") val assignedDriverId: String? = null,
     @SerialName("assigned_driver_name") val assignedDriverName: String = "",
 )
@@ -144,6 +145,12 @@ data class VehicleListResponse(
 data class UpdateVehicleRequest(
     @SerialName("is_active") val isActive: Boolean? = null,
     @SerialName("unavailable_reason") val unavailableReason: String? = null,
+    @SerialName("unavailable_note") val unavailableNote: String? = null,
+)
+
+@Serializable
+data class VehicleDetailResponse(
+    val vehicle: Vehicle = Vehicle(vehicleId = ""),
 )
 
 @Serializable
@@ -375,15 +382,27 @@ data class DispatchPreview(
 
 // mirror of backend-go/dispatch/plan.RoutesToWire preview payload
 @Serializable
+data class DispatchProposedStop(
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("retailer_id") val retailerId: String? = null,
+    @SerialName("retailer_name") val retailerName: String? = null,
+    val lat: Double? = null,
+    val lng: Double? = null,
+    @SerialName("volume_vu") val volumeVu: Double? = null,
+)
+
+@Serializable
 data class DispatchProposedRoute(
     @SerialName("driver_id") val driverId: String? = null,
     @SerialName("driver_name") val driverName: String? = null,
     @SerialName("vehicle_id") val vehicleId: String? = null,
     @SerialName("order_ids") val orderIds: List<String> = emptyList(),
+    val stops: List<DispatchProposedStop> = emptyList(),
     @SerialName("volume_vu") val volumeVu: Double? = null,
     @SerialName("loaded_volume") val loadedVolume: Double? = null,
     @SerialName("max_volume_vu") val maxVolumeVu: Double? = null,
     @SerialName("stop_count") val stopCount: Int? = null,
+    @SerialName("route_geometry") val routeGeometry: RouteGeometryWire? = null,
 )
 
 @Serializable

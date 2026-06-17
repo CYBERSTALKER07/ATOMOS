@@ -1,12 +1,11 @@
 import SwiftUI
 
 struct VehiclesView: View {
+    @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var vehicles: [Vehicle] = []
     @State private var loading = true
     @State private var error: String?
     @State private var showCreate = false
-    @State private var mutatingVehicleId: String?
-    @State private var reasonVehicle: Vehicle?
 
     var body: some View {
         NavigationStack {
@@ -23,30 +22,29 @@ struct VehiclesView: View {
                         Button("Retry") { load() }
                     }
                 } else if vehicles.isEmpty {
-                    ContentUnavailableView("No Vehicles", systemImage: "truck.box", description: Text("Add a vehicle to get started"))
+                    ContentUnavailableView("No Trucks", systemImage: "truck.box", description: Text("Add a truck to get started"))
                 } else {
                     List(vehicles) { vehicle in
-                        HStack {
-                            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                                Text(vehicle.label.isEmpty ? vehicle.licensePlate : vehicle.label)
-                                    .font(.headline)
-                                Text("\(vehicle.vehicleClass) · \(vehicle.capacityVu) VU")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Text(vehicle.assignedDriverName ?? "Unassigned")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                if !vehicle.isActive, let unavailableReason = vehicle.unavailableReason, !unavailableReason.isEmpty {
-                                    Text(vehicleUnavailableReasonLabel(unavailableReason))
+                        NavigationLink {
+                            VehicleDetailView(vehicleId: vehicle.vehicleId)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                    Text(vehicle.label.isEmpty ? vehicle.licensePlate : vehicle.label)
+                                        .font(.headline)
+                                    Text("\(vehicle.vehicleClass) · \(vehicle.capacityVu) VU")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                    Text(vehicle.assignedDriverName ?? "Unassigned")
                                         .font(.caption)
-                                        .foregroundStyle(.orange)
+                                        .foregroundStyle(.secondary)
+                                    if !vehicle.isActive {
+                                        Text(formatUnavailableReason(vehicle.unavailableReason, note: vehicle.unavailableNote))
+                                            .font(.caption)
+                                            .foregroundStyle(.orange)
+                                    }
                                 }
-                            }
-                            Spacer()
-                            if mutatingVehicleId == vehicle.vehicleId {
-                                ProgressView()
-                                    .controlSize(.small)
-                            } else {
+                                Spacer()
                                 Text(vehicle.isActive ? (vehicle.status.isEmpty ? "AVAILABLE" : vehicle.status) : "UNAVAILABLE")
                                     .font(.caption.bold())
                                     .padding(.horizontal, LabTheme.spacingSM)
@@ -54,60 +52,25 @@ struct VehiclesView: View {
                                     .background(.quaternary, in: Capsule())
                             }
                         }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            if vehicle.isActive {
-                                Button("Unavailable") {
-                                    reasonVehicle = vehicle
-                                }
-                                .tint(.orange)
-                            } else {
-                                Button("Restore") {
-                                    toggleAvailability(for: vehicle, isActive: true)
-                                }
-                                .tint(.green)
-                            }
-                        }
                     }
                     .listStyle(.insetGrouped)
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Vehicles")
+            .navigationTitle("Trucks")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Refresh", systemImage: "arrow.clockwise") { load() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Add Vehicle", systemImage: "plus") { showCreate = true }
+                    Button("Add Truck", systemImage: "plus") { showCreate = true }
                 }
             }
             .task { load() }
             .refreshable { load() }
+            .onChange(of: realtimeHub.refreshEpoch) { _, _ in load() }
             .sheet(isPresented: $showCreate) {
                 CreateVehicleSheet { load() }
-            }
-            .confirmationDialog(
-                "Set Vehicle Unavailable",
-                isPresented: Binding(
-                    get: { reasonVehicle != nil },
-                    set: { isPresented in
-                        if !isPresented {
-                            reasonVehicle = nil
-                        }
-                    }
-                ),
-                presenting: reasonVehicle
-            ) { vehicle in
-                ForEach(VehicleUnavailableReasonOption.allCases) { reason in
-                    Button(reason.title) {
-                        toggleAvailability(for: vehicle, isActive: false, unavailableReason: reason.rawValue)
-                    }
-                }
-                Button("Cancel", role: .cancel) {
-                    reasonVehicle = nil
-                }
-            } message: { vehicle in
-                Text("Choose why \(vehicle.label.isEmpty ? vehicle.licensePlate : vehicle.label) is unavailable.")
             }
         }
     }
@@ -123,21 +86,6 @@ struct VehiclesView: View {
                 self.error = error.localizedDescription
             }
             loading = false
-        }
-    }
-
-    private func toggleAvailability(for vehicle: Vehicle, isActive: Bool, unavailableReason: String? = nil) {
-        mutatingVehicleId = vehicle.vehicleId
-        error = nil
-        reasonVehicle = nil
-        Task {
-            do {
-                _ = try await WarehouseService.updateVehicleAvailability(vehicleId: vehicle.vehicleId, isActive: isActive, unavailableReason: unavailableReason)
-                load()
-            } catch {
-                self.error = error.localizedDescription
-            }
-            mutatingVehicleId = nil
         }
     }
 }
@@ -175,7 +123,7 @@ private struct CreateVehicleSheet: View {
                     Text(error).foregroundStyle(.red).font(.caption)
                 }
             }
-            .navigationTitle("Add Vehicle")
+            .navigationTitle("Add Truck")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

@@ -73,6 +73,7 @@ import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestDetailScreen
 import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestsScreen
 import com.pegasusx.warehouse.ui.screens.transfers.TransferActionsScreen
 import com.pegasusx.warehouse.ui.screens.treasury.TreasuryScreen
+import com.pegasusx.warehouse.ui.screens.vehicles.VehicleDetailScreen
 import com.pegasusx.warehouse.ui.screens.vehicles.VehiclesScreen
 import com.pegasusx.warehouse.ui.portal.WarehousePortalFeature
 import kotlinx.coroutines.launch
@@ -84,6 +85,7 @@ object WarehouseRoutes {
     const val ORDER_DETAIL = "orders/{id}"
     const val DRIVERS = "drivers"
     const val VEHICLES = "vehicles"
+    const val VEHICLE_DETAIL = "vehicles/{id}"
     const val INVENTORY = "inventory"
     const val PRODUCTS = "products"
     const val MANIFESTS = "manifests"
@@ -106,6 +108,7 @@ object WarehouseRoutes {
     const val PORTAL_HANDOFF = "portal/{feature}"
 
     fun orderDetail(id: String) = "orders/$id"
+    fun vehicleDetail(id: String) = "vehicles/$id"
     fun supplyRequestDetail(id: String) = "supply_requests/$id"
     fun portalHandoff(feature: String) = "portal/$feature"
 }
@@ -311,7 +314,25 @@ fun WarehouseNavigation(
                 }
 
                 composable(WarehouseRoutes.VEHICLES) {
-                    VehiclesScreen(api = api, realtimeSignals = realtimeSignals, onBack = backFor(WarehouseRoutes.VEHICLES))
+                    VehiclesScreen(
+                        api = api,
+                        realtimeSignals = realtimeSignals,
+                        onVehicleClick = { id -> navController.navigate(WarehouseRoutes.vehicleDetail(id)) },
+                        onBack = backFor(WarehouseRoutes.VEHICLES),
+                    )
+                }
+
+                composable(
+                    route = WarehouseRoutes.VEHICLE_DETAIL,
+                    arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                ) { backStackEntry ->
+                    val id = backStackEntry.arguments?.getString("id") ?: return@composable
+                    VehicleDetailScreen(
+                        api = api,
+                        vehicleId = id,
+                        realtimeSignals = realtimeSignals,
+                        onBack = backFor(WarehouseRoutes.VEHICLE_DETAIL),
+                    )
                 }
 
                 composable(WarehouseRoutes.INVENTORY) {
@@ -347,6 +368,7 @@ fun WarehouseNavigation(
                         api = api,
                         opsRepository = opsRepository,
                         realtimeSignals = realtimeSignals,
+                        onVehicleClick = { id -> navController.navigate(WarehouseRoutes.vehicleDetail(id)) },
                         onBack = backFor(WarehouseRoutes.DISPATCH),
                     )
                 }

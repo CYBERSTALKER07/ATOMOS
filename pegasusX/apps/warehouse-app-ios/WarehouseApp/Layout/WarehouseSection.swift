@@ -4,7 +4,7 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
     case dashboard = "Dashboard"
     case orders = "Orders"
     case drivers = "Drivers"
-    case vehicles = "Vehicles"
+    case vehicles = "Trucks"
     case inventory = "Inventory"
     case dispatch = "Dispatch"
     case analytics = "Analytics"

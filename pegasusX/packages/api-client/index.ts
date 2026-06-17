@@ -108,6 +108,8 @@ import type {
   WarehouseForceReceiveRequest,
   WarehouseInventoryResponse,
   WarehouseFleetLiveMapResponse,
+  WarehouseFleetVehicleDetailResponse,
+  WarehouseFleetVehicleListResponse,
   WarehouseOpsDashboardResponse,
   WarehouseOpsFinancialsResponse,
   WarehouseOrderMutationRequest,
@@ -868,6 +870,17 @@ export class ApiClient {
 
   async getWarehouseOrders(query: { warehouse_id?: string; state?: string } = {}): Promise<WarehouseOrdersResponse> {
     return this.request<WarehouseOrdersResponse>(appendQuery("/v1/warehouse/ops/orders", query as Record<string, unknown>), "GET");
+  }
+
+  async getWarehouseFleetVehicles(query: { warehouse_id?: string } = {}): Promise<WarehouseFleetVehicleListResponse> {
+    return this.request<WarehouseFleetVehicleListResponse>(appendQuery("/v1/warehouse/ops/vehicles", query as Record<string, unknown>), "GET");
+  }
+
+  async getWarehouseFleetVehicle(vehicleId: string, query: { warehouse_id?: string } = {}): Promise<WarehouseFleetVehicleDetailResponse> {
+    return this.request<WarehouseFleetVehicleDetailResponse>(
+      appendQuery(`/v1/warehouse/ops/vehicles/${vehicleId}`, query as Record<string, unknown>),
+      "GET",
+    );
   }
 
   async previewWarehouseDispatch(

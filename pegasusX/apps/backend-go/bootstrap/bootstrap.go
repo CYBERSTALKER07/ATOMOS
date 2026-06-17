@@ -1448,12 +1448,17 @@ func warehouseDriversOnActiveManifests(ctx context.Context, client *spanner.Clie
 func warehouseOpsVehiclesQuery(client *spanner.Client) warehouse.WarehouseOpsVehiclesQuery {
 	return func(ctx context.Context, warehouseID string) ([]warehouse.PortalVehicle, error) {
 		stmt := spanner.Statement{
-			SQL: `SELECT VehicleId, COALESCE(Label, ''), LicensePlate,
-			             COALESCE(VehicleClass, 'CLASS_B'), COALESCE(MaxVolumeVU, 150.0), IsActive,
-			             COALESCE(UnavailableReason, ''), COALESCE(UnavailableNote, '')
-			      FROM Vehicles@{FORCE_INDEX=Idx_Vehicles_ByHomeNode}
-			      WHERE HomeNodeType = 'WAREHOUSE' AND HomeNodeId = @wid
-			      ORDER BY LicensePlate`,
+			SQL: `SELECT v.VehicleId, COALESCE(v.Label, ''), v.LicensePlate,
+			             COALESCE(v.VehicleClass, 'CLASS_B'), COALESCE(v.MaxVolumeVU, 150.0), v.IsActive,
+			             COALESCE(v.UnavailableReason, ''), COALESCE(v.UnavailableNote, ''),
+			             COALESCE(d.DriverId, ''), COALESCE(d.Name, '')
+			      FROM Vehicles@{FORCE_INDEX=Idx_Vehicles_ByHomeNode} v
+			      LEFT JOIN Drivers@{FORCE_INDEX=Idx_Drivers_ByHomeNode} d
+			        ON d.VehicleId = v.VehicleId
+			       AND d.HomeNodeType = 'WAREHOUSE'
+			       AND d.HomeNodeId = @wid
+			      WHERE v.HomeNodeType = 'WAREHOUSE' AND v.HomeNodeId = @wid
+			      ORDER BY v.LicensePlate`,
 			Params: map[string]interface{}{"wid": warehouseID},
 		}
 		iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
@@ -1468,7 +1473,18 @@ func warehouseOpsVehiclesQuery(client *spanner.Client) warehouse.WarehouseOpsVeh
 				return nil, fmt.Errorf("warehouse ops vehicles: %w", err)
 			}
 			var v warehouse.PortalVehicle
-			if err := row.Columns(&v.VehicleID, &v.Label, &v.LicensePlate, &v.VehicleClass, &v.MaxVolumeVU, &v.IsActive, &v.UnavailableReason, &v.UnavailableNote); err != nil {
+			if err := row.Columns(
+				&v.VehicleID,
+				&v.Label,
+				&v.LicensePlate,
+				&v.VehicleClass,
+				&v.MaxVolumeVU,
+				&v.IsActive,
+				&v.UnavailableReason,
+				&v.UnavailableNote,
+				&v.AssignedDriverID,
+				&v.AssignedDriverName,
+			); err != nil {
 				return nil, fmt.Errorf("warehouse ops vehicles scan: %w", err)
 			}
 			vehicles = append(vehicles, v)

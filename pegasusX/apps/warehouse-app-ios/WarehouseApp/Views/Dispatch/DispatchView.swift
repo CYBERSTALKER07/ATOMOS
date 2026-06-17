@@ -6,6 +6,11 @@ struct DispatchView: View {
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @Environment(\.scenePhase) private var scenePhase
     @State private var preview: DispatchPreview?
+    @State private var fleetVehicles: [Vehicle] = []
+    @State private var vehicleReasons: [String: String] = [:]
+    @State private var vehicleNotes: [String: String] = [:]
+    @State private var mutatingFleetVehicleId: String?
+    @State private var fleetAlert: String?
     @State private var supplyRequests: [WarehouseSupplyRequest] = []
     @State private var dispatchLocks: [WarehouseDispatchLock] = []
     @State private var loading = true
@@ -80,6 +85,12 @@ struct DispatchView: View {
                         title: "Connection restored",
                         message: "Verify dispatch status before retrying."
                     )
+                }
+            }
+            .onChange(of: realtimeHub.refreshEpoch) { _, _ in
+                Task {
+                    await reloadFleetVehicles()
+                    await reloadDispatchPreview()
                 }
             }
             .confirmationDialog("Capacity exceeded", isPresented: $showCapacityDialog, titleVisibility: .visible) {
@@ -205,6 +216,14 @@ struct DispatchView: View {
                 .padding(.bottom, LabTheme.spacingSM)
             }
 
+            if let fleetAlert {
+                Text(fleetAlert)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .padding(.horizontal)
+                    .padding(.bottom, LabTheme.spacingSM)
+            }
+
             switch selectedSegment {
             case 0:
                 ordersSegment(preview: preview)
@@ -220,21 +239,60 @@ struct DispatchView: View {
 
     @ViewBuilder
     private func ordersSegment(preview: DispatchPreview) -> some View {
-        if preview.undispatchedOrders.isEmpty {
-            ContentUnavailableView("All Dispatched", systemImage: "checkmark.circle", description: Text("No pending orders"))
-        } else {
-            let selectedDriver = preview.availableDrivers.first(where: { $0.driverId == selectedDriverId })
-            let selectedVolume = preview.undispatchedOrders
-                .filter { selectedOrderIds.contains($0.orderId) }
-                .reduce(0.0) { $0 + $1.volumeVu }
-            let effectiveMax: Double = {
-                guard let driver = selectedDriver else { return 0 }
-                if let free = driver.freeVolumeVu, free > 0 {
-                    return free * dispatchTetrisBuffer
+        let selectedDriver = preview.availableDrivers.first(where: { $0.driverId == selectedDriverId })
+        let selectedVolume = preview.undispatchedOrders
+            .filter { selectedOrderIds.contains($0.orderId) }
+            .reduce(0.0) { $0 + $1.volumeVu }
+        let effectiveMax: Double = {
+            guard let driver = selectedDriver else { return 0 }
+            if let free = driver.freeVolumeVu, free > 0 {
+                return free * dispatchTetrisBuffer
+            }
+            return driver.maxVolumeVu * dispatchTetrisBuffer
+        }()
+
+        List {
+            if !fleetVehicles.isEmpty {
+                Section("Fleet trucks (\(fleetVehicles.count))") {
+                    ForEach(fleetVehicles) { vehicle in
+                        let reasonBinding = Binding<String>(
+                            get: { vehicleReasons[vehicle.vehicleId] ?? vehicle.unavailableReason ?? "MANUAL_HOLD" },
+                            set: { vehicleReasons[vehicle.vehicleId] = $0 }
+                        )
+                        let noteBinding = Binding<String>(
+                            get: { vehicleNotes[vehicle.vehicleId] ?? vehicle.unavailableNote ?? "" },
+                            set: { vehicleNotes[vehicle.vehicleId] = $0 }
+                        )
+                        FleetTruckDispatchCard(
+                            vehicle: vehicle,
+                            selectedReason: reasonBinding,
+                            customNote: noteBinding,
+                            mutating: mutatingFleetVehicleId == vehicle.vehicleId,
+                            onMarkUnavailable: {
+                                let reason = vehicleReasons[vehicle.vehicleId] ?? vehicle.unavailableReason ?? "MANUAL_HOLD"
+                                let note = vehicleNotes[vehicle.vehicleId] ?? vehicle.unavailableNote ?? ""
+                                Task {
+                                    await updateFleetVehicle(
+                                        vehicle,
+                                        isActive: false,
+                                        reason: reason,
+                                        note: reason == VehicleUnavailableReasonOption.other.rawValue ? note : nil
+                                    )
+                                }
+                            },
+                            onRestore: {
+                                Task { await updateFleetVehicle(vehicle, isActive: true) }
+                            }
+                        )
+                    }
                 }
-                return driver.maxVolumeVu * dispatchTetrisBuffer
-            }()
-            List {
+            }
+
+            if preview.undispatchedOrders.isEmpty {
+                Section {
+                    ContentUnavailableView("All Dispatched", systemImage: "checkmark.circle", description: Text("No pending orders"))
+                }
+            } else {
                 Section {
                     Picker("Truck / driver", selection: $selectedDriverId) {
                         Text("Select truck / driver").tag("")
@@ -297,8 +355,13 @@ struct DispatchView: View {
                         }
                     }
                 }
-                if !preview.proposedRoutes.isEmpty || !preview.optimizerWarnings.isEmpty {
+                if !preview.proposedRoutes.isEmpty || !preview.optimizerWarnings.isEmpty || preview.windowConstrainedCount > 0 {
                     Section("Smart suggest preview") {
+                        if preview.windowConstrainedCount > 0 {
+                            Text("\(preview.windowConstrainedCount) order(s) constrained by receiving window")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
                         if let source = preview.optimizerSource, !source.isEmpty {
                             Text("Source: \(source)")
                                 .font(.caption)
@@ -309,13 +372,22 @@ struct DispatchView: View {
                                 .font(.caption)
                                 .foregroundStyle(.orange)
                         }
+                    }
+                }
+                if !preview.proposedRoutes.isEmpty {
+                    Section("Smart suggest routes (\(preview.proposedRoutes.count))") {
+                        DispatchPreviewMapView(routes: preview.proposedRoutes)
+                            .listRowInsets(EdgeInsets())
                         ForEach(preview.proposedRoutes) { route in
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                                Text(route.driverName ?? route.driverId ?? "Driver")
-                                    .font(.headline)
-                                Text("\(route.stopCount ?? route.orderIds.count) stops · \((route.volumeVu ?? route.loadedVolume ?? 0), specifier: "%.1f") VU")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                HStack {
+                                    Text(route.driverName ?? route.driverId ?? "Driver")
+                                        .font(.headline)
+                                    Spacer()
+                                    Text("\(route.stopCount ?? route.orderIds.count) stops · \((route.volumeVu ?? route.loadedVolume ?? 0), specifier: "%.1f") VU")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                                 Text(route.orderIds.joined(separator: " → "))
                                     .font(.caption.monospaced())
                                     .lineLimit(2)
@@ -324,8 +396,8 @@ struct DispatchView: View {
                     }
                 }
             }
-            .listStyle(.insetGrouped)
         }
+        .listStyle(.insetGrouped)
     }
 
     @ViewBuilder
@@ -437,13 +509,18 @@ struct DispatchView: View {
     }
 
     private func driverSubtitle(_ driver: AvailableDriver, unavailableDetail: Bool) -> String {
+        var parts: [String] = []
         if !driver.vehicleLabel.isEmpty {
-            return driver.vehicleLabel
+            parts.append(driver.vehicleLabel)
+        } else if driver.phone.isEmpty {
+            parts.append(unavailableDetail ? "Assigned vehicle unavailable" : "Assigned vehicle")
+        } else {
+            parts.append(driver.phone)
         }
-        if driver.phone.isEmpty {
-            return unavailableDetail ? "Assigned vehicle unavailable" : "Assigned vehicle"
+        if !unavailableDetail, let free = driver.freeVolumeVu, free > 0 {
+            parts.append(String(format: "%.1f VU free", free))
         }
-        return driver.phone
+        return parts.joined(separator: " · ")
     }
 
     private func dispatchLockSubtitle(_ lock: WarehouseDispatchLock) -> String {
@@ -467,6 +544,12 @@ struct DispatchView: View {
             switch event.type {
             case "SUPPLY_REQUEST_UPDATE":
                 Task { await reloadSupplyRequests() }
+            case "DRIVER_AVAILABILITY_CHANGED", "VEHICLE_AVAILABILITY_CHANGED":
+                Task {
+                    fleetAlert = "Fleet availability updated"
+                    await reloadFleetVehicles()
+                    await reloadDispatchPreview()
+                }
             case "DISPATCH_LOCK_CHANGE", "DISPATCH_COMMITTED":
                 Task {
                     await reloadDispatchLocks()
@@ -491,9 +574,11 @@ struct DispatchView: View {
                 async let previewData = WarehouseService.dispatchPreview()
                 async let supplyData = WarehouseService.supplyRequests()
                 async let lockData = WarehouseService.dispatchLocks()
+                async let fleetData = WarehouseService.vehicles()
                 preview = try await previewData
                 supplyRequests = try await supplyData
                 dispatchLocks = try await lockData
+                fleetVehicles = try await fleetData.vehicles
             } catch {
                 self.error = describe(error, fallback: "Failed to load dispatch data")
             }
@@ -689,6 +774,36 @@ struct DispatchView: View {
             dispatchLocks = try await WarehouseService.dispatchLocks()
         } catch {
             self.error = describe(error, fallback: "Failed to refresh dispatch locks")
+        }
+    }
+
+    private func reloadFleetVehicles() async {
+        do {
+            let response = try await WarehouseService.vehicles()
+            fleetVehicles = response.vehicles
+        } catch {
+            self.error = describe(error, fallback: "Failed to refresh fleet trucks")
+        }
+    }
+
+    private func updateFleetVehicle(_ vehicle: Vehicle, isActive: Bool, reason: String? = nil, note: String? = nil) async {
+        mutatingFleetVehicleId = vehicle.vehicleId
+        fleetAlert = nil
+        defer { mutatingFleetVehicleId = nil }
+        do {
+            _ = try await WarehouseService.updateVehicleAvailability(
+                vehicleId: vehicle.vehicleId,
+                isActive: isActive,
+                unavailableReason: reason,
+                unavailableNote: note
+            )
+            fleetAlert = isActive
+                ? "\(vehicle.label.isEmpty ? vehicle.licensePlate : vehicle.label) restored to dispatch"
+                : "\(vehicle.label.isEmpty ? vehicle.licensePlate : vehicle.label) excluded from dispatch"
+            await reloadFleetVehicles()
+            await reloadDispatchPreview()
+        } catch {
+            actionAlert = DispatchActionAlert(title: "Fleet Update Failed", message: describe(error))
         }
     }
 

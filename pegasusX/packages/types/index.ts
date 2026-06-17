@@ -2285,6 +2285,7 @@ export interface WarehouseFleetVehicle {
   is_active: boolean;
   status: string;
   unavailable_reason?: WarehouseVehicleUnavailableReason;
+  unavailable_note?: string;
   created_at?: string;
   assigned_driver_id?: string;
   assigned_driver_name?: string;
@@ -2294,6 +2295,10 @@ export interface WarehouseFleetVehicle {
 export interface WarehouseFleetVehicleListResponse {
   vehicles: WarehouseFleetVehicle[];
   total?: number;
+}
+
+export interface WarehouseFleetVehicleDetailResponse {
+  vehicle: WarehouseFleetVehicle;
 }
 
 export interface WarehouseUpdateVehicleRequest {

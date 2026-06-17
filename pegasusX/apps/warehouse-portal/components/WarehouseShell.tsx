@@ -42,7 +42,7 @@ const NAV: NavSection[] = [
     label: 'Fleet',
     items: [
       { href: '/drivers', icon: 'fleet', label: 'Drivers' },
-      { href: '/vehicles', icon: 'fleet', label: 'Vehicles' },
+      { href: '/vehicles', icon: 'fleet', label: 'Trucks' },
       { href: '/dispatch-locks', icon: 'lock', label: 'Dispatch Locks' },
     ],
   },

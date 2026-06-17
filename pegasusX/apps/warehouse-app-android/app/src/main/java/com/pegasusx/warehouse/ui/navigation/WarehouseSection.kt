@@ -13,7 +13,7 @@ enum class WarehouseSection(
     DASHBOARD(WarehouseRoutes.DASHBOARD, "Dashboard", Icons.Default.Dashboard),
     ORDERS(WarehouseRoutes.ORDERS, "Orders", Icons.Default.ShoppingCart),
     DRIVERS(WarehouseRoutes.DRIVERS, "Drivers", Icons.Default.Badge),
-    VEHICLES(WarehouseRoutes.VEHICLES, "Vehicles", Icons.Default.LocalShipping),
+    VEHICLES(WarehouseRoutes.VEHICLES, "Trucks", Icons.Default.LocalShipping),
     INVENTORY(WarehouseRoutes.INVENTORY, "Inventory", Icons.Default.Inventory2),
     DISPATCH(WarehouseRoutes.DISPATCH, "Dispatch", Icons.Default.NearMe),
     ANALYTICS(WarehouseRoutes.ANALYTICS, "Analytics", Icons.Default.Analytics),

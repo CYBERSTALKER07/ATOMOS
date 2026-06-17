@@ -239,6 +239,7 @@ enum VehicleUnavailableReasonOption: String, CaseIterable, Identifiable {
     case truckDamaged = "TRUCK_DAMAGED"
     case regulatoryHold = "REGULATORY_HOLD"
     case manualHold = "MANUAL_HOLD"
+    case other = "OTHER"
 
     var id: String { rawValue }
 
@@ -252,8 +253,18 @@ enum VehicleUnavailableReasonOption: String, CaseIterable, Identifiable {
             return "Regulatory Hold"
         case .manualHold:
             return "Manual Hold"
+        case .other:
+            return "Other"
         }
     }
+}
+
+func formatUnavailableReason(_ reason: String?, note: String? = nil) -> String {
+    guard let reason, !reason.isEmpty else { return note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "" }
+    if reason.uppercased() == "OTHER", let note, !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        return note.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    return vehicleUnavailableReasonLabel(reason)
 }
 
 func vehicleUnavailableReasonLabel(_ reason: String) -> String {
@@ -271,6 +282,7 @@ struct Vehicle: Decodable, Identifiable {
     let status: String
     let isActive: Bool
     let unavailableReason: String?
+    let unavailableNote: String?
     let assignedDriverId: String?
     let assignedDriverName: String?
 
@@ -283,6 +295,7 @@ struct Vehicle: Decodable, Identifiable {
         case status
         case isActive = "is_active"
         case unavailableReason = "unavailable_reason"
+        case unavailableNote = "unavailable_note"
         case assignedDriverId = "assigned_driver_id"
         case assignedDriverName = "assigned_driver_name"
     }
@@ -297,6 +310,7 @@ struct Vehicle: Decodable, Identifiable {
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
         isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
         unavailableReason = try c.decodeIfPresent(String.self, forKey: .unavailableReason)
+        unavailableNote = try c.decodeIfPresent(String.self, forKey: .unavailableNote)
         assignedDriverId = try c.decodeIfPresent(String.self, forKey: .assignedDriverId)
         assignedDriverName = try c.decodeIfPresent(String.self, forKey: .assignedDriverName)
     }
@@ -304,6 +318,10 @@ struct Vehicle: Decodable, Identifiable {
 
 struct VehicleListResponse: Decodable {
     let vehicles: [Vehicle]
+}
+
+struct VehicleDetailResponse: Decodable {
+    let vehicle: Vehicle
 }
 
 struct CreateVehicleRequest: Encodable {
@@ -321,10 +339,12 @@ struct CreateVehicleRequest: Encodable {
 struct UpdateVehicleRequest: Encodable {
     let isActive: Bool?
     let unavailableReason: String?
+    let unavailableNote: String?
 
     enum CodingKeys: String, CodingKey {
         case isActive = "is_active"
         case unavailableReason = "unavailable_reason"
+        case unavailableNote = "unavailable_note"
     }
 }
 
@@ -961,25 +981,60 @@ struct DispatchPreview: Decodable {
 }
 
 struct DispatchProposedRoute: Decodable, Identifiable {
-    var id: String { driverId ?? UUID().uuidString }
+    var id: String { "\(driverId ?? "route")-\(orderIds.joined(separator: "-"))" }
     let driverId: String?
     let driverName: String?
     let vehicleId: String?
     let orderIds: [String]
+    let stops: [DispatchProposedStop]
     let volumeVu: Double?
     let loadedVolume: Double?
     let maxVolumeVu: Double?
     let stopCount: Int?
+    let routeGeometry: RouteGeometryWire?
 
     enum CodingKeys: String, CodingKey {
         case driverId = "driver_id"
         case driverName = "driver_name"
         case vehicleId = "vehicle_id"
         case orderIds = "order_ids"
+        case stops
         case volumeVu = "volume_vu"
         case loadedVolume = "loaded_volume"
         case maxVolumeVu = "max_volume_vu"
         case stopCount = "stop_count"
+        case routeGeometry = "route_geometry"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        driverId = try c.decodeIfPresent(String.self, forKey: .driverId)
+        driverName = try c.decodeIfPresent(String.self, forKey: .driverName)
+        vehicleId = try c.decodeIfPresent(String.self, forKey: .vehicleId)
+        orderIds = try c.decodeIfPresent([String].self, forKey: .orderIds) ?? []
+        stops = try c.decodeIfPresent([DispatchProposedStop].self, forKey: .stops) ?? []
+        volumeVu = try c.decodeIfPresent(Double.self, forKey: .volumeVu)
+        loadedVolume = try c.decodeIfPresent(Double.self, forKey: .loadedVolume)
+        maxVolumeVu = try c.decodeIfPresent(Double.self, forKey: .maxVolumeVu)
+        stopCount = try c.decodeIfPresent(Int.self, forKey: .stopCount)
+        routeGeometry = try c.decodeIfPresent(RouteGeometryWire.self, forKey: .routeGeometry)
+    }
+}
+
+struct DispatchProposedStop: Decodable {
+    let orderId: String
+    let retailerId: String?
+    let retailerName: String?
+    let lat: Double?
+    let lng: Double?
+    let volumeVu: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case retailerId = "retailer_id"
+        case retailerName = "retailer_name"
+        case lat, lng
+        case volumeVu = "volume_vu"
     }
 }
 

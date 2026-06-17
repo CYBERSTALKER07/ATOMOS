@@ -52,6 +52,9 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/vehicles")
     suspend fun getVehicles(): Response<VehicleListResponse>
 
+    @GET("v1/warehouse/ops/vehicles/{id}")
+    suspend fun getVehicle(@Path("id") id: String): Response<VehicleDetailResponse>
+
     @POST("v1/warehouse/ops/vehicles")
     suspend fun createVehicle(
         @Body body: CreateVehicleRequest,

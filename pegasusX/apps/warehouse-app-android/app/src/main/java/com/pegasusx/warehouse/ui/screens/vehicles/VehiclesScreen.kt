@@ -1,11 +1,13 @@
 package com.pegasusx.warehouse.ui.screens.vehicles
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -13,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.CreateVehicleRequest
-import com.pegasusx.warehouse.data.model.UpdateVehicleRequest
 import com.pegasusx.warehouse.data.model.Vehicle
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
@@ -28,30 +29,19 @@ import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
 
 private val VEHICLE_CLASSES = listOf("CLASS_A" to "50 VU", "CLASS_B" to "150 VU", "CLASS_C" to "400 VU")
-private val VEHICLE_UNAVAILABLE_REASONS = listOf(
-    "MAINTENANCE" to "Maintenance",
-    "TRUCK_DAMAGED" to "Truck Damaged",
-    "REGULATORY_HOLD" to "Regulatory Hold",
-    "MANUAL_HOLD" to "Manual Hold",
-)
-
-private fun vehicleUnavailableReasonLabel(reason: String): String =
-    VEHICLE_UNAVAILABLE_REASONS.firstOrNull { it.first == reason }?.second
-        ?: reason.lowercase().split('_').joinToString(" ") { token -> token.replaceFirstChar { ch -> ch.titlecase() } }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VehiclesScreen(
     api: WarehouseApi,
     realtimeSignals: WarehouseRealtimeSignals,
+    onVehicleClick: (String) -> Unit = {},
     onBack: (() -> Unit)? = null,
 ) {
     var vehicles by remember { mutableStateOf<List<Vehicle>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
-    var mutatingVehicleId by remember { mutableStateOf<String?>(null) }
-    var reasonVehicle by remember { mutableStateOf<Vehicle?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -67,40 +57,16 @@ fun VehiclesScreen(
         }
     }
 
-    fun updateVehicleAvailability(vehicle: Vehicle, isActive: Boolean, unavailableReason: String? = null) {
-        mutatingVehicleId = vehicle.vehicleId
-        reasonVehicle = null
-        scope.launch {
-            try {
-                val resp = api.updateVehicle(
-                    vehicle.vehicleId,
-                    UpdateVehicleRequest(isActive = isActive, unavailableReason = unavailableReason),
-                    WarehouseIdempotencyKeys.updateVehicle(
-                        vehicle.vehicleId,
-                        isActive,
-                        unavailableReason,
-                    ),
-                )
-                if (resp.isSuccessful) {
-                    load()
-                    snackbarHostState.showSnackbar(if (isActive) "Vehicle restored" else "Vehicle marked unavailable")
-                } else {
-                    error = "Failed (${resp.code()})"
-                }
-            } catch (e: Exception) {
-                error = e.message ?: "Network error"
-            } finally {
-                mutatingVehicleId = null
-            }
-        }
-    }
-
     LaunchedEffect(Unit) { load() }
+
+    LaunchedEffect(Unit) {
+        realtimeSignals.refreshTick.collect { load() }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Vehicles") },
+                title = { Text("Trucks") },
                 navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } } },
                 actions = {
                     IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") }
@@ -112,13 +78,13 @@ fun VehiclesScreen(
     ) { innerPadding ->
         when {
             loading -> WarehouseLoadingState(
-                title = "Loading vehicles…",
+                title = "Loading trucks…",
                 body = "Fleet vehicle roster",
                 modifier = Modifier.padding(innerPadding),
             )
             error != null -> WarehouseStatePane(
                 kind = WarehouseStateKind.Error,
-                headline = "Vehicles unavailable",
+                headline = "Trucks unavailable",
                 body = error!!,
                 actionLabel = "Retry",
                 onAction = { load() },
@@ -126,8 +92,8 @@ fun VehiclesScreen(
             )
             vehicles.isEmpty() -> WarehouseStatePane(
                 kind = WarehouseStateKind.Empty,
-                headline = "No vehicles",
-                body = "Fleet vehicles will appear here.",
+                headline = "No trucks",
+                body = "Fleet trucks will appear here.",
                 modifier = Modifier.padding(innerPadding),
             )
             else -> LazyColumn(
@@ -136,33 +102,43 @@ fun VehiclesScreen(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 items(vehicles, key = { it.vehicleId }) { v ->
-                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onVehicleClick(v.vehicleId) },
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(PegasusSpacing.lg),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(v.label.ifBlank { v.licensePlate }, style = MaterialTheme.typography.titleSmall)
-                                Text("${v.vehicleClass} · ${v.capacityVu} VU", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(v.assignedDriverName.ifBlank { "Unassigned" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                if (!v.isActive && !v.unavailableReason.isNullOrBlank()) {
+                                Text(
+                                    "${v.vehicleClass} · ${v.capacityVu} VU",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    v.assignedDriverName.ifBlank { "Unassigned" },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                if (!v.isActive) {
                                     Text(
-                                        vehicleUnavailableReasonLabel(v.unavailableReason),
+                                        formatUnavailableReason(v.unavailableReason, v.unavailableNote),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.tertiary,
                                     )
                                 }
                             }
-                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                                WarehouseStatusChip(status = if (v.isActive) v.status.ifBlank { "AVAILABLE" } else "UNAVAILABLE")
-                                OutlinedButton(
-                                    onClick = { if (v.isActive) reasonVehicle = v else updateVehicleAvailability(v, true) },
-                                    enabled = mutatingVehicleId != v.vehicleId,
-                                ) {
-                                    if (mutatingVehicleId == v.vehicleId) {
-                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                    } else {
-                                        Text(if (v.isActive) "Unavailable" else "Restore")
-                                    }
-                                }
-                            }
+                            WarehouseStatusChip(
+                                status = if (v.isActive) v.status.ifBlank { "AVAILABLE" } else "UNAVAILABLE",
+                            )
+                            Icon(
+                                Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }
@@ -175,32 +151,10 @@ fun VehiclesScreen(
             api = api,
             realtimeSignals = realtimeSignals,
             onDismiss = { showCreate = false },
-            onCreated = { showCreate = false; load(); scope.launch { snackbarHostState.showSnackbar("Vehicle created") } },
-        )
-    }
-
-    if (reasonVehicle != null) {
-        AlertDialog(
-            onDismissRequest = { reasonVehicle = null },
-            title = { Text("Set Vehicle Unavailable") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                    Text("Choose why ${reasonVehicle?.label?.ifBlank { reasonVehicle?.licensePlate ?: "this vehicle" } ?: "this vehicle"} is unavailable.")
-                    VEHICLE_UNAVAILABLE_REASONS.forEach { (reason, label) ->
-                        OutlinedButton(
-                            onClick = { reasonVehicle?.let { updateVehicleAvailability(it, false, reason) } },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(label)
-                        }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { reasonVehicle = null }) {
-                    Text("Cancel")
-                }
+            onCreated = {
+                showCreate = false
+                load()
+                scope.launch { snackbarHostState.showSnackbar("Truck created") }
             },
         )
     }
@@ -232,7 +186,7 @@ private fun CreateVehicleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Vehicle") },
+        title = { Text("Add Truck") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                 OutlinedTextField(value = label, onValueChange = { label = it }, label = { Text("Label") }, singleLine = true, modifier = Modifier.fillMaxWidth())

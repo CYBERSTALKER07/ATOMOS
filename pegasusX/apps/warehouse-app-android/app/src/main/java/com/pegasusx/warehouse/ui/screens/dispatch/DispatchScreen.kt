@@ -17,6 +17,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.DispatchPreview
 import com.pegasusx.warehouse.data.model.CreateWarehouseDispatchLockRequest
+import com.pegasusx.warehouse.data.model.UpdateVehicleRequest
+import com.pegasusx.warehouse.data.model.Vehicle
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import com.pegasusx.warehouse.data.model.CreateWarehouseSupplyRequestRequest
 import com.pegasusx.warehouse.data.model.WarehouseDispatchLock
@@ -27,6 +29,7 @@ import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeClient
 import com.pegasusx.warehouse.data.remote.reconcileWarehouseSession
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
+import com.pegasusx.warehouse.ui.components.DispatchPreviewMapLibre
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
 import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
@@ -37,6 +40,9 @@ import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeStatus
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
 import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
+import com.pegasusx.warehouse.ui.screens.vehicles.FleetTruckDispatchCard
+import com.pegasusx.warehouse.ui.screens.vehicles.vehicleUnavailableReasonLabel
+import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -46,13 +52,6 @@ import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 
-private val DISPATCH_UNAVAILABLE_REASON_LABELS = mapOf(
-    "MAINTENANCE" to "Maintenance",
-    "TRUCK_DAMAGED" to "Truck Damaged",
-    "REGULATORY_HOLD" to "Regulatory Hold",
-    "MANUAL_HOLD" to "Manual Hold",
-)
-
 private const val DISPATCH_TETRIS_BUFFER = 0.95
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,11 +60,17 @@ fun DispatchScreen(
     api: WarehouseApi,
     opsRepository: WarehouseOperationsRepository,
     realtimeSignals: WarehouseRealtimeSignals,
+    onVehicleClick: (String) -> Unit = {},
     onBack: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var preview by remember { mutableStateOf<DispatchPreview?>(null) }
+    var fleetVehicles by remember { mutableStateOf<List<Vehicle>>(emptyList()) }
+    var vehicleReasons by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var vehicleNotes by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var mutatingFleetVehicleId by remember { mutableStateOf<String?>(null) }
+    var fleetAlert by remember { mutableStateOf<String?>(null) }
     var supplyRequests by remember { mutableStateOf<List<WarehouseSupplyRequest>>(emptyList()) }
     var dispatchLocks by remember { mutableStateOf<List<WarehouseDispatchLock>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -98,6 +103,17 @@ fun DispatchScreen(
         }
     }
 
+    fun loadVehicles() {
+        scope.launch {
+            runCatching { api.getVehicles() }
+                .onSuccess { response ->
+                    if (response.isSuccessful && response.body() != null) {
+                        fleetVehicles = response.body()!!.vehicles
+                    }
+                }
+        }
+    }
+
     fun load() {
         loading = true; error = null
         scope.launch {
@@ -105,6 +121,7 @@ fun DispatchScreen(
                 val previewResp = api.getDispatchPreview()
                 val supplyResp = api.getSupplyRequests()
                 val lockResp = api.getDispatchLocks()
+                val vehiclesResp = api.getVehicles()
                 if (previewResp.isSuccessful && previewResp.body() != null) preview = previewResp.body()!!
                 else error = codeMessage(previewResp.code(), "Failed to load dispatch preview")
                 if (supplyResp.isSuccessful && supplyResp.body() != null) {
@@ -115,8 +132,44 @@ fun DispatchScreen(
                     dispatchLocks = lockResp.body()!!.locks
                 }
                 else if (error == null) error = codeMessage(lockResp.code(), "Failed to load dispatch locks")
+                if (vehiclesResp.isSuccessful && vehiclesResp.body() != null) {
+                    fleetVehicles = vehiclesResp.body()!!.vehicles
+                }
             } catch (e: Exception) { error = e.message ?: "Network error" }
             finally { loading = false }
+        }
+    }
+
+    fun updateFleetVehicle(vehicle: Vehicle, isActive: Boolean, reason: String? = null, note: String? = null) {
+        mutatingFleetVehicleId = vehicle.vehicleId
+        fleetAlert = null
+        scope.launch {
+            try {
+                val resp = api.updateVehicle(
+                    vehicle.vehicleId,
+                    UpdateVehicleRequest(
+                        isActive = isActive,
+                        unavailableReason = if (isActive) null else reason,
+                        unavailableNote = if (isActive) null else note,
+                    ),
+                    WarehouseIdempotencyKeys.updateVehicle(vehicle.vehicleId, isActive, reason),
+                )
+                if (resp.isSuccessful) {
+                    fleetAlert = if (isActive) {
+                        "${vehicle.label.ifBlank { vehicle.licensePlate }} restored to dispatch"
+                    } else {
+                        "${vehicle.label.ifBlank { vehicle.licensePlate }} excluded from dispatch"
+                    }
+                    loadVehicles()
+                    load()
+                } else {
+                    error = codeMessage(resp.code(), "Failed to update truck")
+                }
+            } catch (e: Exception) {
+                error = e.message ?: "Network error"
+            } finally {
+                mutatingFleetVehicleId = null
+            }
         }
     }
 
@@ -378,6 +431,22 @@ fun DispatchScreen(
 
     LaunchedEffect(Unit) { load() }
 
+    LaunchedEffect(Unit) {
+        realtimeSignals.refreshTick.collect {
+            loadVehicles()
+            if (preview != null) {
+                scope.launch {
+                    runCatching { api.getDispatchPreview() }
+                        .onSuccess { response ->
+                            if (response.isSuccessful && response.body() != null) {
+                                preview = response.body()!!
+                            }
+                        }
+                }
+            }
+        }
+    }
+
     WarehouseReconnectRecoveryEffect(
         realtimeSignals = realtimeSignals,
         isBusy = { executing },
@@ -399,6 +468,11 @@ fun DispatchScreen(
                     onEvent = { liveEvent ->
                         when (liveEvent.type) {
                             "SUPPLY_REQUEST_UPDATE" -> reloadSupplyRequests()
+                            "DRIVER_AVAILABILITY_CHANGED", "VEHICLE_AVAILABILITY_CHANGED" -> {
+                                fleetAlert = "Fleet availability updated"
+                                loadVehicles()
+                                load()
+                            }
                             "DISPATCH_LOCK_CHANGE", "DISPATCH_COMMITTED" -> {
                                 reloadDispatchLocks()
                                 load()
@@ -471,8 +545,55 @@ fun DispatchScreen(
 
                 RealtimeStatusBanner(status = realtimeStatus)
 
+                fleetAlert?.let { alert ->
+                    Text(
+                        alert,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.xs),
+                    )
+                }
+
                 when (tab) {
                     0 -> {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            if (fleetVehicles.isNotEmpty()) {
+                                WarehouseSectionTitle(
+                                    title = "Fleet trucks (${fleetVehicles.size})",
+                                    modifier = Modifier.padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.sm),
+                                )
+                                LazyColumn(
+                                    modifier = Modifier.heightIn(max = 320.dp),
+                                    contentPadding = PaddingValues(horizontal = PegasusSpacing.lg),
+                                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                                ) {
+                                    items(fleetVehicles, key = { it.vehicleId }) { vehicle ->
+                                        val selectedReason = vehicleReasons[vehicle.vehicleId]
+                                            ?: vehicle.unavailableReason?.takeIf { it.isNotBlank() }
+                                            ?: "MANUAL_HOLD"
+                                        val customNote = vehicleNotes[vehicle.vehicleId]
+                                            ?: vehicle.unavailableNote.orEmpty()
+                                        FleetTruckDispatchCard(
+                                            vehicle = vehicle,
+                                            selectedReason = selectedReason,
+                                            customNote = customNote,
+                                            mutating = mutatingFleetVehicleId == vehicle.vehicleId,
+                                            onReasonChange = { reason ->
+                                                vehicleReasons = vehicleReasons + (vehicle.vehicleId to reason)
+                                            },
+                                            onNoteChange = { note ->
+                                                vehicleNotes = vehicleNotes + (vehicle.vehicleId to note)
+                                            },
+                                            onMarkUnavailable = {
+                                                val note = if (selectedReason == "OTHER") customNote.trim().takeIf { it.isNotEmpty() } else null
+                                                updateFleetVehicle(vehicle, false, selectedReason, note)
+                                            },
+                                            onRestore = { updateFleetVehicle(vehicle, true) },
+                                            onOpenDetail = { onVehicleClick(vehicle.vehicleId) },
+                                        )
+                                    }
+                                }
+                            }
                         if (preview!!.undispatchedOrders.isEmpty()) {
                             WarehouseStatePane(
                                 kind = WarehouseStateKind.Empty,
@@ -586,16 +707,31 @@ fun DispatchScreen(
                                         }
                                     }
                                 }
-                                if (preview!!.proposedRoutes.isNotEmpty() || preview!!.optimizerWarnings.isNotEmpty()) {
+                                if (preview!!.windowConstrainedCount > 0 || preview!!.optimizerWarnings.isNotEmpty()) {
                                     item {
                                         Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                             WarehouseSectionTitle("Smart suggest preview")
+                                            if (preview!!.windowConstrainedCount > 0) {
+                                                Text(
+                                                    "${preview!!.windowConstrainedCount} order(s) constrained by receiving window",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.tertiary,
+                                                )
+                                            }
                                             preview!!.optimizerSource?.let { source ->
                                                 Text("Source: $source", style = MaterialTheme.typography.bodySmall)
                                             }
                                             preview!!.optimizerWarnings.forEach { warning ->
                                                 Text(warning, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
                                             }
+                                        }
+                                    }
+                                }
+                                if (preview!!.proposedRoutes.isNotEmpty()) {
+                                    item {
+                                        Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                                            WarehouseSectionTitle("Smart suggest routes (${preview!!.proposedRoutes.size})")
+                                            DispatchPreviewMapLibre(routes = preview!!.proposedRoutes)
                                         }
                                     }
                                     items(preview!!.proposedRoutes.size) { index ->
@@ -624,6 +760,7 @@ fun DispatchScreen(
                                 }
                             }
                         }
+                        }
                     }
                     1 -> {
                         if (preview!!.availableDrivers.isEmpty() && preview!!.unavailableDrivers.isEmpty()) {
@@ -638,9 +775,15 @@ fun DispatchScreen(
                                     item { WarehouseSectionTitle("Available") }
                                 }
                                 items(preview!!.availableDrivers, key = { it.driverId }) { d ->
+                                    val supporting = buildString {
+                                        append(d.vehicleLabel.ifBlank { d.phone.ifBlank { d.truckStatus.ifBlank { "No vehicle" } } })
+                                        if (d.freeVolumeVu != null && d.freeVolumeVu > 0) {
+                                            append(" · ${"%.1f".format(d.freeVolumeVu)} VU free")
+                                        }
+                                    }
                                     WarehouseOpsListCard(
                                         headline = d.name,
-                                        supporting = d.vehicleLabel.ifBlank { d.phone.ifBlank { d.truckStatus.ifBlank { "No vehicle" } } },
+                                        supporting = supporting,
                                         status = d.truckStatus.ifBlank { "IDLE" },
                                     )
                                 }
@@ -905,13 +1048,6 @@ private fun RealtimeStatusBanner(status: WarehouseRealtimeStatus) {
             )
         }
     }
-}
-
-private fun vehicleUnavailableReasonLabel(reason: String): String {
-    return DISPATCH_UNAVAILABLE_REASON_LABELS[reason]
-        ?: reason.lowercase().split('_').joinToString(" ") { token ->
-            token.replaceFirstChar { ch -> ch.titlecase() }
-        }
 }
 
 @Composable
