@@ -5,6 +5,19 @@ import Foundation
 struct LoginRequest: Encodable {
     let phone: String
     let pin: String
+    let idToken: String
+
+    enum CodingKeys: String, CodingKey {
+        case phone
+        case pin
+        case idToken = "id_token"
+    }
+
+    init(phone: String = "", pin: String = "", idToken: String = "") {
+        self.phone = phone
+        self.pin = pin
+        self.idToken = idToken
+    }
 }
 
 struct AuthResponse: Decodable {

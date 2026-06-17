@@ -575,8 +575,9 @@ data class User(
 
 @Serializable
 data class LoginRequest(
-    @SerialName("phone_number") val phoneNumber: String,
-    @SerialName("password") val password: String,
+    @SerialName("phone_number") val phoneNumber: String = "",
+    @SerialName("password") val password: String = "",
+    @SerialName("id_token") val idToken: String = "",
 )
 
 @Serializable

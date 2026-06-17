@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -982,6 +983,7 @@ func TestHandleManifestCancelTransfer_IdempotentAlreadyCancelled(t *testing.T) {
 }
 
 func newFactoryTestService(repo *factoryRepoSpy, cacheBackend *factoryCacheBackendSpy) *Service {
+	_ = os.Setenv("FACTORY_PORTAL_SEED", "true")
 	now := time.Date(2026, 5, 17, 10, 0, 0, 0, time.UTC)
 	cacheClient := cache.New(cacheBackend, nil)
 	supplierHub := ws.NewHub("supplier", nil, nil)

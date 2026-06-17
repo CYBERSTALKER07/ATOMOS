@@ -23,6 +23,11 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
+    dependencies:
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseCore
     sources:
       - path: WarehouseApp
         excludes:
@@ -41,3 +46,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pegasusx.warehouse
         INFOPLIST_FILE: WarehouseApp/Info.plist
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: 11.6.0

@@ -5,6 +5,9 @@ struct LoginView: View {
     @Environment(\.openURL) private var openURL
     @State private var phone = ""
     @State private var pin = ""
+    @State private var otpCode = ""
+    @State private var useOtp = true
+    @State private var otpSent = false
     @State private var loading = false
     @State private var error: String?
 
@@ -15,7 +18,7 @@ struct LoginView: View {
             VStack(spacing: LabTheme.spacingSM) {
                 Text("Pegasus Warehouse")
                     .font(.largeTitle.bold())
-                Text("Sign in with your phone and PIN")
+                Text(useOtp ? "Sign in with phone OTP" : "Dev fallback: phone + PIN")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -26,13 +29,25 @@ struct LoginView: View {
                     .keyboardType(.phonePad)
                     .textFieldStyle(.roundedBorder)
 
-                SecureField("PIN", text: $pin)
-                    .textContentType(.oneTimeCode)
-                    .keyboardType(.numberPad)
-                    .textFieldStyle(.roundedBorder)
-                    .onChange(of: pin) {
-                        if pin.count > 6 { pin = String(pin.prefix(6)) }
+                if useOtp {
+                    if otpSent {
+                        TextField("Verification code", text: $otpCode)
+                            .textContentType(.oneTimeCode)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(.roundedBorder)
+                            .onChange(of: otpCode) {
+                                if otpCode.count > 6 { otpCode = String(otpCode.prefix(6)) }
+                            }
                     }
+                } else {
+                    SecureField("PIN", text: $pin)
+                        .textContentType(.oneTimeCode)
+                        .keyboardType(.numberPad)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: pin) {
+                            if pin.count > 6 { pin = String(pin.prefix(6)) }
+                        }
+                }
             }
             .frame(maxWidth: 360)
 
@@ -43,21 +58,38 @@ struct LoginView: View {
             }
 
             Button {
-                login()
+                if useOtp {
+                    if otpSent {
+                        verifyOtp()
+                    } else {
+                        sendOtp()
+                    }
+                } else {
+                    loginWithPin()
+                }
             } label: {
                 Group {
                     if loading {
-                        ProgressView()
-                            .tint(.white)
+                        ProgressView().tint(.white)
                     } else {
-                        Text("Sign In")
+                        Text(useOtp ? (otpSent ? "Verify & Sign In" : "Send code") : "Sign In")
                     }
                 }
                 .frame(maxWidth: 360, minHeight: 44)
             }
             .buttonStyle(.borderedProminent)
             .tint(.primary)
-            .disabled(loading || phone.isEmpty || pin.isEmpty)
+            .disabled(loading || phone.isEmpty || (!useOtp && pin.isEmpty))
+
+            Button {
+                useOtp.toggle()
+                otpSent = false
+                otpCode = ""
+                FirebaseAuthHelper.shared.resetFlow()
+            } label: {
+                Text(useOtp ? "Use PIN (dev)" : "Use phone OTP")
+                    .font(.footnote)
+            }
 
             Button {
                 openURL(WarehousePortalLinks.url(for: .register))
@@ -70,20 +102,34 @@ struct LoginView: View {
             Spacer()
         }
         .padding()
+        .task {
+            FirebaseAuthHelper.shared.configure()
+        }
     }
 
-    private func login() {
+    private func sendOtp() {
         loading = true
         error = nil
         Task {
             do {
-                let auth = try await WarehouseService.login(phone: phone, pin: pin)
+                try await FirebaseAuthHelper.shared.sendPhoneVerification(phone: phone)
+                otpSent = true
+            } catch {
+                self.error = error.localizedDescription
+            }
+            loading = false
+        }
+    }
+
+    private func verifyOtp() {
+        loading = true
+        error = nil
+        Task {
+            do {
+                let idToken = try await FirebaseAuthHelper.shared.verifySmsCode(otpCode)
+                let auth = try await WarehouseService.login(idToken: idToken)
                 tokenStore.store(auth: auth)
-                if let pushToken = PushNotificationManager.shared.deviceToken
-                    ?? UserDefaults.standard.string(forKey: "pegasus_push_token"),
-                   !pushToken.isEmpty {
-                    try? await APIClient.shared.registerDeviceToken(token: pushToken)
-                }
+                await registerPushTokenIfNeeded()
             } catch {
                 if let apiError = error as? APIError, case .httpError(404) = apiError {
                     self.error = "No account found. Register your warehouse on the web portal."
@@ -92,6 +138,33 @@ struct LoginView: View {
                 }
             }
             loading = false
+        }
+    }
+
+    private func loginWithPin() {
+        loading = true
+        error = nil
+        Task {
+            do {
+                let auth = try await WarehouseService.login(phone: phone, pin: pin)
+                tokenStore.store(auth: auth)
+                await registerPushTokenIfNeeded()
+            } catch {
+                if let apiError = error as? APIError, case .httpError(404) = apiError {
+                    self.error = "No account found. Register your warehouse on the web portal."
+                } else {
+                    self.error = error.localizedDescription
+                }
+            }
+            loading = false
+        }
+    }
+
+    private func registerPushTokenIfNeeded() async {
+        if let pushToken = PushNotificationManager.shared.deviceToken
+            ?? UserDefaults.standard.string(forKey: "pegasus_push_token"),
+           !pushToken.isEmpty {
+            try? await APIClient.shared.registerDeviceToken(token: pushToken)
         }
     }
 }

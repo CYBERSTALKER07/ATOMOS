@@ -6,11 +6,27 @@
 //
 
 import Foundation
+import Security
 
 enum FactoryIdempotency {
     private static func factoryId() -> String {
-        let id = TokenStore.shared.factoryId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return id.isEmpty ? "factory" : id
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: "com.pegasusx.factory",
+            kSecAttrAccount: "factory_id",
+            kSecReturnData: true,
+            kSecMatchLimit: kSecMatchLimitOne,
+        ]
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess,
+              let data = item as? Data,
+              let id = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+              !id.isEmpty else {
+            return "factory"
+        }
+        return id
     }
 
     static func startLoading(manifestId: String) -> String {

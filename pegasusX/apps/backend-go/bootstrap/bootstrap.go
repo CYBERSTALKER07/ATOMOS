@@ -304,6 +304,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	memoryOutboxStore := newInMemoryOutboxStore()
 	relayStore := outbox.Store(memoryOutboxStore)
 	outboxAppender := outboxEventAppender(memoryOutboxStore)
+	spannerOutboxEnabled := false
 	var spannerClient *spanner.Client
 	var manifestStore *manifest.Store
 	var routeGeometryBuilder *routing.GeometryBuilder
@@ -318,6 +319,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		spannerClient = client
 		relayStore = store
 		outboxAppender = store
+		spannerOutboxEnabled = true
 		cleanup = append(cleanup, func() {
 			client.Close()
 		})
@@ -590,18 +592,21 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var driverRepo driver.Repository
 	var factoryRepo factory.Repository
 	var payloadRepo payload.Repository
-	if spannerClient == nil {
-		log.Error("spanner client required but not configured", "backend", "spanner")
-		panic("spanner client required but not configured")
+	if spannerClient != nil {
+		driverRepo = driver.NewSpannerRepository(spannerClient)
+		factoryRepo = factory.NewSpannerRepository(spannerClient, supplierSeed.SupplierID, factoryNodeID)
+		payloadRepo = payload.NewSpannerRepository(spannerClient, supplierSeed.SupplierID, warehouseNodeID)
+		log.Info("factory and payload repositories enabled", "backend", "spanner")
+	} else {
+		driverRepo = driver.NewInMemoryRepository()
+		factoryRepo = factory.NewInMemoryRepository()
+		payloadRepo = payload.NewInMemoryRepository()
+		log.Warn("driver/factory/payload repository fallback enabled", "backend", "in-memory")
 	}
-	driverRepo = driver.NewSpannerRepository(spannerClient)
 	var driverAvailReader driver.AvailabilityReader
 	if spannerClient != nil {
 		driverAvailReader = driverAvailabilityReader(spannerClient)
 	}
-	factoryRepo = factory.NewSpannerRepository(spannerClient, supplierSeed.SupplierID, factoryNodeID)
-	payloadRepo = payload.NewSpannerRepository(spannerClient, supplierSeed.SupplierID, warehouseNodeID)
-	log.Info("factory and payload repositories enabled", "backend", "spanner")
 
 	factorySvc := factory.NewService(factory.ServiceConfig{
 		Repo:          factoryRepo,
@@ -921,6 +926,15 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			log.Warn("demo scope link seed failed", "err", err)
 		}
 	}
+
+	_, idempotencyRedis := idemStore.(*idempotency.RedisStore)
+	logInfraBackendBanner(log, cfg, infraBackendStatus{
+		Spanner:          spannerClient != nil,
+		RedisCache:       redisEnabled,
+		IdempotencyRedis: idempotencyRedis,
+		Kafka:            kafkaEnabled,
+		SpannerOutbox:    spannerOutboxEnabled,
+	})
 
 	return &App{
 		Config:                 cfg,

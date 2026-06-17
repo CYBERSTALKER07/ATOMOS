@@ -8,6 +8,10 @@ enum WarehouseService {
         try await api.post("v1/auth/warehouse/login", body: LoginRequest(phone: phone, pin: pin))
     }
 
+    static func login(idToken: String) async throws -> AuthResponse {
+        try await api.post("v1/auth/warehouse/login", body: LoginRequest(idToken: idToken))
+    }
+
     static func setup(body: [String: String]) async throws {
         try await api.postVoid("v1/warehouse/setup", body: body)
     }

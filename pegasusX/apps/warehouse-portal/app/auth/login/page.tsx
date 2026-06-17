@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import { persistSession, warehouseApiBaseUrl } from "@/lib/auth";
+import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from "@/lib/firebase";
 import { COUNTRIES } from "../register/wizard-state";
 
 type LoginStep = "phone" | "otp";
@@ -14,7 +15,7 @@ export default function WarehouseLoginPage() {
   const [countryCode, setCountryCode] = useState("UZ");
   const [phoneLocal, setPhoneLocal] = useState("");
   const [otpCode, setOtpCode] = useState("");
-  
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,8 +31,16 @@ export default function WarehouseLoginPage() {
       setError("Enter a valid phone number (6-14 digits)");
       return;
     }
-    // TODO: In a real implementation, trigger Firebase Recaptcha and send OTP here
-    setStep("otp");
+    setLoading(true);
+    try {
+      const phone = `${dialCode}${phoneLocal}`;
+      await sendPhoneOtp(phone);
+      setStep("otp");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send verification code");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleVerifyOtp(e: React.FormEvent) {
@@ -41,26 +50,26 @@ export default function WarehouseLoginPage() {
       setError("Enter the 6-digit code");
       return;
     }
-    
+
     setLoading(true);
     try {
-      const phone = `${dialCode}${phoneLocal}`;
-      // Here otpCode is mimicking the firebase ID token for scaffold purposes
+      const idToken = await verifyPhoneOtp(otpCode);
       const res = await fetch(`${warehouseApiBaseUrl}/v1/auth/warehouse/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, id_token: otpCode }),
+        body: JSON.stringify({ id_token: idToken }),
       });
 
       if (!res.ok) {
         if (res.status === 404) {
+          const phone = `${dialCode}${phoneLocal}`;
           router.push(`/auth/register?phone=${encodeURIComponent(phone)}`);
           return;
         }
         const errorData = await res.json().catch(() => null);
         throw new Error(errorData?.message || errorData?.error || "Login failed");
       }
-      
+
       const data = await res.json();
       persistSession(data.token, data.refresh_token);
       router.replace(data.is_configured ? "/" : "/setup/location");
@@ -129,7 +138,7 @@ export default function WarehouseLoginPage() {
           </div>
           <div id="recaptcha-container"></div>
           <button type="submit" className="md-btn md-btn-filled w-full" disabled={loading}>
-            Continue
+            {loading ? "Sending code…" : "Continue"}
           </button>
         </form>
       ) : (
@@ -147,7 +156,15 @@ export default function WarehouseLoginPage() {
             />
           </label>
           <div className="flex gap-3">
-            <button type="button" className="md-btn md-btn-text w-full" onClick={() => setStep("phone")} disabled={loading}>
+            <button
+              type="button"
+              className="md-btn md-btn-text w-full"
+              onClick={() => {
+                resetPhoneOtpFlow();
+                setStep("phone");
+              }}
+              disabled={loading}
+            >
               Back
             </button>
             <button type="submit" className="md-btn md-btn-filled w-full" disabled={loading}>

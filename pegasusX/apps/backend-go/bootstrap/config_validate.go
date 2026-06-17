@@ -12,6 +12,9 @@ func (c *Config) ValidateProductionProfile() error {
 	if c == nil || !isProductionEnv() {
 		return nil
 	}
+	if !c.RequireInfraAdapters {
+		return fmt.Errorf("REQUIRE_INFRA_ADAPTERS must be true when PEGASUSX_ENV=production")
+	}
 	checks := map[string]string{
 		"GLOBAL_PAY_WEBHOOK_SECRET": c.GlobalPayWebhookSecret,
 		"ADYEN_WEBHOOK_SECRET":      c.AdyenWebhookSecret,

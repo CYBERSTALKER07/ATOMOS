@@ -1,5 +1,14 @@
 # pegasusX load certification report
 
+## Latest gate attempt (2026-06-17)
+
+- **Profile:** `smoke` via `make load-cert-ssmr`
+- **Result:** **BLOCKED** — Docker daemon unavailable on runner (`redis:7-alpine` pull failed).
+- **Pre-req:** Start Docker Desktop, then re-run `make load-cert-ssmr` (smoke) and `LOAD_PROFILE=cert make load-cert-ssmr` (cert).
+- **Backend pre-check:** `go test ./apps/backend-go/...` green after E1 portal-seed gates and idempotency concurrency test.
+
+---
+
 - **Date:** 2026-06-04 18:21 UTC
 - **Profile:** `cert`
 - **Base URL:** `http://localhost:8180`

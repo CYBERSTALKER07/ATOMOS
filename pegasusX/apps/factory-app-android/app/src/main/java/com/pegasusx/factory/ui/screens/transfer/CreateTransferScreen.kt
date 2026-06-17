@@ -108,10 +108,10 @@ fun CreateTransferScreen(
                         vehicleId = vehicleId,
                     ),
                     FactoryIdempotencyKeys.transferCreate(
-                        orderId = orderId.trim(),
+                        orderId = orderId.trim().ifBlank { "" },
                         totalVu = parsedVu,
-                        driverId = driverId,
-                        vehicleId = vehicleId,
+                        driverId = driverId.orEmpty(),
+                        vehicleId = vehicleId.orEmpty(),
                     ),
                 )
                 if (resp.isSuccessful && resp.body() != null) {

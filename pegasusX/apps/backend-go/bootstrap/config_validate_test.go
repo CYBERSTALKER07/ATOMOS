@@ -17,6 +17,21 @@ func TestValidateProductionProfile_RejectsDevSecrets(t *testing.T) {
 	}
 }
 
+func TestValidateProductionProfile_RequiresInfraAdapters(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = false
+	cfg.GlobalPayWebhookSecret = "prod-global-pay-secret"
+	cfg.AdyenWebhookSecret = "prod-adyen-secret"
+	cfg.StripeWebhookSecret = "prod-stripe-secret"
+	cfg.PaymeWebhookSecret = "prod-payme-secret"
+	cfg.ClickWebhookSecret = "prod-click-secret"
+
+	if err := cfg.ValidateProductionProfile(); err == nil {
+		t.Fatal("expected production profile to require infra adapters")
+	}
+}
+
 func TestValidateProductionProfile_AllowsDevSecretsOutsideProduction(t *testing.T) {
 	t.Setenv("PEGASUSX_ENV", "ssmr")
 	cfg := testConfig()

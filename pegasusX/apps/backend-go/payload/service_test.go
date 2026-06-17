@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -1248,6 +1249,7 @@ func TestHandleApplyReassign_ReplayAfterSuccessIdempotent(t *testing.T) {
 }
 
 func newPayloadTestService(repo *payloadRepoSpy, cacheBackend *payloadCacheBackendSpy) *Service {
+	_ = os.Setenv("PAYLOAD_PORTAL_SEED", "true")
 	now := time.Date(2026, 5, 17, 11, 0, 0, 0, time.UTC)
 	cacheClient := cache.New(cacheBackend, nil)
 	supplierHub := ws.NewHub("supplier", nil, nil)

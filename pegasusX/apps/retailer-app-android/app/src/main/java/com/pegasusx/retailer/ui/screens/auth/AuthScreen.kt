@@ -81,6 +81,9 @@ fun AuthScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var isLoginMode by rememberSaveable { mutableStateOf(true) }
+    var useOtpLogin by rememberSaveable { mutableStateOf(true) }
+    var otpCode by rememberSaveable { mutableStateOf("") }
+    var otpSent by rememberSaveable { mutableStateOf(false) }
     var showMapPicker by rememberSaveable { mutableStateOf(false) }
 
     // Registration form fields
@@ -199,6 +202,21 @@ fun AuthScreen(
 
             Spacer(Modifier.height(12.dp))
 
+            if (isLoginMode && useOtpLogin) {
+                if (otpSent) {
+                    OutlinedTextField(
+                        value = otpCode,
+                        onValueChange = { if (it.length <= 6) otpCode = it },
+                        label = { Text("Verification code") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
+                        colors = textFieldColors,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = SquircleShape,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+            } else {
             // Password
             OutlinedTextField(
                 value = password,
@@ -214,6 +232,7 @@ fun AuthScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = SquircleShape,
             )
+            }
 
             // ── Registration-only fields ──
             AnimatedVisibility(
@@ -419,7 +438,31 @@ fun AuthScreen(
             Button(
                 onClick = {
                     if (isLoginMode) {
-                        viewModel.login(phone, password)
+                        if (useOtpLogin) {
+                            val activity = context as? android.app.Activity
+                            if (activity == null) return@Button
+                            if (!otpSent) {
+                                scope.launch {
+                                    try {
+                                        com.pegasusx.retailer.data.auth.FirebaseAuthHelper.sendPhoneVerification(activity, phone)
+                                        otpSent = true
+                                    } catch (e: Exception) {
+                                        viewModel.clearError()
+                                    }
+                                }
+                            } else {
+                                scope.launch {
+                                    try {
+                                        val idToken = com.pegasusx.retailer.data.auth.FirebaseAuthHelper.verifySmsCode(otpCode)
+                                        viewModel.loginWithOtp(idToken)
+                                    } catch (_: Exception) {
+                                        viewModel.clearError()
+                                    }
+                                }
+                            }
+                        } else {
+                            viewModel.login(phone, password)
+                        }
                     } else {
                         viewModel.register(
                             phone = phone,

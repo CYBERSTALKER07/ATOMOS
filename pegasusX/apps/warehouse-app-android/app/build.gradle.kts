@@ -167,6 +167,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("com.squareup.retrofit2:converter-kotlinx-serialization:2.11.0")
 
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-auth-ktx")
+
     // MapLibre (fleet live map polylines)
     implementation("org.maplibre.gl:android-sdk:11.7.1")
 

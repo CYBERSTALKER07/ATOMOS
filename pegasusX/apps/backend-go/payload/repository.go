@@ -21,3 +21,18 @@ type Repository interface {
 	RunTx(ctx context.Context, fn func(ctx context.Context, tx PayloadTx) error, emit func(outbox.TxnBuffer) error) error
 	Hydrate(ctx context.Context, supplierID string, s *Service) error
 }
+
+type inMemoryRepository struct{}
+
+// NewInMemoryRepository is a no-op fallback for local/testing bootstrap paths.
+func NewInMemoryRepository() Repository {
+	return &inMemoryRepository{}
+}
+
+func (r *inMemoryRepository) RunTx(ctx context.Context, fn func(ctx context.Context, tx PayloadTx) error, emit func(outbox.TxnBuffer) error) error {
+	return nil
+}
+
+func (r *inMemoryRepository) Hydrate(ctx context.Context, supplierID string, s *Service) error {
+	return nil
+}

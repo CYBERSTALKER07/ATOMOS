@@ -15,11 +15,11 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun FactoryRealtimeReloadEffect(
-    api: FactoryApi? = null,
     eventTypes: Set<FactoryRealtimeEventType>,
+    api: FactoryApi? = null,
     onStatusChange: (FactoryRealtimeStatus) -> Unit = {},
-    onEvent: () -> Unit,
     onReconnect: () -> Unit = {},
+    onEvent: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -44,7 +44,7 @@ fun FactoryRealtimeReloadEffect(
             },
             onReconnect = {
                 latestApi.value?.let { factoryApi ->
-                    scope.launch { reconcileFactorySession(factoryApi) }
+                    scope.launch { reconcileFactorySession(factoryApi, context) }
                 }
                 latestOnReconnect.value()
             },

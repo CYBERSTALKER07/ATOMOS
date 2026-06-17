@@ -50,15 +50,7 @@ class AuthViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null, loadIssue = null)
             try {
                 val response = api.login(LoginRequest(phoneNumber = formatted, password = password))
-                tokenManager.saveToken(response.token)
-                tokenManager.saveUserId(response.user.id)
-                tokenManager.saveUserName(response.user.name)
-                // Exchange Firebase custom token (graceful degradation)
-                if (response.firebaseToken.isNotBlank()) {
-                    val fbIdToken = com.pegasusx.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
-                    if (fbIdToken != null) tokenManager.saveFirebaseIdToken(fbIdToken)
-                }
-                _uiState.value = _uiState.value.copy(isLoading = false, isAuthenticated = true, error = null, loadIssue = null)
+                completeAuth(response)
             } catch (e: Exception) {
                 val issue = resolveLoadIssue(e)
                 _uiState.value = _uiState.value.copy(
@@ -68,6 +60,38 @@ class AuthViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun loginWithOtp(idToken: String) {
+        if (idToken.isBlank()) {
+            _uiState.value = _uiState.value.copy(error = "Verification required.", loadIssue = AuthLoadIssue.ERROR)
+            return
+        }
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, loadIssue = null)
+            try {
+                val response = api.login(LoginRequest(idToken = idToken))
+                completeAuth(response)
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = resolveErrorMessage(e, issue, fallback = "OTP login failed"),
+                    loadIssue = issue,
+                )
+            }
+        }
+    }
+
+    private suspend fun completeAuth(response: com.pegasusx.retailer.data.model.AuthResponse) {
+        tokenManager.saveToken(response.token)
+        tokenManager.saveUserId(response.user.id)
+        tokenManager.saveUserName(response.user.name)
+        if (response.firebaseToken.isNotBlank()) {
+            val fbIdToken = com.pegasusx.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
+            if (fbIdToken != null) tokenManager.saveFirebaseIdToken(fbIdToken)
+        }
+        _uiState.value = _uiState.value.copy(isLoading = false, isAuthenticated = true, error = null, loadIssue = null)
     }
 
     // ── Register ──

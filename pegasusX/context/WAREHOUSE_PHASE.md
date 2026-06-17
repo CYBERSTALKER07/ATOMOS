@@ -101,7 +101,7 @@ cd pegasusX && make parity-contract-full
 |----|---------|---------|--------|---------|-----|--------|
 | WH9-01 | Client version policy | `GET /v1/platform/client-policy?role=WAREHOUSE` | `ClientPolicyBanner` | dashboard banner | dashboard banner | **WIRED** |
 | WH9-02 | SSMR marker | smokecheck | — | — | — | **WIRED** (`PX_E2E_WAREHOUSE_CLIENT_POLICY_OK`) |
-| WH9-03 | Firebase OTP | custom token exchange | login TODO | — | — | **DEFERRED** (graceful only) |
+| WH9-03 | Firebase OTP | portal + Android + iOS OTP | login OTP | login OTP | login OTP | **WIRED** |
 
 **Exit:** Outdated/force-update surfaces show honest banners on all warehouse clients; SSMR asserts WAREHOUSE role policy tuple.
 

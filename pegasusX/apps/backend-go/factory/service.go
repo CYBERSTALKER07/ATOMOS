@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -318,6 +319,21 @@ func (s *Service) nextIDLocked(prefix string) string {
 	return prefix + "_" + strconv.FormatInt(s.now().UnixNano(), 10) + "_" + strconv.FormatInt(s.seq, 10)
 }
 
+// portalSeedEnabled gates in-memory demo seed data. Disabled when Spanner is wired
+// unless FACTORY_PORTAL_SEED=true is set explicitly for local scaffold runs.
+func (s *Service) portalSeedEnabled() bool {
+	if s.spannerClient != nil {
+		switch strings.ToLower(strings.TrimSpace(os.Getenv("FACTORY_PORTAL_SEED"))) {
+		case "1", "true", "yes":
+			return true
+		default:
+			return false
+		}
+	}
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("FACTORY_PORTAL_SEED")))
+	return v == "1" || v == "true" || v == "yes"
+}
+
 func (s *Service) ensureDemoDataLocked() {
 	if !s.spannerLoaded {
 		if r, ok := s.repo.(*SpannerRepository); ok {
@@ -325,6 +341,9 @@ func (s *Service) ensureDemoDataLocked() {
 				s.log.WarnContext(context.Background(), "factory spanner hydrate failed", "err", err)
 			}
 		}
+	}
+	if !s.portalSeedEnabled() {
+		return
 	}
 	if len(s.fleetDrivers) == 0 {
 		s.fleetDrivers = []FleetDriver{

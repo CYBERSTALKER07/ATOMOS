@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -268,7 +269,25 @@ func routeIDForManifest(m ManifestRow) string {
 	return "route_" + m.ManifestID
 }
 
+// portalSeedEnabled gates in-memory demo seed data. Disabled when Spanner is wired
+// unless PAYLOAD_PORTAL_SEED=true is set explicitly for local scaffold runs.
+func (s *Service) portalSeedEnabled() bool {
+	if _, ok := s.repo.(*SpannerRepository); ok {
+		switch strings.ToLower(strings.TrimSpace(os.Getenv("PAYLOAD_PORTAL_SEED"))) {
+		case "1", "true", "yes":
+			return true
+		default:
+			return false
+		}
+	}
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("PAYLOAD_PORTAL_SEED")))
+	return v == "1" || v == "true" || v == "yes"
+}
+
 func (s *Service) ensureDemoDataLocked() {
+	if !s.portalSeedEnabled() {
+		return
+	}
 	if len(s.trucks) == 0 {
 		s.trucks = []TruckRow{
 			{VehicleID: "veh_payload_1", PlateNo: "01P111AA", State: "READY"},
