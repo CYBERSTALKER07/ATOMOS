@@ -9,7 +9,7 @@ struct LoginView: View {
     @State private var viewModel = LoginViewModel()
     @FocusState private var focus: Field?
 
-    private enum Field { case phone, pin }
+    private enum Field { case phone, otp, pin }
 
     var body: some View {
         ZStack {
@@ -23,7 +23,9 @@ struct LoginView: View {
                     Text("TERMINAL ACCESS")
                         .font(.system(size: 32, weight: .black, design: .monospaced))
                         .foregroundStyle(TermTheme.accent)
-                    Text("Sign in with warehouse phone and 6-digit PIN.")
+                    Text(viewModel.mode == .otp
+                         ? "Sign in with warehouse phone OTP."
+                         : "Dev login with phone and PIN.")
                         .font(.system(size: 13, weight: .medium, design: .monospaced))
                         .foregroundStyle(TermTheme.secondary)
                         .multilineTextAlignment(.center)
@@ -47,31 +49,55 @@ struct LoginView: View {
                                 RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous)
                                     .stroke(TermTheme.separator.opacity(0.12), lineWidth: 1)
                             }
-                            .disabled(viewModel.loading)
+                            .disabled(viewModel.loading || (viewModel.mode == .otp && viewModel.otpSent))
                     }
 
-                    VStack(alignment: .leading, spacing: TermTheme.s8) {
-                        Text("6-DIGIT PIN")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
-                            .foregroundStyle(TermTheme.tertiary)
-                        SecureField("••••••", text: Binding(
-                            get: { viewModel.pin },
-                            set: { viewModel.setPin($0) }
-                        ))
-                        .keyboardType(.numberPad)
-                        .textContentType(.oneTimeCode)
-                        .focused($focus, equals: .pin)
-                        .font(.system(size: 24, weight: .black, design: .monospaced))
-                        .padding(TermTheme.s16)
-                        .background(TermTheme.card)
-                        .clipShape(RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous)
-                                .stroke(TermTheme.separator.opacity(0.12), lineWidth: 1)
+                    if viewModel.mode == .otp, viewModel.otpSent {
+                        VStack(alignment: .leading, spacing: TermTheme.s8) {
+                            Text("VERIFICATION CODE")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .foregroundStyle(TermTheme.tertiary)
+                            TextField("000000", text: Binding(
+                                get: { viewModel.otpCode },
+                                set: { viewModel.setOtp($0) }
+                            ))
+                            .keyboardType(.numberPad)
+                            .textContentType(.oneTimeCode)
+                            .focused($focus, equals: .otp)
+                            .font(.system(size: 24, weight: .black, design: .monospaced))
+                            .padding(TermTheme.s16)
+                            .background(TermTheme.card)
+                            .clipShape(RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous)
+                                    .stroke(TermTheme.separator.opacity(0.12), lineWidth: 1)
+                            }
+                            .disabled(viewModel.loading)
                         }
-                        .disabled(viewModel.loading)
+                    }
 
-                        PinDots(filled: viewModel.pin.count)
+                    if viewModel.mode == .pinDev {
+                        VStack(alignment: .leading, spacing: TermTheme.s8) {
+                            Text("PIN")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .foregroundStyle(TermTheme.tertiary)
+                            SecureField("••••••", text: Binding(
+                                get: { viewModel.pin },
+                                set: { viewModel.setPin($0) }
+                            ))
+                            .keyboardType(.numberPad)
+                            .textContentType(.password)
+                            .focused($focus, equals: .pin)
+                            .font(.system(size: 24, weight: .black, design: .monospaced))
+                            .padding(TermTheme.s16)
+                            .background(TermTheme.card)
+                            .clipShape(RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous)
+                                    .stroke(TermTheme.separator.opacity(0.12), lineWidth: 1)
+                            }
+                            .disabled(viewModel.loading)
+                        }
                     }
                 }
                 .padding(TermTheme.s20)
@@ -87,53 +113,83 @@ struct LoginView: View {
                     )
                 }
 
-                Button {
-                    Task { await viewModel.submit() }
-                } label: {
-                    HStack(spacing: TermTheme.s12) {
-                        if viewModel.loading {
-                            ProgressView().tint(TermTheme.card)
-                        } else {
-                            Image(systemName: "lock.shield.fill")
-                            Text("AUTHENTICATE")
-                                .font(.system(size: 16, weight: .black, design: .monospaced))
+                if viewModel.mode == .otp {
+                    if !viewModel.otpSent {
+                        Button {
+                            Task { await viewModel.sendOtp() }
+                        } label: {
+                            primaryButtonLabel("SEND CODE")
                         }
+                        .disabled(viewModel.loading || viewModel.phone.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .buttonStyle(.tactical)
+                    } else {
+                        Button {
+                            Task { await viewModel.verifyOtp() }
+                        } label: {
+                            primaryButtonLabel("VERIFY & SIGN IN")
+                        }
+                        .disabled(viewModel.loading || viewModel.otpCode.count < 6)
+                        .buttonStyle(.tactical)
+
+                        Button {
+                            Task { await viewModel.sendOtp() }
+                        } label: {
+                            Text("RESEND CODE")
+                                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .disabled(viewModel.loading)
+                        .buttonStyle(.tactical)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(viewModel.canSubmit ? TermTheme.accent : TermTheme.tertiary.opacity(0.4))
-                    .foregroundStyle(TermTheme.card)
-                    .clipShape(RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous))
+                } else {
+                    Button {
+                        Task { await viewModel.submitPin() }
+                    } label: {
+                        primaryButtonLabel("SIGN IN WITH PIN")
+                    }
+                    .disabled(viewModel.loading || !viewModel.canSubmitPin)
+                    .buttonStyle(.tactical)
                 }
-                .disabled(viewModel.loading || !viewModel.canSubmit)
-                .buttonStyle(.tactical)
+
+                Button {
+                    viewModel.setMode(viewModel.mode == .otp ? .pinDev : .otp)
+                } label: {
+                    Text(viewModel.mode == .otp ? "USE PIN (DEV)" : "USE PHONE OTP")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundStyle(TermTheme.secondary)
+                }
+                .disabled(viewModel.loading)
             }
             .padding(TermTheme.s32)
             .frame(maxWidth: 480)
         }
-        .onAppear { focus = .phone }
+        .onAppear {
+            FirebaseAuthHelper.shared.configure()
+            focus = .phone
+        }
     }
-}
 
-private struct PinDots: View {
-    let filled: Int
-
-    var body: some View {
+    @ViewBuilder
+    private func primaryButtonLabel(_ title: String) -> some View {
         HStack(spacing: TermTheme.s12) {
-            ForEach(0..<6, id: \.self) { index in
-                Circle()
-                    .fill(index < filled ? TermTheme.accent : TermTheme.tertiary.opacity(0.25))
-                    .frame(width: 10, height: 10)
+            if viewModel.loading {
+                ProgressView().tint(TermTheme.card)
+            } else {
+                Image(systemName: "lock.shield.fill")
+                Text(title)
+                    .font(.system(size: 16, weight: .black, design: .monospaced))
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, TermTheme.s4)
-        .accessibilityLabel("\(filled) of 6 PIN digits entered")
+        .frame(maxWidth: .infinity, minHeight: 52)
+        .background(TermTheme.accent)
+        .foregroundStyle(TermTheme.card)
+        .clipShape(RoundedRectangle(cornerRadius: TermTheme.radiusSM, style: .continuous))
     }
 }
 
 private extension LoginViewModel {
-    var canSubmit: Bool {
-        !phone.trimmingCharacters(in: .whitespaces).isEmpty && pin.count == 6
+    var canSubmitPin: Bool {
+        !phone.trimmingCharacters(in: .whitespaces).isEmpty && pin.count >= 6
     }
 }
 

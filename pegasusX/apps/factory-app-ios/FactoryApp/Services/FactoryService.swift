@@ -8,6 +8,10 @@ enum FactoryService {
         try await api.post("v1/auth/factory/login", body: LoginRequest(phone: phone, password: password))
     }
 
+    static func login(idToken: String) async throws -> AuthResponse {
+        try await api.post("v1/auth/factory/login", body: LoginRequest(idToken: idToken))
+    }
+
     static func register(body: [String: String]) async throws -> AuthResponse {
         try await api.post("v1/auth/factory/register", body: body)
     }

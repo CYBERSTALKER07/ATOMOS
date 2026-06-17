@@ -45,6 +45,7 @@ final class HomeViewModel {
     private(set) var sealingManifest = false
 
     private(set) var error: String?
+    var barcodeScanMessage: String?
 
     // MARK: - Phase 6 state
     private(set) var notifications: [NotificationItem] = []
@@ -238,6 +239,33 @@ final class HomeViewModel {
     func toggleItem(_ lineItemId: String) {
         if checkedItems.contains(lineItemId) { checkedItems.remove(lineItemId) }
         else { checkedItems.insert(lineItemId) }
+    }
+
+    func clearBarcodeScanMessage() {
+        barcodeScanMessage = nil
+    }
+
+    func onBarcodeScanned(_ ean: String) async {
+        let trimmed = ean.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard let orderId = selectedOrderId else {
+            barcodeScanMessage = "Select an order first"
+            return
+        }
+        guard let order = orders.first(where: { $0.orderId == orderId }) else { return }
+        do {
+            let product = try await api.lookupBarcode(ean: trimmed)
+            let sku = product.skuId ?? product.productId ?? ""
+            guard let match = (order.items ?? []).first(where: { $0.skuId == sku }) else {
+                barcodeScanMessage = "SKU not on this order"
+                return
+            }
+            toggleItem(match.lineItemId)
+            let label = (product.name?.isEmpty == false) ? product.name! : sku
+            barcodeScanMessage = "Checked \(label)"
+        } catch {
+            barcodeScanMessage = describe(error)
+        }
     }
 
     /// True when every line item of [orderId] is checked AND the order is not yet sealed.

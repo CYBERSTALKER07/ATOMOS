@@ -111,6 +111,7 @@ enum TypeEnum: String, Codable {
     case supplyRequestUpdate = "SUPPLY_REQUEST_UPDATE"
     case supplyTransferApproaching = "SUPPLY_TRANSFER_APPROACHING"
     case systemAppOutdated = "SYSTEM_APP_OUTDATED"
+    case vehicleAvailabilityChanged = "VEHICLE_AVAILABILITY_CHANGED"
     case vehicleCreated = "VEHICLE_CREATED"
     case warehouseCreated = "WAREHOUSE_CREATED"
     case warehouseDispatchLockChanged = "WAREHOUSE_DISPATCH_LOCK_CHANGED"

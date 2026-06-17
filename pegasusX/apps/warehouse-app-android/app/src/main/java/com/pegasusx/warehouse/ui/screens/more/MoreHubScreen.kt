@@ -35,6 +35,7 @@ private val inventory = listOf(
     MoreDestination("Supply requests", "Factory restock queue", Icons.Default.Sync, WarehouseRoutes.SUPPLY_REQUESTS),
     MoreDestination("Replenishment", "Stock velocity insights", Icons.Default.Inventory2, WarehouseRoutes.REPLENISHMENT),
     MoreDestination("Demand Forecast", "Projected demand", Icons.Default.ShowChart, WarehouseRoutes.DEMAND_FORECAST),
+    MoreDestination("Ops settings", "Stock policy + hours", Icons.Default.Settings, WarehouseRoutes.OPS_SETTINGS),
 )
 
 private val operations = listOf(
@@ -43,12 +44,12 @@ private val operations = listOf(
     MoreDestination("Analytics", "KPI trends", Icons.Default.Analytics, WarehouseRoutes.ANALYTICS),
     MoreDestination("Treasury", "Ledger overview", Icons.Default.AccountBalance, WarehouseRoutes.TREASURY),
     MoreDestination("Payment config", "Gateway visibility", Icons.Default.Payment, WarehouseRoutes.PAYMENT_CONFIG),
+    MoreDestination("Notifications", "Native alert inbox", Icons.Default.Notifications, WarehouseRoutes.NOTIFICATIONS),
 )
 
 private val portalAccount = listOf(
-    MoreDestination("Warehouse setup", "Onboarding wizard", Icons.Default.Settings, WarehouseRoutes.portalHandoff(WarehousePortalFeature.SETUP.routeKey)),
+    MoreDestination("Warehouse setup", "Onboarding wizard", Icons.Default.Business, WarehouseRoutes.portalHandoff(WarehousePortalFeature.SETUP.routeKey)),
     MoreDestination("Profile", "Account settings", Icons.Default.Person, WarehouseRoutes.portalHandoff(WarehousePortalFeature.PROFILE.routeKey)),
-    MoreDestination("Notifications", "Alert inbox", Icons.Default.Notifications, WarehouseRoutes.NOTIFICATIONS),
     MoreDestination("Global search", "Portal navigation", Icons.Default.Search, WarehouseRoutes.portalHandoff(WarehousePortalFeature.SEARCH.routeKey)),
 )
 

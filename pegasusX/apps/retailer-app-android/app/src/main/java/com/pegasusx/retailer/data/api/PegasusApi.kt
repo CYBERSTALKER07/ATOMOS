@@ -7,6 +7,7 @@ import com.pegasusx.retailer.data.model.AutoOrderSettings
 import com.pegasusx.retailer.data.model.CardCheckoutRequest
 import com.pegasusx.retailer.data.model.CheckoutQuoteRequest
 import com.pegasusx.retailer.data.model.CheckoutQuoteResponse
+import com.pegasusx.retailer.data.model.CheckoutPreviewResponse
 import com.pegasusx.retailer.data.model.CardCheckoutResponse
 import com.pegasusx.retailer.data.model.ConfirmCashRequest
 import com.pegasusx.retailer.data.model.ConfirmCashResponse

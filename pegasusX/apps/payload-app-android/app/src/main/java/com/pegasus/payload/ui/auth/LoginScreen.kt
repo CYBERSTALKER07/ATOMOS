@@ -1,5 +1,6 @@
 package com.pegasus.payload.ui.auth
 
+import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,13 +14,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -29,12 +33,12 @@ import com.pegasus.payload.ui.components.PayloadStateKind
 import com.pegasus.payload.ui.components.PayloadStatePane
 
 /**
- * LoginScreen — phone + 6-digit PIN auth, mirror of Expo `LoginForm`.
- * Surface Completeness: loading, error, disabled-while-submitting all covered.
+ * LoginScreen — Firebase phone OTP (primary) with PIN dev fallback.
  */
 @Composable
 fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val activity = LocalContext.current as Activity
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -56,7 +60,11 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     Text(
-                        text = "Sign in with your warehouse phone and PIN to continue loading operations.",
+                        text = if (state.mode == LoginMode.Otp) {
+                            "Sign in with your warehouse phone number. We will send a one-time code."
+                        } else {
+                            "Dev login with phone and PIN when Firebase OTP is unavailable."
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -67,21 +75,35 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                         onValueChange = viewModel::onPhoneChange,
                         label = { Text("Phone") },
                         singleLine = true,
-                        enabled = !state.loading,
+                        enabled = !state.loading && (state.mode == LoginMode.PinDev || !state.otpSent),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         modifier = Modifier.fillMaxWidth(),
                     )
 
-                    OutlinedTextField(
-                        value = state.pin,
-                        onValueChange = viewModel::onPinChange,
-                        label = { Text("6-digit PIN") },
-                        singleLine = true,
-                        enabled = !state.loading,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    if (state.mode == LoginMode.Otp) {
+                        if (state.otpSent) {
+                            OutlinedTextField(
+                                value = state.otpCode,
+                                onValueChange = viewModel::onOtpChange,
+                                label = { Text("Verification code") },
+                                singleLine = true,
+                                enabled = !state.loading,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    } else {
+                        OutlinedTextField(
+                            value = state.pin,
+                            onValueChange = viewModel::onPinChange,
+                            label = { Text("PIN") },
+                            singleLine = true,
+                            enabled = !state.loading,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
 
                     state.error?.let { msg ->
                         PayloadStatePane(
@@ -93,22 +115,85 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                         )
                     }
 
-                    Button(
-                        onClick = viewModel::submit,
-                        enabled = !state.loading,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                    ) {
-                        if (state.loading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.height(20.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp,
-                            )
-                        } else {
-                            Text("Sign In", style = MaterialTheme.typography.titleMedium)
+                    when (state.mode) {
+                        LoginMode.Otp -> {
+                            if (!state.otpSent) {
+                                Button(
+                                    onClick = { viewModel.sendOtp(activity) },
+                                    enabled = !state.loading && state.phone.isNotBlank(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp),
+                                ) {
+                                    if (state.loading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.height(20.dp),
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            strokeWidth = 2.dp,
+                                        )
+                                    } else {
+                                        Text("Send Code", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                }
+                            } else {
+                                Button(
+                                    onClick = viewModel::verifyOtp,
+                                    enabled = !state.loading && state.otpCode.length >= 6,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp),
+                                ) {
+                                    if (state.loading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.height(20.dp),
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            strokeWidth = 2.dp,
+                                        )
+                                    } else {
+                                        Text("Verify & Sign In", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                }
+                                OutlinedButton(
+                                    onClick = { viewModel.sendOtp(activity) },
+                                    enabled = !state.loading,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("Resend code")
+                                }
+                            }
                         }
+                        LoginMode.PinDev -> {
+                            Button(
+                                onClick = viewModel::submitPin,
+                                enabled = !state.loading,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                            ) {
+                                if (state.loading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.height(20.dp),
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        strokeWidth = 2.dp,
+                                    )
+                                } else {
+                                    Text("Sign In with PIN", style = MaterialTheme.typography.titleMedium)
+                                }
+                            }
+                        }
+                    }
+
+                    TextButton(
+                        onClick = {
+                            viewModel.setMode(
+                                if (state.mode == LoginMode.Otp) LoginMode.PinDev else LoginMode.Otp,
+                            )
+                        },
+                        enabled = !state.loading,
+                    ) {
+                        Text(
+                            if (state.mode == LoginMode.Otp) "Use PIN (dev)" else "Use phone OTP",
+                        )
                     }
                 }
             }

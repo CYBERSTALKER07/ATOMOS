@@ -5,7 +5,6 @@ enum WarehousePortalFeature: String, CaseIterable, Identifiable {
     case register
     case setup
     case profile
-    case notifications
     case search
 
     var id: String { rawValue }
@@ -15,7 +14,6 @@ enum WarehousePortalFeature: String, CaseIterable, Identifiable {
         case .register: "Register warehouse"
         case .setup: "Warehouse setup"
         case .profile: "Profile"
-        case .notifications: "Notifications"
         case .search: "Global search"
         }
     }
@@ -25,7 +23,6 @@ enum WarehousePortalFeature: String, CaseIterable, Identifiable {
         case .register: "Create a new warehouse account"
         case .setup: "Location, billing, and configuration"
         case .profile: "Account and warehouse identity"
-        case .notifications: "Alerts and operational inbox"
         case .search: "Jump to any portal page"
         }
     }
@@ -35,7 +32,7 @@ enum WarehousePortalFeature: String, CaseIterable, Identifiable {
         case .register: "/auth/register"
         case .setup: "/setup/location"
         case .profile: "/profile"
-        case .notifications, .search: "/"
+        case .search: "/"
         }
     }
 
@@ -44,7 +41,6 @@ enum WarehousePortalFeature: String, CaseIterable, Identifiable {
         case .register: "building.2"
         case .setup: "gearshape.2"
         case .profile: "person.crop.circle"
-        case .notifications: "bell"
         case .search: "magnifyingglass"
         }
     }
@@ -57,8 +53,6 @@ enum WarehousePortalFeature: String, CaseIterable, Identifiable {
             "Warehouse setup and onboarding run on the web portal after registration."
         case .profile:
             "Profile and account settings are managed on the warehouse web portal."
-        case .notifications:
-            "The notification panel lives in the warehouse portal top bar. Open the portal to review alerts."
         case .search:
             "Global search (⌘K) is available on the warehouse web portal desktop shell."
         }

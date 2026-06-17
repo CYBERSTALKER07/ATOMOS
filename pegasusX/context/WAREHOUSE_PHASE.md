@@ -190,7 +190,30 @@ cd pegasusX && make parity-contract-full
 9. ~~WH-11 deep native UI/UX parity (iOS component-level)~~ — **CLOSED** (2026-06-15)
 10. ~~WH-11P portal deep UI/UX (component-level)~~ — **CLOSED** (2026-06-15)
 11. ~~WH-11A Android deep UI/UX parity~~ — **CLOSED** (2026-06-15)
-12. **Cross-role next** — Boss-picked role row (FACTORY / DRIVER / PAYLOAD per `VEGETABLE_PLAN.md` §3)
+12. ~~WH-12 native ops settings + inventory policy + supply create depth~~ — **CLOSED** (2026-06-15)
+13. **Cross-role next** — Boss-picked role row (FACTORY / DRIVER / PAYLOAD per `VEGETABLE_PLAN.md` §3)
+
+---
+
+## Phase WH-12 — Native ops depth + ecosystem parity (P1/P2)
+
+**Status:** **CLOSED** (2026-06-15) — ops settings, per-SKU inventory policy, enriched supply-request create on Android + iOS; nav README + notifications label fix; WAREHOUSE row **Wired** in parity matrix.
+
+| ID | Feature | Portal | Android | iOS |
+|----|---------|--------|---------|-----|
+| WH12-01 | Ops settings | ref `/settings` | `OpsSettingsScreen` | `OpsSettingsView` |
+| WH12-02 | Inventory policy | ref `/inventory` | `InventoryScreen` policy picker | `InventoryView` policy picker |
+| WH12-03 | Supply create depth | ref `/supply-requests/new` | `CreateSupplyRequestDialog` (Dispatch + Supply) | `CreateSupplyRequestSheet` |
+| WH12-04 | Nav README + notification label fix | — | README + `NOTIFICATIONS` section | README + `notifications` section |
+| WH12-05 | Matrix Wired | — | — | `ROLE_ROW_PARITY_MATRIX` WAREHOUSE → **Wired** |
+
+**Build proof:**
+
+```bash
+cd pegasusX/apps/backend-go && go test ./warehouse/... ./replenishment/...
+cd pegasusX/apps/warehouse-app-android && ./gradlew :app:compileDebugKotlin
+cd pegasusX/apps/warehouse-app-ios && xcodegen generate && xcodebuild -scheme WarehouseAppIOS build
+```
 
 ---
 

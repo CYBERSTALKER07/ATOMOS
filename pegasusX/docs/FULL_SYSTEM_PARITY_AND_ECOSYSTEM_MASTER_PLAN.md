@@ -108,7 +108,7 @@ See [pegasusx-system-parity-ecosystem.mmd](../assets/diagrams/pegasusx-system-pa
 | Dispatch preview/execute/locks | Freeze lock + auto-dispatch worker | all 3 | `/v1/warehouse/ops/dispatch/*` | Kafka + WS | E2E_SSMR_GREEN |
 | Fleet live map | MapLibre/MapKit + animated markers | all 3 | `GET /v1/warehouse/ops/fleet/live-map` | WS telemetry | E2E_SSMR_GREEN |
 | Transfer receive | Inventory credit on RECEIVED; variance (v2) | portal + native | `/v1/warehouse/transfers/*` | outbox WAREHOUSE_TRANSFER_* | WIRED |
-| Replenishment insights | Durable Spanner rows (not demo) | all 3 | `/v1/warehouse/replenishment/insights` | — | IN_PROGRESS |
+| Replenishment insights | Durable Spanner rows (not demo) | all 3 | `/v1/warehouse/replenishment/insights` | — | WIRED |
 | Co-locate receive | INTERNAL transfer auto-received at factory fulfill | all 3 | linked transfer | WS + Kafka | WIRED |
 
 **Edge cases:** concurrent supply requests; cancel mid-production; receipt variance; offline dispatch; dispatch lock vs AI worker.

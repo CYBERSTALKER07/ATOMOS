@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import { persistSession, factoryApiBaseUrl } from "@/lib/auth";
+import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from "@/lib/firebase";
 import { COUNTRIES } from "../register/wizard-state";
 
 type LoginStep = "phone" | "otp";
@@ -30,8 +31,15 @@ export default function FactoryLoginPage() {
       setError("Enter a valid phone number (6-14 digits)");
       return;
     }
-    // TODO: In a real implementation, trigger Firebase Recaptcha and send OTP here
-    setStep("otp");
+    setLoading(true);
+    try {
+      await sendPhoneOtp(`${dialCode}${phoneLocal}`);
+      setStep("otp");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send verification code");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleVerifyOtp(e: React.FormEvent) {
@@ -45,11 +53,11 @@ export default function FactoryLoginPage() {
     setLoading(true);
     try {
       const phone = `${dialCode}${phoneLocal}`;
-      // Here otpCode is mimicking the firebase ID token for scaffold purposes
+      const idToken = await verifyPhoneOtp(otpCode);
       const res = await fetch(`${factoryApiBaseUrl}/v1/auth/factory/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, id_token: otpCode }),
+        body: JSON.stringify({ id_token: idToken }),
       });
 
       if (!res.ok) {
@@ -147,7 +155,16 @@ export default function FactoryLoginPage() {
             />
           </label>
           <div className="flex gap-3">
-            <button type="button" className="md-btn md-btn-text w-full" onClick={() => setStep("phone")} disabled={loading}>
+            <button
+              type="button"
+              className="md-btn md-btn-text w-full"
+              onClick={() => {
+                resetPhoneOtpFlow();
+                setOtpCode("");
+                setStep("phone");
+              }}
+              disabled={loading}
+            >
               Back
             </button>
             <button type="submit" className="md-btn md-btn-filled w-full" disabled={loading}>

@@ -4,6 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as SecureStore from 'expo-secure-store';
+import { CameraView } from 'expo-camera';
 import "./global.css";
 import ConnectionStrip from './components/ConnectionStrip';
 import ManifestKpiGrid from './components/ManifestKpiGrid';
@@ -28,6 +29,7 @@ import {
   payloadSupplierStartLoadingKey,
 } from './utils/idempotency';
 import { InboundReturnsPanel } from './inboundReturns';
+import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from './firebaseAuth';
 import { reconcilePayloadSession } from './session-reconcile';
 import { registerPayloadPushTokens } from './pushRegistration';
 import { defaultLocale, type Locale } from '../../packages/i18n/locales';
@@ -174,6 +176,9 @@ export default function App() {
   const [workerName, setWorkerName] = useState('');
   const [phoneInput, setPhoneInput] = useState('');
   const [pinInput, setPinInput] = useState('');
+  const [otpInput, setOtpInput] = useState('');
+  const [loginMode, setLoginMode] = useState<'otp' | 'pin'>('otp');
+  const [otpSent, setOtpSent] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -217,6 +222,8 @@ export default function App() {
   const [isSealingManifest, setIsSealingManifest] = useState(false);
   const [exceptionLoading, setExceptionLoading] = useState<string | null>(null); // orderId being excepted
   const [showInjectOrder, setShowInjectOrder] = useState(false);
+  const [showProductScanner, setShowProductScanner] = useState(false);
+  const [showInjectScanner, setShowInjectScanner] = useState(false);
   const [injectOrderId, setInjectOrderId] = useState('');
   const [isInjecting, setIsInjecting] = useState(false);
 
@@ -383,7 +390,15 @@ export default function App() {
   }, [fetchTrucks]);
 
   // ── Payloader Login ──────────────────────────────────────────────────────
-  const handleLogin = async () => {
+  const completeLogin = async (data: Record<string, unknown>) => {
+    await savePayloaderSession(data as Parameters<typeof savePayloaderSession>[0]);
+    setToken(String(data.token ?? ''));
+    setWorkerName(String(data.name ?? 'Payloader'));
+    if (data.supplier_id) setSupplierId(String(data.supplier_id));
+    void registerPayloadPushTokens();
+  };
+
+  const handleLoginPin = async () => {
     if (!phoneInput || !pinInput) return;
     setIsLoggingIn(true);
     try {
@@ -396,11 +411,45 @@ export default function App() {
         throw new Error(await extractProblemMessage(res, locale));
       }
       const data = await res.json();
-      await savePayloaderSession(data);
-      setToken(data.token);
-      setWorkerName(data.name || 'Payloader');
-      if (data.supplier_id) setSupplierId(data.supplier_id);
-      void registerPayloadPushTokens();
+      await completeLogin(data);
+    } catch (e: unknown) {
+      showToast(tx('auth.error.login_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!phoneInput.trim()) return;
+    setIsLoggingIn(true);
+    try {
+      await sendPhoneOtp(phoneInput.trim());
+      setOtpSent(true);
+    } catch (e: unknown) {
+      showToast(tx('auth.error.login_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpInput.trim().length < 6) return;
+    setIsLoggingIn(true);
+    try {
+      const idToken = await verifyPhoneOtp(otpInput.trim());
+      const res = await fetch(`${API_BASE}/v1/auth/payloader/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_token: idToken }),
+      });
+      if (!res.ok) {
+        throw new Error(await extractProblemMessage(res, locale));
+      }
+      const data = await res.json();
+      await completeLogin(data);
+      setOtpSent(false);
+      setOtpInput('');
+      resetPhoneOtpFlow();
     } catch (e: unknown) {
       showToast(tx('auth.error.login_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
     } finally {
@@ -1196,6 +1245,33 @@ export default function App() {
     Haptics.selectionAsync();
   };
 
+  const handleProductBarcodeScan = async (ean: string) => {
+    const trimmed = ean.trim();
+    if (!trimmed) return;
+    if (!selectedOrderId) {
+      showToast(isIOS ? 'Select an order first' : 'SELECT AN ORDER FIRST', '', 'warning', 2400);
+      return;
+    }
+    try {
+      const product = await PayloadTerminalApi.lookupBarcode(trimmed);
+      const sku = product.sku_id ?? product.product_id ?? '';
+      const match = selectedManifest.find((item) => item.brand === sku);
+      if (!match) {
+        showToast(isIOS ? 'SKU not on this order' : 'SKU NOT ON THIS ORDER', '', 'warning', 2400);
+        return;
+      }
+      if (!match.scanned) toggleCheck(match.id);
+      showToast(isIOS ? 'Checked item' : 'CHECKED ITEM', product.name ?? sku, 'success', 2200);
+      setShowProductScanner(false);
+    } catch (e: unknown) {
+      showToast(
+        isIOS ? 'Barcode lookup failed' : 'BARCODE LOOKUP FAILED',
+        e instanceof Error ? e.message : tx('common.error.unknown'),
+        'error',
+      );
+    }
+  };
+
   // ── Seal & dispatch ───────────────────────────────────────────────────────
   const selectedOrder = orders.find(o => o.order_id === selectedOrderId);
   const selectedManifest = manifest.filter(i => i.orderId === selectedOrderId);
@@ -1439,6 +1515,11 @@ export default function App() {
         <Text style={{ fontSize: 22, fontWeight: '700', color: T.colors.label, letterSpacing: isIOS ? -0.4 : 0.5, marginBottom: 32 }}>
           {tx('auth.login.payloader_login')}
         </Text>
+        <Text style={{ fontSize: 13, color: T.colors.secondaryLabel, marginBottom: 16, textAlign: 'center' }}>
+          {loginMode === 'otp'
+            ? (isIOS ? 'Sign in with warehouse phone OTP.' : 'SIGN IN WITH WAREHOUSE PHONE OTP.')
+            : (isIOS ? 'Dev login with phone and PIN.' : 'DEV LOGIN WITH PHONE AND PIN.')}
+        </Text>
         <TextInput
           placeholder={tx('common.field.phone')}
           placeholderTextColor={T.colors.tertiaryLabel}
@@ -1446,6 +1527,7 @@ export default function App() {
           onChangeText={setPhoneInput}
           keyboardType="phone-pad"
           autoCapitalize="none"
+          editable={!isLoggingIn && (loginMode === 'pin' || !otpSent)}
           style={{
             width: 320,
             borderWidth: isIOS ? 0.33 : 1,
@@ -1459,13 +1541,38 @@ export default function App() {
             marginBottom: 12,
           }}
         />
+        {loginMode === 'otp' && otpSent ? (
+          <TextInput
+            placeholder={isIOS ? 'Verification code' : 'VERIFICATION CODE'}
+            placeholderTextColor={T.colors.tertiaryLabel}
+            value={otpInput}
+            onChangeText={setOtpInput}
+            keyboardType="number-pad"
+            maxLength={6}
+            style={{
+              width: 320,
+              borderWidth: isIOS ? 0.33 : 1,
+              borderColor: T.colors.separator,
+              backgroundColor: T.colors.cardBackground,
+              borderRadius: T.radius.card,
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              fontSize: 15,
+              color: T.colors.label,
+              marginBottom: 24,
+              letterSpacing: 8,
+              textAlign: 'center',
+            }}
+          />
+        ) : null}
+        {loginMode === 'pin' ? (
         <TextInput
           placeholder={tx('auth.login.pin_label')}
           placeholderTextColor={T.colors.tertiaryLabel}
           value={pinInput}
           onChangeText={setPinInput}
           keyboardType="number-pad"
-          maxLength={6}
+          maxLength={8}
           secureTextEntry
           style={{
             width: 320,
@@ -1482,8 +1589,67 @@ export default function App() {
             textAlign: 'center',
           }}
         />
+        ) : null}
+        {loginMode === 'otp' ? (
+          !otpSent ? (
+            <Pressable
+              onPress={handleSendOtp}
+              disabled={isLoggingIn || !phoneInput.trim()}
+              style={({ pressed }) => ({
+                width: 320,
+                paddingVertical: 16,
+                alignItems: 'center' as const,
+                backgroundColor: !isLoggingIn && phoneInput.trim() ? T.colors.accent : T.colors.fillSecondary,
+                borderRadius: T.radius.button,
+                opacity: pressed ? 0.82 : 1,
+                transform: [{ scale: pressed ? 0.97 : 1 }],
+                marginBottom: 12,
+              })}
+            >
+              <Text style={{
+                fontWeight: '600',
+                fontSize: 14,
+                letterSpacing: isIOS ? 0.3 : 1,
+                color: !isLoggingIn && phoneInput.trim() ? '#FFFFFF' : T.colors.tertiaryLabel,
+              }}>
+                {isLoggingIn ? tx('auth.login.authenticating') : (isIOS ? 'Send Code' : 'SEND CODE')}
+              </Text>
+            </Pressable>
+          ) : (
+            <>
+              <Pressable
+                onPress={handleVerifyOtp}
+                disabled={isLoggingIn || otpInput.trim().length < 6}
+                style={({ pressed }) => ({
+                  width: 320,
+                  paddingVertical: 16,
+                  alignItems: 'center' as const,
+                  backgroundColor: !isLoggingIn && otpInput.trim().length >= 6 ? T.colors.accent : T.colors.fillSecondary,
+                  borderRadius: T.radius.button,
+                  opacity: pressed ? 0.82 : 1,
+                  transform: [{ scale: pressed ? 0.97 : 1 }],
+                  marginBottom: 12,
+                })}
+              >
+                <Text style={{
+                  fontWeight: '600',
+                  fontSize: 14,
+                  letterSpacing: isIOS ? 0.3 : 1,
+                  color: !isLoggingIn && otpInput.trim().length >= 6 ? '#FFFFFF' : T.colors.tertiaryLabel,
+                }}>
+                  {isLoggingIn ? tx('auth.login.authenticating') : (isIOS ? 'Verify & Sign In' : 'VERIFY & SIGN IN')}
+                </Text>
+              </Pressable>
+              <Pressable onPress={handleSendOtp} disabled={isLoggingIn} style={{ marginBottom: 12 }}>
+                <Text style={{ color: T.colors.secondaryLabel, fontSize: 13 }}>
+                  {isIOS ? 'Resend code' : 'RESEND CODE'}
+                </Text>
+              </Pressable>
+            </>
+          )
+        ) : (
         <Pressable
-          onPress={handleLogin}
+          onPress={handleLoginPin}
           disabled={isLoggingIn || !phoneInput || pinInput.length < 6}
           style={({ pressed }) => ({
             width: 320,
@@ -1493,6 +1659,7 @@ export default function App() {
             borderRadius: T.radius.button,
             opacity: pressed ? 0.82 : 1,
             transform: [{ scale: pressed ? 0.97 : 1 }],
+            marginBottom: 12,
           })}
         >
           <Text style={{
@@ -1501,7 +1668,21 @@ export default function App() {
             letterSpacing: isIOS ? 0.3 : 1,
             color: !isLoggingIn && phoneInput && pinInput.length >= 6 ? '#FFFFFF' : T.colors.tertiaryLabel,
           }}>
-            {isLoggingIn ? tx('auth.login.authenticating') : tx('auth.login.submit')}
+            {isLoggingIn ? tx('auth.login.authenticating') : (isIOS ? 'Sign In with PIN' : 'SIGN IN WITH PIN')}
+          </Text>
+        </Pressable>
+        )}
+        <Pressable
+          onPress={() => {
+            setLoginMode(loginMode === 'otp' ? 'pin' : 'otp');
+            setOtpSent(false);
+            setOtpInput('');
+            resetPhoneOtpFlow();
+          }}
+          disabled={isLoggingIn}
+        >
+          <Text style={{ color: T.colors.secondaryLabel, fontSize: 13 }}>
+            {loginMode === 'otp' ? (isIOS ? 'Use PIN (dev)' : 'USE PIN (DEV)') : (isIOS ? 'Use phone OTP' : 'USE PHONE OTP')}
           </Text>
         </Pressable>
         {renderUiToast()}
@@ -1930,12 +2111,26 @@ export default function App() {
             </View>
 
             {/* Manifest checklist */}
-            <View style={{ paddingHorizontal: 32, paddingTop: 16 }}>
+            <View style={{ paddingHorizontal: 32, paddingTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <WorkflowSectionHeader
                 subtitle={isIOS ? 'Tap each line to confirm load verification.' : 'TAP EACH LINE TO CONFIRM LOAD VERIFICATION.'}
                 theme={T}
                 title="Load checklist"
               />
+              <Pressable
+                onPress={() => setShowProductScanner(true)}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: T.radius.button,
+                  borderWidth: 1,
+                  borderColor: T.colors.accent,
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '700', color: T.colors.accent }}>
+                  {isIOS ? 'Scan product' : 'SCAN PRODUCT'}
+                </Text>
+              </Pressable>
             </View>
             <ScrollView className="flex-1 px-8 py-2">
               {selectedManifest.map(item => (
@@ -2098,10 +2293,34 @@ export default function App() {
                 {isIOS ? 'Add Order to Manifest' : 'ADD ORDER TO MANIFEST'}
               </Text>
               <Text style={{ fontSize: 12, color: T.colors.secondaryLabel, marginTop: 4 }}>
-                Enter the Order ID to inject into the active loading session.
+                Scan an order label or enter the order ID to inject into the active loading session.
               </Text>
             </View>
             <View style={{ padding: 24, gap: 16 }}>
+              <Pressable
+                onPress={() => setShowInjectScanner((v) => !v)}
+                style={{
+                  paddingVertical: 10,
+                  alignItems: 'center',
+                  borderRadius: T.radius.button,
+                  borderWidth: 1,
+                  borderColor: T.colors.accent,
+                }}
+              >
+                <Text style={{ fontWeight: '600', fontSize: 13, color: T.colors.accent }}>
+                  {showInjectScanner ? (isIOS ? 'Hide scanner' : 'HIDE SCANNER') : (isIOS ? 'Scan order label' : 'SCAN ORDER LABEL')}
+                </Text>
+              </Pressable>
+              {showInjectScanner ? (
+                <CameraView
+                  style={{ height: 160, borderRadius: 12, overflow: 'hidden' }}
+                  barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'code128', 'qr'] }}
+                  onBarcodeScanned={({ data }) => {
+                    setInjectOrderId(data.trim());
+                    setShowInjectScanner(false);
+                  }}
+                />
+              ) : null}
               <TextInput
                 value={injectOrderId}
                 onChangeText={setInjectOrderId}
@@ -2151,6 +2370,24 @@ export default function App() {
                 </Pressable>
               </View>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showProductScanner} transparent animationType="fade" onRequestClose={() => setShowProductScanner(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ width: 420, backgroundColor: T.colors.background, borderRadius: isIOS ? 14 : 16, overflow: 'hidden', padding: 16, gap: 12 }}>
+            <Text style={{ fontWeight: '700', fontSize: 16, color: T.colors.label }}>
+              {isIOS ? 'Scan product EAN' : 'SCAN PRODUCT EAN'}
+            </Text>
+            <CameraView
+              style={{ height: 200, borderRadius: 12, overflow: 'hidden' }}
+              barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8'] }}
+              onBarcodeScanned={({ data }) => { void handleProductBarcodeScan(data); }}
+            />
+            <Pressable onPress={() => setShowProductScanner(false)} style={{ paddingVertical: 12, alignItems: 'center' }}>
+              <Text style={{ color: T.colors.secondaryLabel }}>{isIOS ? 'Close' : 'CLOSE'}</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>

@@ -15,6 +15,7 @@ struct CatalogView: View {
     @State private var selectedProduct: Product?
     @State private var isLoading = false
     @State private var loadError: String?
+    @State private var showFullSearch = false
 
     var onNavigateToSuppliers: () -> Void = {}
 
@@ -92,6 +93,16 @@ struct CatalogView: View {
             await loadCategories()
             await loadProducts()
         }
+        .sheet(isPresented: $showFullSearch) {
+            NavigationStack {
+                SearchView()
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") { showFullSearch = false }
+                        }
+                    }
+            }
+        }
     }
 
     // MARK: - Search Bar
@@ -116,6 +127,15 @@ struct CatalogView: View {
                         .foregroundStyle(AppTheme.textTertiary)
                 }
             }
+
+            Button {
+                showFullSearch = true
+            } label: {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            .accessibilityLabel("Open full search")
         }
         .padding(.horizontal, AppTheme.spacingMD)
         .padding(.vertical, AppTheme.spacingMD)

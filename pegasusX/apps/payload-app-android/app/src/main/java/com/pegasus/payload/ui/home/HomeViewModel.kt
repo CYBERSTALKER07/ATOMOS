@@ -89,6 +89,7 @@ data class HomeUiState(
     /** LOADING manifests with every order sealed — eligible for seal-completed batch. */
     val batchReadyManifestIds: List<String> = emptyList(),
     val batchSealing: Boolean = false,
+    val barcodeScanMessage: String? = null,
     val error: String? = null,
 )
 
@@ -421,6 +422,41 @@ class HomeViewModel @Inject constructor(
             val next = it.checkedItems.toMutableSet()
             if (!next.add(lineItemId)) next.remove(lineItemId)
             it.copy(checkedItems = next)
+        }
+    }
+
+    fun clearBarcodeScanMessage() {
+        _state.update { it.copy(barcodeScanMessage = null) }
+    }
+
+    fun onBarcodeScanned(ean: String) {
+        val trimmed = ean.trim()
+        if (trimmed.isEmpty()) return
+        val orderId = _state.value.selectedOrderId
+        if (orderId == null) {
+            _state.update { it.copy(barcodeScanMessage = "Select an order first") }
+            return
+        }
+        val order = _state.value.orders.firstOrNull { it.orderId == orderId }
+        if (order == null) {
+            _state.update { it.copy(barcodeScanMessage = "Order not found") }
+            return
+        }
+        viewModelScope.launch {
+            runCatching { repository.lookupBarcode(trimmed) }
+                .onSuccess { product ->
+                    val match = order.items.firstOrNull { it.skuId == product.skuId }
+                    if (match == null) {
+                        _state.update { it.copy(barcodeScanMessage = "SKU not on this order") }
+                    } else {
+                        toggleItem(match.lineItemId)
+                        val label = product.name.ifBlank { product.skuId }
+                        _state.update { it.copy(barcodeScanMessage = "Checked $label") }
+                    }
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(barcodeScanMessage = e.message ?: "Barcode lookup failed") }
+                }
         }
     }
 

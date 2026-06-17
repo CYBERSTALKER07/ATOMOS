@@ -37,62 +37,86 @@ struct DispatchView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if loading {
-                    WarehouseLoadingView(
-                        title: "Loading dispatch",
-                        message: "Fetching orders, drivers, supply requests, and locks."
-                    )
-                } else if let error {
-                    WarehouseErrorView(message: error) { load() }
-                } else if let preview {
-                    dispatchContent(preview: preview)
-                }
+            dispatchDialogs
+        }
+    }
+
+    private var capacityExceededMessage: String {
+        if capacityDialogAutoMode {
+            return "Smart dispatch cannot fit all orders on available trucks."
+        }
+        return capacityWarnings.map { warning in
+            var lines = [String(format: "%.1f VU loaded / %.1f VU effective max", warning.loadedVu, warning.effectiveMaxVu)]
+            if !warning.suggestedUnselectOrderIds.isEmpty {
+                lines.append("Suggested unselect: \(warning.suggestedUnselectOrderIds.map { String($0.prefix(8)) }.joined(separator: ", "))")
             }
-            .background(LabTheme.background)
-            .navigationTitle("Dispatch")
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    if selectedSegment == 2 {
-                        Button("New Request", systemImage: "plus") { showCreateSupplyRequest = true }
-                    }
-                    if selectedSegment == 3 && !hasActiveManualDispatchLock {
-                        Button("Lock", systemImage: "lock.fill") { showAcquireDispatchLock = true }
-                    }
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
-                }
+            if !warning.suggestedDeferOrderIds.isEmpty {
+                lines.append("Suggested defer: \(warning.suggestedDeferOrderIds.map { String($0.prefix(8)) }.joined(separator: ", "))")
             }
-            .task {
-                load()
+            return lines.joined(separator: "\n")
+        }.joined(separator: "\n\n")
+    }
+
+    @ViewBuilder
+    private var dispatchBody: some View {
+        Group {
+            if loading {
+                WarehouseLoadingView(
+                    title: "Loading dispatch",
+                    message: "Fetching orders, drivers, supply requests, and locks."
+                )
+            } else if let error {
+                WarehouseErrorView(message: error) { load() }
+            } else if let preview {
+                dispatchContent(preview: preview)
+            }
+        }
+        .background(LabTheme.background)
+        .navigationTitle("Dispatch")
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if selectedSegment == 2 {
+                    Button("New Request", systemImage: "plus") { showCreateSupplyRequest = true }
+                }
+                if selectedSegment == 3 && !hasActiveManualDispatchLock {
+                    Button("Lock", systemImage: "lock.fill") { showAcquireDispatchLock = true }
+                }
+                Button("Refresh", systemImage: "arrow.clockwise") { load() }
+            }
+        }
+        .task {
+            load()
+            connectRealtime()
+        }
+        .refreshable { load() }
+        .onDisappear { realtimeClient.disconnect() }
+        .onChange(of: scenePhase) { phase in
+            switch phase {
+            case .active:
                 connectRealtime()
+            case .inactive, .background:
+                realtimeClient.disconnect()
+            @unknown default:
+                break
             }
-            .refreshable { load() }
-            .onDisappear { realtimeClient.disconnect() }
-            .onChange(of: scenePhase) { phase in
-                switch phase {
-                case .active:
-                    connectRealtime()
-                case .inactive, .background:
-                    realtimeClient.disconnect()
-                @unknown default:
-                    break
-                }
+        }
+        .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
+            if executing {
+                executing = false
+                actionAlert = DispatchActionAlert(
+                    title: "Connection restored",
+                    message: "Verify dispatch status before retrying."
+                )
             }
-            .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
-                if executing {
-                    executing = false
-                    actionAlert = DispatchActionAlert(
-                        title: "Connection restored",
-                        message: "Verify dispatch status before retrying."
-                    )
-                }
-            }
-            .onChange(of: realtimeHub.refreshEpoch) { _, _ in
-                Task {
-                    await reloadFleetVehicles()
-                    await reloadDispatchPreview()
-                }
-            }
+        }
+        .onChange(of: realtimeHub.refreshEpoch) { _, _ in
+            Task { await refreshDispatchRealtime() }
+        }
+    }
+
+    @ViewBuilder
+    private var dispatchDialogs: some View {
+        dispatchBody
             .confirmationDialog("Capacity exceeded", isPresented: $showCapacityDialog, titleVisibility: .visible) {
                 Button("Force dispatch", role: .destructive) {
                     Task {
@@ -116,18 +140,7 @@ struct DispatchView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text(capacityDialogAutoMode
-                     ? "Smart dispatch cannot fit all orders on available trucks."
-                     : capacityWarnings.map { warning in
-                    var lines = [String(format: "%.1f VU loaded / %.1f VU effective max", warning.loadedVu, warning.effectiveMaxVu)]
-                    if !warning.suggestedUnselectOrderIds.isEmpty {
-                        lines.append("Suggested unselect: \(warning.suggestedUnselectOrderIds.map { String($0.prefix(8)) }.joined(separator: ", "))")
-                    }
-                    if !warning.suggestedDeferOrderIds.isEmpty {
-                        lines.append("Suggested defer: \(warning.suggestedDeferOrderIds.map { String($0.prefix(8)) }.joined(separator: ", "))")
-                    }
-                    return lines.joined(separator: "\n")
-                }.joined(separator: "\n\n"))
+                Text(capacityExceededMessage)
             }
             .confirmationDialog("Run smart dispatch?", isPresented: $showSmartConfirm, titleVisibility: .visible) {
                 Button("Smart Dispatch") {
@@ -138,8 +151,8 @@ struct DispatchView: View {
                 Text("Assign orders using the optimizer across available trucks.")
             }
             .sheet(isPresented: $showCreateSupplyRequest) {
-                CreateSupplyRequestSheet { factoryId, priority, notes in
-                    Task { await createSupplyRequest(factoryId: factoryId, priority: priority, notes: notes) }
+                CreateSupplyRequestSheet { form in
+                    Task { await createSupplyRequest(form: form) }
                 }
             }
             .alert(item: $actionAlert) { alert in
@@ -187,7 +200,11 @@ struct DispatchView: View {
             } message: {
                 Text("This freezes auto-dispatch changes until the lock is released.")
             }
-        }
+    }
+
+    private func refreshDispatchRealtime() async {
+        await reloadFleetVehicles()
+        await reloadDispatchPreview()
     }
 
     @ViewBuilder
@@ -297,10 +314,7 @@ struct DispatchView: View {
                     Picker("Truck / driver", selection: $selectedDriverId) {
                         Text("Select truck / driver").tag("")
                         ForEach(preview.availableDrivers) { driver in
-                            let label = (driver.freeVolumeVu ?? 0) > 0
-                                ? "\(driver.name) · \(driver.freeVolumeVu ?? 0, specifier: "%.0f") VU free"
-                                : "\(driver.name) · \(driver.maxVolumeVu, specifier: "%.0f") VU max"
-                            Text(label).tag(driver.driverId)
+                            Text(driverPickerLabel(driver)).tag(driver.driverId)
                         }
                     }
                     if selectedDriver != nil {
@@ -607,9 +621,16 @@ struct DispatchView: View {
         }
     }
 
-    private func createSupplyRequest(factoryId: String, priority: String, notes: String) async {
+    private func driverPickerLabel(_ driver: AvailableDriver) -> String {
+        if (driver.freeVolumeVu ?? 0) > 0 {
+            return "\(driver.name) · \(Int(driver.freeVolumeVu ?? 0)) VU free"
+        }
+        return "\(driver.name) · \(Int(driver.maxVolumeVu)) VU max"
+    }
+
+    private func createSupplyRequest(form: SupplyRequestFormData) async {
         do {
-            let response = try await WarehouseService.createSupplyRequest(factoryId: factoryId, priority: priority, notes: notes)
+            let response = try await WarehouseService.createSupplyRequest(form: form)
             showCreateSupplyRequest = false
             actionAlert = DispatchActionAlert(title: "Supply Request Submitted", message: "Request \(response.requestId.prefix(8)) is now \(response.state).")
             await reloadSupplyRequests()
@@ -837,50 +858,5 @@ private struct DispatchStatusBanner: View {
             .padding(.vertical, LabTheme.spacingXS)
             .foregroundStyle(tint)
             .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
-}
-
-private struct CreateSupplyRequestSheet: View {
-    let onCreate: (String, String, String) -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var factoryId = ""
-    @State private var priority = "NORMAL"
-    @State private var notes = ""
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                TextField("Factory ID", text: $factoryId)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-
-                Picker("Priority", selection: $priority) {
-                    Text("Normal").tag("NORMAL")
-                    Text("Urgent").tag("URGENT")
-                    Text("Critical").tag("CRITICAL")
-                }
-                .pickerStyle(.segmented)
-
-                TextField("Notes", text: $notes, axis: .vertical)
-                    .lineLimit(3...5)
-
-                Text("This submits a warehouse supply request using the backend demand forecast path.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .navigationTitle("New Supply Request")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Submit") {
-                        onCreate(factoryId, priority, notes)
-                    }
-                    .disabled(factoryId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
-        }
     }
 }

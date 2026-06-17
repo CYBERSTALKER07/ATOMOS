@@ -168,6 +168,28 @@ data class InventoryItem(
     val quantity: Int = 0,
     @SerialName("reorder_threshold") val reorderThreshold: Int = 0,
     val sku: String = "",
+    @SerialName("out_of_stock_policy") val outOfStockPolicy: String? = null,
+    @SerialName("effective_policy") val effectivePolicy: String? = null,
+)
+
+@Serializable
+data class InventoryPolicyPatchRequest(
+    @SerialName("out_of_stock_policy") val outOfStockPolicy: String,
+)
+
+@Serializable
+data class WarehouseOpsSettingsResponse(
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    val name: String = "",
+    @SerialName("default_out_of_stock_policy") val defaultOutOfStockPolicy: String = "REJECT",
+    @SerialName("operating_schedule") val operatingSchedule: kotlinx.serialization.json.JsonElement? = null,
+    @SerialName("ops_always_available") val opsAlwaysAvailable: Boolean = true,
+)
+
+@Serializable
+data class WarehouseOpsSettingsPatchRequest(
+    @SerialName("default_out_of_stock_policy") val defaultOutOfStockPolicy: String,
+    @SerialName("operating_schedule") val operatingSchedule: kotlinx.serialization.json.JsonElement,
 )
 
 @Serializable
@@ -558,6 +580,7 @@ data class CreateWarehouseSupplyRequestRequest(
     val notes: String,
     val items: List<CreateWarehouseSupplyRequestItem> = emptyList(),
     @SerialName("use_demand_forecast") val useDemandForecast: Boolean = true,
+    @SerialName("requested_delivery_date") val requestedDeliveryDate: String? = null,
 )
 
 @Serializable

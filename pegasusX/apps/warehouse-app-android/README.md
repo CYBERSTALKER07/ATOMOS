@@ -1,6 +1,6 @@
 # warehouse-app-android
 
-Kotlin + Jetpack Compose Material 3 warehouse admin client for pegasusX. Parity target: `pegasus/apps/warehouse-app-android` + iOS More hub routes.
+Kotlin + Jetpack Compose Material 3 warehouse admin client for pegasusX. Parity target: `warehouse-portal` + iOS warehouse app.
 
 ## Stack
 
@@ -26,13 +26,16 @@ cd pegasusX/apps/warehouse-app-android
 ./gradlew :app:assembleDebug
 ```
 
-Optional WS contract codegen (requires `quicktype` CLI):
+## Navigation map (`WarehouseSection`)
 
-```properties
-warehouse.ws.codegen=true
-quicktype.path=/path/to/quicktype
-```
+| Group | Android route | Portal |
+| --- | --- | --- |
+| Primary | `dashboard`, `orders`, `drivers`, `vehicles`, `inventory`, `dispatch`, `analytics`, `treasury`, `staff` | `/`, `/orders`, `/drivers`, `/vehicles`, `/inventory`, `/dispatch`, analytics, treasury, staff |
+| Fulfillment | `manifests`, `dispatch_settings`, `fleet_live_map`, `transfer_actions` | manifests, dispatch settings, fleet map, transfers |
+| Inventory | `products`, `supply_requests`, `replenishment`, `demand_forecast`, `ops_settings` | products, supply requests, replenishment, forecast, `/settings` |
+| Operations | `crm`, `returns`, `payment_config`, `notifications` | retailers, returns, payment config, native inbox |
+| Portal only | `portal/setup`, `portal/profile`, `portal/search` | setup wizard, profile, global search (desktop) |
 
-## Surfaces
+Compact tabs: Dashboard · Orders · Dispatch · More (secondary routes).
 
-Dashboard KPIs, orders (+ detail), drivers, vehicles, inventory, products, manifests, analytics, CRM, returns, treasury, dispatch (preview / supply / locks), staff, **More** hub (manifests, forecast, etc.), demand forecast.
+Notifications opens the **native** `NotificationInboxScreen`, not a portal handoff.

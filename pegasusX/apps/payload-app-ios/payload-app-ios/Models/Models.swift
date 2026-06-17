@@ -11,8 +11,21 @@ import Foundation
 // MARK: - Auth
 
 struct LoginRequest: Encodable {
-    let phone: String
-    let pin: String
+    var phone: String = ""
+    var pin: String = ""
+    var idToken: String = ""
+
+    enum CodingKeys: String, CodingKey {
+        case phone, pin
+        case idToken = "id_token"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        if !phone.isEmpty { try container.encode(phone, forKey: .phone) }
+        if !pin.isEmpty { try container.encode(pin, forKey: .pin) }
+        if !idToken.isEmpty { try container.encode(idToken, forKey: .idToken) }
+    }
 }
 
 struct LoginResponse: Decodable {
@@ -35,6 +48,13 @@ struct RefreshTokenRequest: Encodable {
     enum CodingKeys: String, CodingKey {
         case refreshToken = "refresh_token"
     }
+}
+
+struct CatalogBarcodeLookup: Decodable {
+    let productId: String?
+    let skuId: String?
+    let name: String?
+    let barcode: String?
 }
 
 struct RefreshTokenResponse: Decodable {

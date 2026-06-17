@@ -100,8 +100,12 @@ enum WarehouseIdempotency {
         return "warehouse-inbound-confirm:\(warehouseId()):\(disposition):\(stableHash(sorted))"
     }
 
-    static func createSupplyRequest(factoryId: String, priority: String, notes: String) -> String {
-        "warehouse-create-supply-request:\(warehouseId()):\(factoryId):\(priority):\(stableHash(notes))"
+    static func createSupplyRequest(factoryId: String, mode: String, notes: String) -> String {
+        "warehouse-create-supply-request:\(warehouseId()):\(factoryId):\(mode):\(stableHash(notes))"
+    }
+
+    static func opsSettings() -> String {
+        "warehouse-ops-settings:\(warehouseId())"
     }
 
     static func supplyRequestTransition(requestId: String, action: String) -> String {

@@ -8,14 +8,10 @@ import SwiftUI
 struct LoginView: View {
     let onAuthenticated: () -> Void
 
-    @State private var phone = "+998"
-    @State private var pin = ""
-    @State private var pinVisible = false
-    @State private var isLoading = false
-    @State private var error: String?
+    @State private var viewModel = LoginViewModel()
     @FocusState private var focusedField: Field?
 
-    private enum Field { case phone, pin }
+    private enum Field { case phone, otp, pin }
 
     var body: some View {
         ZStack {
@@ -36,7 +32,9 @@ struct LoginView: View {
                         Text("TERMINAL ACCESS")
                             .font(.system(size: 28, weight: .black, design: .monospaced))
                             .foregroundStyle(LabTheme.fg)
-                        Text("Sign in with fleet phone and 6-digit PIN.")
+                        Text(viewModel.mode == .otp
+                             ? "Sign in with fleet phone OTP."
+                             : "Dev login with phone and 6-digit PIN.")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(LabTheme.fgSecondary)
                             .multilineTextAlignment(.center)
@@ -52,7 +50,7 @@ struct LoginView: View {
                                 Image(systemName: "phone.fill")
                                     .font(.system(size: 14))
                                     .foregroundStyle(LabTheme.fgTertiary)
-                                TextField("+998 …", text: $phone)
+                                TextField("+998 …", text: $viewModel.phone)
                                     .keyboardType(.phonePad)
                                     .textContentType(.telephoneNumber)
                                     .focused($focusedField, equals: .phone)
@@ -68,59 +66,74 @@ struct LoginView: View {
                                         lineWidth: 0.5
                                     )
                             }
-                            .disabled(isLoading)
+                            .disabled(viewModel.loading || (viewModel.mode == .otp && viewModel.otpSent))
                         }
 
-                        VStack(alignment: .leading, spacing: LabTheme.s8) {
-                            Text("6-DIGIT PIN")
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                .foregroundStyle(LabTheme.fgTertiary)
-                            HStack(spacing: LabTheme.s12) {
-                                Image(systemName: "lock.fill")
-                                    .font(.system(size: 14))
+                        if viewModel.mode == .otp, viewModel.otpSent {
+                            VStack(alignment: .leading, spacing: LabTheme.s8) {
+                                Text("VERIFICATION CODE")
+                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .foregroundStyle(LabTheme.fgTertiary)
-                                Group {
-                                    if pinVisible {
-                                        TextField("••••••", text: $pin)
-                                    } else {
-                                        SecureField("••••••", text: $pin)
-                                    }
-                                }
+                                TextField("000000", text: Binding(
+                                    get: { viewModel.otpCode },
+                                    set: { viewModel.setOtp($0) }
+                                ))
                                 .keyboardType(.numberPad)
                                 .textContentType(.oneTimeCode)
-                                .focused($focusedField, equals: .pin)
+                                .focused($focusedField, equals: .otp)
                                 .font(.system(size: 24, weight: .black, design: .monospaced))
                                 .foregroundStyle(LabTheme.fg)
-                                .onChange(of: pin) { _, newValue in
-                                    if newValue.count > 6 { pin = String(newValue.prefix(6)) }
+                                .padding(LabTheme.s16)
+                                .background(LabTheme.card, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous)
+                                        .stroke(
+                                            focusedField == .otp ? LabTheme.fg.opacity(0.3) : LabTheme.separator,
+                                            lineWidth: 0.5
+                                        )
                                 }
-                                Button {
-                                    pinVisible.toggle()
-                                } label: {
-                                    Image(systemName: pinVisible ? "eye.fill" : "eye.slash.fill")
+                                .disabled(viewModel.loading)
+                            }
+                        }
+
+                        if viewModel.mode == .pinDev {
+                            VStack(alignment: .leading, spacing: LabTheme.s8) {
+                                Text("6-DIGIT PIN")
+                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .foregroundStyle(LabTheme.fgTertiary)
+                                HStack(spacing: LabTheme.s12) {
+                                    Image(systemName: "lock.fill")
                                         .font(.system(size: 14))
                                         .foregroundStyle(LabTheme.fgTertiary)
+                                    SecureField("••••••", text: Binding(
+                                        get: { viewModel.pin },
+                                        set: { viewModel.setPin($0) }
+                                    ))
+                                    .keyboardType(.numberPad)
+                                    .textContentType(.oneTimeCode)
+                                    .focused($focusedField, equals: .pin)
+                                    .font(.system(size: 24, weight: .black, design: .monospaced))
+                                    .foregroundStyle(LabTheme.fg)
                                 }
-                                .accessibilityLabel(pinVisible ? "Hide PIN" : "Show PIN")
-                            }
-                            .padding(LabTheme.s16)
-                            .background(LabTheme.card, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous)
-                                    .stroke(
-                                        focusedField == .pin ? LabTheme.fg.opacity(0.3) : LabTheme.separator,
-                                        lineWidth: 0.5
-                                    )
-                            }
-                            .disabled(isLoading)
+                                .padding(LabTheme.s16)
+                                .background(LabTheme.card, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous)
+                                        .stroke(
+                                            focusedField == .pin ? LabTheme.fg.opacity(0.3) : LabTheme.separator,
+                                            lineWidth: 0.5
+                                        )
+                                }
+                                .disabled(viewModel.loading)
 
-                            PinDots(filled: pin.count)
+                                PinDots(filled: viewModel.pin.count)
+                            }
                         }
                     }
                     .padding(LabTheme.s20)
                     .labCard()
 
-                    if let error {
+                    if let error = viewModel.error {
                         DriverStateCard(
                             icon: "exclamationmark.triangle.fill",
                             title: "LOGIN_FAILED",
@@ -129,28 +142,52 @@ struct LoginView: View {
                         .transition(.opacity.combined(with: .move(edge: .top)))
                     }
 
-                    Button {
-                        doLogin()
-                    } label: {
-                        HStack(spacing: LabTheme.s12) {
-                            if isLoading {
-                                ProgressView()
-                                    .tint(LabTheme.buttonFg)
-                            } else {
-                                Image(systemName: "lock.shield.fill")
-                                Text("AUTHENTICATE")
-                                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                    if viewModel.mode == .otp {
+                        if !viewModel.otpSent {
+                            Button {
+                                Task { await viewModel.sendOtp() }
+                            } label: {
+                                authButtonLabel("SEND CODE")
                             }
+                            .disabled(viewModel.loading || viewModel.phone.trimmingCharacters(in: .whitespaces).isEmpty)
+                            .buttonStyle(.pressable)
+                        } else {
+                            Button {
+                                Task { await completeAuth { await viewModel.verifyOtp() } }
+                            } label: {
+                                authButtonLabel("VERIFY & SIGN IN")
+                            }
+                            .disabled(viewModel.loading || viewModel.otpCode.count < 6)
+                            .buttonStyle(.pressable)
+
+                            Button {
+                                Task { await viewModel.sendOtp() }
+                            } label: {
+                                Text("RESEND CODE")
+                                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                    .frame(maxWidth: .infinity, minHeight: 48)
+                            }
+                            .disabled(viewModel.loading)
+                            .buttonStyle(.pressable)
                         }
-                        .frame(maxWidth: .infinity, minHeight: 52)
-                        .foregroundStyle(LabTheme.buttonFg)
-                        .background(
-                            isFormValid ? LabTheme.fg : LabTheme.fg.opacity(0.3),
-                            in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous)
-                        )
+                    } else {
+                        Button {
+                            Task { await completeAuth { await viewModel.submitPin() } }
+                        } label: {
+                            authButtonLabel("AUTHENTICATE")
+                        }
+                        .disabled(viewModel.loading || viewModel.phone.trimmingCharacters(in: .whitespaces).count < 5 || viewModel.pin.count < 6)
+                        .buttonStyle(.pressable)
                     }
-                    .disabled(isLoading || !isFormValid)
-                    .buttonStyle(.pressable)
+
+                    Button {
+                        viewModel.setMode(viewModel.mode == .otp ? .pinDev : .otp)
+                    } label: {
+                        Text(viewModel.mode == .otp ? "Use PIN (dev)" : "Use phone OTP")
+                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(LabTheme.fgSecondary)
+                    }
+                    .disabled(viewModel.loading)
 
                     Spacer()
                 }
@@ -158,63 +195,40 @@ struct LoginView: View {
                 .labReadableWidth()
             }
         }
-        .animation(Anim.snappy, value: error)
-        .onSubmit { doLogin() }
-        .onAppear { focusedField = .phone }
-    }
-
-    private var isFormValid: Bool {
-        phone.trimmingCharacters(in: .whitespaces).count >= 5 && pin.count == 6
-    }
-
-    private func doLogin() {
-        guard isFormValid else {
-            error = "Phone and 6-digit PIN are required"
-            return
+        .animation(Anim.snappy, value: viewModel.error)
+        .onAppear {
+            FirebaseAuthHelper.shared.configure()
+            focusedField = .phone
         }
-        focusedField = nil
-        isLoading = true
-        error = nil
+    }
 
-        Task {
-            do {
-                let response = try await APIClient.shared.login(
-                    phone: phone.trimmingCharacters(in: .whitespaces),
-                    pin: pin.trimmingCharacters(in: .whitespaces)
-                )
-                await MainActor.run {
-                    TokenStore.shared.save(response: response)
-                    Haptics.success()
-                    onAuthenticated()
-                }
-                if let pushToken = PushNotificationManager.shared.deviceToken
-                    ?? UserDefaults.standard.string(forKey: "pegasus_push_token"),
-                   !pushToken.isEmpty {
-                    try? await APIClient.shared.registerDeviceToken(token: pushToken)
-                }
-            } catch let apiError as APIError {
-                await MainActor.run {
-                    Haptics.error()
-                    switch apiError {
-                    case .unauthorized:
-                        error = "Invalid phone or PIN"
-                    case .forbidden:
-                        error = "Account deactivated"
-                    case .httpError(let code):
-                        error = "Login failed (\(code))"
-                    case .networkError:
-                        error = "Network error. Check connection."
-                    default:
-                        error = "Something went wrong."
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    Haptics.error()
-                    self.error = "Network error. Check connection."
-                }
+    @ViewBuilder
+    private func authButtonLabel(_ title: String) -> some View {
+        HStack(spacing: LabTheme.s12) {
+            if viewModel.loading {
+                ProgressView()
+                    .tint(LabTheme.buttonFg)
+            } else {
+                Image(systemName: "lock.shield.fill")
+                Text(title)
+                    .font(.system(size: 16, weight: .black, design: .monospaced))
             }
-            await MainActor.run { isLoading = false }
+        }
+        .frame(maxWidth: .infinity, minHeight: 52)
+        .foregroundStyle(LabTheme.buttonFg)
+        .background(LabTheme.fg, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous))
+    }
+
+    private func completeAuth(_ action: () async -> Void) async {
+        focusedField = nil
+        await action()
+        guard TokenStore.shared.isAuthenticated else { return }
+        Haptics.success()
+        onAuthenticated()
+        if let pushToken = PushNotificationManager.shared.deviceToken
+            ?? UserDefaults.standard.string(forKey: "pegasus_push_token"),
+           !pushToken.isEmpty {
+            try? await APIClient.shared.registerDeviceToken(token: pushToken)
         }
     }
 }

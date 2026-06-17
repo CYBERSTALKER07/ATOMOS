@@ -368,12 +368,14 @@ struct InventoryItem: Decodable, Identifiable {
     let productName: String
     let quantity: Int
     let reorderThreshold: Int
+    let outOfStockPolicy: String?
 
     enum CodingKeys: String, CodingKey {
         case productId = "product_id"
         case productName = "product_name"
         case quantity
         case reorderThreshold = "reorder_threshold"
+        case outOfStockPolicy = "out_of_stock_policy"
     }
 
     init(from decoder: Decoder) throws {
@@ -382,6 +384,41 @@ struct InventoryItem: Decodable, Identifiable {
         productName = try c.decodeIfPresent(String.self, forKey: .productName) ?? ""
         quantity = try c.decodeIfPresent(Int.self, forKey: .quantity) ?? 0
         reorderThreshold = try c.decodeIfPresent(Int.self, forKey: .reorderThreshold) ?? 0
+        outOfStockPolicy = try c.decodeIfPresent(String.self, forKey: .outOfStockPolicy)
+    }
+}
+
+struct InventoryPolicyPatchRequest: Encodable {
+    let outOfStockPolicy: String
+
+    enum CodingKeys: String, CodingKey {
+        case outOfStockPolicy = "out_of_stock_policy"
+    }
+}
+
+struct WarehouseOpsSettingsResponse: Decodable {
+    let warehouseId: String
+    let name: String
+    let defaultOutOfStockPolicy: String
+    let operatingSchedule: [String: AnyCodable]?
+    let opsAlwaysAvailable: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case warehouseId = "warehouse_id"
+        case name
+        case defaultOutOfStockPolicy = "default_out_of_stock_policy"
+        case operatingSchedule = "operating_schedule"
+        case opsAlwaysAvailable = "ops_always_available"
+    }
+}
+
+struct WarehouseOpsSettingsPatchRequest: Encodable {
+    let defaultOutOfStockPolicy: String
+    let operatingSchedule: [String: AnyCodable]
+
+    enum CodingKeys: String, CodingKey {
+        case defaultOutOfStockPolicy = "default_out_of_stock_policy"
+        case operatingSchedule = "operating_schedule"
     }
 }
 
@@ -1439,6 +1476,7 @@ struct CreateWarehouseSupplyRequestRequest: Encodable {
     let notes: String
     let items: [CreateWarehouseSupplyRequestItem]
     let useDemandForecast: Bool
+    let requestedDeliveryDate: String?
 
     enum CodingKeys: String, CodingKey {
         case factoryId = "factory_id"
@@ -1446,6 +1484,7 @@ struct CreateWarehouseSupplyRequestRequest: Encodable {
         case notes
         case items
         case useDemandForecast = "use_demand_forecast"
+        case requestedDeliveryDate = "requested_delivery_date"
     }
 }
 
@@ -1587,4 +1626,72 @@ struct PaymentGateway: Decodable, Identifiable {
 
 struct PaymentConfigResponse: Decodable {
     let gateways: [PaymentGateway]
+}
+
+// MARK: - JSON helpers
+
+struct AnyCodable: Codable {
+    let value: Any
+
+    init(_ value: Any) {
+        self.value = value
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() {
+            value = NSNull()
+        } else if let bool = try? container.decode(Bool.self) {
+            value = bool
+        } else if let int = try? container.decode(Int.self) {
+            value = int
+        } else if let double = try? container.decode(Double.self) {
+            value = double
+        } else if let string = try? container.decode(String.self) {
+            value = string
+        } else if let dict = try? container.decode([String: AnyCodable].self) {
+            value = dict.mapValues { $0.value }
+        } else if let array = try? container.decode([AnyCodable].self) {
+            value = array.map { $0.value }
+        } else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unsupported JSON value")
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch value {
+        case is NSNull:
+            try container.encodeNil()
+        case let bool as Bool:
+            try container.encode(bool)
+        case let int as Int:
+            try container.encode(int)
+        case let double as Double:
+            try container.encode(double)
+        case let string as String:
+            try container.encode(string)
+        case let dict as [String: Any]:
+            try container.encode(dict.mapValues { AnyCodable($0) })
+        case let array as [Any]:
+            try container.encode(array.map { AnyCodable($0) })
+        default:
+            throw EncodingError.invalidValue(
+                value,
+                EncodingError.Context(codingPath: container.codingPath, debugDescription: "Unsupported JSON value")
+            )
+        }
+    }
+}
+
+extension Dictionary where Key == String, Value == AnyCodable {
+    func prettyJSONString() -> String {
+        let object = mapValues { $0.value }
+        guard JSONSerialization.isValidJSONObject(object),
+              let data = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+              let string = String(data: data, encoding: .utf8) else {
+            return "{\n  \"is_24h\": true\n}"
+        }
+        return string
+    }
 }

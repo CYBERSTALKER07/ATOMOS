@@ -8,6 +8,7 @@ final class AuthManager {
     static let shared = AuthManager()
 
     var isLoggedIn: Bool = false
+    var needsSetup: Bool = false
     var currentUser: User?
     var isLoading = false
     var errorMessage: String?
@@ -17,11 +18,12 @@ final class AuthManager {
     private init() {
         if api.authToken != nil {
             isLoggedIn = true
-            // Restore user from Keychain
             let userId = KeychainHelper.read(key: "user_id") ?? ""
             let userName = KeychainHelper.read(key: "user_name") ?? ""
             let company = KeychainHelper.read(key: "user_company") ?? ""
             currentUser = User(id: userId, name: userName, company: company, email: "", avatarURL: nil)
+            let configured = KeychainHelper.read(key: "is_configured") == "true"
+            needsSetup = !configured
         }
     }
 
@@ -63,16 +65,7 @@ final class AuthManager {
         do {
             let body = LoginRequest(phoneNumber: formatted, password: password)
             let response: AuthResponse = try await api.post(path: "/v1/auth/retailer/login", body: body)
-            api.authToken = response.token
-            KeychainHelper.save(key: "user_id", value: response.user.id)
-            KeychainHelper.save(key: "user_name", value: response.user.name)
-            KeychainHelper.save(key: "user_company", value: response.user.company)
-            // Exchange Firebase custom token (graceful degradation)
-            if let fbToken = response.firebaseToken, !fbToken.isEmpty {
-                FirebaseAuthHelper.shared.exchangeCustomToken(fbToken) { _ in }
-            }
-            currentUser = response.user
-            isLoggedIn = true
+            applyAuthResponse(response)
         } catch {
             errorMessage = RetailerErrorSupport.message(
                 for: error,
@@ -125,16 +118,7 @@ final class AuthManager {
                 storageCeilingHeightCM: storageCeilingHeightCM
             )
             let response: AuthResponse = try await api.post(path: "/v1/auth/retailer/register", body: body)
-            api.authToken = response.token
-            KeychainHelper.save(key: "user_id", value: response.user.id)
-            KeychainHelper.save(key: "user_name", value: response.user.name)
-            KeychainHelper.save(key: "user_company", value: response.user.company)
-            // Exchange Firebase custom token (graceful degradation)
-            if let fbToken = response.firebaseToken, !fbToken.isEmpty {
-                FirebaseAuthHelper.shared.exchangeCustomToken(fbToken) { _ in }
-            }
-            currentUser = response.user
-            isLoggedIn = true
+            applyAuthResponse(response)
         } catch {
             errorMessage = RetailerErrorSupport.message(
                 for: error,
@@ -154,8 +138,30 @@ final class AuthManager {
         KeychainHelper.delete(key: "user_id")
         KeychainHelper.delete(key: "user_name")
         KeychainHelper.delete(key: "user_company")
+        KeychainHelper.delete(key: "is_configured")
         FirebaseAuthHelper.shared.signOut()
         currentUser = nil
         isLoggedIn = false
+        needsSetup = false
+    }
+
+    func markConfigured() {
+        KeychainHelper.save(key: "is_configured", value: "true")
+        needsSetup = false
+    }
+
+    private func applyAuthResponse(_ response: AuthResponse) {
+        api.authToken = response.token
+        KeychainHelper.save(key: "user_id", value: response.user.id)
+        KeychainHelper.save(key: "user_name", value: response.user.name)
+        KeychainHelper.save(key: "user_company", value: response.user.company)
+        let configured = response.isConfigured ?? true
+        KeychainHelper.save(key: "is_configured", value: configured ? "true" : "false")
+        if let fbToken = response.firebaseToken, !fbToken.isEmpty {
+            FirebaseAuthHelper.shared.exchangeCustomToken(fbToken) { _ in }
+        }
+        currentUser = response.user
+        isLoggedIn = true
+        needsSetup = !configured
     }
 }

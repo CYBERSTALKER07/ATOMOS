@@ -499,15 +499,21 @@ struct OrderDetailSheet: View {
         isCancelling = true
         defer { isCancelling = false }
         let retailerId = AuthManager.shared.currentUser?.id ?? ""
+        let requestCancelStates: Set<OrderStatus> = [.dispatched, .inTransit, .arrived]
+        let useRequestCancel = requestCancelStates.contains(order.status)
         do {
-            let _: [String: String] = try await api.post(
-                path: "/v1/order/cancel",
-                body: [
-                    "order_id": order.id,
-                    "retailer_id": retailerId,
-                ],
-                headers: ["Idempotency-Key": RetailerIdempotency.cancel(orderId: order.id)]
-            )
+            if useRequestCancel {
+                try await api.requestCancelOrder(orderId: order.id, retailerId: retailerId)
+            } else {
+                let _: [String: String] = try await api.post(
+                    path: "/v1/order/cancel",
+                    body: [
+                        "order_id": order.id,
+                        "retailer_id": retailerId,
+                    ],
+                    headers: ["Idempotency-Key": RetailerIdempotency.cancel(orderId: order.id)]
+                )
+            }
             onCancelled?()
             dismiss()
         } catch {

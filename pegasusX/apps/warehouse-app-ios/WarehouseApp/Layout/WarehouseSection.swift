@@ -21,9 +21,10 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
     case retailers = "Retailers"
     case returns = "Returns"
     case paymentConfig = "Payment config"
+    case opsSettings = "Ops settings"
+    case notifications = "Notifications"
     case portalSetup = "Warehouse setup"
     case portalProfile = "Profile"
-    case portalNotifications = "Notifications"
     case portalSearch = "Global search"
 
     var id: String { rawValue }
@@ -50,9 +51,10 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
         case .retailers: "person.crop.rectangle"
         case .returns: "arrow.uturn.backward"
         case .paymentConfig: "creditcard"
+        case .opsSettings: "gearshape"
+        case .notifications: "bell"
         case .portalSetup: "gearshape.2"
         case .portalProfile: "person.crop.circle"
-        case .portalNotifications: "bell"
         case .portalSearch: "magnifyingglass"
         }
     }
@@ -71,15 +73,15 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
     }
 
     static var inventorySections: [WarehouseSection] {
-        [.products, .supplyRequests, .replenishment, .demandForecast]
+        [.products, .supplyRequests, .replenishment, .demandForecast, .opsSettings]
     }
 
     static var operationsSections: [WarehouseSection] {
-        [.retailers, .returns, .paymentConfig]
+        [.retailers, .returns, .paymentConfig, .notifications]
     }
 
     static var portalSections: [WarehouseSection] {
-        [.portalSetup, .portalProfile, .portalNotifications, .portalSearch]
+        [.portalSetup, .portalProfile, .portalSearch]
     }
 
     /// iPad sidebar: mirrors warehouse-portal nav groups.
@@ -91,7 +93,6 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
         switch self {
         case .portalSetup: .setup
         case .portalProfile: .profile
-        case .portalNotifications: .notifications
         case .portalSearch: .search
         default: nil
         }

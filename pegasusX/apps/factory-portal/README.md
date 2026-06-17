@@ -11,9 +11,11 @@ Next.js 15 + **Tauri 2** desktop shell for **FACTORY_ADMIN** operators. Route ma
 
 ## Auth
 
-- `POST /v1/auth/factory/login` — phone + password
+- `POST /v1/auth/factory/login` — Firebase phone OTP (`id_token`) or phone + password (dev)
 - `POST /v1/auth/factory/refresh` — refresh token rotation
 - WebSocket: `GET /v1/ws?token=…` (factory hub rooms)
+
+Firebase phone OTP uses the Auth emulator in development (`NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST`, default `http://localhost:9099`).
 
 ## Commands
 
@@ -35,6 +37,10 @@ pnpm --filter @pegasusx/factory-portal typecheck
 ```bash
 # .env.local
 NEXT_PUBLIC_API_URL=http://localhost:8180
+NEXT_PUBLIC_FIREBASE_API_KEY=demo-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=demo-pegasus.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-pegasus
+NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST=http://localhost:9099
 ```
 
 Port **3003** avoids collision with warehouse-portal on **3002**.

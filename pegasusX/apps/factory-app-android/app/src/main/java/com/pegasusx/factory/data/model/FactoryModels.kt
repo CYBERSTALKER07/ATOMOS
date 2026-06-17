@@ -6,8 +6,10 @@ import kotlinx.serialization.Serializable
 // ── Auth ──
 @Serializable
 data class LoginRequest(
-    val phone: String,
-    val password: String,
+    val phone: String = "",
+    val password: String = "",
+    val pin: String = "",
+    @SerialName("id_token") val idToken: String = "",
 )
 
 @Serializable

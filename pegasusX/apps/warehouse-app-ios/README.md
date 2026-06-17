@@ -1,6 +1,6 @@
 # Pegasus X — Warehouse Admin (iOS)
 
-Native SwiftUI clone of `pegasus/apps/warehouse-portal` wired to `pegasusX/apps/backend-go`.
+Native SwiftUI client wired to `pegasusX/apps/backend-go` and parity with `warehouse-portal`.
 
 ## Run
 
@@ -25,16 +25,18 @@ Override via `WAREHOUSE_DEMO_PHONE`, `WAREHOUSE_DEMO_PIN`, `WAREHOUSE_DEMO_ID`.
 
 Set `PEGASUS_DEV_HOST` to your Mac LAN IP when testing on a physical device.
 
-## Surfaces
+## Navigation map (`WarehouseSection`)
 
-| Tab | Portal routes |
-| --- | --- |
-| Dashboard | `/` |
-| Orders | `/orders` |
-| Drivers / Vehicles | `/drivers`, `/vehicles` |
-| Inventory | `/inventory` |
-| Dispatch | `/dispatch`, locks, supply (embedded) |
-| Analytics / Treasury / Staff | matching portal |
-| **More** | Manifests, Products, Supply Requests, Demand Forecast, CRM, Returns |
+| Group | iOS section | Portal |
+| --- | --- | --- |
+| Primary | Dashboard, Orders, Drivers, Trucks, Inventory, Dispatch, Analytics, Treasury, Staff | matching portal routes |
+| Fulfillment | Manifests, Dispatch settings, Live fleet, Transfer actions | dispatch + fleet |
+| Inventory | Products, Supply requests, Replenishment, Demand forecast, **Ops settings** | `/inventory`, supply, replenishment, `/settings` |
+| Operations | Retailers, Returns, Payment config, **Notifications** | CRM, returns, payment config, native inbox |
+| Portal only | Warehouse setup, Profile, Global search | portal handoffs |
+
+Compact tabs: Dashboard · Orders · Dispatch · More.
+
+Notifications opens **NotificationInboxView** (native), not a portal handoff.
 
 WebSocket: `GET /v1/ws?token=…` (warehouse-scoped rooms).

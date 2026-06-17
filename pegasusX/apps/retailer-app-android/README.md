@@ -1,6 +1,6 @@
 # retailer-app-android
 
-Kotlin + Jetpack Compose Material 3 retailer client for pegasusX. Parity target: `pegasus/apps/retailer-app-android` + iOS + desktop.
+Kotlin + Jetpack Compose Material 3 retailer client for pegasusX. Parity target: desktop + iOS (single-tenant retailer row).
 
 ## Stack
 
@@ -26,12 +26,27 @@ cd pegasusX/apps/retailer-app-android
 ./gradlew :app:assembleDebug
 ```
 
-Optional WS codegen:
+## Canonical navigation map
 
-```properties
-retailer.ws.codegen=true
-```
+| Destination | Route / entry | Desktop equivalent |
+|-------------|---------------|-------------------|
+| Dashboard | `HOME` tab | `/dashboard` |
+| Orders | `ORDERS` tab | `/orders` |
+| Tracking | Deliveries → Map (`DELIVERIES`, tab 0) | `/tracking` |
+| Dock | Deliveries → Dock (`DOCK`, tab 1) | `/dock` |
+| Catalog | `CATALOG` tab | `/catalog` |
+| Procurement | Sidebar `PROCUREMENT` | `/procurement` |
+| Insights / Analytics | Sidebar `ANALYTICS` | `/insights` |
+| Suppliers | `SUPPLIERS` | catalog / procurement |
+| Auto-order | Sidebar `AUTO_ORDER` | `/settings` (subsection) |
+| Future demand | Sidebar `FUTURE_DEMAND` | dashboard + insights |
+| Notifications | Inbox overlay | `/notifications` |
+| Settings / Profile | Profile stack | `/settings`, `/settings/cards`, `/settings/family` |
 
-## Surfaces
+Dock deep-link: sidebar `DOCK` → `DeliveriesHubScreen(initialTabIndex = 1)`.
 
-Auth, catalog, cart, checkout, orders, tracking map, suppliers, analytics, profile, notifications, auto-order settings.
+## Notes
+
+- Post-register setup: `AuthViewModel` posts `POST /v1/retailer/setup` after registration (best-effort).
+- `cashCheckout` in `NavigationViewModel` is reserved for cash-at-order experiments; delivery cash confirmation uses `confirmCash` at handoff.
+- Pending checkout replay: `PendingOrderSyncWorker` enqueued on WebSocket reconnect via `NavigationViewModel`.

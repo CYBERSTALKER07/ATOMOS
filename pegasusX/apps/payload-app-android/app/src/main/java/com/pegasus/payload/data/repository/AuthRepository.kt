@@ -51,7 +51,14 @@ class AuthRepository @Inject constructor(
     }
 
     suspend fun login(phone: String, pin: String): Result<Session> = runCatching {
-        val resp: LoginResponse = api.login(LoginRequest(phone = phone, pin = pin))
+        persistSession(api.login(LoginRequest(phone = phone, pin = pin)))
+    }
+
+    suspend fun loginWithIdToken(idToken: String): Result<Session> = runCatching {
+        persistSession(api.login(LoginRequest(idToken = idToken)))
+    }
+
+    private suspend fun persistSession(resp: LoginResponse): Session {
         secureStore.token = resp.token
         if (resp.refreshToken.isNotBlank()) {
             secureStore.refreshToken = resp.refreshToken
@@ -73,7 +80,7 @@ class AuthRepository @Inject constructor(
             warehouseName = resp.warehouseName,
         )
         _session.value = s
-        s
+        return s
     }
 
     fun logout() {

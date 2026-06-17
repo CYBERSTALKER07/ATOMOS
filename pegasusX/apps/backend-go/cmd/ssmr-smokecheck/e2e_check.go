@@ -244,6 +244,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runReturnGateE2E(ctx, client, base, cfg, supplierID, cookie, retailerToken, h3Cell); err != nil {
 		return fmt.Errorf("return gate: %w", err)
 	}
+	if err := assertDriverFirebaseOTPLogin(ctx, client, base); err != nil {
+		return fmt.Errorf("driver firebase otp: %w", err)
+	}
 
 	fmt.Println("PX_E2E_ORDER_OK")
 	fmt.Println("PX_E2E_PAYMENT_OK")
@@ -613,6 +616,18 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 	token = refreshResp.Token
 	fmt.Println("PX_E2E_PAYLOAD_AUTH_REFRESH_OK")
 
+	if testIDToken := strings.TrimSpace(os.Getenv("PAYLOAD_FIREBASE_TEST_ID_TOKEN")); testIDToken != "" {
+		otpBody, _ := json.Marshal(map[string]string{"id_token": testIDToken})
+		status, respBody, _, err = clientPost(ctx, client, base+"/v1/auth/payloader/login", otpBody, "", "")
+		if err != nil {
+			return fmt.Errorf("payloader firebase otp login: %w", err)
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("payloader firebase otp login status %d body %s", status, string(respBody))
+		}
+		fmt.Println("PX_E2E_PAYLOAD_FIREBASE_OTP_OK")
+	}
+
 	if status, _, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/payloader/trucks", nil, token, ""); err != nil {
 		return fmt.Errorf("payloader trucks: %w", err)
 	} else if status != http.StatusOK {
@@ -980,6 +995,23 @@ func driverBearerToken(ctx context.Context, client *http.Client, base string) (s
 		return "", fmt.Errorf("driver login missing token body %s", string(respBody))
 	}
 	return resp.Token, nil
+}
+
+func assertDriverFirebaseOTPLogin(ctx context.Context, client *http.Client, base string) error {
+	testIDToken := strings.TrimSpace(os.Getenv("DRIVER_FIREBASE_TEST_ID_TOKEN"))
+	if testIDToken == "" {
+		return nil
+	}
+	otpBody, _ := json.Marshal(map[string]string{"id_token": testIDToken})
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/auth/driver/login", otpBody, "", "")
+	if err != nil {
+		return fmt.Errorf("driver firebase otp login: %w", err)
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("driver firebase otp login status %d body %s", status, string(respBody))
+	}
+	fmt.Println("PX_E2E_DRIVER_FIREBASE_OTP_OK")
+	return nil
 }
 
 func assertSupplierPortalAPIs(ctx context.Context, client *http.Client, base, cookie string) error {
@@ -1703,6 +1735,9 @@ func runFactoryOps(ctx context.Context, client *http.Client, base, cookie string
 	if err := runFactoryClientPolicyE2E(ctx, client, base); err != nil {
 		return err
 	}
+	if err := assertFactoryFirebaseOTPLogin(ctx, client, base); err != nil {
+		return err
+	}
 	if err := runFactoryAnalyticsOverviewE2E(ctx, client, base, cookie); err != nil {
 		return err
 	}
@@ -1807,6 +1842,23 @@ func runFactoryOps(ctx context.Context, client *http.Client, base, cookie string
 	if err := runFactoryNotificationInboxE2E(ctx, client, base); err != nil {
 		return err
 	}
+	return nil
+}
+
+func assertFactoryFirebaseOTPLogin(ctx context.Context, client *http.Client, base string) error {
+	testIDToken := strings.TrimSpace(os.Getenv("FACTORY_FIREBASE_TEST_ID_TOKEN"))
+	if testIDToken == "" {
+		return nil
+	}
+	otpBody, _ := json.Marshal(map[string]string{"id_token": testIDToken})
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/auth/factory/login", otpBody, "", "")
+	if err != nil {
+		return fmt.Errorf("factory firebase otp login: %w", err)
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("factory firebase otp login status %d body %s", status, string(respBody))
+	}
+	fmt.Println("PX_E2E_FACTORY_FIREBASE_OTP_OK")
 	return nil
 }
 

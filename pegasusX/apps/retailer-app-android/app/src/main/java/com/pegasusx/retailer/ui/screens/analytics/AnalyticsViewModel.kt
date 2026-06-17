@@ -3,6 +3,8 @@ package com.pegasusx.retailer.ui.screens.analytics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
+import com.pegasusx.retailer.data.local.TokenManager
+import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.MonthlyExpense
 import com.pegasusx.retailer.data.model.RetailerAnalytics
 import com.pegasusx.retailer.data.model.RetailerDetailedAnalytics
@@ -41,6 +43,8 @@ data class AnalyticsUiState(
     val avgPerDayUzs: Long = 0,
     val totalWeekUzs: Long = 0,
     val daysOnBudget: Int = 0,
+    val predictions: List<DemandForecast> = emptyList(),
+    val correctingPredictionId: String? = null,
     val error: String? = null,
     val loadIssue: AnalyticsLoadIssue? = null,
 ) {
@@ -56,6 +60,7 @@ data class AnalyticsUiState(
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
     private val api: PegasusApi,
+    private val tokenManager: TokenManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AnalyticsUiState())
@@ -78,11 +83,18 @@ class AnalyticsViewModel @Inject constructor(
                 }
                 val analytics = expensesDeferred.await()
                 val detailed = detailedDeferred.await()
+                val retailerId = tokenManager.getUserId().orEmpty()
+                val predictions = if (retailerId.isNotEmpty()) {
+                    runCatching { api.getPredictions(retailerId) }.getOrDefault(emptyList())
+                } else {
+                    emptyList()
+                }
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         analytics = analytics,
                         detailed = detailed,
+                        predictions = predictions,
                         error = null,
                         loadIssue = null,
                     )
@@ -103,6 +115,27 @@ class AnalyticsViewModel @Inject constructor(
     fun setRange(range: String) {
         _uiState.update { it.copy(selectedRange = range) }
         refresh()
+    }
+
+    fun dismissPrediction(predictionId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(correctingPredictionId = predictionId) }
+            try {
+                api.correctPrediction(
+                    predictionId = predictionId,
+                    body = mapOf("status" to "REJECTED"),
+                    idempotencyKey = "retailer-prediction-correct:$predictionId:rejected",
+                )
+                refresh()
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            } finally {
+                _uiState.update { it.copy(correctingPredictionId = null) }
+            }
+        }
     }
 
     private fun rangeToDays(range: String): Int = when (range) {

@@ -2,8 +2,21 @@ import Foundation
 
 // MARK: - Auth
 struct LoginRequest: Encodable {
-    let phone: String
-    let password: String
+    var phone: String = ""
+    var password: String = ""
+    var idToken: String = ""
+
+    enum CodingKeys: String, CodingKey {
+        case phone, password
+        case idToken = "id_token"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        if !phone.isEmpty { try container.encode(phone, forKey: .phone) }
+        if !password.isEmpty { try container.encode(password, forKey: .password) }
+        if !idToken.isEmpty { try container.encode(idToken, forKey: .idToken) }
+    }
 }
 
 struct AuthResponse: Decodable {

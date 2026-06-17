@@ -268,15 +268,32 @@ final class APIClient {
     func editPreorder(orderId: String, deliveryDate: String, items: [EditPreorderItem]) async throws {
         let _: APIResponse<String> = try await post(
             path: "/v1/orders/edit-preorder",
-            body: EditPreorderRequest(orderId: orderId, requestedDeliveryDate: deliveryDate, lineItems: items)
+            body: EditPreorderRequest(orderId: orderId, requestedDeliveryDate: deliveryDate, lineItems: items),
+            headers: ["Idempotency-Key": "retailer-edit-preorder:\(orderId)"]
         )
     }
 
     // MARK: - Tracking
     // MARK: - Phase 4: Retailer Ecosystem
     
-    func setupRetailer(payload: [String: AnyEncodable]) async throws {
-        let _: APIResponse<String> = try await post(path: "/v1/retailer/setup", body: payload)
+    func setupRetailer(payload: [String: AnyEncodable], idempotencyKey: String? = nil) async throws {
+        var headers: [String: String] = [:]
+        if let idempotencyKey {
+            headers["Idempotency-Key"] = idempotencyKey
+        }
+        let _: APIResponse<String> = try await post(path: "/v1/retailer/setup", body: payload, headers: headers)
+    }
+
+    func requestCancelOrder(orderId: String, retailerId: String, reason: String = "Retailer requested cancellation") async throws {
+        let _: APIResponse<String> = try await post(
+            path: "/v1/orders/request-cancel",
+            body: [
+                "order_id": AnyEncodable(orderId),
+                "retailer_id": AnyEncodable(retailerId),
+                "reason": AnyEncodable(reason),
+            ],
+            headers: ["Idempotency-Key": RetailerIdempotency.requestCancel(orderId: orderId)]
+        )
     }
 
     func getPricingRules() async throws -> [String: AnyDecodable] {

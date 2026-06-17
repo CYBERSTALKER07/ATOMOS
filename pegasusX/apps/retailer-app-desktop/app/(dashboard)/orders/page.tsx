@@ -28,7 +28,7 @@ import { PageSection } from "../../../components/PageSection";
 import { ListRowSkeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
-import { confirmAiOrder, rejectAiOrder } from "../../../lib/api";
+import { confirmAiOrder, rejectAiOrder, confirmPreorder, editPreorder } from "../../../lib/api";
 import {
   retailerCancelKey,
   retailerRequestCancelKey,
@@ -90,6 +90,7 @@ export default function OrdersPage() {
   const [cancelling, setCancelling] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [aiActionPending, setAiActionPending] = useState(false);
+  const [preorderActionPending, setPreorderActionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const ws = useOptionalWebSocket();
   const router = useRouter();
@@ -168,6 +169,56 @@ export default function OrdersPage() {
       setAiActionPending(false);
     }
   }, [mutateOrders, mutateTracking]);
+
+  const handleConfirmPreorder = useCallback(
+    async (orderId: string) => {
+      setPreorderActionPending(true);
+      setActionError(null);
+      try {
+        const res = await confirmPreorder(orderId);
+        if (!res.ok) {
+          throw new Error(`Confirm preorder failed with ${res.status}`);
+        }
+        await Promise.all([mutateOrders(), mutateTracking()]);
+      } catch (err) {
+        setActionError(
+          err instanceof Error ? err.message : "Confirm preorder failed",
+        );
+      } finally {
+        setPreorderActionPending(false);
+      }
+    },
+    [mutateOrders, mutateTracking],
+  );
+
+  const handleEditPreorder = useCallback(
+    async (order: Order) => {
+      setPreorderActionPending(true);
+      setActionError(null);
+      try {
+        const deliveryDate =
+          order.deliver_before ?? order.auto_confirm_at ?? "";
+        const lineItems = (order.items ?? []).map((item) => ({
+          sku: item.sku_id || item.product_id || item.line_item_id,
+          name: item.sku_name || "Item",
+          quantity: item.quantity,
+          unit_price_minor: item.unit_price,
+        }));
+        const res = await editPreorder(order.order_id, deliveryDate, lineItems);
+        if (!res.ok) {
+          throw new Error(`Edit preorder failed with ${res.status}`);
+        }
+        await Promise.all([mutateOrders(), mutateTracking()]);
+      } catch (err) {
+        setActionError(
+          err instanceof Error ? err.message : "Edit preorder failed",
+        );
+      } finally {
+        setPreorderActionPending(false);
+      }
+    },
+    [mutateOrders, mutateTracking],
+  );
 
   const cancellableStates = useMemo(
     () =>
@@ -287,6 +338,7 @@ export default function OrdersPage() {
   const showAiActions =
     detail?.state === "PENDING_REVIEW" ||
     (detail?.order_source === "AI_PREDICTED" && detail?.state === "PENDING");
+  const showPreorderActions = detail?.state === "SCHEDULED";
   const showCancelAction =
     !!detail &&
     (cancellableStates.has(detail.state) ||
@@ -709,6 +761,34 @@ export default function OrdersPage() {
                       <Loader2 size={16} className="animate-spin" />
                     ) : (
                       "Confirm Suggestion"
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {showPreorderActions && (
+                <div className="mb-10 flex flex-wrap gap-3">
+                  <Button
+                    variant="secondary"
+                    isDisabled={preorderActionPending}
+                    onPress={() => detail && void handleEditPreorder(detail)}
+                    className="h-11 px-5 rounded-xl font-bold"
+                  >
+                    Edit Preorder
+                  </Button>
+                  <Button
+                    variant="primary"
+                    isDisabled={preorderActionPending}
+                    onPress={() =>
+                      detail && void handleConfirmPreorder(detail.order_id)
+                    }
+                    className="h-11 px-5 rounded-xl font-bold"
+                    style={{ background: "var(--desk-accent)", color: "white" }}
+                  >
+                    {preorderActionPending ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      "Confirm Preorder"
                     )}
                   </Button>
                 </div>

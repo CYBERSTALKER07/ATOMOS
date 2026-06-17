@@ -127,6 +127,23 @@
 
 ---
 
+## Phase RT-8 — Ecosystem parity (desktop + Android + iOS)
+
+| ID | Feature | Desktop | Android | iOS | Status |
+|----|---------|---------|---------|-----|--------|
+| RT8-01 | Preorder confirm / edit on Orders | `/orders` detail actions | `OrderedCard` + `OrdersViewModel` | `OrdersViewModel` + `OrderCardView` | **WIRED** |
+| RT8-02 | Request-cancel for in-flight orders | `/orders` | `OrdersViewModel` fallback | `OrdersViewModel` + `OrderDetailSheet` | **WIRED** |
+| RT8-03 | Post-register setup wizard | `/setup` | `AuthViewModel` post-register | `SetupView` + `needsSetup` gate | **WIRED** |
+| RT8-04 | Insights prediction dismiss | `/insights` | `AnalyticsScreen` | `InsightsView` | **WIRED** |
+| RT8-05 | Canonical nav map + READMEs | — | `README.md` + dock tab | `RetailerSection.swift` | **WIRED** |
+| RT8-06 | Orphan cleanup | — | removed `profile/AutoOrderScreen` | wired `SearchView`; removed `InboxView` | **WIRED** |
+| RT8-07 | iOS ViewModels | — | — | `OrdersViewModel`, `OnboardingViewModel`, `InsightsViewModel` | **WIRED** |
+| RT8-08 | Pending checkout on reconnect | `PendingCheckoutFlusher` | `PendingOrderSyncWorker` | `PendingOrderReplayer` | **WIRED** (verified) |
+
+**Exit:** Retailer row marked **Wired** in `ROLE_ROW_PARITY_MATRIX.md`; builds green on Android + iOS; `go test ./retailer/...` pass.
+
+---
+
 ## Verification
 
 ```bash

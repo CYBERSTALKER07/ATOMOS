@@ -152,18 +152,7 @@ enum DateRange: String, CaseIterable {
 
 struct InsightsView: View {
     @State private var refreshCenter = RetailerRefreshCenter.shared
-    @State private var analytics: RetailerAnalytics?
-    @State private var detailed: RetailerDetailedAnalytics?
-    @State private var isLoading = false
-    @State private var selectedRange: DateRange = .month
-
-    private let api = APIClient.shared
-
-    private var delta: Int {
-        guard let a = analytics else { return 0 }
-        guard a.totalLastMonth > 0 else { return 0 }
-        return Int(Double(a.totalThisMonth - a.totalLastMonth) / Double(a.totalLastMonth) * 100)
-    }
+    @State private var vm = InsightsViewModel()
 
     var body: some View {
         ScrollView {
@@ -184,15 +173,15 @@ struct InsightsView: View {
                 HStack(spacing: 8) {
                     ForEach(DateRange.allCases, id: \.self) { range_ in
                         Button {
-                            withAnimation(AnimationConstants.fluid) { selectedRange = range_ }
-                            Task { await loadDetailedAnalytics() }
+                            withAnimation(AnimationConstants.fluid) { vm.selectedRange = range_ }
+                            Task { await vm.loadDetailedAnalytics() }
                         } label: {
                             Text(range_.rawValue)
                                 .font(.system(.caption, design: .rounded, weight: .semibold))
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 7)
-                                .background(selectedRange == range_ ? AppTheme.accent : AppTheme.surfaceElevated)
-                                .foregroundStyle(selectedRange == range_ ? .white : AppTheme.textSecondary)
+                                .background(vm.selectedRange == range_ ? AppTheme.accent : AppTheme.surfaceElevated)
+                                .foregroundStyle(vm.selectedRange == range_ ? .white : AppTheme.textSecondary)
                                 .clipShape(.capsule)
                         }
                     }
@@ -201,14 +190,14 @@ struct InsightsView: View {
                 .padding(.horizontal, AppTheme.spacingLG)
 
                 // Loading spinner while data is not yet available
-                if isLoading && analytics == nil {
+                if vm.isLoading && vm.analytics == nil {
                     ProgressView()
                         .frame(maxWidth: .infinity, minHeight: 200)
                         .tint(AppTheme.accent)
                 }
 
                 // KPI Cards
-                if let a = analytics {
+                if let a = vm.analytics {
                     HStack(spacing: 12) {
                         KPICard(
                             title: "This Month",
@@ -217,16 +206,51 @@ struct InsightsView: View {
                         )
                         KPICard(
                             title: "vs Last Month",
-                            value: delta >= 0 ? "+\(delta)%" : "\(delta)%",
-                            subtitle: delta >= 0 ? "increase" : "decrease",
-                            isPositive: delta < 0 // Lower spend is good
+                            value: vm.delta >= 0 ? "+\(vm.delta)%" : "\(vm.delta)%",
+                            subtitle: vm.delta >= 0 ? "increase" : "decrease",
+                            isPositive: vm.delta < 0 // Lower spend is good
                         )
                     }
                     .padding(.horizontal, AppTheme.spacingLG)
                 }
 
+                if !vm.predictions.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("AI Demand Signals")
+                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .padding(.horizontal, AppTheme.spacingLG)
+
+                        ForEach(vm.predictions) { forecast in
+                            HStack(spacing: AppTheme.spacingMD) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(forecast.productName)
+                                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                        .foregroundStyle(AppTheme.textPrimary)
+                                    Text("\(forecast.predictedQuantity) units · \(forecast.confidencePercent)")
+                                        .font(.system(.caption, design: .rounded))
+                                        .foregroundStyle(AppTheme.textTertiary)
+                                }
+                                Spacer()
+                                Button {
+                                    Task { await vm.dismissPrediction(forecast) }
+                                } label: {
+                                    Text(vm.correctingId == forecast.id ? "Updating…" : "Dismiss")
+                                        .font(.system(.caption, design: .rounded, weight: .bold))
+                                        .foregroundStyle(AppTheme.destructive)
+                                }
+                                .disabled(vm.correctingId == forecast.id)
+                            }
+                            .padding(AppTheme.spacingMD)
+                            .background(AppTheme.cardBackground)
+                            .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
+                            .padding(.horizontal, AppTheme.spacingLG)
+                        }
+                    }
+                }
+
                 // Monthly Trend Chart
-                if let expenses = analytics?.monthlyExpenses, !expenses.isEmpty {
+                if let expenses = vm.analytics?.monthlyExpenses, !expenses.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Monthly Trend")
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
@@ -286,7 +310,7 @@ struct InsightsView: View {
                 }
 
                 // Top Suppliers
-                if let suppliers = analytics?.topSuppliers, !suppliers.isEmpty {
+                if let suppliers = vm.analytics?.topSuppliers, !suppliers.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Top Suppliers")
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
@@ -320,7 +344,7 @@ struct InsightsView: View {
                 }
 
                 // Top Products
-                if let products = analytics?.topProducts, !products.isEmpty {
+                if let products = vm.analytics?.topProducts, !products.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Top Products")
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
@@ -355,7 +379,7 @@ struct InsightsView: View {
                 }
 
                 // Empty State
-                if analytics == nil && !isLoading {
+                if vm.analytics == nil && !vm.isLoading {
                     VStack(spacing: 16) {
                         Image(systemName: "chart.line.uptrend.xyaxis")
                             .font(.system(size: 40))
@@ -373,7 +397,7 @@ struct InsightsView: View {
                 }
 
                 // ── Advanced Insights Section ──
-                if let d = detailed {
+                if let d = vm.detailed {
                     // Summary KPIs
                     HStack(spacing: 12) {
                         KPICard(
@@ -419,82 +443,18 @@ struct InsightsView: View {
         }
         .background(AppTheme.background)
         .task {
-            await loadAnalytics()
-            await loadDetailedAnalytics()
+            await vm.loadAnalytics()
+            await vm.loadDetailedAnalytics()
         }
         .task(id: refreshCenter.refreshToken) {
-            await loadAnalytics()
-            await loadDetailedAnalytics()
+            await vm.loadAnalytics()
+            await vm.loadDetailedAnalytics()
         }
         .refreshable {
-            await loadAnalytics()
-            await loadDetailedAnalytics()
+            await vm.loadAnalytics()
+            await vm.loadDetailedAnalytics()
         }
     }
-
-    // MARK: - API
-
-    private func loadAnalytics() async {
-        isLoading = true
-        do {
-            let result: RetailerAnalytics = try await api.get(path: "/v1/retailer/analytics/expenses")
-            withAnimation(AnimationConstants.fluid) {
-                analytics = result
-            }
-        } catch {
-            // Use sample data as fallback
-            withAnimation(AnimationConstants.fluid) {
-                analytics = RetailerAnalytics(
-                    monthlyExpenses: [
-                        MonthlyExpense(month: "2025-10", total: 8_500_000),
-                        MonthlyExpense(month: "2025-11", total: 12_300_000),
-                        MonthlyExpense(month: "2025-12", total: 9_800_000),
-                        MonthlyExpense(month: "2026-01", total: 15_200_000),
-                        MonthlyExpense(month: "2026-02", total: 11_700_000),
-                        MonthlyExpense(month: "2026-03", total: 14_100_000),
-                    ],
-                    topSuppliers: [
-                        TopSupplierExpense(supplierID: "sup-001", supplierName: "Coca-Cola", total: 18_500_000, orderCount: 14),
-                        TopSupplierExpense(supplierID: "sup-005", supplierName: "Local Farms", total: 12_200_000, orderCount: 11),
-                        TopSupplierExpense(supplierID: "sup-002", supplierName: "Nestlé", total: 9_800_000, orderCount: 9),
-                        TopSupplierExpense(supplierID: "sup-003", supplierName: "PepsiCo", total: 7_400_000, orderCount: 7),
-                        TopSupplierExpense(supplierID: "sup-004", supplierName: "Unilever", total: 5_100_000, orderCount: 5),
-                    ],
-                    topProducts: [
-                        TopProductExpense(productID: "prod-001", productName: "Organic Whole Milk", total: 8_200_000, quantity: 156),
-                        TopProductExpense(productID: "prod-003", productName: "Free-Range Eggs", total: 6_500_000, quantity: 120),
-                        TopProductExpense(productID: "prod-002", productName: "Sourdough Bread", total: 4_900_000, quantity: 89),
-                        TopProductExpense(productID: "prod-005", productName: "Sparkling Water", total: 3_200_000, quantity: 210),
-                        TopProductExpense(productID: "prod-004", productName: "Greek Yogurt", total: 2_800_000, quantity: 65),
-                    ],
-                    totalThisMonth: 14_100_000,
-                    totalLastMonth: 11_700_000
-                )
-            }
-        }
-        isLoading = false
-    }
-
-    private func loadDetailedAnalytics() async {
-        let to = Date()
-        let from = Calendar.current.date(byAdding: .day, value: -selectedRange.days, to: to)!
-        let fmt = ISO8601DateFormatter()
-        fmt.formatOptions = [.withFullDate]
-        let fromStr = fmt.string(from: from)
-        let toStr = fmt.string(from: to)
-        do {
-            let result: RetailerDetailedAnalytics = try await api.get(
-                path: "/v1/retailer/analytics/detailed?from=\(fromStr)&to=\(toStr)"
-            )
-            withAnimation(AnimationConstants.fluid) {
-                detailed = result
-            }
-        } catch {
-            // Keep existing data on failure
-        }
-    }
-
-    // MARK: - Formatters
 
     private func formatAmount(_ value: Int) -> String {
         value.formatted(.number.grouping(.automatic)) + ""

@@ -34,6 +34,9 @@ struct MoreHubView: View {
                 NavigationLink { DemandForecastView() } label: {
                     Label("Demand Forecast", systemImage: "chart.line.uptrend.xyaxis")
                 }
+                NavigationLink { OpsSettingsView() } label: {
+                    Label("Ops settings", systemImage: "gearshape")
+                }
             }
             Section("Operations") {
                 NavigationLink { CRMView() } label: {
@@ -51,6 +54,9 @@ struct MoreHubView: View {
                 NavigationLink { PaymentConfigView() } label: {
                     Label("Payment config", systemImage: "creditcard")
                 }
+                NavigationLink { NotificationInboxView() } label: {
+                    Label("Notifications", systemImage: "bell")
+                }
             }
             Section("Portal only") {
                 NavigationLink { PortalHandoffView(feature: .setup) } label: {
@@ -58,9 +64,6 @@ struct MoreHubView: View {
                 }
                 NavigationLink { PortalHandoffView(feature: .profile) } label: {
                     Label("Profile", systemImage: "person.crop.circle")
-                }
-                NavigationLink { NotificationInboxView() } label: {
-                    Label("Notifications", systemImage: "bell")
                 }
                 NavigationLink { PortalHandoffView(feature: .search) } label: {
                     Label("Global search", systemImage: "magnifyingglass")

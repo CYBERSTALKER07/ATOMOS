@@ -508,7 +508,7 @@ final class DriverSocketState {
         connectionState = .reconnecting
         reconnectWorkItem?.cancel()
         reconnectAttempt += 1
-        let delay = reconnectDelaySeconds(attempt: reconnectAttempt - 1, base: 3, max: 60)
+        let delay = reconnectDelaySeconds(attempt: reconnectAttempt - 1, base: 3, maxDelay: 60)
         let work = DispatchWorkItem { [weak self] in
             Task { @MainActor in
                 self?.establishConnection()
@@ -519,18 +519,31 @@ final class DriverSocketState {
     }
 }
 
-private func reconnectDelaySeconds(attempt: Int, base: TimeInterval, max: TimeInterval, retryAfter: TimeInterval = 0) -> TimeInterval {
+private func reconnectDelaySeconds(attempt: Int, base: TimeInterval, maxDelay: TimeInterval, retryAfter: TimeInterval = 0) -> TimeInterval {
     let capped = min(max(attempt, 0), 10)
-    let exp = min(base * pow(2.0, Double(capped)), max)
+    let exp = min(base * pow(2.0, Double(capped)), maxDelay)
     let jittered = exp + Double.random(in: 0...(exp / 2))
-    return min(max(jittered, retryAfter), max)
+    return min(Swift.max(jittered, retryAfter), maxDelay)
 }
 
 // MARK: - Auth Models
 
-struct LoginRequest: Codable {
-    let phone: String
-    let pin: String
+struct LoginRequest: Encodable {
+    var phone: String = ""
+    var pin: String = ""
+    var idToken: String = ""
+
+    enum CodingKeys: String, CodingKey {
+        case phone, pin
+        case idToken = "id_token"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        if !phone.isEmpty { try container.encode(phone, forKey: .phone) }
+        if !pin.isEmpty { try container.encode(pin, forKey: .pin) }
+        if !idToken.isEmpty { try container.encode(idToken, forKey: .idToken) }
+    }
 }
 
 struct AuthResponse: Codable {

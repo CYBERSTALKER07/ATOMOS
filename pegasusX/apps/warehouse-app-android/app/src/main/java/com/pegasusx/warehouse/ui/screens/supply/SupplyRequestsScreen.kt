@@ -5,11 +5,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.pegasusx.warehouse.data.model.CreateWarehouseSupplyRequestRequest
 import com.pegasusx.warehouse.data.model.WarehouseSupplyRequest
+import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
@@ -29,6 +32,7 @@ fun SupplyRequestsScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var stateFilter by remember { mutableStateOf("ALL") }
+    var showCreate by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val filters = listOf("ALL", "OPEN", "CANCELLED")
 
@@ -50,6 +54,32 @@ fun SupplyRequestsScreen(
     }
 
     LaunchedEffect(stateFilter) { load() }
+
+    fun createSupplyRequest(form: SupplyRequestFormResult) {
+        scope.launch {
+            try {
+                val mode = if (form.useDemandForecast) "FORECAST" else "MANUAL"
+                val key = WarehouseIdempotencyKeys.createSupplyRequest(form.factoryId, mode, form.notes)
+                val resp = api.createSupplyRequest(
+                    key,
+                    CreateWarehouseSupplyRequestRequest(
+                        factoryId = form.factoryId,
+                        priority = form.priority,
+                        notes = form.notes,
+                        items = form.items,
+                        useDemandForecast = form.useDemandForecast,
+                        requestedDeliveryDate = form.requestedDeliveryDate,
+                    ),
+                )
+                if (resp.isSuccessful) {
+                    showCreate = false
+                    load()
+                }
+            } catch (_: Exception) {
+                // Errors surface on next refresh; dialog stays open for retry.
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -74,6 +104,9 @@ fun SupplyRequestsScreen(
                     }
                     IconButton(onClick = { load() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                    IconButton(onClick = { showCreate = true }) {
+                        Icon(Icons.Default.Add, contentDescription = "New request")
                     }
                 },
             )
@@ -118,5 +151,13 @@ fun SupplyRequestsScreen(
                 }
             }
         }
+    }
+
+    if (showCreate) {
+        CreateSupplyRequestDialog(
+            api = api,
+            onDismiss = { showCreate = false },
+            onCreate = { form -> createSupplyRequest(form) },
+        )
     }
 }

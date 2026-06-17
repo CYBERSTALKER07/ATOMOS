@@ -5,6 +5,7 @@ struct SupplyRequestsHubView: View {
     @State private var loading = true
     @State private var error: String?
     @State private var stateFilter = "ALL"
+    @State private var showCreate = false
 
     private let filters = ["ALL", "OPEN", "CANCELLED"]
 
@@ -58,7 +59,23 @@ struct SupplyRequestsHubView: View {
                 .pickerStyle(.menu)
             }
             ToolbarItem(placement: .topBarTrailing) {
+                Button("New", systemImage: "plus") { showCreate = true }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 Button("Refresh", systemImage: "arrow.clockwise") { load() }
+            }
+        }
+        .sheet(isPresented: $showCreate) {
+            CreateSupplyRequestSheet { form in
+                Task {
+                    do {
+                        _ = try await WarehouseService.createSupplyRequest(form: form)
+                        showCreate = false
+                        load()
+                    } catch {
+                        self.error = error.localizedDescription
+                    }
+                }
             }
         }
         .task { load() }

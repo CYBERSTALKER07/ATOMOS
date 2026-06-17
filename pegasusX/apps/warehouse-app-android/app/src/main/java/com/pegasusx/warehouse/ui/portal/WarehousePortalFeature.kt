@@ -1,7 +1,6 @@
 package com.pegasusx.warehouse.ui.portal
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -37,13 +36,6 @@ enum class WarehousePortalFeature(
         portalPath = "/profile",
         icon = Icons.Default.Person,
     ),
-    NOTIFICATIONS(
-        routeKey = "notifications",
-        title = "Notifications",
-        subtitle = "Alerts and operational inbox",
-        portalPath = "/",
-        icon = Icons.Default.Notifications,
-    ),
     SEARCH(
         routeKey = "search",
         title = "Global search",
@@ -58,7 +50,6 @@ enum class WarehousePortalFeature(
             REGISTER -> "New warehouse registration is completed on the warehouse web portal."
             SETUP -> "Warehouse setup and onboarding run on the web portal after registration."
             PROFILE -> "Profile and account settings are managed on the warehouse web portal."
-            NOTIFICATIONS -> "The notification panel lives in the warehouse portal top bar. Open the portal to review alerts."
             SEARCH -> "Global search (⌘K) is available on the warehouse web portal desktop shell."
         }
 

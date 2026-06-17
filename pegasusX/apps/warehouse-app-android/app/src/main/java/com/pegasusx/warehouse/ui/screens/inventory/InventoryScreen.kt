@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.InventoryAdjustRequest
 import com.pegasusx.warehouse.data.model.InventoryItem
+import com.pegasusx.warehouse.data.model.InventoryPolicyPatchRequest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
@@ -34,6 +35,7 @@ fun InventoryScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var lowOnly by remember { mutableStateOf(false) }
     var adjustItem by remember { mutableStateOf<InventoryItem?>(null) }
+    var policySavingId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -89,25 +91,55 @@ fun InventoryScreen(
             ) {
                 items(items, key = { it.productId }) { item ->
                     val isLow = item.quantity <= item.reorderThreshold
+                    val currentPolicy = item.outOfStockPolicy?.takeIf { it.isNotBlank() } ?: "INHERIT"
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(item.productName, style = MaterialTheme.typography.titleSmall)
-                                Text(
-                                    "Qty: ${item.quantity} · Reorder at: ${item.reorderThreshold}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                        Column(modifier = Modifier.padding(PegasusSpacing.lg)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(item.productName, style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        "Qty: ${item.quantity} · Reorder at: ${item.reorderThreshold}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                if (isLow) {
+                                    AssistChip(
+                                        onClick = {},
+                                        label = { Text("LOW", style = MaterialTheme.typography.labelSmall) },
+                                        colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                                    )
+                                }
+                                Spacer(Modifier.width(PegasusSpacing.sm))
+                                TextButton(onClick = { adjustItem = item }) { Text("Adjust") }
                             }
-                            if (isLow) {
-                                AssistChip(
-                                    onClick = {},
-                                    label = { Text("LOW", style = MaterialTheme.typography.labelSmall) },
-                                    colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                                )
-                            }
-                            Spacer(Modifier.width(PegasusSpacing.sm))
-                            TextButton(onClick = { adjustItem = item }) { Text("Adjust") }
+                            Spacer(Modifier.height(PegasusSpacing.sm))
+                            InventoryPolicyPicker(
+                                currentPolicy = currentPolicy,
+                                saving = policySavingId == item.productId,
+                                onSelect = { policy ->
+                                    policySavingId = item.productId
+                                    scope.launch {
+                                        try {
+                                            val resp = api.patchInventoryPolicy(
+                                                item.productId,
+                                                InventoryPolicyPatchRequest(outOfStockPolicy = policy),
+                                                WarehouseIdempotencyKeys.inventoryPolicy(item.productId, policy),
+                                            )
+                                            if (resp.isSuccessful) {
+                                                load()
+                                                snackbarHostState.showSnackbar("Policy updated")
+                                            } else {
+                                                snackbarHostState.showSnackbar("Policy update failed (${resp.code()})")
+                                            }
+                                        } catch (e: Exception) {
+                                            snackbarHostState.showSnackbar(e.message ?: "Policy update failed")
+                                        } finally {
+                                            policySavingId = null
+                                        }
+                                    }
+                                },
+                            )
                         }
                     }
                 }
@@ -123,6 +155,45 @@ fun InventoryScreen(
             onDismiss = { adjustItem = null },
             onAdjusted = { adjustItem = null; load(); scope.launch { snackbarHostState.showSnackbar("Inventory adjusted") } },
         )
+    }
+}
+
+private val inventoryPolicies = listOf("INHERIT", "REJECT", "ACCEPT_BACKORDER")
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InventoryPolicyPicker(
+    currentPolicy: String,
+    saving: Boolean,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { if (!saving) expanded = !expanded }) {
+        OutlinedTextField(
+            value = currentPolicy,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Out-of-stock policy") },
+            trailingIcon = {
+                if (saving) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                }
+            },
+            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            inventoryPolicies.forEach { policy ->
+                DropdownMenuItem(
+                    text = { Text(policy) },
+                    onClick = {
+                        expanded = false
+                        if (policy != currentPolicy) onSelect(policy)
+                    },
+                )
+            }
+        }
     }
 }
 

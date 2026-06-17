@@ -17,7 +17,11 @@ struct reatilerappApp: App {
         WindowGroup {
             Group {
                 if authManager.isLoggedIn {
-                    ContentView()
+                    if authManager.needsSetup {
+                        SetupView()
+                    } else {
+                        ContentView()
+                    }
                 } else {
                     LoginView()
                 }

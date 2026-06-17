@@ -6,6 +6,9 @@ struct InventoryView: View {
     @State private var error: String?
     @State private var lowOnly = false
     @State private var adjustItem: InventoryItem?
+    @State private var policySavingId: String?
+
+    private let policies = ["INHERIT", "REJECT", "ACCEPT_BACKORDER"]
 
     var body: some View {
         NavigationStack {
@@ -25,26 +28,38 @@ struct InventoryView: View {
                     ContentUnavailableView("No Inventory", systemImage: "archivebox", description: Text("Inventory is empty"))
                 } else {
                     List(items) { item in
-                        HStack {
-                            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                                Text(item.productName)
-                                    .font(.headline)
-                                Text("Qty: \(item.quantity) · Reorder: \(item.reorderThreshold)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                    Text(item.productName)
+                                        .font(.headline)
+                                    Text("Qty: \(item.quantity) · Reorder: \(item.reorderThreshold)")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if item.quantity <= item.reorderThreshold {
+                                    Text("LOW")
+                                        .font(.caption.bold())
+                                        .padding(.horizontal, LabTheme.spacingSM)
+                                        .padding(.vertical, LabTheme.spacingXS)
+                                        .foregroundStyle(.white)
+                                        .background(.red, in: Capsule())
+                                }
+                                Button("Adjust") { adjustItem = item }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
                             }
-                            Spacer()
-                            if item.quantity <= item.reorderThreshold {
-                                Text("LOW")
-                                    .font(.caption.bold())
-                                    .padding(.horizontal, LabTheme.spacingSM)
-                                    .padding(.vertical, LabTheme.spacingXS)
-                                    .foregroundStyle(.white)
-                                    .background(.red, in: Capsule())
+                            Picker("Out-of-stock policy", selection: Binding(
+                                get: { item.outOfStockPolicy?.isEmpty == false ? item.outOfStockPolicy! : "INHERIT" },
+                                set: { newValue in updatePolicy(item: item, policy: newValue) }
+                            )) {
+                                ForEach(policies, id: \.self) { policy in
+                                    Text(policy).tag(policy)
+                                }
                             }
-                            Button("Adjust") { adjustItem = item }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
+                            .pickerStyle(.menu)
+                            .disabled(policySavingId == item.productId)
                         }
                     }
                     .listStyle(.insetGrouped)
@@ -84,6 +99,21 @@ struct InventoryView: View {
                 self.error = error.localizedDescription
             }
             loading = false
+        }
+    }
+
+    private func updatePolicy(item: InventoryItem, policy: String) {
+        let current = item.outOfStockPolicy?.isEmpty == false ? item.outOfStockPolicy! : "INHERIT"
+        guard policy != current else { return }
+        policySavingId = item.productId
+        Task {
+            do {
+                try await WarehouseService.patchInventoryPolicy(productId: item.productId, policy: policy)
+                load()
+            } catch {
+                self.error = error.localizedDescription
+            }
+            policySavingId = nil
         }
     }
 }

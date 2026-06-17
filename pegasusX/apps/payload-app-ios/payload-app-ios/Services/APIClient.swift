@@ -77,6 +77,17 @@ final class APIClient: @unchecked Sendable {
         try await post("v1/auth/payloader/login", body: LoginRequest(phone: phone, pin: pin), authenticated: false)
     }
 
+    func login(idToken: String) async throws -> LoginResponse {
+        var body = LoginRequest()
+        body.idToken = idToken
+        return try await post("v1/auth/payloader/login", body: body, authenticated: false)
+    }
+
+    func lookupBarcode(ean: String) async throws -> CatalogBarcodeLookup {
+        let encoded = ean.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ean
+        return try await get("v1/catalog/barcode/\(encoded)")
+    }
+
     // MARK: - Trucks / Orders
     func trucks() async throws -> [Truck] { try await get("v1/payloader/trucks") }
     func orders(vehicleId: String?, state: String? = nil) async throws -> [LiveOrder] {

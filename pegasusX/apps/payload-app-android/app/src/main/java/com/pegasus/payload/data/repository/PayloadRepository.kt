@@ -265,4 +265,22 @@ class PayloadRepository @Inject constructor(
     }
 
     private enum class QueueReplayOutcome { Sent, Retry, Drop }
+
+    data class CatalogBarcodeLookup(
+        val skuId: String,
+        val name: String,
+    )
+
+    suspend fun lookupBarcode(ean: String): CatalogBarcodeLookup {
+        val resp = api.lookupBarcode(ean)
+        if (!resp.isSuccessful) {
+            val msg = resp.errorBody()?.string()?.takeIf { it.isNotBlank() }
+            throw IllegalStateException(msg ?: "Barcode lookup failed (${resp.code()})")
+        }
+        val body = resp.body() ?: throw IllegalStateException("Empty barcode lookup response")
+        return CatalogBarcodeLookup(
+            skuId = body["sku_id"]?.toString().orEmpty().ifBlank { body["product_id"]?.toString().orEmpty() },
+            name = body["name"]?.toString().orEmpty(),
+        )
+    }
 }

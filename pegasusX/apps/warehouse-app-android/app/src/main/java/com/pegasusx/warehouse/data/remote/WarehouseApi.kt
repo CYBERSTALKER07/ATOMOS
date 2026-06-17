@@ -81,6 +81,22 @@ interface WarehouseApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<Unit>
 
+    @PATCH("v1/warehouse/ops/inventory/{productId}/policy")
+    suspend fun patchInventoryPolicy(
+        @Path("productId") productId: String,
+        @Body body: InventoryPolicyPatchRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<Unit>
+
+    @GET("v1/warehouse/ops/settings")
+    suspend fun getOpsSettings(): Response<WarehouseOpsSettingsResponse>
+
+    @PATCH("v1/warehouse/ops/settings")
+    suspend fun patchOpsSettings(
+        @Body body: WarehouseOpsSettingsPatchRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<Map<String, String>>
+
     // ── Products ──
     @GET("v1/warehouse/ops/products")
     suspend fun getProducts(

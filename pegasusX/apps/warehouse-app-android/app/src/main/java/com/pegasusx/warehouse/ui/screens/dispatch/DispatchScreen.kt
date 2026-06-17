@@ -28,6 +28,8 @@ import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeClient
 import com.pegasusx.warehouse.data.remote.reconcileWarehouseSession
+import com.pegasusx.warehouse.ui.screens.supply.CreateSupplyRequestDialog
+import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestFormResult
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.components.DispatchPreviewMapLibre
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
@@ -201,16 +203,20 @@ fun DispatchScreen(
         }
     }
 
-    fun createSupplyRequest(factoryId: String, priority: String, notes: String) {
+    fun createSupplyRequest(form: SupplyRequestFormResult) {
         scope.launch {
             runCatching {
-                val key = WarehouseIdempotencyKeys.createSupplyRequest(factoryId, priority, notes)
+                val mode = if (form.useDemandForecast) "FORECAST" else "MANUAL"
+                val key = WarehouseIdempotencyKeys.createSupplyRequest(form.factoryId, mode, form.notes)
                 api.createSupplyRequest(
                     key,
                     CreateWarehouseSupplyRequestRequest(
-                        factoryId = factoryId,
-                        priority = priority,
-                        notes = notes,
+                        factoryId = form.factoryId,
+                        priority = form.priority,
+                        notes = form.notes,
+                        items = form.items,
+                        useDemandForecast = form.useDemandForecast,
+                        requestedDeliveryDate = form.requestedDeliveryDate,
                     ),
                 )
             }.onSuccess { response ->
@@ -883,8 +889,9 @@ fun DispatchScreen(
 
     if (showCreateSupplyRequest) {
         CreateSupplyRequestDialog(
+            api = api,
             onDismiss = { showCreateSupplyRequest = false },
-            onCreate = { factoryId, priority, notes -> createSupplyRequest(factoryId, priority, notes) },
+            onCreate = { form -> createSupplyRequest(form) },
         )
     }
 
@@ -1048,63 +1055,6 @@ private fun RealtimeStatusBanner(status: WarehouseRealtimeStatus) {
             )
         }
     }
-}
-
-@Composable
-private fun CreateSupplyRequestDialog(
-    onDismiss: () -> Unit,
-    onCreate: (String, String, String) -> Unit,
-) {
-    var factoryId by remember { mutableStateOf("") }
-    var priority by remember { mutableStateOf("NORMAL") }
-    var notes by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("New Supply Request") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
-                OutlinedTextField(
-                    value = factoryId,
-                    onValueChange = { factoryId = it },
-                    label = { Text("Factory ID") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text("Priority", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                    listOf("NORMAL", "URGENT", "CRITICAL").forEach { option ->
-                        FilterChip(
-                            selected = priority == option,
-                            onClick = { priority = option },
-                            label = { Text(option) },
-                        )
-                    }
-                }
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Notes") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
-                )
-                Text(
-                    "This submits a warehouse supply request through the backend demand forecast path.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onCreate(factoryId.trim(), priority, notes.trim()) },
-                enabled = factoryId.isNotBlank(),
-            ) {
-                Text("Submit")
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
 }
 
 private data class DispatchActionMessage(

@@ -61,6 +61,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -83,6 +84,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pegasus.barcode.EanBarcodeScannerPreview
 import com.pegasus.payload.data.model.LiveOrder
 import com.pegasus.payload.data.model.Manifest
 import com.pegasus.payload.data.model.ManifestExceptionRow
@@ -119,6 +121,7 @@ fun HomeScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var showInjectDialog by remember { mutableStateOf(false) }
+    var showChecklistScanner by remember { mutableStateOf(false) }
     var exceptionTargetOrderId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(state.trucks, state.selectedTruckId) {
@@ -144,6 +147,12 @@ fun HomeScreen(
         state.queuedNoticeMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearQueuedNoticeMessage()
+        }
+    }
+    LaunchedEffect(state.barcodeScanMessage) {
+        state.barcodeScanMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearBarcodeScanMessage()
         }
     }
     LaunchedEffect(state.online) {
@@ -243,10 +252,36 @@ fun HomeScreen(
                         onShowException = { exceptionTargetOrderId = it },
                         onShowReDispatch = viewModel::openReDispatch,
                         onClearEscalated = viewModel::clearEscalatedMessage,
+                        onScanProduct = { showChecklistScanner = true },
                     )
                 }
             },
         )
+
+        if (showChecklistScanner) {
+            ModalBottomSheet(
+                onDismissRequest = { showChecklistScanner = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            ) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text("Scan product EAN", style = MaterialTheme.typography.titleMedium)
+                    EanBarcodeScannerPreview(
+                        enabled = true,
+                        onBarcode = { code ->
+                            viewModel.onBarcodeScanned(code)
+                            showChecklistScanner = false
+                        },
+                    )
+                    TextButton(onClick = { showChecklistScanner = false }) { Text("Close") }
+                    Spacer(Modifier.height(24.dp))
+                }
+            }
+        }
 
         // ── Phase 5 dialogs ──
         if (showInjectDialog && state.manifest != null) {
@@ -591,6 +626,7 @@ private fun ManifestDetailPane(
     onShowException: (String) -> Unit,
     onShowReDispatch: (String) -> Unit,
     onClearEscalated: () -> Unit,
+    onScanProduct: () -> Unit,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -686,6 +722,7 @@ private fun ManifestDetailPane(
                             canSealSelected = state.selectedOrderId?.let { canSealOrder(it) } ?: false,
                             onShowException = onShowException,
                             onShowReDispatch = onShowReDispatch,
+                            onScanProduct = onScanProduct,
                         )
 
                         if (allOrdersSealed && phase != "SEALED") {
@@ -798,6 +835,7 @@ private fun OrderChecklist(
     canSealSelected: Boolean,
     onShowException: (String) -> Unit,
     onShowReDispatch: (String) -> Unit,
+    onScanProduct: () -> Unit,
 ) {
     if (loading) {
         PayloadInlineLoading()
@@ -838,11 +876,22 @@ private fun OrderChecklist(
             }
             val selected = orders.firstOrNull { it.orderId == selectedOrderId }
             if (selected != null) {
-                Text(
-                    "Items — ${selected.orderId.take(8)}",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Items — ${selected.orderId.take(8)}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    OutlinedButton(onClick = onScanProduct) {
+                        Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.size(6.dp))
+                        Text("Scan product")
+                    }
+                }
                 if (selected.items.isEmpty()) {
                     Text(
                         "No line items on this order.",
@@ -1188,13 +1237,14 @@ private fun InjectOrderDialog(
     onSubmit: (String) -> Unit,
 ) {
     var orderId by remember { mutableStateOf("") }
+    var showScanner by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Inject Order") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Add an order mid-load. Dispatch will recompute the manifest.",
+                    "Add an order mid-load. Scan an order label or enter the order ID.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1206,6 +1256,24 @@ private fun InjectOrderDialog(
                     enabled = !injecting,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                OutlinedButton(
+                    onClick = { showScanner = !showScanner },
+                    enabled = !injecting,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Filled.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.size(8.dp))
+                    Text(if (showScanner) "Hide scanner" else "Scan order label")
+                }
+                if (showScanner) {
+                    EanBarcodeScannerPreview(
+                        enabled = !injecting,
+                        onBarcode = { scanned ->
+                            orderId = scanned.trim()
+                            showScanner = false
+                        },
+                    )
+                }
             }
         },
         confirmButton = {

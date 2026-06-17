@@ -63,6 +63,13 @@ struct FactoryServiceTests {
         #expect(str.contains("Test123!"))
     }
 
+    @Test func loginRequestEncodesIdToken() throws {
+        let req = LoginRequest(idToken: "firebase-jwt-token")
+        let data = try JSONEncoder().encode(req)
+        let str = String(data: data, encoding: .utf8)!
+        #expect(str.contains("\"id_token\":\"firebase-jwt-token\""))
+    }
+
     // MARK: - Dispatch Request
 
     @Test func dispatchRequestEncodesTransferIds() throws {

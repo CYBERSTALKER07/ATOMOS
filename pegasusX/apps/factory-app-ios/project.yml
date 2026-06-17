@@ -22,6 +22,11 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
+    dependencies:
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseCore
     sources:
       - path: FactoryApp
         excludes:
@@ -45,3 +50,7 @@ targets:
       - path: FactoryAppTests
     dependencies:
       - target: FactoryAppIOS
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: 11.6.0

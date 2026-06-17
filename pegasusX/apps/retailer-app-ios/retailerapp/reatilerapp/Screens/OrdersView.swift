@@ -26,26 +26,14 @@ enum OrderTab: String, CaseIterable {
 struct OrdersView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var refreshCenter = RetailerRefreshCenter.shared
+    @State private var vm = OrdersViewModel()
     @State private var selectedTab: OrderTab = .active
-    @State private var allOrders: [Order] = []
-    @State private var predictions: [DemandForecast] = []
-    @State private var isLoading = false
-    @State private var loadError: String?
     @State private var selectedOrder: Order?
     @State private var qrOverlayOrder: Order?
-    @State private var orderActionPending = false
 
-    private let api = APIClient.shared
-
-    var activeOrders: [Order] {
-        allOrders.filter { $0.status == .loaded || $0.status == .dispatched || $0.status == .inTransit || $0.status == .arrived }
-    }
-
-    var pendingOrders: [Order] {
-        allOrders.filter {
-            $0.status == .pending || $0.status == .pendingReview || $0.status == .scheduled
-        }
-    }
+    private var activeOrders: [Order] { vm.activeOrders }
+    private var pendingOrders: [Order] { vm.pendingOrders }
+    private var predictions: [DemandForecast] { vm.predictions }
 
     var body: some View {
         ZStack {
@@ -64,22 +52,22 @@ struct OrdersView: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
             }
             .background(AppTheme.background)
-            .task { await loadData() }
-            .task { await listenWebSocket() }
-            .task { await flushPendingOrders() }
+            .task { await vm.loadData() }
+            .task { await vm.listenWebSocket(modelContext: modelContext) }
+            .task { await vm.flushPendingOrders(modelContext: modelContext) }
             .task(id: refreshCenter.refreshToken) {
-                await loadData()
-                await flushPendingOrders()
+                await vm.loadData()
+                await vm.flushPendingOrders(modelContext: modelContext)
             }
-            .refreshable { await loadData() }
+            .refreshable { await vm.loadData() }
             .alert("Failed to Load", isPresented: Binding(
-                get: { loadError != nil },
-                set: { if !$0 { loadError = nil } }
+                get: { vm.loadError != nil },
+                set: { if !$0 { vm.loadError = nil } }
             )) {
-                Button("Retry") { Task { await loadData() } }
-                Button("OK", role: .cancel) { loadError = nil }
+                Button("Retry") { Task { await vm.loadData() } }
+                Button("OK", role: .cancel) { vm.loadError = nil }
             } message: {
-                Text(loadError ?? "Check your connection and try again.")
+                Text(vm.loadError ?? "Check your connection and try again.")
             }
             .sheet(item: $selectedOrder) { order in
                 OrderDetailSheet(order: order)
@@ -163,7 +151,7 @@ struct OrdersView: View {
 
     private var activeContent: some View {
         ScrollView {
-            if isLoading {
+            if vm.isLoading {
                 SkeletonOrderList()
             } else if activeOrders.isEmpty {
                 tabEmptyState(icon: "bolt.slash", title: "No Active Orders", message: "Orders being prepared or en route will appear here")
@@ -186,7 +174,7 @@ struct OrdersView: View {
 
     private var pendingContent: some View {
         ScrollView {
-            if isLoading {
+            if vm.isLoading {
                 SkeletonOrderList()
             } else if pendingOrders.isEmpty {
                 tabEmptyState(icon: "clock", title: "No Pending Orders", message: "Orders awaiting confirmation will appear here")
@@ -196,13 +184,19 @@ struct OrdersView: View {
                         OrderCardView(
                             order: order,
                             onCancel: order.status.canCancel ? {
-                                RetailerAsync.run { await cancelRetailerOrder(order.id) }
+                                RetailerAsync.run { await vm.cancelOrder(order) }
                             } : nil,
                             onConfirmAi: order.status == .pendingReview ? {
-                                RetailerAsync.run { await confirmAiOrder(order.id) }
+                                RetailerAsync.run { await vm.confirmAiOrder(order.id) }
                             } : nil,
                             onRejectAi: order.status == .pendingReview ? {
-                                RetailerAsync.run { await rejectAiOrder(order.id) }
+                                RetailerAsync.run { await vm.rejectAiOrder(order.id) }
+                            } : nil,
+                            onConfirmPreorder: order.status == .scheduled ? {
+                                RetailerAsync.run { await vm.confirmPreorder(order.id) }
+                            } : nil,
+                            onEditPreorder: order.status == .scheduled ? {
+                                RetailerAsync.run { await vm.editPreorder(order) }
                             } : nil
                         )
                         .staggeredSlideIn(index: index)
@@ -220,7 +214,7 @@ struct OrdersView: View {
 
     private var aiPlannedContent: some View {
         ScrollView {
-            if isLoading {
+            if vm.isLoading {
                 SkeletonOrderList(count: 3)
             } else if predictions.isEmpty {
                 tabEmptyState(icon: "sparkles", title: "No AI Predictions", message: "AI-predicted orders based on your history will appear here")
@@ -387,7 +381,7 @@ struct OrdersView: View {
 
                 Button {
                     Haptics.medium()
-                    Task { await preorder(forecast) }
+                    Task { await vm.preorder(forecast) }
                 } label: {
                     Text("Pre-Order")
                         .font(.system(size: 11, weight: .bold, design: .rounded))
@@ -410,176 +404,6 @@ struct OrdersView: View {
         if confidence >= 0.8 { return AppTheme.success }
         if confidence >= 0.6 { return AppTheme.warning }
         return AppTheme.destructive
-    }
-
-    // MARK: - API
-
-    private func listenWebSocket() async {
-        let rid = AuthManager.shared.currentUser?.id ?? ""
-        guard !rid.isEmpty else { return }
-        RetailerWebSocket.shared.connect(retailerId: rid)
-        for await event in RetailerWebSocket.shared.eventStream() {
-            switch event {
-            case .paymentRequired, .driverApproaching, .orderCompleted, .paymentSettled,
-                 .paymentFailed, .paymentExpired, .orderStatusChanged, .orderReassigned,
-                 .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited,
-                 .preOrderNudge, .preOrderConfirmationPush:
-                await loadData()
-            case .transportReconnected:
-                await flushPendingOrders()
-                await loadData()
-            case .shopClosedAlert, .cartSyncUpdated, .promotionChanged:
-                break
-            }
-        }
-    }
-
-    private func flushPendingOrders() async {
-        let descriptor = FetchDescriptor<PendingOrder>(sortBy: [SortDescriptor(\.createdAt)])
-        guard let pending = try? modelContext.fetch(descriptor), !pending.isEmpty else { return }
-        for order in pending {
-            do {
-                if try await replayPendingOrder(order) {
-                    modelContext.delete(order)
-                }
-            } catch {
-                order.lastError = RetailerErrorSupport.retryQueuedMessage(
-                    for: error,
-                    fallback: "Pending order retry failed.",
-                )
-                order.retryCount += 1
-            }
-        }
-        try? modelContext.save()
-    }
-
-    private func replayPendingOrder(_ order: PendingOrder) async throws -> Bool {
-        guard order.method == "POST" else {
-            order.lastError = "Unsupported pending mutation \(order.method) \(order.endpoint)"
-            order.retryCount += 1
-            return false
-        }
-        guard let data = order.payloadJson.data(using: .utf8) else {
-            return true
-        }
-
-        switch order.endpoint {
-        case "/v1/checkout/unified":
-            guard let payload = try? JSONDecoder().decode(UnifiedCheckoutPayload.self, from: data) else {
-                return true
-            }
-            _ = try await RetailerCheckoutService.completeCheckout(
-                api: api,
-                payload: payload,
-                gateway: payload.paymentGateway,
-                idempotencyKey: pendingOrderIdempotencyKey(order)
-            )
-            return true
-        case "/v1/order/create":
-            guard let payload = try? JSONDecoder().decode(ProcurementOrderRequest.self, from: data) else {
-                return true
-            }
-            let _: ProcurementOrderResponse = try await api.post(
-                path: order.endpoint,
-                body: payload,
-                headers: ["Idempotency-Key": pendingOrderIdempotencyKey(order)]
-            )
-            return true
-        default:
-            order.lastError = "Unsupported pending mutation \(order.method) \(order.endpoint)"
-            order.retryCount += 1
-            return false
-        }
-    }
-
-    private func pendingOrderIdempotencyKey(_ order: PendingOrder) -> String {
-        if !order.idempotencyKey.isEmpty {
-            return order.idempotencyKey
-        }
-        return "retailer-checkout-pending:\(Int64(order.createdAt.timeIntervalSince1970 * 1000))"
-    }
-
-    private func loadData() async {
-        let rid = AuthManager.shared.currentUser?.id ?? ""
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
-            allOrders = orders
-        } catch {
-            allOrders = []
-            loadError = "Could not load orders. Pull to refresh or try again."
-        }
-        do {
-            let forecasts: [DemandForecast] = try await api.get(path: "/v1/ai/predictions?retailer_id=\(rid)")
-            predictions = forecasts
-        } catch {
-            predictions = []
-        }
-    }
-
-    private func cancelRetailerOrder(_ orderId: String) async {
-        guard !orderActionPending else { return }
-        orderActionPending = true
-        defer { orderActionPending = false }
-        let rid = AuthManager.shared.currentUser?.id ?? ""
-        guard !rid.isEmpty else { return }
-        do {
-            let _: [String: String] = try await api.post(
-                path: "/v1/order/cancel",
-                body: [
-                    "order_id": orderId,
-                    "retailer_id": rid,
-                    "reason": "Retailer requested cancellation",
-                ],
-                headers: ["Idempotency-Key": RetailerIdempotency.cancel(orderId: orderId)]
-            )
-            await loadData()
-        } catch {
-            loadError = "Failed to cancel order"
-        }
-    }
-
-    private func confirmAiOrder(_ orderId: String) async {
-        guard !orderActionPending else { return }
-        orderActionPending = true
-        defer { orderActionPending = false }
-        do {
-            try await api.confirmAiOrder(orderId: orderId)
-            await loadData()
-        } catch {
-            loadError = "Failed to confirm AI order"
-        }
-    }
-
-    private func rejectAiOrder(_ orderId: String) async {
-        guard !orderActionPending else { return }
-        orderActionPending = true
-        defer { orderActionPending = false }
-        do {
-            try await api.rejectAiOrder(orderId: orderId, reason: "Retailer rejected")
-            await loadData()
-        } catch {
-            loadError = "Failed to reject AI order"
-        }
-    }
-
-    private func preorder(_ forecast: DemandForecast) async {
-        do {
-            struct PreorderBody: Codable {
-                let productId: String
-                let quantity: Int
-                enum CodingKeys: String, CodingKey { case productId = "product_id"; case quantity }
-            }
-            let _: Order = try await api.post(
-                path: "/v1/ai/preorder",
-                body: PreorderBody(productId: forecast.productId, quantity: forecast.predictedQuantity),
-                headers: ["Idempotency-Key": "retailer-ai-preorder:\(forecast.id):\(forecast.predictedQuantity)"]
-            )
-            Haptics.success()
-        } catch {
-            Haptics.error()
-        }
     }
 }
 

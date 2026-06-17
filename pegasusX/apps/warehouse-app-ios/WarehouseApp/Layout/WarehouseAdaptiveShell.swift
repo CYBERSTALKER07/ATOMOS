@@ -142,7 +142,9 @@ struct WarehouseAdaptiveShell: View {
             ReturnsView()
         case .paymentConfig:
             NavigationStack { PaymentConfigView() }
-        case .portalNotifications:
+        case .opsSettings:
+            NavigationStack { OpsSettingsView() }
+        case .notifications:
             NavigationStack { NotificationInboxView() }
         case .portalSetup, .portalProfile, .portalSearch:
             if let feature = section.portalFeature {

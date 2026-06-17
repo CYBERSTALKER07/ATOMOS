@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -631,7 +632,7 @@ init {
     private suspend fun queuePendingCheckout(request: UnifiedCheckoutRequest, idempotencyKey: String) {
         pendingOrderDao.insert(
             PendingOrderEntity(
-                payloadJson = Json.encodeToString(request),
+                payloadJson = Json.encodeToString(UnifiedCheckoutRequest.serializer(), request),
                 idempotencyKey = idempotencyKey,
             ),
         )

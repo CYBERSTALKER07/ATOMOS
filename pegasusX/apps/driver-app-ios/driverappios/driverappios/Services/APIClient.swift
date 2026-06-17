@@ -82,6 +82,12 @@ final class APIClient: @unchecked Sendable {
         return try await post("v1/auth/driver/login", body: body, authenticated: false)
     }
 
+    func login(idToken: String) async throws -> AuthResponse {
+        var body = LoginRequest()
+        body.idToken = idToken
+        return try await post("v1/auth/driver/login", body: body, authenticated: false)
+    }
+
     func registerDeviceToken(token: String, platform: String = "ios") async throws {
         let body = ["token": token, "platform": platform]
         let _: [String: String] = try await post("v1/user/device-token", body: body)
@@ -397,7 +403,7 @@ final class APIClient: @unchecked Sendable {
         return try await post(
             "v1/driver/supply-transfers/\(transferId)/arrive",
             body: Body(latitude: latitude, longitude: longitude),
-            idempotencyKey: DriverIdempotency.supplyTransferArrive(transferId: transferId)
+            headers: ["Idempotency-Key": DriverIdempotency.supplyTransferArrive(transferId: transferId)]
         )
     }
 

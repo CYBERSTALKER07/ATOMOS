@@ -3,7 +3,9 @@ import {
   getAuth,
   connectAuthEmulator,
   signInWithCustomToken,
+  signInWithPhoneNumber,
   type Auth,
+  type ConfirmationResult,
   type User,
 } from "firebase/auth";
 
@@ -60,6 +62,39 @@ export async function firebaseSignOut(): Promise<void> {
   } catch {
     // ignore
   }
+}
+
+let phoneConfirmation: ConfirmationResult | null = null;
+
+/** Minimal verifier for Firebase Auth Emulator (no real reCAPTCHA in local dev). */
+class EmulatorRecaptchaVerifier {
+  type = "recaptcha" as const;
+
+  async verify(): Promise<string> {
+    return "emulator-recaptcha-token";
+  }
+
+  _reset(): void {}
+}
+
+export async function sendPhoneOtp(phone: string): Promise<void> {
+  const trimmed = phone.trim();
+  if (!trimmed) throw new Error("Phone number required");
+  const verifier = new EmulatorRecaptchaVerifier();
+  phoneConfirmation = await signInWithPhoneNumber(auth, trimmed, verifier as never);
+}
+
+export async function verifyPhoneOtp(code: string): Promise<string> {
+  if (!phoneConfirmation) {
+    throw new Error("No verification in progress; request a code first");
+  }
+  const result = await phoneConfirmation.confirm(code.trim());
+  phoneConfirmation = null;
+  return result.user.getIdToken();
+}
+
+export function resetPhoneOtpFlow(): void {
+  phoneConfirmation = null;
 }
 
 export { auth };

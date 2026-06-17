@@ -1,7 +1,7 @@
 # pegasusX PAYLOAD Role — Phased Execution Ledger
 
 **Scope:** pegasusX only · **Parent plan:** `VEGETABLE_PLAN.md` §2.6  
-**Last updated:** 2026-06-15 (PL-5P terminal deep component parity).
+**Last updated:** 2026-06-17 (PL-6 Firebase OTP + manifest barcode).
 
 ## Status model
 
@@ -65,7 +65,7 @@
 |----|---------|---------|----------|---------|-----|--------|
 | PL3-01 | Client version policy | `GET /v1/platform/client-policy?role=PAYLOAD` | banner in `App.tsx` | `ClientPolicyBanner` | `ClientPolicyBanner` | **WIRED** |
 | PL3-02 | SSMR marker | smokecheck | — | — | — | **WIRED** (`PX_E2E_PAYLOAD_CLIENT_POLICY_OK`) |
-| PL3-03 | Firebase OTP / custom token | login `firebase_token` when Admin Auth configured | stored; PIN-only UX | `FirebaseAuthHelper` exchange | stub + graceful | **SCAFFOLD** (PIN production path; phone OTP deferred) |
+| PL3-03 | Firebase OTP / custom token | login `id_token` + `firebase_token` | `firebaseAuth.ts` OTP + PIN dev | `FirebaseAuthHelper` phone OTP + PIN dev | `FirebaseAuthHelper` phone OTP + PIN dev | **WIRED** (`PX_E2E_PAYLOAD_FIREBASE_OTP_OK` when `PAYLOAD_FIREBASE_TEST_ID_TOKEN` set) |
 | PL3-04 | Expo OTA updates | — | `expo-updates` | APK `AutoUpdater` | `AutoUpdater` | **WIRED** (platform-specific; separate from policy API) |
 
 **Exit:** Outdated/force-update surfaces show honest banners on all payload clients; SSMR asserts PAYLOAD role policy tuple.
@@ -101,9 +101,24 @@
 | PL5P-07 | Exceptions inbox polish | — (pegasusX PL-2) | badge count on icon, reason/escalated chips, fixed invalid variant | **WIRED** |
 | PL5P-08 | KPI refresh after inject/exception | — | `fetchTruckManifest` after inject + exception | **WIRED** |
 
-**PL-5P audit gaps (intentional / blocked):** Monolithic `App.tsx` retained (pegasus pattern); re-dispatch apply still uses `fleet/reassign` (durable `payloader/reassign-order` in `api.ts` for programmatic use); Firebase phone OTP UI deferred; barcode scanning ecosystem-wide deferred.
+**PL-5P audit gaps (intentional / blocked):** Monolithic `App.tsx` retained (pegasus pattern); re-dispatch apply still uses `fleet/reassign` (durable `payloader/reassign-order` in `api.ts` for programmatic use).
 
 **Exit:** Component-level desk tokens, KPI tiles, section chrome, skeleton loaders, and status badges on terminal sidebar + manifest workflow panes. UI-only — no new SSMR.
+
+---
+
+## Phase PL-6 — Deferred features (Firebase OTP + manifest barcode)
+
+| ID | Feature | Backend | Terminal | Android | iOS | Status |
+|----|---------|---------|----------|---------|-----|--------|
+| PL6-01 | Firebase phone OTP login | `POST /v1/auth/payloader/login` `id_token` path | `firebaseAuth.ts` + login UI | `PhoneAuthProvider` + `LoginScreen` | FirebaseAuth SPM + `LoginView` | **WIRED** |
+| PL6-02 | PIN dev fallback | demo env `PAYLOAD_DEMO_PHONE` / `PAYLOAD_DEMO_PIN` | toggle in login | "Use PIN (dev)" | "USE PIN (DEV)" | **WIRED** |
+| PL6-03 | Inbound returns barcode | `POST /v1/returns/inbound/scan` | `inboundReturns.tsx` camera | `InboundReturnsScreen` ML Kit | `InboundReturnsView` DataScanner | **WIRED** (pre-existing PL-2) |
+| PL6-04 | Manifest checklist product scan | `GET /v1/catalog/barcode/{ean}` | checklist scan + lookup | `HomeViewModel.onBarcodeScanned` | `onBarcodeScanned` | **WIRED** |
+| PL6-05 | Inject-order label scan | `POST .../inject-order` | inject modal camera | `InjectOrderDialog` scanner | `InjectOrderSheet` scanner | **WIRED** |
+| PL6-06 | SSMR Firebase OTP marker | smokecheck | — | — | — | **WIRED** when `PAYLOAD_FIREBASE_TEST_ID_TOKEN` env set |
+
+**Exit:** All three payload clients expose phone OTP (emulator-first dev) with PIN fallback; manifest loading uses catalog barcode lookup for SKU verification; inject accepts scanned order labels.
 
 ---
 
@@ -156,9 +171,9 @@ cd pegasusX/apps/payload-app-android && ./gradlew compileDebugKotlin
 
 ## Known remaining gaps
 
-- Firebase phone OTP UI not exposed — PIN login is the production path; custom-token exchange wired on Android when backend mints tokens (`FIREBASE_CREDENTIALS_PATH` or emulator).
+- Production Firebase phone OTP requires project config + reCAPTCHA on terminal web/native; use Auth Emulator (`FIREBASE_AUTH_EMULATOR_HOST` / `EXPO_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST`) for local dev.
 - Re-dispatch UI uses `fleet/reassign` on Expo; durable apply path `payloader/reassign-order` wired on API surfaces for programmatic use.
-- Barcode scanning deferred ecosystem-wide (see payload iOS `project.yml` comment).
+- Catalog barcode checklist requires `Products.Barcode` seed data in Spanner for lookup hits in dev QA.
 
 ---
 
@@ -172,4 +187,5 @@ cd pegasusX/apps/payload-app-android && ./gradlew compileDebugKotlin
 6. ~~PL-5A Android deep UI/UX parity~~ — **CLOSED** (2026-06-15): shared `PayloadUiComponents` / `PayloadState`, HomeScreen + LoginScreen state panes
 7. ~~PL-5P terminal deep UI/UX (component-level)~~ — **CLOSED** (2026-06-15): `ManifestKpiGrid`, `StatusBadge`, `ConnectionStrip`, workflow section chrome — see PL-5P table
 8. ~~PL-5 iOS deep UI/UX parity~~ — **CLOSED** (2026-06-15): shared primitives, `ManifestKpiGrid`, tactical PIN login — see PL-5 table
-9. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3
+9. ~~PL-6 deferred features~~ — **CLOSED** (2026-06-17): Firebase phone OTP + manifest barcode on terminal, Android, iOS
+10. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3

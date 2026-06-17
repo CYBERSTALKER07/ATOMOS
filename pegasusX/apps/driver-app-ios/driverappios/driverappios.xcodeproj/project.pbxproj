@@ -113,6 +113,8 @@
 			);
 			name = driverappios;
 			packageProductDependencies = (
+				DR11FB000000000000000002 /* FirebaseAuth */,
+				DR11FB000000000000000003 /* FirebaseCore */,
 			);
 			productName = driverappios;
 			productReference = 2E5380412F6B10CF00C3D5C6 /* driverappios.app */;
@@ -197,6 +199,9 @@
 			mainGroup = 2E5380382F6B10CF00C3D5C6;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
+			packageReferences = (
+				DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			productRefGroup = 2E5380422F6B10CF00C3D5C6 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -291,6 +296,30 @@
 			targetProxy = 2E53805E2F6B10D000C3D5C6 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.6.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DR11FB000000000000000002 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		DR11FB000000000000000003 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		2E5380652F6B10D000C3D5C6 /* Debug */ = {

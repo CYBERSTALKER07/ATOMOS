@@ -70,8 +70,10 @@ object WarehouseIdempotencyKeys {
         return "warehouse-inbound-confirm:${warehouseId()}:$disposition:${stableHash(sorted)}"
     }
 
-    fun createSupplyRequest(factoryId: String, priority: String, notes: String): String =
-        "warehouse-create-supply-request:${warehouseId()}:$factoryId:$priority:${stableHash(notes)}"
+    fun opsSettings(): String = "warehouse-ops-settings:${warehouseId()}"
+
+    fun createSupplyRequest(factoryId: String, mode: String, notes: String): String =
+        "warehouse-create-supply-request:${warehouseId()}:$factoryId:$mode:${stableHash(notes)}"
 
     fun supplyRequestTransition(requestId: String, action: String): String =
         "warehouse-supply-transition:$requestId:${action.uppercase()}"

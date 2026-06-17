@@ -1,7 +1,7 @@
 # pegasusX DRIVER Role — Phased Execution Ledger
 
 **Scope:** pegasusX only · **Parent plan:** `VEGETABLE_PLAN.md` §2.4  
-**Last updated:** 2026-06-15 (DR-10A Android deep UI pass).
+**Last updated:** 2026-06-17 (DR-11 Firebase phone OTP).
 
 ## Status model
 
@@ -45,7 +45,7 @@
 |----|---------|---------|-----|------|--------|
 | DR9-01 | `GET /v1/platform/client-policy?role=DRIVER` | `HomeScreen` banner | `HomeView` banner | — | **WIRED** |
 | DR9-02 | SSMR marker | — | — | `PX_E2E_DRIVER_CLIENT_POLICY_OK` (+ legacy `PX_E2E_CLIENT_POLICY_OK`) | **WIRED** |
-| DR9-03 | Firebase OTP | login scaffold | `FirebaseAuthHelper` | — | **Open** (deferred) |
+| DR9-03 | Firebase OTP | `LoginScreen` OTP + PIN dev | `LoginView` OTP + `FirebaseAuthHelper` | `PX_E2E_DRIVER_FIREBASE_OTP_OK` (when `DRIVER_FIREBASE_TEST_ID_TOKEN` set) | **WIRED** |
 
 ---
 
@@ -87,6 +87,19 @@
 
 ---
 
+## Phase DR-11 — Firebase phone OTP (deferred closure)
+
+| ID | Feature | Android | iOS | SSMR | Status |
+|----|---------|---------|-----|------|--------|
+| DR11-01 | Phone OTP primary login | `FirebaseAuthHelper` + `LoginScreen` | `FirebaseAuthHelper` + `LoginViewModel` | — | **WIRED** |
+| DR11-02 | PIN dev fallback | `LoginScreen` mode toggle | `LoginView` mode toggle | — | **WIRED** |
+| DR11-03 | Backend `id_token` login | — (pre-existing `driver/auth_login.go`) | — | `PX_E2E_DRIVER_FIREBASE_OTP_OK` | **WIRED** |
+| DR11-04 | Parity matrix DRIVER row | — | — | — | **WIRED** |
+
+**Exit:** DR9-03 closed; driver auth matches payload PL-6A pattern (OTP-first, PIN dev fallback, emulator in DEBUG).
+
+---
+
 ## Verification
 
 ```bash
@@ -103,4 +116,5 @@ cd pegasusX && make test-ssmr-infra   # PX_E2E_DRIVER_* markers
 1. ~~DR-7/8/9 cross-client parity batch~~ — **CLOSED** (2026-06-15)
 2. ~~DR-10 iOS deep UI/UX parity~~ — **CLOSED** (2026-06-15): shared primitives, tactical PIN login, GPS banner polish — see DR-10 table
 3. ~~DR-10A Android deep UI/UX parity~~ — **CLOSED** (2026-06-15): shared `DriverUiComponents` / `DriverState`, HomeScreen + manifest + map + delivery flow — see DR-10A table
-4. **Cross-role next** — platform hardening or Boss-picked row per `VEGETABLE_PLAN.md` §3
+4. ~~DR-11 Firebase phone OTP~~ — **CLOSED** (2026-06-17): OTP-first login on Android + iOS; DR9-03 → **WIRED**
+5. **Cross-role next** — platform hardening or Boss-picked row per `VEGETABLE_PLAN.md` §3

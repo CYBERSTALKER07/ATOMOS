@@ -22,6 +22,13 @@ class FactoryModelsTest {
     }
 
     @Test
+    fun `LoginRequest serializes id_token`() {
+        val req = LoginRequest(idToken = "firebase-jwt-token")
+        val encoded = json.encodeToString(LoginRequest.serializer(), req)
+        assertTrue(encoded.contains("\"id_token\":\"firebase-jwt-token\""))
+    }
+
+    @Test
     fun `AuthResponse deserializes snake_case fields`() {
         val raw = """
             {"token":"jwt-abc","refresh_token":"rt-xyz","factory_id":"fac-1","factory_name":"Test Factory"}

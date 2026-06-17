@@ -15,223 +15,334 @@ struct HomeView: View {
     @State private var viewModel = HomeViewModel()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var showInjectSheet = false
+    @State private var showProductScanner = false
     @State private var showInboundReturns = false
     @State private var exceptionTargetOrderId: String?
 
     var body: some View {
+        navigationRoot
+            .homeSheets(
+                viewModel: viewModel,
+                tokenStore: tokenStore,
+                showInjectSheet: $showInjectSheet,
+                showProductScanner: $showProductScanner,
+                showInboundReturns: $showInboundReturns,
+                exceptionTargetOrderId: $exceptionTargetOrderId
+            )
+            .homeLifecycle(
+                viewModel: viewModel,
+                tokenStore: tokenStore,
+                scenePhase: scenePhase
+            )
+    }
+
+    private var navigationRoot: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             TruckSidebar(viewModel: viewModel)
                 .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 420)
                 .navigationTitle("Vehicles")
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        OnlineDot(online: viewModel.online, queued: viewModel.queuedActions)
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            viewModel.toggleExceptionsPanel()
-                        } label: {
-                            Image(systemName: "exclamationmark.triangle")
-                        }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            viewModel.toggleNotificationsPanel()
-                        } label: {
-                            Image(systemName: "bell")
-                                .overlay(alignment: .topTrailing) {
-                                    if viewModel.unreadCount > 0 {
-                                        Text("\(viewModel.unreadCount)")
-                                            .font(.caption2).bold()
-                                            .padding(.horizontal, 4).padding(.vertical, 1)
-                                            .background(.red).foregroundStyle(.white)
-                                            .clipShape(Capsule())
-                                            .offset(x: 10, y: -8)
-                                    }
-                                }
-                        }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            showInboundReturns = true
-                        } label: {
-                            Image(systemName: "arrow.uturn.backward.circle")
-                        }
-                        .accessibilityLabel("Inbound returns")
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            Task { await viewModel.refreshTrucks() }
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                        }
-                    }
-                }
+                .toolbar { sidebarToolbar }
         } detail: {
             ManifestDetailView(
                 viewModel: viewModel,
                 onShowException: { exceptionTargetOrderId = $0 },
-                onShowReDispatch: { id in Task { await viewModel.openReDispatch(orderId: id) } }
+                onShowReDispatch: { id in Task { await viewModel.openReDispatch(orderId: id) } },
+                onScanProduct: { showProductScanner = true }
             )
             .navigationTitle("Manifest")
             .navigationSplitViewColumnWidth(min: 480, ideal: 720)
-            .toolbar {
-                if viewModel.manifest?.state == "LOADING" {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            showInjectSheet = true
-                        } label: {
-                            Image(systemName: "plus.circle")
-                        }
-                        .accessibilityLabel("Inject order")
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button("Refresh manifest") {
-                            Task { await viewModel.refreshManifest() }
-                        }
-                        Button("Logout", role: .destructive) {
-                            tokenStore.logout()
-                        }
-                    } label: {
-                        Image(systemName: "person.crop.circle")
-                    }
-                }
-            }
+            .toolbar { detailToolbar }
         }
         .navigationSplitViewStyle(.balanced)
-        .sheet(isPresented: $showInjectSheet) {
-            InjectOrderSheet(
-                injecting: viewModel.injectingOrder,
-                onCancel: { showInjectSheet = false },
-                onSubmit: { id in
-                    Task {
-                        await viewModel.injectOrder(id)
-                        showInjectSheet = false
+    }
+
+    @ToolbarContentBuilder
+    private var sidebarToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            OnlineDot(online: viewModel.online, queued: viewModel.queuedActions)
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button { viewModel.toggleExceptionsPanel() } label: {
+                Image(systemName: "exclamationmark.triangle")
+            }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button { viewModel.toggleNotificationsPanel() } label: {
+                Image(systemName: "bell")
+                    .overlay(alignment: .topTrailing) {
+                        if viewModel.unreadCount > 0 {
+                            Text("\(viewModel.unreadCount)")
+                                .font(.caption2).bold()
+                                .padding(.horizontal, 4).padding(.vertical, 1)
+                                .background(.red).foregroundStyle(.white)
+                                .clipShape(Capsule())
+                                .offset(x: 10, y: -8)
+                        }
                     }
+            }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button { showInboundReturns = true } label: {
+                Image(systemName: "arrow.uturn.backward.circle")
+            }
+            .accessibilityLabel("Inbound returns")
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button { Task { await viewModel.refreshTrucks() } } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var detailToolbar: some ToolbarContent {
+        if viewModel.manifest?.state == "LOADING" {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showInjectSheet = true } label: {
+                    Image(systemName: "plus.circle")
                 }
-            )
+                .accessibilityLabel("Inject order")
+            }
         }
-        .sheet(isPresented: $showInboundReturns) {
-            InboundReturnsView(online: viewModel.online)
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Button("Refresh manifest") {
+                    Task { await viewModel.refreshManifest() }
+                }
+                Button("Logout", role: .destructive) {
+                    tokenStore.logout()
+                }
+            } label: {
+                Image(systemName: "person.crop.circle")
+            }
         }
-        .sheet(item: Binding(
-            get: { exceptionTargetOrderId.map { ExceptionTarget(id: $0) } },
-            set: { exceptionTargetOrderId = $0?.id }
-        )) { target in
-            ExceptionReasonSheet(
-                orderId: target.id,
-                inFlight: viewModel.exceptionLoadingOrderId == target.id,
-                onCancel: { exceptionTargetOrderId = nil },
-                onSelect: { reason in
-                    Task {
-                        await viewModel.reportException(orderId: target.id, reason: reason)
-                        exceptionTargetOrderId = nil
+    }
+}
+
+private struct HomeSheetsModifier: ViewModifier {
+    @Bindable var viewModel: HomeViewModel
+    let tokenStore: TokenStore
+    @Binding var showInjectSheet: Bool
+    @Binding var showProductScanner: Bool
+    @Binding var showInboundReturns: Bool
+    @Binding var exceptionTargetOrderId: String?
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $showInjectSheet) {
+                InjectOrderSheet(
+                    injecting: viewModel.injectingOrder,
+                    onCancel: { showInjectSheet = false },
+                    onSubmit: { id in
+                        Task {
+                            await viewModel.injectOrder(id)
+                            showInjectSheet = false
+                        }
                     }
-                }
+                )
+            }
+            .sheet(isPresented: $showProductScanner) {
+                ProductScannerSheet(viewModel: viewModel, isPresented: $showProductScanner)
+            }
+            .sheet(isPresented: $showInboundReturns) {
+                InboundReturnsView(online: viewModel.online)
+            }
+            .sheet(item: Binding(
+                get: { exceptionTargetOrderId.map { ExceptionTarget(id: $0) } },
+                set: { exceptionTargetOrderId = $0?.id }
+            )) { target in
+                ExceptionReasonSheet(
+                    orderId: target.id,
+                    inFlight: viewModel.exceptionLoadingOrderId == target.id,
+                    onCancel: { exceptionTargetOrderId = nil },
+                    onSelect: { reason in
+                        Task {
+                            await viewModel.reportException(orderId: target.id, reason: reason)
+                            exceptionTargetOrderId = nil
+                        }
+                    }
+                )
+            }
+            .sheet(item: Binding(
+                get: { viewModel.reDispatchOrderId.map { ReDispatchTarget(id: $0) } },
+                set: { if $0 == nil { viewModel.closeReDispatch() } }
+            )) { target in
+                ReDispatchSheet(
+                    orderId: target.id,
+                    loading: viewModel.loadingRecommendations,
+                    response: viewModel.recommendations,
+                    reassigning: viewModel.reassigning,
+                    onClose: { viewModel.closeReDispatch() },
+                    onPick: { driverId in Task { await viewModel.reassignTo(driverId) } }
+                )
+            }
+            .alert(
+                "DLQ Escalation",
+                isPresented: Binding(
+                    get: { viewModel.escalatedMessage != nil },
+                    set: { if !$0 { viewModel.clearEscalatedMessage() } }
+                ),
+                actions: { Button("OK", role: .cancel) { viewModel.clearEscalatedMessage() } },
+                message: { Text(viewModel.escalatedMessage ?? "") }
             )
-        }
-        .sheet(item: Binding(
-            get: { viewModel.reDispatchOrderId.map { ReDispatchTarget(id: $0) } },
-            set: { if $0 == nil { viewModel.closeReDispatch() } }
-        )) { target in
-            ReDispatchSheet(
-                orderId: target.id,
-                loading: viewModel.loadingRecommendations,
-                response: viewModel.recommendations,
-                reassigning: viewModel.reassigning,
-                onClose: { viewModel.closeReDispatch() },
-                onPick: { driverId in Task { await viewModel.reassignTo(driverId) } }
-            )
-        }
-        .alert(
-            "DLQ Escalation",
-            isPresented: Binding(
-                get: { viewModel.escalatedMessage != nil },
-                set: { if !$0 { viewModel.clearEscalatedMessage() } }
-            ),
-            actions: { Button("OK", role: .cancel) { viewModel.clearEscalatedMessage() } },
-            message: { Text(viewModel.escalatedMessage ?? "") }
-        )
-        .sheet(isPresented: Binding(
-            get: { viewModel.showNotificationsPanel },
-            set: { viewModel.showNotificationsPanel = $0 }
-        )) {
-            NotificationsSheet(viewModel: viewModel)
-        }
-        .sheet(isPresented: Binding(
-            get: { viewModel.showExceptionsPanel },
-            set: { viewModel.showExceptionsPanel = $0 }
-        )) {
-            ManifestExceptionsSheet(viewModel: viewModel)
-        }
-        .overlay(alignment: .bottom) {
-            VStack(spacing: 8) {
-                if let msg = viewModel.missingItemsReportedMessage {
-                    InfoBanner(text: msg, tint: .orange)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .task {
-                            try? await Task.sleep(nanoseconds: 3_000_000_000)
-                            viewModel.clearMissingItemsReportedMessage()
-                        }
+            .sheet(isPresented: Binding(
+                get: { viewModel.showNotificationsPanel },
+                set: { viewModel.showNotificationsPanel = $0 }
+            )) {
+                NotificationsSheet(viewModel: viewModel)
+            }
+            .sheet(isPresented: Binding(
+                get: { viewModel.showExceptionsPanel },
+                set: { viewModel.showExceptionsPanel = $0 }
+            )) {
+                ManifestExceptionsSheet(viewModel: viewModel)
+            }
+    }
+}
+
+private struct HomeLifecycleModifier: ViewModifier {
+    @Bindable var viewModel: HomeViewModel
+    let tokenStore: TokenStore
+    let scenePhase: ScenePhase
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: .bottom) { HomeBannerOverlay(viewModel: viewModel) }
+            .task {
+                await viewModel.refreshTrucks()
+                if let token = tokenStore.token {
+                    await viewModel.bootstrapPhase6(token: token)
                 }
-                if let msg = viewModel.queuedNoticeMessage {
-                    InfoBanner(text: msg, tint: .orange)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .task {
-                            try? await Task.sleep(nanoseconds: 3_000_000_000)
-                            viewModel.clearQueuedNoticeMessage()
-                        }
+                PushNotificationManager.shared.onOpenPanel = { [weak viewModel] in
+                    guard let viewModel else { return }
+                    if !viewModel.showNotificationsPanel { viewModel.toggleNotificationsPanel() }
                 }
-                if let msg = viewModel.syncCompleteMessage {
-                    InfoBanner(text: msg, tint: .green)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .task {
-                            try? await Task.sleep(nanoseconds: 3_000_000_000)
-                            viewModel.clearSyncCompleteMessage()
-                        }
+                await PushNotificationManager.shared.requestAuthorization()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                Task {
+                    await viewModel.refreshTrucks()
+                    if viewModel.selectedTruckId != nil {
+                        await viewModel.refreshManifest()
+                    }
                 }
             }
-            .animation(.easeInOut, value: viewModel.queuedNoticeMessage)
-            .animation(.easeInOut, value: viewModel.syncCompleteMessage)
+            .onChange(of: viewModel.online) { _, online in
+                guard online else { return }
+                Task {
+                    await viewModel.refreshTrucks()
+                    if viewModel.selectedTruckId != nil {
+                        await viewModel.refreshManifest()
+                    }
+                }
+            }
+            .onDisappear { viewModel.disconnectPhase6() }
+    }
+}
+
+private struct HomeBannerOverlay: View {
+    @Bindable var viewModel: HomeViewModel
+
+    var body: some View {
+        VStack(spacing: 8) {
+            if let msg = viewModel.barcodeScanMessage {
+                InfoBanner(text: msg, tint: .blue)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .task {
+                        try? await Task.sleep(nanoseconds: 3_000_000_000)
+                        viewModel.clearBarcodeScanMessage()
+                    }
+            }
+            if let msg = viewModel.missingItemsReportedMessage {
+                InfoBanner(text: msg, tint: .orange)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .task {
+                        try? await Task.sleep(nanoseconds: 3_000_000_000)
+                        viewModel.clearMissingItemsReportedMessage()
+                    }
+            }
+            if let msg = viewModel.queuedNoticeMessage {
+                InfoBanner(text: msg, tint: .orange)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .task {
+                        try? await Task.sleep(nanoseconds: 3_000_000_000)
+                        viewModel.clearQueuedNoticeMessage()
+                    }
+            }
+            if let msg = viewModel.syncCompleteMessage {
+                InfoBanner(text: msg, tint: .green)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .task {
+                        try? await Task.sleep(nanoseconds: 3_000_000_000)
+                        viewModel.clearSyncCompleteMessage()
+                    }
+            }
+        }
+        .animation(.easeInOut, value: viewModel.queuedNoticeMessage)
+        .animation(.easeInOut, value: viewModel.syncCompleteMessage)
+        .animation(.easeInOut, value: viewModel.barcodeScanMessage)
+        .padding()
+    }
+}
+
+private struct ProductScannerSheet: View {
+    @Bindable var viewModel: HomeViewModel
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Text("Scan product EAN")
+                    .font(.system(size: 14, weight: .black, design: .monospaced))
+                EANBarcodeScannerView(onBarcode: { code in
+                    Task {
+                        await viewModel.onBarcodeScanned(code)
+                        isPresented = false
+                    }
+                })
+                Spacer()
+            }
             .padding()
-        }
-        .task {
-            await viewModel.refreshTrucks()
-            if let token = tokenStore.token {
-                await viewModel.bootstrapPhase6(token: token)
-            }
-            // Phase 7: request APNs authorization and route tap-actions into the panel.
-            PushNotificationManager.shared.onOpenPanel = { [weak viewModel] in
-                guard let viewModel else { return }
-                if !viewModel.showNotificationsPanel { viewModel.toggleNotificationsPanel() }
-            }
-            await PushNotificationManager.shared.requestAuthorization()
-        }
-        .onChange(of: scenePhase) { _, phase in
-            // Re-fetch on foreground resume so stale manifests are never shown.
-            if phase == .active {
-                Task {
-                    await viewModel.refreshTrucks()
-                    if viewModel.selectedTruckId != nil {
-                        await viewModel.refreshManifest()
-                    }
+            .navigationTitle("Product scan")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { isPresented = false }
                 }
             }
         }
-        .onChange(of: viewModel.online) { _, online in
-            // Re-fetch after every WS reconnect to drain any missed mutations.
-            if online {
-                Task {
-                    await viewModel.refreshTrucks()
-                    if viewModel.selectedTruckId != nil {
-                        await viewModel.refreshManifest()
-                    }
-                }
-            }
-        }
-        .onDisappear { viewModel.disconnectPhase6() }
+    }
+}
+
+private extension View {
+    func homeSheets(
+        viewModel: HomeViewModel,
+        tokenStore: TokenStore,
+        showInjectSheet: Binding<Bool>,
+        showProductScanner: Binding<Bool>,
+        showInboundReturns: Binding<Bool>,
+        exceptionTargetOrderId: Binding<String?>
+    ) -> some View {
+        modifier(HomeSheetsModifier(
+            viewModel: viewModel,
+            tokenStore: tokenStore,
+            showInjectSheet: showInjectSheet,
+            showProductScanner: showProductScanner,
+            showInboundReturns: showInboundReturns,
+            exceptionTargetOrderId: exceptionTargetOrderId
+        ))
+    }
+
+    func homeLifecycle(
+        viewModel: HomeViewModel,
+        tokenStore: TokenStore,
+        scenePhase: ScenePhase
+    ) -> some View {
+        modifier(HomeLifecycleModifier(
+            viewModel: viewModel,
+            tokenStore: tokenStore,
+            scenePhase: scenePhase
+        ))
     }
 }
 
@@ -343,6 +454,7 @@ private struct ManifestDetailView: View {
     @Bindable var viewModel: HomeViewModel
     let onShowException: (String) -> Void
     let onShowReDispatch: (String) -> Void
+    let onScanProduct: () -> Void
 
     var body: some View {
         Group {
@@ -371,7 +483,8 @@ private struct ManifestDetailView: View {
                     truck: viewModel.trucks.first { $0.id == viewModel.selectedTruckId },
                     viewModel: viewModel,
                     onShowException: onShowException,
-                    onShowReDispatch: onShowReDispatch
+                    onShowReDispatch: onShowReDispatch,
+                    onScanProduct: onScanProduct
                 )
             } else {
                 PayloadStateView(
@@ -391,6 +504,7 @@ private struct ManifestWorkflow: View {
     @Bindable var viewModel: HomeViewModel
     let onShowException: (String) -> Void
     let onShowReDispatch: (String) -> Void
+    let onScanProduct: () -> Void
 
     var body: some View {
         ScrollView {
@@ -440,7 +554,8 @@ private struct ManifestWorkflow: View {
                     OrderChecklistSection(
                         viewModel: viewModel,
                         onShowException: onShowException,
-                        onShowReDispatch: onShowReDispatch
+                        onShowReDispatch: onShowReDispatch,
+                        onScanProduct: onScanProduct
                     )
 
                     if viewModel.allOrdersSealed && manifest.state != "SEALED" {
@@ -474,6 +589,7 @@ private struct OrderChecklistSection: View {
     @Bindable var viewModel: HomeViewModel
     let onShowException: (String) -> Void
     let onShowReDispatch: (String) -> Void
+    let onScanProduct: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -523,6 +639,11 @@ private struct OrderChecklistSection: View {
                                 .font(.system(size: 12, weight: .black, design: .monospaced))
                                 .foregroundStyle(TermTheme.secondary)
                             Spacer()
+                            Button(action: onScanProduct) {
+                                Label("SCAN", systemImage: "barcode.viewfinder")
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            }
+                            .buttonStyle(.bordered)
                             Text("ORD-\(selected.orderId.suffix(6).uppercased())")
                                 .font(.system(size: 12, weight: .black, design: .monospaced))
                                 .foregroundStyle(TermTheme.accent)
@@ -939,6 +1060,7 @@ private struct InjectOrderSheet: View {
     let onCancel: () -> Void
     let onSubmit: (String) -> Void
     @State private var orderId: String = ""
+    @State private var showScanner = false
 
     var body: some View {
         ZStack {
@@ -983,10 +1105,27 @@ private struct InjectOrderSheet: View {
                         .autocorrectionDisabled()
                         .disabled(injecting)
                     
-                    Text("Add an order mid-load. Dispatch will recompute the manifest.")
+                    Text("Add an order mid-load. Scan an order label or enter the order ID.")
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
                         .foregroundStyle(TermTheme.tertiary)
                         .padding(.horizontal, 4)
+
+                    Button {
+                        showScanner.toggle()
+                    } label: {
+                        Label(showScanner ? "HIDE SCANNER" : "SCAN ORDER LABEL", systemImage: "barcode.viewfinder")
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(injecting)
+
+                    if showScanner {
+                        EANBarcodeScannerView(onBarcode: { scanned in
+                            orderId = scanned.trimmingCharacters(in: .whitespacesAndNewlines)
+                            showScanner = false
+                        })
+                    }
                 }
                 .padding(20)
                 .background(TermTheme.card.opacity(0.5))

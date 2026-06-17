@@ -102,6 +102,29 @@ enum WarehouseService {
         )
     }
 
+    static func patchInventoryPolicy(productId: String, policy: String) async throws {
+        try await api.patchVoid(
+            "v1/warehouse/ops/inventory/\(productId)/policy",
+            body: InventoryPolicyPatchRequest(outOfStockPolicy: policy),
+            idempotencyKey: WarehouseIdempotency.inventoryPolicy(productId: productId, policy: policy)
+        )
+    }
+
+    static func opsSettings() async throws -> WarehouseOpsSettingsResponse {
+        try await api.get("v1/warehouse/ops/settings")
+    }
+
+    static func patchOpsSettings(policy: String, operatingSchedule: [String: AnyCodable]) async throws {
+        try await api.patchVoid(
+            "v1/warehouse/ops/settings",
+            body: WarehouseOpsSettingsPatchRequest(
+                defaultOutOfStockPolicy: policy,
+                operatingSchedule: operatingSchedule
+            ),
+            idempotencyKey: WarehouseIdempotency.opsSettings()
+        )
+    }
+
     // MARK: - Products
     static func products() async throws -> ProductListResponse {
         try await api.get("v1/warehouse/ops/products")
@@ -212,17 +235,19 @@ enum WarehouseService {
         try await api.get("v1/warehouse/dispatch-locks")
     }
 
-    static func createSupplyRequest(factoryId: String, priority: String, notes: String) async throws -> CreateWarehouseSupplyRequestResponse {
-        try await api.post(
+    static func createSupplyRequest(form: SupplyRequestFormData) async throws -> CreateWarehouseSupplyRequestResponse {
+        let mode = form.useDemandForecast ? "FORECAST" : "MANUAL"
+        return try await api.post(
             "v1/warehouse/supply-requests",
             body: CreateWarehouseSupplyRequestRequest(
-                factoryId: factoryId,
-                priority: priority,
-                notes: notes,
-                items: [],
-                useDemandForecast: true
+                factoryId: form.factoryId,
+                priority: form.priority,
+                notes: form.notes,
+                items: form.items,
+                useDemandForecast: form.useDemandForecast,
+                requestedDeliveryDate: form.requestedDeliveryDate
             ),
-            idempotencyKey: WarehouseIdempotency.createSupplyRequest(factoryId: factoryId, priority: priority, notes: notes)
+            idempotencyKey: WarehouseIdempotency.createSupplyRequest(factoryId: form.factoryId, mode: mode, notes: form.notes)
         )
     }
 

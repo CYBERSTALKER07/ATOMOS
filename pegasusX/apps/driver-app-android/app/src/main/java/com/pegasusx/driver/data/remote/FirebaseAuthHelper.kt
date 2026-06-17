@@ -1,25 +1,37 @@
 package com.pegasusx.driver.data.remote
 
+import android.app.Activity
 import android.content.Context
 import android.util.Log
 import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseException
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.PhoneAuthCredential
+import com.google.firebase.auth.PhoneAuthOptions
+import com.google.firebase.auth.PhoneAuthProvider
+import com.pegasusx.driver.BuildConfig
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
+import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * Firebase Auth helper for dual-mode authentication.
  * Connects to Firebase Auth Emulator in debug builds.
- * All methods degrade gracefully — if Firebase is unavailable, legacy JWT still works.
+ * All methods degrade gracefully — legacy JWT still works when Firebase is unavailable.
  */
 object FirebaseAuthHelper {
     private const val TAG = "FirebaseAuth"
     private var initialized = false
 
-    /**
-     * Initialize Firebase with programmatic config (no google-services.json needed).
-     * Call once from Application.onCreate() or login flow.
-     */
+    @Volatile
+    private var pendingVerificationId: String? = null
+
+    @Volatile
+    private var autoCredential: PhoneAuthCredential? = null
+
     fun init(context: Context) {
         if (initialized) return
         try {
@@ -31,22 +43,66 @@ object FirebaseAuthHelper {
                     .build()
                 FirebaseApp.initializeApp(context, options)
             }
-            // Connect to emulator in debug builds
-            if (com.pegasusx.driver.BuildConfig.DEBUG) {
-                val emulatorHost = "10.0.2.2" // Android emulator localhost
-                FirebaseAuth.getInstance().useEmulator(emulatorHost, 9099)
+            if (BuildConfig.DEBUG) {
+                FirebaseAuth.getInstance().useEmulator("10.0.2.2", 9099)
             }
             initialized = true
-            Log.d(TAG, "Firebase Auth initialized (debug=${com.pegasusx.driver.BuildConfig.DEBUG})")
+            Log.d(TAG, "Firebase Auth initialized (debug=${BuildConfig.DEBUG})")
         } catch (e: Exception) {
             Log.w(TAG, "Firebase Auth init failed (non-fatal): ${e.message}")
         }
     }
 
-    /**
-     * Exchange a Firebase Custom Token from the backend for a Firebase session.
-     * Returns the Firebase ID token string, or null on failure.
-     */
+    suspend fun sendPhoneVerification(activity: Activity, phone: String): Unit =
+        suspendCancellableCoroutine { cont ->
+            init(activity)
+            val normalized = phone.trim()
+            if (normalized.isBlank()) {
+                cont.resumeWithException(IllegalArgumentException("Phone number required"))
+                return@suspendCancellableCoroutine
+            }
+            val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+                override fun onVerificationCompleted(credential: PhoneAuthCredential) {
+                    pendingVerificationId = null
+                    autoCredential = credential
+                    if (cont.isActive) cont.resume(Unit)
+                }
+
+                override fun onVerificationFailed(e: FirebaseException) {
+                    pendingVerificationId = null
+                    Log.w(TAG, "Phone verification failed: ${e.message}")
+                    if (cont.isActive) cont.resumeWithException(e)
+                }
+
+                override fun onCodeSent(verificationId: String, token: PhoneAuthProvider.ForceResendingToken) {
+                    pendingVerificationId = verificationId
+                    if (cont.isActive) cont.resume(Unit)
+                }
+            }
+            val options = PhoneAuthOptions.newBuilder(FirebaseAuth.getInstance())
+                .setPhoneNumber(normalized)
+                .setTimeout(60L, TimeUnit.SECONDS)
+                .setActivity(activity)
+                .setCallbacks(callbacks)
+                .build()
+            PhoneAuthProvider.verifyPhoneNumber(options)
+        }
+
+    suspend fun verifySmsCode(code: String): String {
+        val credential = autoCredential ?: run {
+            val verificationId = pendingVerificationId
+                ?: throw IllegalStateException("No verification in progress; request a code first")
+            PhoneAuthProvider.getCredential(verificationId, code.trim())
+        }
+        autoCredential = null
+        pendingVerificationId = null
+        val result = FirebaseAuth.getInstance().signInWithCredential(credential).await()
+        return result.user?.getIdToken(false)?.await()?.token
+            ?: throw IllegalStateException("Firebase sign-in succeeded but id_token was missing")
+    }
+
+    fun hasAutoCredential(): Boolean = autoCredential != null
+
     suspend fun exchangeCustomToken(customToken: String): String? {
         if (customToken.isBlank()) return null
         return try {
@@ -58,10 +114,6 @@ object FirebaseAuthHelper {
         }
     }
 
-    /**
-     * Get a fresh Firebase ID token for the currently signed-in user.
-     * Returns null if no Firebase session exists.
-     */
     suspend fun getIdToken(): String? {
         return try {
             FirebaseAuth.getInstance().currentUser
@@ -73,10 +125,12 @@ object FirebaseAuthHelper {
         }
     }
 
-    /** Sign out of Firebase Auth. */
     fun signOut() {
+        pendingVerificationId = null
+        autoCredential = null
         try {
             FirebaseAuth.getInstance().signOut()
-        } catch (_: Exception) { }
+        } catch (_: Exception) {
+        }
     }
 }

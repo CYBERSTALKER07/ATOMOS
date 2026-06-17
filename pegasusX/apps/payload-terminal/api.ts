@@ -14,6 +14,18 @@ export const PayloadTerminalApi = {
         return res.json();
     },
 
+    lookupBarcode: async (ean: string) => {
+        const encoded = encodeURIComponent(ean.trim());
+        const res = await authFetch(`/v1/catalog/barcode/${encoded}`);
+        if (!res.ok) throw new Error('Barcode lookup failed');
+        return res.json() as Promise<{
+            product_id?: string;
+            sku_id?: string;
+            name?: string;
+            barcode?: string;
+        }>;
+    },
+
     getSupplierManifestDetail: async (_token: string, manifestId: string) => {
         const res = await authFetch(`/v1/supplier/manifests/${manifestId}`);
         if (!res.ok) throw new Error('Failed to fetch supplier manifest detail');

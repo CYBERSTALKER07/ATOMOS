@@ -30,9 +30,10 @@ enum class WarehouseSection(
     RETAILERS(WarehouseRoutes.CRM, "Retailers", Icons.Default.Store),
     RETURNS(WarehouseRoutes.RETURNS, "Returns", Icons.AutoMirrored.Filled.Undo),
     PAYMENT_CONFIG(WarehouseRoutes.PAYMENT_CONFIG, "Payment config", Icons.Default.Payment),
-    PORTAL_SETUP(WarehouseRoutes.portalHandoff("setup"), "Warehouse setup", Icons.Default.Settings),
+    OPS_SETTINGS(WarehouseRoutes.OPS_SETTINGS, "Ops settings", Icons.Default.Settings),
+    NOTIFICATIONS(WarehouseRoutes.NOTIFICATIONS, "Notifications", Icons.Default.Notifications),
+    PORTAL_SETUP(WarehouseRoutes.portalHandoff("setup"), "Warehouse setup", Icons.Default.Business),
     PORTAL_PROFILE(WarehouseRoutes.portalHandoff("profile"), "Profile", Icons.Default.Person),
-    PORTAL_NOTIFICATIONS(WarehouseRoutes.NOTIFICATIONS, "Notifications", Icons.Default.Notifications),
     PORTAL_SEARCH(WarehouseRoutes.portalHandoff("search"), "Global search", Icons.Default.Search),
     MORE(WarehouseRoutes.MORE, "More", Icons.Default.Apps),
     ;
@@ -49,15 +50,15 @@ enum class WarehouseSection(
         )
 
         val inventorySections: List<WarehouseSection> = listOf(
-            PRODUCTS, SUPPLY_REQUESTS, REPLENISHMENT, DEMAND_FORECAST,
+            PRODUCTS, SUPPLY_REQUESTS, REPLENISHMENT, DEMAND_FORECAST, OPS_SETTINGS,
         )
 
         val operationsSections: List<WarehouseSection> = listOf(
-            RETAILERS, RETURNS, PAYMENT_CONFIG,
+            RETAILERS, RETURNS, PAYMENT_CONFIG, NOTIFICATIONS,
         )
 
         val portalSections: List<WarehouseSection> = listOf(
-            PORTAL_SETUP, PORTAL_PROFILE, PORTAL_NOTIFICATIONS, PORTAL_SEARCH,
+            PORTAL_SETUP, PORTAL_PROFILE, PORTAL_SEARCH,
         )
 
         val drawerSections: List<WarehouseSection> =

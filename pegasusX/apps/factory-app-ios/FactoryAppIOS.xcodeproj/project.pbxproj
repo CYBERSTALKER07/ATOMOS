@@ -40,6 +40,7 @@
 		FAB0D145289DC722563FCF74 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7084A880E2936D26F7F2B4DC /* Preview Assets.xcassets */; };
 		F1REC02FACTORYSESSION /* FactorySessionReconcile.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1REC01FACTORYSESSION /* FactorySessionReconcile.swift */; };
 		F1DEM02FACTORYIDEMPOTENCY /* FactoryIdempotency.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1DEM01FACTORYIDEMPOTENCY /* FactoryIdempotency.swift */; };
+		FA9FB02FACTORYFIREBASEAUTH /* FirebaseAuthHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA9FB01FACTORYFIREBASEAUTH /* FirebaseAuthHelper.swift */; };
 		FD7166286B124FC8B3D9556A /* AutoUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FCEDB087C2895C22FE8E21 /* AutoUpdater.swift */; };
 /* End PBXBuildFile section */
 
@@ -52,6 +53,16 @@
 			remoteInfo = FactoryAppIOS;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		FA9FB06FACTORYFRAMEWORKS /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXFileReference section */
 		13B35DC81A348996CF6CA9F9 /* TransferListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferListView.swift; sourceTree = "<group>"; };
@@ -90,6 +101,7 @@
 		FB0231B3E4D7F77C26D58738 /* FactoryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryServiceTests.swift; sourceTree = "<group>"; };
 		F1DEM01FACTORYIDEMPOTENCY /* FactoryIdempotency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryIdempotency.swift; sourceTree = "<group>"; };
 		F1REC01FACTORYSESSION /* FactorySessionReconcile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactorySessionReconcile.swift; sourceTree = "<group>"; };
+		FA9FB01FACTORYFIREBASEAUTH /* FirebaseAuthHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseAuthHelper.swift; sourceTree = "<group>"; };
 		FF6D39172CF94E2AC738E27A /* PegasusFactoryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusFactoryApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -106,6 +118,7 @@
 			isa = PBXGroup;
 			children = (
 				3AB755B322A726A294EEC85F /* APIClient.swift */,
+				FA9FB01FACTORYFIREBASEAUTH /* FirebaseAuthHelper.swift */,
 				75C5251859EFAFB4B2107D3E /* FactoryRealtimeClient.swift */,
 				9D2F6B034F3FD70146E20705 /* FactoryService.swift */,
 				F1REC01FACTORYSESSION /* FactorySessionReconcile.swift */,
@@ -331,6 +344,7 @@
 			buildConfigurationList = 2DE942BA2C62DEE631B5814B /* Build configuration list for PBXNativeTarget "FactoryAppIOS" */;
 			buildPhases = (
 				4C53895E195FF88DF1FA7AEA /* Sources */,
+				FA9FB06FACTORYFRAMEWORKS /* Frameworks */,
 				BEAF07BD34994C5D47107832 /* Resources */,
 			);
 			buildRules = (
@@ -339,6 +353,8 @@
 			);
 			name = FactoryAppIOS;
 			packageProductDependencies = (
+				FA9FB03FACTORYFIREBASEAUTH /* FirebaseAuth */,
+				FA9FB04FACTORYFIREBASECORE /* FirebaseCore */,
 			);
 			productName = FactoryAppIOS;
 			productReference = 3503FBD9CF8F804F64FC8CE6 /* FactoryAppIOS.app */;
@@ -372,6 +388,9 @@
 			);
 			mainGroup = 533CA1C1B2C26E33897D9BD8;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				FA9FB05FACTORYFIREBASESDK /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D059AC8A1254FDAF0AD84FEE /* Products */;
 			projectDirPath = "";
@@ -410,6 +429,7 @@
 				F1DEM02FACTORYIDEMPOTENCY /* FactoryIdempotency.swift in Sources */,
 				0742290990B8EC6F43281C17 /* FactoryRealtimeClient.swift in Sources */,
 				87D324445DB50EBDC5896BE4 /* FactoryService.swift in Sources */,
+				FA9FB02FACTORYFIREBASEAUTH /* FirebaseAuthHelper.swift in Sources */,
 				F1REC02FACTORYSESSION /* FactorySessionReconcile.swift in Sources */,
 				3DA980241574ECD429F25695 /* FactoryStateViews.swift in Sources */,
 				F1A11UI01FACTORYUICOMPONENTS /* FactoryUiComponents.swift in Sources */,
@@ -451,6 +471,30 @@
 			targetProxy = 9833A51666C6829BE1957ED2 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		FA9FB05FACTORYFIREBASESDK /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.6.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		FA9FB03FACTORYFIREBASEAUTH /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA9FB05FACTORYFIREBASESDK /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		FA9FB04FACTORYFIREBASECORE /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA9FB05FACTORYFIREBASESDK /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		32C970E5C923107A83116B1E /* Release */ = {

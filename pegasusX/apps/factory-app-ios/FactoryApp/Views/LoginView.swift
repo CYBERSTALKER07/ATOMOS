@@ -1,9 +1,17 @@
 import SwiftUI
 
+private enum LoginMode {
+    case otp
+    case passwordDev
+}
+
 struct LoginView: View {
     @Environment(TokenStore.self) private var tokenStore
-    @State private var phone = ""
+    @State private var mode: LoginMode = .otp
+    @State private var phone = "+998"
+    @State private var otpCode = ""
     @State private var password = ""
+    @State private var otpSent = false
     @State private var loading = false
     @State private var error: String?
 
@@ -14,9 +22,12 @@ struct LoginView: View {
             VStack(spacing: LabTheme.spacingSM) {
                 Text("Pegasus Factory")
                     .font(.largeTitle.bold())
-                Text("Sign in to manage factory operations")
+                Text(mode == .otp
+                     ? "Sign in with your registered phone number."
+                     : "Dev login with phone and password when Firebase OTP is unavailable.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
 
             VStack(spacing: LabTheme.spacingLG) {
@@ -24,10 +35,26 @@ struct LoginView: View {
                     .textContentType(.telephoneNumber)
                     .keyboardType(.phonePad)
                     .textFieldStyle(.roundedBorder)
+                    .disabled(loading || (mode == .otp && otpSent))
 
-                SecureField("Password", text: $password)
-                    .textContentType(.password)
-                    .textFieldStyle(.roundedBorder)
+                if mode == .otp, otpSent {
+                    TextField("Verification Code", text: $otpCode)
+                        .textContentType(.oneTimeCode)
+                        .keyboardType(.numberPad)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(loading)
+                        .onChange(of: otpCode) { _, newValue in
+                            let filtered = newValue.filter(\.isNumber)
+                            otpCode = String(filtered.prefix(6))
+                        }
+                }
+
+                if mode == .passwordDev {
+                    SecureField("Password", text: $password)
+                        .textContentType(.password)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(loading)
+                }
             }
             .frame(maxWidth: 360)
 
@@ -35,37 +62,137 @@ struct LoginView: View {
                 Text(error)
                     .font(.caption)
                     .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
             }
 
-            Button {
-                login()
-            } label: {
-                Group {
-                    if loading {
-                        ProgressView()
-                            .tint(.white)
+            VStack(spacing: LabTheme.spacingSM) {
+                if mode == .otp {
+                    if !otpSent {
+                        Button {
+                            sendOtp()
+                        } label: {
+                            Group {
+                                if loading {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Text("Send Code")
+                                }
+                            }
+                            .frame(maxWidth: 360, minHeight: 44)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.primary)
+                        .disabled(loading || phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     } else {
-                        Text("Sign In")
+                        Button {
+                            verifyOtp()
+                        } label: {
+                            Group {
+                                if loading {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Text("Sign In")
+                                }
+                            }
+                            .frame(maxWidth: 360, minHeight: 44)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.primary)
+                        .disabled(loading || otpCode.count < 6)
+
+                        Button("Resend code") {
+                            otpSent = false
+                            otpCode = ""
+                            FirebaseAuthHelper.shared.resetFlow()
+                        }
+                        .font(.caption)
+                        .disabled(loading)
                     }
+                } else {
+                    Button {
+                        passwordLogin()
+                    } label: {
+                        Group {
+                            if loading {
+                                ProgressView()
+                                    .tint(.white)
+                            } else {
+                                Text("Sign In")
+                            }
+                        }
+                        .frame(maxWidth: 360, minHeight: 44)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.primary)
+                    .disabled(loading || phone.isEmpty || password.isEmpty)
                 }
-                .frame(maxWidth: 360, minHeight: 44)
+
+                Button(mode == .otp ? "Use password (dev)" : "Use phone OTP") {
+                    switchMode()
+                }
+                .font(.caption)
+                .disabled(loading)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.primary)
-            .disabled(loading || phone.isEmpty || password.isEmpty)
 
             Spacer()
         }
         .padding()
+        .onAppear {
+            FirebaseAuthHelper.shared.configure()
+        }
     }
 
-    private func login() {
+    private func storeAuth(_ auth: AuthResponse) {
+        tokenStore.store(auth: auth)
+    }
+
+    private func switchMode() {
+        mode = mode == .otp ? .passwordDev : .otp
+        error = nil
+        otpSent = false
+        otpCode = ""
+        password = ""
+        FirebaseAuthHelper.shared.resetFlow()
+    }
+
+    private func sendOtp() {
+        loading = true
+        error = nil
+        Task {
+            do {
+                try await FirebaseAuthHelper.shared.sendPhoneVerification(phone: phone)
+                otpSent = true
+            } catch {
+                self.error = error.localizedDescription
+            }
+            loading = false
+        }
+    }
+
+    private func verifyOtp() {
+        loading = true
+        error = nil
+        Task {
+            do {
+                let idToken = try await FirebaseAuthHelper.shared.verifySmsCode(otpCode)
+                let auth = try await FactoryService.login(idToken: idToken)
+                storeAuth(auth)
+            } catch {
+                self.error = error.localizedDescription
+            }
+            loading = false
+        }
+    }
+
+    private func passwordLogin() {
         loading = true
         error = nil
         Task {
             do {
                 let auth = try await FactoryService.login(phone: phone, password: password)
-                tokenStore.store(auth: auth)
+                storeAuth(auth)
             } catch {
                 self.error = error.localizedDescription
             }

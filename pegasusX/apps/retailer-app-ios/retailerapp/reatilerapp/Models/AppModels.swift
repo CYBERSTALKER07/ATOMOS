@@ -31,10 +31,12 @@ struct AuthResponse: Codable {
     let token: String
     let user: User
     let firebaseToken: String?
-    
+    let isConfigured: Bool?
+
     enum CodingKeys: String, CodingKey {
         case token, user
         case firebaseToken = "firebase_token"
+        case isConfigured = "is_configured"
     }
 }
 

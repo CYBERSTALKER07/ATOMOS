@@ -15,8 +15,12 @@ settings:
     INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
     TARGETED_DEVICE_FAMILY: "2" # iPad only
-    INFOPLIST_KEY_NSCameraUsageDescription: "Scan product barcodes during inbound returns"
+    INFOPLIST_KEY_NSCameraUsageDescription: "Scan product barcodes during inbound returns and manifest loading"
     INFOPLIST_KEY_NSUserNotificationsUsageDescription: "Receive load-out and dispatch alerts"
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: 11.6.0
 targets:
   payload-app-ios:
     type: application
@@ -57,6 +61,11 @@ targets:
       properties:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+    dependencies:
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pegasus.payload

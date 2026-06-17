@@ -241,6 +241,8 @@ fun OrdersScreen(
                         onCancel = { order -> viewModel.cancelOrder(order.id, order.status) },
                         onConfirmAi = { order -> viewModel.confirmAiOrder(order.id) },
                         onRejectAi = { order -> viewModel.rejectAiOrder(order.id) },
+                        onConfirmPreorder = { order -> viewModel.confirmPreorder(order.id) },
+                        onEditPreorder = { order -> viewModel.editPreorder(order) },
                     )
                     2 -> AiPlannedList(
                         predictions = uiState.predictions,
@@ -298,6 +300,8 @@ private fun OrderedList(
     onCancel: (Order) -> Unit,
     onConfirmAi: (Order) -> Unit = {},
     onRejectAi: (Order) -> Unit = {},
+    onConfirmPreorder: (Order) -> Unit = {},
+    onEditPreorder: (Order) -> Unit = {},
 ) {
     if (isLoading && orders.isEmpty()) {
         ShimmerOrderList()
@@ -315,6 +319,8 @@ private fun OrderedList(
                 onCancel = { onCancel(order) },
                 onConfirmAi = { onConfirmAi(order) },
                 onRejectAi = { onRejectAi(order) },
+                onConfirmPreorder = { onConfirmPreorder(order) },
+                onEditPreorder = { onEditPreorder(order) },
             )
         }
         item { Spacer(modifier = Modifier.height(32.dp)) }
@@ -487,6 +493,8 @@ private fun OrderedCard(
     onCancel: () -> Unit,
     onConfirmAi: () -> Unit = {},
     onRejectAi: () -> Unit = {},
+    onConfirmPreorder: () -> Unit = {},
+    onEditPreorder: () -> Unit = {},
 ) {
     val ringColor = order.status.statusColor()
 
@@ -577,6 +585,26 @@ private fun OrderedCard(
                         modifier = Modifier
                             .clip(PillShape)
                             .clickable { onConfirmAi() }
+                            .background(MaterialTheme.colorScheme.primary, PillShape)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                } else if (order.needsPreorderAction) {
+                    Text(
+                        "Edit",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        modifier = Modifier
+                            .clip(PillShape)
+                            .clickable { onEditPreorder() }
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), PillShape)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                    Text(
+                        "Confirm Preorder",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = Color.White,
+                        modifier = Modifier
+                            .clip(PillShape)
+                            .clickable { onConfirmPreorder() }
                             .background(MaterialTheme.colorScheme.primary, PillShape)
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     )

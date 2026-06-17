@@ -1,7 +1,7 @@
 # pegasusX FACTORY_ADMIN Role — Phased Execution Ledger
 
 **Scope:** pegasusX only · **Parent plan:** `VEGETABLE_PLAN.md` §2.3  
-**Last updated:** 2026-06-15 (FA-11P portal deep component parity).
+**Last updated:** 2026-06-17 (FA9-03 Firebase OTP).
 
 ## Status model
 
@@ -64,7 +64,7 @@
 |----|---------|--------|---------|-----|------|--------|
 | FA9-01 | `GET /v1/platform/client-policy?role=FACTORY` | **ClientPolicyBanner** | dashboard banner | dashboard banner | — | **WIRED** |
 | FA9-02 | SSMR marker | — | — | — | `PX_E2E_FACTORY_CLIENT_POLICY_OK` | **WIRED** |
-| FA9-03 | Firebase OTP | login TODO | — | — | — | **Open** (deferred) |
+| FA9-03 | Firebase OTP | `firebaseAuth.ts` OTP + emulator | `FirebaseAuthHelper` phone OTP + password dev | `FirebaseAuthHelper` phone OTP + password dev | `PX_E2E_FACTORY_FIREBASE_OTP_OK` (when `FACTORY_FIREBASE_TEST_ID_TOKEN` set) | **WIRED** |
 
 ---
 
@@ -132,7 +132,7 @@
 | FA11P-07 | Analytics overview KPI grid | — (pegasusX-only page) | `PageChrome` + `KpiStatGrid` + exceptions CTA | **WIRED** |
 | FA11P-08 | Supply requests queue + transitions | supply-requests table | `PageChrome` + `KpiStatGrid` + `PageSection` | **WIRED** |
 
-**FA-11P audit gaps (intentional / blocked):** Dashboard hero/action-card layout (pegasusX ahead post FA-10); pegasus ref lacks manifests/analytics/gate-exceptions nav (pegasusX additive); fleet/staff/insights/payload-override still on legacy inline headers; Firebase OTP login (FA9 deferred); `daily_activity` chart depth (API returns array, no chart component yet).
+**FA-11P audit gaps (intentional / blocked):** Dashboard hero/action-card layout (pegasusX ahead post FA-10); pegasus ref lacks manifests/analytics/gate-exceptions nav (pegasusX additive); fleet/staff/insights/payload-override still on legacy inline headers; `daily_activity` chart depth (API returns array, no chart component yet).
 
 **Exit:** Component-level desk tokens, skeleton loaders, KPI structure, and section headers on transfers, loading bay, manifests, gate exceptions, analytics, and supply. UI-only — no new SSMR.
 
@@ -160,4 +160,5 @@ cd pegasusX && make test-ssmr-infra   # PX_E2E_FACTORY_* markers
 7. ~~FA-11 iOS deep UI/UX parity~~ — **CLOSED** (2026-06-15)
 8. ~~FA-11A Android deep UI/UX parity~~ — **CLOSED** (2026-06-15)
 9. ~~FA-11P portal deep UI/UX (component-level)~~ — **CLOSED** (2026-06-15)
-10. **Cross-role next** — DRIVER row per `VEGETABLE_PLAN.md` §3
+10. ~~FA9-03 Firebase phone OTP (portal + Android + iOS)~~ — **CLOSED** (2026-06-17)
+11. **Cross-role next** — per `VEGETABLE_PLAN.md` §3 (warehouse WH9 Firebase OTP deferred)
