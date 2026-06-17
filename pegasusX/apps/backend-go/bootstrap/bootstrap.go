@@ -595,6 +595,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		panic("spanner client required but not configured")
 	}
 	driverRepo = driver.NewSpannerRepository(spannerClient)
+	var driverAvailReader driver.AvailabilityReader
+	if spannerClient != nil {
+		driverAvailReader = driverAvailabilityReader(spannerClient)
+	}
 	factoryRepo = factory.NewSpannerRepository(spannerClient, supplierSeed.SupplierID, factoryNodeID)
 	payloadRepo = payload.NewSpannerRepository(spannerClient, supplierSeed.SupplierID, warehouseNodeID)
 	log.Info("factory and payload repositories enabled", "backend", "spanner")
@@ -685,6 +689,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		OrderList:      driverOrderList,
 		OrderGet:       driverOrderGet,
 		ProfileLookup:  driverProfileLookup,
+		AvailabilityReader: driverAvailReader,
 		RouteGeometry:  driverRouteGeometry,
 		Depart:         driverDepart,
 		ReturnComplete: driverReturnComplete,
@@ -797,6 +802,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		PlanCounters:         dispatchCounters,
 		FallbackDepotLat:     cfg.DeliveryZoneCenterLat,
 		FallbackDepotLng:     cfg.DeliveryZoneCenterLng,
+	})
+	driverSvc.SetDispatchPlanInvalidate(func(ctx context.Context, warehouseID string) {
+		warehouseSvc.InvalidateDispatchPlanCache(ctx, warehouseID)
 	})
 
 	var reliabilityMiddleware *ReliabilityMiddleware
@@ -1308,9 +1316,11 @@ func warehouseOpsOrdersQuery(client *spanner.Client) warehouse.WarehouseOpsOrder
 func warehouseOpsDriversQuery(client *spanner.Client) warehouse.WarehouseOpsDriversQuery {
 	return func(ctx context.Context, warehouseID string) ([]warehouse.PortalDriver, error) {
 		stmt := spanner.Statement{
-			SQL: `SELECT d.DriverId, d.Name, COALESCE(d.Phone, ''), d.IsActive,
+			SQL: `SELECT d.DriverId, d.Name, COALESCE(d.Phone, ''), d.IsActive, COALESCE(d.OnShift, true),
+			             COALESCE(d.UnavailableReason, ''), COALESCE(d.UnavailableNote, ''),
 			             COALESCE(d.VehicleId, ''), COALESCE(v.VehicleClass, 'CLASS_B'),
 			             COALESCE(v.MaxVolumeVU, 150.0), COALESCE(v.IsActive, FALSE),
+			             COALESCE(v.UnavailableReason, ''), COALESCE(v.UnavailableNote, ''),
 			             COALESCE(v.Label, v.LicensePlate, '')
 			      FROM Drivers@{FORCE_INDEX=Idx_Drivers_ByHomeNode} d
 			      LEFT JOIN Vehicles v ON d.VehicleId = v.VehicleId
@@ -1332,25 +1342,41 @@ func warehouseOpsDriversQuery(client *spanner.Client) warehouse.WarehouseOpsDriv
 			}
 			var d warehouse.PortalDriver
 			var vehicleID spanner.NullString
+			var unavailableReason, unavailableNote, vehicleUnavailableReason, vehicleUnavailableNote string
 			if err := row.Columns(
 				&d.DriverID,
 				&d.Name,
 				&d.Phone,
 				&d.IsActive,
+				&d.OnShift,
+				&unavailableReason,
+				&unavailableNote,
 				&vehicleID,
 				&d.VehicleClass,
 				&d.MaxVolumeVU,
 				&d.VehicleIsActive,
+				&vehicleUnavailableReason,
+				&vehicleUnavailableNote,
 				&d.VehicleLabel,
 			); err != nil {
 				return nil, fmt.Errorf("warehouse ops drivers scan: %w", err)
 			}
+			d.UnavailableReason = strings.TrimSpace(unavailableReason)
+			d.UnavailableNote = strings.TrimSpace(unavailableNote)
+			d.VehicleUnavailableReason = strings.TrimSpace(vehicleUnavailableReason)
+			d.VehicleUnavailableNote = strings.TrimSpace(vehicleUnavailableNote)
 			if vehicleID.Valid {
 				d.VehicleID = vehicleID.StringVal
 			}
 			switch {
 			case !d.IsActive:
 				d.TruckStatus = "INACTIVE"
+			case !d.OnShift:
+				if strings.EqualFold(d.UnavailableReason, "RETURNING_TO_WAREHOUSE") {
+					d.TruckStatus = "RETURNING_TO_WAREHOUSE"
+				} else {
+					d.TruckStatus = "OFF_SHIFT"
+				}
 			case d.VehicleID == "":
 				d.TruckStatus = "UNASSIGNED"
 			case !d.VehicleIsActive:
@@ -1420,7 +1446,8 @@ func warehouseOpsVehiclesQuery(client *spanner.Client) warehouse.WarehouseOpsVeh
 	return func(ctx context.Context, warehouseID string) ([]warehouse.PortalVehicle, error) {
 		stmt := spanner.Statement{
 			SQL: `SELECT VehicleId, COALESCE(Label, ''), LicensePlate,
-			             COALESCE(VehicleClass, 'CLASS_B'), COALESCE(MaxVolumeVU, 150.0), IsActive
+			             COALESCE(VehicleClass, 'CLASS_B'), COALESCE(MaxVolumeVU, 150.0), IsActive,
+			             COALESCE(UnavailableReason, ''), COALESCE(UnavailableNote, '')
 			      FROM Vehicles@{FORCE_INDEX=Idx_Vehicles_ByHomeNode}
 			      WHERE HomeNodeType = 'WAREHOUSE' AND HomeNodeId = @wid
 			      ORDER BY LicensePlate`,
@@ -1438,7 +1465,7 @@ func warehouseOpsVehiclesQuery(client *spanner.Client) warehouse.WarehouseOpsVeh
 				return nil, fmt.Errorf("warehouse ops vehicles: %w", err)
 			}
 			var v warehouse.PortalVehicle
-			if err := row.Columns(&v.VehicleID, &v.Label, &v.LicensePlate, &v.VehicleClass, &v.MaxVolumeVU, &v.IsActive); err != nil {
+			if err := row.Columns(&v.VehicleID, &v.Label, &v.LicensePlate, &v.VehicleClass, &v.MaxVolumeVU, &v.IsActive, &v.UnavailableReason, &v.UnavailableNote); err != nil {
 				return nil, fmt.Errorf("warehouse ops vehicles scan: %w", err)
 			}
 			vehicles = append(vehicles, v)
@@ -1447,6 +1474,32 @@ func warehouseOpsVehiclesQuery(client *spanner.Client) warehouse.WarehouseOpsVeh
 			vehicles = []warehouse.PortalVehicle{}
 		}
 		return vehicles, nil
+	}
+}
+
+func driverAvailabilityReader(client *spanner.Client) driver.AvailabilityReader {
+	return func(ctx context.Context, driverID string) (bool, string, string, bool, error) {
+		if client == nil || strings.TrimSpace(driverID) == "" {
+			return true, "", "", false, nil
+		}
+		stmt := spanner.Statement{
+			SQL: `SELECT COALESCE(OnShift, true), COALESCE(UnavailableReason, ''), COALESCE(UnavailableNote, '')
+			      FROM Drivers WHERE DriverId = @id`,
+			Params: map[string]any{"id": driverID},
+		}
+		row, err := client.Single().Query(ctx, stmt).Next()
+		if err == iterator.Done {
+			return true, "", "", false, nil
+		}
+		if err != nil {
+			return true, "", "", false, err
+		}
+		var onShift bool
+		var reason, note string
+		if err := row.Columns(&onShift, &reason, &note); err != nil {
+			return true, "", "", false, err
+		}
+		return onShift, strings.TrimSpace(reason), strings.TrimSpace(note), true, nil
 	}
 }
 

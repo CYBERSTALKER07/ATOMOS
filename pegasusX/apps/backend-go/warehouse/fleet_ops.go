@@ -64,6 +64,7 @@ func (s *Service) createOpsDriverSpanner(ctx context.Context, params opsDriverCr
 			"HomeNodeType": "WAREHOUSE",
 			"HomeNodeId":   params.WarehouseID,
 			"IsActive":     true,
+			"OnShift":      true,
 			"CreatedAt":    params.CreatedAt,
 			"UpdatedAt":    params.CreatedAt,
 		})}
@@ -128,4 +129,78 @@ func warehouseActorID(ctx context.Context) string {
 		return strings.TrimSpace(claims.Subject)
 	}
 	return "warehouse_ops"
+}
+
+type opsVehiclePatchParams struct {
+	VehicleID         string
+	WarehouseID       string
+	SupplierID        string
+	IsActive          bool
+	UnavailableReason string
+	UnavailableNote   string
+	UpdatedAt         time.Time
+}
+
+func (s *Service) patchOpsVehicleSpanner(ctx context.Context, params opsVehiclePatchParams) error {
+	if s.spannerClient == nil {
+		return fmt.Errorf("spanner_not_configured")
+	}
+	reason := ""
+	note := ""
+	if !params.IsActive {
+		reason = normalizeWarehouseVehicleReason(params.UnavailableReason)
+		note = strings.TrimSpace(params.UnavailableNote)
+		if reason == VehicleReasonOther && note == "" {
+			note = strings.TrimSpace(params.UnavailableReason)
+		}
+	}
+	buf := &spannerTxnBuffer{}
+	event := events.VehicleEvent{
+		BaseEvent: events.BaseEvent{
+			Type:      events.EventVehicleAvailabilityChanged,
+			Timestamp: params.UpdatedAt.Format(time.RFC3339Nano),
+		},
+		VehicleID:         params.VehicleID,
+		SupplierID:        params.SupplierID,
+		HomeNodeType:      "WAREHOUSE",
+		HomeNodeID:        params.WarehouseID,
+		IsActive:          params.IsActive,
+		UnavailableReason: reason,
+		UnavailableNote:   note,
+	}
+	if err := outbox.EmitJSON(ctx, buf, events.AggregateVehicle, params.VehicleID, events.TopicMain, event); err != nil {
+		return err
+	}
+	row := map[string]any{
+		"VehicleId":    params.VehicleID,
+		"IsActive":     params.IsActive,
+		"UpdatedAt":    params.UpdatedAt,
+		"UnavailableReason": spanner.NullString{},
+		"UnavailableNote":     spanner.NullString{},
+	}
+	if reason != "" {
+		row["UnavailableReason"] = reason
+	}
+	if note != "" {
+		row["UnavailableNote"] = note
+	}
+	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(_ context.Context, txn *spanner.ReadWriteTransaction) error {
+		mutations := []*spanner.Mutation{spanner.UpdateMap("Vehicles", row)}
+		mutations = append(mutations, outboxMutations(buf.events)...)
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		return fmt.Errorf("patch ops vehicle: %w", err)
+	}
+	s.broadcastWarehouseEvent(ctx, params.WarehouseID, map[string]any{
+		"type":               events.EventVehicleAvailabilityChanged,
+		"vehicle_id":         params.VehicleID,
+		"warehouse_id":       params.WarehouseID,
+		"is_active":          params.IsActive,
+		"unavailable_reason": reason,
+		"unavailable_note":   note,
+		"timestamp":          params.UpdatedAt.Format(time.RFC3339Nano),
+	})
+	s.invalidateDispatchPlanCache(ctx, params.WarehouseID)
+	return nil
 }

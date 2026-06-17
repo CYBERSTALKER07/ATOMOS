@@ -41,6 +41,18 @@ func dispatchPlanCacheKey(warehouseID string) string {
 	return "warehouse:dispatch_plan:" + strings.TrimSpace(warehouseID)
 }
 
+func (s *Service) invalidateDispatchPlanCache(ctx context.Context, warehouseID string) {
+	if s.cache == nil || strings.TrimSpace(warehouseID) == "" {
+		return
+	}
+	s.cache.Invalidate(ctx, dispatchPlanCacheKey(warehouseID))
+}
+
+// InvalidateDispatchPlanCache busts the cached smart-dispatch preview for a warehouse.
+func (s *Service) InvalidateDispatchPlanCache(ctx context.Context, warehouseID string) {
+	s.invalidateDispatchPlanCache(ctx, warehouseID)
+}
+
 func computeDispatchPlanFingerprint(orders []dispatch.DispatchableOrder, fleetCtx fleetDispatchContext, orderFilter []string) string {
 	parts := make([]string, 0, len(orders)+len(fleetCtx.TopOff)+1)
 	if len(orderFilter) > 0 {

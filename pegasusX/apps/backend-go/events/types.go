@@ -120,15 +120,20 @@ type DriverEvent struct {
 	HomeNodeType string `json:"home_node_type,omitempty"`
 	Available    bool   `json:"available,omitempty"`
 	OnShift      bool   `json:"on_shift,omitempty"`
+	Reason       string `json:"reason,omitempty"`
+	Note         string `json:"note,omitempty"`
 }
 
 // VehicleEvent handles vehicle creation.
 type VehicleEvent struct {
 	BaseEvent
-	VehicleID    string `json:"vehicle_id"`
-	SupplierID   string `json:"supplier_id"`
-	HomeNodeID   string `json:"home_node_id,omitempty"`
-	HomeNodeType string `json:"home_node_type,omitempty"`
+	VehicleID          string `json:"vehicle_id"`
+	SupplierID         string `json:"supplier_id"`
+	HomeNodeID         string `json:"home_node_id,omitempty"`
+	HomeNodeType       string `json:"home_node_type,omitempty"`
+	IsActive           bool   `json:"is_active,omitempty"`
+	UnavailableReason  string `json:"unavailable_reason,omitempty"`
+	UnavailableNote    string `json:"unavailable_note,omitempty"`
 }
 
 // OrderEvent handles order creation, status changes, closure, negotiations, and driver edges.

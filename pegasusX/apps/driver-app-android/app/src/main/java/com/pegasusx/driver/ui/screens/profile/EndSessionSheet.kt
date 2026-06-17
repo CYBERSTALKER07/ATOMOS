@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Person
@@ -45,6 +46,7 @@ import com.pegasusx.driver.ui.theme.pressable
 
 enum class OfflineReason(val code: String, val label: String, val icon: ImageVector) {
     SHIFT_COMPLETE("SHIFT_COMPLETE", "Shift Complete", Icons.Default.NightsStay),
+    RETURNING_TO_WAREHOUSE("RETURNING_TO_WAREHOUSE", "Returning to Warehouse", Icons.Default.ArrowBack),
     TRUCK_DAMAGED("TRUCK_DAMAGED", "Truck Damaged", Icons.Default.Build),
     PERSONAL("PERSONAL", "Personal", Icons.Default.Person),
     OTHER("OTHER", "Other", Icons.Default.QuestionMark)

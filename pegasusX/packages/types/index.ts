@@ -2236,6 +2236,7 @@ export type WarehouseVehicleUnavailableReason =
   | "TRUCK_DAMAGED"
   | "REGULATORY_HOLD"
   | "MANUAL_HOLD"
+  | "OTHER"
   | string;
 
 export interface WarehouseFleetDriver {
@@ -2246,7 +2247,10 @@ export interface WarehouseFleetDriver {
   vehicle_type?: string;
   license_plate?: string;
   is_active: boolean;
+  on_shift?: boolean;
   truck_status: string;
+  unavailable_reason?: string;
+  unavailable_note?: string;
   created_at?: string;
   vehicle_id?: string;
   vehicle_class?: string;
@@ -2297,12 +2301,14 @@ export interface WarehouseUpdateVehicleRequest {
   license_plate?: string;
   is_active?: boolean;
   unavailable_reason?: WarehouseVehicleUnavailableReason;
+  unavailable_note?: string;
 }
 
 export interface WarehouseVehicleMutationResponse {
   status: string;
   vehicle_id: string;
   unavailable_reason?: WarehouseVehicleUnavailableReason;
+  unavailable_note?: string;
 }
 
 export interface WarehouseDispatchOrder {
@@ -2330,6 +2336,7 @@ export interface WarehouseDispatchDriver {
 
 export interface WarehouseUnavailableDispatchDriver extends WarehouseDispatchDriver {
   unavailable_reason?: WarehouseVehicleUnavailableReason;
+  unavailable_note?: string;
 }
 
 export interface WarehouseDispatchProposedStop {

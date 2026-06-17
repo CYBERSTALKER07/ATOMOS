@@ -37,6 +37,7 @@ const (
 	EventRetailerRegistered           = "RETAILER_REGISTERED"
 	EventDriverCreated                = "DRIVER_CREATED"
 	EventVehicleCreated               = "VEHICLE_CREATED"
+	EventVehicleAvailabilityChanged   = "VEHICLE_AVAILABILITY_CHANGED"
 	EventWarehouseCreated             = "WAREHOUSE_CREATED"
 	EventWarehouseSupplyRequestOpened = "WAREHOUSE_SUPPLY_REQUEST_OPENED"
 	EventSupplyRequestAccepted        = "SUPPLY_REQUEST_ACCEPTED"

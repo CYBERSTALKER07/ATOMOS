@@ -256,6 +256,9 @@ CREATE TABLE Drivers (
   HomeNodeId      STRING(36)    NOT NULL,
   VehicleId       STRING(36),
   IsActive        BOOL          NOT NULL,
+  OnShift         BOOL          NOT NULL DEFAULT (true),
+  UnavailableReason STRING(64),
+  UnavailableNote STRING(255),
   CreatedAt       TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt       TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (DriverId);
@@ -277,6 +280,8 @@ CREATE TABLE Vehicles (
   VehicleClass    STRING(10)    NOT NULL DEFAULT ('CLASS_B'),
   MaxVolumeVU     FLOAT64       NOT NULL DEFAULT (150.0),
   IsActive        BOOL          NOT NULL,
+  UnavailableReason STRING(64),
+  UnavailableNote STRING(255),
   CreatedAt       TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt       TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (VehicleId);

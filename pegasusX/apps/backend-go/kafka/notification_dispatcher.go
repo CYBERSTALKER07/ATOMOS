@@ -70,6 +70,8 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleDriverCreated(ctx, msg.Value, traceID)
 	case events.EventVehicleCreated:
 		return d.handleVehicleCreated(ctx, msg.Value, traceID)
+	case events.EventVehicleAvailabilityChanged:
+		return d.handleVehicleAvailabilityChanged(ctx, msg.Value, traceID)
 	case events.EventWarehouseCreated:
 		return d.handleWarehouseCreated(ctx, msg.Value, traceID)
 	case events.EventWarehouseSupplyRequestOpened, events.EventWarehouseDispatchLockChanged:
@@ -156,6 +158,21 @@ func (d *NotificationDispatcher) handleVehicleCreated(ctx context.Context, paylo
 	}
 	d.broadcastSupplier(ctx, e.SupplierID, payload)
 	if e.HomeNodeType == "WAREHOUSE" && e.HomeNodeID != "" {
+		d.broadcastWarehouse(ctx, e.HomeNodeID, payload)
+	}
+	return nil
+}
+
+func (d *NotificationDispatcher) handleVehicleAvailabilityChanged(ctx context.Context, payload []byte, traceID string) error {
+	var e events.VehicleEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode vehicle availability event: %w", err)
+	}
+	if d.dropFanout(e.Type, traceID, e.VehicleID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	if strings.EqualFold(e.HomeNodeType, "WAREHOUSE") && e.HomeNodeID != "" {
 		d.broadcastWarehouse(ctx, e.HomeNodeID, payload)
 	}
 	return nil

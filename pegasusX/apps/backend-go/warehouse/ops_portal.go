@@ -32,12 +32,16 @@ type PortalDriver struct {
 	Phone                    string  `json:"phone"`
 	TruckStatus              string  `json:"truck_status"`
 	IsActive                 bool    `json:"is_active"`
+	OnShift                  bool    `json:"on_shift,omitempty"`
+	UnavailableReason        string  `json:"unavailable_reason,omitempty"`
 	VehicleID                string  `json:"vehicle_id,omitempty"`
 	VehicleLabel             string  `json:"vehicle_label,omitempty"`
 	VehicleClass             string  `json:"vehicle_class,omitempty"`
 	MaxVolumeVU              float64 `json:"max_volume_vu,omitempty"`
 	VehicleIsActive          bool    `json:"vehicle_is_active,omitempty"`
 	VehicleUnavailableReason string  `json:"vehicle_unavailable_reason,omitempty"`
+	VehicleUnavailableNote   string  `json:"vehicle_unavailable_note,omitempty"`
+	UnavailableNote          string  `json:"unavailable_note,omitempty"`
 }
 
 // PortalVehicle is the warehouse ops vehicle read model.
@@ -49,6 +53,7 @@ type PortalVehicle struct {
 	MaxVolumeVU        float64 `json:"max_volume_vu,omitempty"`
 	IsActive           bool    `json:"is_active"`
 	UnavailableReason  string  `json:"unavailable_reason,omitempty"`
+	UnavailableNote    string  `json:"unavailable_note,omitempty"`
 	AssignedDriverID   string  `json:"assigned_driver_id,omitempty"`
 	AssignedDriverName string  `json:"assigned_driver_name,omitempty"`
 }
@@ -1182,15 +1187,55 @@ func (s *Service) handleOpsVehiclePatch(w http.ResponseWriter, r *http.Request, 
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), key)
+		}
+	}()
+
 	var req struct {
 		IsActive          bool   `json:"is_active"`
 		UnavailableReason string `json:"unavailable_reason"`
+		UnavailableNote   string `json:"unavailable_note"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
+	whID := warehouseIDFromRequest(r)
+	if whID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_required"})
+		return
+	}
+	now := time.Now().UTC()
+	if s.spannerClient != nil {
+		if err := s.patchOpsVehicleSpanner(r.Context(), opsVehiclePatchParams{
+			VehicleID:         vehicleID,
+			WarehouseID:       whID,
+			SupplierID:        s.supplierID,
+			IsActive:          req.IsActive,
+			UnavailableReason: req.UnavailableReason,
+			UnavailableNote:   req.UnavailableNote,
+			UpdatedAt:         now,
+		}); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "vehicle_update_failed"})
+			return
+		}
+		idemCommitted = true
+		writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "vehicle_id": vehicleID})
+		return
+	}
+
+	s.ensurePortalSeed()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i := range s.vehicles {
@@ -1198,7 +1243,18 @@ func (s *Service) handleOpsVehiclePatch(w http.ResponseWriter, r *http.Request, 
 			continue
 		}
 		s.vehicles[i].IsActive = req.IsActive
-		s.vehicles[i].UnavailableReason = strings.TrimSpace(req.UnavailableReason)
+		reason := ""
+		note := ""
+		if !req.IsActive {
+			reason = normalizeWarehouseVehicleReason(req.UnavailableReason)
+			note = strings.TrimSpace(req.UnavailableNote)
+			if reason == VehicleReasonOther && note == "" {
+				note = strings.TrimSpace(req.UnavailableReason)
+			}
+		}
+		s.vehicles[i].UnavailableReason = reason
+		s.vehicles[i].UnavailableNote = note
+		idemCommitted = true
 		writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "vehicle_id": vehicleID})
 		return
 	}

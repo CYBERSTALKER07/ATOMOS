@@ -95,6 +95,8 @@ type Service struct {
 	returnComplete ReturnCompleteFn
 	routeGeometry  RouteGeometryLookup
 	profileLookup  DriverProfileLookup
+	availReader    AvailabilityReader
+	planInvalidate func(ctx context.Context, warehouseID string)
 	idem           idempotency.Store
 
 	supplierID string
@@ -130,6 +132,8 @@ type ServiceConfig struct {
 	ReturnComplete  ReturnCompleteFn
 	RouteGeometry   RouteGeometryLookup
 	ProfileLookup   DriverProfileLookup
+	AvailabilityReader AvailabilityReader
+	DispatchPlanInvalidate func(ctx context.Context, warehouseID string)
 	SupplierID   string
 	Currency     string
 	JWTSecret    string
@@ -259,6 +263,8 @@ func NewService(c ServiceConfig) *Service {
 		returnComplete:  c.ReturnComplete,
 		routeGeometry:   c.RouteGeometry,
 		profileLookup:   c.ProfileLookup,
+		availReader:        c.AvailabilityReader,
+		planInvalidate:     c.DispatchPlanInvalidate,
 		supplierID:         c.SupplierID,
 		currency:           strings.ToUpper(strings.TrimSpace(c.Currency)),
 		jwtSecret:          strings.TrimSpace(c.JWTSecret),
@@ -270,10 +276,58 @@ func NewService(c ServiceConfig) *Service {
 }
 
 type availabilityPatchRequest struct {
-	OnShift bool `json:"on_shift"`
+	OnShift bool   `json:"on_shift"`
+	Reason  string `json:"reason,omitempty"`
+	Note    string `json:"note,omitempty"`
 }
 
-// HandleProfile serves GET /v1/driver/profile.
+func (s *Service) driverOnShiftSnapshot(ctx context.Context, driverID string) bool {
+	onShift, known := s.driverOnShiftKnown(ctx, driverID)
+	if known {
+		return onShift
+	}
+	return true
+}
+
+func (s *Service) driverOnShiftKnown(ctx context.Context, driverID string) (onShift bool, known bool) {
+	if s.availReader != nil {
+		onShift, _, _, ok, err := s.availReader(ctx, driverID)
+		if err == nil && ok {
+			return onShift, true
+		}
+	}
+	s.mu.RLock()
+	onShift, existed := s.availability[driverID]
+	s.mu.RUnlock()
+	return onShift, existed
+}
+
+func (s *Service) persistDriverAvailability(ctx context.Context, driverID string, onShift bool, reason, note string, event events.DriverEvent) error {
+	now := s.now()
+	emit := func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateDriver, driverID, events.TopicMain, event)
+	}
+	if writer, ok := s.repo.(AvailabilityWriter); ok {
+		return writer.ApplyAvailability(ctx, AvailabilityUpdate{
+			DriverID:  driverID,
+			OnShift:   onShift,
+			Reason:    reason,
+			Note:      note,
+			UpdatedAt: now,
+		}, emit)
+	}
+	return s.repo.Apply(ctx, func() error {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.availability[driverID] = onShift
+		return nil
+	}, emit)
+}
+
+// SetDispatchPlanInvalidate wires warehouse dispatch plan cache busting after bootstrap constructs warehouse.
+func (s *Service) SetDispatchPlanInvalidate(fn func(ctx context.Context, warehouseID string)) {
+	s.planInvalidate = fn
+}
 func (s *Service) HandleProfile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -285,9 +339,7 @@ func (s *Service) HandleProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claims, _ := auth.FromContext(r.Context())
-	s.mu.RLock()
-	onShift := s.availability[driverID]
-	s.mu.RUnlock()
+	onShift := s.driverOnShiftSnapshot(r.Context(), driverID)
 	resp := map[string]any{
 		"driver_id":      driverID,
 		"home_node_type": claims.HomeNodeType,
@@ -401,9 +453,7 @@ func (s *Service) HandleAvailability(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodGet:
-		s.mu.RLock()
-		onShift := s.availability[driverID]
-		s.mu.RUnlock()
+		onShift := s.driverOnShiftSnapshot(r.Context(), driverID)
 		writeJSON(w, http.StatusOK, map[string]any{"driver_id": driverID, "on_shift": onShift, "available": onShift})
 	case http.MethodPost:
 		var req struct {
@@ -416,10 +466,13 @@ func (s *Service) HandleAvailability(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer r.Body.Close()
+		patchBody, _ := json.Marshal(availabilityPatchRequest{
+			OnShift: req.Available,
+			Reason:  req.Reason,
+			Note:    req.Note,
+		})
 		r2 := r.Clone(r.Context())
 		r2.Method = http.MethodPatch
-		r2.Body = http.NoBody
-		patchBody, _ := json.Marshal(availabilityPatchRequest{OnShift: req.Available})
 		r2.Body = io.NopCloser(strings.NewReader(string(patchBody)))
 		r2.ContentLength = int64(len(patchBody))
 		s.HandleAvailability(w, r2)
@@ -431,48 +484,56 @@ func (s *Service) HandleAvailability(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 
-		s.mu.RLock()
-		current, existed := s.availability[driverID]
-		s.mu.RUnlock()
-		if existed && current == req.OnShift {
-			// Idempotent no-op: state already at target. No outbox emit, no cache
-			// invalidation, no ws broadcast — mirrors warehouse dispatch-lock
-			// missing-release negative-path contract.
+		current, known := s.driverOnShiftKnown(r.Context(), driverID)
+		if known && current == req.OnShift {
 			writeJSON(w, http.StatusOK, map[string]any{"driver_id": driverID, "on_shift": req.OnShift, "no_change": true})
 			return
 		}
 
+		reason := ""
+		note := strings.TrimSpace(req.Note)
+		if !req.OnShift {
+			reason = normalizeDriverUnavailableReason(req.Reason)
+			if reason == ReasonOther && note == "" {
+				note = strings.TrimSpace(req.Reason)
+			}
+		}
+
 		nowTS := s.now().Format(time.RFC3339Nano)
 		claims, _ := auth.FromContext(r.Context())
+		homeNodeType := strings.TrimSpace(string(claims.HomeNodeType))
+		homeNodeID := strings.TrimSpace(claims.HomeNodeID)
 		eventPayload := events.DriverEvent{
 			BaseEvent:    events.BaseEvent{Type: events.EventDriverAvailabilityChanged, Timestamp: nowTS, Version: 1},
 			DriverID:     driverID,
 			Available:    req.OnShift,
 			OnShift:      req.OnShift,
+			Reason:       reason,
+			Note:         note,
 			SupplierID:   s.supplierID,
-			HomeNodeType: strings.TrimSpace(string(claims.HomeNodeType)),
-			HomeNodeID:   strings.TrimSpace(claims.HomeNodeID),
+			HomeNodeType: homeNodeType,
+			HomeNodeID:   homeNodeID,
 		}
 
-		if err := s.repo.Apply(r.Context(), func() error {
-			s.mu.Lock()
-			defer s.mu.Unlock()
-			s.availability[driverID] = req.OnShift
-			return nil
-		}, func(txn outbox.TxnBuffer) error {
-			return outbox.EmitJSON(r.Context(), txn, events.AggregateDriver, driverID, events.TopicMain, eventPayload)
-		}); err != nil {
+		if err := s.persistDriverAvailability(r.Context(), driverID, req.OnShift, reason, note, eventPayload); err != nil {
 			s.log.Error("driver availability persist failed", "driver_id", driverID, "err", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_availability_failed"})
 			return
 		}
 
+		s.mu.Lock()
+		s.availability[driverID] = req.OnShift
+		s.mu.Unlock()
+
 		if s.cache != nil {
 			s.cache.Invalidate(r.Context(), driverAvailabilityKey(driverID))
 		}
+		if s.planInvalidate != nil && strings.EqualFold(homeNodeType, "WAREHOUSE") && homeNodeID != "" {
+			s.planInvalidate(r.Context(), homeNodeID)
+		}
 		s.broadcastDriverEvent(r.Context(), driverID, eventPayload)
-		s.log.Info("driver availability changed", "driver_id", driverID, "on_shift", req.OnShift)
-		writeJSON(w, http.StatusOK, map[string]any{"driver_id": driverID, "on_shift": req.OnShift})
+		s.log.Info("driver availability changed", "driver_id", driverID, "on_shift", req.OnShift, "reason", reason)
+		writeJSON(w, http.StatusOK, map[string]any{"driver_id": driverID, "on_shift": req.OnShift, "reason": reason})
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}

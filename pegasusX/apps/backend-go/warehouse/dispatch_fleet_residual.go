@@ -138,11 +138,21 @@ func warehouseDriverAvailability(driver PortalDriver, fleetCtx fleetDispatchCont
 	if !driver.IsActive {
 		return "UNAVAILABLE", true, "INACTIVE"
 	}
+	if !driver.OnShift {
+		status := driverOffShiftTruckStatus(driver.UnavailableReason)
+		return status, true, driverUnavailableDisplayReason(driver.UnavailableReason, driver.UnavailableNote)
+	}
 	if fleetCtx.InTransit[driverID] {
 		return "IN_TRANSIT", true, "IN_TRANSIT"
 	}
 	if !strings.EqualFold(strings.TrimSpace(driver.TruckStatus), "AVAILABLE") {
-		return driver.TruckStatus, true, driver.TruckStatus
+		display := strings.TrimSpace(driver.TruckStatus)
+		if strings.EqualFold(display, "VEHICLE_INACTIVE") {
+			if vr := strings.TrimSpace(driver.VehicleUnavailableReason); vr != "" {
+				display = vehicleUnavailableDisplayReason(vr, driver.VehicleUnavailableNote)
+			}
+		}
+		return driver.TruckStatus, true, display
 	}
 	_, freeVU, _ := driverResidualVolumes(driver, fleetCtx.topOffFor(driverID))
 	if freeVU <= 0 {

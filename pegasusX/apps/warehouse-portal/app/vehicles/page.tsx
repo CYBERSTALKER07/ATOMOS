@@ -22,13 +22,16 @@ const VEHICLE_UNAVAILABLE_REASONS: WarehouseVehicleUnavailableReason[] = [
   'TRUCK_DAMAGED',
   'REGULATORY_HOLD',
   'MANUAL_HOLD',
+  'OTHER',
 ];
 
-function formatUnavailableReason(reason?: string) {
+function formatUnavailableReason(reason?: string, note?: string) {
   if (!reason) {
-    return '';
+    return note || '';
   }
-
+  if (reason.toUpperCase() === 'OTHER' && note?.trim()) {
+    return note.trim();
+  }
   return reason
     .toLowerCase()
     .split('_')
@@ -39,6 +42,7 @@ function formatUnavailableReason(reason?: string) {
 export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<WarehouseFleetVehicle[]>([]);
   const [vehicleReasons, setVehicleReasons] = useState<Record<string, WarehouseVehicleUnavailableReason>>({});
+  const [vehicleNotes, setVehicleNotes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ label: '', license_plate: '', vehicle_class: 'CLASS_A' });
@@ -62,6 +66,15 @@ export default function VehiclesPage() {
         for (const vehicle of nextVehicles) {
           if (!next[vehicle.vehicle_id]) {
             next[vehicle.vehicle_id] = vehicle.unavailable_reason || 'MANUAL_HOLD';
+          }
+        }
+        return next;
+      });
+      setVehicleNotes(current => {
+        const next = { ...current };
+        for (const vehicle of nextVehicles) {
+          if (!next[vehicle.vehicle_id] && vehicle.unavailable_note) {
+            next[vehicle.vehicle_id] = vehicle.unavailable_note;
           }
         }
         return next;
@@ -106,9 +119,17 @@ export default function VehiclesPage() {
     const warehouseId = warehouseHomeNodeId() || 'warehouse';
     try {
 	    const unavailableReason = vehicleReasons[vehicle.vehicle_id] || vehicle.unavailable_reason || 'MANUAL_HOLD';
+      const unavailableNote = vehicleNotes[vehicle.vehicle_id]?.trim() || '';
+      const body: Record<string, unknown> = nextActive
+        ? { is_active: true }
+        : {
+            is_active: false,
+            unavailable_reason: unavailableReason,
+            ...(unavailableReason === 'OTHER' && unavailableNote ? { unavailable_note: unavailableNote } : {}),
+          };
       const res = await apiFetch(`/v1/warehouse/ops/vehicles/${vehicle.vehicle_id}`, {
         method: 'PATCH',
-		  body: JSON.stringify(nextActive ? { is_active: true } : { is_active: false, unavailable_reason: unavailableReason }),
+		  body: JSON.stringify(body),
         headers: {
           'Idempotency-Key': warehouseUpdateVehicleKey(
             warehouseId,
@@ -226,14 +247,15 @@ export default function VehiclesPage() {
                       <span className={`status-chip ${v.is_active ? 'status-chip--stable' : 'status-chip--draft'}`}>
                         {v.is_active ? v.status || 'Active' : 'Unavailable'}
                       </span>
-                      {!v.is_active && v.unavailable_reason && (
-                        <div className="text-xs text-(--muted)">{formatUnavailableReason(v.unavailable_reason)}</div>
+                      {!v.is_active && (v.unavailable_reason || v.unavailable_note) && (
+                        <div className="text-xs text-(--muted)">{formatUnavailableReason(v.unavailable_reason, v.unavailable_note)}</div>
                       )}
                     </div>
                   </td>
                   <td className="py-2.5 px-3">
                     <div className="flex flex-wrap items-center gap-2">
                       {v.is_active && (
+                        <div className="flex flex-col gap-2">
                         <select
                           value={vehicleReasons[v.vehicle_id] || v.unavailable_reason || 'MANUAL_HOLD'}
                           onChange={event => setVehicleReasons(current => ({
@@ -248,6 +270,21 @@ export default function VehiclesPage() {
                             <option key={reason} value={reason}>{formatUnavailableReason(reason)}</option>
                           ))}
                         </select>
+                        {(vehicleReasons[v.vehicle_id] || 'MANUAL_HOLD') === 'OTHER' && (
+                          <input
+                            type="text"
+                            placeholder="Custom reason"
+                            value={vehicleNotes[v.vehicle_id] || ''}
+                            onChange={event => setVehicleNotes(current => ({
+                              ...current,
+                              [v.vehicle_id]: event.target.value,
+                            }))}
+                            disabled={mutatingVehicleId === v.vehicle_id}
+                            className="rounded-lg border px-3 py-1.5 text-sm"
+                            style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+                          />
+                        )}
+                        </div>
                       )}
                       <button
                         onClick={() => handleToggleAvailability(v, !v.is_active)}

@@ -779,6 +779,19 @@ func (r *driverRepoSpy) Apply(ctx context.Context, mutate func() error, emit fun
 	return nil
 }
 
+func (r *driverRepoSpy) ApplyAvailability(ctx context.Context, _ AvailabilityUpdate, emit func(outbox.TxnBuffer) error) error {
+	r.applyCalls++
+	if emit != nil {
+		buf := &driverTxnBufferSpy{}
+		if err := emit(buf); err != nil {
+			return err
+		}
+		r.events = append(r.events, buf.events...)
+	}
+	_ = ctx
+	return nil
+}
+
 type driverTxnBufferSpy struct {
 	events []outbox.Event
 }

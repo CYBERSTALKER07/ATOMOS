@@ -6,6 +6,8 @@ export const WAREHOUSE_FLEET_LIVE_REFRESH_EVENTS = new Set([
   'DISPATCH_COMMITTED',
   'DRIVER_LOCATION_UPDATED',
   'ORDER_ASSIGNED',
+  'DRIVER_AVAILABILITY_CHANGED',
+  'VEHICLE_AVAILABILITY_CHANGED',
 ]);
 
 /** Dispatch board + lock surfaces. */
@@ -17,6 +19,8 @@ export const WAREHOUSE_DISPATCH_REFRESH_EVENTS = new Set([
   'MANIFEST_DISPATCHED',
   'ORDER_ASSIGNED',
   'ORDER_STATUS_CHANGED',
+  'DRIVER_AVAILABILITY_CHANGED',
+  'VEHICLE_AVAILABILITY_CHANGED',
 ]);
 
 export function parseWarehouseWsEventType(raw: unknown): string | null {

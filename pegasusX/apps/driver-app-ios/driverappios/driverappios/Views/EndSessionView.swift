@@ -8,6 +8,7 @@ import SwiftUI
 /// Offline reason codes matching the backend validation in HandleDriverAvailability.
 enum OfflineReason: String, CaseIterable {
     case SHIFT_COMPLETE
+    case RETURNING_TO_WAREHOUSE
     case TRUCK_DAMAGED
     case PERSONAL
     case OTHER
@@ -15,6 +16,7 @@ enum OfflineReason: String, CaseIterable {
     var label: String {
         switch self {
         case .SHIFT_COMPLETE: "Shift Complete"
+        case .RETURNING_TO_WAREHOUSE: "Returning to Warehouse"
         case .TRUCK_DAMAGED: "Truck Damaged"
         case .PERSONAL: "Personal"
         case .OTHER: "Other"
@@ -24,6 +26,7 @@ enum OfflineReason: String, CaseIterable {
     var icon: String {
         switch self {
         case .SHIFT_COMPLETE: "moon.fill"
+        case .RETURNING_TO_WAREHOUSE: "arrow.uturn.left.circle.fill"
         case .TRUCK_DAMAGED: "wrench.fill"
         case .PERSONAL: "person.fill"
         case .OTHER: "questionmark.circle.fill"
