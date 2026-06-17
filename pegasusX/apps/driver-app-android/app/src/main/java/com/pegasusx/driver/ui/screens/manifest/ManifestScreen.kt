@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -433,6 +434,19 @@ private fun RideCard(order: Order, loadSeqLabel: String? = null, onClick: () -> 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 InfoChip(icon = Icons.Default.CreditCard, text = order.retailerName)
                 InfoChip(icon = Icons.Default.LocalShipping, text = order.totalAmount.formattedAmount())
+            }
+            val intentBadges = buildList {
+                order.preorderBadge?.takeIf { it.isNotBlank() }?.let { add(it) }
+                if (order.orderSource == "MANUAL_PREORDER") add("Pre-order")
+                order.deliverBefore?.takeIf { it.isNotBlank() }?.let { add("Deliver by") }
+                if (order.deliveryPriority == "EXPRESS") add("Express")
+            }
+            if (intentBadges.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    intentBadges.forEach { label ->
+                        AssistChip(onClick = {}, label = { Text(label) })
+                    }
+                }
             }
 
             // Delivery target

@@ -155,6 +155,19 @@ cd pegasusX/apps/retailer-app-android && ./gradlew compileDebugKotlin
 
 ---
 
+## Phase RT-7 — Manual pre-order + delivery intent (Standard vs Scheduled)
+
+| ID | Feature | Backend | Desktop | Android | iOS | Status |
+|----|---------|---------|---------|---------|-----|--------|
+| RT7-01 | Two-mode checkout (`STANDARD` / `SCHEDULED`, express, deliver-before) | `order/preorder_policy.go`, `Create`, unified checkout | `CheckoutModal` delivery intent | cart/checkout API fields | checkout API fields | **WIRED** |
+| RT7-02 | Preorder confirm/edit gates | `Status=SCHEDULED`, `MANUAL_PREORDER`, `DRAFT` | `/orders` detail actions | `needsPreorderAction` | `needsManualPreorderAction` | **WIRED** |
+| RT7-03 | Midnight Guard + `PRE_ORDER_*` events | `order/preorder_sweeper.go`, outbox | WS refresh | WS refresh | WS refresh | **WIRED** |
+| RT7-04 | SSMR | smokecheck | — | — | — | **WIRED** (`PX_E2E_MANUAL_PREORDER_OK`) |
+
+**Exit:** Retailer can place Standard (ASAP + optional deliver-before) or Scheduled (T+3+) pre-orders; warehouse sees commitments; SSMR green.
+
+---
+
 ## Known remaining gaps (backend / cross-role)
 
 - Card tokenization Spanner persistence may return stub/503 on some stacks — clients show honest errors.

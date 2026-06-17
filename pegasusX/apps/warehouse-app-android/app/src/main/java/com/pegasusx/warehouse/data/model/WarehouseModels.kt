@@ -191,6 +191,40 @@ data class WarehouseOpsSettingsResponse(
 data class WarehouseOpsSettingsPatchRequest(
     @SerialName("default_out_of_stock_policy") val defaultOutOfStockPolicy: String,
     @SerialName("operating_schedule") val operatingSchedule: kotlinx.serialization.json.JsonElement,
+    @SerialName("express_enabled") val expressEnabled: Boolean? = null,
+    @SerialName("express_stock_floor") val expressStockFloor: Long? = null,
+)
+
+@Serializable
+data class WarehousePreorderRow(
+    @SerialName("order_id") val orderId: String,
+    val status: String = "",
+    @SerialName("order_source") val orderSource: String? = null,
+    @SerialName("requested_delivery_date") val requestedDeliveryDate: String? = null,
+    @SerialName("preorder_badge") val preorderBadge: String? = null,
+)
+
+@Serializable
+data class WarehousePreordersResponse(
+    val preorders: List<WarehousePreorderRow> = emptyList(),
+    val items: List<WarehousePreorderRow> = emptyList(),
+)
+
+@Serializable
+data class StockCommitmentRow(
+    @SerialName("sku_id") val skuId: String,
+    val name: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("on_hand") val onHand: Long = 0,
+    @SerialName("reserved_asap") val reservedAsap: Long = 0,
+    @SerialName("reserved_scheduled") val reservedScheduled: Long = 0,
+    @SerialName("deficit_qty") val deficitQty: Long = 0,
+)
+
+@Serializable
+data class StockCommitmentsResponse(
+    val items: List<StockCommitmentRow> = emptyList(),
+    val skus: List<StockCommitmentRow> = emptyList(),
 )
 
 @Serializable

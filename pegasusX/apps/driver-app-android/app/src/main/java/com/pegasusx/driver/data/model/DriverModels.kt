@@ -54,7 +54,12 @@ data class Order(
     @SerialName("eta_duration_sec") val etaDurationSec: Int? = null,
     @SerialName("eta_distance_m") val etaDistanceM: Int? = null,
     @SerialName("route_id") val routeId: String? = null,
-    @SerialName("sequence_index") val sequenceIndex: Int = 0
+    @SerialName("sequence_index") val sequenceIndex: Int = 0,
+    @SerialName("order_source") val orderSource: String? = null,
+    @SerialName("deliver_before") val deliverBefore: String? = null,
+    @SerialName("delivery_priority") val deliveryPriority: String? = null,
+    @SerialName("preorder_badge") val preorderBadge: String? = null,
+    @SerialName("requested_delivery_date") val requestedDeliveryDate: String? = null,
 )
 
 @Serializable

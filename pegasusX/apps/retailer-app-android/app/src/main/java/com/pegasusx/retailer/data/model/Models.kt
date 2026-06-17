@@ -410,13 +410,18 @@ data class Order(
     @SerialName("estimated_delivery") val estimatedDelivery: String? = null,
     @SerialName("delivery_token") val qrCode: String? = null,
     @SerialName("order_source") val orderSource: String = "MANUAL",
+    @SerialName("confirmation_status") val confirmationStatus: String? = null,
+    @SerialName("delivery_priority") val deliveryPriority: String? = null,
+    @SerialName("preorder_badge") val preorderBadge: String? = null,
     @SerialName("version") val version: Long = 0,
 ) {
     val displayTotal: String get() = formatRetailerAmount(totalAmount, currency)
     val itemCount: Int get() = items.sumOf { it.quantity }
     val isAiGenerated: Boolean get() = orderSource == "AI_PREDICTED"
     val needsAiConfirmation: Boolean get() = status == OrderStatus.PENDING_REVIEW
-    val needsPreorderAction: Boolean get() = status == OrderStatus.SCHEDULED
+    val needsPreorderAction: Boolean get() =
+        orderSource == "MANUAL_PREORDER" && status == OrderStatus.SCHEDULED &&
+            (confirmationStatus.isNullOrBlank() || confirmationStatus == "DRAFT")
 }
 
 fun formatRetailerAmount(amount: Long, currency: String): String {

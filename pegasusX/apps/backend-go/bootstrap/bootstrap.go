@@ -552,6 +552,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	if gatewayPolicyReader != nil {
 		orderSvc.SetGatewayPolicyReader(gatewayPolicyReader)
 	}
+	order.StartPreorderSweeper(orderSvc)
 	var optimizerCli *optimizerclient.Client
 	if strings.TrimSpace(cfg.OptimizerBaseURL) != "" && strings.TrimSpace(cfg.InternalAPIKey) != "" {
 		optimizerCli = optimizerclient.New(cfg.OptimizerBaseURL, cfg.InternalAPIKey)
@@ -808,6 +809,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		FallbackDepotLat:     cfg.DeliveryZoneCenterLat,
 		FallbackDepotLng:     cfg.DeliveryZoneCenterLng,
 	})
+	warehouseSvc.SetOrderStockReader(orderSvc)
 	driverSvc.SetDispatchPlanInvalidate(func(ctx context.Context, warehouseID string) {
 		warehouseSvc.InvalidateDispatchPlanCache(ctx, warehouseID)
 	})
@@ -2845,6 +2847,65 @@ func (r *inMemoryOrderRepo) ListManifestOrders(_ context.Context, manifestID str
 		if o.ManifestID == manifestID {
 			out = append(out, o)
 		}
+	}
+	return out, nil
+}
+
+func (r *inMemoryOrderRepo) ListWarehousePreorders(_ context.Context, warehouseID string, limit, offset int) ([]order.Order, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if limit <= 0 {
+		limit = 50
+	}
+	var out []order.Order
+	for _, o := range r.byID {
+		if o.WarehouseID != warehouseID || o.Source != order.OrderSourceManualPreorder {
+			continue
+		}
+		if o.Status != order.StatusScheduled && o.Status != order.StatusAutoAccepted {
+			continue
+		}
+		out = append(out, o)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		var di, dj time.Time
+		if out[i].RequestedDeliveryDate != nil {
+			di = *out[i].RequestedDeliveryDate
+		}
+		if out[j].RequestedDeliveryDate != nil {
+			dj = *out[j].RequestedDeliveryDate
+		}
+		return di.Before(dj)
+	})
+	if offset >= len(out) {
+		return nil, nil
+	}
+	end := offset + limit
+	if end > len(out) {
+		end = len(out)
+	}
+	return out[offset:end], nil
+}
+
+func (r *inMemoryOrderRepo) ListOrdersForStockCommitment(_ context.Context, warehouseID string, limit int) ([]order.Order, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if limit <= 0 {
+		limit = 500
+	}
+	var out []order.Order
+	for _, o := range r.byID {
+		if o.WarehouseID != warehouseID {
+			continue
+		}
+		switch o.Status {
+		case order.StatusPending, order.StatusScheduled, order.StatusAutoAccepted,
+			order.StatusLoaded, order.StatusInTransit, order.StatusDelayed:
+			out = append(out, o)
+		}
+	}
+	if len(out) > limit {
+		out = out[:limit]
 	}
 	return out, nil
 }

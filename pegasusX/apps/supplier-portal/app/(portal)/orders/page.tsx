@@ -14,13 +14,14 @@ import StatusBadge from '@/components/StatusBadge';
 import { PortalSurface } from '../_components/PortalSurface';
 import type { SupplierOrder } from '@pegasusx/types';
 
-type OrderFilter = 'ACTIVE' | 'REVIEW' | 'COMPLETED' | 'CANCELLED';
+type OrderFilter = 'ACTIVE' | 'REVIEW' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
 
 const supplierApi = createSupplierApi();
 const PAGE_SIZE = 25;
 const filterLabels: Record<OrderFilter, string> = {
   ACTIVE: 'Active Orders',
   REVIEW: 'Awaiting Review',
+  SCHEDULED: 'Scheduled pre-orders',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
 };
@@ -78,6 +79,8 @@ export default function OrdersPage() {
       const query =
         filter === 'REVIEW'
           ? { limit: PAGE_SIZE, offset: page * PAGE_SIZE, status: 'AWAITING_REVIEW' }
+          : filter === 'SCHEDULED'
+            ? { limit: PAGE_SIZE, offset: page * PAGE_SIZE, status: 'SCHEDULED' }
           : { limit: PAGE_SIZE, offset: page * PAGE_SIZE, filter };
       const response = await supplierApi.getSupplierOrders(query);
       setOrders(response.orders);

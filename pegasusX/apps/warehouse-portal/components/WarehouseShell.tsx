@@ -22,6 +22,7 @@ const NAV: NavSection[] = [
     items: [
       { href: '/', icon: 'dashboard', label: 'Dashboard' },
       { href: '/orders', icon: 'orders', label: 'Orders' },
+      { href: '/preorders', icon: 'orders', label: 'Pre-orders' },
       { href: '/dispatch', icon: 'dispatch', label: 'Dispatch' },
       { href: '/dispatch-settings', icon: 'settings', label: 'Dispatch Settings' },
       { href: '/manifests', icon: 'manifests', label: 'Manifests' },
@@ -31,6 +32,7 @@ const NAV: NavSection[] = [
     label: 'Inventory',
     items: [
       { href: '/inventory', icon: 'inventory', label: 'Stock' },
+      { href: '/stock-commitments', icon: 'inventory', label: 'Stock commitments' },
       { href: '/products', icon: 'catalog', label: 'Products' },
       { href: '/supply-requests', icon: 'supplyRequests', label: 'Supply Requests' },
       { href: '/settings', icon: 'settings', label: 'Settings' },

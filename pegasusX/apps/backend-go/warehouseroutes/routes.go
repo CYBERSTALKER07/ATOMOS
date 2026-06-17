@@ -51,7 +51,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			rr.Post("/v1/warehouse/ops/orders/{id}/delay", d.OrderService.HandleWarehouseMarkDelayed)
 			rr.Post("/v1/warehouse/ops/orders/{id}/reject", d.OrderService.HandleWarehouseRejectOrder)
 			rr.Post("/v1/warehouse/ops/orders/{id}/overflow", d.OrderService.HandleWarehousePayloadOverflow)
+			rr.Get("/v1/warehouse/ops/preorders", d.OrderService.HandleWarehouseListPreorders)
+			rr.Post("/v1/warehouse/ops/preorders/{id}/edit", d.OrderService.HandleWarehouseEditPreorder)
+			rr.Post("/v1/warehouse/ops/preorders/{id}/reject", d.OrderService.HandleWarehouseRejectPreorder)
 		}
+		rr.Get("/v1/warehouse/ops/stock-commitments", d.Service.HandleStockCommitments)
+		rr.Get("/v1/warehouse/ops/stock-commitments/{skuId}", d.Service.HandleStockCommitmentBySKU)
 		rr.Get("/v1/warehouse/ops/dispatch/preview", d.Service.HandleDispatchPreview)
 		rr.Post("/v1/warehouse/ops/dispatch/preview", d.Service.HandleDispatchPreview)
 		rr.Post("/v1/warehouse/ops/dispatch/execute", d.Service.HandleDispatchExecute)

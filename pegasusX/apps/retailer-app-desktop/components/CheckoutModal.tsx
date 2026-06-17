@@ -60,6 +60,9 @@ export default function CheckoutModal({
   const [degradedBanner, setDegradedBanner] = useState<{ gateway: string; reason: string } | null>(null);
   const [oosItems, setOosItems] = useState<string[]>([]);
   const [stockWarnings, setStockWarnings] = useState<StockWarning[]>([]);
+  const [deliveryMode, setDeliveryMode] = useState<"STANDARD" | "SCHEDULED">("STANDARD");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [expressPriority, setExpressPriority] = useState(false);
   const [hasCardConfigured, setHasCardConfigured] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [pendingCardToken, setPendingCardToken] = useState<string | null>(null);
@@ -265,13 +268,23 @@ export default function CheckoutModal({
         .join("|");
       const idempotencyKey = retailerUnifiedCheckoutKey(method, cartKey);
 
-      const checkoutPayload = {
+      const checkoutPayload: Record<string, unknown> = {
         retailer_id: profile.id,
         payment_gateway: gatewayMap[method] || "GLOBAL_PAY",
         latitude: 0,
         longitude: 0,
         items: lineItems,
+        delivery_mode: deliveryMode,
+        delivery_priority: expressPriority ? "EXPRESS" : "STANDARD",
       };
+      if (deliveryDate) {
+        const iso = new Date(`${deliveryDate}T12:00:00+05:00`).toISOString();
+        if (deliveryMode === "SCHEDULED") {
+          checkoutPayload.requested_delivery_date = iso;
+        } else {
+          checkoutPayload.deliver_before = iso;
+        }
+      }
 
       const cartRes = await apiFetch("/v1/checkout/unified", {
         method: "POST",
@@ -426,6 +439,44 @@ export default function CheckoutModal({
                   </div>
                 </div>
               )}
+
+              <div className="space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-2">
+                  Delivery Intent
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMode("STANDARD")}
+                    className={`p-4 rounded-2xl border text-left ${deliveryMode === "STANDARD" ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5" : "border-[var(--desk-border)]"}`}
+                  >
+                    <span className="font-bold text-sm">Standard (ASAP)</span>
+                    <span className="block text-xs text-[var(--desk-text-tertiary)] mt-1">Earliest T+1 business day</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMode("SCHEDULED")}
+                    className={`p-4 rounded-2xl border text-left ${deliveryMode === "SCHEDULED" ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5" : "border-[var(--desk-border)]"}`}
+                  >
+                    <span className="font-bold text-sm">Scheduled pre-order</span>
+                    <span className="block text-xs text-[var(--desk-text-tertiary)] mt-1">Delivery day T+3 or later</span>
+                  </button>
+                </div>
+                <input
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                  className="w-full rounded-xl border border-[var(--desk-border)] px-4 py-3 bg-[var(--desk-canvas)]"
+                />
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={expressPriority}
+                    onChange={(e) => setExpressPriority(e.target.checked)}
+                  />
+                  Express priority (+fee)
+                </label>
+              </div>
 
               <div className="space-y-3">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-2">

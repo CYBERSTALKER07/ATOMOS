@@ -38,7 +38,7 @@ func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) e
 	return nil
 }
 
-const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, OriginalTotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, Version, CreatedAt, UpdatedAt`
+const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, OriginalTotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, DeliverBefore, DeliveryPriority, DeliveryFeeMinor, WarehouseNotes, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, PreorderReminderSentAt, NudgeNotifiedAt, ConfirmationNotifiedAt, CancelLockedAt, CancelLockReason, Version, CreatedAt, UpdatedAt`
 
 // CreateOrder writes the Orders row and any emitted outbox events atomically.
 func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error {
@@ -59,8 +59,8 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 			return err
 		}
 
-		// Phase 2 check: reserve on-hand stock for fulfillable quantities (skip backorder rows).
-		if len(o.LineItems) > 0 && o.WarehouseID != "" && o.Source != OrderSourceBackorder {
+		// Phase 2 check: reserve on-hand stock for fulfillable quantities (skip scheduled pre-orders).
+		if len(o.LineItems) > 0 && o.WarehouseID != "" && o.Source != OrderSourceBackorder && o.Status != StatusScheduled {
 			for _, item := range o.LineItems {
 				row, err := txn.ReadRow(ctx, "SupplierInventoryV2",
 					spanner.Key{o.SupplierID, o.WarehouseID, item.SKU},
@@ -120,12 +120,21 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 				"Lat":                   o.Lat,
 				"Lng":                   o.Lng,
 				"RequestedDeliveryDate": nullableTime(o.RequestedDeliveryDate),
+				"DeliverBefore":         nullableTime(o.DeliverBefore),
+				"DeliveryPriority":      string(o.DeliveryPriority),
+				"DeliveryFeeMinor":       o.DeliveryFeeMinor,
+				"WarehouseNotes":        nullableString(o.WarehouseNotes),
 				"AutoConfirmAt":         nullableTime(o.AutoConfirmAt),
 				"DecisionAt":            nullableTime(o.DecisionAt),
 				"DecisionBy":            nullableString(o.DecisionBy),
 				"DerivedFromOrderId":    nullableString(o.DerivedFromOrderID),
 				"ReceivingWindowOpen":   nullableString(o.ReceivingWindowOpen),
 				"ReceivingWindowClose":  nullableString(o.ReceivingWindowClose),
+				"PreorderReminderSentAt": nullableTime(o.PreorderReminderSentAt),
+				"NudgeNotifiedAt":       nullableTime(o.NudgeNotifiedAt),
+				"ConfirmationNotifiedAt": nullableTime(o.ConfirmationNotifiedAt),
+				"CancelLockedAt":        nullableTime(o.CancelLockedAt),
+				"CancelLockReason":      nullableString(o.CancelLockReason),
 				"Version":               o.Version,
 				"CreatedAt":             o.CreatedAt.UTC(),
 				"UpdatedAt":             o.UpdatedAt.UTC(),
@@ -222,10 +231,19 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 				"Lat":                   o.Lat,
 				"Lng":                   o.Lng,
 				"RequestedDeliveryDate": nullableTime(o.RequestedDeliveryDate),
+				"DeliverBefore":         nullableTime(o.DeliverBefore),
+				"DeliveryPriority":      string(o.DeliveryPriority),
+				"DeliveryFeeMinor":      o.DeliveryFeeMinor,
+				"WarehouseNotes":        nullableString(o.WarehouseNotes),
 				"AutoConfirmAt":         nullableTime(o.AutoConfirmAt),
 				"DecisionAt":            nullableTime(o.DecisionAt),
 				"DecisionBy":            nullableString(o.DecisionBy),
 				"DerivedFromOrderId":    nullableString(o.DerivedFromOrderID),
+				"PreorderReminderSentAt": nullableTime(o.PreorderReminderSentAt),
+				"NudgeNotifiedAt":       nullableTime(o.NudgeNotifiedAt),
+				"ConfirmationNotifiedAt": nullableTime(o.ConfirmationNotifiedAt),
+				"CancelLockedAt":        nullableTime(o.CancelLockedAt),
+				"CancelLockReason":      nullableString(o.CancelLockReason),
 				"Version":               o.Version,
 				"UpdatedAt":             o.UpdatedAt,
 			}),
@@ -432,23 +450,32 @@ func collectOrders(iter *spanner.RowIterator) ([]Order, error) {
 
 func scanOrderRowRow(row *spanner.Row) (Order, error) {
 	var (
-		statusRaw             string
-		sourceRaw             string
-		confirmationRaw       string
-		lineItemsRaw          []byte
-		driverID              spanner.NullString
-		vehicleID             spanner.NullString
-		routeID               spanner.NullString
-		manifestID            spanner.NullString
-		deliveryToken         spanner.NullString
-		receivingWindowOpen   spanner.NullString
-		receivingWindowClose  spanner.NullString
-		decisionBy            spanner.NullString
-		derivedFromOrderID    spanner.NullString
-		requestedDeliveryDate spanner.NullTime
-		autoConfirmAt         spanner.NullTime
-		decisionAt            spanner.NullTime
-		orderRecord           Order
+		statusRaw              string
+		sourceRaw              string
+		confirmationRaw        string
+		lineItemsRaw           []byte
+		driverID               spanner.NullString
+		vehicleID              spanner.NullString
+		routeID                spanner.NullString
+		manifestID             spanner.NullString
+		deliveryToken          spanner.NullString
+		receivingWindowOpen    spanner.NullString
+		receivingWindowClose   spanner.NullString
+		decisionBy             spanner.NullString
+		derivedFromOrderID     spanner.NullString
+		warehouseNotes         spanner.NullString
+		cancelLockReason       spanner.NullString
+		deliveryPriorityRaw    spanner.NullString
+		requestedDeliveryDate  spanner.NullTime
+		deliverBefore          spanner.NullTime
+		autoConfirmAt          spanner.NullTime
+		decisionAt             spanner.NullTime
+		preorderReminderSentAt spanner.NullTime
+		nudgeNotifiedAt        spanner.NullTime
+		confirmationNotifiedAt spanner.NullTime
+		cancelLockedAt         spanner.NullTime
+		deliveryFeeMinor       int64
+		orderRecord            Order
 	)
 	if err := row.Columns(
 		&orderRecord.OrderID,
@@ -471,12 +498,21 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		&orderRecord.Lat,
 		&orderRecord.Lng,
 		&requestedDeliveryDate,
+		&deliverBefore,
+		&deliveryPriorityRaw,
+		&deliveryFeeMinor,
+		&warehouseNotes,
 		&autoConfirmAt,
 		&decisionAt,
 		&decisionBy,
 		&derivedFromOrderID,
 		&receivingWindowOpen,
 		&receivingWindowClose,
+		&preorderReminderSentAt,
+		&nudgeNotifiedAt,
+		&confirmationNotifiedAt,
+		&cancelLockedAt,
+		&cancelLockReason,
 		&orderRecord.Version,
 		&orderRecord.CreatedAt,
 		&orderRecord.UpdatedAt,
@@ -491,9 +527,19 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 	orderRecord.Status = Status(statusRaw)
 	orderRecord.Source = OrderSource(sourceRaw)
 	orderRecord.ConfirmationStatus = ConfirmationStatus(confirmationRaw)
+	if deliveryPriorityRaw.Valid {
+		orderRecord.DeliveryPriority = DeliveryPriority(deliveryPriorityRaw.StringVal)
+	}
+	orderRecord.DeliveryFeeMinor = deliveryFeeMinor
+	orderRecord.WarehouseNotes = warehouseNotes.StringVal
+	orderRecord.CancelLockReason = cancelLockReason.StringVal
 	if requestedDeliveryDate.Valid {
 		requested := requestedDeliveryDate.Time.UTC()
 		orderRecord.RequestedDeliveryDate = &requested
+	}
+	if deliverBefore.Valid {
+		deliver := deliverBefore.Time.UTC()
+		orderRecord.DeliverBefore = &deliver
 	}
 	if autoConfirmAt.Valid {
 		autoConfirm := autoConfirmAt.Time.UTC()
@@ -507,6 +553,22 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 	orderRecord.DerivedFromOrderID = derivedFromOrderID.StringVal
 	orderRecord.ReceivingWindowOpen = receivingWindowOpen.StringVal
 	orderRecord.ReceivingWindowClose = receivingWindowClose.StringVal
+	if preorderReminderSentAt.Valid {
+		t := preorderReminderSentAt.Time.UTC()
+		orderRecord.PreorderReminderSentAt = &t
+	}
+	if nudgeNotifiedAt.Valid {
+		t := nudgeNotifiedAt.Time.UTC()
+		orderRecord.NudgeNotifiedAt = &t
+	}
+	if confirmationNotifiedAt.Valid {
+		t := confirmationNotifiedAt.Time.UTC()
+		orderRecord.ConfirmationNotifiedAt = &t
+	}
+	if cancelLockedAt.Valid {
+		t := cancelLockedAt.Time.UTC()
+		orderRecord.CancelLockedAt = &t
+	}
 	if orderRecord.OriginalTotalMinor == 0 {
 		orderRecord.OriginalTotalMinor = orderRecord.TotalMinor
 	}
@@ -554,6 +616,63 @@ func (r *SpannerRepository) ListManifestOrders(ctx context.Context, manifestID s
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list manifest orders %s: %w", manifestID, err)
+	}
+	return res, nil
+}
+
+// ListWarehousePreorders returns scheduled/auto-accepted pre-orders for a warehouse node.
+func (r *SpannerRepository) ListWarehousePreorders(ctx context.Context, warehouseID string, limit, offset int) ([]Order, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT ` + orderSelectColumns + ` FROM Orders
+		      WHERE WarehouseId = @wid
+		        AND OrderSource = @src
+		        AND Status IN ('SCHEDULED', 'AUTO_ACCEPTED')
+		      ORDER BY RequestedDeliveryDate ASC, UpdatedAt DESC
+		      LIMIT @lim OFFSET @off`,
+		Params: map[string]any{
+			"wid": warehouseID,
+			"src": string(OrderSourceManualPreorder),
+			"lim": limit,
+			"off": offset,
+		},
+	}
+	return r.queryOrders(ctx, stmt)
+}
+
+// ListOrdersForStockCommitment returns active orders that consume warehouse stock projections.
+func (r *SpannerRepository) ListOrdersForStockCommitment(ctx context.Context, warehouseID string, limit int) ([]Order, error) {
+	if limit <= 0 {
+		limit = 500
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT ` + orderSelectColumns + ` FROM Orders
+		      WHERE WarehouseId = @wid
+		        AND Status IN ('PENDING', 'SCHEDULED', 'AUTO_ACCEPTED', 'LOADED', 'IN_TRANSIT', 'DELAYED')
+		      ORDER BY UpdatedAt DESC
+		      LIMIT @lim`,
+		Params: map[string]any{"wid": warehouseID, "lim": limit},
+	}
+	return r.queryOrders(ctx, stmt)
+}
+
+func (r *SpannerRepository) queryOrders(ctx context.Context, stmt spanner.Statement) ([]Order, error) {
+	var res []Order
+	err := r.client.Single().Query(ctx, stmt).Do(func(row *spanner.Row) error {
+		o, err := scanOrderRowRow(row)
+		if err != nil {
+			return err
+		}
+		res = append(res, o)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return res, nil
 }

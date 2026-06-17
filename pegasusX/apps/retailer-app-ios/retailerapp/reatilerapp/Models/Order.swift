@@ -220,6 +220,9 @@ struct Order: Codable, Identifiable, Hashable {
     let autoConfirmAt: String?
     let deliverBefore: String?
     let orderSource: String?
+    let confirmationStatus: String?
+    let deliveryPriority: String?
+    let preorderBadge: String?
     let createdAt: String
     let updatedAt: String
     let estimatedDelivery: String?
@@ -241,6 +244,9 @@ struct Order: Codable, Identifiable, Hashable {
         case autoConfirmAt = "auto_confirm_at"
         case deliverBefore = "deliver_before"
         case orderSource = "order_source"
+        case confirmationStatus = "confirmation_status"
+        case deliveryPriority = "delivery_priority"
+        case preorderBadge = "preorder_badge"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case estimatedDelivery = "estimated_delivery"
@@ -293,6 +299,9 @@ struct Order: Codable, Identifiable, Hashable {
                 self.autoConfirmAt = try c.decodeIfPresent(String.self, forKey: .autoConfirmAt)
                 self.deliverBefore = try c.decodeIfPresent(String.self, forKey: .deliverBefore)
         self.orderSource = try c.decodeIfPresent(String.self, forKey: .orderSource)
+        self.confirmationStatus = try c.decodeIfPresent(String.self, forKey: .confirmationStatus)
+        self.deliveryPriority = try c.decodeIfPresent(String.self, forKey: .deliveryPriority)
+        self.preorderBadge = try c.decodeIfPresent(String.self, forKey: .preorderBadge)
         self.createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
                 self.updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt) ?? self.createdAt
                 self.estimatedDelivery = try c.decodeIfPresent(String.self, forKey: .estimatedDelivery) ?? self.deliverBefore
@@ -302,6 +311,11 @@ struct Order: Codable, Identifiable, Hashable {
 
     var isAiGenerated: Bool {
         orderSource == "AI_PREDICTED"
+    }
+
+    var needsManualPreorderAction: Bool {
+        orderSource == "MANUAL_PREORDER" && status == .scheduled &&
+            (confirmationStatus == nil || confirmationStatus == "DRAFT")
     }
 
     var displayTotal: String {

@@ -52,6 +52,7 @@ func (s *Service) handleGetOpsSettings(w http.ResponseWriter, r *http.Request, w
 	if schedule.Valid {
 		_ = json.Unmarshal([]byte(schedule.String()), &sched)
 	}
+	expressEnabled, expressStockFloor := readExpressOps(sched)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"warehouse_id":                  id,
 		"name":                          name,
@@ -61,6 +62,8 @@ func (s *Service) handleGetOpsSettings(w http.ResponseWriter, r *http.Request, w
 		"operating_schedule":            sched,
 		"is_on_shift":                   isOnShift,
 		"ops_always_available":          true,
+		"express_enabled":               expressEnabled,
+		"express_stock_floor":           expressStockFloor,
 	})
 }
 
@@ -86,6 +89,8 @@ func (s *Service) handlePatchOpsSettings(w http.ResponseWriter, r *http.Request,
 		OperatingSchedule          *json.RawMessage `json:"operating_schedule"`
 		RegionID                   *string          `json:"region_id"`
 		IsOnShift                  *bool            `json:"is_on_shift"`
+		ExpressEnabled             *bool            `json:"express_enabled"`
+		ExpressStockFloor          *int64           `json:"express_stock_floor"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -115,6 +120,22 @@ func (s *Service) handlePatchOpsSettings(w http.ResponseWriter, r *http.Request,
 	}
 	if req.IsOnShift != nil {
 		update["IsOnShift"] = *req.IsOnShift
+	}
+	if req.ExpressEnabled != nil || req.ExpressStockFloor != nil {
+		schedJSON := loadOperatingScheduleJSON(r.Context(), s.spannerClient, warehouseID)
+		express := map[string]any{}
+		if existing, ok := schedJSON["express"].(map[string]any); ok {
+			express = existing
+		}
+		if req.ExpressEnabled != nil {
+			express["enabled"] = *req.ExpressEnabled
+		}
+		if req.ExpressStockFloor != nil {
+			express["stock_floor"] = *req.ExpressStockFloor
+		}
+		schedJSON["express"] = express
+		raw, _ := json.Marshal(schedJSON)
+		update["OperatingSchedule"] = spanner.NullJSON{Value: json.RawMessage(raw), Valid: true}
 	}
 
 	_, err := s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {

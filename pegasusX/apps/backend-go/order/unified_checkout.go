@@ -31,6 +31,10 @@ type UnifiedCheckoutRequest struct {
 	Latitude       float64                   `json:"latitude"`
 	Longitude      float64                   `json:"longitude"`
 	Items          []UnifiedCheckoutLineItem `json:"items"`
+	DeliveryMode          string `json:"delivery_mode,omitempty"`
+	RequestedDeliveryDate string `json:"requested_delivery_date,omitempty"`
+	DeliverBefore         string `json:"deliver_before,omitempty"`
+	DeliveryPriority      string `json:"delivery_priority,omitempty"`
 }
 
 // SupplierOrderResult is one supplier slice returned to clients.
@@ -182,10 +186,14 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 	}
 
 	created, err := s.Create(ctx, retailerID, CreateRequest{
-		LineItems: lineItems,
-		H3Cell:    h3Cell,
-		Lat:       lat,
-		Lng:       lng,
+		LineItems:             lineItems,
+		H3Cell:                h3Cell,
+		Lat:                   lat,
+		Lng:                   lng,
+		DeliveryMode:          req.DeliveryMode,
+		RequestedDeliveryDate: req.RequestedDeliveryDate,
+		DeliverBefore:         req.DeliverBefore,
+		DeliveryPriority:      req.DeliveryPriority,
 	})
 	if err != nil {
 		return UnifiedCheckoutResponse{}, err

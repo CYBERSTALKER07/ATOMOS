@@ -188,6 +188,12 @@ interface WarehouseApi {
     @GET("v1/warehouse/supply-requests/{id}")
     suspend fun getSupplyRequest(@Path("id") id: String): Response<WarehouseSupplyRequest>
 
+    @GET("v1/warehouse/ops/preorders")
+    suspend fun getPreorders(): Response<com.pegasusx.warehouse.data.model.WarehousePreordersResponse>
+
+    @GET("v1/warehouse/ops/stock-commitments")
+    suspend fun getStockCommitments(): Response<com.pegasusx.warehouse.data.model.StockCommitmentsResponse>
+
     @GET("v1/warehouse/ops/dispatch/settings")
     suspend fun getDispatchSettings(): Response<DispatchSettingsResponse>
 

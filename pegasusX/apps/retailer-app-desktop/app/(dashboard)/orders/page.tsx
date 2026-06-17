@@ -338,7 +338,10 @@ export default function OrdersPage() {
   const showAiActions =
     detail?.state === "PENDING_REVIEW" ||
     (detail?.order_source === "AI_PREDICTED" && detail?.state === "PENDING");
-  const showPreorderActions = detail?.state === "SCHEDULED";
+  const showPreorderActions =
+    detail?.order_source === "MANUAL_PREORDER" &&
+    detail?.state === "SCHEDULED" &&
+    (detail?.confirmation_status === "DRAFT" || !detail?.confirmation_status);
   const showCancelAction =
     !!detail &&
     (cancellableStates.has(detail.state) ||

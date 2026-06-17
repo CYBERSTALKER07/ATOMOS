@@ -25,6 +25,12 @@ struct MoreHubView: View {
                 NavigationLink { ProductsView() } label: {
                     Label("Products", systemImage: "square.grid.2x2")
                 }
+                NavigationLink { PreordersView() } label: {
+                    Label("Pre-orders", systemImage: "calendar")
+                }
+                NavigationLink { StockCommitmentsView() } label: {
+                    Label("Stock commitments", systemImage: "archivebox")
+                }
                 NavigationLink { SupplyRequestsHubView() } label: {
                     Label("Supply Requests", systemImage: "arrow.triangle.2.circlepath")
                 }

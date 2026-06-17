@@ -247,6 +247,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := assertDriverFirebaseOTPLogin(ctx, client, base); err != nil {
 		return fmt.Errorf("driver firebase otp: %w", err)
 	}
+	if err := runManualPreorderE2E(ctx, client, base, retailerToken, cookie, cfg, h3Cell); err != nil {
+		return fmt.Errorf("manual preorder: %w", err)
+	}
 
 	fmt.Println("PX_E2E_ORDER_OK")
 	fmt.Println("PX_E2E_PAYMENT_OK")
@@ -3702,6 +3705,93 @@ func createOrder(ctx context.Context, client *http.Client, base, bearer string, 
 		return "", fmt.Errorf("order create missing order_id")
 	}
 	return resp.OrderID, nil
+}
+
+func runManualPreorderE2E(ctx context.Context, client *http.Client, base, retailerToken, cookie string, cfg *bootstrap.Config, h3Cell string) error {
+	delivery := time.Now().UTC().AddDate(0, 0, 10)
+	createBody, _ := json.Marshal(map[string]any{
+		"line_items": []map[string]any{
+			{"sku": "SSMR-SKU-1", "quantity": 2, "unit_price_minor": 50000},
+		},
+		"h3_cell":                 h3Cell,
+		"lat":                     cfg.DeliveryZoneCenterLat,
+		"lng":                     cfg.DeliveryZoneCenterLng,
+		"delivery_mode":           "SCHEDULED",
+		"requested_delivery_date": delivery.Format(time.RFC3339),
+	})
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/order/create", createBody, retailerToken, "ssmr-manual-preorder-create")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated {
+		return fmt.Errorf("manual preorder create status %d body %s", status, string(respBody))
+	}
+	var created struct {
+		OrderID string `json:"order_id"`
+		Status  string `json:"status"`
+	}
+	if err := json.Unmarshal(respBody, &created); err != nil {
+		return err
+	}
+	if created.OrderID == "" {
+		return fmt.Errorf("manual preorder missing order_id")
+	}
+	confirmBody, _ := json.Marshal(map[string]string{"order_id": created.OrderID})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/orders/confirm-preorder", confirmBody, retailerToken, "ssmr-manual-preorder-confirm-"+created.OrderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("confirm preorder status %d body %s", status, string(respBody))
+	}
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/warehouse/ops/preorders", nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK || !strings.Contains(string(respBody), created.OrderID) {
+		return fmt.Errorf("warehouse preorders status %d body %s", status, string(respBody))
+	}
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/warehouse/ops/stock-commitments", nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK || !strings.Contains(string(respBody), "SSMR-SKU-1") {
+		return fmt.Errorf("stock commitments status %d body %s", status, string(respBody))
+	}
+	rejectCreate, _ := json.Marshal(map[string]any{
+		"line_items": []map[string]any{
+			{"sku": "SSMR-SKU-1", "quantity": 1, "unit_price_minor": 50000},
+		},
+		"h3_cell":                 h3Cell,
+		"lat":                     cfg.DeliveryZoneCenterLat,
+		"lng":                     cfg.DeliveryZoneCenterLng,
+		"delivery_mode":           "SCHEDULED",
+		"requested_delivery_date": delivery.Format(time.RFC3339),
+	})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/create", rejectCreate, retailerToken, "ssmr-manual-preorder-reject-create")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated {
+		return fmt.Errorf("manual preorder reject create status %d body %s", status, string(respBody))
+	}
+	var rejectOrder struct {
+		OrderID string `json:"order_id"`
+	}
+	if err := json.Unmarshal(respBody, &rejectOrder); err != nil || rejectOrder.OrderID == "" {
+		return fmt.Errorf("manual preorder reject create missing order_id")
+	}
+	rejectBody, _ := json.Marshal(map[string]string{"reason": "SSMR_WAREHOUSE_REJECT"})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/warehouse/ops/preorders/"+rejectOrder.OrderID+"/reject", rejectBody, cookie, "ssmr-wh-preorder-reject-"+rejectOrder.OrderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse preorder reject status %d body %s", status, string(respBody))
+	}
+	fmt.Println("PX_E2E_MANUAL_PREORDER_OK")
+	fmt.Println("PX_E2E_WAREHOUSE_PREORDER_REJECT_OK")
+	return nil
 }
 
 func assertRetailerTracking(ctx context.Context, client *http.Client, base, retailerToken, orderID string) error {

@@ -69,6 +69,8 @@ export type PaymentGateway = "GLOBAL_PAY" | "ADYEN" | "AIRWALLEX" | "CASH";
 
 export type OrderStatus =
   | "PENDING"
+  | "SCHEDULED"
+  | "AUTO_ACCEPTED"
   | "LOADED"
   | "IN_TRANSIT"
   | "ARRIVED"
@@ -87,6 +89,12 @@ export type OrderStatus =
   | "EN_ROUTE";
 
 export type OrderSource = "MANUAL" | "MANUAL_PREORDER" | "AI_PREORDER" | "BACKORDER";
+
+export type DeliveryMode = "STANDARD" | "SCHEDULED";
+
+export type DeliveryPriority = "STANDARD" | "EXPRESS";
+
+export type PreorderPhase = "DRAFT" | "CONFIRMED" | "LOCKED" | "AUTO_ACCEPTED";
 
 export type OutOfStockPolicy = "INHERIT" | "REJECT" | "ACCEPT_BACKORDER";
 

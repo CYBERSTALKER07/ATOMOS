@@ -192,10 +192,10 @@ struct OrdersView: View {
                             onRejectAi: order.status == .pendingReview ? {
                                 RetailerAsync.run { await vm.rejectAiOrder(order.id) }
                             } : nil,
-                            onConfirmPreorder: order.status == .scheduled ? {
+                            onConfirmPreorder: order.needsManualPreorderAction ? {
                                 RetailerAsync.run { await vm.confirmPreorder(order.id) }
                             } : nil,
-                            onEditPreorder: order.status == .scheduled ? {
+                            onEditPreorder: order.needsManualPreorderAction ? {
                                 RetailerAsync.run { await vm.editPreorder(order) }
                             } : nil
                         )

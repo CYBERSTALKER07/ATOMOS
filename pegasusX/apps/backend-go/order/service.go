@@ -54,6 +54,8 @@ const (
 	StatusReconciliationRequired Status = "RECONCILIATION_REQUIRED"
 	StatusDelayed                Status = "DELAYED"
 	StatusBackordered            Status = "BACKORDERED"
+	StatusScheduled              Status = "SCHEDULED"
+	StatusAutoAccepted           Status = "AUTO_ACCEPTED"
 
 	deliveryGeofenceMeters = 500.0
 )
@@ -129,6 +131,15 @@ type Order struct {
 	DerivedFromOrderID    string
 	ReceivingWindowOpen   string
 	ReceivingWindowClose  string
+	DeliverBefore         *time.Time
+	DeliveryPriority      DeliveryPriority
+	DeliveryFeeMinor      int64
+	WarehouseNotes        string
+	PreorderReminderSentAt *time.Time
+	NudgeNotifiedAt       *time.Time
+	ConfirmationNotifiedAt *time.Time
+	CancelLockedAt        *time.Time
+	CancelLockReason      string
 	Version               int64
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
@@ -174,6 +185,8 @@ type Repository interface {
 	ListWarehouseOrdersByDeliveryWindow(ctx context.Context, warehouseID string, from, to time.Time, limit int) ([]Order, error)
 	ListDueAutoConfirmOrders(ctx context.Context, before time.Time, limit int) ([]Order, error)
 	ListManifestOrders(ctx context.Context, manifestID string) ([]Order, error)
+	ListWarehousePreorders(ctx context.Context, warehouseID string, limit, offset int) ([]Order, error)
+	ListOrdersForStockCommitment(ctx context.Context, warehouseID string, limit int) ([]Order, error)
 }
 
 // WarehouseResolver resolves the best supplier warehouse for retailer
@@ -297,7 +310,10 @@ type CreateRequest struct {
 	H3Cell                string     `json:"h3_cell"`
 	Lat                   float64    `json:"lat"`
 	Lng                   float64    `json:"lng"`
+	DeliveryMode          string     `json:"delivery_mode,omitempty"`
 	RequestedDeliveryDate string     `json:"requested_delivery_date,omitempty"`
+	DeliverBefore         string     `json:"deliver_before,omitempty"`
+	DeliveryPriority      string     `json:"delivery_priority,omitempty"`
 }
 
 // CreateResponse is what callers get back.
@@ -308,6 +324,9 @@ type CreateResponse struct {
 	Source                OrderSource        `json:"order_source"`
 	ConfirmationStatus    ConfirmationStatus `json:"confirmation_status"`
 	RequestedDeliveryDate string             `json:"requested_delivery_date,omitempty"`
+	DeliverBefore         string             `json:"deliver_before,omitempty"`
+	DeliveryPriority      string             `json:"delivery_priority,omitempty"`
+	DeliveryMode          string             `json:"delivery_mode,omitempty"`
 	TotalMinor            int64              `json:"total_minor"`
 	Currency              string             `json:"currency"`
 	CreatedAt             string             `json:"created_at"`
@@ -352,6 +371,10 @@ type RetailerOrderLifecycleResponse struct {
 	Source                OrderSource        `json:"order_source"`
 	ConfirmationStatus    ConfirmationStatus `json:"confirmation_status"`
 	RequestedDeliveryDate string             `json:"requested_delivery_date,omitempty"`
+	DeliverBefore         string             `json:"deliver_before,omitempty"`
+	DeliveryPriority      string             `json:"delivery_priority,omitempty"`
+	DeliveryMode          string             `json:"delivery_mode,omitempty"`
+	PreorderBadge         string             `json:"preorder_badge,omitempty"`
 	AutoConfirmAt         string             `json:"auto_confirm_at,omitempty"`
 	TotalMinor            int64              `json:"total_minor"`
 	Currency              string             `json:"currency"`
@@ -581,6 +604,11 @@ func (r CreateRequest) Validate() error {
 			return fmt.Errorf("requested_delivery_date must be RFC3339: %w", err)
 		}
 	}
+	if strings.TrimSpace(r.DeliverBefore) != "" {
+		if _, err := parseOptionalRFC3339(r.DeliverBefore); err != nil {
+			return fmt.Errorf("deliver_before must be RFC3339: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -746,6 +774,10 @@ func lifecycleResponse(orderRecord Order, version int64, created bool) RetailerO
 		Source:                orderRecord.Source,
 		ConfirmationStatus:    orderRecord.ConfirmationStatus,
 		RequestedDeliveryDate: formatOptionalRFC3339(orderRecord.RequestedDeliveryDate),
+		DeliverBefore:         formatOptionalRFC3339(orderRecord.DeliverBefore),
+		DeliveryPriority:      string(orderRecord.DeliveryPriority),
+		DeliveryMode:          deliveryModeLabel(orderRecord),
+		PreorderBadge:         preorderBadgeLabel(orderRecord),
 		AutoConfirmAt:         formatOptionalRFC3339(orderRecord.AutoConfirmAt),
 		TotalMinor:            orderRecord.TotalMinor,
 		Currency:              orderRecord.Currency,
@@ -789,6 +821,16 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 	if err != nil {
 		return CreateResponse{}, fmt.Errorf("parse requested_delivery_date: %w", err)
 	}
+	deliverBefore, err := parseOptionalRFC3339(req.DeliverBefore)
+	if err != nil {
+		return CreateResponse{}, fmt.Errorf("parse deliver_before: %w", err)
+	}
+	now := s.now()
+	source, status, confirmation, committedDate, latestDelivery, classifyErr := ClassifyDelivery(now, req.DeliveryMode, requestedDeliveryDate, deliverBefore)
+	if classifyErr != nil {
+		return CreateResponse{}, classifyErr
+	}
+	priority := normalizeDeliveryPriority(req.DeliveryPriority)
 
 	if s.warehouse == nil {
 		return CreateResponse{}, fmt.Errorf("%w: warehouse_resolver_unavailable", ErrServiceabilityUnavailable)
@@ -855,23 +897,21 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		SupplierID:            s.supplierID,
 		RetailerID:            retailerID,
 		WarehouseID:           warehouseID,
-		Status:                StatusPending,
-		Source:                OrderSourceManual,
-		ConfirmationStatus:    ConfirmationStatusConfirmed,
+		Status:                status,
+		Source:                source,
+		ConfirmationStatus:    confirmation,
 		LineItems:             lineItems,
 		TotalMinor:            total,
 		Currency:              s.currency,
 		H3Cell:                req.H3Cell,
 		Lat:                   req.Lat,
 		Lng:                   req.Lng,
-		RequestedDeliveryDate: requestedDeliveryDate,
+		RequestedDeliveryDate: committedDate,
+		DeliverBefore:         latestDelivery,
+		DeliveryPriority:      priority,
 		Version:               1,
-		CreatedAt:             s.now(),
-		UpdatedAt:             s.now(),
-	}
-	if requestedDeliveryDate != nil && requestedDeliveryDate.After(s.now()) {
-		o.Source = OrderSourceManualPreorder
-		o.ConfirmationStatus = ConfirmationStatusDraft
+		CreatedAt:             now,
+		UpdatedAt:             now,
 	}
 
 	err = s.repo.CreateOrder(ctx, &o, func(txn outbox.TxnBuffer) error {
@@ -895,6 +935,11 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 			LineItems:             o.LineItems,
 		}); err != nil {
 			return err
+		}
+		if o.Status == StatusScheduled {
+			if err := emitPreorderEvent(ctx, txn, events.EventPreOrderNotified, o, string(auth.RoleRetailer), retailerID); err != nil {
+				return err
+			}
 		}
 		if ab, ok := txn.(outbox.AuditBuffer); ok {
 			return outbox.WriteAudit(ctx, ab, o.SupplierID, retailerID, "RETAILER", "ORDER_CREATED", "Order", o.OrderID, map[string]any{
@@ -944,6 +989,9 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		Source:                o.Source,
 		ConfirmationStatus:    o.ConfirmationStatus,
 		RequestedDeliveryDate: formatOptionalRFC3339(o.RequestedDeliveryDate),
+		DeliverBefore:         formatOptionalRFC3339(o.DeliverBefore),
+		DeliveryPriority:      string(o.DeliveryPriority),
+		DeliveryMode:          normalizeDeliveryMode(req.DeliveryMode),
 		TotalMinor:            o.TotalMinor,
 		Currency:              o.Currency,
 		CreatedAt:             o.CreatedAt.Format(time.RFC3339Nano),
@@ -1148,7 +1196,13 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 	if current.RetailerID != strings.TrimSpace(retailerID) {
 		return RetailerOrderLifecycleResponse{}, ErrOrderForbidden
 	}
-	if current.Source != OrderSourceManualPreorder || current.ConfirmationStatus == ConfirmationStatusRejected || current.ConfirmationStatus == ConfirmationStatusAutoConfirmed {
+	if current.Source != OrderSourceManualPreorder || current.Status != StatusScheduled {
+		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
+	}
+	if PreorderEditLocked(s.now(), current) {
+		return RetailerOrderLifecycleResponse{}, fmt.Errorf("%w: preorder edit locked within %d days of delivery", ErrInvalidStatusTransition, PreorderEditLockDays)
+	}
+	if current.ConfirmationStatus == ConfirmationStatusRejected {
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
 	current.LineItems = lineItems
@@ -1156,20 +1210,7 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 	current.RequestedDeliveryDate = requestedDeliveryDate
 	current.UpdatedAt = s.now()
 	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
-			BaseEvent:             events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.Format(time.RFC3339Nano)},
-			OrderID:               current.OrderID,
-			SupplierID:            current.SupplierID,
-			RetailerID:            current.RetailerID,
-			PreviousStatus:        string(current.Status),
-			Status:                string(current.Status),
-			Reason:                "PREORDER_EDITED",
-			ActorRole:             string(auth.RoleRetailer),
-			ActorID:               retailerID,
-			OrderSource:           string(current.Source),
-			ConfirmationStatus:    string(current.ConfirmationStatus),
-			RequestedDeliveryDate: formatOptionalRFC3339(current.RequestedDeliveryDate),
-		})
+		return emitPreorderEvent(ctx, txn, events.EventPreOrderEdited, current, string(auth.RoleRetailer), retailerID)
 	}); err != nil {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("edit preorder %s: %w", orderID, err)
 	}
@@ -1193,7 +1234,7 @@ func (s *Service) ConfirmPreorder(ctx context.Context, retailerID string, req Co
 	if current.RetailerID != strings.TrimSpace(retailerID) {
 		return RetailerOrderLifecycleResponse{}, ErrOrderForbidden
 	}
-	if current.Source != OrderSourceManualPreorder || current.ConfirmationStatus != ConfirmationStatusDraft {
+	if current.Source != OrderSourceManualPreorder || current.Status != StatusScheduled || current.ConfirmationStatus != ConfirmationStatusDraft {
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
 	decisionAt := s.now()
@@ -1202,20 +1243,7 @@ func (s *Service) ConfirmPreorder(ctx context.Context, retailerID string, req Co
 	current.DecisionBy = strings.TrimSpace(retailerID)
 	current.UpdatedAt = decisionAt
 	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
-			BaseEvent:             events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.Format(time.RFC3339Nano)},
-			OrderID:               current.OrderID,
-			SupplierID:            current.SupplierID,
-			RetailerID:            current.RetailerID,
-			PreviousStatus:        string(current.Status),
-			Status:                string(current.Status),
-			Reason:                "PREORDER_CONFIRMED",
-			ActorRole:             string(auth.RoleRetailer),
-			ActorID:               retailerID,
-			OrderSource:           string(current.Source),
-			ConfirmationStatus:    string(current.ConfirmationStatus),
-			RequestedDeliveryDate: formatOptionalRFC3339(current.RequestedDeliveryDate),
-		})
+		return emitPreorderEvent(ctx, txn, events.EventPreOrderConfirmed, current, string(auth.RoleRetailer), retailerID)
 	}); err != nil {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("confirm preorder %s: %w", orderID, err)
 	}

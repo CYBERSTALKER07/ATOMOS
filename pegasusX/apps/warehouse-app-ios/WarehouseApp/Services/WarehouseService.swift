@@ -118,6 +118,14 @@ enum WarehouseService {
         try await api.get("v1/warehouse/ops/settings")
     }
 
+    static func preorders() async throws -> WarehousePreordersResponse {
+        try await api.get("v1/warehouse/ops/preorders")
+    }
+
+    static func stockCommitments() async throws -> StockCommitmentsResponse {
+        try await api.get("v1/warehouse/ops/stock-commitments")
+    }
+
     static func patchOpsSettings(policy: String, operatingSchedule: [String: AnyCodable]) async throws {
         try await api.patchVoid(
             "v1/warehouse/ops/settings",

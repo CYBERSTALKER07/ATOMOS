@@ -374,6 +374,10 @@ func (d *NotificationDispatcher) handlePreOrderEvent(ctx context.Context, payloa
 	}
 	d.broadcastSupplier(ctx, e.supplierID(), payload)
 	d.broadcastRetailer(ctx, e.retailerID(), payload)
+	d.broadcastWarehouse(ctx, e.warehouseID(), payload)
+	if e.DriverID != "" {
+		d.broadcastDriver(ctx, e.DriverID, payload)
+	}
 	return nil
 }
 

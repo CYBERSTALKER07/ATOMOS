@@ -872,6 +872,20 @@ export class ApiClient {
     return this.request<WarehouseOrdersResponse>(appendQuery("/v1/warehouse/ops/orders", query as Record<string, unknown>), "GET");
   }
 
+  async getWarehousePreorders(query: { limit?: number; offset?: number } = {}): Promise<{ preorders: unknown[]; items: unknown[] }> {
+    return this.request<{ preorders: unknown[]; items: unknown[] }>(
+      appendQuery("/v1/warehouse/ops/preorders", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async getWarehouseStockCommitments(query: { sku_id?: string } = {}): Promise<{ items: unknown[]; skus: unknown[] }> {
+    return this.request<{ items: unknown[]; skus: unknown[] }>(
+      appendQuery("/v1/warehouse/ops/stock-commitments", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
   async getWarehouseFleetVehicles(query: { warehouse_id?: string } = {}): Promise<WarehouseFleetVehicleListResponse> {
     return this.request<WarehouseFleetVehicleListResponse>(appendQuery("/v1/warehouse/ops/vehicles", query as Record<string, unknown>), "GET");
   }

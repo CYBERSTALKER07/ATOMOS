@@ -435,6 +435,70 @@ struct WarehouseOpsSettingsPatchRequest: Encodable {
     }
 }
 
+struct WarehousePreorderRow: Decodable, Identifiable {
+    var id: String { orderId }
+    let orderId: String
+    let status: String
+    let orderSource: String?
+    let requestedDeliveryDate: String?
+    let preorderBadge: String?
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case status
+        case orderSource = "order_source"
+        case requestedDeliveryDate = "requested_delivery_date"
+        case preorderBadge = "preorder_badge"
+    }
+}
+
+struct WarehousePreordersResponse: Decodable {
+    let preorders: [WarehousePreorderRow]
+    let items: [WarehousePreorderRow]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        preorders = try c.decodeIfPresent([WarehousePreorderRow].self, forKey: .preorders) ?? []
+        items = try c.decodeIfPresent([WarehousePreorderRow].self, forKey: .items) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case preorders, items }
+}
+
+struct StockCommitmentRow: Decodable, Identifiable {
+    var id: String { skuId }
+    let skuId: String
+    let name: String?
+    let imageUrl: String?
+    let onHand: Int64
+    let reservedAsap: Int64
+    let reservedScheduled: Int64
+    let deficitQty: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case skuId = "sku_id"
+        case name
+        case imageUrl = "image_url"
+        case onHand = "on_hand"
+        case reservedAsap = "reserved_asap"
+        case reservedScheduled = "reserved_scheduled"
+        case deficitQty = "deficit_qty"
+    }
+}
+
+struct StockCommitmentsResponse: Decodable {
+    let items: [StockCommitmentRow]
+    let skus: [StockCommitmentRow]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        items = try c.decodeIfPresent([StockCommitmentRow].self, forKey: .items) ?? []
+        skus = try c.decodeIfPresent([StockCommitmentRow].self, forKey: .skus) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case items, skus }
+}
+
 struct InventoryListResponse: Decodable {
     let items: [InventoryItem]
 }

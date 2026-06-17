@@ -112,6 +112,7 @@ type Service struct {
 	insights          []replenishmentInsight
 	internalTransfers map[string]memoryTransferRow
 	firebaseVerifier  auth.FirebaseVerifier
+	orderStock        OrderStockReader
 }
 
 // ServiceConfig is the constructor input.

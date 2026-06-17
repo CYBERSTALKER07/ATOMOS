@@ -59,6 +59,7 @@ import com.pegasusx.warehouse.ui.screens.fleet.FleetLiveMapScreen
 import com.pegasusx.warehouse.ui.screens.forecast.DemandForecastScreen
 import com.pegasusx.warehouse.ui.screens.inventory.InventoryScreen
 import com.pegasusx.warehouse.ui.screens.inventory.OpsSettingsScreen
+import com.pegasusx.warehouse.ui.screens.preorders.PreordersScreen
 import com.pegasusx.warehouse.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.warehouse.ui.screens.more.MoreHubScreen
 import com.pegasusx.warehouse.ui.screens.notifications.NotificationInboxScreen
@@ -103,6 +104,8 @@ object WarehouseRoutes {
     const val REPLENISHMENT = "replenishment"
     const val DISPATCH_SETTINGS = "dispatch_settings"
     const val OPS_SETTINGS = "ops_settings"
+    const val PREORDERS = "preorders"
+    const val STOCK_COMMITMENTS = "stock_commitments"
     const val PAYMENT_CONFIG = "payment_config"
     const val NOTIFICATIONS = "notifications"
     const val SUPPLY_REQUESTS = "supply_requests"
@@ -429,6 +432,12 @@ fun WarehouseNavigation(
 
                 composable(WarehouseRoutes.OPS_SETTINGS) {
                     OpsSettingsScreen(api = api, onBack = backFor(WarehouseRoutes.OPS_SETTINGS))
+                }
+                composable(WarehouseRoutes.PREORDERS) {
+                    PreordersScreen(api = api, onBack = backFor(WarehouseRoutes.PREORDERS))
+                }
+                composable(WarehouseRoutes.STOCK_COMMITMENTS) {
+                    StockCommitmentsScreen(api = api, onBack = backFor(WarehouseRoutes.STOCK_COMMITMENTS))
                 }
 
                 composable(WarehouseRoutes.PAYMENT_CONFIG) {

@@ -102,6 +102,14 @@ const (
 	EventSupplierReturnResolved    = "SUPPLIER_RETURN_RESOLVED"
 	EventDriverReturnApproaching   = "DRIVER_RETURN_APPROACHING"
 	EventReturnReceivedAtWarehouse = "RETURN_RECEIVED_AT_WAREHOUSE"
+
+	EventPreOrderNotified     = "PRE_ORDER_NOTIFIED"
+	EventPreOrderNudge        = "PRE_ORDER_NUDGE"
+	EventPreOrderConfirmation = "PRE_ORDER_CONFIRMATION"
+	EventPreOrderConfirmed    = "PRE_ORDER_CONFIRMED"
+	EventPreOrderEdited       = "PRE_ORDER_EDITED"
+	EventPreOrderCancelled    = "PRE_ORDER_CANCELLED"
+	EventPreOrderAutoAccepted = "PRE_ORDER_AUTO_ACCEPTED"
 )
 
 // AggregateTypes used in OutboxEvents.AggregateType.

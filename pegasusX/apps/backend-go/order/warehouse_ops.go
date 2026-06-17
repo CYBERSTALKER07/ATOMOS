@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -58,7 +59,7 @@ func (s *Service) WarehouseRejectOrder(ctx context.Context, ops *auth.WarehouseO
 	}
 	return s.warehouseTransition(ctx, resolvedOps, orderID, reason, func(current *Order) (Status, error) {
 		switch current.Status {
-		case StatusPending, StatusLoaded, StatusInTransit:
+		case StatusPending, StatusLoaded, StatusInTransit, StatusScheduled, StatusAutoAccepted:
 			return StatusCancelled, nil
 		default:
 			return "", fmt.Errorf("%w: %s cannot be rejected", ErrInvalidStatusTransition, current.Status)
@@ -129,6 +130,9 @@ func (s *Service) warehouseTransition(
 	}
 
 	err = s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
+		if nextStatus == StatusCancelled && current.Source == OrderSourceManualPreorder {
+			return emitPreorderEvent(ctx, txn, events.EventPreOrderCancelled, current, string(auth.RoleWarehouse), actorID)
+		}
 		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:             events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.UTC().Format(time.RFC3339Nano)},
 			OrderID:               current.OrderID,
@@ -150,10 +154,157 @@ func (s *Service) warehouseTransition(
 		return fmt.Errorf("warehouse order mutation %s: %w", orderID, err)
 	}
 
+	s.afterOrderMutation(ctx, current)
 	if s.cache != nil {
 		s.cache.Invalidate(ctx, retailerOrdersKey(current.RetailerID), supplierOrdersKey(current.SupplierID))
 	}
 	return nil
+}
+
+// WarehouseEditPreorder allows warehouse staff to edit a scheduled pre-order until T-2.
+func (s *Service) WarehouseEditPreorder(ctx context.Context, ops *auth.WarehouseOps, req EditPreorderRequest, reason string) (RetailerOrderLifecycleResponse, error) {
+	orderID := strings.TrimSpace(req.OrderID)
+	if orderID == "" {
+		return RetailerOrderLifecycleResponse{}, errors.New("order_id required")
+	}
+	resolvedOps, err := s.resolveWarehouseOps(ctx, ops, orderID)
+	if err != nil {
+		return RetailerOrderLifecycleResponse{}, err
+	}
+	current, ok, err := s.repo.GetOrder(ctx, orderID)
+	if err != nil {
+		return RetailerOrderLifecycleResponse{}, err
+	}
+	if !ok {
+		return RetailerOrderLifecycleResponse{}, ErrOrderNotFound
+	}
+	if err := assertWarehouseOrderScope(current, resolvedOps); err != nil {
+		return RetailerOrderLifecycleResponse{}, err
+	}
+	if current.Source != OrderSourceManualPreorder || current.Status != StatusScheduled {
+		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
+	}
+	if PreorderEditLocked(s.now(), current) {
+		return RetailerOrderLifecycleResponse{}, fmt.Errorf("%w: warehouse preorder edit locked", ErrInvalidStatusTransition)
+	}
+	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems)
+	if err != nil {
+		return RetailerOrderLifecycleResponse{}, err
+	}
+	requestedDeliveryDate, err := parseOptionalRFC3339(req.RequestedDeliveryDate)
+	if err != nil || requestedDeliveryDate == nil {
+		return RetailerOrderLifecycleResponse{}, fmt.Errorf("requested_delivery_date required")
+	}
+	current.LineItems = lineItems
+	current.TotalMinor = total
+	current.RequestedDeliveryDate = requestedDeliveryDate
+	current.WarehouseNotes = strings.TrimSpace(reason)
+	current.UpdatedAt = s.now()
+	actorID := strings.TrimSpace(resolvedOps.Subject)
+	if actorID == "" {
+		actorID = resolvedOps.WarehouseID
+	}
+	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
+		return emitPreorderEvent(ctx, txn, events.EventPreOrderEdited, current, "WAREHOUSE_ADMIN", actorID)
+	}); err != nil {
+		return RetailerOrderLifecycleResponse{}, err
+	}
+	s.afterOrderMutation(ctx, current)
+	return lifecycleResponse(current, current.Version+1, false), nil
+}
+
+// ListOrdersForStockCommitment implements warehouse.OrderStockReader.
+func (s *Service) ListOrdersForStockCommitment(ctx context.Context, warehouseID string, limit int) ([]Order, error) {
+	return s.repo.ListOrdersForStockCommitment(ctx, warehouseID, limit)
+}
+
+// ListWarehousePreordersForOps returns scheduled/auto-accepted pre-orders for the warehouse home node.
+func (s *Service) ListWarehousePreordersForOps(ctx context.Context, ops *auth.WarehouseOps, limit, offset int) ([]RetailerOrderLifecycleResponse, error) {
+	if ops == nil || strings.TrimSpace(ops.WarehouseID) == "" {
+		return nil, ErrOrderForbidden
+	}
+	orders, err := s.repo.ListWarehousePreorders(ctx, ops.WarehouseID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]RetailerOrderLifecycleResponse, 0, len(orders))
+	for _, o := range orders {
+		out = append(out, lifecycleResponse(o, o.Version, false))
+	}
+	return out, nil
+}
+
+type warehousePreorderEditBody struct {
+	LineItems             []LineItem `json:"line_items"`
+	RequestedDeliveryDate string     `json:"requested_delivery_date"`
+	Reason                string     `json:"reason"`
+}
+
+// HandleWarehouseListPreorders serves GET /v1/warehouse/ops/preorders.
+func (s *Service) HandleWarehouseListPreorders(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	ops := auth.GetWarehouseOps(r.Context())
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	if limit <= 0 {
+		limit = 50
+	}
+	orders, err := s.ListWarehousePreordersForOps(r.Context(), ops, limit, offset)
+	if err != nil {
+		mapWarehouseOrderMutationError(w, r, "", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"preorders": orders, "items": orders})
+}
+
+// HandleWarehouseEditPreorder serves POST /v1/warehouse/ops/preorders/{id}/edit.
+func (s *Service) HandleWarehouseEditPreorder(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	ops := auth.GetWarehouseOps(r.Context())
+	orderID := strings.TrimSpace(chi.URLParam(r, "id"))
+	bodyBytes, err := readLimitedBody(r, 256*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, bodyBytes) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+	var body warehousePreorderEditBody
+	if err := json.Unmarshal(bodyBytes, &body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	resp, err := s.WarehouseEditPreorder(r.Context(), ops, EditPreorderRequest{
+		OrderID:               orderID,
+		LineItems:             body.LineItems,
+		RequestedDeliveryDate: body.RequestedDeliveryDate,
+	}, body.Reason)
+	if err != nil {
+		mapWarehouseOrderMutationError(w, r, orderID, err)
+		return
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, bodyBytes, http.StatusOK, respBytes)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+}
+
+// HandleWarehouseRejectPreorder serves POST /v1/warehouse/ops/preorders/{id}/reject.
+func (s *Service) HandleWarehouseRejectPreorder(w http.ResponseWriter, r *http.Request) {
+	s.HandleWarehouseRejectOrder(w, r)
 }
 
 func assertWarehouseOrderScope(orderRecord Order, ops *auth.WarehouseOps) error {
