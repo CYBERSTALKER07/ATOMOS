@@ -703,6 +703,11 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// BroadcastFleetEvent pushes a real-time warehouse hub payload (dispatch board + notifications).
+func (s *Service) BroadcastFleetEvent(ctx context.Context, warehouseID string, payload any) {
+	s.broadcastWarehouseEvent(ctx, warehouseID, payload)
+}
+
 func (s *Service) broadcastWarehouseEvent(ctx context.Context, warehouseID string, payload any) {
 	raw, err := json.Marshal(payload)
 	if err != nil {

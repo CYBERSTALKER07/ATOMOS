@@ -125,6 +125,16 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 		if json.Unmarshal(payload, &e) == nil && e.VehicleID != "" {
 			return FormatVehicleCreated(e.VehicleID, e.HomeNodeID)
 		}
+	case events.EventDriverAvailabilityChanged:
+		var e events.DriverEvent
+		if json.Unmarshal(payload, &e) == nil && e.DriverID != "" {
+			return FormatDriverAvailabilityChanged(e.DriverID, e.OnShift, e.Reason, e.Note)
+		}
+	case events.EventVehicleAvailabilityChanged:
+		var e events.VehicleEvent
+		if json.Unmarshal(payload, &e) == nil && e.VehicleID != "" {
+			return FormatVehicleAvailabilityChanged(e.VehicleID, e.IsActive, e.UnavailableReason, e.UnavailableNote)
+		}
 	case events.EventRetailerPriceOverride:
 		var e events.RetailerPriceOverrideEvent
 		if json.Unmarshal(payload, &e) == nil && e.RetailerID != "" {

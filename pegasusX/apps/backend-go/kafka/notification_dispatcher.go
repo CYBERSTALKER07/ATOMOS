@@ -173,7 +173,7 @@ func (d *NotificationDispatcher) handleVehicleAvailabilityChanged(ctx context.Co
 	}
 	d.broadcastSupplier(ctx, e.SupplierID, payload)
 	if strings.EqualFold(e.HomeNodeType, "WAREHOUSE") && e.HomeNodeID != "" {
-		d.broadcastWarehouse(ctx, e.HomeNodeID, payload)
+		d.notifyWarehouseFleetAvailability(ctx, e.SupplierID, e.HomeNodeID, e.Type, payload)
 	}
 	return nil
 }
@@ -399,8 +399,8 @@ func (d *NotificationDispatcher) handleDriverAvailabilityChanged(ctx context.Con
 	}
 	d.broadcastSupplier(ctx, e.SupplierID, payload)
 	d.broadcastDriver(ctx, e.DriverID, payload)
-	if strings.EqualFold(e.HomeNodeType, "WAREHOUSE") {
-		d.broadcastWarehouse(ctx, e.HomeNodeID, payload)
+	if strings.EqualFold(e.HomeNodeType, "WAREHOUSE") && e.HomeNodeID != "" {
+		d.notifyWarehouseFleetAvailability(ctx, e.SupplierID, e.HomeNodeID, e.Type, payload)
 	}
 	if strings.EqualFold(e.HomeNodeType, "FACTORY") {
 		d.broadcastFactory(ctx, e.HomeNodeID, payload)

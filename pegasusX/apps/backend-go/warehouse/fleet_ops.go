@@ -192,15 +192,17 @@ func (s *Service) patchOpsVehicleSpanner(ctx context.Context, params opsVehicleP
 	if err != nil {
 		return fmt.Errorf("patch ops vehicle: %w", err)
 	}
-	s.broadcastWarehouseEvent(ctx, params.WarehouseID, map[string]any{
+	wire := fleetAvailabilityWire(events.EventVehicleAvailabilityChanged, map[string]any{
 		"type":               events.EventVehicleAvailabilityChanged,
 		"vehicle_id":         params.VehicleID,
 		"warehouse_id":       params.WarehouseID,
+		"supplier_id":        params.SupplierID,
 		"is_active":          params.IsActive,
 		"unavailable_reason": reason,
 		"unavailable_note":   note,
 		"timestamp":          params.UpdatedAt.Format(time.RFC3339Nano),
 	})
+	s.broadcastWarehouseEvent(ctx, params.WarehouseID, wire)
 	s.invalidateDispatchPlanCache(ctx, params.WarehouseID)
 	return nil
 }

@@ -238,6 +238,71 @@ func FormatVehicleCreated(vehicleID, homeNodeID string) FormattedNotification {
 	}
 }
 
+// FormatDriverAvailabilityChanged produces warehouse dispatch inbox copy for driver shift changes.
+func FormatDriverAvailabilityChanged(driverID string, onShift bool, reason, note string) FormattedNotification {
+	label := strings.TrimSpace(driverID)
+	if len(label) > 8 {
+		label = label[:8]
+	}
+	if onShift {
+		return FormattedNotification{
+			Title:    "Driver Available",
+			Body:     "Driver " + label + " is back on shift and eligible for dispatch",
+			DeepLink: "/dispatch",
+			Priority: "normal",
+		}
+	}
+	display := formatAvailabilityReason(reason, note)
+	return FormattedNotification{
+		Title:    "Driver Offline",
+		Body:     "Driver " + label + " went offline — " + display,
+		DeepLink: "/dispatch",
+		Priority: "high",
+	}
+}
+
+// FormatVehicleAvailabilityChanged produces warehouse dispatch inbox copy for vehicle holds.
+func FormatVehicleAvailabilityChanged(vehicleID string, isActive bool, reason, note string) FormattedNotification {
+	label := strings.TrimSpace(vehicleID)
+	if len(label) > 8 {
+		label = label[:8]
+	}
+	if isActive {
+		return FormattedNotification{
+			Title:    "Truck Restored",
+			Body:     "Vehicle " + label + " is active and available for dispatch",
+			DeepLink: "/dispatch",
+			Priority: "normal",
+		}
+	}
+	display := formatAvailabilityReason(reason, note)
+	return FormattedNotification{
+		Title:    "Truck Unavailable",
+		Body:     "Vehicle " + label + " marked unavailable — " + display,
+		DeepLink: "/dispatch",
+		Priority: "high",
+	}
+}
+
+func formatAvailabilityReason(reason, note string) string {
+	reason = strings.TrimSpace(reason)
+	note = strings.TrimSpace(note)
+	if reason == "" {
+		return "Unavailable"
+	}
+	if strings.EqualFold(reason, "OTHER") && note != "" {
+		return note
+	}
+	parts := strings.Split(strings.ToLower(reason), "_")
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+		parts[i] = strings.ToUpper(part[:1]) + part[1:]
+	}
+	return strings.Join(parts, " ")
+}
+
 // FormatRetailerPriceOverride produces retailer inbox copy for custom pricing changes.
 func FormatRetailerPriceOverride(productID string, priceMinor int64, currency string, created bool) FormattedNotification {
 	label := strings.TrimSpace(productID)

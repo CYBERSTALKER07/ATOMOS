@@ -806,6 +806,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	driverSvc.SetDispatchPlanInvalidate(func(ctx context.Context, warehouseID string) {
 		warehouseSvc.InvalidateDispatchPlanCache(ctx, warehouseID)
 	})
+	driverSvc.SetFleetAvailabilityBroadcaster(func(ctx context.Context, warehouseID string, payload map[string]any) {
+		warehouseSvc.BroadcastFleetEvent(ctx, warehouseID, payload)
+	})
 
 	var reliabilityMiddleware *ReliabilityMiddleware
 	if cfg.ReliabilityEnabled {

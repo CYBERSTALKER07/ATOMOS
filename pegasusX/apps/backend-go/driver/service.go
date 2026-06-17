@@ -19,6 +19,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
+	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
@@ -73,6 +74,9 @@ type DriverProfileSnapshot struct {
 // DriverProfileLookup reads durable driver assignment fields from Spanner.
 type DriverProfileLookup func(ctx context.Context, driverID string) (DriverProfileSnapshot, bool, error)
 
+// FleetAvailabilityBroadcaster fans out warehouse-scoped fleet availability WS frames.
+type FleetAvailabilityBroadcaster func(ctx context.Context, warehouseID string, payload map[string]any)
+
 // ManifestDeliveryTokenLookup resolves persisted delivery tokens for manifest orders.
 type ManifestDeliveryTokenLookup func(ctx context.Context, orderIDs []string) map[string]string
 
@@ -97,6 +101,7 @@ type Service struct {
 	profileLookup  DriverProfileLookup
 	availReader    AvailabilityReader
 	planInvalidate func(ctx context.Context, warehouseID string)
+	fleetBroadcast FleetAvailabilityBroadcaster
 	idem           idempotency.Store
 
 	supplierID string
@@ -134,6 +139,7 @@ type ServiceConfig struct {
 	ProfileLookup   DriverProfileLookup
 	AvailabilityReader AvailabilityReader
 	DispatchPlanInvalidate func(ctx context.Context, warehouseID string)
+	FleetAvailabilityBroadcaster FleetAvailabilityBroadcaster
 	SupplierID   string
 	Currency     string
 	JWTSecret    string
@@ -265,6 +271,7 @@ func NewService(c ServiceConfig) *Service {
 		profileLookup:   c.ProfileLookup,
 		availReader:        c.AvailabilityReader,
 		planInvalidate:     c.DispatchPlanInvalidate,
+		fleetBroadcast:     c.FleetAvailabilityBroadcaster,
 		supplierID:         c.SupplierID,
 		currency:           strings.ToUpper(strings.TrimSpace(c.Currency)),
 		jwtSecret:          strings.TrimSpace(c.JWTSecret),
@@ -327,6 +334,11 @@ func (s *Service) persistDriverAvailability(ctx context.Context, driverID string
 // SetDispatchPlanInvalidate wires warehouse dispatch plan cache busting after bootstrap constructs warehouse.
 func (s *Service) SetDispatchPlanInvalidate(fn func(ctx context.Context, warehouseID string)) {
 	s.planInvalidate = fn
+}
+
+// SetFleetAvailabilityBroadcaster wires immediate warehouse WS fan-out for driver availability.
+func (s *Service) SetFleetAvailabilityBroadcaster(fn FleetAvailabilityBroadcaster) {
+	s.fleetBroadcast = fn
 }
 func (s *Service) HandleProfile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -530,6 +542,24 @@ func (s *Service) HandleAvailability(w http.ResponseWriter, r *http.Request) {
 		}
 		if s.planInvalidate != nil && strings.EqualFold(homeNodeType, "WAREHOUSE") && homeNodeID != "" {
 			s.planInvalidate(r.Context(), homeNodeID)
+		}
+		if s.fleetBroadcast != nil && strings.EqualFold(homeNodeType, "WAREHOUSE") && homeNodeID != "" {
+			raw, _ := json.Marshal(eventPayload)
+			formatted := notifications.FormatFromEvent(events.EventDriverAvailabilityChanged, raw)
+			s.fleetBroadcast(r.Context(), homeNodeID, map[string]any{
+				"type":           events.EventDriverAvailabilityChanged,
+				"driver_id":      driverID,
+				"on_shift":       req.OnShift,
+				"available":      req.OnShift,
+				"reason":         reason,
+				"note":           note,
+				"home_node_id":   homeNodeID,
+				"home_node_type": homeNodeType,
+				"title":          formatted.Title,
+				"body":           formatted.Body,
+				"deep_link":      formatted.DeepLink,
+				"timestamp":      nowTS,
+			})
 		}
 		s.broadcastDriverEvent(r.Context(), driverID, eventPayload)
 		s.log.Info("driver availability changed", "driver_id", driverID, "on_shift", req.OnShift, "reason", reason)

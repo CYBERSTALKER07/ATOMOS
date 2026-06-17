@@ -6,9 +6,13 @@ import type {
   WarehouseDispatchDriver,
   WarehouseDispatchOrder,
   WarehouseDispatchProposedRoute,
+  WarehouseFleetVehicle,
+  WarehouseFleetVehicleListResponse,
   WarehouseUnavailableDispatchDriver,
+  WarehouseVehicleUnavailableReason,
 } from '@pegasusx/types';
-import { ApiError, warehouseDispatchKey } from '@pegasusx/api-client';
+import { ApiError, warehouseDispatchKey, warehouseUpdateVehicleKey } from '@pegasusx/api-client';
+import { apiFetch } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
@@ -25,13 +29,28 @@ import EmptyState from '@/components/EmptyState';
 
 const TETRIS_BUFFER = 0.95;
 
+const VEHICLE_UNAVAILABLE_REASONS: WarehouseVehicleUnavailableReason[] = [
+  'MAINTENANCE',
+  'TRUCK_DAMAGED',
+  'REGULATORY_HOLD',
+  'MANUAL_HOLD',
+  'OTHER',
+];
+
+const FLEET_AVAILABILITY_EVENTS = new Set([
+  'DRIVER_AVAILABILITY_CHANGED',
+  'VEHICLE_AVAILABILITY_CHANGED',
+]);
+
 type CapacityPromptMode = 'manual' | 'auto';
 
-function formatUnavailableReason(reason?: string) {
+function formatUnavailableReason(reason?: string, note?: string) {
   if (!reason) {
-    return '';
+    return note || '';
   }
-
+  if (reason.toUpperCase() === 'OTHER' && note?.trim()) {
+    return note.trim();
+  }
   return reason
     .toLowerCase()
     .split('_')
@@ -69,6 +88,11 @@ export default function DispatchPage() {
   const [capacityPromptMode, setCapacityPromptMode] = useState<CapacityPromptMode>('manual');
   const [showSmartConfirm, setShowSmartConfirm] = useState(false);
   const [warehouseId, setWarehouseId] = useState(() => warehouseHomeNodeId() || 'warehouse');
+  const [vehicles, setVehicles] = useState<WarehouseFleetVehicle[]>([]);
+  const [vehicleReasons, setVehicleReasons] = useState<Record<string, WarehouseVehicleUnavailableReason>>({});
+  const [vehicleNotes, setVehicleNotes] = useState<Record<string, string>>({});
+  const [mutatingVehicleId, setMutatingVehicleId] = useState('');
+  const [fleetAlert, setFleetAlert] = useState<string | null>(null);
 
   const selectedOrderList = useMemo(() => [...selectedOrderIds].sort(), [selectedOrderIds]);
 
@@ -111,7 +135,43 @@ export default function DispatchPage() {
     }
   }, [selectedOrderList]);
 
-  useEffect(() => { void load(); }, [load]);
+  const loadVehicles = useCallback(async () => {
+    try {
+      const res = await apiFetch('/v1/warehouse/ops/vehicles');
+      if (!res.ok) {
+        return;
+      }
+      const data = await res.json() as WarehouseFleetVehicleListResponse;
+      const nextVehicles = data.vehicles || [];
+      setVehicles(nextVehicles);
+      setVehicleReasons(current => {
+        const next = { ...current };
+        for (const vehicle of nextVehicles) {
+          if (!next[vehicle.vehicle_id]) {
+            next[vehicle.vehicle_id] = vehicle.unavailable_reason || 'MANUAL_HOLD';
+          }
+        }
+        return next;
+      });
+      setVehicleNotes(current => {
+        const next = { ...current };
+        for (const vehicle of nextVehicles) {
+          if (!next[vehicle.vehicle_id] && vehicle.unavailable_note) {
+            next[vehicle.vehicle_id] = vehicle.unavailable_note;
+          }
+        }
+        return next;
+      });
+    } catch {
+      // Non-fatal: dispatch preview still works without vehicle list.
+    }
+  }, []);
+
+  const loadAll = useCallback(async (orderFilter?: string[]) => {
+    await Promise.all([load(orderFilter), loadVehicles()]);
+  }, [load, loadVehicles]);
+
+  useEffect(() => { void loadAll(); }, [loadAll]);
 
   useEffect(() => {
     let signalTimer: number | undefined;
@@ -121,12 +181,23 @@ export default function DispatchPage() {
         if (!eventType || !WAREHOUSE_DISPATCH_REFRESH_EVENTS.has(eventType)) {
           return;
         }
+        if (FLEET_AVAILABILITY_EVENTS.has(eventType)) {
+          try {
+            const parsed = JSON.parse(payload) as { body?: string; title?: string };
+            if (parsed.body || parsed.title) {
+              setFleetAlert(parsed.body || parsed.title || 'Fleet availability updated');
+            }
+          } catch {
+            setFleetAlert('Fleet availability updated');
+          }
+        }
         if (signalTimer !== undefined) {
           window.clearTimeout(signalTimer);
         }
+        const delay = FLEET_AVAILABILITY_EVENTS.has(eventType) ? 0 : 500;
         signalTimer = window.setTimeout(() => {
-          void load();
-        }, 500);
+          void loadAll();
+        }, delay);
       },
     });
     return () => {
@@ -135,10 +206,10 @@ export default function DispatchPage() {
       }
       unsubscribe();
     };
-  }, [load]);
+  }, [loadAll]);
 
   useWarehouseSessionReconcile(() => {
-    void load();
+    void loadAll();
     if (executing) {
       setExecuting(false);
       setExecuteError(null);
@@ -255,7 +326,7 @@ export default function DispatchPage() {
         setSelectedOrderIds(new Set());
         setCapacityPrompt(null);
         setLoading(true);
-        await load();
+        await loadAll();
         return;
       }
       if (result.warnings?.length) {
@@ -268,7 +339,46 @@ export default function DispatchPage() {
     } finally {
       setExecuting(false);
     }
-  }, [load, selectedDriverId, selectedOrderIds.size, selectedOrderList, warehouseId]);
+  }, [loadAll, selectedDriverId, selectedOrderIds.size, selectedOrderList, warehouseId]);
+
+  async function handleToggleVehicleAvailability(vehicle: WarehouseFleetVehicle, nextActive: boolean) {
+    setMutatingVehicleId(vehicle.vehicle_id);
+    setExecuteError(null);
+    try {
+      const unavailableReason = vehicleReasons[vehicle.vehicle_id] || vehicle.unavailable_reason || 'MANUAL_HOLD';
+      const unavailableNote = vehicleNotes[vehicle.vehicle_id]?.trim() || '';
+      const body: Record<string, unknown> = nextActive
+        ? { is_active: true }
+        : {
+            is_active: false,
+            unavailable_reason: unavailableReason,
+            ...(unavailableReason === 'OTHER' && unavailableNote ? { unavailable_note: unavailableNote } : {}),
+          };
+      const res = await apiFetch(`/v1/warehouse/ops/vehicles/${vehicle.vehicle_id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+        headers: {
+          'Idempotency-Key': warehouseUpdateVehicleKey(
+            warehouseId,
+            vehicle.vehicle_id,
+            nextActive,
+            nextActive ? undefined : unavailableReason,
+          ),
+        },
+      });
+      if (!res.ok) {
+        throw new Error('Unable to update vehicle availability');
+      }
+      setFleetAlert(nextActive
+        ? `${vehicle.label || vehicle.license_plate} restored for dispatch`
+        : `${vehicle.label || vehicle.license_plate} marked unavailable`);
+      await loadAll();
+    } catch (err) {
+      setExecuteError(err instanceof Error ? err.message : 'Vehicle update failed');
+    } finally {
+      setMutatingVehicleId('');
+    }
+  }
 
   const runSmartDispatch = useCallback(async (opts: { forceCapacity?: boolean; acceptPartial?: boolean } = {}) => {
     const orderIds = selectedOrderList.length > 0 ? selectedOrderList : orders.map(o => o.order_id);
@@ -312,7 +422,7 @@ export default function DispatchPage() {
         setSelectedOrderIds(new Set());
         setCapacityPrompt(null);
         setLoading(true);
-        await load();
+        await loadAll();
         return;
       }
       if (result.warnings?.length) {
@@ -325,7 +435,7 @@ export default function DispatchPage() {
     } finally {
       setExecuting(false);
     }
-  }, [load, orders, planFingerprint, selectedOrderList, warehouseId]);
+  }, [loadAll, orders, planFingerprint, selectedOrderList, warehouseId]);
 
   const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
   const canDispatch = Boolean(selectedDriverId) && selectedOrderIds.size > 0 && !restricted;
@@ -383,7 +493,7 @@ export default function DispatchPage() {
               type="button"
               onClick={() => {
                 setLoading(true);
-                void load();
+                void loadAll();
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary"
             >
@@ -422,6 +532,86 @@ export default function DispatchPage() {
         {executeSuccess && (
           <p className="text-sm mb-4" style={{ color: 'var(--success)' }}>{executeSuccess}</p>
         )}
+        {fleetAlert && (
+          <p className="text-sm mb-4" style={{ color: 'var(--warning)' }}>{fleetAlert}</p>
+        )}
+
+        <PageSection
+          title={`Fleet trucks (${vehicles.length})`}
+          description="Mark trucks unavailable in real time — dispatch and smart suggest exclude them immediately."
+          className="mb-6"
+        >
+          {vehicles.length === 0 ? (
+            <p className="text-sm text-(--muted)">No vehicles registered for this warehouse.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {vehicles.map(vehicle => (
+                <div key={vehicle.vehicle_id} className="rounded-lg border border-(--border) p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium">{vehicle.label || vehicle.license_plate}</div>
+                      <div className="text-xs text-(--muted)">{vehicle.license_plate} · {vehicle.vehicle_class}</div>
+                      {!vehicle.is_active && (
+                        <div className="text-xs mt-1" style={{ color: 'var(--warning)' }}>
+                          {formatUnavailableReason(vehicle.unavailable_reason, vehicle.unavailable_note)}
+                        </div>
+                      )}
+                    </div>
+                    <span className={`status-chip ${vehicle.is_active ? 'status-chip--stable' : 'status-chip--draft'}`}>
+                      {vehicle.is_active ? 'Active' : 'Unavailable'}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {vehicle.is_active && (
+                      <>
+                        <select
+                          value={vehicleReasons[vehicle.vehicle_id] || vehicle.unavailable_reason || 'MANUAL_HOLD'}
+                          onChange={event => setVehicleReasons(current => ({
+                            ...current,
+                            [vehicle.vehicle_id]: event.target.value as WarehouseVehicleUnavailableReason,
+                          }))}
+                          disabled={mutatingVehicleId === vehicle.vehicle_id}
+                          className="rounded-lg border px-2 py-1 text-xs"
+                          style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+                        >
+                          {VEHICLE_UNAVAILABLE_REASONS.map(reason => (
+                            <option key={reason} value={reason}>{formatUnavailableReason(reason)}</option>
+                          ))}
+                        </select>
+                        {(vehicleReasons[vehicle.vehicle_id] || 'MANUAL_HOLD') === 'OTHER' && (
+                          <input
+                            type="text"
+                            placeholder="Custom reason"
+                            value={vehicleNotes[vehicle.vehicle_id] || ''}
+                            onChange={event => setVehicleNotes(current => ({
+                              ...current,
+                              [vehicle.vehicle_id]: event.target.value,
+                            }))}
+                            disabled={mutatingVehicleId === vehicle.vehicle_id}
+                            className="rounded-lg border px-2 py-1 text-xs min-w-32"
+                            style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+                          />
+                        )}
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      disabled={mutatingVehicleId === vehicle.vehicle_id}
+                      onClick={() => void handleToggleVehicleAvailability(vehicle, !vehicle.is_active)}
+                      className="rounded-lg px-2 py-1 text-xs font-medium disabled:opacity-50"
+                      style={{
+                        background: vehicle.is_active ? 'color-mix(in srgb, var(--warning) 15%, transparent)' : 'color-mix(in srgb, var(--success) 15%, transparent)',
+                        color: vehicle.is_active ? 'var(--warning)' : 'var(--success)',
+                      }}
+                    >
+                      {mutatingVehicleId === vehicle.vehicle_id ? 'Updating…' : vehicle.is_active ? 'Mark unavailable' : 'Restore'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </PageSection>
 
         <KpiStatGrid columns={4}>
           <KpiStatCard label="Undispatched orders" value={orders.length} sub="Awaiting assignment" />
@@ -528,10 +718,10 @@ export default function DispatchPage() {
 
               <div className="border-t border-(--border) pt-4">
                 <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-(--muted) mb-2">
-                  Vehicle unavailable ({unavailableDrivers.length})
+                  Unavailable ({unavailableDrivers.length})
                 </h3>
                 {unavailableDrivers.length === 0 ? (
-                  <p className="text-sm text-(--muted) py-2 text-center">No assigned drivers blocked by vehicle availability</p>
+                  <p className="text-sm text-(--muted) py-2 text-center">No drivers blocked — all assigned trucks eligible or off-shift reasons shown here in real time.</p>
                 ) : (
                   <div className="space-y-2">
                     {unavailableDrivers.map(driver => (

@@ -1,6 +1,11 @@
 package warehouse
 
-import "strings"
+import (
+	"encoding/json"
+	"strings"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
+)
 
 // Warehouse vehicle unavailable reason codes (admin).
 const (
@@ -56,4 +61,18 @@ func driverUnavailableDisplayReason(reason, note string) string {
 		return note
 	}
 	return reason
+}
+
+func fleetAvailabilityWire(eventType string, fields map[string]any) map[string]any {
+	raw, err := json.Marshal(fields)
+	if err != nil {
+		return fields
+	}
+	formatted := notifications.FormatFromEvent(eventType, raw)
+	fields["title"] = formatted.Title
+	fields["body"] = formatted.Body
+	if formatted.DeepLink != "" {
+		fields["deep_link"] = formatted.DeepLink
+	}
+	return fields
 }
