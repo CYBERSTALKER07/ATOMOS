@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -209,6 +209,13 @@ fun DeliveryMapScreen(
             }
         }
 
+        if (uiState.recentReceipts.isNotEmpty()) {
+            RecentReceiptsStrip(
+                receipts = uiState.recentReceipts.take(6),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+
         // Map
         Box(modifier = Modifier.fillMaxSize()) {
             if (uiState.isLoading && uiState.orders.isEmpty()) {
@@ -339,6 +346,39 @@ private fun OrderInfoCard(order: TrackingOrder) {
 }
 
 private fun formatAmount(amount: Long): String {
-    val formatted = String.format("%,d", amount).replace(',', ' ')
-    return "$formatted"
+    return "%,d".format(amount)
+}
+
+@Composable
+private fun RecentReceiptsStrip(
+    receipts: List<TrackingOrder>,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            "Recent receipts",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            "Completed deliveries from the tracking feed.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 160.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            receipts.forEach { receipt ->
+                RetailerListCard(
+                    headline = receipt.supplierName.ifBlank { "Supplier" },
+                    supporting = "#${receipt.orderId.takeLast(8)} · ${formatAmount(receipt.totalAmount)}",
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
 }

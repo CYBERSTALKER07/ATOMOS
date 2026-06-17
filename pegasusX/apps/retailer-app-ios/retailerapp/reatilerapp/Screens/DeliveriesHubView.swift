@@ -1,6 +1,6 @@
 import SwiftUI
 
-private enum DeliveriesHubTab: String, CaseIterable, Identifiable {
+enum DeliveriesHubTab: String, CaseIterable, Identifiable {
     case map
     case dock
 
@@ -15,7 +15,14 @@ private enum DeliveriesHubTab: String, CaseIterable, Identifiable {
 }
 
 struct DeliveriesHubView: View {
-    @State private var selectedTab: DeliveriesHubTab = .map
+    var initialTab: DeliveriesHubTab = .map
+
+    @State private var selectedTab: DeliveriesHubTab
+
+    init(initialTab: DeliveriesHubTab = .map) {
+        self.initialTab = initialTab
+        _selectedTab = State(initialValue: initialTab)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,6 +45,9 @@ struct DeliveriesHubView: View {
         .background(AppTheme.background)
         .navigationTitle("Deliveries")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: initialTab) { _, tab in
+            selectedTab = tab
+        }
     }
 }
 

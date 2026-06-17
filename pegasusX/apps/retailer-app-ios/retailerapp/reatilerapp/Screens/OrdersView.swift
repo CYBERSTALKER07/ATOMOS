@@ -33,6 +33,7 @@ struct OrdersView: View {
     @State private var loadError: String?
     @State private var selectedOrder: Order?
     @State private var qrOverlayOrder: Order?
+    @State private var orderActionPending = false
 
     private let api = APIClient.shared
 
@@ -41,7 +42,9 @@ struct OrdersView: View {
     }
 
     var pendingOrders: [Order] {
-        allOrders.filter { $0.status == .pending }
+        allOrders.filter {
+            $0.status == .pending || $0.status == .pendingReview || $0.status == .scheduled
+        }
     }
 
     var body: some View {
@@ -190,8 +193,19 @@ struct OrdersView: View {
             } else {
                 LazyVStack(spacing: AppTheme.spacingMD) {
                     ForEach(Array(pendingOrders.enumerated()), id: \.element.id) { index, order in
-                        pendingOrderCard(order)
-                            .staggeredSlideIn(index: index)
+                        OrderCardView(
+                            order: order,
+                            onCancel: order.status.canCancel ? {
+                                RetailerAsync.run { await cancelRetailerOrder(order.id) }
+                            } : nil,
+                            onConfirmAi: order.status == .pendingReview ? {
+                                RetailerAsync.run { await confirmAiOrder(order.id) }
+                            } : nil,
+                            onRejectAi: order.status == .pendingReview ? {
+                                RetailerAsync.run { await rejectAiOrder(order.id) }
+                            } : nil
+                        )
+                        .staggeredSlideIn(index: index)
                     }
                 }
                 .padding(.horizontal, AppTheme.spacingLG)
@@ -336,44 +350,6 @@ struct OrdersView: View {
         .background(AppTheme.cardBackground)
         .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
         .shadow(color: AppTheme.shadowColor, radius: 4, y: 2)
-    }
-
-    // MARK: - Pending Order Card
-
-    private func pendingOrderCard(_ order: Order) -> some View {
-        HStack(spacing: AppTheme.spacingMD) {
-            ZStack {
-                Circle().fill(AppTheme.warning.opacity(0.1)).frame(width: 40, height: 40)
-                Image(systemName: "clock.fill").font(.system(size: 15, weight: .semibold)).foregroundStyle(AppTheme.warning)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Order #\(order.id.suffix(3))")
-                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text("\(order.itemCount) items · \(order.displayTotal)")
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(AppTheme.textTertiary)
-            }
-
-            Spacer()
-
-            Button {
-                Haptics.light()
-                selectedOrder = order
-            } label: {
-                Text("View")
-                    .font(.system(.caption, design: .rounded, weight: .bold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .padding(.horizontal, AppTheme.spacingMD).padding(.vertical, 6)
-                    .background(AppTheme.surfaceElevated)
-                    .clipShape(.capsule)
-            }
-        }
-        .padding(AppTheme.spacingMD)
-        .background(AppTheme.cardBackground)
-        .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
-        .shadow(color: AppTheme.shadowColor, radius: 3, y: 1)
     }
 
     // MARK: - AI Planned Card
@@ -526,6 +502,7 @@ struct OrdersView: View {
     private func loadData() async {
         let rid = AuthManager.shared.currentUser?.id ?? ""
         isLoading = true
+        defer { isLoading = false }
         do {
             let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
             allOrders = orders
@@ -539,7 +516,52 @@ struct OrdersView: View {
         } catch {
             predictions = []
         }
-        isLoading = false
+    }
+
+    private func cancelRetailerOrder(_ orderId: String) async {
+        guard !orderActionPending else { return }
+        orderActionPending = true
+        defer { orderActionPending = false }
+        let rid = AuthManager.shared.currentUser?.id ?? ""
+        guard !rid.isEmpty else { return }
+        do {
+            let _: [String: String] = try await api.post(
+                path: "/v1/order/cancel",
+                body: [
+                    "order_id": orderId,
+                    "retailer_id": rid,
+                    "reason": "Retailer requested cancellation",
+                ],
+                headers: ["Idempotency-Key": RetailerIdempotency.cancel(orderId: orderId)]
+            )
+            await loadData()
+        } catch {
+            loadError = "Failed to cancel order"
+        }
+    }
+
+    private func confirmAiOrder(_ orderId: String) async {
+        guard !orderActionPending else { return }
+        orderActionPending = true
+        defer { orderActionPending = false }
+        do {
+            try await api.confirmAiOrder(orderId: orderId)
+            await loadData()
+        } catch {
+            loadError = "Failed to confirm AI order"
+        }
+    }
+
+    private func rejectAiOrder(_ orderId: String) async {
+        guard !orderActionPending else { return }
+        orderActionPending = true
+        defer { orderActionPending = false }
+        do {
+            try await api.rejectAiOrder(orderId: orderId, reason: "Retailer rejected")
+            await loadData()
+        } catch {
+            loadError = "Failed to reject AI order"
+        }
     }
 
     private func preorder(_ forecast: DemandForecast) async {

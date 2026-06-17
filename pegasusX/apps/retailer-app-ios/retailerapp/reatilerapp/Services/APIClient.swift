@@ -408,8 +408,12 @@ final class APIClient {
         )
     }
 
+    func getTracking() async throws -> TrackingResponse {
+        try await get(path: "/v1/retailer/tracking")
+    }
+
     func getTrackingOrders() async throws -> [TrackingOrder] {
-        let response: TrackingResponse = try await get(path: "/v1/retailer/tracking")
+        let response = try await getTracking()
         return response.orders
     }
 

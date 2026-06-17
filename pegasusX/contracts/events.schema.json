@@ -1251,6 +1251,25 @@
         {
           "properties": {
             "type": {
+              "const": "VEHICLE_AVAILABILITY_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "VehicleAvailabilityChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "VEHICLE_CREATED"
             }
           },
@@ -1426,6 +1445,7 @@
         "SUPPLY_REQUEST_UPDATE",
         "SUPPLY_TRANSFER_APPROACHING",
         "SYSTEM_APP_OUTDATED",
+        "VEHICLE_AVAILABILITY_CHANGED",
         "VEHICLE_CREATED",
         "WAREHOUSE_CREATED",
         "WAREHOUSE_DISPATCH_LOCK_CHANGED",
@@ -1507,6 +1527,7 @@
     "SUPPLY_REQUEST_UPDATE": "UnknownEventPayload",
     "SUPPLY_TRANSFER_APPROACHING": "UnknownEventPayload",
     "SYSTEM_APP_OUTDATED": "UnknownEventPayload",
+    "VEHICLE_AVAILABILITY_CHANGED": "UnknownEventPayload",
     "VEHICLE_CREATED": "UnknownEventPayload",
     "WAREHOUSE_CREATED": "UnknownEventPayload",
     "WAREHOUSE_DISPATCH_LOCK_CHANGED": "UnknownEventPayload",

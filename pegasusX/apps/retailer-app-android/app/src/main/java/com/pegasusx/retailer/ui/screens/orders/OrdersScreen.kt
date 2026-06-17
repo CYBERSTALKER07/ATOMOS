@@ -239,6 +239,8 @@ fun OrdersScreen(
                         isLoading = uiState.isLoading,
                         onDetailsCash = { selectedOrder = it },
                         onCancel = { order -> viewModel.cancelOrder(order.id, order.status) },
+                        onConfirmAi = { order -> viewModel.confirmAiOrder(order.id) },
+                        onRejectAi = { order -> viewModel.rejectAiOrder(order.id) },
                     )
                     2 -> AiPlannedList(
                         predictions = uiState.predictions,
@@ -294,6 +296,8 @@ private fun OrderedList(
     isLoading: Boolean = false,
     onDetailsCash: (Order) -> Unit,
     onCancel: (Order) -> Unit,
+    onConfirmAi: (Order) -> Unit = {},
+    onRejectAi: (Order) -> Unit = {},
 ) {
     if (isLoading && orders.isEmpty()) {
         ShimmerOrderList()
@@ -309,6 +313,8 @@ private fun OrderedList(
                 order = order,
                 onDetailsCash = { onDetailsCash(order) },
                 onCancel = { onCancel(order) },
+                onConfirmAi = { onConfirmAi(order) },
+                onRejectAi = { onRejectAi(order) },
             )
         }
         item { Spacer(modifier = Modifier.height(32.dp)) }
@@ -479,6 +485,8 @@ private fun OrderedCard(
     order: Order,
     onDetailsCash: () -> Unit,
     onCancel: () -> Unit,
+    onConfirmAi: () -> Unit = {},
+    onRejectAi: () -> Unit = {},
 ) {
     val ringColor = order.status.statusColor()
 
@@ -551,18 +559,39 @@ private fun OrderedCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Cancel
-                Text(
-                    "Cancel",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = StatusRed,
-                    modifier = Modifier
-                        .clip(PillShape)
-                        .clickable { onCancel() }
-                        .background(StatusRed.copy(alpha = 0.1f), PillShape)
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                )
-                // Details
+                if (order.needsAiConfirmation) {
+                    Text(
+                        "Reject",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = StatusRed,
+                        modifier = Modifier
+                            .clip(PillShape)
+                            .clickable { onRejectAi() }
+                            .background(StatusRed.copy(alpha = 0.1f), PillShape)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                    Text(
+                        "Confirm",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = Color.White,
+                        modifier = Modifier
+                            .clip(PillShape)
+                            .clickable { onConfirmAi() }
+                            .background(MaterialTheme.colorScheme.primary, PillShape)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                } else {
+                    Text(
+                        "Cancel",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = StatusRed,
+                        modifier = Modifier
+                            .clip(PillShape)
+                            .clickable { onCancel() }
+                            .background(StatusRed.copy(alpha = 0.1f), PillShape)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
                 Text(
                     "Details",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),

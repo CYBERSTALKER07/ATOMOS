@@ -99,6 +99,7 @@ struct ContentView: View {
     @State private var shopClosedAlert: ShopClosedAlertEvent?
     @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var clientPolicyMessage: String?
+    @State private var deliveriesHubInitialTab: DeliveriesHubTab = .map
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.modelContext) private var modelContext
@@ -411,6 +412,9 @@ struct ContentView: View {
         
         Button {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                if tab == .deliveries {
+                    deliveriesHubInitialTab = .map
+                }
                 sideMenuSelection = tab
             }
         } label: {
@@ -458,7 +462,7 @@ struct ContentView: View {
         case .orders: tabContent(.orders)
         case .deliveries:
             NavigationStack {
-                DeliveriesHubView()
+                DeliveriesHubView(initialTab: deliveriesHubInitialTab)
                     .toolbar { standardToolbar }
             }
         case .suppliers: tabContent(.suppliers)
@@ -489,7 +493,7 @@ struct ContentView: View {
     @ViewBuilder
     private var iphoneLayout: some View {
         ZStack(alignment: .bottom) {
-            TabView(selection: $selectedTab) {
+            TabView(selection: tabSelection) {
                 ForEach(AppTab.allCases, id: \.self) { tab in
                     Tab(tab.title, systemImage: tab.icon, value: tab) {
                         tabContent(tab)
@@ -532,7 +536,7 @@ struct ContentView: View {
                 case .catalog:
                     CatalogView(onNavigateToSuppliers: navigateToSuppliersTab)
                 case .orders: OrdersView()
-                case .deliveries: DeliveriesHubView()
+                case .deliveries: DeliveriesHubView(initialTab: deliveriesHubInitialTab)
                 case .profile: ProfileView()
                 case .suppliers: MySuppliersView()
                 }
@@ -646,6 +650,18 @@ struct ContentView: View {
 
     // MARK: - Sidebar Navigation
 
+    private var tabSelection: Binding<AppTab> {
+        Binding(
+            get: { selectedTab },
+            set: { newTab in
+                if newTab == .deliveries && selectedTab != .deliveries {
+                    deliveriesHubInitialTab = .map
+                }
+                selectedTab = newTab
+            }
+        )
+    }
+
     private func handleSidebarNavigation(_ destination: SidebarDestination) {
         switch destination {
         case .dashboard: selectedTab = .home
@@ -660,6 +676,7 @@ struct ContentView: View {
         case .autoOrder: showAutoOrder = true
         case .futureDemand: showFutureDemand = true
         case .dock:
+            deliveriesHubInitialTab = .dock
             if horizontalSizeClass == .regular {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     sideMenuSelection = .deliveries

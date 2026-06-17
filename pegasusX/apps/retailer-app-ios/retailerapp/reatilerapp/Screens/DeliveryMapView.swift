@@ -12,6 +12,7 @@ private enum TrackingLoadIssue {
 struct DeliveryMapView: View {
     @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var orders: [TrackingOrder] = []
+    @State private var recentReceipts: [TrackingOrder] = []
     @State private var suppliers: [SupplierFilter] = []
     @State private var selectedSupplierIds: Set<String> = []
     @State private var isLoading = false
@@ -88,6 +89,43 @@ struct DeliveryMapView: View {
                 MapCompass()
             }
             .ignoresSafeArea(edges: .bottom)
+
+            // Recent receipts
+            if !recentReceipts.isEmpty {
+                VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
+                    Text("Recent receipts")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text("Completed deliveries from the tracking feed.")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(AppTheme.textTertiary)
+
+                    ScrollView {
+                        VStack(spacing: AppTheme.spacingSM) {
+                            ForEach(recentReceipts.prefix(6)) { receipt in
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(receipt.supplierName.isEmpty ? "Supplier" : receipt.supplierName)
+                                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                        Text("#\(receipt.orderId.suffix(8))")
+                                            .font(.system(.caption2, design: .monospaced))
+                                            .foregroundStyle(AppTheme.textTertiary)
+                                    }
+                                    Spacer()
+                                    Text(receipt.displayTotal)
+                                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                }
+                                .padding(AppTheme.spacingMD)
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppTheme.radiusSM))
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 160)
+                }
+                .padding(.horizontal, AppTheme.spacingLG)
+                .padding(.top, AppTheme.spacingSM)
+                .background(.ultraThinMaterial)
+            }
 
             // Supplier filter chips
             if suppliers.count > 1 {
@@ -177,10 +215,11 @@ struct DeliveryMapView: View {
         if orders.isEmpty { isLoading = true }
         defer { isLoading = false }
         do {
-            let fetched = try await api.getTrackingOrders()
-            orders = fetched
+            let response = try await api.getTracking()
+            orders = response.orders
+            recentReceipts = response.recentReceipts ?? []
             loadIssue = nil
-            let unique = Dictionary(grouping: fetched, by: \.supplierId)
+            let unique = Dictionary(grouping: response.orders, by: \.supplierId)
                 .compactMap { (id, group) -> SupplierFilter? in
                     guard let name = group.first?.supplierName else { return nil }
                     return SupplierFilter(id: id, name: name)
