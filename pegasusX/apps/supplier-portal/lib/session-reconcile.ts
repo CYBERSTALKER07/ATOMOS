@@ -1,5 +1,5 @@
 import { reconcileSession } from "@pegasusx/api-client";
-import { readTokenFromCookie, supplierApiBaseUrl, supplierFetch } from "@/lib/auth";
+import { readTokenFromCookie, supplierApiBaseUrl, supplierSessionFetch } from "@/lib/auth";
 import { getSupplierReconcileScope, notifySupplierSessionReconciled } from "@/lib/supplier-reconnect";
 
 /** Refetch server-authoritative supplier snapshots after transport reconnect. */
@@ -10,7 +10,7 @@ export async function reconcileSupplierSession(
     role: "supplier",
     baseUrl: supplierApiBaseUrl(),
     getAuthToken: () => readTokenFromCookie() || null,
-    fetchImpl: supplierFetch,
+    fetchImpl: supplierSessionFetch,
     query,
   });
 }

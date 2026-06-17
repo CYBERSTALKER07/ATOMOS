@@ -37,12 +37,14 @@ export default function StockCommitmentsPage() {
 
   return (
     <PageTransition>
-      <PageChrome title="Stock commitments" subtitle="SKU-level ASAP + scheduled demand vs on-hand">
-        {loading ? (
-          <p className="text-sm text-[var(--desk-text-tertiary)]">Loading…</p>
-        ) : items.length === 0 ? (
-          <EmptyState title="No commitments" message="Active orders have not reserved stock yet." />
-        ) : (
+      <PageChrome
+        title="Stock commitments"
+        description="SKU-level ASAP + scheduled demand vs on-hand"
+        loading={loading}
+        empty={!loading && items.length === 0}
+        emptyMessage="Active orders have not reserved stock yet."
+      >
+        {items.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {items.map((row) => (
               <article key={row.sku_id} className="rounded-2xl border border-[var(--desk-border)] p-4">
@@ -62,7 +64,9 @@ export default function StockCommitmentsPage() {
               </article>
             ))}
           </div>
-        )}
+        ) : !loading ? (
+          <EmptyState headline="No commitments" body="Active orders have not reserved stock yet." />
+        ) : null}
       </PageChrome>
     </PageTransition>
   );

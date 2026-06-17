@@ -61,7 +61,7 @@ export default function WarehouseDashboard() {
     async function load() {
       try {
         const dashboard = await warehouseApi.getWarehouseOpsDashboard();
-        const row = dashboard as Record<string, unknown>;
+        const row = dashboard as unknown as Record<string, unknown>;
         setData({
           active_orders: Number(row.active_orders ?? 0),
           completed_today: Number(row.completed_today ?? 0),

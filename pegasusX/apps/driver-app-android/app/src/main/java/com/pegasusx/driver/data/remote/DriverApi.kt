@@ -3,6 +3,7 @@ package com.pegasusx.driver.data.remote
 import com.pegasusx.driver.data.model.ArriveSupplyTransferRequest
 import com.pegasusx.driver.data.model.ArriveSupplyTransferResponse
 import com.pegasusx.driver.data.model.SupplyTransfersResponse
+import com.pegasusx.driver.data.model.AmendOrderRequest
 import com.pegasusx.driver.data.model.AmendOrderResponse
 import com.pegasusx.driver.data.model.AuthResponse
 import com.pegasusx.driver.data.model.AvailabilityRequest
@@ -29,6 +30,7 @@ import com.pegasusx.driver.data.model.PendingCollection
 import com.pegasusx.driver.data.model.RouteGeometryResponse
 import com.pegasusx.driver.data.model.ReorderStopsRequest
 import com.pegasusx.driver.data.model.ReturnCompleteRequest
+import com.pegasusx.driver.data.model.ReturnGoodsResponse
 import com.pegasusx.driver.data.model.RouteManifest
 import com.pegasusx.driver.data.model.RouteReorderResponse
 import com.pegasusx.driver.data.model.SplitPaymentPayload

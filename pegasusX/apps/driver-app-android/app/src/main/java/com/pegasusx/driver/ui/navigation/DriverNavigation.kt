@@ -134,13 +134,11 @@ fun DriverNavigation(
     fun loadClientPolicy() {
         scope.launch {
             try {
-                val resp = api.getClientPolicy(
+                val policy = api.getClientPolicy(
                     platform = "android",
                     version = BuildConfig.VERSION_NAME,
                 )
-                if (resp.isSuccessful && resp.body() != null) {
-                    val policy = resp.body()!!
-                    clientPolicyMessage = if (policy.outdated || policy.forceUpdate) {
+                clientPolicyMessage = if (policy.outdated || policy.forceUpdate) {
                         buildString {
                             append(if (policy.forceUpdate) "Update required" else "Update available")
                             if (policy.minimumVersion.isNotBlank()) {
@@ -151,9 +149,8 @@ fun DriverNavigation(
                     } else {
                         null
                     }
-                    if (policy.outdated || policy.forceUpdate) {
-                        autoUpdater.checkForUpdates(BuildConfig.VERSION_CODE)
-                    }
+                if (policy.outdated || policy.forceUpdate) {
+                    autoUpdater.checkForUpdates(BuildConfig.VERSION_CODE)
                 }
             } catch (_: Exception) {
                 // Policy fetch is optional on local/dev stacks.

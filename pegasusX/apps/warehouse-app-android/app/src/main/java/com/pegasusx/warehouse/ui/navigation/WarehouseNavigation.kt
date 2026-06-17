@@ -60,6 +60,7 @@ import com.pegasusx.warehouse.ui.screens.forecast.DemandForecastScreen
 import com.pegasusx.warehouse.ui.screens.inventory.InventoryScreen
 import com.pegasusx.warehouse.ui.screens.inventory.OpsSettingsScreen
 import com.pegasusx.warehouse.ui.screens.preorders.PreordersScreen
+import com.pegasusx.warehouse.ui.screens.preorders.StockCommitmentsScreen
 import com.pegasusx.warehouse.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.warehouse.ui.screens.more.MoreHubScreen
 import com.pegasusx.warehouse.ui.screens.notifications.NotificationInboxScreen

@@ -199,7 +199,7 @@ export default function OrdersPage() {
         const deliveryDate =
           order.deliver_before ?? order.auto_confirm_at ?? "";
         const lineItems = (order.items ?? []).map((item) => ({
-          sku: item.sku_id || item.product_id || item.line_item_id,
+          sku: item.sku_id || item.line_item_id,
           name: item.sku_name || "Item",
           quantity: item.quantity,
           unit_price_minor: item.unit_price,

@@ -103,13 +103,17 @@ fun SupplyTransfersScreen(
 
         when {
             state.isLoading && state.transfers.isEmpty() -> {
-                DriverLoadingState(modifier = Modifier.fillMaxSize())
+                DriverLoadingState(
+                    title = "Loading transfers",
+                    body = "Fetching assigned supply legs…",
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
             state.transfers.isEmpty() -> {
                 DriverStatePane(
                     kind = DriverStateKind.Empty,
-                    title = "No supply transfers",
-                    message = "Assigned factory→warehouse legs will appear here.",
+                    headline = "No supply transfers",
+                    body = "Assigned factory→warehouse legs will appear here.",
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(24.dp),

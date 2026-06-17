@@ -146,8 +146,8 @@ class OfflineSyncWorker @AssistedInject constructor(
         }.getOrNull() ?: return null
         return OfflineDeliveryPayload(
             orderId = legacy.orderId,
-            scannedToken = legacy.scannedToken,
-            signature = legacy.scannedToken,
+            scannedToken = legacy.scannedToken.orEmpty(),
+            signature = legacy.scannedToken.orEmpty(),
         )
     }
 }

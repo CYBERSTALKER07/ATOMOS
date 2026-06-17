@@ -136,6 +136,8 @@ export default function OrdersPage() {
       const query =
         filter === 'REVIEW'
           ? { limit: 300, offset: 0, status: 'AWAITING_REVIEW' }
+          : filter === 'SCHEDULED'
+            ? { limit: 300, offset: 0, status: 'SCHEDULED' }
           : { limit: 300, offset: 0, filter };
       const response = await supplierApi.getSupplierOrders(query);
       downloadCsv(

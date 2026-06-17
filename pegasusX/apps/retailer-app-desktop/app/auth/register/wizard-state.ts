@@ -76,10 +76,12 @@ export const STEP_LABELS: Record<StepId, string> = {
   profile: "Store Profile",
 };
 
-export {
+import {
   normalizeReceivingWindow,
   validateReceivingWindowField,
 } from "../../../lib/receiving-window";
+
+export { normalizeReceivingWindow, validateReceivingWindowField };
 
 export function validateIdentity(s: IdentityStep): Record<string, string> {
   const e: Record<string, string> = {};

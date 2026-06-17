@@ -4,7 +4,7 @@ import type { SupplierDashboardResponse } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
 
 export interface DashboardMetrics {
-  ordersByStatus: Record<OrderStatus, number>;
+  ordersByStatus: Partial<Record<OrderStatus, number>>;
   revenueToday: number;
   revenueChangePct: number;
   activeDrivers: number;
@@ -36,9 +36,11 @@ export interface DashboardData {
   recentEvents: WsEventLog[];
 }
 
-function emptyOrderStatusCounts(): Record<OrderStatus, number> {
+function emptyOrderStatusCounts(): Partial<Record<OrderStatus, number>> {
   return {
     PENDING: 0,
+    SCHEDULED: 0,
+    AUTO_ACCEPTED: 0,
     LOADED: 0,
     IN_TRANSIT: 0,
     ARRIVED: 0,

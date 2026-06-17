@@ -138,6 +138,26 @@ func (r *testRepo) ListDueAutoConfirmOrders(_ context.Context, before time.Time,
 	return []Order{r.order}, nil
 }
 
+func (r *testRepo) ListWarehousePreorders(_ context.Context, _ string, _, _ int) ([]Order, error) {
+	if r.getErr != nil {
+		return nil, r.getErr
+	}
+	if !r.found {
+		return nil, nil
+	}
+	return []Order{r.order}, nil
+}
+
+func (r *testRepo) ListOrdersForStockCommitment(_ context.Context, _ string, _ int) ([]Order, error) {
+	if r.getErr != nil {
+		return nil, r.getErr
+	}
+	if !r.found {
+		return nil, nil
+	}
+	return []Order{r.order}, nil
+}
+
 func newTestService(repo Repository, now time.Time) *Service {
 	return newTestServiceWithResolver(repo, nil, now)
 }
@@ -770,8 +790,9 @@ func TestServiceCreateManualPreorderSetsDraftMetadata(t *testing.T) {
 	resolver := &testWarehouseResolver{warehouseID: "wh-1"}
 	svc := newTestServiceWithResolver(repo, resolver, now)
 
-	requested := now.Add(48 * time.Hour).Format(time.RFC3339Nano)
+	requested := now.AddDate(0, 0, 10).Format(time.RFC3339Nano)
 	resp, err := svc.Create(context.Background(), "ret-1", CreateRequest{
+		DeliveryMode:          DeliveryModeScheduled,
 		RequestedDeliveryDate: requested,
 		H3Cell:                "872830828ffffff",
 		Lat:                   41.311,

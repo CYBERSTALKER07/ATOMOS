@@ -285,7 +285,7 @@ export default function SupplyRequestDetailPage() {
                   <td className="px-4 py-3 font-mono">{item.recommended_qty}</td>
                   <td className="px-4 py-3 text-[var(--muted)]">{item.unit_volume_vu} VU</td>
                 </tr>
-              )})}
+              ))}
             </tbody>
           </table>
         </div>

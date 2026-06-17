@@ -21,6 +21,7 @@ export interface Order {
   state: string;
   route_id: string | null;
   order_source: string | null;
+  confirmation_status?: string | null;
   auto_confirm_at: string | null;
   deliver_before: string | null;
   delivery_token: string | null;

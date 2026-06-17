@@ -40,10 +40,10 @@ export default function DashboardPage() {
   }
 
   const liveOrderStats = [
-    { label: "Pending", count: metrics.ordersByStatus.PENDING, color: "var(--desk-text-secondary)" },
-    { label: "Loaded", count: metrics.ordersByStatus.LOADED, color: "var(--desk-warning)" },
-    { label: "In transit", count: metrics.ordersByStatus.IN_TRANSIT, color: "var(--desk-info)" },
-    { label: "Arrived", count: metrics.ordersByStatus.ARRIVED, color: "var(--desk-success)" },
+    { label: "Pending", count: metrics.ordersByStatus.PENDING ?? 0, color: "var(--desk-text-secondary)" },
+    { label: "Loaded", count: metrics.ordersByStatus.LOADED ?? 0, color: "var(--desk-warning)" },
+    { label: "In transit", count: metrics.ordersByStatus.IN_TRANSIT ?? 0, color: "var(--desk-info)" },
+    { label: "Arrived", count: metrics.ordersByStatus.ARRIVED ?? 0, color: "var(--desk-success)" },
   ];
   const maxLive = Math.max(1, ...liveOrderStats.map((s) => s.count));
   const driverPct = metrics.totalDrivers > 0 ? metrics.activeDrivers / metrics.totalDrivers : 0;

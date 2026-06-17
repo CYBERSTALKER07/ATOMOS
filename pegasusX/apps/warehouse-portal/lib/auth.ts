@@ -137,6 +137,23 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   return res;
 }
 
+function toApiPath(input: RequestInfo | URL): string {
+  const raw = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  if (raw.startsWith(API)) {
+    return raw.slice(API.length);
+  }
+  try {
+    const url = new URL(raw, API);
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return raw.startsWith("/") ? raw : `/${raw}`;
+  }
+}
+
+/** fetch-compatible wrapper for session reconciliation (full URL in, path-based apiFetch). */
+export const warehouseSessionFetch: typeof fetch = (input, init) =>
+  apiFetch(toApiPath(input), init);
+
 /** Open a WebSocket to the unified pegasusX hub (warehouse rooms). */
 export async function connectWarehouseWS(): Promise<WebSocket> {
   const wsBase = API.replace(/^http/, 'ws');
@@ -188,7 +205,7 @@ export function subscribeWarehouseWS(options: {
             role: 'warehouse',
             baseUrl: API,
             getAuthToken: () => readTokenFromCookie() || null,
-            fetchImpl: apiFetch,
+            fetchImpl: warehouseSessionFetch,
           }).then(() => notifyWarehouseSessionReconciled());
         }
       };

@@ -16,6 +16,7 @@ import type {
   RetailerActiveFulfillmentResponse,
   RetailerPendingPaymentsResponse,
   RetailerProfileResponse,
+  RetailerPricingRuleResponse,
   RetailerProfileUpdateRequest,
   CreateRetailerPriceOverrideRequest,
   CreateRetailerPriceOverrideResponse,

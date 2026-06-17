@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalShipping
@@ -107,10 +108,8 @@ fun HomeScreen(
         }
         try {
             val resp = api.getReturnGoods()
-            if (resp.isSuccessful) {
-                returnLines = resp.body()?.items.orEmpty()
-                returnUnits = resp.body()?.totalUnits ?: 0
-            }
+            returnLines = resp.items
+            returnUnits = resp.totalUnits
         } catch (_: Exception) { }
     }
 

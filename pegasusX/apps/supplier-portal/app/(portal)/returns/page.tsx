@@ -105,7 +105,7 @@ export default function ReturnsPage() {
       empty={!loading && items.length === 0}
       emptyMessage="No open returns — all rejected delivery lines are resolved."
       actions={
-        <Button size="sm" variant="flat" onPress={() => void fetchReturns()}>
+        <Button size="sm" variant="ghost" onPress={() => void fetchReturns()}>
           Refresh
         </Button>
       }
@@ -169,13 +169,13 @@ export default function ReturnsPage() {
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      color="primary"
-                      isLoading={actionLoading === item.return_id}
+                      variant="primary"
+                      isDisabled={actionLoading === item.return_id}
                       onPress={() => void handleResolve(item.return_id)}
                     >
-                      Confirm
+                      {actionLoading === item.return_id ? "Saving…" : "Confirm"}
                     </Button>
-                    <Button size="sm" variant="light" onPress={() => setResolvingId(null)}>
+                    <Button size="sm" variant="tertiary" onPress={() => setResolvingId(null)}>
                       Cancel
                     </Button>
                   </div>
@@ -183,7 +183,7 @@ export default function ReturnsPage() {
               ) : item.physical_status === "RESTOCKED" || item.physical_status === "WRITTEN_OFF" ? (
                 <span className="text-xs text-[var(--color-md-outline)]">Gate resolved</span>
               ) : (
-                <Button size="sm" variant="flat" onPress={() => setResolvingId(item.return_id)}>
+                <Button size="sm" variant="ghost" onPress={() => setResolvingId(item.return_id)}>
                   Dispute / override
                 </Button>
               )}

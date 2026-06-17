@@ -170,3 +170,21 @@ export async function supplierFetch(path: string, init?: RequestInit): Promise<R
 
   return res;
 }
+
+function toApiPath(input: RequestInfo | URL): string {
+  const raw = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  const base = supplierApiBaseUrl();
+  if (raw.startsWith(base)) {
+    return raw.slice(base.length);
+  }
+  try {
+    const url = new URL(raw, base);
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return raw.startsWith("/") ? raw : `/${raw}`;
+  }
+}
+
+/** fetch-compatible wrapper for session reconciliation (full URL in, path-based supplierFetch). */
+export const supplierSessionFetch: typeof fetch = (input, init) =>
+  supplierFetch(toApiPath(input), init);

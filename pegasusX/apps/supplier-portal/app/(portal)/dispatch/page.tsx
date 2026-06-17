@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
+import { decodeJwtPayload, readTokenFromCookie } from "@/lib/auth";
 import { ApiError, supplierDispatchKey } from "@pegasusx/api-client";
 import type { SupplierDispatchPreview, SupplierTopologyWarehouse } from "@pegasusx/types";
 import { useDispatchData, type ManifestData } from "./use-dispatch-data";
@@ -17,6 +18,13 @@ const api = createSupplierApi();
 
 function warehouseQuery(warehouseId: string | null): { warehouse_id?: string } {
   return warehouseId ? { warehouse_id: warehouseId } : {};
+}
+
+function supplierScopeId(): string {
+  const token = readTokenFromCookie();
+  if (!token) return "supplier";
+  const claims = decodeJwtPayload(token);
+  return typeof claims?.supplier_id === "string" ? claims.supplier_id : "supplier";
 }
 
 export default function DispatchPage() {
@@ -61,8 +69,8 @@ export default function DispatchPage() {
     setExecuteError(null);
     setExecuteSuccess(null);
     try {
-      const routeFingerprint = JSON.stringify(preview?.routes ?? preview?.proposed_routes ?? []);
-      const supplierId = preview?.supplier_id ?? "supplier";
+      const routeFingerprint = JSON.stringify(preview?.proposed_routes ?? []);
+      const supplierId = supplierScopeId();
       const warehouseId = selectedWarehouseId ?? "default";
       const idempotencyKey = supplierDispatchKey(supplierId, warehouseId, "AUTO", routeFingerprint);
       const result = await api.executeSupplierDispatch({ mode: "AUTO" }, warehouseQuery(selectedWarehouseId), idempotencyKey);

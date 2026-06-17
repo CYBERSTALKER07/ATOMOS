@@ -37,12 +37,14 @@ export default function PreordersPage() {
 
   return (
     <PageTransition>
-      <PageChrome title="Pre-orders" subtitle="Scheduled and auto-accepted manual pre-orders">
-        {loading ? (
-          <p className="text-sm text-[var(--desk-text-tertiary)]">Loading…</p>
-        ) : items.length === 0 ? (
-          <EmptyState title="No pre-orders" message="Scheduled pre-orders appear here for T-2 edits and stock planning." />
-        ) : (
+      <PageChrome
+        title="Pre-orders"
+        description="Scheduled and auto-accepted manual pre-orders"
+        loading={loading}
+        empty={!loading && items.length === 0}
+        emptyMessage="Scheduled pre-orders appear here for T-2 edits and stock planning."
+      >
+        {items.length > 0 ? (
           <div className="overflow-x-auto rounded-2xl border border-[var(--desk-border)]">
             <table className="w-full text-sm">
               <thead>
@@ -65,7 +67,12 @@ export default function PreordersPage() {
               </tbody>
             </table>
           </div>
-        )}
+        ) : !loading ? (
+          <EmptyState
+            headline="No pre-orders"
+            body="Scheduled pre-orders appear here for T-2 edits and stock planning."
+          />
+        ) : null}
       </PageChrome>
     </PageTransition>
   );
