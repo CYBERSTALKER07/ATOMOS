@@ -1,9 +1,9 @@
 # pegasusX load certification report
 
-- **Date:** 2026-06-17 18:45 UTC
+- **Date:** 2026-06-17 18:37 UTC
 - **Profile:** `smoke`
 - **Base URL:** `http://localhost:8180`
-- **Artifacts:** `/Users/shakhzod/Desktop/V.O.I.D/pegasusX/artifacts/load/20260617-184512`
+- **Artifacts:** `/Users/shakhzod/Desktop/V.O.I.D/pegasusX/artifacts/load/20260617-183643`
 - **Overall:** **FAIL**
 - **k6 thresholds:** **FAIL**
 
@@ -18,7 +18,6 @@
 ## Notes
 
 - **k6 threshold breaches:**
-  - `http_req_duration{endpoint:mutation} p(99)<800`
   - `http_req_duration{endpoint:read} p(99)<300`
   - `http_req_duration{endpoint:read} p(99)<400`
 - Profile `smoke` is the local/CI gate (`make load-cert`).

@@ -54,8 +54,12 @@ source "$SCRIPT_DIR/k6_exec.sh"
 
 wait_health() {
   local url="${BASE_URL%/}/v1/health"
+  local max_attempts=90
+  if [[ "$WITH_SSMR" -eq 1 ]]; then
+  max_attempts=180
+  fi
   echo "Waiting for ${url} ..."
-  for _ in $(seq 1 90); do
+  for _ in $(seq 1 "$max_attempts"); do
     if curl -fsS "$url" >/dev/null 2>&1; then
       echo "Backend healthy."
       return 0
@@ -154,25 +158,44 @@ K6_COMMON=(
   -e "DELIVERY_LNG=${DELIVERY_ZONE_CENTER_LNG:-69.24}"
 )
 
-echo "Running retailer cert k6 (profile=${LOAD_PROFILE}) ..."
+echo "Running load k6 (profile=${LOAD_PROFILE}) ..."
 set +e
-run_k6 "$K6_RUNNER" "$SCRIPT_DIR" "$ARTIFACT_DIR" "k6-retailer.json" "k6_retailer_cert.js" \
-  "${K6_COMMON[@]}"
-RETAILER_K6=$?
+if [[ "$LOAD_PROFILE" == "smoke" ]]; then
+  # Supplier reads first on smoke so Spanner emulator tail latency is not
+  # polluted by the retailer mutation burst (cert/stress keep retailer-first).
+  echo "Running supplier read k6 (profile=${LOAD_PROFILE}) ..."
+  run_k6 "$K6_RUNNER" "$SCRIPT_DIR" "$ARTIFACT_DIR" "k6-supplier.json" "k6_supplier_read.js" \
+    "${K6_COMMON[@]}" \
+    -e "SUPPLIER_COOKIE=${SUPPLIER_COOKIE:-}"
+  SUPPLIER_K6=$?
 
-echo "Waiting for backend between k6 phases ..."
-wait_health
-if [[ "$LOAD_PROFILE" == "cert" || "$LOAD_PROFILE" == "stress" ]]; then
-  echo "Cooling down ${LOAD_CERT_COOLDOWN_SEC:-45}s before supplier k6 ..."
-  sleep "${LOAD_CERT_COOLDOWN_SEC:-45}"
+  echo "Waiting for backend between k6 phases ..."
   wait_health
-fi
 
-echo "Running supplier read k6 (profile=${LOAD_PROFILE}) ..."
-run_k6 "$K6_RUNNER" "$SCRIPT_DIR" "$ARTIFACT_DIR" "k6-supplier.json" "k6_supplier_read.js" \
-  "${K6_COMMON[@]}" \
-  -e "SUPPLIER_COOKIE=${SUPPLIER_COOKIE:-}"
-SUPPLIER_K6=$?
+  echo "Running retailer cert k6 (profile=${LOAD_PROFILE}) ..."
+  run_k6 "$K6_RUNNER" "$SCRIPT_DIR" "$ARTIFACT_DIR" "k6-retailer.json" "k6_retailer_cert.js" \
+    "${K6_COMMON[@]}"
+  RETAILER_K6=$?
+else
+  echo "Running retailer cert k6 (profile=${LOAD_PROFILE}) ..."
+  run_k6 "$K6_RUNNER" "$SCRIPT_DIR" "$ARTIFACT_DIR" "k6-retailer.json" "k6_retailer_cert.js" \
+    "${K6_COMMON[@]}"
+  RETAILER_K6=$?
+
+  echo "Waiting for backend between k6 phases ..."
+  wait_health
+  if [[ "$LOAD_PROFILE" == "cert" || "$LOAD_PROFILE" == "stress" ]]; then
+    echo "Cooling down ${LOAD_CERT_COOLDOWN_SEC:-45}s before supplier k6 ..."
+    sleep "${LOAD_CERT_COOLDOWN_SEC:-45}"
+    wait_health
+  fi
+
+  echo "Running supplier read k6 (profile=${LOAD_PROFILE}) ..."
+  run_k6 "$K6_RUNNER" "$SCRIPT_DIR" "$ARTIFACT_DIR" "k6-supplier.json" "k6_supplier_read.js" \
+    "${K6_COMMON[@]}" \
+    -e "SUPPLIER_COOKIE=${SUPPLIER_COOKIE:-}"
+  SUPPLIER_K6=$?
+fi
 set -e
 
 python3 "$SCRIPT_DIR/generate_report.py" "$ARTIFACT_DIR"

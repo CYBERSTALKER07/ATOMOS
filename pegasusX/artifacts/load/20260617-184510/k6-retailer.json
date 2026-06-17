@@ -1,0 +1,166 @@
+{
+    "metrics": {
+        "http_req_duration{endpoint:mutation}": {
+            "p(95)": 963.2168674,
+            "avg": 419.58240362416103,
+            "min": 0.529542,
+            "med": 339.364334,
+            "max": 1805.33396,
+            "p(90)": 657.4449255999999,
+            "thresholds": {
+                "p(99)<800": true
+            }
+        },
+        "http_req_duration{endpoint:read}": {
+            "avg": 407.10183074489817,
+            "min": 9.324375,
+            "med": 539.8567499999999,
+            "max": 824.517459,
+            "p(90)": 673.4748125,
+            "p(95)": 720.74466675,
+            "thresholds": {
+                "p(99)<300": true
+            }
+        },
+        "http_req_blocked": {
+            "max": 6.235667,
+            "p(90)": 0.006625,
+            "p(95)": 0.009837699999999927,
+            "avg": 0.160377780838323,
+            "min": 0.000916,
+            "med": 0.00325
+        },
+        "http_req_sending": {
+            "min": 0.003459,
+            "med": 0.010042,
+            "max": 1.680834,
+            "p(90)": 0.019841800000000003,
+            "p(95)": 0.03180889999999999,
+            "avg": 0.01785414610778441
+        },
+        "data_sent": {
+            "count": 426407,
+            "rate": 20401.092990153746
+        },
+        "http_req_duration{expected_response:true}": {
+            "max": 1805.33396,
+            "p(90)": 672.1495796,
+            "p(95)": 728.3869562499999,
+            "avg": 409.81907013069514,
+            "min": 1.009208,
+            "med": 519.8552505
+        },
+        "iteration_duration": {
+            "med": 785.92575,
+            "max": 2144.049501,
+            "p(90)": 1058.273117,
+            "p(95)": 1126.9767376,
+            "avg": 732.7680530095809,
+            "min": 168.028792
+        },
+        "http_req_receiving": {
+            "p(90)": 17.8117088,
+            "p(95)": 24.545366899999983,
+            "avg": 7.5461415916167764,
+            "min": 0.009958,
+            "med": 7.335833,
+            "max": 87.415458
+        },
+        "http_req_tls_handshaking": {
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0
+        },
+        "http_req_waiting": {
+            "p(90)": 658.477259,
+            "p(95)": 718.3516082999998,
+            "avg": 401.76490729341305,
+            "min": 0.5015,
+            "med": 508.920042,
+            "max": 1805.287793
+        },
+        "iterations": {
+            "rate": 39.9498897691135,
+            "count": 835
+        },
+        "http_reqs": {
+            "rate": 39.9498897691135,
+            "count": 835
+        },
+        "vus": {
+            "value": 30,
+            "min": 30,
+            "max": 30
+        },
+        "checks": {
+            "passes": 835,
+            "fails": 0,
+            "value": 1
+        },
+        "http_req_duration": {
+            "avg": 409.3289030311375,
+            "min": 0.529542,
+            "med": 519.371042,
+            "max": 1805.33396,
+            "p(90)": 672.0732588000001,
+            "p(95)": 728.2982125
+        },
+        "http_req_failed": {
+            "passes": 1,
+            "fails": 834,
+            "thresholds": {
+                "rate<0.05": false
+            },
+            "value": 0.0011976047904191617
+        },
+        "http_req_connecting": {
+            "med": 0,
+            "max": 4.957667,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.11009830059880238,
+            "min": 0
+        },
+        "data_received": {
+            "rate": 36396018.09757354,
+            "count": 760719874
+        },
+        "vus_max": {
+            "min": 30,
+            "max": 30,
+            "value": 30
+        }
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "cart sync ok": {
+                    "name": "cart sync ok",
+                    "path": "::cart sync ok",
+                    "id": "9f90e71d253a9accca498bc1fb8fab41",
+                    "passes": 223,
+                    "fails": 0
+                },
+                "order create accepted": {
+                    "name": "order create accepted",
+                    "path": "::order create accepted",
+                    "id": "eb7f3c32409c60f809d3fbaace7b7205",
+                    "passes": 149,
+                    "fails": 0
+                },
+                "tracking ok": {
+                    "name": "tracking ok",
+                    "path": "::tracking ok",
+                    "id": "fdac46ff51635405a07812f8c9a8c9ef",
+                    "passes": 463,
+                    "fails": 0
+                }
+            }
+    }
+}

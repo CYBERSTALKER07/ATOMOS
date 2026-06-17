@@ -135,7 +135,7 @@ export function retailerReads() {
 export function retailerOrderCreate() {
   const idem = `load-${exec.vu.idInInstance}-${exec.scenario.iterationInInstance}`;
   const body = JSON.stringify({
-    line_items: [{ sku: "LOAD-SKU-1", quantity: 1, unit_price_minor: 1000 }],
+    line_items: [{ sku: "SSMR-SKU-1", quantity: 1, unit_price_minor: 50000 }],
     h3_cell: h3Cell,
     lat: Number(__ENV.DELIVERY_LAT || 41.31),
     lng: Number(__ENV.DELIVERY_LNG || 69.24),
@@ -179,7 +179,7 @@ export function retailerMix() {
   } else {
     const idem = `load-${exec.vu.idInInstance}-${exec.scenario.iterationInInstance}`;
     const body = JSON.stringify({
-      line_items: [{ sku: "LOAD-SKU-1", quantity: 1, unit_price_minor: 1000 }],
+      line_items: [{ sku: "SSMR-SKU-1", quantity: 1, unit_price_minor: 50000 }],
       h3_cell: h3Cell,
       lat: Number(__ENV.DELIVERY_LAT || 41.31),
       lng: Number(__ENV.DELIVERY_LNG || 69.24),

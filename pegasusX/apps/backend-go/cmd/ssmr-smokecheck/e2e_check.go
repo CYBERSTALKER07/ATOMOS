@@ -3621,7 +3621,7 @@ func putSupplierTopology(ctx context.Context, client *http.Client, base, cookie 
 				"is_on_shift":        true,
 				"default_out_of_stock_policy": "REJECT",
 				"initial_inventory": []map[string]any{
-					{"product_id": "SSMR-SKU-1", "quantity": 100},
+					{"product_id": "SSMR-SKU-1", "quantity": 5000},
 				},
 			},
 		},

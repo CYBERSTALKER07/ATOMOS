@@ -1,0 +1,166 @@
+{
+    "metrics": {
+        "http_reqs": {
+            "rate": 38.33048441688883,
+            "count": 801
+        },
+        "iterations": {
+            "count": 801,
+            "rate": 38.33048441688883
+        },
+        "http_req_tls_handshaking": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "http_req_receiving": {
+            "p(95)": 19.458542,
+            "avg": 7.365622006242206,
+            "min": 0.011083,
+            "med": 8.112708,
+            "max": 52.642708,
+            "p(90)": 15.744042
+        },
+        "http_req_duration{endpoint:mutation}": {
+            "max": 2836.294126,
+            "p(90)": 735.3376086000001,
+            "p(95)": 1020.5156093999998,
+            "avg": 449.8067320799999,
+            "min": 0.696708,
+            "med": 336.670334,
+            "thresholds": {
+                "p(99)<800": true
+            }
+        },
+        "http_req_sending": {
+            "avg": 0.024759830212234706,
+            "min": 0.002333,
+            "med": 0.009959,
+            "max": 3.592459,
+            "p(90)": 0.019416,
+            "p(95)": 0.029125
+        },
+        "vus_max": {
+            "value": 30,
+            "min": 30,
+            "max": 30
+        },
+        "http_req_duration{endpoint:read}": {
+            "avg": 433.88400561538447,
+            "min": 9.132459,
+            "med": 549.413125,
+            "max": 807.258626,
+            "p(90)": 669.1072710000001,
+            "p(95)": 708.3018229999999,
+            "thresholds": {
+                "p(99)<300": true
+            }
+        },
+        "http_req_connecting": {
+            "med": 0,
+            "max": 6.981584,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.16624979151061176,
+            "min": 0
+        },
+        "checks": {
+            "fails": 0,
+            "passes": 801,
+            "value": 1
+        },
+        "http_req_waiting": {
+            "avg": 428.9784437640447,
+            "min": 0.651292,
+            "med": 532.499709,
+            "max": 2836.229376,
+            "p(90)": 662.460001,
+            "p(95)": 711.212542
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 801,
+            "thresholds": {
+                "rate<0.05": false
+            },
+            "value": 0
+        },
+        "http_req_blocked": {
+            "med": 0.003166,
+            "max": 8.637042,
+            "p(90)": 0.0065,
+            "p(95)": 0.020833,
+            "avg": 0.21928546566791537,
+            "min": 0.000875
+        },
+        "iteration_duration": {
+            "med": 821.9875,
+            "max": 3141.081793,
+            "p(90)": 1046.180876,
+            "p(95)": 1103.525626,
+            "avg": 762.3689856329586,
+            "min": 172.80975
+        },
+        "http_req_duration{expected_response:true}": {
+            "max": 2836.294126,
+            "p(90)": 673.002251,
+            "p(95)": 719.934417,
+            "avg": 436.3688256004995,
+            "min": 0.696708,
+            "med": 542.913375
+        },
+        "data_received": {
+            "count": 813570143,
+            "rate": 38932007.101507515
+        },
+        "data_sent": {
+            "count": 405272,
+            "rate": 19393.59810312281
+        },
+        "vus": {
+            "value": 30,
+            "min": 30,
+            "max": 30
+        },
+        "http_req_duration": {
+            "med": 542.913375,
+            "max": 2836.294126,
+            "p(90)": 673.002251,
+            "p(95)": 719.934417,
+            "avg": 436.3688256004995,
+            "min": 0.696708
+        }
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "cart sync ok": {
+                    "path": "::cart sync ok",
+                    "id": "9f90e71d253a9accca498bc1fb8fab41",
+                    "passes": 189,
+                    "fails": 0,
+                    "name": "cart sync ok"
+                },
+                "tracking ok": {
+                    "name": "tracking ok",
+                    "path": "::tracking ok",
+                    "id": "fdac46ff51635405a07812f8c9a8c9ef",
+                    "passes": 487,
+                    "fails": 0
+                },
+                "order create accepted": {
+                    "id": "eb7f3c32409c60f809d3fbaace7b7205",
+                    "passes": 125,
+                    "fails": 0,
+                    "name": "order create accepted",
+                    "path": "::order create accepted"
+                }
+            }
+    }
+}
