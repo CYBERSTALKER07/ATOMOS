@@ -2,6 +2,7 @@ package com.pegasusx.supplier.data.remote
 
 import com.pegasusx.supplier.data.model.*
 import kotlinx.serialization.json.JsonElement
+import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -94,6 +95,49 @@ interface SupplierApi {
     @GET("v1/supplier/analytics/demand/today")
     suspend fun getDemandToday(): Response<SupplierDemandSummaryResponse>
 
+    @GET("v1/supplier/analytics/demand/history")
+    suspend fun getDemandHistory(): Response<DemandHistoryResponse>
+
+    @POST("v1/payment/chargeback")
+    suspend fun recordChargeback(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: JsonElement,
+    ): Response<JsonElement>
+
+    @POST("v1/payment/chargeback/reversal")
+    suspend fun recordChargebackReversal(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: JsonElement,
+    ): Response<JsonElement>
+
+    @POST("v1/supplier/inventory/imports")
+    suspend fun createImportSession(@Body body: ImportSessionCreateRequest): Response<ImportSessionCreateResponse>
+
+    @GET("v1/supplier/inventory/imports/{sessionId}")
+    suspend fun getImportSession(@Path("sessionId") sessionId: String): Response<JsonElement>
+
+    @POST("v1/supplier/inventory/imports/{sessionId}/ingest")
+    @Headers("Content-Type: text/csv")
+    suspend fun ingestImportSession(
+        @Path("sessionId") sessionId: String,
+        @Body body: RequestBody,
+    ): Response<JsonElement>
+
+    @GET("v1/supplier/inventory/imports/{sessionId}/mapping")
+    suspend fun getImportMapping(@Path("sessionId") sessionId: String): Response<JsonElement>
+
+    @POST("v1/supplier/inventory/imports/{sessionId}/mapping")
+    suspend fun postImportMapping(
+        @Path("sessionId") sessionId: String,
+        @Body body: JsonElement,
+    ): Response<JsonElement>
+
+    @POST("v1/supplier/inventory/imports/{sessionId}/approve")
+    suspend fun approveImportSession(@Path("sessionId") sessionId: String): Response<JsonElement>
+
+    @POST("v1/supplier/inventory/imports/{sessionId}/apply")
+    suspend fun applyImportSession(@Path("sessionId") sessionId: String): Response<JsonElement>
+
     @POST("v1/supplier/route/approve-early-complete")
     suspend fun approveEarlyComplete(
         @Header("X-Idempotency-Key") idempotencyKey: String,
@@ -126,6 +170,9 @@ interface SupplierApi {
 
     @GET("v1/catalog/products")
     suspend fun listCatalogProducts(): Response<List<CatalogProduct>>
+
+    @GET("v1/catalog/products/{productId}")
+    suspend fun getCatalogProduct(@Path("productId") productId: String): Response<CatalogProduct>
 
     @GET("v1/catalog/categories")
     suspend fun listCatalogCategories(

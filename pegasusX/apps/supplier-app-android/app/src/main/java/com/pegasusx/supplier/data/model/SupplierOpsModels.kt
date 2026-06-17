@@ -637,3 +637,39 @@ data class SupplierOrgMemberUpdateRequest(
 data class ApproveEarlyCompleteRequest(
     @SerialName("driver_id") val driverId: String,
 )
+
+@Serializable
+data class DemandHistoryPoint(
+    val date: String = "",
+    val predicted: Long = 0,
+    val actual: Long = 0,
+    @SerialName("predicted_qty") val predictedQty: Long = 0,
+    @SerialName("actual_qty") val actualQty: Long = 0,
+)
+
+@Serializable
+data class DemandUpcomingRow(
+    val date: String = "",
+    @SerialName("retailer_name") val retailerName: String = "",
+    @SerialName("sku_id") val skuId: String = "",
+    @SerialName("product_name") val productName: String = "",
+    @SerialName("predicted_qty") val predictedQty: Long = 0,
+)
+
+@Serializable
+data class DemandHistoryResponse(
+    @SerialName("time_series") val timeSeries: List<DemandHistoryPoint> = emptyList(),
+    val upcoming: List<DemandUpcomingRow> = emptyList(),
+)
+
+@Serializable
+data class ImportSessionCreateRequest(
+    @SerialName("file_name") val fileName: String,
+    @SerialName("file_size_bytes") val fileSizeBytes: Int,
+)
+
+@Serializable
+data class ImportSessionCreateResponse(
+    @SerialName("session_id") val sessionId: String = "",
+    val status: String = "",
+)

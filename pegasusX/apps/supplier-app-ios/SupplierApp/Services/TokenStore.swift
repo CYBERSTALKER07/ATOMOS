@@ -10,13 +10,18 @@ final class TokenStore {
     private(set) var refreshToken: String?
     private(set) var supplierId: String?
     private(set) var isConfigured: Bool = false
+    private(set) var isRegistered: Bool = false
     /// Matches web portal "Skip for now" — shell access while JWT stays unconfigured.
     private(set) var billingGateDismissed: Bool = false
 
     var isAuthenticated: Bool { token != nil }
 
     var needsBillingGate: Bool {
-        isAuthenticated && !isConfigured && !billingGateDismissed
+        isAuthenticated && isRegistered && !isConfigured && !billingGateDismissed
+    }
+
+    var needsBusinessSetup: Bool {
+        isAuthenticated && !isRegistered
     }
 
     private let service = "com.pegasusx.supplier"
@@ -28,6 +33,9 @@ final class TokenStore {
         if let configured = readKeychain(account: "is_configured") {
             isConfigured = configured == "1"
         }
+        if let registered = readKeychain(account: "is_registered") {
+            isRegistered = registered == "1"
+        }
         billingGateDismissed = readKeychain(account: "billing_gate_dismissed") == "1"
     }
 
@@ -37,6 +45,7 @@ final class TokenStore {
         refreshToken = auth.refreshToken
         supplierId = auth.supplierId
         isConfigured = auth.isConfigured
+        isRegistered = auth.isRegistered
         billingGateDismissed = false
         writeKeychain(account: "pegasus_supplier_jwt", value: token)
         if let refreshToken = auth.refreshToken, !refreshToken.isEmpty {
@@ -44,7 +53,27 @@ final class TokenStore {
         }
         writeKeychain(account: "supplier_id", value: auth.supplierId)
         writeKeychain(account: "is_configured", value: auth.isConfigured ? "1" : "0")
+        writeKeychain(account: "is_registered", value: auth.isRegistered ? "1" : "0")
         deleteKeychain(account: "billing_gate_dismissed")
+    }
+
+    func storeRegister(_ auth: RegisterResponse) {
+        guard let token = auth.token, !token.isEmpty else { return }
+        self.token = token
+        supplierId = auth.supplierId
+        isConfigured = auth.isConfigured
+        isRegistered = auth.isRegistered
+        billingGateDismissed = false
+        writeKeychain(account: "pegasus_supplier_jwt", value: token)
+        writeKeychain(account: "supplier_id", value: auth.supplierId)
+        writeKeychain(account: "is_configured", value: auth.isConfigured ? "1" : "0")
+        writeKeychain(account: "is_registered", value: auth.isRegistered ? "1" : "0")
+        deleteKeychain(account: "billing_gate_dismissed")
+    }
+
+    func markRegistered(_ registered: Bool) {
+        isRegistered = registered
+        writeKeychain(account: "is_registered", value: registered ? "1" : "0")
     }
 
     func markConfigured(_ configured: Bool) {
@@ -67,11 +96,13 @@ final class TokenStore {
         refreshToken = nil
         supplierId = nil
         isConfigured = false
+        isRegistered = false
         billingGateDismissed = false
         deleteKeychain(account: "pegasus_supplier_jwt")
         deleteKeychain(account: "refresh_token")
         deleteKeychain(account: "supplier_id")
         deleteKeychain(account: "is_configured")
+        deleteKeychain(account: "is_registered")
         deleteKeychain(account: "billing_gate_dismissed")
     }
 

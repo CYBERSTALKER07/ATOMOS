@@ -9,16 +9,36 @@ enum SupplierService {
         )
     }
 
-    static func register(body: [String: String]) async throws {
-        try await APIClient.shared.postVoid("v1/auth/supplier/register", body: body)
+    static func register(body: [String: Any]) async throws -> RegisterResponse {
+        try await APIClient.shared.postJSON("v1/auth/supplier/register", body: body, authenticated: false)
+    }
+
+    static func setupBusiness(_ request: BusinessSetupRequest) async throws -> BusinessSetupResponse {
+        try await APIClient.shared.post("v1/supplier/business/setup", body: request)
     }
 
     static func configure(body: [String: String]) async throws {
         try await APIClient.shared.postVoid("v1/supplier/configure", body: body)
     }
 
-    static func setupBusiness(body: [String: String]) async throws {
-        try await APIClient.shared.postVoid("v1/supplier/business/setup", body: body)
+    static func updateInventory(_ request: InventoryPatchRequest) async throws {
+        try await SupplierOperationsService.updateInventory(request)
+    }
+
+    static func getDemandHistory() async throws -> SupplierDemandHistoryResponse {
+        try await SupplierOperationsService.demandHistory()
+    }
+
+    static func importInventoryCSV(_ csv: String, idempotencyKey: String) async throws -> SupplierInventoryImportResult {
+        try await SupplierOperationsService.importInventoryCSV(csv, idempotencyKey: idempotencyKey)
+    }
+
+    static func recordChargeback(_ request: PaymentChargebackRequest, idempotencyKey: String) async throws -> PaymentChargebackResponse {
+        try await SupplierOperationsService.recordChargeback(request, idempotencyKey: idempotencyKey)
+    }
+
+    static func recordChargebackReversal(_ request: PaymentChargebackReversalRequest, idempotencyKey: String) async throws -> PaymentChargebackReversalResponse {
+        try await SupplierOperationsService.recordChargebackReversal(request, idempotencyKey: idempotencyKey)
     }
 
     static func dashboard() async throws -> SupplierDashboard {

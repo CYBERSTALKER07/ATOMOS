@@ -1,9 +1,6 @@
 package com.pegasusx.supplier.ui.navigation
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.layout.*
 import com.pegasusx.supplier.BuildConfig
 import com.pegasusx.supplier.data.remote.TokenHolder
 import com.pegasusx.supplier.ui.components.ClientPolicyBanner
@@ -29,13 +26,17 @@ import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import kotlinx.coroutines.flow.collectLatest
 import com.pegasusx.supplier.ui.screens.auth.LoginScreen
+import com.pegasusx.supplier.ui.screens.auth.RegisterScreen
+import com.pegasusx.supplier.ui.screens.onboarding.BusinessSetupScreen
 import com.pegasusx.supplier.ui.screens.billing.BillingScreen
 import com.pegasusx.supplier.ui.screens.dashboard.DashboardScreen
 import com.pegasusx.supplier.ui.screens.earnings.EarningsScreen
 import com.pegasusx.supplier.ui.screens.fleet.FleetLiveMapScreen
 import com.pegasusx.supplier.ui.screens.fleet.FleetScreen
 import com.pegasusx.supplier.ui.screens.catalog.CatalogScreen
+import com.pegasusx.supplier.ui.screens.catalog.CatalogDetailScreen
 import com.pegasusx.supplier.ui.screens.inventory.InventoryScreen
+import com.pegasusx.supplier.ui.screens.inventory.InventoryImportScreen
 import com.pegasusx.supplier.ui.screens.activity.ActivityScreen
 import com.pegasusx.supplier.ui.screens.dispatch.DispatchPreviewScreen
 import com.pegasusx.supplier.ui.screens.exceptions.EarlyCompleteScreen
@@ -59,16 +60,24 @@ import com.pegasusx.supplier.ui.screens.treasury.LedgerScreen
 import com.pegasusx.supplier.ui.screens.treasury.PaymentsScreen
 import com.pegasusx.supplier.ui.screens.treasury.ReconciliationScreen
 import com.pegasusx.supplier.ui.screens.analytics.AnalyticsScreen
+import com.pegasusx.supplier.ui.screens.analytics.DemandHistoryScreen
 import com.pegasusx.supplier.ui.screens.ai.AIRecommendationsScreen
 import com.pegasusx.supplier.ui.screens.network.DeliveryZonesScreen
+import com.pegasusx.supplier.ui.screens.network.FactoriesScreen
 import com.pegasusx.supplier.ui.screens.network.GeoReportScreen
 import com.pegasusx.supplier.ui.screens.network.SupplyLanesScreen
 import com.pegasusx.supplier.ui.screens.network.TopologyScreen
+import com.pegasusx.supplier.ui.screens.network.WarehousesScreen
+import com.pegasusx.supplier.ui.screens.pricing.RetailerOverridesScreen
+import com.pegasusx.supplier.ui.screens.treasury.ChargebacksScreen
+import com.pegasusx.supplier.ui.screens.treasury.TreasuryHubScreen
 import com.pegasusx.supplier.ui.screens.portal.PortalHandoffScreen
 import com.pegasusx.supplier.ui.portal.SupplierPortalFeature
 
 object SupplierRoutes {
     const val LOGIN = "login"
+    const val REGISTER = "register"
+    const val BUSINESS_SETUP = "business_setup"
     const val BILLING = "billing"
     const val DASHBOARD = "dashboard"
     const val ORDERS = "orders"
@@ -76,10 +85,18 @@ object SupplierRoutes {
     const val MORE = "more"
     const val INVENTORY = "inventory"
     const val CATALOG = "catalog"
+    const val CATALOG_DETAIL = "catalog_detail/{productId}"
     const val PROMOTIONS = "promotions"
     const val PRICING = "pricing"
     const val RETURNS = "returns"
     const val RECONCILIATION = "reconciliation"
+    const val CHARGEBACKS = "chargebacks"
+    const val RETAILER_OVERRIDES = "retailer_overrides"
+    const val INVENTORY_IMPORT = "inventory_import"
+    const val TREASURY_HUB = "treasury_hub"
+    const val DEMAND_HISTORY = "demand_history"
+    const val FACTORIES = "factories"
+    const val WAREHOUSES = "warehouses"
     const val EARLY_COMPLETE = "early_complete"
     const val ORG_FLEET = "org_fleet"
     const val EARNINGS = "earnings"
@@ -92,6 +109,7 @@ object SupplierRoutes {
     const val MANIFEST_EXCEPTIONS = "manifest_exceptions"
 
     fun manifestDetail(manifestId: String) = "manifest_detail/$manifestId"
+    fun catalogDetail(productId: String) = "catalog_detail/$productId"
     const val DISPATCH_PREVIEW = "dispatch_preview"
     const val ACTIVITY = "activity"
     const val FLEET_ORDERS = "fleet_orders"
@@ -121,13 +139,14 @@ fun SupplierNavigation(
 ) {
     var sessionEpoch by remember { mutableIntStateOf(0) }
     var refreshEpoch by remember { mutableIntStateOf(0) }
+    var pendingBusinessSetup by remember { mutableStateOf(false) }
     LaunchedEffect(realtimeSignals) {
         realtimeSignals.refreshTick.collectLatest { refreshEpoch++ }
     }
     val loggedIn = remember(sessionEpoch) { TokenHolder.isLoggedIn }
     val navController = rememberNavController()
     val start = when {
-        !loggedIn -> SupplierRoutes.LOGIN
+        pendingBusinessSetup -> SupplierRoutes.BUSINESS_SETUP
         !TokenHolder.isConfigured -> SupplierRoutes.BILLING
         else -> SupplierRoutes.DASHBOARD
     }
@@ -137,17 +156,18 @@ fun SupplierNavigation(
             composable(SupplierRoutes.LOGIN) {
                 LoginScreen(
                     api = api,
-                    onRegisterPortal = {
-                        navController.navigate(SupplierRoutes.portalHandoff(SupplierPortalFeature.REGISTER))
+                    onLoginSuccess = { sessionEpoch++ },
+                    onRegister = { navController.navigate(SupplierRoutes.REGISTER) },
+                )
+            }
+            composable(SupplierRoutes.REGISTER) {
+                RegisterScreen(
+                    onBack = { navController.popBackStack() },
+                    onRegistered = {
+                        pendingBusinessSetup = true
+                        sessionEpoch++
                     },
-                ) {
-                    sessionEpoch++
-                    navController.navigate(
-                        if (TokenHolder.isConfigured) SupplierRoutes.DASHBOARD else SupplierRoutes.BILLING,
-                    ) {
-                        popUpTo(SupplierRoutes.LOGIN) { inclusive = true }
-                    }
-                }
+                )
             }
         }
         return
@@ -225,6 +245,16 @@ fun SupplierNavigation(
                 startDestination = start,
                 modifier = Modifier.weight(1f),
             ) {
+            composable(SupplierRoutes.BUSINESS_SETUP) {
+                BusinessSetupScreen(
+                    onComplete = {
+                        pendingBusinessSetup = false
+                        navController.navigate(SupplierRoutes.BILLING) {
+                            popUpTo(SupplierRoutes.BUSINESS_SETUP) { inclusive = true }
+                        }
+                    },
+                )
+            }
             composable(SupplierRoutes.BILLING) {
                 BillingScreen(
                     api = api,
@@ -253,7 +283,7 @@ fun SupplierNavigation(
                     )
                 }
             }
-            composable(SupplierRoutes.ORDERS) { key(refreshEpoch) { OrdersScreen(ops) } }
+            composable(SupplierRoutes.ORDERS) { key(refreshEpoch) { OrdersScreen() } }
             composable(SupplierRoutes.FLEET) {
                 key(refreshEpoch) {
                     FleetScreen(
@@ -292,11 +322,18 @@ fun SupplierNavigation(
                     onEarnings = { navController.navigate(SupplierRoutes.EARNINGS) },
                     onProfile = { navController.navigate(SupplierRoutes.PROFILE) },
                     onNotifications = { navController.navigate(SupplierRoutes.NOTIFICATIONS) },
-                    onBilling = { navController.navigate(SupplierRoutes.portalHandoff(SupplierPortalFeature.BUSINESS_SETUP)) },
-                    onChargebacks = { navController.navigate(SupplierRoutes.portalHandoff(SupplierPortalFeature.CHARGEBACKS)) },
+                    onBilling = { navController.navigate(SupplierRoutes.BILLING) },
+                    onChargebacks = { navController.navigate(SupplierRoutes.CHARGEBACKS) },
+                    onRetailerOverrides = { navController.navigate(SupplierRoutes.RETAILER_OVERRIDES) },
+                    onInventoryImport = { navController.navigate(SupplierRoutes.INVENTORY_IMPORT) },
+                    onTreasuryHub = { navController.navigate(SupplierRoutes.TREASURY_HUB) },
+                    onDemandHistory = { navController.navigate(SupplierRoutes.DEMAND_HISTORY) },
+                    onFactories = { navController.navigate(SupplierRoutes.FACTORIES) },
+                    onWarehouses = { navController.navigate(SupplierRoutes.WAREHOUSES) },
                     onPaymentBypass = { navController.navigate(SupplierRoutes.OPERATIONS) },
                     onSignOut = {
                         TokenHolder.clear()
+                        pendingBusinessSetup = false
                         sessionEpoch++
                     },
                 )
@@ -391,8 +428,27 @@ fun SupplierNavigation(
             composable(SupplierRoutes.PAYMENTS) {
                 key(refreshEpoch) { PaymentsScreen(ops) { navController.popBackStack() } }
             }
-            composable(SupplierRoutes.INVENTORY) { key(refreshEpoch) { InventoryScreen(api) } }
-            composable(SupplierRoutes.CATALOG) { key(refreshEpoch) { CatalogScreen(api) } }
+            composable(SupplierRoutes.INVENTORY) { key(refreshEpoch) { InventoryScreen() } }
+            composable(SupplierRoutes.CATALOG) {
+                key(refreshEpoch) {
+                    CatalogScreen(api) { productId ->
+                        navController.navigate(SupplierRoutes.catalogDetail(productId))
+                    }
+                }
+            }
+            composable(
+                SupplierRoutes.CATALOG_DETAIL,
+                arguments = listOf(navArgument("productId") { type = NavType.StringType }),
+            ) { entry ->
+                val productId = entry.arguments?.getString("productId").orEmpty()
+                key(refreshEpoch) {
+                    CatalogDetailScreen(
+                        productId = productId,
+                        ops = ops,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+            }
             composable(SupplierRoutes.PROMOTIONS) { key(refreshEpoch) { PromotionsScreen(api) } }
             composable(SupplierRoutes.PRICING) {
                 key(refreshEpoch) { PricingScreen(ops) { navController.popBackStack() } }
@@ -402,6 +458,38 @@ fun SupplierNavigation(
             }
             composable(SupplierRoutes.RECONCILIATION) {
                 key(refreshEpoch) { ReconciliationScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.CHARGEBACKS) {
+                key(refreshEpoch) {
+                    ChargebacksScreen(onBack = { navController.popBackStack() })
+                }
+            }
+            composable(SupplierRoutes.TREASURY_HUB) {
+                key(refreshEpoch) {
+                    TreasuryHubScreen(
+                        onBack = { navController.popBackStack() },
+                        onLedger = { navController.navigate(SupplierRoutes.LEDGER) },
+                        onPayments = { navController.navigate(SupplierRoutes.PAYMENTS) },
+                        onReconciliation = { navController.navigate(SupplierRoutes.RECONCILIATION) },
+                        onEarnings = { navController.navigate(SupplierRoutes.EARNINGS) },
+                        onChargebacks = { navController.navigate(SupplierRoutes.CHARGEBACKS) },
+                    )
+                }
+            }
+            composable(SupplierRoutes.RETAILER_OVERRIDES) {
+                key(refreshEpoch) { RetailerOverridesScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.INVENTORY_IMPORT) {
+                key(refreshEpoch) { InventoryImportScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.DEMAND_HISTORY) {
+                key(refreshEpoch) { DemandHistoryScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.FACTORIES) {
+                key(refreshEpoch) { FactoriesScreen(ops) { navController.popBackStack() } }
+            }
+            composable(SupplierRoutes.WAREHOUSES) {
+                key(refreshEpoch) { WarehousesScreen(ops) { navController.popBackStack() } }
             }
             composable(SupplierRoutes.EARLY_COMPLETE) {
                 key(refreshEpoch) { EarlyCompleteScreen(ops, realtimeSignals) { navController.popBackStack() } }

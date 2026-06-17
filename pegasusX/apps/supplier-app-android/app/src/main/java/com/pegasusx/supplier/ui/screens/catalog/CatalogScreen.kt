@@ -61,7 +61,10 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CatalogScreen(api: SupplierApi) {
+fun CatalogScreen(
+    api: SupplierApi,
+    onOpenProduct: (String) -> Unit = {},
+) {
     val context = LocalContext.current
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -339,6 +342,9 @@ fun CatalogScreen(api: SupplierApi) {
                                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                             ) {
                                 Text(product.name, style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+                                TextButton(onClick = { onOpenProduct(product.productId) }) {
+                                    Text("View details")
+                                }
                                 Text(
                                     "${fmt.format(product.priceMinor)} ${product.currency} · ${product.unit}",
                                     style = androidx.compose.material3.MaterialTheme.typography.bodySmall,

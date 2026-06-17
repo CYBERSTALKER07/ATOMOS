@@ -62,9 +62,9 @@ struct LoginView: View {
                     .disabled(loading || phone.isEmpty || password.isEmpty)
 
                     NavigationLink {
-                        PortalHandoffView(feature: .register)
+                        RegisterView()
                     } label: {
-                        Text("Register on web portal")
+                        Text("Create supplier account")
                             .frame(maxWidth: formMaxWidth, minHeight: 44)
                     }
                     .buttonStyle(.bordered)

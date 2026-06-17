@@ -2,7 +2,7 @@
 
 **Scope:** pegasusX only · **Reference:** pegasus `admin-portal` (read-only)  
 **Parent plan:** `VEGETABLE_PLAN.md` §2.1  
-**Last updated:** 2026-06-15
+**Last updated:** 2026-06-15 (ecosystem parity pass)
 
 ## Status model
 
@@ -132,11 +132,29 @@
 
 ---
 
+## Phase 8 — Ecosystem parity (portal + Android + iOS) — **WIRED** (2026-06-15)
+
+| ID | Feature | Portal | Android | iOS | Status |
+|----|---------|--------|---------|-----|--------|
+| SP8-01 | Unified nav map (`SupplierSection` / More hub) | `SupplierShell` retailer-overrides link | `SupplierRoutes` + `MoreScreen` | `SupplierSection` + `MoreHubView` + iPad sidebar | **WIRED** |
+| SP8-02 | Native onboarding (register → business → billing) | existing | `RegisterScreen`, `BusinessSetupScreen` | `RegisterView`, `BusinessSetupView` | **WIRED** |
+| SP8-03 | Order vetting | `/orders` | `OrdersScreen` + `OrdersViewModel` | `OrdersView` + `OrdersViewModel` | **WIRED** |
+| SP8-04 | Inventory adjust + CSV import | `/inventory`, `/inventory/import` | `InventoryScreen`, `InventoryImportScreen` | `InventoryView`, `InventoryImportView` | **WIRED** |
+| SP8-05 | Retailer price overrides | `/pricing/retailer-overrides` | `RetailerOverridesScreen` | `RetailerOverridesView` | **WIRED** |
+| SP8-06 | Chargebacks native | `/earnings` + `/payments` | `ChargebacksScreen` | `ChargebacksView` | **WIRED** |
+| SP8-07 | Treasury hub + demand history | `/treasury`, `/analytics/demand` | `TreasuryHubScreen`, `DemandHistoryScreen` | `TreasuryHubView`, `DemandHistoryView` | **WIRED** |
+| SP8-08 | Factories / warehouses browse | `/factories`, `/warehouses` | `FactoriesScreen`, `WarehousesScreen` | `FactoriesView`, `WarehousesView` | **WIRED** |
+| SP8-09 | Catalog product detail | `/catalog/[productId]` | `CatalogDetailScreen` | `CatalogDetailView` | **WIRED** |
+| SP8-10 | Profile edit | `/profile` PUT | `ProfileScreen` (read) | `ProfileView` (read) | **WIRED** portal; native read-only |
+| SP8-11 | ViewModels (onboarding, orders, inventory, treasury) | N/A | Hilt ViewModels | `@Observable` ViewModels | **WIRED** |
+
+**Edge case E1 (dispatch execute):** Supplier `POST /v1/supplier/dispatch/execute` retained as CEO override on portal + native; warehouse row owns fleet CRUD per topology dependency diagram.
+
 ## Intentional single-tenant deltas (do not close)
 
 - Platform control center, DLQ, KYC, country config (pegasus multi-tenant admin)
-- Full ~59-route pegasus admin parity (portal ~36 routes is v1 target)
-- Chargebacks remain portal-primary; payment-bypass + broadcast now native + portal
+- pegasus ~59-route multi-tenant admin extras (CRM, staff, country-overrides) — out of scope for single-tenant pegasusX
+- Quantity negotiation disabled ecosystem-wide
 
 ---
 
@@ -161,7 +179,8 @@ cd pegasusX && make parity-contract-full
 7. ~~Phase 6 UI/UX parity (client-policy + native notification inbox)~~ — **E2E_SSMR_GREEN** (`PX_E2E_SUPPLIER_CLIENT_POLICY_OK`, `PX_E2E_SUPPLIER_NOTIFICATION_INBOX_OK`)
 8. ~~Phase 7 portal deep UI/UX (SP-7P component-level)~~ — **WIRED** (SP7P-01–SP7P-08; UI-only)
 9. ~~Phase 7 deep native UI/UX (Android + iOS component-level parity)~~ — **WIRED** (SP7-01–SP7-08)
-10. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3
+10. ~~Phase 8 ecosystem parity (native onboarding, vet, inventory, overrides, chargebacks, treasury hub)~~ — **WIRED**
+11. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3
 
 ---
 

@@ -9,6 +9,8 @@ struct RootView: View {
         Group {
             if !tokenStore.isAuthenticated {
                 LoginView()
+            } else if tokenStore.needsBusinessSetup {
+                BusinessSetupView()
             } else if tokenStore.needsBillingGate {
                 BillingGateView()
             } else {
@@ -16,6 +18,7 @@ struct RootView: View {
             }
         }
         .animation(SupplierAnim.smooth, value: tokenStore.isAuthenticated)
+        .animation(SupplierAnim.smooth, value: tokenStore.needsBusinessSetup)
         .animation(SupplierAnim.smooth, value: tokenStore.needsBillingGate)
         .onChange(of: tokenStore.isAuthenticated) { _, authenticated in
             if authenticated {

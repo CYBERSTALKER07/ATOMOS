@@ -8,6 +8,20 @@
 
 /* Begin PBXBuildFile section */
 		087C24FE99CCE9604DA38C3F /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5693C9F4B187B5F6696EA133 /* LoginView.swift */; };
+		B1B2C3D41E8F9A0B1C2D3E4 /* OnboardingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D41E8F9A0B1C2D3E4 /* OnboardingViewModel.swift */; };
+		B1B2C3D42E8F9A0B1C2D3E4 /* OrdersViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42E8F9A0B1C2D3E4 /* OrdersViewModel.swift */; };
+		B1B2C3D43E8F9A0B1C2D3E4 /* InventoryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D43E8F9A0B1C2D3E4 /* InventoryViewModel.swift */; };
+		B1B2C3D44E8F9A0B1C2D3E4 /* TreasuryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D44E8F9A0B1C2D3E4 /* TreasuryViewModel.swift */; };
+		B1B2C3D45E8F9A0B1C2D3E4 /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D45E8F9A0B1C2D3E4 /* RegisterView.swift */; };
+		B1B2C3D46E8F9A0B1C2D3E4 /* BusinessSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D46E8F9A0B1C2D3E4 /* BusinessSetupView.swift */; };
+		B1B2C3D47E8F9A0B1C2D3E4 /* ChargebacksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D47E8F9A0B1C2D3E4 /* ChargebacksView.swift */; };
+		B1B2C3D48E8F9A0B1C2D3E4 /* TreasuryHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D48E8F9A0B1C2D3E4 /* TreasuryHubView.swift */; };
+		B1B2C3D49E8F9A0B1C2D3E4 /* DemandHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D49E8F9A0B1C2D3E4 /* DemandHistoryView.swift */; };
+		B1B2C3D4AE8F9A0B1C2D3E4 /* RetailerOverridesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4AE8F9A0B1C2D3E4 /* RetailerOverridesView.swift */; };
+		B1B2C3D4BE8F9A0B1C2D3E4 /* InventoryImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4BE8F9A0B1C2D3E4 /* InventoryImportView.swift */; };
+		B1B2C3D4CE8F9A0B1C2D3E4 /* FactoriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4CE8F9A0B1C2D3E4 /* FactoriesView.swift */; };
+		B1B2C3D4DE8F9A0B1C2D3E4 /* WarehousesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4DE8F9A0B1C2D3E4 /* WarehousesView.swift */; };
+		B1B2C3D4EE8F9A0B1C2D3E4 /* CatalogDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4EE8F9A0B1C2D3E4 /* CatalogDetailView.swift */; };
 		17FD10D25790FDF49EEE2F2C /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5592228C962DDC50FE72BC5B /* RootView.swift */; };
 		1C9DE128047EBF727731F9A1 /* SupplierSessionReconcile.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5DC05BC52AD2BE375CEC7CF /* SupplierSessionReconcile.swift */; };
 		1E9152DC569633168D18DC9B /* SupplierService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26A5456B6AFE441937C5360D /* SupplierService.swift */; };
@@ -153,6 +167,20 @@
 		F51C636CB14CF4B20F955061 /* MoreHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreHubView.swift; sourceTree = "<group>"; };
 		F6D2D88DC5331A6974F157A8 /* EANBarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EANBarcodeScannerView.swift; sourceTree = "<group>"; };
 		F96AF3E52C1AA8B8D849BD8F /* SupplierSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierSection.swift; sourceTree = "<group>"; };
+		A1B2C3D41E8F9A0B1C2D3E4 /* OnboardingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViewModel.swift; sourceTree = "<group>"; };
+		A1B2C3D42E8F9A0B1C2D3E4 /* OrdersViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrdersViewModel.swift; sourceTree = "<group>"; };
+		A1B2C3D43E8F9A0B1C2D3E4 /* InventoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryViewModel.swift; sourceTree = "<group>"; };
+		A1B2C3D44E8F9A0B1C2D3E4 /* TreasuryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreasuryViewModel.swift; sourceTree = "<group>"; };
+		A1B2C3D45E8F9A0B1C2D3E4 /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
+		A1B2C3D46E8F9A0B1C2D3E4 /* BusinessSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusinessSetupView.swift; sourceTree = "<group>"; };
+		A1B2C3D47E8F9A0B1C2D3E4 /* ChargebacksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChargebacksView.swift; sourceTree = "<group>"; };
+		A1B2C3D48E8F9A0B1C2D3E4 /* TreasuryHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreasuryHubView.swift; sourceTree = "<group>"; };
+		A1B2C3D49E8F9A0B1C2D3E4 /* DemandHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemandHistoryView.swift; sourceTree = "<group>"; };
+		A1B2C3D4AE8F9A0B1C2D3E4 /* RetailerOverridesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetailerOverridesView.swift; sourceTree = "<group>"; };
+		A1B2C3D4BE8F9A0B1C2D3E4 /* InventoryImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryImportView.swift; sourceTree = "<group>"; };
+		A1B2C3D4CE8F9A0B1C2D3E4 /* FactoriesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoriesView.swift; sourceTree = "<group>"; };
+		A1B2C3D4DE8F9A0B1C2D3E4 /* WarehousesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehousesView.swift; sourceTree = "<group>"; };
+		A1B2C3D4EE8F9A0B1C2D3E4 /* CatalogDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -219,6 +247,7 @@
 				FBB72B6863C67816A6E3C59A /* Layout */,
 				0039015F36B6B1937B12F221 /* Models */,
 				CC7E172DEC752D3FF2C854C6 /* Services */,
+				A1B2C3D50E8F9A0B1C2D3E4 /* ViewModels */,
 				8907376B95048ACBD9483CE8 /* supplierapp */,
 				4FD3C9469E7C160544F6EAB2 /* Theme */,
 				E2212DFF39FD136C4FC48AF4 /* Utilities */,
@@ -274,6 +303,7 @@
 			isa = PBXGroup;
 			children = (
 				5D9016E77730BDBBABCBD323 /* CatalogBarcodeField.swift */,
+				A1B2C3D4EE8F9A0B1C2D3E4 /* CatalogDetailView.swift */,
 				131FFD706E429B2C25A1C8C8 /* CatalogView.swift */,
 			);
 			path = Catalog;
@@ -325,8 +355,29 @@
 			isa = PBXGroup;
 			children = (
 				B0CD3B43FE548CDE96338EE3 /* AnalyticsView.swift */,
+				A1B2C3D49E8F9A0B1C2D3E4 /* DemandHistoryView.swift */,
 			);
 			path = Analytics;
+			sourceTree = "<group>";
+		};
+		A1B2C3D50E8F9A0B1C2D3E4 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D41E8F9A0B1C2D3E4 /* OnboardingViewModel.swift */,
+				A1B2C3D42E8F9A0B1C2D3E4 /* OrdersViewModel.swift */,
+				A1B2C3D43E8F9A0B1C2D3E4 /* InventoryViewModel.swift */,
+				A1B2C3D44E8F9A0B1C2D3E4 /* TreasuryViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		A1B2C3D51E8F9A0B1C2D3E4 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D45E8F9A0B1C2D3E4 /* RegisterView.swift */,
+				A1B2C3D46E8F9A0B1C2D3E4 /* BusinessSetupView.swift */,
+			);
+			path = Auth;
 			sourceTree = "<group>";
 		};
 		A382AF5A7DE7FA75B39BFEC5 /* Dashboard */ = {
@@ -341,9 +392,11 @@
 			isa = PBXGroup;
 			children = (
 				B4E240376EF13C08295BCB1B /* DeliveryZonesView.swift */,
+				A1B2C3D4CE8F9A0B1C2D3E4 /* FactoriesView.swift */,
 				54A021DCDAADC7300E907D60 /* GeoReportView.swift */,
 				E3A44198F839F3C4959FDC65 /* SupplyLanesView.swift */,
 				EE20CFC9300E04F74A699D62 /* TopologyView.swift */,
+				A1B2C3D4DE8F9A0B1C2D3E4 /* WarehousesView.swift */,
 			);
 			path = Network;
 			sourceTree = "<group>";
@@ -368,6 +421,7 @@
 		AFF8432F650BEF185D170D66 /* Inventory */ = {
 			isa = PBXGroup;
 			children = (
+				A1B2C3D4BE8F9A0B1C2D3E4 /* InventoryImportView.swift */,
 				3E7B42B906256F296D332496 /* InventoryView.swift */,
 			);
 			path = Inventory;
@@ -385,9 +439,11 @@
 		B532738DD3A8F6DA50A7192A /* Treasury */ = {
 			isa = PBXGroup;
 			children = (
+				A1B2C3D47E8F9A0B1C2D3E4 /* ChargebacksView.swift */,
 				54CF6D56A1962D9BE153B0EA /* LedgerView.swift */,
 				9AED086993BC29BE4397E5D7 /* PaymentsView.swift */,
 				C85C0AAC0E5DBD0967B8775E /* ReconciliationView.swift */,
+				A1B2C3D48E8F9A0B1C2D3E4 /* TreasuryHubView.swift */,
 			);
 			path = Treasury;
 			sourceTree = "<group>";
@@ -441,6 +497,7 @@
 			children = (
 				E65D7D5B7F072127C03A0D77 /* BillingGateView.swift */,
 				5693C9F4B187B5F6696EA133 /* LoginView.swift */,
+				A1B2C3D51E8F9A0B1C2D3E4 /* Auth */,
 				8EEA83D9531171B3DA77987B /* Activity */,
 				89D6717A87E15DF29DEDE2F8 /* AI */,
 				9F5739345B49F20D8943758F /* Analytics */,
@@ -521,6 +578,7 @@
 			isa = PBXGroup;
 			children = (
 				F0B618FA26B0FB76D293158E /* PricingView.swift */,
+				A1B2C3D4AE8F9A0B1C2D3E4 /* RetailerOverridesView.swift */,
 			);
 			path = Pricing;
 			sourceTree = "<group>";
@@ -630,6 +688,20 @@
 			buildActionMask = 2147483647;
 			files = (
 				8C16E72DD1E90EEC9E0EF7BB /* AIRecommendationsView.swift in Sources */,
+				B1B2C3D46E8F9A0B1C2D3E4 /* BusinessSetupView.swift in Sources */,
+				B1B2C3D4EE8F9A0B1C2D3E4 /* CatalogDetailView.swift in Sources */,
+				B1B2C3D47E8F9A0B1C2D3E4 /* ChargebacksView.swift in Sources */,
+				B1B2C3D49E8F9A0B1C2D3E4 /* DemandHistoryView.swift in Sources */,
+				B1B2C3D4CE8F9A0B1C2D3E4 /* FactoriesView.swift in Sources */,
+				B1B2C3D4BE8F9A0B1C2D3E4 /* InventoryImportView.swift in Sources */,
+				B1B2C3D43E8F9A0B1C2D3E4 /* InventoryViewModel.swift in Sources */,
+				B1B2C3D41E8F9A0B1C2D3E4 /* OnboardingViewModel.swift in Sources */,
+				B1B2C3D42E8F9A0B1C2D3E4 /* OrdersViewModel.swift in Sources */,
+				B1B2C3D45E8F9A0B1C2D3E4 /* RegisterView.swift in Sources */,
+				B1B2C3D4AE8F9A0B1C2D3E4 /* RetailerOverridesView.swift in Sources */,
+				B1B2C3D48E8F9A0B1C2D3E4 /* TreasuryHubView.swift in Sources */,
+				B1B2C3D44E8F9A0B1C2D3E4 /* TreasuryViewModel.swift in Sources */,
+				B1B2C3D4DE8F9A0B1C2D3E4 /* WarehousesView.swift in Sources */,
 				CD41C60EB6B6CA9124ED4F57 /* APIClient.swift in Sources */,
 				A820107FB5E54E076104CEE0 /* ActivityView.swift in Sources */,
 				21DA2BAB3FC0C5C53A751010 /* AnalyticsView.swift in Sources */,

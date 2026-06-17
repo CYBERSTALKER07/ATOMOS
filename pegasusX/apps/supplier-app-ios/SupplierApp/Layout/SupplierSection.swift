@@ -29,6 +29,17 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     case notifications = "Notifications"
     case earnings = "Earnings"
     case profile = "Profile"
+    case earlyComplete = "Early complete"
+    case orgFleet = "Org & fleet"
+    case treasury = "Treasury"
+    case retailerOverrides = "Retailer overrides"
+    case chargebacks = "Chargebacks"
+    case businessSetup = "Business setup"
+    case inventoryImport = "Import inventory"
+    case demandForecast = "Demand forecast"
+    case factories = "Factories"
+    case warehouses = "Warehouses"
+    case catalogDetail = "Catalog detail"
 
     var id: String { rawValue }
 
@@ -62,6 +73,17 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         case .notifications: "bell"
         case .earnings: "chart.line.uptrend.xyaxis"
         case .profile: "building.2"
+        case .earlyComplete: "checkmark.circle"
+        case .orgFleet: "person.3"
+        case .treasury: "building.columns"
+        case .retailerOverrides: "tag.circle"
+        case .chargebacks: "exclamationmark.bubble"
+        case .businessSetup: "gearshape.2"
+        case .inventoryImport: "square.and.arrow.down"
+        case .demandForecast: "chart.xyaxis.line"
+        case .factories: "building.2"
+        case .warehouses: "shippingbox.fill"
+        case .catalogDetail: "square.grid.2x2.fill"
         }
     }
 
@@ -77,18 +99,25 @@ enum SupplierSection: String, CaseIterable, Identifiable {
 
     static var opsSections: [SupplierSection] {
         // Quantity negotiation disabled ecosystem-wide.
-        [.exceptions, .shopClosed, .manifests, .dispatchPreview, .activity, .fleetOrders, .ledger, .payments, .reconciliation, .operations]
+        [
+            .exceptions, .shopClosed, .earlyComplete, .manifests, .dispatchPreview, .activity,
+            .fleetOrders, .orgFleet, .treasury, .ledger, .payments, .chargebacks,
+            .reconciliation, .operations,
+        ]
     }
 
     static var intelligenceSections: [SupplierSection] {
-        [.analytics, .aiRecommendations, .geoReport]
+        [.analytics, .aiRecommendations, .geoReport, .demandForecast]
     }
 
     static var networkSections: [SupplierSection] {
-        [.topology, .deliveryZones, .supplyLanes]
+        [.topology, .factories, .warehouses, .deliveryZones, .supplyLanes]
     }
 
     static var accountSections: [SupplierSection] {
-        [.catalog, .inventory, .promotions, .pricing, .returns, .notifications, .earnings, .profile]
+        [
+            .catalog, .inventory, .inventoryImport, .promotions, .pricing, .retailerOverrides,
+            .returns, .notifications, .earnings, .businessSetup, .profile,
+        ]
     }
 }

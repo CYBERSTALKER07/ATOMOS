@@ -1155,3 +1155,192 @@ struct PaymentBypassResponse: Decodable {
         case orderId = "order_id"
     }
 }
+
+// MARK: - Demand history
+
+struct SupplierDemandHistoryPoint: Decodable, Identifiable {
+    var id: String { date }
+    let date: String
+    let predicted: Double
+    let actual: Double
+    let predictedQty: Double
+    let actualQty: Double
+
+    enum CodingKeys: String, CodingKey {
+        case date, predicted, actual
+        case predictedQty = "predicted_qty"
+        case actualQty = "actual_qty"
+    }
+}
+
+struct SupplierDemandUpcomingRow: Decodable, Identifiable {
+    var id: String { "\(date)-\(skuId)-\(retailerName)" }
+    let date: String
+    let retailerName: String
+    let skuId: String
+    let productName: String
+    let predictedQty: Double
+
+    enum CodingKeys: String, CodingKey {
+        case date
+        case retailerName = "retailer_name"
+        case skuId = "sku_id"
+        case productName = "product_name"
+        case predictedQty = "predicted_qty"
+    }
+}
+
+struct SupplierDemandHistoryResponse: Decodable {
+    let timeSeries: [SupplierDemandHistoryPoint]
+    let upcoming: [SupplierDemandUpcomingRow]
+
+    enum CodingKeys: String, CodingKey {
+        case timeSeries = "time_series"
+        case upcoming
+    }
+}
+
+// MARK: - Inventory import
+
+struct SupplierInventoryImportResult: Decodable {
+    let sessionId: String?
+    let applied: Int
+    let skipped: Int
+    let errors: [String]?
+    let updatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case applied, skipped, errors
+        case updatedAt = "updated_at"
+    }
+}
+
+struct SupplierImportSessionCreateResponse: Decodable {
+    let sessionId: String
+    let status: String
+    let fileName: String
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case status
+        case fileName = "file_name"
+    }
+}
+
+struct SupplierImportSession: Decodable {
+    let sessionId: String
+    let status: String
+    let fileName: String
+    let totalRows: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case status
+        case fileName = "file_name"
+        case totalRows = "total_rows"
+    }
+}
+
+struct SupplierImportMappingCandidate: Decodable, Identifiable {
+    var id: String { sourceColumn }
+    let sourceColumn: String
+    let targetField: String
+    let confidence: Double
+
+    enum CodingKeys: String, CodingKey {
+        case sourceColumn = "source_column"
+        case targetField = "target_field"
+        case confidence
+    }
+}
+
+struct SupplierImportMappingResponse: Decodable {
+    let sessionId: String
+    let mappingJson: SupplierImportMappingJson?
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case mappingJson = "mapping_json"
+    }
+}
+
+struct SupplierImportMappingJson: Decodable {
+    let mappings: [SupplierImportMappingCandidate]?
+}
+
+struct SupplierImportIngestResponse: Decodable {
+    let sessionId: String
+    let status: String
+    let rowsStaged: Int
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case status
+        case rowsStaged = "rows_staged"
+    }
+}
+
+struct SupplierImportApplyResponse: Decodable {
+    let sessionId: String
+    let status: String
+    let appliedRows: Int
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case status
+        case appliedRows = "applied_rows"
+    }
+}
+
+// MARK: - Chargebacks
+
+struct PaymentChargebackRequest: Encodable {
+    let orderId: String
+    let retailerId: String
+    let gateway: String
+    let amount: Int64
+    let currency: String?
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case retailerId = "retailer_id"
+        case gateway, amount, currency
+    }
+}
+
+struct PaymentChargebackResponse: Decodable {
+    let status: String
+}
+
+struct PaymentChargebackReversalRequest: Encodable {
+    let sessionId: String
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+    }
+}
+
+struct PaymentChargebackReversalResponse: Decodable {
+    let status: String
+}
+
+struct BusinessSetupRequest: Encodable {
+    let taxId: String
+    let registrationNumber: String
+    let headquartersAddress: String
+    let city: String
+    let postalCode: String
+}
+
+struct BusinessSetupResponse: Decodable {
+    let supplierId: String
+    let isRegistered: Bool
+    let nextStep: String
+
+    enum CodingKeys: String, CodingKey {
+        case supplierId = "supplier_id"
+        case isRegistered = "is_registered"
+        case nextStep = "next_step"
+    }
+}

@@ -256,6 +256,23 @@ enum SupplierOperationsService {
         return resp.items
     }
 
+    static func demandHistory() async throws -> SupplierDemandHistoryResponse {
+        try await APIClient.shared.get("v1/supplier/analytics/demand/history")
+    }
+
+    static func updateOrgMember(
+        _ userId: String,
+        request: SupplierOrgMemberUpdateRequest,
+        idempotencyKey: String
+    ) async throws -> [SupplierOrgMember] {
+        let resp: SupplierOrgMembersResponse = try await APIClient.shared.patch(
+            "v1/supplier/org/members/\(userId)",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
+        return resp.items
+    }
+
     static func deactivateOrgMember(_ userId: String, idempotencyKey: String) async throws -> [SupplierOrgMember] {
         let resp: SupplierOrgMembersResponse = try await APIClient.shared.delete(
             "v1/supplier/org/members/\(userId)",
@@ -288,8 +305,78 @@ enum SupplierOperationsService {
         try await APIClient.shared.put("v1/supplier/profile", body: request)
     }
 
-    static func updateInventory(body: [String: String]) async throws {
-        try await APIClient.shared.patchVoid("v1/supplier/inventory", body: body)
+    static func updateInventory(_ request: InventoryPatchRequest) async throws {
+        try await APIClient.shared.patchVoid("v1/supplier/inventory", body: request)
+    }
+
+    static func importInventoryCSV(_ csv: String, idempotencyKey: String) async throws -> SupplierInventoryImportResult {
+        try await APIClient.shared.postRaw(
+            "v1/supplier/inventory/import",
+            body: Data(csv.utf8),
+            contentType: "text/csv",
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func createImportSession(fileName: String, fileSizeBytes: Int, idempotencyKey: String) async throws -> SupplierImportSessionCreateResponse {
+        struct CreateBody: Encodable {
+            let fileName: String
+            let fileSizeBytes: Int
+            enum CodingKeys: String, CodingKey {
+                case fileName = "file_name"
+                case fileSizeBytes = "file_size_bytes"
+            }
+        }
+        return try await APIClient.shared.post(
+            "v1/supplier/inventory/imports",
+            body: CreateBody(fileName: fileName, fileSizeBytes: fileSizeBytes),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func ingestImportSession(sessionId: String, csv: String, idempotencyKey: String) async throws -> SupplierImportIngestResponse {
+        try await APIClient.shared.postRaw(
+            "v1/supplier/inventory/imports/\(sessionId)/ingest",
+            body: Data(csv.utf8),
+            contentType: "text/csv",
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func getImportSession(sessionId: String) async throws -> SupplierImportSession {
+        try await APIClient.shared.get("v1/supplier/inventory/imports/\(sessionId)")
+    }
+
+    static func getImportMapping(sessionId: String) async throws -> SupplierImportMappingResponse {
+        try await APIClient.shared.get("v1/supplier/inventory/imports/\(sessionId)/mapping")
+    }
+
+    static func approveImportSession(sessionId: String, idempotencyKey: String) async throws {
+        struct ApproveResponse: Decodable {
+            let sessionId: String
+            enum CodingKeys: String, CodingKey { case sessionId = "session_id" }
+        }
+        let _: ApproveResponse = try await APIClient.shared.post(
+            "v1/supplier/inventory/imports/\(sessionId)/approve",
+            body: [String: String](),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func applyImportSession(sessionId: String, idempotencyKey: String) async throws -> SupplierImportApplyResponse {
+        try await APIClient.shared.post(
+            "v1/supplier/inventory/imports/\(sessionId)/apply",
+            body: [String: String](),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func recordChargeback(_ request: PaymentChargebackRequest, idempotencyKey: String) async throws -> PaymentChargebackResponse {
+        try await APIClient.shared.post("v1/payment/chargeback", body: request, idempotencyKey: idempotencyKey)
+    }
+
+    static func recordChargebackReversal(_ request: PaymentChargebackReversalRequest, idempotencyKey: String) async throws -> PaymentChargebackReversalResponse {
+        try await APIClient.shared.post("v1/payment/chargeback/reversal", body: request, idempotencyKey: idempotencyKey)
     }
 
     static func inventoryAudit() async throws -> [String: String] { // placeholder

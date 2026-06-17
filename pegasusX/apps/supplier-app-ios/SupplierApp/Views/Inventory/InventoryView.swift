@@ -2,30 +2,19 @@ import SwiftUI
 
 struct InventoryView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var items: [InventoryItem] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var query = ""
-
-    private var filtered: [InventoryItem] {
-        guard !query.isEmpty else { return items }
-        return items.filter {
-            $0.sku.localizedCaseInsensitiveContains(query)
-                || $0.productName.localizedCaseInsensitiveContains(query)
-        }
-    }
+    @State private var vm = InventoryViewModel()
 
     var body: some View {
         NavigationStack {
             Group {
-                if loading {
+                if vm.loading {
                     SupplierLoadingView(title: "Loading inventory…")
-                } else if let error {
-                    SupplierErrorView(message: error) { Task { await load() } }
-                } else if filtered.isEmpty {
+                } else if let error = vm.error {
+                    SupplierErrorView(message: error) { Task { await vm.load() } }
+                } else if vm.filtered.isEmpty {
                     SupplierEmptyView(
                         title: "No SKUs",
-                        message: query.isEmpty ? "Inventory will appear when stock is registered." : "No matches for \"\(query)\"."
+                        message: vm.query.isEmpty ? "Inventory will appear when stock is registered." : "No matches for \"\(vm.query)\"."
                     )
                 } else {
                     inventoryTable
@@ -33,24 +22,24 @@ struct InventoryView: View {
             }
             .background(SupplierTheme.background)
             .navigationTitle("Inventory")
-            .searchable(text: $query, prompt: "SKU or product")
-            .task { await load() }
-            .refreshable { await load(silent: true) }
+            .searchable(text: $vm.query, prompt: "SKU or product")
+            .task { await vm.load() }
+            .refreshable { await vm.load(silent: true) }
         }
     }
 
     @ViewBuilder
     private var inventoryTable: some View {
         if horizontalSizeClass == .regular {
-            Table(filtered) {
+            Table(vm.filtered) {
                 TableColumn("SKU") { Text($0.sku).font(.body.monospaced()) }
                 TableColumn("Product") { Text($0.productName) }
-                TableColumn("Qty") { Text("\($0.quantity)") }
+                TableColumn("Qty") { quantityCell($0) }
             }
             .supplierReadableWidth()
             .padding()
         } else {
-            List(filtered) { item in
+            List(vm.filtered) { item in
                 HStack {
                     VStack(alignment: .leading) {
                         Text(item.productName)
@@ -60,23 +49,33 @@ struct InventoryView: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Text("\(item.quantity)")
-                        .font(.title3.bold())
+                    quantityCell(item)
                 }
             }
             .listStyle(.insetGrouped)
         }
     }
 
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        do {
-            items = try await SupplierService.inventory()
-        } catch {
-            if !silent { self.error = error.localizedDescription }
+    @ViewBuilder
+    private func quantityCell(_ item: InventoryItem) -> some View {
+        HStack(spacing: SupplierTheme.spacingSM) {
+            Button {
+                Task { await vm.adjustQuantity(sku: item.sku, delta: -1) }
+            } label: {
+                Image(systemName: "minus.circle")
+            }
+            .disabled(vm.adjustingSku == item.sku)
+
+            Text("\(item.quantity)")
+                .font(.title3.bold())
+                .frame(minWidth: 36)
+
+            Button {
+                Task { await vm.adjustQuantity(sku: item.sku, delta: 1) }
+            } label: {
+                Image(systemName: "plus.circle")
+            }
+            .disabled(vm.adjustingSku == item.sku)
         }
-        loading = false
     }
 }

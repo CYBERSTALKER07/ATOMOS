@@ -204,4 +204,43 @@ class SupplierOperationsRepository @Inject constructor(
         idempotencyKey: String,
     ): Response<PaymentBypassResponse> =
         api.issuePaymentBypass(idempotencyKey, body)
+
+    suspend fun vetOrder(body: JsonElement, idempotencyKey: String): Response<JsonElement> =
+        api.vetOrder(idempotencyKey, body)
+
+    suspend fun updateInventory(body: JsonElement): Response<JsonElement> =
+        api.updateInventory(body)
+
+    suspend fun getDemandHistory(): Response<DemandHistoryResponse> =
+        api.getDemandHistory()
+
+    suspend fun recordChargeback(body: JsonElement, idempotencyKey: String): Response<JsonElement> =
+        api.recordChargeback(idempotencyKey, body)
+
+    suspend fun recordChargebackReversal(body: JsonElement, idempotencyKey: String): Response<JsonElement> =
+        api.recordChargebackReversal(idempotencyKey, body)
+
+    suspend fun createImportSession(body: ImportSessionCreateRequest): Response<ImportSessionCreateResponse> =
+        api.createImportSession(body)
+
+    suspend fun getImportSession(sessionId: String): Response<JsonElement> =
+        api.getImportSession(sessionId)
+
+    suspend fun ingestImportSession(sessionId: String, body: okhttp3.RequestBody): Response<JsonElement> =
+        api.ingestImportSession(sessionId, body)
+
+    suspend fun getImportMapping(sessionId: String): Response<JsonElement> =
+        api.getImportMapping(sessionId)
+
+    suspend fun postImportMapping(sessionId: String, body: JsonElement): Response<JsonElement> =
+        api.postImportMapping(sessionId, body)
+
+    suspend fun approveImportSession(sessionId: String): Response<JsonElement> =
+        api.approveImportSession(sessionId)
+
+    suspend fun applyImportSession(sessionId: String): Response<JsonElement> =
+        api.applyImportSession(sessionId)
+
+    suspend fun getCatalogProduct(productId: String): Response<CatalogProduct> =
+        api.getCatalogProduct(productId)
 }

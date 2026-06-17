@@ -40,6 +40,7 @@ const NAV: NavSection[] = [
       { href: "/inventory/import", icon: "inventory", label: "Import CSV" },
       { href: "/catalog", icon: "catalog", label: "Catalog" },
       { href: "/pricing", icon: "pricing", label: "Pricing" },
+      { href: "/pricing/retailer-overrides", icon: "pricing", label: "Retailer Overrides" },
       { href: "/promotions", icon: "pricing", label: "Promotions" },
     ],
   },

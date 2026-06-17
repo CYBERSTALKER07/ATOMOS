@@ -87,8 +87,12 @@ struct CatalogView: View {
         let dirty = vuDirty || barcodeDirty
 
         return VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
-            Text(product.name)
-                .font(.headline)
+            NavigationLink {
+                CatalogDetailView(productId: product.productId)
+            } label: {
+                Text(product.name)
+                    .font(.headline)
+            }
             Text("\(product.priceMinor.formatted()) \(product.currency) · \(product.unit)")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

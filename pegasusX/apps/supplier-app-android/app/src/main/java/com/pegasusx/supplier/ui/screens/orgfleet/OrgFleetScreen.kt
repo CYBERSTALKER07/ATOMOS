@@ -40,6 +40,7 @@ fun OrgFleetScreen(
     var showDriverDialog by remember { mutableStateOf(false) }
     var showVehicleDialog by remember { mutableStateOf(false) }
     var showOrgDialog by remember { mutableStateOf(false) }
+    var editingMember by remember { mutableStateOf<SupplierOrgMember?>(null) }
     var memberActionId by remember { mutableStateOf<String?>(null) }
     var fleetActionBusy by remember { mutableStateOf(false) }
     var fleetActionMessage by remember { mutableStateOf<String?>(null) }
@@ -128,6 +129,7 @@ fun OrgFleetScreen(
                     else -> OrgRoster(
                         members = orgMembers,
                         actionId = memberActionId,
+                        onEdit = { editingMember = it },
                         onDeactivate = { userId ->
                             scope.launch {
                                 memberActionId = userId
@@ -204,6 +206,29 @@ fun OrgFleetScreen(
             },
         )
     }
+    editingMember?.let { member ->
+        if (topo != null) {
+            EditOrgMemberDialog(
+                member = member,
+                topology = topo,
+                onDismiss = { editingMember = null },
+                onSave = { request ->
+                    scope.launch {
+                        memberActionId = member.userId
+                        try {
+                            val resp = ops.updateOrgMember(member.userId, request, UUID.randomUUID().toString())
+                            if (resp.isSuccessful) {
+                                orgMembers = resp.body()?.items.orEmpty()
+                                editingMember = null
+                            }
+                        } finally {
+                            memberActionId = null
+                        }
+                    }
+                },
+            )
+        }
+    }
 }
 
 @Composable
@@ -245,6 +270,7 @@ private fun VehicleRoster(vehicles: List<FleetVehicle>, topology: SupplierTopolo
 @Composable
 private fun OrgRoster(
     members: List<SupplierOrgMember>,
+    onEdit: (SupplierOrgMember) -> Unit,
     onDeactivate: (String) -> Unit,
     actionId: String?,
 ) {
@@ -260,11 +286,17 @@ private fun OrgRoster(
                     Text("${member.supplierRole} · ${member.phone} · ${if (member.isActive) "Active" else "Inactive"}")
                 },
                 trailingContent = {
-                    if (member.isActive) {
+                    Row {
                         TextButton(
                             enabled = actionId != member.userId,
-                            onClick = { onDeactivate(member.userId) },
-                        ) { Text("Deactivate") }
+                            onClick = { onEdit(member) },
+                        ) { Text("Edit") }
+                        if (member.isActive) {
+                            TextButton(
+                                enabled = actionId != member.userId,
+                                onClick = { onDeactivate(member.userId) },
+                            ) { Text("Deactivate") }
+                        }
                     }
                 },
             )
@@ -499,6 +531,55 @@ private fun VehiclePicker(vehicles: List<FleetVehicle>, selected: String, onSele
             }
         }
     }
+}
+
+@Composable
+private fun EditOrgMemberDialog(
+    member: SupplierOrgMember,
+    topology: SupplierTopologyResponse,
+    onDismiss: () -> Unit,
+    onSave: (SupplierOrgMemberUpdateRequest) -> Unit,
+) {
+    var name by remember { mutableStateOf(member.name) }
+    var role by remember { mutableStateOf(member.supplierRole) }
+    var nodeId by remember {
+        mutableStateOf(member.assignedWarehouseId ?: member.assignedFactoryId ?: "")
+    }
+    val nodeOptions = when (role) {
+        "FACTORY_ADMIN" -> topology.factories.map { it.factoryId to it.name }
+        "ADMIN" -> emptyList()
+        else -> topology.warehouses.map { it.warehouseId to it.name }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit org member") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                OutlinedTextField(name, { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
+                RolePicker(role) { role = it; nodeId = "" }
+                if (role != "ADMIN" && nodeOptions.isNotEmpty()) {
+                    NodePicker(nodeOptions, nodeId) { nodeId = it }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                if (name.isBlank()) return@TextButton
+                val warehouseId = if (role == "WAREHOUSE_ADMIN" || role == "PAYLOAD") nodeId else null
+                val factoryId = if (role == "FACTORY_ADMIN") nodeId else null
+                onSave(
+                    SupplierOrgMemberUpdateRequest(
+                        name = name.trim(),
+                        supplierRole = role,
+                        assignedWarehouseId = warehouseId,
+                        assignedFactoryId = factoryId,
+                    ),
+                )
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

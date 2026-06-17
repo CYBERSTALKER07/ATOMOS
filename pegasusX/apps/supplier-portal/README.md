@@ -46,6 +46,12 @@ SUPPLIER_BACKEND_BASE_URL=http://localhost:8180
 
 ## Auth surfaces
 
+- **Web / Tauri / desktop:** `supplier-portal` (this app)
+- **Native Android:** `pegasusX/apps/supplier-app-android` (Kotlin/Compose)
+- **Native iOS:** `pegasusX/apps/supplier-app-ios` (SwiftUI)
+
+All three clients share the same `/v1/supplier/*` API and single-tenant onboarding flow (register → business setup → billing gate → dashboard).
+
 | Route | Purpose |
 |-------|---------|
 | `/auth/register` | 4-step supplier onboarding |

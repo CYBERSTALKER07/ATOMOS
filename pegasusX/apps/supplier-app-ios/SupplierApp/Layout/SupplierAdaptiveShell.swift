@@ -148,6 +148,28 @@ struct SupplierAdaptiveShell: View {
             EarningsView()
         case .profile:
             ProfileView()
+        case .earlyComplete:
+            EarlyCompleteView()
+        case .orgFleet:
+            OrgFleetView()
+        case .treasury:
+            TreasuryHubView()
+        case .retailerOverrides:
+            RetailerOverridesView()
+        case .chargebacks:
+            ChargebacksView()
+        case .businessSetup:
+            BusinessSetupView()
+        case .inventoryImport:
+            InventoryImportView()
+        case .demandForecast:
+            DemandHistoryView()
+        case .factories:
+            FactoriesView()
+        case .warehouses:
+            WarehousesView()
+        case .catalogDetail:
+            CatalogDetailView(productId: nil)
         }
     }
 

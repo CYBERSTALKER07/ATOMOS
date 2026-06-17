@@ -5,14 +5,13 @@ Native SwiftUI supplier operations app for **iPhone and iPad**. JWT role `ADMIN`
 ## Prerequisites
 
 - Xcode 15+
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen` (optional — project checked in)
 - pegasusX backend on port **8180**
 
-## Generate & open
+## Open
 
 ```bash
 cd pegasusX/apps/supplier-app-ios
-xcodegen generate
 open SupplierAppIOS.xcodeproj
 ```
 
@@ -24,15 +23,19 @@ open SupplierAppIOS.xcodeproj
 ## Layout
 
 - **Compact (iPhone)**: bottom `TabView` — Dashboard, Orders, Fleet, More
-- **Regular (iPad)**: `NavigationSplitView` sidebar with full section list and detail pane
-- Content uses adaptive grids and a max readable width on large screens
+- **Regular (iPad)**: `NavigationSplitView` sidebar with full `SupplierSection` list (ops, intelligence, network, account) and detail pane
+- Content uses adaptive grids, `SupplierTheme` tokens, and WS-driven refresh
 
-## Auth
+## Auth & onboarding
 
-Login: `POST /v1/auth/supplier/login` with `{ phone, password }`. Response includes `token` (Bearer) and `is_configured`. Protected routes accept Bearer via `CookieAuth` → `attachSessionClaims`.
+1. `POST /v1/auth/supplier/login` or native **Register** (3-step wizard)
+2. **Business setup** when `is_registered=false`
+3. **Billing gate** when `is_configured=false` (skippable, same as web)
+4. `SupplierAdaptiveShell` main ops
+
+Native screens cover order vetting, inventory adjust/import, retailer overrides, chargebacks, treasury hub, demand history, factories/warehouses browse, and catalog product detail — no portal handoff.
 
 ## Related surfaces
 
-- Web: `pegasusX/apps/supplier-portal`
-- Android (planned): `pegasusX/apps/supplier-app-android`
-- Desktop (planned): native supplier desktop target
+- Web / desktop: `pegasusX/apps/supplier-portal`
+- Android: `pegasusX/apps/supplier-app-android`

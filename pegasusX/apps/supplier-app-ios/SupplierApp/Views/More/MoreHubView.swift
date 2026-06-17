@@ -24,11 +24,13 @@ struct MoreHubView: View {
                 NavigationLink { EarlyCompleteView() } label: {
                     Label("Early route complete", systemImage: "checkmark.circle")
                 }
-                // Quantity negotiation disabled ecosystem-wide.
             }
             Section("Insights") {
                 NavigationLink { AnalyticsView() } label: {
                     Label("Analytics", systemImage: "chart.bar")
+                }
+                NavigationLink { DemandHistoryView() } label: {
+                    Label("Demand forecast", systemImage: "chart.xyaxis.line")
                 }
                 NavigationLink { ActivityView() } label: {
                     Label("Activity", systemImage: "clock.arrow.circlepath")
@@ -42,7 +44,13 @@ struct MoreHubView: View {
             }
             Section("Network") {
                 NavigationLink { TopologyView() } label: {
-                    Label("Factories & warehouses", systemImage: "building.2.crop.circle")
+                    Label("Topology", systemImage: "building.2.crop.circle")
+                }
+                NavigationLink { FactoriesView() } label: {
+                    Label("Factories", systemImage: "building.2")
+                }
+                NavigationLink { WarehousesView() } label: {
+                    Label("Warehouses", systemImage: "shippingbox.fill")
                 }
                 NavigationLink { DeliveryZonesView() } label: {
                     Label("Delivery zones", systemImage: "mappin.and.ellipse")
@@ -52,13 +60,16 @@ struct MoreHubView: View {
                 }
             }
             Section("Treasury") {
+                NavigationLink { TreasuryHubView() } label: {
+                    Label("Treasury hub", systemImage: "building.columns")
+                }
                 NavigationLink { LedgerView() } label: {
                     Label("Payment ledger", systemImage: "banknote")
                 }
                 NavigationLink { PaymentsView() } label: {
                     Label("Payments", systemImage: "creditcard")
                 }
-                NavigationLink { PortalHandoffView(feature: .chargebacks) } label: {
+                NavigationLink { ChargebacksView() } label: {
                     Label("Chargebacks", systemImage: "exclamationmark.bubble")
                 }
                 NavigationLink { ReconciliationView() } label: {
@@ -78,8 +89,14 @@ struct MoreHubView: View {
                 NavigationLink { InventoryView() } label: {
                     Label("Inventory", systemImage: "archivebox")
                 }
+                NavigationLink { InventoryImportView() } label: {
+                    Label("Import inventory", systemImage: "square.and.arrow.down")
+                }
                 NavigationLink { PricingView() } label: {
                     Label("Pricing", systemImage: "dollarsign.circle")
+                }
+                NavigationLink { RetailerOverridesView() } label: {
+                    Label("Retailer overrides", systemImage: "tag.circle")
                 }
                 NavigationLink { PromotionsView() } label: {
                     Label("Promotions", systemImage: "tag")
@@ -96,7 +113,7 @@ struct MoreHubView: View {
                 NavigationLink { ProfileView() } label: {
                     Label("Profile", systemImage: "building.2")
                 }
-                NavigationLink { PortalHandoffView(feature: .businessSetup) } label: {
+                NavigationLink { BusinessSetupView() } label: {
                     Label("Business setup", systemImage: "gearshape.2")
                 }
             }

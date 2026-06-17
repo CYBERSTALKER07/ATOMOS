@@ -83,11 +83,62 @@ final class APIClient: Sendable {
         return try await execute(request)
     }
 
-    func patch<B: Encodable, T: Decodable>(_ path: String, body: B, authenticated: Bool = true) async throws -> T {
+    func patch<B: Encodable, T: Decodable>(
+        _ path: String,
+        body: B,
+        idempotencyKey: String? = nil,
+        authenticated: Bool = true
+    ) async throws -> T {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "PATCH"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
+        }
         request.httpBody = try encoder.encode(body)
+        if authenticated {
+            await attachToken(&request)
+        }
+        return try await execute(request)
+    }
+
+    func patch<B: Encodable, T: Decodable>(_ path: String, body: B, authenticated: Bool = true) async throws -> T {
+        try await patch(path, body: body, idempotencyKey: nil, authenticated: authenticated)
+    }
+
+    func postJSON<T: Decodable>(
+        _ path: String,
+        body: [String: Any],
+        idempotencyKey: String? = nil,
+        authenticated: Bool = true
+    ) async throws -> T {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        if authenticated {
+            await attachToken(&request)
+        }
+        return try await execute(request)
+    }
+
+    func postRaw<T: Decodable>(
+        _ path: String,
+        body: Data,
+        contentType: String,
+        idempotencyKey: String? = nil,
+        authenticated: Bool = true
+    ) async throws -> T {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
+        }
+        request.httpBody = body
         if authenticated {
             await attachToken(&request)
         }

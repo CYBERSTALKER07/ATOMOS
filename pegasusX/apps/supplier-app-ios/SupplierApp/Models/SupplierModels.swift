@@ -9,6 +9,7 @@ struct LoginRequest: Encodable {
 
 struct LoginResponse: Decodable {
     let supplierId: String
+    let isRegistered: Bool
     let isConfigured: Bool
     let nextStep: String
     let token: String?
@@ -16,10 +17,39 @@ struct LoginResponse: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case supplierId = "supplier_id"
+        case isRegistered = "is_registered"
         case isConfigured = "is_configured"
         case nextStep = "next_step"
         case token
         case refreshToken = "refresh_token"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        supplierId = try container.decode(String.self, forKey: .supplierId)
+        isRegistered = try container.decodeIfPresent(Bool.self, forKey: .isRegistered) ?? false
+        isConfigured = try container.decodeIfPresent(Bool.self, forKey: .isConfigured) ?? false
+        nextStep = try container.decodeIfPresent(String.self, forKey: .nextStep) ?? ""
+        token = try container.decodeIfPresent(String.self, forKey: .token)
+        refreshToken = try container.decodeIfPresent(String.self, forKey: .refreshToken)
+    }
+}
+
+struct RegisterResponse: Decodable {
+    let supplierId: String
+    let legalName: String
+    let isRegistered: Bool
+    let isConfigured: Bool
+    let nextStep: String
+    let token: String?
+
+    enum CodingKeys: String, CodingKey {
+        case supplierId = "supplier_id"
+        case legalName = "legal_name"
+        case isRegistered = "is_registered"
+        case isConfigured = "is_configured"
+        case nextStep = "next_step"
+        case token
     }
 }
 
@@ -237,6 +267,22 @@ struct InventoryItem: Decodable, Identifiable {
         case productName = "product_name"
         case quantity
         case updatedAt = "updated_at"
+    }
+}
+
+struct InventoryPatchRequest: Encodable {
+    let skuId: String?
+    let sku: String?
+    let quantityDelta: Int64?
+    let quantity: Int64?
+    let reason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case skuId = "sku_id"
+        case sku
+        case quantityDelta = "quantity_delta"
+        case quantity
+        case reason
     }
 }
 

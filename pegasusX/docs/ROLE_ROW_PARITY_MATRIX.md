@@ -2,13 +2,13 @@
 
 > **Canonical cross-role spec:** [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md) — use this matrix for screen-level parity; use the master plan for end-to-end flows, comms, and verification gates.
 
-Last updated: 2026-06-15. Canonical reference: `pegasus/`. Delivery tree: `pegasusX/`.
+Last updated: 2026-06-15 (supplier ecosystem parity pass). Canonical reference: `pegasus/`. Delivery tree: `pegasusX/`.
 
 ## Summary
 
 | Role | pegasusX clients | Backend routes | Production v1 capability | UI parity (vs Pegasus) | E2E (SSMR) |
 |------|------------------|----------------|--------------------------|------------------------|------------|
-| SUPPLIER | supplier-portal, native iOS/Android | supplierroutes | Portal: full ops spine + fleet live map (`GET /v1/supplier/fleet/live-map`); native: fleet live map on iOS + Android MapLibre with animated driver markers; P1-01 ops panels on More hub | Partial — portal 26+ routes vs Pegasus ~59; fleet live map + animated GPS on portal + both native apps | Full SSMR e2e incl. payment + factory |
+| SUPPLIER | supplier-portal, native iOS/Android | supplierroutes | Full ops spine on portal + native: register/business/billing onboarding, order vet, inventory adjust/import, retailer overrides, chargebacks, treasury hub, demand history, factories/warehouses browse, catalog detail; fleet live map on all clients | **Wired** — pegasusX single-tenant surface (~42 portal routes + native parity); pegasus multi-tenant extras (CRM, staff, country-overrides) out of scope | Full SSMR e2e incl. payment + factory |
 | RETAILER | desktop, iOS, Android | retailerroutes, orderroutes, catalogroutes | Order + tracking + catalog; category-suppliers (PX12-B); checkout via unified (PX12-G); P1-02 catalog browse + vendor connect on Android+iOS | Desktop procurement + mobile catalog/supplier parity (connect/search/remove, all-products browse); portal-only ops deferrals | Register, order create, tracking, `PX_E2E_CATALOG_OK` |
 | DRIVER | Android, iOS | driverroutes, orderroutes, telemetryroutes | Full delivery edges + reorder (PX12-B); planned route geometry + turn-by-turn + off-route reroute (`GET /v1/fleet/route/{routeID}/geometry`); maps + WS (PX12-F) | Live-ops + planned/breadcrumb map overlays | Telemetry; shop-closed; negotiation; driver edges E2E |
 | WAREHOUSE | portal, Android, iOS | warehouseroutes | Ops dashboard + dispatch live fleet map (`GET /v1/warehouse/ops/fleet/live-map`); dispatch lock, supply requests; P1-03 ops API | Portal + native fleet live map on dashboard + dispatch (MapLibre Android, MapKit iOS); animated driver markers on all three; native order detail mutations (Android+iOS) | Dispatch lock + order mutation + transfer actions SSMR markers |
@@ -27,10 +27,13 @@ Last updated: 2026-06-15. Canonical reference: `pegasus/`. Delivery tree: `pegas
 | `/supplier/dispatch` | `/(portal)/dispatch` | dispatch preview (warehouse) | Wired — route map on portal + Android/iOS |
 | `/supplier/inventory` | `/(portal)/inventory` | GET/PATCH `/v1/supplier/inventory` | Wired |
 | `/supplier/pricing` | `/(portal)/pricing` | GET/PATCH `/v1/supplier/pricing/rules` | Wired |
-| `/supplier/catalog` | `/(portal)/catalog` | catalog routes (supplier) | Portal page |
+| `/supplier/pricing/retailer-overrides` | `/(portal)/pricing/retailer-overrides` | GET/POST/DELETE `/v1/supplier/pricing/retailer-overrides` | Wired — portal + Android + iOS |
+| `/supplier/catalog` | `/(portal)/catalog` + `/(portal)/catalog/[productId]` | catalog routes (supplier) | Wired — detail + inline edit |
 | `/supplier/manifests` | `/(portal)/manifests` | factory/payload cross-read | Portal page |
 | `/treasury/*` | `/(portal)/treasury` | payment/settlement | Portal page |
-| `/supplier/analytics` | `/(portal)/analytics` | analytics (partial) | Portal page |
+| `/supplier/analytics` | `/(portal)/analytics` + `/analytics/demand` | analytics + demand history | Wired — portal + native demand chart |
+| `/inventory/import` | `/(portal)/inventory/import` | import session wizard | Wired — portal + Android + iOS |
+| Native register / business / chargebacks | `Register*` / `BusinessSetup*` / `Chargebacks*` | auth + business + payment | Wired — no portal handoff |
 | `/supplier/geo-report` | `/(portal)/geo-report` | H3 coverage | Wired (ops guide) |
 | `/supplier/delivery-zones` | `/(portal)/delivery-zones` | perimeter / topology | Wired |
 | `/supplier/factories` | `/(portal)/factories` | topology | Wired |
@@ -63,7 +66,7 @@ Last updated: 2026-06-15. Canonical reference: `pegasus/`. Delivery tree: `pegas
 
 | Surface | Pegasus reference depth | pegasusX native row | Notes |
 |---------|-------------------------|---------------------|-------|
-| Supplier portal | ~59 routes | Portal full; iOS/Android ops slice | E2 adds screens per Boss approval |
+| Supplier portal | ~59 routes (pegasus multi-tenant) | Portal + native full single-tenant parity | Native register, vet, inventory, overrides, chargebacks, treasury hub |
 | Retailer desktop | Full procurement | Desktop richest; mobile tracking-first | Intentional until E2 |
 | Factory / warehouse | Full portal | Portal + mobile ops dashboards | Treasury depth portal-only |
 

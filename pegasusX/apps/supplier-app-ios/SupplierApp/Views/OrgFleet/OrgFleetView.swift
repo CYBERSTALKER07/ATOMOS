@@ -11,6 +11,8 @@ struct OrgFleetView: View {
     @State private var showDriverSheet = false
     @State private var showVehicleSheet = false
     @State private var showOrgSheet = false
+    @State private var showEditMemberSheet = false
+    @State private var editingMember: SupplierOrgMember?
     @State private var memberActionId: String?
 
     var body: some View {
@@ -75,6 +77,14 @@ struct OrgFleetView: View {
                 }
             }
         }
+        .sheet(isPresented: $showEditMemberSheet) {
+            if let editingMember {
+                EditOrgMemberSheet(member: editingMember) {
+                    showEditMemberSheet = false
+                    Task { await reload() }
+                }
+            }
+        }
     }
 
     private var driverList: some View {
@@ -119,6 +129,11 @@ struct OrgFleetView: View {
                         Text(member.name).font(.headline)
                         Text("\(member.supplierRole) · \(member.phone) · \(member.isActive ? "Active" : "Inactive")")
                             .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        editingMember = member
+                        showEditMemberSheet = true
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if member.isActive {
@@ -439,6 +454,72 @@ private struct CreateOrgMemberSheet: View {
                 assignedFactoryId: factoryId
             )
             _ = try await SupplierOperationsService.createOrgMember(request, idempotencyKey: UUID().uuidString)
+            dismiss()
+            onDone()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+}
+
+private struct EditOrgMemberSheet: View {
+    let member: SupplierOrgMember
+    let onDone: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var name: String
+    @State private var role: String
+    @State private var isActive: Bool
+    @State private var busy = false
+    @State private var error: String?
+
+    init(member: SupplierOrgMember, onDone: @escaping () -> Void) {
+        self.member = member
+        self.onDone = onDone
+        _name = State(initialValue: member.name)
+        _role = State(initialValue: member.supplierRole)
+        _isActive = State(initialValue: member.isActive)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("Name", text: $name)
+                Picker("Role", selection: $role) {
+                    Text("Warehouse admin").tag("WAREHOUSE_ADMIN")
+                    Text("Factory admin").tag("FACTORY_ADMIN")
+                    Text("Payload staff").tag("PAYLOAD")
+                    Text("Supplier operator").tag("ADMIN")
+                }
+                Toggle("Active", isOn: $isActive)
+                if let error { Text(error).foregroundStyle(.red) }
+            }
+            .navigationTitle("Edit member")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(busy ? "…" : "Save") { Task { await save() } }
+                        .disabled(busy || name.isEmpty)
+                }
+            }
+        }
+    }
+
+    private func save() async {
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            _ = try await SupplierOperationsService.updateOrgMember(
+                member.userId,
+                request: SupplierOrgMemberUpdateRequest(
+                    name: name.trimmingCharacters(in: .whitespaces),
+                    supplierRole: role,
+                    assignedWarehouseId: member.assignedWarehouseId,
+                    assignedFactoryId: member.assignedFactoryId,
+                    isActive: isActive
+                ),
+                idempotencyKey: UUID().uuidString
+            )
             dismiss()
             onDone()
         } catch {

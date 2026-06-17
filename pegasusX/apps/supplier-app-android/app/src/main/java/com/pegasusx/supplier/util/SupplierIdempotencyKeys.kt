@@ -28,6 +28,15 @@ object SupplierIdempotencyKeys {
     fun paymentBypass(orderId: String, reason: String): String =
         "supplier-payment-bypass:$orderId:${stableHash(reason)}"
 
+    fun vetOrder(orderId: String, decision: String): String =
+        "supplier-vet-order:$orderId:${decision.uppercase()}"
+
+    fun importCreate(scopeId: String, fileName: String, fileSizeBytes: Int): String =
+        "supplier-import-create:$scopeId:${stableHash("$fileName:$fileSizeBytes")}"
+
+    fun importIngest(sessionId: String, csvBody: String): String =
+        "supplier-import-ingest:$sessionId:${stableHash(csvBody)}"
+
     /** FNV-1a 32-bit — matches api-client `stableHash`. */
     private fun stableHash(input: String): String {
         var hash = 2166136261L

@@ -2,13 +2,7 @@ import SwiftUI
 
 struct OrdersView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var orders: [SupplierOrder] = []
-    @State private var loading = true
-    @State private var error: String?
-    @State private var statusFilter = "PENDING"
-    @State private var selection: SupplierOrder?
-
-    private let filters = ["", "PENDING", "AWAITING_REVIEW", "COMPLETED"]
+    @State private var vm = OrdersViewModel()
 
     var body: some View {
         Group {
@@ -23,108 +17,95 @@ struct OrdersView: View {
             }
         }
         .background(SupplierTheme.background)
-        .task(id: statusFilter) { await load() }
+        .task(id: vm.statusFilter) { await vm.load() }
     }
 
     private var phoneContent: some View {
-        Group {
-            if loading {
-                SupplierLoadingView(
-                    title: "Loading orders",
-                    message: "Fetching your supplier order queue."
-                )
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if orders.isEmpty {
-                SupplierEmptyView(title: "No orders", message: "Nothing in this queue.")
-            } else {
-                List(orders) { order in
-                    OrderRow(order: order)
+        VStack(spacing: 0) {
+            filterTabs
+            Group {
+                if vm.loading {
+                    SupplierLoadingView(
+                        title: "Loading orders",
+                        message: "Fetching your supplier order queue."
+                    )
+                } else if let error = vm.error {
+                    SupplierErrorView(message: error) { Task { await vm.load() } }
+                } else if vm.orders.isEmpty {
+                    SupplierEmptyView(title: "No orders", message: "Nothing in this queue.")
+                } else {
+                    List(vm.orders) { order in
+                        NavigationLink {
+                            OrderDetailPanel(order: order, vm: vm)
+                        } label: {
+                            OrderRow(order: order)
+                        }
+                    }
+                    .listStyle(.insetGrouped)
                 }
-                .listStyle(.insetGrouped)
             }
+            .refreshable { await vm.load(silent: true) }
         }
-        .refreshable { await load(silent: true) }
     }
 
     private var splitContent: some View {
         NavigationSplitView {
-            ordersList
-                .navigationTitle("Orders")
-                .toolbar { ordersToolbar }
+            VStack(spacing: 0) {
+                filterTabs
+                ordersList
+            }
+            .navigationTitle("Orders")
+            .toolbar { ordersToolbar }
         } detail: {
-            if let selection {
-                OrderDetailPanel(order: selection)
+            if let selection = vm.selection {
+                OrderDetailPanel(order: selection, vm: vm)
             } else {
                 ContentUnavailableView("Select an order", systemImage: "shippingbox")
             }
         }
     }
 
+    private var filterTabs: some View {
+        Picker("Filter", selection: $vm.statusFilter) {
+            ForEach(vm.filters, id: \.id) { filter in
+                Text(filter.label).tag(filter.id)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal)
+        .padding(.vertical, SupplierTheme.spacingSM)
+    }
+
     private var ordersList: some View {
         Group {
-            if loading {
+            if vm.loading {
                 SupplierLoadingView(
                     title: "Loading orders",
                     message: "Fetching your supplier order queue."
                 )
-            } else if let error {
-                SupplierErrorView(message: error) { Task { await load() } }
-            } else if orders.isEmpty {
+            } else if let error = vm.error {
+                SupplierErrorView(message: error) { Task { await vm.load() } }
+            } else if vm.orders.isEmpty {
                 SupplierEmptyView(title: "No orders", message: "Nothing in this queue.")
             } else {
-                List(orders, selection: $selection) { order in
+                List(vm.orders, selection: $vm.selection) { order in
                     OrderRow(order: order)
                         .tag(order)
                 }
                 .listStyle(.sidebar)
             }
         }
-        .refreshable { await load(silent: true) }
+        .refreshable { await vm.load(silent: true) }
     }
 
     @ToolbarContentBuilder
     private var ordersToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                ForEach(filters, id: \.self) { filter in
-                    Button {
-                        statusFilter = filter
-                    } label: {
-                        if filter == statusFilter {
-                            Label(filter.isEmpty ? "All" : filter, systemImage: "checkmark")
-                        } else {
-                            Text(filter.isEmpty ? "All" : filter)
-                        }
-                    }
-                }
-            } label: {
-                Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-            }
-        }
-        ToolbarItem(placement: .topBarTrailing) {
             Button("Refresh", systemImage: "arrow.clockwise") {
-                Task { await load(silent: true) }
+                Task { await vm.load(silent: true) }
             }
             .labelStyle(.iconOnly)
         }
-    }
-
-    @MainActor
-    private func load(silent: Bool = false) async {
-        if !silent { loading = true }
-        error = nil
-        do {
-            let response = try await SupplierService.orders(
-                status: statusFilter.isEmpty ? nil : statusFilter,
-                limit: 500
-            )
-            orders = response.orders
-            if selection == nil { selection = orders.first }
-        } catch {
-            if !silent { self.error = error.localizedDescription }
-        }
-        loading = false
     }
 }
 
@@ -150,24 +131,46 @@ private struct OrderRow: View {
 
 private struct OrderDetailPanel: View {
     let order: SupplierOrder
+    @Bindable var vm: OrdersViewModel
+    @State private var note = ""
+
+    private var canVet: Bool {
+        ["PENDING", "AWAITING_REVIEW"].contains(order.status.uppercased())
+    }
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Order") {
-                    LabeledContent("ID", value: order.orderId)
-                    LabeledContent("Retailer", value: order.retailerId)
-                    LabeledContent("Status") {
-                        SupplierStatusBadge(text: order.status)
+        List {
+            Section("Order") {
+                LabeledContent("ID", value: order.orderId)
+                LabeledContent("Retailer", value: order.retailerId)
+                LabeledContent("Status") {
+                    SupplierStatusBadge(text: order.status)
+                }
+                if let decision = order.decision, !decision.isEmpty {
+                    LabeledContent("Decision", value: decision)
+                }
+                LabeledContent("Total", value: MoneyFormat.minor(order.totalMinor, currency: order.currency))
+                LabeledContent("Updated", value: order.updatedAt)
+            }
+
+            if canVet {
+                Section("Vet decision") {
+                    TextField("Note (optional)", text: $note)
+                    HStack {
+                        Button("Approve") {
+                            Task { await vm.vet(order: order, decision: "APPROVED", note: note) }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(vm.vettingOrderId == order.orderId)
+
+                        Button("Reject", role: .destructive) {
+                            Task { await vm.vet(order: order, decision: "REJECTED", note: note) }
+                        }
+                        .disabled(vm.vettingOrderId == order.orderId)
                     }
-                    if let decision = order.decision, !decision.isEmpty {
-                        LabeledContent("Decision", value: decision)
-                    }
-                    LabeledContent("Total", value: MoneyFormat.minor(order.totalMinor, currency: order.currency))
-                    LabeledContent("Updated", value: order.updatedAt)
                 }
             }
-            .navigationTitle("Order")
         }
+        .navigationTitle("Order")
     }
 }
