@@ -125,7 +125,24 @@ make validate-launch-readiness                        # launch-readiness-ok
 make test-ssmr-infra
 ```
 
-**2026-06-05 gates:** `parity-contract-full`, `gap-hunter-gate`, `validate-launch-readiness` — pass. P1-01 supplier native: iOS `xcodebuild` + Android `:app:compileDebugKotlin` — pass (foojay toolchain plugin removed from pegasusX `settings.gradle.kts` — local JDK; `plugins-artifacts.gradle.org` DNS blocked auto-download).
+**2026-06-05 gates:** `parity-contract-full`, `gap-hunter-gate`, `validate-launch-readiness` — pass.
+
+## Enterprise production readiness (2026-06-18)
+
+| Item | Status |
+|------|--------|
+| K8s `HTTP_PORT` alignment (was `PORT`) | **Closed** — `infra/k8s/backend-go/configmap.yaml` |
+| OSRM sidecar manifests | **Closed** — `infra/k8s/osrm/` |
+| Global Pay API secrets in External Secrets | **Closed** — service-id, username, password, payme, click |
+| Global Pay production credential validation | **Closed** — `bootstrap/config_validate.go` |
+| Payment outbound circuit breaker | **Closed** — `payment/global_pay_executor.go` + `bootstrap/bootstrap.go` |
+| Retailer iOS Firebase stub | **Closed** — SPM + `FirebaseAuthHelper.swift` |
+| Production services catalog | **Closed** — `docs/CLOUD_CREDENTIALS_CHECKLIST.md` expanded |
+| Launch validator enterprise k8s checks | **Closed** — `scripts/validate_launch_readiness.py`, `validate_backend_k8s.sh` |
+| ai-worker freeze-lock consumer | **Pre-existing** — `apps/ai-worker/main.go` consumes `KAFKA_TOPIC_FREEZE_LOCKS` |
+
+**Boss action required (not code):** Terraform apply, Global Pay.UZ production API keys, GCP Maps Android key, Firebase `GoogleService-Info.plist` per app, store signing.
+ P1-01 supplier native: iOS `xcodebuild` + Android `:app:compileDebugKotlin` — pass (foojay toolchain plugin removed from pegasusX `settings.gradle.kts` — local JDK; `plugins-artifacts.gradle.org` DNS blocked auto-download).
 
 **QA prep:** `make px12-preflight` + manual runbook [`docs/qa/PX12_MANUAL_QA_RUNBOOK.md`](qa/PX12_MANUAL_QA_RUNBOOK.md); Boss sign-off sheet [`docs/qa/PX12_ROLE_ROW_QA.md`](qa/PX12_ROLE_ROW_QA.md).
 

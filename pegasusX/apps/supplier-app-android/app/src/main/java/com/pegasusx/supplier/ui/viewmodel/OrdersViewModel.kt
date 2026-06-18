@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.supplier.data.model.SupplierOrder
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -28,12 +29,19 @@ data class OrdersUiState(
 @HiltViewModel
 class OrdersViewModel @Inject constructor(
     private val ops: SupplierOperationsRepository,
+    private val realtimeSignals: SupplierRealtimeSignals,
 ) : ViewModel() {
     private val _state = MutableStateFlow(OrdersUiState())
     val state: StateFlow<OrdersUiState> = _state.asStateFlow()
 
     init {
         load()
+        viewModelScope.launch {
+            realtimeSignals.refreshTick.collect { load(silent = true) }
+        }
+        viewModelScope.launch {
+            realtimeSignals.reconnectTick.collect { load(silent = true) }
+        }
     }
 
     fun setFilter(filter: OrderFilterTab) {
@@ -41,9 +49,13 @@ class OrdersViewModel @Inject constructor(
         load()
     }
 
-    fun load() {
+    fun load(silent: Boolean = false) {
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, error = null) }
+            if (!silent) {
+                _state.update { it.copy(loading = true, error = null) }
+            } else {
+                _state.update { it.copy(error = null) }
+            }
             try {
                 val filter = _state.value.filter
                 val resp = when (filter) {
@@ -54,13 +66,19 @@ class OrdersViewModel @Inject constructor(
                     _state.update {
                         it.copy(orders = resp.body()?.orders.orEmpty(), loading = false)
                     }
-                } else {
+                } else if (!silent) {
                     _state.update {
                         it.copy(error = "Failed (${resp.code()})", loading = false, orders = emptyList())
                     }
+                } else {
+                    _state.update { it.copy(loading = false) }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(error = e.message, loading = false) }
+                if (!silent) {
+                    _state.update { it.copy(error = e.message, loading = false) }
+                } else {
+                    _state.update { it.copy(loading = false) }
+                }
             }
         }
     }
@@ -79,7 +97,7 @@ class OrdersViewModel @Inject constructor(
                 }
                 val key = SupplierIdempotencyKeys.vetOrder(order.orderId, decision)
                 val resp = ops.vetOrder(body, key)
-                if (resp.isSuccessful) load() else {
+                if (resp.isSuccessful) load(silent = true) else {
                     _state.update { it.copy(error = "Vet failed (${resp.code()})") }
                 }
             } catch (e: Exception) {

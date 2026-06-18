@@ -56,7 +56,7 @@ struct OrdersView: View {
             .task { await vm.listenWebSocket(modelContext: modelContext) }
             .task { await vm.flushPendingOrders(modelContext: modelContext) }
             .task(id: refreshCenter.refreshToken) {
-                await vm.loadData()
+                await vm.loadData(silent: !vm.allOrders.isEmpty)
                 await vm.flushPendingOrders(modelContext: modelContext)
             }
             .refreshable { await vm.loadData() }
@@ -151,7 +151,7 @@ struct OrdersView: View {
 
     private var activeContent: some View {
         ScrollView {
-            if vm.isLoading {
+            if vm.isLoading && activeOrders.isEmpty {
                 SkeletonOrderList()
             } else if activeOrders.isEmpty {
                 tabEmptyState(icon: "bolt.slash", title: "No Active Orders", message: "Orders being prepared or en route will appear here")
@@ -174,7 +174,7 @@ struct OrdersView: View {
 
     private var pendingContent: some View {
         ScrollView {
-            if vm.isLoading {
+            if vm.isLoading && pendingOrders.isEmpty {
                 SkeletonOrderList()
             } else if pendingOrders.isEmpty {
                 tabEmptyState(icon: "clock", title: "No Pending Orders", message: "Orders awaiting confirmation will appear here")
@@ -214,8 +214,7 @@ struct OrdersView: View {
 
     private var aiPlannedContent: some View {
         ScrollView {
-            if vm.isLoading {
-                SkeletonOrderList(count: 3)
+            if vm.isLoading && predictions.isEmpty {
             } else if predictions.isEmpty {
                 tabEmptyState(icon: "sparkles", title: "No AI Predictions", message: "AI-predicted orders based on your history will appear here")
             } else {

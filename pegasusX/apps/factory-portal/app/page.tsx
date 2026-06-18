@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { usePolling } from '@pegasusx/api-client';
 import Link from 'next/link';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
@@ -38,53 +39,52 @@ export default function FactoryDashboard() {
   const [loadIssue, setLoadIssue] = useState<DashboardLoadIssue | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  useEffect(() => {
-    let active = true;
-    let liveRefreshTimer: number | null = null;
-    setLoading(true);
-
-    async function load() {
-      try {
-        const res = await apiFetch('/v1/factory/dashboard');
-        if (!res.ok) {
-          if (active) {
-            if (res.status === 401 || res.status === 403) {
-              setLoadIssue('restricted');
-            } else {
-              setLoadIssue('error');
-            }
-          }
-          return;
+  const load = useCallback(async () => {
+    try {
+      const res = await apiFetch('/v1/factory/dashboard');
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          setLoadIssue('restricted');
+        } else {
+          setLoadIssue('error');
         }
-
-        if (active) {
-          setStats(await res.json());
-          setLoadIssue(null);
-        }
-      } catch {
-        if (active) {
-          setLoadIssue('offline');
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+        return;
       }
+
+      setStats(await res.json());
+      setLoadIssue(null);
+    } catch {
+      setLoadIssue('offline');
+    } finally {
+      setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    void load();
+  }, [load, reloadToken]);
+
+  usePolling(
+    async (signal) => {
+      if (signal.aborted) return;
+      await load();
+    },
+    LIVE_REFRESH_MS,
+    [load, reloadToken],
+  );
+
+  useEffect(() => {
+    let liveRefreshTimer: number | null = null;
 
     const queueLiveRefresh = () => {
-      if (!active) return;
       if (liveRefreshTimer !== null) {
         window.clearTimeout(liveRefreshTimer);
       }
       liveRefreshTimer = window.setTimeout(() => {
-        if (active) {
-          void load();
-        }
+        void load();
       }, 600);
     };
-
-    load();
 
     const unsubscribe = subscribeFactoryWS({
       onMessage: payload => {
@@ -94,18 +94,15 @@ export default function FactoryDashboard() {
       },
     });
 
-    const interval = window.setInterval(load, LIVE_REFRESH_MS);
     return () => {
-      active = false;
       if (liveRefreshTimer !== null) {
         window.clearTimeout(liveRefreshTimer);
       }
       unsubscribe();
-      window.clearInterval(interval);
     };
-  }, [reloadToken]);
+  }, [load, reloadToken]);
 
-  if (loading) {
+  if (loading && !stats) {
     return (
       <PageTransition className="p-6 md:p-8">
         <FactoryPageState

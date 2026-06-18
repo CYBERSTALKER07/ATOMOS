@@ -11,8 +11,8 @@ ROUTES_TMP="$(mktemp)"
 PATHS_TMP="$(mktemp)"
 trap 'rm -f "$ROUTES_TMP" "$PATHS_TMP"' EXIT
 
-# Collect registered HTTP paths from *routes packages.
-grep -RhE '"/v1/[^"]+"' apps/backend-go/*routes/*.go 2>/dev/null \
+# Collect registered HTTP paths from *routes packages and supplier import wizard mounts.
+grep -RhE '"/v1/[^"]+"' apps/backend-go/*routes/*.go apps/backend-go/supplier/import_sessions.go 2>/dev/null \
   | grep -v '_test.go' \
   | sed -E 's/.*"(\/v1\/[^"]+)".*/\1/' \
   | sort -u >"$ROUTES_TMP"

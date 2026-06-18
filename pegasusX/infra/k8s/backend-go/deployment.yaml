@@ -57,6 +57,42 @@ spec:
                 secretKeyRef:
                   name: backend-go-secrets
                   key: stripe-webhook-secret
+            - name: PAYME_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: payme-webhook-secret
+            - name: CLICK_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: click-webhook-secret
+            - name: GLOBAL_PAY_SERVICE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: global-pay-service-id
+            - name: GLOBAL_PAY_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: global-pay-username
+            - name: GLOBAL_PAY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: global-pay-password
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: internal-api-key
+            - name: FIREBASE_CREDENTIALS_PATH
+              value: /var/secrets/firebase/service-account.json
+          volumeMounts:
+            - name: firebase-credentials
+              mountPath: /var/secrets/firebase
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /healthz
@@ -78,3 +114,8 @@ spec:
             limits:
               cpu: "1000m"
               memory: 512Mi
+      volumes:
+        - name: firebase-credentials
+          secret:
+            secretName: backend-go-firebase
+            optional: true

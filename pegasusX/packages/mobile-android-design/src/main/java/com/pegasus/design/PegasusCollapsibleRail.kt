@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -106,53 +107,55 @@ private fun ExpandedRailDrawer(
         drawerContainerColor = MaterialTheme.colorScheme.surface,
         drawerContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(horizontal = 12.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onToggleExpanded) {
-                Icon(Icons.Default.MenuOpen, contentDescription = "Collapse sidebar")
-            }
-            Text(
-                text = appTitle,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 8.dp),
-        ) {
-            groups.forEach { group ->
-                Text(
-                    text = group.title.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-                group.items.forEach { item ->
-                    val selected = selectedItemId == item.id
-                    NavigationDrawerItem(
-                        label = { Text(item.label) },
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        selected = selected,
-                        onClick = { onItemSelected(item) },
-                        colors = NavigationDrawerItemDefaults.colors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ),
-                    )
+        Column(modifier = Modifier.fillMaxHeight()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onToggleExpanded) {
+                    Icon(Icons.Default.MenuOpen, contentDescription = "Collapse sidebar")
                 }
-                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = appTitle,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 8.dp),
+            ) {
+                groups.forEach { group ->
+                    Text(
+                        text = group.title.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                    group.items.forEach { item ->
+                        val selected = selectedItemId == item.id
+                        NavigationDrawerItem(
+                            label = { Text(item.label) },
+                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            selected = selected,
+                            onClick = { onItemSelected(item) },
+                            colors = NavigationDrawerItemDefaults.colors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+            footer?.invoke()
         }
-        footer?.invoke()
     }
 }
 

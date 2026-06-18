@@ -34,8 +34,10 @@ fun FleetScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
-        loading = true
+    fun load(silent: Boolean = false) {
+        if (!silent) {
+            loading = true
+        }
         error = null
         scope.launch {
             try {
@@ -48,7 +50,9 @@ fun FleetScreen(
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) {
+                    loading = false
+                }
             }
         }
     }
@@ -61,7 +65,7 @@ fun FleetScreen(
             FactoryRealtimeEventType.ManifestUpdate,
         ),
     ) {
-        load()
+        load(silent = true)
     }
 
     val available = vehicles.count { it.status.equals("AVAILABLE", ignoreCase = true) }
@@ -90,7 +94,7 @@ fun FleetScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> FactoryLoadingState(
+            loading && vehicles.isEmpty() -> FactoryLoadingState(
                 title = "Loading fleet",
                 body = "Fetching the current factory vehicle roster and assignments.",
                 modifier = Modifier

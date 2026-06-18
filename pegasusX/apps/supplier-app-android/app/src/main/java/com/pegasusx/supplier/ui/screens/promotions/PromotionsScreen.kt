@@ -29,9 +29,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.pegasus.design.RealtimeRefreshEffect
+import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.data.model.SupplierPromotion
 import com.pegasusx.supplier.data.model.SupplierPromotionUpsertRequest
 import com.pegasusx.supplier.data.remote.SupplierApi
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
@@ -40,7 +43,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PromotionsScreen(api: SupplierApi) {
+fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals) {
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var promotions by remember { mutableStateOf(emptyList<SupplierPromotion>()) }
@@ -51,23 +54,35 @@ fun PromotionsScreen(api: SupplierApi) {
     var discountBps by remember { mutableStateOf("500") }
     val scope = rememberCoroutineScope()
 
-    fun reload() {
+    fun reload(silent: Boolean = false) {
         scope.launch {
-            loading = true
-            error = null
+            if (!silent) {
+                loading = true
+                error = null
+            }
             try {
                 val resp = api.getPromotions()
-                promotions = if (resp.isSuccessful) resp.body()?.promotions.orEmpty() else emptyList()
-                if (!resp.isSuccessful) error = "Failed (${resp.code()})"
+                if (resp.isSuccessful) {
+                    promotions = resp.body()?.promotions.orEmpty()
+                } else if (!silent) {
+                    error = "Failed (${resp.code()})"
+                    promotions = emptyList()
+                }
             } catch (e: Exception) {
-                error = e.message
+                if (!silent) error = e.message
             } finally {
-                loading = false
+                if (!silent) loading = false
             }
         }
     }
 
     LaunchedEffect(Unit) { reload() }
+
+    RealtimeRefreshEffect(
+        refreshTick = realtimeSignals.refreshTick,
+        reconnectTick = realtimeSignals.reconnectTick,
+        onRefresh = { reload(silent = it) },
+    )
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Promotions") }) },
@@ -79,7 +94,7 @@ fun PromotionsScreen(api: SupplierApi) {
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when {
-                loading -> SupplierLoadingState("Loading promotions…", "Supplier promos")
+                showFullScreenLoading(loading, promotions.isNotEmpty()) -> SupplierLoadingState("Loading promotions…", "Supplier promos")
                 error != null -> SupplierStatePane(
                     kind = SupplierStateKind.Error,
                     headline = "Promotions unavailable",

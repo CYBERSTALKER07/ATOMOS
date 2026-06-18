@@ -113,6 +113,8 @@
 			);
 			name = reatilerapp;
 			packageProductDependencies = (
+				RT11FB000000000000000002 /* FirebaseAuth */,
+				RT11FB000000000000000003 /* FirebaseCore */,
 			);
 			productName = reatilerapp;
 			productReference = 2E6B776E2F689E6000F2D3D7 /* reatilerapp.app */;
@@ -197,6 +199,9 @@
 			mainGroup = 2E6B77652F689E6000F2D3D7;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
+			packageReferences = (
+				RT11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			productRefGroup = 2E6B776F2F689E6000F2D3D7 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -594,6 +599,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		RT11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		RT11FB000000000000000002 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = RT11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		RT11FB000000000000000003 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = RT11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2E6B77662F689E6000F2D3D7 /* Project object */;
 }

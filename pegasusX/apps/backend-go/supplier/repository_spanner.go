@@ -318,7 +318,7 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 	result := SupplierTopology{}
 
 	warehouseStmt := spanner.Statement{
-		SQL: `SELECT WarehouseId, Name, Lat, Lng, CoverageRadiusKm, IsActive, IsOnShift,
+		SQL: `SELECT WarehouseId, Name, Lat, Lng, Address, PlaceId, CoverageRadiusKm, IsActive, IsOnShift,
 		      TransferMode, CoLocateWithFactoryId, PrimaryFactoryId,
 		      COALESCE(DefaultOutOfStockPolicy, 'REJECT'), OperatingSchedule,
 		      CreatedAt, UpdatedAt
@@ -340,6 +340,7 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 
 		var node WarehouseNode
 		var lat, lng, coverage spanner.NullFloat64
+		var address, placeID spanner.NullString
 		var transferMode, coLocate, primaryFactory spanner.NullString
 		var policy spanner.NullString
 		var schedule spanner.NullJSON
@@ -348,6 +349,8 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 			&node.Name,
 			&lat,
 			&lng,
+			&address,
+			&placeID,
 			&coverage,
 			&node.IsActive,
 			&node.IsOnShift,
@@ -366,6 +369,12 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		}
 		if lng.Valid {
 			node.Lng = lng.Float64
+		}
+		if address.Valid {
+			node.Address = address.StringVal
+		}
+		if placeID.Valid {
+			node.PlaceID = placeID.StringVal
 		}
 		if coverage.Valid {
 			node.CoverageRadiusKm = coverage.Float64
@@ -393,7 +402,7 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 	}
 
 	factoryStmt := spanner.Statement{
-		SQL: `SELECT FactoryId, Name, Lat, Lng, IsActive, CreatedAt, UpdatedAt
+		SQL: `SELECT FactoryId, Name, Lat, Lng, Address, PlaceId, IsActive, CreatedAt, UpdatedAt
 		      FROM Factories
 		      WHERE SupplierId = @supplierId
 		      ORDER BY FactoryId`,
@@ -412,11 +421,14 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 
 		var node FactoryNode
 		var lat, lng spanner.NullFloat64
+		var address, placeID spanner.NullString
 		if err := row.Columns(
 			&node.FactoryID,
 			&node.Name,
 			&lat,
 			&lng,
+			&address,
+			&placeID,
 			&node.IsActive,
 			&node.CreatedAt,
 			&node.UpdatedAt,
@@ -428,6 +440,12 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		}
 		if lng.Valid {
 			node.Lng = lng.Float64
+		}
+		if address.Valid {
+			node.Address = address.StringVal
+		}
+		if placeID.Valid {
+			node.PlaceID = placeID.StringVal
 		}
 		result.Factories = append(result.Factories, node)
 	}
@@ -857,6 +875,8 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 				"Name":       name,
 				"Lat":        nullableFloat(fc.Lat),
 				"Lng":        nullableFloat(fc.Lng),
+				"Address":    nullableString(strings.TrimSpace(fc.Address)),
+				"PlaceId":    nullableString(strings.TrimSpace(fc.PlaceID)),
 				"IsActive":   fc.IsActive,
 				"CreatedAt":  createdAt,
 				"UpdatedAt":  now,
@@ -887,6 +907,8 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 				"Name":             name,
 				"Lat":              nullableFloat(wh.Lat),
 				"Lng":              nullableFloat(wh.Lng),
+				"Address":          nullableString(strings.TrimSpace(wh.Address)),
+				"PlaceId":          nullableString(strings.TrimSpace(wh.PlaceID)),
 				"CoverageRadiusKm": coverage,
 				"TransferMode":     normalizeTransferMode(wh.TransferMode),
 				"IsActive":         wh.IsActive,

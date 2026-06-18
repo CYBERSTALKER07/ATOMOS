@@ -118,6 +118,8 @@ def require_platform_evidence() -> None:
         "infra/k8s/backend-go/deployment.yaml",
         "infra/k8s/backend-go/configmap.yaml",
         "infra/k8s/backend-go/service.yaml",
+        "infra/k8s/osrm/deployment.yaml",
+        "infra/k8s/osrm/service.yaml",
         "infra/k8s/namespace.yaml",
         "infra/k8s/serviceaccount.yaml",
         "apps/backend-go/Dockerfile",
@@ -145,6 +147,23 @@ def require_platform_evidence() -> None:
             "void_ai_worker_ready",
             "void_kafka_consumer_lag_seconds",
             "google_monitoring_dashboard",
+        ],
+    )
+    require_contains(
+        "infra/k8s/backend-go/configmap.yaml",
+        [
+            'HTTP_PORT: "8080"',
+            "ROUTING_OSRM_URL",
+            "GLOBAL_PAY_ENV",
+            "KAFKA_TOPIC_FREEZE_LOCKS",
+        ],
+    )
+    require_contains(
+        "docs/CLOUD_CREDENTIALS_CHECKLIST.md",
+        [
+            "GLOBAL_PAY_USERNAME",
+            "GLOBAL_PAY_PASSWORD",
+            "Maps SDK for Android",
         ],
     )
     require_contains("infra/docker-compose.ssmr.yml", ["8181", "ai-worker"])

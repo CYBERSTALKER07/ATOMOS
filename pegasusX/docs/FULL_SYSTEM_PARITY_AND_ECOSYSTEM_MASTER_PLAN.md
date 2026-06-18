@@ -213,9 +213,15 @@ See [pegasusx-costed-deployment.mmd](../assets/diagrams/pegasusx-costed-deployme
 
 ## 7. Verification gates
 
+**Green pass** = full ecosystem simulation in Docker SSMR — not health smoke alone. `make test-ssmr-infra` must emit all `PX_E2E_*` markers in [`contracts/ssmr_ecosystem_markers.json`](../contracts/ssmr_ecosystem_markers.json), covering:
+
+- **Configuration** — topology location edit, org-fleet (warehouse admins), fleet CRUD, import wizard, pricing overrides
+- **Order lifecycle** — retailer order → payment → warehouse dispatch → factory supply → payload manifest → driver delivery
+- **Realtime cross-role** — supplier broadcast WS, warehouse `DISPATCH_COMMITTED` WS, Kafka notification inbox, fleet live map, telemetry
+
 ```bash
 cd pegasusX
-make test-ssmr-infra          # __SSMR_OK__ + PX_E2E_*
+make test-ssmr-infra          # __SSMR_OK__ + ecosystem PX_E2E_* gate
 make parity-contract-full
 make gap-hunter-gate
 make validate-launch-readiness

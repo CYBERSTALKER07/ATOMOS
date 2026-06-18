@@ -1,6 +1,8 @@
 package com.pegasusx.supplier.ui.screens.dispatch
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -29,7 +31,9 @@ import kotlinx.coroutines.launch
 fun DispatchPreviewScreen(
     ops: SupplierOperationsRepository,
     realtimeSignals: SupplierRealtimeSignals,
-    onBack: () -> Unit,
+    onBack: () -> Unit = {},
+    embedded: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     var preview by remember { mutableStateOf<SupplierDispatchPreview?>(null) }
     var warehouses by remember { mutableStateOf<List<SupplierTopologyWarehouse>>(emptyList()) }
@@ -73,98 +77,38 @@ fun DispatchPreviewScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Dispatch preview") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        when {
-            loading && preview == null -> SupplierLoadingState("Loading dispatch preview…", "Auto-dispatch snapshot")
-            error != null && preview == null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
-                headline = "Preview unavailable",
-                body = error!!,
-                modifier = Modifier.padding(padding),
-                actionLabel = "Retry",
-                onAction = { load() },
-            )
-            else -> Column(
-                modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                if (warehouses.isNotEmpty()) {
-                    Text("Warehouse scope", style = MaterialTheme.typography.titleSmall)
-                    warehouses.forEach { wh ->
-                        FilterChip(
-                            selected = selectedWarehouseId == wh.warehouseId,
-                            onClick = {
-                                selectedWarehouseId = if (selectedWarehouseId == wh.warehouseId) null else wh.warehouseId
-                            },
-                            label = { Text(wh.name.ifBlank { wh.warehouseId }) },
-                        )
-                    }
-                }
-                preview?.let { p ->
-                    ElevatedCard(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                            Text("Pending orders", style = MaterialTheme.typography.titleMedium)
-                            Text("${p.pendingCount}", style = MaterialTheme.typography.headlineMedium)
-                            Text("Available drivers: ${p.availableDriverCount}", style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                "Undispatched bucket: ${p.undispatchedOrders.size}",
-                                style = MaterialTheme.typography.bodySmall,
-                            )
+    val body: @Composable (Modifier) -> Unit = { contentModifier ->
+        DispatchPreviewBody(
+            modifier = contentModifier,
+            loading = loading,
+            error = error,
+            warehouses = warehouses,
+            selectedWarehouseId = selectedWarehouseId,
+            onWarehouseSelected = { selectedWarehouseId = it },
+            preview = preview,
+            executeMessage = executeMessage,
+            executing = executing,
+            onRefresh = { load() },
+            onExecute = { showExecuteConfirm = true },
+        )
+    }
+
+    if (embedded) {
+        body(modifier.fillMaxSize())
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Dispatch") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
-                    }
-                    if (p.proposedRoutes.isNotEmpty()) {
-                        Text("Smart suggest route map", style = MaterialTheme.typography.titleSmall)
-                        p.optimizerSource?.takeIf { it.isNotBlank() }?.let { source ->
-                            Text(
-                                "Source: $source",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        DispatchPreviewMapLibre(
-                            routes = p.proposedRoutes,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(320.dp),
-                        )
-                        p.proposedRoutes.forEachIndexed { index, route ->
-                            val label = route.driverName?.takeIf { it.isNotBlank() }
-                                ?: route.driverId?.takeIf { it.isNotBlank() }
-                                ?: "Route ${index + 1}"
-                            val stops = route.stopCount ?: route.orderIds.size
-                            Text(
-                                "$label · $stops stops",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-                executeMessage?.let { msg ->
-                    Text(msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                }
-                Button(
-                    onClick = { showExecuteConfirm = true },
-                    enabled = !loading && !executing && preview != null,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text(if (executing) "Executing…" else "Execute auto-dispatch") }
-                OutlinedButton(onClick = { load() }, enabled = !loading) { Text("Refresh preview") }
-            }
+                    },
+                )
+            },
+        ) { padding ->
+            body(Modifier.padding(padding))
         }
     }
 
@@ -216,5 +160,112 @@ fun DispatchPreviewScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun DispatchPreviewBody(
+    modifier: Modifier,
+    loading: Boolean,
+    error: String?,
+    warehouses: List<SupplierTopologyWarehouse>,
+    selectedWarehouseId: String?,
+    onWarehouseSelected: (String?) -> Unit,
+    preview: SupplierDispatchPreview?,
+    executeMessage: String?,
+    executing: Boolean,
+    onRefresh: () -> Unit,
+    onExecute: () -> Unit,
+) {
+    when {
+        loading && preview == null -> SupplierLoadingState("Loading dispatch preview…", "Auto-dispatch snapshot", modifier)
+        error != null && preview == null -> SupplierStatePane(
+            kind = SupplierStateKind.Error,
+            headline = "Preview unavailable",
+            body = error,
+            modifier = modifier,
+            actionLabel = "Retry",
+            onAction = onRefresh,
+        )
+        else -> Column(
+            modifier = modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+        ) {
+            if (warehouses.isNotEmpty()) {
+                Text("Warehouse scope", style = MaterialTheme.typography.titleSmall)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                    items(warehouses, key = { it.warehouseId }) { wh ->
+                        FilterChip(
+                            selected = selectedWarehouseId == wh.warehouseId,
+                            onClick = {
+                                onWarehouseSelected(
+                                    if (selectedWarehouseId == wh.warehouseId) null else wh.warehouseId,
+                                )
+                            },
+                            label = { Text(wh.name.ifBlank { wh.warehouseId }) },
+                        )
+                    }
+                }
+            }
+            preview?.let { p ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                ) {
+                    KpiCard("Pending", "${p.pendingCount}", Modifier.weight(1f))
+                    KpiCard("Drivers", "${p.availableDriverCount}", Modifier.weight(1f))
+                    KpiCard("Undispatched", "${p.undispatchedOrders.size}", Modifier.weight(1f))
+                }
+                if (p.proposedRoutes.isNotEmpty()) {
+                    Text("Route map", style = MaterialTheme.typography.titleSmall)
+                    p.optimizerSource?.takeIf { it.isNotBlank() }?.let { source ->
+                        Text(
+                            "Source: $source",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    DispatchPreviewMapLibre(
+                        routes = p.proposedRoutes,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(320.dp),
+                    )
+                    p.proposedRoutes.forEachIndexed { index, route ->
+                        val label = route.driverName?.takeIf { it.isNotBlank() }
+                            ?: route.driverId?.takeIf { it.isNotBlank() }
+                            ?: "Route ${index + 1}"
+                        val stops = route.stopCount ?: route.orderIds.size
+                        Text(
+                            "$label · $stops stops",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            executeMessage?.let { msg ->
+                Text(msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            }
+            Button(
+                onClick = onExecute,
+                enabled = !loading && !executing && preview != null,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(if (executing) "Executing…" else "Execute auto-dispatch") }
+            OutlinedButton(onClick = onRefresh, enabled = !loading) { Text("Refresh preview") }
+        }
+    }
+}
+
+@Composable
+private fun KpiCard(label: String, value: String, modifier: Modifier = Modifier) {
+    ElevatedCard(modifier) {
+        Column(Modifier.padding(PegasusSpacing.md)) {
+            Text(label, style = MaterialTheme.typography.labelMedium)
+            Text(value, style = MaterialTheme.typography.headlineSmall)
+        }
     }
 }

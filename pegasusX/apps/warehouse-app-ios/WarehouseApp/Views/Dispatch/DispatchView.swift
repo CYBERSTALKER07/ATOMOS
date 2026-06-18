@@ -60,12 +60,12 @@ struct DispatchView: View {
     @ViewBuilder
     private var dispatchBody: some View {
         Group {
-            if loading {
+            if loading && preview == nil {
                 WarehouseLoadingView(
                     title: "Loading dispatch",
                     message: "Fetching orders, drivers, supply requests, and locks."
                 )
-            } else if let error {
+            } else if let error, preview == nil {
                 WarehouseErrorView(message: error) { load() }
             } else if let preview {
                 dispatchContent(preview: preview)
@@ -88,7 +88,10 @@ struct DispatchView: View {
             load()
             connectRealtime()
         }
-        .refreshable { load() }
+        .refreshable { load(silent: false) }
+        .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
+            load(silent: silent)
+        }
         .onDisappear { realtimeClient.disconnect() }
         .onChange(of: scenePhase) { phase in
             switch phase {
@@ -108,9 +111,6 @@ struct DispatchView: View {
                     message: "Verify dispatch status before retrying."
                 )
             }
-        }
-        .onChange(of: realtimeHub.refreshEpoch) { _, _ in
-            Task { await refreshDispatchRealtime() }
         }
     }
 
@@ -200,11 +200,6 @@ struct DispatchView: View {
             } message: {
                 Text("This freezes auto-dispatch changes until the lock is released.")
             }
-    }
-
-    private func refreshDispatchRealtime() async {
-        await reloadFleetVehicles()
-        await reloadDispatchPreview()
     }
 
     @ViewBuilder
@@ -580,8 +575,8 @@ struct DispatchView: View {
         })
     }
 
-    private func load() {
-        loading = true
+    private func load(silent: Bool = false) {
+        if !silent { loading = true }
         error = nil
         Task {
             do {
@@ -594,9 +589,9 @@ struct DispatchView: View {
                 dispatchLocks = try await lockData
                 fleetVehicles = try await fleetData.vehicles
             } catch {
-                self.error = describe(error, fallback: "Failed to load dispatch data")
+                if !silent { self.error = describe(error, fallback: "Failed to load dispatch data") }
             }
-            loading = false
+            if !silent { loading = false }
         }
     }
 

@@ -14,17 +14,6 @@ struct MoreHubView: View {
                     Label("Fleet orders", systemImage: "truck.box")
                 }
             }
-            Section("Exceptions") {
-                NavigationLink { ExceptionsView() } label: {
-                    Label("Exceptions", systemImage: "exclamationmark.triangle")
-                }
-                NavigationLink { ShopClosedView() } label: {
-                    Label("Shop closed", systemImage: "storefront")
-                }
-                NavigationLink { EarlyCompleteView() } label: {
-                    Label("Early route complete", systemImage: "checkmark.circle")
-                }
-            }
             Section("Insights") {
                 NavigationLink { AnalyticsView() } label: {
                     Label("Analytics", systemImage: "chart.bar")

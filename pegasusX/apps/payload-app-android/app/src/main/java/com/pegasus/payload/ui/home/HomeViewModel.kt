@@ -144,7 +144,7 @@ class HomeViewModel @Inject constructor(
                 viewModelScope.launch {
                     runCatching { repository.reconcileSession(BuildConfig.API_BASE_URL) }
                     recoverInFlightMutations()
-                    refreshTrucks()
+                    refreshTrucks(silent = _state.value.trucks.isNotEmpty())
                     refreshManifest()
                     loadNotifications()
                     flushQueueAndNotify()
@@ -261,18 +261,25 @@ class HomeViewModel @Inject constructor(
     fun clearQueuedNoticeMessage() { _state.update { it.copy(queuedNoticeMessage = null) } }
 
     // ── Truck list ──────────────────────────────────────────────────────────
-    fun refreshTrucks() {
-        _state.update { it.copy(loadingTrucks = true, error = null) }
+    fun refreshTrucks(silent: Boolean = false) {
+        if (!silent) {
+            _state.update { it.copy(loadingTrucks = true, error = null) }
+        }
         viewModelScope.launch {
             runCatching { repository.loadTrucks() }
                 .onSuccess { trucks ->
-                    _state.update { it.copy(trucks = trucks, loadingTrucks = false) }
+                    _state.update { it.copy(trucks = trucks, loadingTrucks = if (silent) it.loadingTrucks else false) }
                     if (_state.value.selectedTruckId == null) {
                         trucks.firstOrNull()?.id?.let { selectTruck(it) }
                     }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(loadingTrucks = false, error = e.message ?: "Failed to load vehicles") }
+                    _state.update { state ->
+                        state.copy(
+                            loadingTrucks = if (silent) state.loadingTrucks else false,
+                            error = if (silent) state.error else (e.message ?: "Failed to load vehicles"),
+                        )
+                    }
                 }
         }
     }

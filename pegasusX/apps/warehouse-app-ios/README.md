@@ -42,3 +42,7 @@ Compact tabs: Dashboard · Orders · Dispatch · More.
 Notifications opens **NotificationInboxView** (native), not a portal handoff.
 
 WebSocket: `GET /v1/ws?token=…` (warehouse-scoped rooms).
+
+## Realtime refresh contract
+
+Use `load(silent:)` + `.silentRealtimeRefresh` (`packages/mobile-ios-design`) on list screens. No tab/shell `.id(refreshEpoch)` remounts. Full-screen loading only when `loading && items.isEmpty`. See `pegasusX/docs/ROLE_ROW_PARITY_MATRIX.md`.

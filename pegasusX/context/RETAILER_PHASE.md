@@ -173,4 +173,10 @@ cd pegasusX/apps/retailer-app-android && ./gradlew compileDebugKotlin
 - Card tokenization Spanner persistence may return stub/503 on some stacks — clients show honest errors.
 - Quantity negotiation disabled ecosystem-wide (`PX_E2E_NEGOTIATION_SKIPPED`).
 - B2B checkout / dock-only payment flows remain desktop-primary; mobile uses handoff copy where applicable.
-- Full Firebase phone OTP not implemented — custom-token scaffold only.
+- Firebase custom-token exchange wired on iOS (SPM); phone OTP optional future pass.
+
+---
+
+## Enterprise production readiness (2026-06-18)
+
+**Row status:** `PROD_CANDIDATE` — unified checkout + Global Pay redirect, tracking WS, receiving window on profile, retailer iOS Firebase SPM integrated. Enable **Maps SDK for Android** API key for location picker.

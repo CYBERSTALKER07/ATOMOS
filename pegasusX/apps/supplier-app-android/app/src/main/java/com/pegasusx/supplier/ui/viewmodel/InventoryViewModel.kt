@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pegasusx.supplier.data.model.InventoryItem
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,30 +28,47 @@ data class InventoryUiState(
 class InventoryViewModel @Inject constructor(
     private val api: SupplierApi,
     private val ops: SupplierOperationsRepository,
+    private val realtimeSignals: SupplierRealtimeSignals,
 ) : ViewModel() {
     private val _state = MutableStateFlow(InventoryUiState())
     val state: StateFlow<InventoryUiState> = _state.asStateFlow()
 
     init {
         load()
+        viewModelScope.launch {
+            realtimeSignals.refreshTick.collect { load(silent = true) }
+        }
+        viewModelScope.launch {
+            realtimeSignals.reconnectTick.collect { load(silent = true) }
+        }
     }
 
-    fun load() {
+    fun load(silent: Boolean = false) {
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, error = null) }
+            if (!silent) {
+                _state.update { it.copy(loading = true, error = null) }
+            } else {
+                _state.update { it.copy(error = null) }
+            }
             try {
                 val resp = api.getInventory()
                 if (resp.isSuccessful) {
                     _state.update {
                         it.copy(items = resp.body()?.items.orEmpty(), loading = false)
                     }
-                } else {
+                } else if (!silent) {
                     _state.update {
                         it.copy(error = "Failed (${resp.code()})", loading = false)
                     }
+                } else {
+                    _state.update { it.copy(loading = false) }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(error = e.message, loading = false) }
+                if (!silent) {
+                    _state.update { it.copy(error = e.message, loading = false) }
+                } else {
+                    _state.update { it.copy(loading = false) }
+                }
             }
         }
     }

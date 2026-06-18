@@ -41,3 +41,23 @@ On tablet width, navigation uses the shared **collapsible icon rail** (88dp coll
 Compact tabs: Dashboard · Orders · Dispatch · More (secondary routes).
 
 Notifications opens the **native** `NotificationInboxScreen`, not a portal handoff.
+
+## Realtime refresh contract
+
+Native clients do **not** consume Kafka. Operational events flow: backend Kafka → WebSocket hub → `WarehouseRealtimeSignals.refreshTick` → per-screen `load(silent = true)`.
+
+- **No destructive remounts** — never wrap `NavHost` or routes in `key(refreshEpoch)`.
+- **Stale-while-revalidate** — `load(silent: true)` skips `loading = true` when list data already exists.
+- **Full-screen loading** — only on cold start (`loading && items.isEmpty()`); use `com.pegasus.design.showFullScreenLoading`.
+- **Shared helper** — `RealtimeRefreshEffect(refreshTick) { silent -> load(silent) }` in `packages/mobile-android-design`.
+
+### Manual test matrix
+
+| Scenario | Expected |
+| --- | --- |
+| Rapid tab switch | No flash to empty/loading |
+| Background 10s → foreground | Data refreshes without full skeleton |
+| WS event (place order) | List updates in place |
+| Pull-to-refresh | Normal loading indicator OK |
+| Cold first visit | Full loading skeleton OK |
+

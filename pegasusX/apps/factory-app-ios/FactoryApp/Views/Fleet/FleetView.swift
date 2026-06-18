@@ -9,7 +9,7 @@ struct FleetView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if loading {
+                if loading && vehicles.isEmpty {
                     FactoryLoadingView(
                         title: "Loading fleet",
                         message: "Fetching registered vehicles and assignment status."
@@ -75,7 +75,7 @@ struct FleetView: View {
                     onEvent: { event in
                         guard let eventType = event.eventType else { return }
                         guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
-                        load()
+                        load(silent: true)
                     }
                 )
             }
@@ -85,8 +85,10 @@ struct FleetView: View {
         }
     }
 
-    private func load() {
-        loading = true
+    private func load(silent: Bool = false) {
+        if !silent {
+            loading = true
+        }
         error = nil
         Task {
             do {
@@ -94,7 +96,9 @@ struct FleetView: View {
             } catch {
                 self.error = error.localizedDescription
             }
-            loading = false
+            if !silent {
+                loading = false
+            }
         }
     }
 }

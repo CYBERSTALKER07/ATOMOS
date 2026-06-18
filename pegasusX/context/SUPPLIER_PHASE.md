@@ -2,7 +2,7 @@
 
 **Scope:** pegasusX only · **Reference:** pegasus `admin-portal` (read-only)  
 **Parent plan:** `VEGETABLE_PLAN.md` §2.1  
-**Last updated:** 2026-06-15 (ecosystem parity pass)
+**Last updated:** 2026-06-18 (enterprise production readiness — **PROD_CANDIDATE** core flows)
 
 ## Status model
 
@@ -197,3 +197,9 @@ cd pegasusX && make parity-contract-full
 | NI-07 | Retailer price override inbox | `handleRetailerPriceOverride` + `FormatRetailerPriceOverride` | retailer inbox | native inbox read paths | **E2E_SSMR_GREEN** | SSMR asserts `RETAILER_PRICE_OVERRIDE` after supplier override create |
 
 **Note:** `notification_dispatcher.go` already fans out `SHOP_CLOSED*` and `DRIVER_CREATED` to WS + inbox — NI-05 adds operator-grade titles/deep links (not a new consumer). NI-06 covers remaining manifest lifecycle events (`MANIFEST_DRAFT_CREATED` through `MANIFEST_COMPLETED`) with `/manifests/{id}` or `/manifest-exceptions` deep links.
+
+---
+
+## Enterprise production readiness (2026-06-18)
+
+**Row status:** `PROD_CANDIDATE` — idempotency on dispatch execute, WS stale-while-revalidate, treasury native parity, topology PUT create UX, Global Pay circuit breaker on backend checkout path. Boss must provision Global Pay.UZ credentials and GCS bucket per `docs/CLOUD_CREDENTIALS_CHECKLIST.md`.

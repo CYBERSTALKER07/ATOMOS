@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/gorilla/websocket"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -56,6 +58,15 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 
 	if err := putSupplierTopology(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("supplier topology: %w", err)
+	}
+	if err := runSupplierTopologyEditE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("supplier topology edit: %w", err)
+	}
+	if err := runSupplierOrgFleetE2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("supplier org fleet: %w", err)
+	}
+	if err := runCrossRoleSupplierBroadcastWS(ctx, client, base, cookie, cfg, supplierID); err != nil {
+		return fmt.Errorf("cross-role supplier broadcast ws: %w", err)
 	}
 
 	retailerID, h3Cell, err := registerRetailer(ctx, client, base, cfg)
@@ -157,7 +168,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runDispatchCapacityE2E(ctx, client, base, cookie, orderID, fleetDriverID, fleetVehicleID); err != nil {
 		return fmt.Errorf("dispatch capacity: %w", err)
 	}
-	dispatchHint, err := runWarehouseDispatchExecute(ctx, client, base, cookie, orderID)
+	dispatchHint, err := runWarehouseDispatchExecuteWithWS(ctx, client, base, cookie, orderID, cfg, supplierID)
 	if err != nil {
 		return fmt.Errorf("warehouse dispatch execute: %w", err)
 	}
@@ -3646,6 +3657,240 @@ func putSupplierTopology(ctx context.Context, client *http.Client, base, cookie 
 		return fmt.Errorf("topology status %d body %s", status, string(respBody))
 	}
 	return nil
+}
+
+// runSupplierTopologyEditE2E verifies GET → PUT location edit → GET round-trip for warehouses and factories.
+func runSupplierTopologyEditE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config) error {
+	status, respBody, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/supplier/topology", nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("topology get status %d body %s", status, string(respBody))
+	}
+	var current struct {
+		Warehouses []map[string]any `json:"warehouses"`
+		Factories  []map[string]any `json:"factories"`
+	}
+	if err := json.Unmarshal(respBody, &current); err != nil {
+		return fmt.Errorf("decode topology get: %w", err)
+	}
+	if len(current.Warehouses) == 0 || len(current.Factories) == 0 {
+		return fmt.Errorf("topology get missing warehouses or factories: %s", string(respBody))
+	}
+
+	newWhLat := cfg.DeliveryZoneCenterLat + 0.002
+	newWhLng := cfg.DeliveryZoneCenterLng + 0.002
+	newFcLat := cfg.DeliveryZoneCenterLat + 0.012
+	newFcLng := cfg.DeliveryZoneCenterLng + 0.012
+	current.Warehouses[0]["lat"] = newWhLat
+	current.Warehouses[0]["lng"] = newWhLng
+	current.Factories[0]["lat"] = newFcLat
+	current.Factories[0]["lng"] = newFcLng
+
+	putBody, _ := json.Marshal(map[string]any{
+		"warehouses": current.Warehouses,
+		"factories":  current.Factories,
+	})
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPut, base+"/v1/supplier/topology", putBody, cookie, "ssmr-topology-edit")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("topology edit put status %d body %s", status, string(respBody))
+	}
+
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/supplier/topology", nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("topology get after edit status %d body %s", status, string(respBody))
+	}
+	var updated struct {
+		Warehouses []struct {
+			Lat float64 `json:"lat"`
+			Lng float64 `json:"lng"`
+		} `json:"warehouses"`
+		Factories []struct {
+			Lat float64 `json:"lat"`
+			Lng float64 `json:"lng"`
+		} `json:"factories"`
+	}
+	if err := json.Unmarshal(respBody, &updated); err != nil {
+		return fmt.Errorf("decode topology after edit: %w", err)
+	}
+	if len(updated.Warehouses) == 0 || len(updated.Factories) == 0 {
+		return fmt.Errorf("topology after edit empty: %s", string(respBody))
+	}
+	if updated.Warehouses[0].Lat != newWhLat || updated.Warehouses[0].Lng != newWhLng {
+		return fmt.Errorf("warehouse location not persisted: got lat=%v lng=%v want lat=%v lng=%v",
+			updated.Warehouses[0].Lat, updated.Warehouses[0].Lng, newWhLat, newWhLng)
+	}
+	if updated.Factories[0].Lat != newFcLat || updated.Factories[0].Lng != newFcLng {
+		return fmt.Errorf("factory location not persisted: got lat=%v lng=%v want lat=%v lng=%v",
+			updated.Factories[0].Lat, updated.Factories[0].Lng, newFcLat, newFcLng)
+	}
+	fmt.Println("PX_E2E_TOPOLOGY_EDIT_OK")
+	return nil
+}
+
+// runSupplierOrgFleetE2E seeds a warehouse admin via org-fleet (drivers/trucks use fleet routes separately).
+func runSupplierOrgFleetE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	whID := demoWarehouseID()
+	phone := fmt.Sprintf("+9989010%05d", time.Now().UnixNano()%100000)
+	memberBody, _ := json.Marshal(map[string]any{
+		"name":                  "SSMR Warehouse Admin",
+		"phone":                 phone,
+		"password":              "ssmr-wh-admin-pass",
+		"supplier_role":         "WAREHOUSE_ADMIN",
+		"assigned_warehouse_id": whID,
+	})
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/supplier/org/members", memberBody, cookie, "ssmr-org-member")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated && status != http.StatusOK && status != http.StatusConflict {
+		return fmt.Errorf("org member create status %d body %s", status, string(respBody))
+	}
+
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/supplier/org/members", nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("org members list status %d body %s", status, string(respBody))
+	}
+	if !strings.Contains(string(respBody), phone) && status != http.StatusConflict {
+		return fmt.Errorf("org members missing created phone %s: %s", phone, string(respBody))
+	}
+	fmt.Println("PX_E2E_ORG_FLEET_OK")
+	return nil
+}
+
+func issueRoleJWT(cfg *bootstrap.Config, claims auth.Claims) (string, error) {
+	return auth.Issue(claims, auth.IssueOptions{
+		Secret: cfg.JWTSecret,
+		Issuer: cfg.JWTIssuer,
+		TTL:    30 * time.Minute,
+	})
+}
+
+func wsURL(base, token string) string {
+	root := strings.TrimRight(base, "/")
+	root = strings.Replace(root, "https://", "wss://", 1)
+	root = strings.Replace(root, "http://", "ws://", 1)
+	return root + "/v1/ws?token=" + url.QueryEscape(token)
+}
+
+func waitForWSMessage(ctx context.Context, conn *websocket.Conn, want ...string) error {
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		if err := conn.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+			return err
+		}
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			if ne, ok := err.(interface{ Timeout() bool }); ok && ne.Timeout() {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				default:
+					continue
+				}
+			}
+			return err
+		}
+		text := string(msg)
+		matched := 0
+		for _, needle := range want {
+			if strings.Contains(text, needle) {
+				matched++
+			}
+		}
+		if matched == len(want) {
+			return nil
+		}
+	}
+	return fmt.Errorf("ws message not received within window; want %v", want)
+}
+
+// runCrossRoleSupplierBroadcastWS verifies supplier-scoped WS fan-out (ops broadcast path).
+func runCrossRoleSupplierBroadcastWS(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config, supplierID string) error {
+	adminToken, err := issueRoleJWT(cfg, auth.Claims{
+		Subject:    "ssmr-supplier-admin",
+		Role:       auth.RoleAdmin,
+		SupplierID: supplierID,
+	})
+	if err != nil {
+		return fmt.Errorf("issue supplier admin jwt: %w", err)
+	}
+	conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL(base, adminToken), nil)
+	if err != nil {
+		return fmt.Errorf("supplier ws dial: %w", err)
+	}
+	defer conn.Close()
+
+	probe := fmt.Sprintf("SSMR_WS_PROBE_%d", time.Now().UnixNano())
+	broadcastPayload, _ := json.Marshal(map[string]string{
+		"title": probe,
+		"body":  "cross-role realtime probe",
+		"role":  "ALL",
+	})
+	go func() {
+		_, _, _, _ = clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/broadcast", broadcastPayload, cookie, "application/json")
+	}()
+	if err := waitForWSMessage(ctx, conn, "SUPPLIER_BROADCAST", probe); err != nil {
+		return fmt.Errorf("supplier broadcast ws: %w", err)
+	}
+	fmt.Println("PX_E2E_CROSS_ROLE_WS_OK")
+	return nil
+}
+
+// runWarehouseDispatchExecuteWithWS runs dispatch execute while a warehouse admin WS client listens for DISPATCH_COMMITTED.
+func runWarehouseDispatchExecuteWithWS(ctx context.Context, client *http.Client, base, supplierCookie, orderID string, cfg *bootstrap.Config, supplierID string) (*dispatchManifestHint, error) {
+	whID := demoWarehouseID()
+	whToken, err := issueRoleJWT(cfg, auth.Claims{
+		Subject:      "ssmr-wh-admin-ws",
+		Role:         auth.RoleWarehouseAdmin,
+		SupplierID:   supplierID,
+		SupplierRole: auth.RoleWarehouseAdmin,
+		HomeNodeID:   whID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("issue warehouse admin jwt: %w", err)
+	}
+	conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL(base, whToken), nil)
+	if err != nil {
+		return nil, fmt.Errorf("warehouse ws dial: %w", err)
+	}
+	defer conn.Close()
+
+	wsErrCh := make(chan error, 1)
+	go func() {
+		wsErrCh <- waitForWSMessage(ctx, conn, "DISPATCH_COMMITTED")
+	}()
+
+	hint, err := runWarehouseDispatchExecute(ctx, client, base, supplierCookie, orderID)
+	if err != nil {
+		return nil, err
+	}
+	if hint == nil {
+		// no_op path — no realtime dispatch frame expected.
+		return hint, nil
+	}
+	select {
+	case wsErr := <-wsErrCh:
+		if wsErr != nil {
+			return nil, wsErr
+		}
+		fmt.Println("PX_E2E_CROSS_ROLE_DISPATCH_WS_OK")
+		return hint, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(25 * time.Second):
+		return nil, fmt.Errorf("warehouse dispatch ws: timed out waiting for DISPATCH_COMMITTED")
+	}
 }
 
 func registerRetailer(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config) (string, string, error) {

@@ -119,7 +119,6 @@ fun DriverNavigation(
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
     val outdatedState by driverWebSocket.outdatedState.collectAsState()
-    var refreshEpoch by remember { mutableIntStateOf(0) }
     var networkAvailable by remember { mutableStateOf(true) }
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -156,7 +155,7 @@ fun DriverNavigation(
         }
     }
 
-    LaunchedEffect(refreshEpoch) {
+    LaunchedEffect(Unit) {
         loadClientPolicy()
     }
 
@@ -171,7 +170,6 @@ fun DriverNavigation(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                refreshEpoch += 1
                 connectDriverSocketIfPossible(driverWebSocket)
             }
         }
@@ -191,7 +189,6 @@ fun DriverNavigation(
             override fun onAvailable(network: Network) {
                 mainHandler.post {
                     if (!networkAvailable) {
-                        refreshEpoch += 1
                         OfflineSyncScheduler.enqueue(context)
                     }
                     networkAvailable = true
@@ -212,7 +209,6 @@ fun DriverNavigation(
     Column(modifier = Modifier.fillMaxSize()) {
         ClientPolicyBanner(clientPolicyMessage)
         Box(modifier = Modifier.weight(1f)) {
-        key(refreshEpoch) {
             NavHost(
                 navController = navController,
                 startDestination = startDest,
@@ -420,7 +416,6 @@ fun DriverNavigation(
                 }
             )
         }
-            }
         }
 
         if (TokenHolder.token != null && outdatedState != null) {
@@ -436,7 +431,6 @@ fun DriverNavigation(
                     }
                 }
             )
-        }
         }
     }
 }

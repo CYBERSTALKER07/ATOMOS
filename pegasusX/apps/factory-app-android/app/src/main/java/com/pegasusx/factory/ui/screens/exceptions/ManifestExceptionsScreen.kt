@@ -56,8 +56,10 @@ fun ManifestExceptionsScreen(
     var escalatedOnly by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
-        loading = true
+    fun load(silent: Boolean = false) {
+        if (!silent) {
+            loading = true
+        }
         error = null
         scope.launch {
             try {
@@ -72,7 +74,9 @@ fun ManifestExceptionsScreen(
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) {
+                    loading = false
+                }
             }
         }
     }
@@ -85,7 +89,7 @@ fun ManifestExceptionsScreen(
             FactoryRealtimeEventType.TransferUpdate,
         ),
     ) {
-        load()
+        load(silent = true)
     }
 
     Scaffold(
@@ -106,7 +110,7 @@ fun ManifestExceptionsScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> FactoryLoadingState(
+            loading && exceptions.isEmpty() -> FactoryLoadingState(
                 title = "Loading exceptions",
                 body = "Fetching transfers removed from manifests during loading.",
                 modifier = Modifier

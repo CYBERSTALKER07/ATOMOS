@@ -20,15 +20,10 @@ import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -88,6 +83,11 @@ object FactoryRoutes {
 
 private const val MOTION_DURATION = 300
 
+private val compactTabRoutes = FactorySection.compactTabs
+    .filter { it != FactorySection.MORE }
+    .map { it.route }
+    .toSet()
+
 @Composable
 fun FactoryNavigation(
     api: FactoryApi,
@@ -95,9 +95,7 @@ fun FactoryNavigation(
     navController: NavHostController = rememberNavController(),
 ) {
     val startDestination = if (TokenHolder.isLoggedIn) FactoryRoutes.DASHBOARD else FactoryRoutes.LOGIN
-    val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
-    var refreshEpoch by remember { mutableIntStateOf(0) }
     var networkAvailable by remember { mutableStateOf(true) }
     val useDrawer = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
     var isRailExpanded by remember { mutableStateOf(true) }
@@ -113,15 +111,30 @@ fun FactoryNavigation(
         }
     }
 
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                refreshEpoch += 1
-            }
+    fun popOrDashboard() {
+        if (!navController.popBackStack()) {
+            navigateSection(FactorySection.DASHBOARD)
         }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
+    }
+
+    fun showBack(route: String): Boolean {
+        if (route.contains("{")) return true
+        if (useDrawer) return navController.previousBackStackEntry != null
+        if (route == FactoryRoutes.TRANSFER_CREATE) return true
+        val base = route.substringBefore("/")
+        if (base in compactTabRoutes && route == base) return false
+        return navController.previousBackStackEntry != null
+    }
+
+    fun backFor(route: String): (() -> Unit)? =
+        if (showBack(route)) ({ popOrDashboard() }) else null
+
+    fun requireBack(route: String): () -> Unit = backFor(route) ?: { popOrDashboard() }
+
+    fun signOut() {
+        TokenHolder.clear()
+        navController.navigate(FactoryRoutes.LOGIN) {
+            popUpTo(0) { inclusive = true }
         }
     }
 
@@ -134,9 +147,7 @@ fun FactoryNavigation(
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 mainHandler.post {
-                    if (!networkAvailable) {
-                        refreshEpoch += 1
-                    }
+                    if (!networkAvailable) { /* per-screen refresh */ }
                     networkAvailable = true
                 }
             }
@@ -152,9 +163,8 @@ fun FactoryNavigation(
         }
     }
 
-    key(refreshEpoch) {
-        val navHost: @Composable (Modifier) -> Unit = { modifier ->
-            NavHost(
+    val navHost: @Composable (Modifier) -> Unit = { modifier ->
+        NavHost(
                 navController = navController,
                 startDestination = startDestination,
                 modifier = modifier,
@@ -186,12 +196,7 @@ fun FactoryNavigation(
                 DashboardScreen(
                     api = api,
                     onNavigate = { route -> navController.navigate(route) },
-                    onSignOut = {
-                        TokenHolder.clear()
-                        navController.navigate(FactoryRoutes.LOGIN) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    }
+                    onSignOut = { signOut() }
                 )
             }
 
@@ -199,7 +204,7 @@ fun FactoryNavigation(
                 LoadingBayScreen(
                     api = api,
                     onTransferClick = { id -> navController.navigate(FactoryRoutes.transferDetail(id)) },
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.LOADING_BAY),
                 )
             }
 
@@ -208,14 +213,14 @@ fun FactoryNavigation(
                     api = api,
                     onTransferClick = { id -> navController.navigate(FactoryRoutes.transferDetail(id)) },
                     onCreateTransfer = { navController.navigate(FactoryRoutes.TRANSFER_CREATE) },
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.TRANSFERS),
                 )
             }
 
             composable(FactoryRoutes.TRANSFER_CREATE) {
                 CreateTransferScreen(
                     api = api,
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.TRANSFER_CREATE),
                     onCreated = { id ->
                         navController.navigate(FactoryRoutes.transferDetail(id)) {
                             popUpTo(FactoryRoutes.TRANSFER_CREATE) { inclusive = true }
@@ -232,14 +237,14 @@ fun FactoryNavigation(
                 TransferDetailScreen(
                     api = api,
                     transferId = id,
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.TRANSFER_DETAIL),
                 )
             }
 
             composable(FactoryRoutes.FLEET) {
                 FleetScreen(
                     api = api,
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.FLEET),
                 )
             }
 
@@ -247,7 +252,7 @@ fun FactoryNavigation(
                 StaffScreen(
                     api = api,
                     onStaffClick = { id -> navController.navigate(FactoryRoutes.staffDetail(id)) },
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.STAFF),
                 )
             }
 
@@ -259,7 +264,7 @@ fun FactoryNavigation(
                 StaffDetailScreen(
                     api = api,
                     staffId = id,
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.STAFF_DETAIL),
                 )
             }
 
@@ -267,7 +272,7 @@ fun FactoryNavigation(
                 ManifestListScreen(
                     api = api,
                     onManifestClick = { id -> navController.navigate(FactoryRoutes.manifestDetail(id)) },
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.MANIFESTS),
                 )
             }
 
@@ -279,49 +284,49 @@ fun FactoryNavigation(
                 ManifestDetailScreen(
                     api = api,
                     manifestId = id,
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.MANIFEST_DETAIL),
                 )
             }
 
             composable(FactoryRoutes.INSIGHTS) {
                 InsightsScreen(
                     api = api,
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.INSIGHTS),
                 )
             }
 
             composable(FactoryRoutes.ANALYTICS) {
                 AnalyticsScreen(
                     api = api,
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.ANALYTICS),
                 )
             }
 
             composable(FactoryRoutes.SUPPLY_REQUESTS) {
                 SupplyRequestsScreen(
                     api = api,
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.SUPPLY_REQUESTS),
                 )
             }
 
             composable(FactoryRoutes.PAYLOAD_OVERRIDE) {
                 PayloadOverrideScreen(
                     api = api,
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.PAYLOAD_OVERRIDE),
                 )
             }
 
             composable(FactoryRoutes.MANIFEST_EXCEPTIONS) {
                 ManifestExceptionsScreen(
                     api = api,
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.MANIFEST_EXCEPTIONS),
                 )
             }
 
             composable(FactoryRoutes.NOTIFICATIONS) {
                 NotificationInboxScreen(
                     api = api,
-                    onBack = { navController.popBackStack() },
+                    onBack = requireBack(FactoryRoutes.NOTIFICATIONS),
                 )
             }
 
@@ -330,17 +335,18 @@ fun FactoryNavigation(
                     onNavigate = { route -> navController.navigate(route) },
                 )
             }
-            }
         }
+    }
 
-        if (showShell) {
-            Row(Modifier.fillMaxSize()) {
+    if (showShell) {
+        Row(Modifier.fillMaxSize()) {
                 if (useDrawer) {
                     FactoryNavigationDrawer(
                         isExpanded = isRailExpanded,
                         onToggleExpanded = { isRailExpanded = !isRailExpanded },
                         selectedRoute = currentRoute,
                         onSectionSelected = ::navigateSection,
+                        onSignOut = { signOut() },
                     )
                 }
                 Scaffold(
@@ -359,5 +365,4 @@ fun FactoryNavigation(
         } else {
             navHost(Modifier.fillMaxSize())
         }
-    }
 }

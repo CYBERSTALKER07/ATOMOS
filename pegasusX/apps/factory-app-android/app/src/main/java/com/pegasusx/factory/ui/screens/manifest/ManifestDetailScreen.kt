@@ -54,8 +54,10 @@ fun ManifestDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    fun load() {
-        loading = true
+    fun load(silent: Boolean = false) {
+        if (!silent) {
+            loading = true
+        }
         error = null
         scope.launch {
             try {
@@ -68,7 +70,9 @@ fun ManifestDetailScreen(
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) {
+                    loading = false
+                }
             }
         }
     }
@@ -99,10 +103,10 @@ fun ManifestDetailScreen(
     FactoryRealtimeReloadEffect(
         api = api,
         eventTypes = setOf(FactoryRealtimeEventType.ManifestUpdate),
-        onEvent = { load() },
+        onEvent = { load(silent = true) },
         onReconnect = {
             acting = false
-            load()
+            load(silent = true)
         },
     )
 
@@ -125,7 +129,7 @@ fun ManifestDetailScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> FactoryLoadingState(
+            loading && detail == null -> FactoryLoadingState(
                 title = "Loading manifest",
                 body = "Fetching manifest detail and lifecycle history.",
                 modifier = Modifier.fillMaxSize().padding(innerPadding),

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { usePolling } from "@pegasusx/api-client";
 import type { OrderStatus } from "@pegasusx/types";
 import type { SupplierDashboardResponse } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
@@ -104,7 +105,7 @@ export function useDashboardData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (_signal?: AbortSignal) => {
     try {
       const [dashResp, profResp] = await Promise.all([
         api.getSupplierDashboard(),
@@ -120,13 +121,14 @@ export function useDashboardData() {
     }
   }, []);
 
-  useEffect(() => {
-    void refresh();
-    const interval = setInterval(() => {
-      void refresh();
-    }, 30_000);
-    return () => clearInterval(interval);
-  }, [refresh]);
+  usePolling(
+    async (signal) => {
+      if (signal.aborted) return;
+      await refresh(signal);
+    },
+    30_000,
+    [refresh],
+  );
 
   const empty: DashboardData = {
     metrics: {

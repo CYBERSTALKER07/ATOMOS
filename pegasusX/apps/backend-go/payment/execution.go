@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/circuit"
 )
 
 // ExecutionAction is the payment execution intent routed to a provider adapter.
@@ -64,6 +66,7 @@ type ProviderExecutionRouterConfig struct {
 	GlobalPayServiceID string
 	GlobalPayUsername  string
 	GlobalPayPassword  string
+	PaymentBreaker     *circuit.Breaker
 }
 
 // ProviderExecutionRouter routes payment actions to provider adapters with
@@ -131,11 +134,13 @@ func NewProviderExecutionRouter(cfg ProviderExecutionRouterConfig) *ProviderExec
 	cfg = normalizeExecutionRouterConfig(cfg)
 	router := &ProviderExecutionRouter{
 		executors: map[string]ProviderExecutor{
-			"GLOBAL_PAY": newGlobalPayProviderExecutor(
+			"GLOBAL_PAY": newGlobalPayProviderExecutorWithOptions(
 				cfg.GlobalPayEnv,
 				cfg.GlobalPayServiceID,
 				cfg.GlobalPayUsername,
 				cfg.GlobalPayPassword,
+				"",
+				cfg.PaymentBreaker,
 			),
 			"ADYEN": &staticProviderExecutor{
 				gateway:      "ADYEN",

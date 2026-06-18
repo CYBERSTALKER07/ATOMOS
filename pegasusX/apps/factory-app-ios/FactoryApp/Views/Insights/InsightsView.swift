@@ -9,7 +9,7 @@ struct InsightsView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if loading {
+                if loading && insights.isEmpty {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error {
@@ -48,7 +48,7 @@ struct InsightsView: View {
                     onEvent: { event in
                         guard let eventType = event.eventType else { return }
                         guard eventType == .supplyRequestUpdate || eventType == .transferUpdate else { return }
-                        load()
+                        load(silent: true)
                     }
                 )
             }
@@ -58,8 +58,10 @@ struct InsightsView: View {
         }
     }
 
-    private func load() {
-        loading = true
+    private func load(silent: Bool = false) {
+        if !silent {
+            loading = true
+        }
         error = nil
         Task {
             do {
@@ -67,7 +69,9 @@ struct InsightsView: View {
             } catch {
                 self.error = error.localizedDescription
             }
-            loading = false
+            if !silent {
+                loading = false
+            }
         }
     }
 }

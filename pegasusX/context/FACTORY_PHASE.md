@@ -162,3 +162,9 @@ cd pegasusX && make test-ssmr-infra   # PX_E2E_FACTORY_* markers
 9. ~~FA-11P portal deep UI/UX (component-level)~~ — **CLOSED** (2026-06-15)
 10. ~~FA9-03 Firebase phone OTP (portal + Android + iOS)~~ — **CLOSED** (2026-06-17)
 11. **Cross-role next** — per `VEGETABLE_PLAN.md` §3 (warehouse WH9 Firebase OTP deferred)
+
+---
+
+## Enterprise production readiness (2026-06-18)
+
+**Row status:** `PROD_CANDIDATE` — supply transitions Spanner-durable, loading bay + transfer state machine, manifest lifecycle, payload override idempotency, Firebase OTP wired on all clients.

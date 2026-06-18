@@ -41,8 +41,10 @@ fun TransferListScreen(
     var selectedFilter by remember { mutableStateOf("ALL") }
     val scope = rememberCoroutineScope()
 
-    fun load() {
-        loading = true
+    fun load(silent: Boolean = false) {
+        if (!silent) {
+            loading = true
+        }
         error = null
         scope.launch {
             try {
@@ -56,7 +58,9 @@ fun TransferListScreen(
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) {
+                    loading = false
+                }
             }
         }
     }
@@ -69,7 +73,7 @@ fun TransferListScreen(
             FactoryRealtimeEventType.ManifestUpdate,
         ),
     ) {
-        load()
+        load(silent = true)
     }
 
     Scaffold(
@@ -116,7 +120,7 @@ fun TransferListScreen(
             }
 
             when {
-                loading -> FactoryLoadingState(
+                loading && transfers.isEmpty() -> FactoryLoadingState(
                     title = "Loading transfers",
                     body = "Fetching the current transfer pipeline for this factory.",
                     modifier = Modifier.fillMaxSize(),

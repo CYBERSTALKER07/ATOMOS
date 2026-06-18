@@ -35,3 +35,7 @@ More hub includes: manifests, dispatch, exceptions, treasury hub, chargebacks, r
 **Onboarding:** Login → Register (3-step) → Business setup → Billing gate → Dashboard. No portal handoff required.
 
 Tauri-wrapped `supplier-portal` remains an alternate Android delivery path; this app is the **native** supplier row client.
+
+## Realtime refresh contract
+
+WS events bump `SupplierRealtimeSignals.refreshTick` — screens call `load(silent = true)` via ViewModel collectors or `RealtimeRefreshEffect` (`packages/mobile-android-design`). Never use `key(refreshEpoch)` on routes. See `pegasusX/docs/ROLE_ROW_PARITY_MATRIX.md` § Native realtime refresh contract.

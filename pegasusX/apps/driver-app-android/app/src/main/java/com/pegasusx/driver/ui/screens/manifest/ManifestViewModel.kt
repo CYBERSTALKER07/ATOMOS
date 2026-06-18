@@ -112,7 +112,7 @@ class ManifestViewModel @Inject constructor(
             driverWebSocket.messages.collect { message ->
                 if (message.type == "SYSTEM_APP_OUTDATED") return@collect
                 if (shouldRefreshManifestOnWsEvent(message.type)) {
-                    loadManifest()
+                    loadManifest(silent = true)
                     _state.value = _state.value.copy(lastWsRefreshAt = System.currentTimeMillis())
                 }
             }
@@ -131,7 +131,7 @@ class ManifestViewModel @Inject constructor(
     private suspend fun recoverInFlightMutation() {
         val hadInFlight = _state.value.isRequestingEarlyComplete
         runCatching { reconcileDriverSession(api) }
-        loadManifest()
+        loadManifest(silent = true)
         OfflineSyncScheduler.enqueue(appContext)
         if (hadInFlight) {
             _state.update {
@@ -149,9 +149,13 @@ class ManifestViewModel @Inject constructor(
         }
     }
 
-    fun loadManifest() {
+    fun loadManifest(silent: Boolean = false) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true, error = null)
+            if (!silent) {
+                _state.value = _state.value.copy(isLoading = true, error = null)
+            } else {
+                _state.value = _state.value.copy(error = null)
+            }
             try {
                 val orders = api.getAssignedOrders()
                 val pendingCollections = runCatching { api.getPendingCollections() }.getOrDefault(emptyList())
@@ -313,7 +317,7 @@ class ManifestViewModel @Inject constructor(
                     mapOf("state" to newState.name),
                     DriverIdempotencyKeys.transitionState(orderId, newState.name),
                 )
-                loadManifest()
+                loadManifest(silent = true)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message)
             }
@@ -346,7 +350,7 @@ class ManifestViewModel @Inject constructor(
             try {
                 api.depart(DepartRequest(truckId = truckId), DriverIdempotencyKeys.depart(truckId))
                 _state.value = _state.value.copy(truckStatus = "IN_TRANSIT")
-                loadManifest()
+                loadManifest(silent = true)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message)
             }
@@ -362,7 +366,7 @@ class ManifestViewModel @Inject constructor(
                     DriverIdempotencyKeys.returnComplete(truckId),
                 )
                 _state.value = _state.value.copy(truckStatus = "AVAILABLE", isReturning = false)
-                loadManifest()
+                loadManifest(silent = true)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message)
             }
@@ -398,7 +402,7 @@ class ManifestViewModel @Inject constructor(
                 loadRouteGeometry(routeId)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = "Reorder failed: ${e.message}")
-                loadManifest() // Revert to server state
+                loadManifest(silent = true) // Revert to server state
             }
         }
     }
@@ -411,7 +415,7 @@ class ManifestViewModel @Inject constructor(
                     EarlyCompletePayload(reason = reason, note = note),
                     DriverIdempotencyKeys.requestEarlyComplete(reason),
                 )
-                loadManifest()
+                loadManifest(silent = true)
             } catch (e: Exception) {
                 _state.update {
                     it.copy(error = e.message ?: "Early complete request failed")
@@ -449,7 +453,7 @@ class ManifestViewModel @Inject constructor(
                     return@launch
                 }
                 _state.value = _state.value.copy(deliveryEdgeMessage = response.message)
-                loadManifest()
+                loadManifest(silent = true)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     error = e.message ?: "In-delivery update failed",

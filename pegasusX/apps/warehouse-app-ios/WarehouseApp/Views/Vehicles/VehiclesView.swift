@@ -10,10 +10,10 @@ struct VehiclesView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if loading {
+                if loading && vehicles.isEmpty {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error {
+                } else if let error, vehicles.isEmpty {
                     ContentUnavailableView {
                         Label("Error", systemImage: "exclamationmark.triangle")
                     } description: {
@@ -67,25 +67,27 @@ struct VehiclesView: View {
                 }
             }
             .task { load() }
-            .refreshable { load() }
-            .onChange(of: realtimeHub.refreshEpoch) { _, _ in load() }
+            .refreshable { await load(silent: false) }
+            .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
+                load(silent: silent)
+            }
             .sheet(isPresented: $showCreate) {
                 CreateVehicleSheet { load() }
             }
         }
     }
 
-    private func load() {
-        loading = true
+    private func load(silent: Bool = false) {
+        if !silent { loading = true }
         error = nil
         Task {
             do {
                 let resp = try await WarehouseService.vehicles()
                 vehicles = resp.vehicles
             } catch {
-                self.error = error.localizedDescription
+                if !silent { self.error = error.localizedDescription }
             }
-            loading = false
+            if !silent { loading = false }
         }
     }
 }

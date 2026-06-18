@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasusx.warehouse.data.model.Order
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -25,6 +26,7 @@ private val STATES = listOf("ALL", "PENDING", "LOADED", "IN_TRANSIT", "ARRIVED",
 @Composable
 fun OrdersScreen(
     api: WarehouseApi,
+    realtimeSignals: WarehouseRealtimeSignals,
     onOrderClick: (String) -> Unit,
     onBack: (() -> Unit)? = null,
 ) {
@@ -36,8 +38,8 @@ fun OrdersScreen(
     val scope = rememberCoroutineScope()
     val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }
 
-    fun load() {
-        loading = true
+    fun load(silent: Boolean = false) {
+        if (!silent) loading = true
         error = null
         scope.launch {
             try {
@@ -45,18 +47,22 @@ fun OrdersScreen(
                 val resp = api.getOrders(state = state)
                 if (resp.isSuccessful && resp.body() != null) {
                     orders = resp.body()!!.orders
-                } else {
+                } else if (!silent) {
                     error = "Failed (${resp.code()})"
                 }
             } catch (e: Exception) {
-                error = e.message ?: "Network error"
+                if (!silent) error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) loading = false
             }
         }
     }
 
     LaunchedEffect(selectedState) { load() }
+
+    LaunchedEffect(Unit) {
+        realtimeSignals.refreshTick.collect { load(silent = true) }
+    }
 
     Scaffold(
         topBar = {
@@ -86,10 +92,10 @@ fun OrdersScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+            loading && orders.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+            error != null && orders.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.lg))

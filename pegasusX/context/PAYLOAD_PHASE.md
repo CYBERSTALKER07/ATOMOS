@@ -189,3 +189,9 @@ cd pegasusX/apps/payload-app-android && ./gradlew compileDebugKotlin
 8. ~~PL-5 iOS deep UI/UX parity~~ — **CLOSED** (2026-06-15): shared primitives, `ManifestKpiGrid`, tactical PIN login — see PL-5 table
 9. ~~PL-6 deferred features~~ — **CLOSED** (2026-06-17): Firebase phone OTP + manifest barcode on terminal, Android, iOS
 10. **Cross-role next** — Boss-picked role row per `VEGETABLE_PLAN.md` §3
+
+---
+
+## Enterprise production readiness (2026-06-18)
+
+**Row status:** `PROD_CANDIDATE` — manifest lifecycle + seal-completed idempotency, `/v1/payloader/reassign-order` parity terminal↔tablet, inbound EAN gate + offline queue, Expo/FCM/APNs device tokens.

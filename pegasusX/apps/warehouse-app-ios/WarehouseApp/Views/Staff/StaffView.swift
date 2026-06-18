@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct StaffView: View {
+    @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var staff: [StaffMember] = []
     @State private var loading = true
     @State private var error: String?
@@ -10,10 +11,10 @@ struct StaffView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if loading {
+                if loading && staff.isEmpty {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error {
+                } else if let error, staff.isEmpty {
                     ContentUnavailableView {
                         Label("Error", systemImage: "exclamationmark.triangle")
                     } description: {
@@ -61,7 +62,10 @@ struct StaffView: View {
                 }
             }
             .task { load() }
-            .refreshable { load() }
+            .refreshable { load(silent: false) }
+            .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
+                load(silent: silent)
+            }
             .sheet(isPresented: $showCreate) {
                 CreateStaffSheet { pin in
                     createdPin = pin
@@ -79,17 +83,17 @@ struct StaffView: View {
         }
     }
 
-    private func load() {
-        loading = true
+    private func load(silent: Bool = false) {
+        if !silent { loading = true }
         error = nil
         Task {
             do {
                 let resp = try await WarehouseService.staff()
                 staff = resp.staff
             } catch {
-                self.error = error.localizedDescription
+                if !silent { self.error = error.localizedDescription }
             }
-            loading = false
+            if !silent { loading = false }
         }
     }
 }

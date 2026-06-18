@@ -28,7 +28,8 @@ fun WarehouseNavigationDrawer(
         groups = warehouseRailGroups(),
         selectedItemId = selectedId,
         onItemSelected = { item ->
-            WarehouseSection.entries.firstOrNull { it.route == item.id }?.let(onSectionSelected)
+            WarehouseSection.fromRoute(item.id)?.let(onSectionSelected)
+                ?: WarehouseSection.entries.firstOrNull { it.route == item.id }?.let(onSectionSelected)
         },
         modifier = modifier,
         footer = {
@@ -44,7 +45,7 @@ private fun warehouseRailGroups(): List<PegasusRailGroup> = listOf(
     PegasusRailGroup("Fulfillment", WarehouseSection.fulfillmentSections.map { it.toRailItem() }),
     PegasusRailGroup("Inventory", WarehouseSection.inventorySections.map { it.toRailItem() }),
     PegasusRailGroup("Operations", WarehouseSection.operationsSections.map { it.toRailItem() }),
-    PegasusRailGroup("Portal only", WarehouseSection.portalSections.map { it.toRailItem() }),
+    PegasusRailGroup("Settings", WarehouseSection.portalSections.map { it.toRailItem() }),
 )
 
 private fun WarehouseSection.toRailItem() = PegasusRailItem(id = route, label = label, icon = icon)

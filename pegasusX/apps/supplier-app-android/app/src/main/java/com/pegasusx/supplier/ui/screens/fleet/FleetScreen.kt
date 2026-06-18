@@ -9,10 +9,13 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.pegasus.design.RealtimeRefreshEffect
+import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.data.model.FleetDriver
 import com.pegasusx.supplier.data.model.FleetVehicle
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasusx.supplier.ui.components.SupplierStateKind
@@ -25,6 +28,7 @@ import kotlinx.coroutines.launch
 fun FleetScreen(
     api: SupplierApi,
     ops: SupplierOperationsRepository,
+    realtimeSignals: SupplierRealtimeSignals,
     onOpenLiveMap: () -> Unit = {},
 ) {
     var tab by remember { mutableIntStateOf(0) }
@@ -33,29 +37,38 @@ fun FleetScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val hasData = drivers.isNotEmpty() || vehicles.isNotEmpty()
 
-    fun load() {
+    fun load(silent: Boolean = false) {
         scope.launch {
-            loading = true
-            error = null
+            if (!silent) {
+                loading = true
+                error = null
+            }
             try {
                 val d = api.getFleetDrivers()
                 val v = api.getFleetVehicles()
-                drivers = if (d.isSuccessful) d.body()?.items.orEmpty() else emptyList()
-                vehicles = if (v.isSuccessful) v.body()?.items.orEmpty() else emptyList()
+                drivers = if (d.isSuccessful) d.body()?.items.orEmpty() else drivers
+                vehicles = if (v.isSuccessful) v.body()?.items.orEmpty() else vehicles
                 runCatching { ops.getFleetOrders() }
                 if (!d.isSuccessful || !v.isSuccessful) {
-                    error = "Failed to load fleet"
+                    if (!silent) error = "Failed to load fleet"
                 }
             } catch (e: Exception) {
-                error = e.message
+                if (!silent) error = e.message
             } finally {
-                loading = false
+                if (!silent) loading = false
             }
         }
     }
 
     LaunchedEffect(Unit) { load() }
+
+    RealtimeRefreshEffect(
+        refreshTick = realtimeSignals.refreshTick,
+        reconnectTick = realtimeSignals.reconnectTick,
+        onRefresh = { load(silent = it) },
+    )
 
     Scaffold(
         topBar = {
@@ -78,7 +91,7 @@ fun FleetScreen(
                 Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Vehicles (${vehicles.size})") })
             }
             when {
-                loading -> SupplierLoadingState("Loading fleet…", "Drivers and vehicles")
+                showFullScreenLoading(loading, hasData) -> SupplierLoadingState("Loading fleet…", "Drivers and vehicles")
                 error != null -> SupplierStatePane(
                     kind = SupplierStateKind.Error,
                     headline = "Fleet unavailable",

@@ -3,16 +3,12 @@ import Network
 
 struct WarehouseAdaptiveShell: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.scenePhase) private var scenePhase
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var sidebarSelection: WarehouseSection? = .dashboard
     @State private var isSidebarExpanded = true
     @State private var compactTab: WarehouseCompactTab = .dashboard
-    @State private var refreshEpoch = 0
     @State private var pathMonitor: NWPathMonitor?
     @State private var wasOffline = false
-
-    private var effectiveRefreshEpoch: Int { refreshEpoch + realtimeHub.refreshEpoch }
 
     var body: some View {
         Group {
@@ -20,11 +16,6 @@ struct WarehouseAdaptiveShell: View {
                 regularShell
             } else {
                 compactShell
-            }
-        }
-        .onChange(of: scenePhase) { phase in
-            if phase == .active {
-                refreshEpoch += 1
             }
         }
         .onAppear { startNetworkMonitor() }
@@ -145,7 +136,6 @@ struct WarehouseAdaptiveShell: View {
         monitor.pathUpdateHandler = { path in
             DispatchQueue.main.async {
                 if path.status == .satisfied {
-                    if wasOffline { refreshEpoch += 1 }
                     wasOffline = false
                 } else {
                     wasOffline = true

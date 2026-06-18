@@ -29,12 +29,16 @@ type FamilyMember struct {
 }
 
 type retailerProfileUpdateRequest struct {
-	Name                 string  `json:"name,omitempty"`
-	Phone                string  `json:"phone,omitempty"`
-	Company              string  `json:"company,omitempty"`
-	CountryCode          string  `json:"country_code,omitempty"`
-	ReceivingWindowOpen  *string `json:"receiving_window_open"`
-	ReceivingWindowClose *string `json:"receiving_window_close"`
+	Name                 string   `json:"name,omitempty"`
+	Phone                string   `json:"phone,omitempty"`
+	Company              string   `json:"company,omitempty"`
+	CountryCode          string   `json:"country_code,omitempty"`
+	DeliveryAddress      string   `json:"delivery_address,omitempty"`
+	PlaceID              string   `json:"place_id,omitempty"`
+	Lat                  *float64 `json:"lat,omitempty"`
+	Lng                  *float64 `json:"lng,omitempty"`
+	ReceivingWindowOpen  *string  `json:"receiving_window_open"`
+	ReceivingWindowClose *string  `json:"receiving_window_close"`
 }
 
 type supplierPreference struct {
@@ -109,7 +113,7 @@ func retailerProfileDTO(ret Retailer, boundSupplierID string) map[string]any {
 		"name":         displayName,
 		"phone":        ret.Phone,
 		"company":      displayName,
-		"location":     retailerLocationLabel(ret.Lat, ret.Lng),
+		"location":     retailerLocationLabel(ret.DeliveryAddress, ret.Lat, ret.Lng),
 		"country_code": ret.CountryCode,
 		"status":       "ACTIVE",
 		"h3_cell":      ret.H3Cell,
@@ -117,6 +121,12 @@ func retailerProfileDTO(ret Retailer, boundSupplierID string) map[string]any {
 		"lng":          ret.Lng,
 		"created_at":   ret.CreatedAt.Format(time.RFC3339Nano),
 		"updated_at":   ret.UpdatedAt.Format(time.RFC3339Nano),
+	}
+	if addr := strings.TrimSpace(ret.DeliveryAddress); addr != "" {
+		dto["delivery_address"] = addr
+	}
+	if pid := strings.TrimSpace(ret.PlaceID); pid != "" {
+		dto["place_id"] = pid
 	}
 	if open := strings.TrimSpace(ret.ReceivingWindowOpen); open != "" {
 		dto["receiving_window_open"] = open
@@ -127,7 +137,10 @@ func retailerProfileDTO(ret Retailer, boundSupplierID string) map[string]any {
 	return dto
 }
 
-func retailerLocationLabel(lat, lng float64) string {
+func retailerLocationLabel(address string, lat, lng float64) string {
+	if addr := strings.TrimSpace(address); addr != "" {
+		return addr
+	}
 	if lat == 0 && lng == 0 {
 		return ""
 	}
@@ -182,6 +195,25 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 			return
 		}
 		ret.ReceivingWindowClose = closeWindow
+	}
+	if addr := strings.TrimSpace(req.DeliveryAddress); addr != "" {
+		ret.DeliveryAddress = addr
+	}
+	if pid := strings.TrimSpace(req.PlaceID); pid != "" {
+		ret.PlaceID = pid
+	}
+	if req.Lat != nil && req.Lng != nil {
+		if *req.Lat < -90 || *req.Lat > 90 || *req.Lng < -180 || *req.Lng > 180 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "coordinates_out_of_range"})
+			return
+		}
+		ret.Lat = *req.Lat
+		ret.Lng = *req.Lng
+		if s.proximity != nil {
+			if cell, err := s.proximity.CellForCoordinate(ret.Lat, ret.Lng); err == nil {
+				ret.H3Cell = cell
+			}
+		}
 	}
 	ret.UpdatedAt = s.now()
 	if err := s.repo.UpdateRetailer(r.Context(), ret, func(txn outbox.TxnBuffer) error {

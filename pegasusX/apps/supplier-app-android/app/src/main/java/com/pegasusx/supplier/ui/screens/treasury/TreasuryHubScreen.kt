@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
 import com.pegasusx.supplier.ui.components.SupplierLeadingIcon
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
@@ -64,7 +65,7 @@ fun TreasuryHubScreen(
         },
     ) { padding ->
         when {
-            state.loading -> SupplierLoadingState(
+            showFullScreenLoading(state.loading, state.earnings != null) -> SupplierLoadingState(
                 title = "Loading treasury…",
                 body = "KPIs and links",
                 modifier = Modifier.padding(padding),

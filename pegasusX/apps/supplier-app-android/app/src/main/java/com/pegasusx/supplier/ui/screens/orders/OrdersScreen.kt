@@ -15,6 +15,7 @@ import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
 import com.pegasusx.supplier.ui.components.formatMinorAmount
+import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.viewmodel.OrderFilterTab
 import com.pegasusx.supplier.ui.viewmodel.OrdersViewModel
@@ -50,7 +51,7 @@ fun OrdersScreen(
                 }
             }
             when {
-                state.loading -> SupplierLoadingState(
+                showFullScreenLoading(state.loading, state.orders.isNotEmpty()) -> SupplierLoadingState(
                     title = "Loading orders…",
                     body = "Supplier order queue",
                 )

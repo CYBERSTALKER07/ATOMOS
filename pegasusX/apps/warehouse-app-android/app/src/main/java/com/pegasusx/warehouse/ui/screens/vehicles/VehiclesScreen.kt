@@ -24,6 +24,7 @@ import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseStateKind
 import com.pegasusx.warehouse.ui.components.WarehouseStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
+import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
@@ -45,22 +46,26 @@ fun VehiclesScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    fun load() {
-        loading = true; error = null
+    fun load(silent: Boolean = false) {
+        if (!silent) loading = true
+        error = null
         scope.launch {
             try {
                 val resp = api.getVehicles()
                 if (resp.isSuccessful && resp.body() != null) vehicles = resp.body()!!.vehicles
-                else error = "Failed (${resp.code()})"
-            } catch (e: Exception) { error = e.message ?: "Network error" }
-            finally { loading = false }
+                else if (!silent) error = "Failed (${resp.code()})"
+            } catch (e: Exception) {
+                if (!silent) error = e.message ?: "Network error"
+            } finally {
+                if (!silent) loading = false
+            }
         }
     }
 
     LaunchedEffect(Unit) { load() }
 
     LaunchedEffect(Unit) {
-        realtimeSignals.refreshTick.collect { load() }
+        realtimeSignals.refreshTick.collect { load(silent = true) }
     }
 
     Scaffold(
@@ -77,7 +82,7 @@ fun VehiclesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading -> WarehouseLoadingState(
+            loading && vehicles.isEmpty() -> WarehouseLoadingState(
                 title = "Loading trucks…",
                 body = "Fleet vehicle roster",
                 modifier = Modifier.padding(innerPadding),

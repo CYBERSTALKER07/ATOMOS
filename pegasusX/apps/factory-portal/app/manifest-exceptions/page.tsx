@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { usePolling } from '@pegasusx/api-client';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
@@ -118,14 +119,14 @@ export default function ManifestExceptionsPage() {
     };
   }, []);
 
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      if (!document.hidden && navigator.onLine) {
-        void fetchExceptions({ background: true, silent: true });
-      }
-    }, LIVE_REFRESH_MS);
-    return () => window.clearInterval(interval);
-  }, [fetchExceptions]);
+  usePolling(
+    async (signal) => {
+      if (signal.aborted) return;
+      await fetchExceptions({ background: true, silent: true });
+    },
+    LIVE_REFRESH_MS,
+    [fetchExceptions],
+  );
 
   useEffect(() => {
     const unsubscribe = subscribeFactoryWS({

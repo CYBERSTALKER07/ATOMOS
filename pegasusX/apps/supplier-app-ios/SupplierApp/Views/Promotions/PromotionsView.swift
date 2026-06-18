@@ -13,7 +13,7 @@ struct PromotionsView: View {
 
     var body: some View {
         Group {
-            if loading {
+            if loading && promotions.isEmpty {
                 SupplierLoadingView(title: "Loading promotions…")
             } else if let error {
                 SupplierErrorView(message: error) { Task { await load() } }
@@ -62,8 +62,11 @@ struct PromotionsView: View {
         }
         .task { await load() }
         .refreshable { await load(silent: true) }
-        .onChange(of: realtimeHub.refreshEpoch) { _, _ in
-            Task { await load(silent: true) }
+        .silentRealtimeRefresh(
+            refreshEpoch: realtimeHub.refreshEpoch,
+            reconnectEpoch: realtimeHub.reconnectEpoch
+        ) { silent in
+            Task { await load(silent: silent) }
         }
         .sheet(isPresented: $showCreate) {
             NavigationStack {
@@ -140,7 +143,8 @@ struct PromotionsView: View {
                     description: "",
                     discountBps: bps,
                     scopeType: "ALL_PRODUCTS",
-                    retailerScope: "ALL"
+                    retailerScope: "ALL",
+                    scopeProductId: nil
                 )
             )
             name = ""
@@ -165,7 +169,8 @@ struct PromotionsView: View {
                     description: "",
                     discountBps: bps,
                     scopeType: promo.scopeType,
-                    retailerScope: promo.retailerScope
+                    retailerScope: promo.retailerScope,
+                    scopeProductId: promo.scopeProductId
                 )
             )
             showEdit = false

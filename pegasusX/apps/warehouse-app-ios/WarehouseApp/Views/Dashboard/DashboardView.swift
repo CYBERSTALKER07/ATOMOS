@@ -2,9 +2,11 @@ import SwiftUI
 
 struct DashboardView: View {
     @Environment(TokenStore.self) private var tokenStore
+    @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var stats = DashboardData.empty
     @State private var loading = true
+    @State private var hasData = false
     @State private var error: String?
 
     private var gridMin: CGFloat {
@@ -15,12 +17,12 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 Group {
-                    if loading {
+                    if loading && !hasData {
                         WarehouseLoadingView(
                             title: "Loading dashboard",
                             message: "Fetching orders, fleet status, and warehouse KPIs."
                         )
-                    } else if let error {
+                    } else if let error, !hasData {
                         WarehouseErrorView(message: error) { load() }
                     } else {
                         VStack(alignment: .leading, spacing: LabTheme.spacingXL) {
@@ -89,21 +91,25 @@ struct DashboardView: View {
                 load()
             }
             .refreshable {
-                load()
+                load(silent: false)
+            }
+            .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
+                load(silent: silent)
             }
         }
     }
 
-    private func load() {
-        loading = true
+    private func load(silent: Bool = false) {
+        if !silent { loading = true }
         error = nil
         Task {
             do {
                 stats = try await WarehouseService.dashboard()
+                hasData = true
             } catch {
-                self.error = error.localizedDescription
+                if !silent { self.error = error.localizedDescription }
             }
-            loading = false
+            if !silent { loading = false }
         }
     }
 }

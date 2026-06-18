@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
@@ -28,7 +29,7 @@ fun InventoryScreen(
     Scaffold(topBar = { TopAppBar(title = { Text("Inventory") }) }) { padding ->
         Box(Modifier.padding(padding)) {
             when {
-                state.loading -> SupplierLoadingState("Loading inventory…", "SKU list")
+                showFullScreenLoading(state.loading, state.items.isNotEmpty()) -> SupplierLoadingState("Loading inventory…", "SKU list")
                 state.error != null && state.items.isEmpty() -> SupplierStatePane(
                     kind = SupplierStateKind.Error,
                     headline = "Inventory unavailable",

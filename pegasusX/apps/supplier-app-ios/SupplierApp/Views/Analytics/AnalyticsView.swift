@@ -2,8 +2,10 @@ import SwiftUI
 
 struct AnalyticsView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var loading = true
     @State private var error: String?
+    @State private var hasSnapshot = false
     @State private var pendingOrders = 0
     @State private var inventorySKUs = 0
     @State private var revenueLabel = "—"
@@ -19,7 +21,7 @@ struct AnalyticsView: View {
         NavigationStack {
             ScrollView {
                 Group {
-                    if loading {
+                    if loading && !hasSnapshot {
                         SupplierLoadingView(
                             title: "Loading analytics",
                             message: "Fetching revenue, demand, and velocity metrics."
@@ -103,6 +105,12 @@ struct AnalyticsView: View {
             }
             .task { await load() }
             .refreshable { await load(silent: true) }
+            .silentRealtimeRefresh(
+                refreshEpoch: realtimeHub.refreshEpoch,
+                reconnectEpoch: realtimeHub.reconnectEpoch
+            ) { silent in
+                Task { await load(silent: silent) }
+            }
         }
     }
 
@@ -127,6 +135,7 @@ struct AnalyticsView: View {
             predictionCount = demandValue.predictionCount
             forecastUnits = demandValue.totalPallets
             velocityCreated = velocityValue.points.reduce(0) { $0 + $1.ordersCreated }
+            hasSnapshot = true
         } catch {
             if !silent { self.error = error.localizedDescription }
         }

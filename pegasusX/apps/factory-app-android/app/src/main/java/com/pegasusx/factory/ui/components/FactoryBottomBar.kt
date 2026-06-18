@@ -6,7 +6,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.pegasusx.factory.ui.navigation.FactoryRoutes
 import com.pegasusx.factory.ui.navigation.FactorySection
 
 @Composable
@@ -15,12 +14,12 @@ fun FactoryBottomBar(
     onSectionSelected: (FactorySection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val active = FactorySection.fromRoute(selectedRoute)
     NavigationBar(modifier = modifier) {
         FactorySection.compactTabs.forEach { section ->
-            val selected = when {
-                section == FactorySection.MORE -> selectedRoute?.substringBefore("/") in
-                    FactorySection.operationsSections.map { it.route } + FactorySection.intelligenceSections.map { it.route } + FactoryRoutes.MORE
-                else -> selectedRoute?.substringBefore("/") == section.route
+            val selected = when (section) {
+                FactorySection.MORE -> active != null && active !in FactorySection.compactTabs.filter { it != FactorySection.MORE }
+                else -> active == section
             }
             NavigationBarItem(
                 selected = selected,

@@ -11,7 +11,7 @@ struct ManifestsView: View {
     var body: some View {
         NavigationSplitView {
             Group {
-                if loading {
+                if loading && manifests.isEmpty {
                     FactoryLoadingView(
                         title: "Loading manifests",
                         message: "Fetching outbound manifest lifecycle states."
@@ -73,10 +73,10 @@ struct ManifestsView: View {
                 onStateChange: { _ in },
                 onEvent: { event in
                     guard event.eventType == .manifestUpdate || event.eventType == .transferUpdate else { return }
-                    Task { await load() }
+                    Task { await load(silent: true) }
                 },
                 onReconnect: {
-                    Task { await load() }
+                    Task { await load(silent: true) }
                 }
             )
         }
@@ -86,8 +86,10 @@ struct ManifestsView: View {
     }
 
     @MainActor
-    private func load() async {
-        loading = true
+    private func load(silent: Bool = false) async {
+        if !silent {
+            loading = true
+        }
         error = nil
         do {
             let response = try await FactoryService.manifests()
@@ -98,7 +100,9 @@ struct ManifestsView: View {
         } catch {
             self.error = error.localizedDescription
         }
-        loading = false
+        if !silent {
+            loading = false
+        }
     }
 }
 

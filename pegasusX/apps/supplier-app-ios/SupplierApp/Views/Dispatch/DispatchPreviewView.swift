@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DispatchPreviewView: View {
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
+    var embeddedInHub: Bool = false
     @State private var preview: SupplierDispatchPreview?
     @State private var warehouses: [SupplierTopologyWarehouse] = []
     @State private var selectedWarehouseId: String?
@@ -17,68 +18,82 @@ struct DispatchPreviewView: View {
             } else if let error, preview == nil {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else {
-                Form {
-                    if !warehouses.isEmpty {
-                        Section("Warehouse scope") {
-                            ForEach(warehouses) { wh in
-                                Button {
-                                    selectedWarehouseId = selectedWarehouseId == wh.warehouseId ? nil : wh.warehouseId
-                                    Task { await load() }
-                                } label: {
-                                    HStack {
-                                        Text(wh.name.isEmpty ? wh.warehouseId : wh.name)
-                                        Spacer()
-                                        if selectedWarehouseId == wh.warehouseId {
-                                            Image(systemName: "checkmark")
+                ScrollView {
+                    VStack(alignment: .leading, spacing: SupplierTheme.spacingLG) {
+                        if !warehouses.isEmpty {
+                            VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
+                                Text("Warehouse scope").font(.headline)
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: SupplierTheme.spacingSM) {
+                                        ForEach(warehouses) { wh in
+                                            Button {
+                                                selectedWarehouseId = selectedWarehouseId == wh.warehouseId ? nil : wh.warehouseId
+                                                Task { await load() }
+                                            } label: {
+                                                Text(wh.name.isEmpty ? wh.warehouseId : wh.name)
+                                                    .font(.subheadline.weight(.medium))
+                                                    .padding(.horizontal, 12)
+                                                    .padding(.vertical, 8)
+                                                    .background(selectedWarehouseId == wh.warehouseId ? Color.primary : Color.clear)
+                                                    .foregroundStyle(selectedWarehouseId == wh.warehouseId ? Color(.systemBackground) : Color.primary)
+                                                    .clipShape(Capsule())
+                                                    .overlay {
+                                                        Capsule().strokeBorder(Color.primary.opacity(0.25), lineWidth: selectedWarehouseId == wh.warehouseId ? 0 : 1)
+                                                    }
+                                            }
+                                            .buttonStyle(.plain)
                                         }
                                     }
                                 }
                             }
                         }
-                    }
-                    if let preview {
-                        Section("Snapshot") {
-                            LabeledContent("Pending orders", value: "\(preview.pendingCount ?? 0)")
-                            LabeledContent("Available drivers", value: "\(preview.availableDriverCount ?? 0)")
-                            if let undispatched = preview.undispatchedOrderCount {
-                                LabeledContent("Undispatched bucket", value: "\(undispatched)")
+                        if let preview {
+                            HStack(spacing: SupplierTheme.spacingMD) {
+                                DispatchKpiCard(title: "Pending", value: "\(preview.pendingCount ?? 0)")
+                                DispatchKpiCard(title: "Drivers", value: "\(preview.availableDriverCount ?? 0)")
+                                DispatchKpiCard(title: "Undispatched", value: "\(preview.undispatchedOrderCount ?? 0)")
                             }
-                        }
-                        if !preview.proposedRoutes.isEmpty {
-                            Section {
-                                HStack {
-                                    Text("Smart suggest route map")
-                                        .font(.headline)
-                                    Spacer()
-                                    if let source = preview.optimizerSource, !source.isEmpty {
-                                        Text("Source: \(source)")
+                            if !preview.proposedRoutes.isEmpty {
+                                VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
+                                    HStack {
+                                        Text("Route map").font(.headline)
+                                        Spacer()
+                                        if let source = preview.optimizerSource, !source.isEmpty {
+                                            Text("Source: \(source)")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    DispatchPreviewMapView(routes: preview.proposedRoutes)
+                                        .frame(height: 320)
+                                        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG))
+                                    ForEach(Array(preview.proposedRoutes.enumerated()), id: \.offset) { index, route in
+                                        let label = route.driverName?.isEmpty == false
+                                            ? route.driverName!
+                                            : (route.driverId?.isEmpty == false ? route.driverId! : "Route \(index + 1)")
+                                        let stops = route.stopCount ?? route.orderIds.count
+                                        Text("\(label) · \(stops) stops")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
                                 }
-                                DispatchPreviewMapView(routes: preview.proposedRoutes)
-                                ForEach(Array(preview.proposedRoutes.enumerated()), id: \.offset) { index, route in
-                                    let label = route.driverName?.isEmpty == false
-                                        ? route.driverName!
-                                        : (route.driverId?.isEmpty == false ? route.driverId! : "Route \(index + 1)")
-                                    let stops = route.stopCount ?? route.orderIds.count
-                                    Text("\(label) · \(stops) stops")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
                             }
                         }
+                        VStack(spacing: SupplierTheme.spacingSM) {
+                            Button("Execute auto-dispatch") { showExecuteConfirm = true }
+                                .buttonStyle(.borderedProminent)
+                                .tint(.primary)
+                                .disabled(loading || executing || preview == nil)
+                            Button("Refresh preview") { Task { await load() } }
+                                .disabled(loading || executing)
+                        }
                     }
-                    Section {
-                        Button("Execute auto-dispatch") { showExecuteConfirm = true }
-                            .disabled(loading || executing || preview == nil)
-                        Button("Refresh preview") { Task { await load() } }
-                            .disabled(loading || executing)
-                    }
+                    .padding()
                 }
             }
         }
-        .navigationTitle("Dispatch preview")
+        .background(SupplierTheme.background)
+        .navigationTitle(embeddedInHub ? "" : "Dispatch")
         .task { await load() }
         .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
             if executing {
@@ -134,6 +149,26 @@ struct DispatchPreviewView: View {
             preview = try await SupplierOperationsService.dispatchPreview(warehouseId: selectedWarehouseId)
         } catch {
             self.error = error.localizedDescription
+        }
+    }
+}
+
+private struct DispatchKpiCard: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(value).font(.title2.weight(.semibold))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(SupplierTheme.card)
+        .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG))
+        .overlay {
+            RoundedRectangle(cornerRadius: SupplierTheme.radiusLG)
+                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
         }
     }
 }

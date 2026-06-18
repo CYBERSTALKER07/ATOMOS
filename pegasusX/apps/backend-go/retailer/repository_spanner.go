@@ -32,6 +32,12 @@ func retailerPersistenceMap(ret Retailer) map[string]any {
 		"Lng":         ret.Lng,
 		"H3Cell":      ret.H3Cell,
 	}
+	if addr := strings.TrimSpace(ret.DeliveryAddress); addr != "" {
+		row["DeliveryAddress"] = addr
+	}
+	if pid := strings.TrimSpace(ret.PlaceID); pid != "" {
+		row["PlaceId"] = pid
+	}
 	if open := strings.TrimSpace(ret.ReceivingWindowOpen); open != "" {
 		row["ReceivingWindowOpen"] = open
 	} else {
@@ -213,6 +219,8 @@ func (r *SpannerRepository) GetRetailer(ctx context.Context, retailerID string) 
 		"Lat",
 		"Lng",
 		"H3Cell",
+		"DeliveryAddress",
+		"PlaceId",
 		"ReceivingWindowOpen",
 		"ReceivingWindowClose",
 		"CreatedAt",
@@ -226,6 +234,7 @@ func (r *SpannerRepository) GetRetailer(ctx context.Context, retailerID string) 
 
 	var ret Retailer
 	var rwOpen, rwClose spanner.NullString
+	var deliveryAddress, placeID spanner.NullString
 	if err := row.Columns(
 		&ret.RetailerID,
 		&ret.Phone,
@@ -234,11 +243,19 @@ func (r *SpannerRepository) GetRetailer(ctx context.Context, retailerID string) 
 		&ret.Lat,
 		&ret.Lng,
 		&ret.H3Cell,
+		&deliveryAddress,
+		&placeID,
 		&rwOpen,
 		&rwClose,
 		&ret.CreatedAt,
 	); err != nil {
 		return Retailer{}, false, fmt.Errorf("scan retailer %s: %w", retailerID, err)
+	}
+	if deliveryAddress.Valid {
+		ret.DeliveryAddress = deliveryAddress.StringVal
+	}
+	if placeID.Valid {
+		ret.PlaceID = placeID.StringVal
 	}
 	applyRetailerWindowColumns(&ret, rwOpen, rwClose)
 	ret.SupplierID = r.supplierID

@@ -17,9 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.pegasus.design.RealtimeRefreshEffect
+import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.data.model.SupplierDashboard
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierStateKind
@@ -44,6 +47,7 @@ private val dashboardKpis = listOf(
 fun DashboardScreen(
     api: SupplierApi,
     ops: SupplierOperationsRepository,
+    realtimeSignals: SupplierRealtimeSignals,
     showBillingBanner: Boolean,
     onOpenBilling: () -> Unit,
     onOpenNotifications: () -> Unit = {},
@@ -53,10 +57,12 @@ fun DashboardScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
+    fun load(silent: Boolean = false) {
         scope.launch {
-            loading = true
-            error = null
+            if (!silent) {
+                loading = true
+                error = null
+            }
             try {
                 val resp = api.getDashboard()
                 if (resp.isSuccessful) {
@@ -65,13 +71,13 @@ fun DashboardScreen(
                         ops.getActivity()
                         ops.getExceptions()
                     }
-                } else {
+                } else if (!silent) {
                     error = "Failed to load (${resp.code()})"
                 }
             } catch (e: Exception) {
-                error = e.message ?: "Network error"
+                if (!silent) error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) loading = false
             }
         }
     }
@@ -79,6 +85,12 @@ fun DashboardScreen(
     LaunchedEffect(Unit) {
         load()
     }
+
+    RealtimeRefreshEffect(
+        refreshTick = realtimeSignals.refreshTick,
+        reconnectTick = realtimeSignals.reconnectTick,
+        onRefresh = { load(silent = it) },
+    )
 
     Scaffold(
         topBar = {
@@ -96,7 +108,7 @@ fun DashboardScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState(
+            showFullScreenLoading(loading, dashboard != null) -> SupplierLoadingState(
                 title = "Loading dashboard…",
                 body = "Fetching supplier KPIs",
                 modifier = Modifier.padding(padding),

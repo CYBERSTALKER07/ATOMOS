@@ -23,22 +23,24 @@ final class OrdersViewModel {
         }
     }
 
-    func loadData() async {
+    func loadData(silent: Bool = false) async {
         let rid = AuthManager.shared.currentUser?.id ?? ""
-        isLoading = true
-        defer { isLoading = false }
+        if !silent { isLoading = true }
+        defer { if !silent { isLoading = false } }
         do {
             let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
             allOrders = orders
         } catch {
-            allOrders = []
-            loadError = "Could not load orders. Pull to refresh or try again."
+            if !silent {
+                allOrders = []
+                loadError = "Could not load orders. Pull to refresh or try again."
+            }
         }
         do {
             let forecasts: [DemandForecast] = try await api.get(path: "/v1/ai/predictions?retailer_id=\(rid)")
             predictions = forecasts
         } catch {
-            predictions = []
+            if !silent { predictions = [] }
         }
     }
 
@@ -52,10 +54,10 @@ final class OrdersViewModel {
                  .paymentFailed, .paymentExpired, .orderStatusChanged, .orderReassigned,
                  .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited,
                  .preOrderNudge, .preOrderConfirmationPush:
-                await loadData()
+                await loadData(silent: !allOrders.isEmpty)
             case .transportReconnected:
                 await flushPendingOrders(modelContext: modelContext)
-                await loadData()
+                await loadData(silent: !allOrders.isEmpty)
             case .shopClosedAlert, .cartSyncUpdated, .promotionChanged:
                 break
             }

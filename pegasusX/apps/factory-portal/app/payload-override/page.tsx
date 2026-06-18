@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { usePolling } from '@pegasusx/api-client';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
@@ -132,13 +133,16 @@ export default function PayloadOverridePage() {
     };
   }, [fetchManifests]);
 
-  useEffect(() => {
-    const refreshLiveData = () => {
-      if (document.visibilityState === 'visible') {
-        void fetchManifests({ background: true, silent: true });
-      }
-    };
+  usePolling(
+    async (signal) => {
+      if (signal.aborted) return;
+      await fetchManifests({ background: true, silent: true });
+    },
+    LIVE_REFRESH_MS,
+    [fetchManifests],
+  );
 
+  useEffect(() => {
     const handleOnline = () => {
       setIsOffline(false);
       toast('Connection restored. Refreshing loading manifests.', 'info');
@@ -150,16 +154,12 @@ export default function PayloadOverridePage() {
       toast('Offline. Showing the last synced loading manifests.', 'warning');
     };
 
-    const interval = window.setInterval(refreshLiveData, LIVE_REFRESH_MS);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    document.addEventListener('visibilitychange', refreshLiveData);
 
     return () => {
-      window.clearInterval(interval);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      document.removeEventListener('visibilitychange', refreshLiveData);
     };
   }, [fetchManifests, toast]);
 

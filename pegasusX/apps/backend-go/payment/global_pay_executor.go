@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/circuit"
 )
 
 type globalpayProviderExecutor struct {
@@ -18,13 +19,18 @@ type globalpayProviderExecutor struct {
 	password      string
 	simulatorBase string // overrides base URL for local/dev simulation
 	httpClient    *http.Client
+	breaker       *circuit.Breaker
 }
 
 func newGlobalPayProviderExecutor(env, serviceID, username, password string) *globalpayProviderExecutor {
-	return newGlobalPayProviderExecutorWithSimulator(env, serviceID, username, password, "")
+	return newGlobalPayProviderExecutorWithOptions(env, serviceID, username, password, "", nil)
 }
 
 func newGlobalPayProviderExecutorWithSimulator(env, serviceID, username, password, simulatorBase string) *globalpayProviderExecutor {
+	return newGlobalPayProviderExecutorWithOptions(env, serviceID, username, password, simulatorBase, nil)
+}
+
+func newGlobalPayProviderExecutorWithOptions(env, serviceID, username, password, simulatorBase string, breaker *circuit.Breaker) *globalpayProviderExecutor {
 	if env == "" {
 		env = "dev"
 	}
@@ -34,10 +40,18 @@ func newGlobalPayProviderExecutorWithSimulator(env, serviceID, username, passwor
 		username:      username,
 		password:      password,
 		simulatorBase: simulatorBase,
+		breaker:       breaker,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 	}
+}
+
+func (e *globalpayProviderExecutor) doHTTP(ctx context.Context, call func(context.Context) error) error {
+	if e.breaker != nil {
+		return e.breaker.Do(ctx, call)
+	}
+	return call(ctx)
 }
 
 func (e *globalpayProviderExecutor) getCheckoutBaseURL() string {
@@ -109,23 +123,29 @@ func (e *globalpayProviderExecutor) authenticate(ctx context.Context) (string, e
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := e.httpClient.Do(req)
-	if err != nil {
-		return "", MarkRetryable(fmt.Errorf("globalpay auth request failed: %w", err))
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("globalpay auth failed with status %d: %s", resp.StatusCode, string(b))
-	}
-
 	var authResp gpAuthResponse
-	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
-		return "", fmt.Errorf("globalpay auth decode failed: %w", err)
-	}
-	if authResp.AccessToken == "" {
-		return "", fmt.Errorf("globalpay auth returned empty access token")
+	err = e.doHTTP(ctx, func(callCtx context.Context) error {
+		resp, err := e.httpClient.Do(req.WithContext(callCtx))
+		if err != nil {
+			return MarkRetryable(fmt.Errorf("globalpay auth request failed: %w", err))
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			b, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("globalpay auth failed with status %d: %s", resp.StatusCode, string(b))
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
+			return fmt.Errorf("globalpay auth decode failed: %w", err)
+		}
+		if authResp.AccessToken == "" {
+			return fmt.Errorf("globalpay auth returned empty access token")
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
 	}
 
 	return authResp.AccessToken, nil
@@ -182,21 +202,27 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 		}
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("Authorization", "Bearer "+token)
-		resp, err := e.httpClient.Do(httpReq)
-		if err != nil {
-			return ExecutionResult{}, MarkRetryable(fmt.Errorf("globalpay capture request failed: %w", err))
-		}
-		defer resp.Body.Close()
-		respBody, _ := io.ReadAll(resp.Body)
-		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-			return ExecutionResult{}, fmt.Errorf("globalpay capture failed with status %d: %s", resp.StatusCode, string(respBody))
-		}
 		var performResp struct {
 			PaymentID    string `json:"paymentId"`
 			Status       string `json:"status"`
 			IsSuccessful bool   `json:"isSuccessful"`
 		}
-		_ = json.Unmarshal(respBody, &performResp)
+		err = e.doHTTP(ctx, func(callCtx context.Context) error {
+			resp, err := e.httpClient.Do(httpReq.WithContext(callCtx))
+			if err != nil {
+				return MarkRetryable(fmt.Errorf("globalpay capture request failed: %w", err))
+			}
+			defer resp.Body.Close()
+			respBody, _ := io.ReadAll(resp.Body)
+			if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+				return fmt.Errorf("globalpay capture failed with status %d: %s", resp.StatusCode, string(respBody))
+			}
+			_ = json.Unmarshal(respBody, &performResp)
+			return nil
+		})
+		if err != nil {
+			return ExecutionResult{}, err
+		}
 		ref := performResp.PaymentID
 		if ref == "" {
 			ref = paymentID
@@ -243,24 +269,29 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+token)
 
-	resp, err := e.httpClient.Do(httpReq)
-	if err != nil {
-		return ExecutionResult{}, MarkRetryable(fmt.Errorf("globalpay create token request failed: %w", err))
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		b, _ := io.ReadAll(resp.Body)
-		return ExecutionResult{}, fmt.Errorf("globalpay create token failed with status %d: %s", resp.StatusCode, string(b))
-	}
-
 	var tResp gpTokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tResp); err != nil {
-		return ExecutionResult{}, fmt.Errorf("globalpay create token decode failed: %w", err)
-	}
+	err = e.doHTTP(ctx, func(callCtx context.Context) error {
+		resp, err := e.httpClient.Do(httpReq.WithContext(callCtx))
+		if err != nil {
+			return MarkRetryable(fmt.Errorf("globalpay create token request failed: %w", err))
+		}
+		defer resp.Body.Close()
 
-	if tResp.UserRedirectUrl == "" {
-		return ExecutionResult{}, fmt.Errorf("globalpay did not return userRedirectUrl")
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+			b, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("globalpay create token failed with status %d: %s", resp.StatusCode, string(b))
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&tResp); err != nil {
+			return fmt.Errorf("globalpay create token decode failed: %w", err)
+		}
+		if tResp.UserRedirectUrl == "" {
+			return fmt.Errorf("globalpay did not return userRedirectUrl")
+		}
+		return nil
+	})
+	if err != nil {
+		return ExecutionResult{}, err
 	}
 
 	return ExecutionResult{

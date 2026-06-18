@@ -208,7 +208,11 @@ run_go_smokecheck kafka
 log_step "Running end-to-end supplier→retailer→order→tracking flow"
 mkdir -p "$REPO_ROOT/.ssmr/import-uploads"
 export SSMR_IMPORT_LOCAL_ROOT="$REPO_ROOT/.ssmr/import-uploads"
-run_go_smokecheck e2e
+E2E_LOG="$GO_TMP_ROOT/ssmr-e2e.log"
+run_go_smokecheck e2e 2>&1 | tee "$E2E_LOG"
+
+log_step "Asserting full-ecosystem PX_E2E marker coverage (configuration + lifecycle + realtime)"
+bash "$REPO_ROOT/scripts/parity/ssmr_ecosystem_marker_gate.sh" "$E2E_LOG"
 
 log_step "SSMR smoke-check completed successfully"
 echo "__SSMR_OK__"

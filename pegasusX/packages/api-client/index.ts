@@ -229,6 +229,8 @@ export {
   reconcileSession,
 } from "./session-reconcile";
 export type { SessionReconcileRole, SessionReconcileEndpoint, SessionReconcileOptions, SessionReconcileResult } from "./session-reconcile";
+export { usePolling } from "./usePolling";
+export type { UsePollingOptions } from "./usePolling";
 
 export interface ApiClientConfig {
   baseUrl: string;

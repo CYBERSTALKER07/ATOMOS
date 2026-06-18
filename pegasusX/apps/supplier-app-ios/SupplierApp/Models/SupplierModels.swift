@@ -419,6 +419,7 @@ struct SupplierPromotion: Decodable, Identifiable {
     let description: String?
     let discountBps: Int64
     let scopeType: String
+    let scopeProductId: String?
     let retailerScope: String
     let isActive: Bool
     let priority: Int64
@@ -432,6 +433,7 @@ struct SupplierPromotion: Decodable, Identifiable {
         case description
         case discountBps = "discount_bps"
         case scopeType = "scope_type"
+        case scopeProductId = "scope_product_id"
         case retailerScope = "retailer_scope"
         case isActive = "is_active"
         case priority
@@ -448,6 +450,7 @@ struct SupplierPromotionUpsertRequest: Encodable {
     let discountBps: Int64
     let scopeType: String
     let retailerScope: String
+    let scopeProductId: String?
 
     enum CodingKeys: String, CodingKey {
         case name
@@ -455,6 +458,7 @@ struct SupplierPromotionUpsertRequest: Encodable {
         case discountBps = "discount_bps"
         case scopeType = "scope_type"
         case retailerScope = "retailer_scope"
+        case scopeProductId = "scope_product_id"
     }
 }
 

@@ -34,8 +34,10 @@ fun StaffScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
-        loading = true
+    fun load(silent: Boolean = false) {
+        if (!silent) {
+            loading = true
+        }
         error = null
         scope.launch {
             try {
@@ -48,7 +50,9 @@ fun StaffScreen(
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) {
+                    loading = false
+                }
             }
         }
     }
@@ -62,7 +66,7 @@ fun StaffScreen(
             FactoryRealtimeEventType.ManifestUpdate,
         ),
     ) {
-        load()
+        load(silent = true)
     }
 
     val onShift = staff.count { it.status.equals("ON_SHIFT", ignoreCase = true) || it.status.equals("ACTIVE", ignoreCase = true) }
@@ -90,7 +94,7 @@ fun StaffScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> FactoryLoadingState(
+            loading && staff.isEmpty() -> FactoryLoadingState(
                 title = "Loading staff",
                 body = "Fetching the current factory operator roster.",
                 modifier = Modifier

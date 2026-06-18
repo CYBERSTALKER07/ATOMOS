@@ -1,0 +1,101 @@
+{
+  "description": "Canonical PX_E2E markers for full-ecosystem green pass (configuration + lifecycle + realtime cross-role).",
+  "categories": {
+    "configuration": {
+      "description": "Topology, org-fleet, warehouse/factory locations, fleet CRUD — not order-cycle but required for ops",
+      "markers": [
+        "PX_E2E_TOPOLOGY_EDIT_OK",
+        "PX_E2E_ORG_FLEET_OK",
+        "PX_E2E_WAREHOUSE_FLEET_MGMT_OK",
+        "PX_E2E_WAREHOUSE_DISPATCH_SETTINGS_OK",
+        "PX_E2E_WAREHOUSE_STOCK_POLICY_OK",
+        "PX_E2E_SUPPLIER_IMPORT_WIZARD_OK",
+        "PX_E2E_RETAILER_PRICING_OVERRIDE_OK"
+      ]
+    },
+    "order_lifecycle": {
+      "description": "Retailer order → payment → warehouse dispatch → factory supply → payload manifest → driver delivery",
+      "markers": [
+        "PX_E2E_ORDER_OK",
+        "PX_E2E_PAYMENT_OK",
+        "PX_E2E_CHECKOUT_PREVIEW_OK",
+        "PX_E2E_MANUAL_PREORDER_OK",
+        "PX_E2E_WAREHOUSE_DISPATCH_EXECUTE_OK",
+        "PX_E2E_DISPATCH_CAPACITY_OK",
+        "PX_E2E_WAREHOUSE_ORDER_MUTATION_OK",
+        "PX_E2E_FACTORY_SUPPLY_REQUEST_OK",
+        "PX_E2E_FACTORY_MANIFEST_LIFECYCLE_OK",
+        "PX_E2E_PAYLOAD_MANIFEST_LIFECYCLE_OK",
+        "PX_E2E_PAYLOAD_DRIVER_GATE_OK",
+        "PX_E2E_DELIVERY_OK",
+        "PX_E2E_SHOP_CLOSED_OK",
+        "PX_E2E_RETURN_GATE_RECEIVE_OK"
+      ]
+    },
+    "realtime_cross_role": {
+      "description": "WebSocket fan-out + Kafka notification inbox across roles",
+      "markers": [
+        "PX_E2E_CROSS_ROLE_WS_OK",
+        "PX_E2E_CROSS_ROLE_DISPATCH_WS_OK",
+        "PX_E2E_NOTIFICATION_INBOX_OK",
+        "PX_E2E_WAREHOUSE_FLEET_LIVE_MAP_OK",
+        "PX_E2E_TELEMETRY_OK"
+      ]
+    },
+    "role_umbrella": {
+      "description": "Per-role umbrella markers printed at end of SSMR e2e",
+      "markers": [
+        "PX_E2E_WAREHOUSE_OK",
+        "PX_E2E_FACTORY_OK",
+        "PX_E2E_PAYLOAD_OK",
+        "PX_E2E_CATALOG_OK",
+        "PX_E2E_REPLENISH_OK",
+        "PX_E2E_REPLENISH_COLOCATE_OK"
+      ]
+    }
+  },
+  "required": [
+    "PX_E2E_TOPOLOGY_EDIT_OK",
+    "PX_E2E_ORG_FLEET_OK",
+    "PX_E2E_CROSS_ROLE_WS_OK",
+    "PX_E2E_CROSS_ROLE_DISPATCH_WS_OK",
+    "PX_E2E_ORDER_OK",
+    "PX_E2E_PAYMENT_OK",
+    "PX_E2E_WAREHOUSE_OK",
+    "PX_E2E_WAREHOUSE_DISPATCH_SETTINGS_OK",
+    "PX_E2E_WAREHOUSE_DISPATCH_EXECUTE_OK",
+    "PX_E2E_WAREHOUSE_FLEET_MGMT_OK",
+    "PX_E2E_WAREHOUSE_FLEET_LIVE_MAP_OK",
+    "PX_E2E_WAREHOUSE_ORDER_MUTATION_OK",
+    "PX_E2E_FACTORY_OK",
+    "PX_E2E_FACTORY_MANIFEST_LIFECYCLE_OK",
+    "PX_E2E_FACTORY_SUPPLY_REQUEST_OK",
+    "PX_E2E_PAYLOAD_OK",
+    "PX_E2E_PAYLOAD_MANIFEST_LIFECYCLE_OK",
+    "PX_E2E_PAYLOAD_DRIVER_GATE_OK",
+    "PX_E2E_PAYLOAD_SEAL_FLOWS_OK",
+    "PX_E2E_REASSIGN_FLOWS_OK",
+    "PX_E2E_DELIVERY_OK",
+    "PX_E2E_TELEMETRY_OK",
+    "PX_E2E_SHOP_CLOSED_OK",
+    "PX_E2E_CATALOG_OK",
+    "PX_E2E_REPLENISH_OK",
+    "PX_E2E_REPLENISH_COLOCATE_OK",
+    "PX_E2E_MANUAL_PREORDER_OK",
+    "PX_E2E_NOTIFICATION_INBOX_OK",
+    "PX_E2E_DISPATCH_CAPACITY_OK",
+    "PX_E2E_DRIVER_EDGES_OK",
+    "PX_E2E_DRIVER_ASSIGN_DETECTION_OK",
+    "PX_E2E_SUPPLIER_OPERATIONS_OK",
+    "PX_E2E_SUPPLIER_IMPORT_WIZARD_OK"
+  ],
+  "optional": [
+    "PX_E2E_NEGOTIATION_SKIPPED",
+    "PX_E2E_DRIVER_FIREBASE_OTP_OK",
+    "PX_E2E_FACTORY_FIREBASE_OTP_OK",
+    "PX_E2E_PAYLOAD_FIREBASE_OTP_OK"
+  ],
+  "alternatives": {
+    "negotiation": ["PX_E2E_NEGOTIATION_OK", "PX_E2E_NEGOTIATION_SKIPPED"]
+  }
+}

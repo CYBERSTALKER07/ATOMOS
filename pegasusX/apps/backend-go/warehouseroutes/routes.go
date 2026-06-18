@@ -45,6 +45,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Patch("/v1/warehouse/ops/inventory/{productID}/policy", d.Service.HandleInventoryPolicy)
 		rr.Get("/v1/warehouse/ops/settings", d.Service.HandleOpsSettings)
 		rr.Patch("/v1/warehouse/ops/settings", d.Service.HandleOpsSettings)
+		rr.Get("/v1/warehouse/ops/location", d.Service.HandleOpsLocation)
+		rr.Patch("/v1/warehouse/ops/location", d.Service.HandleOpsLocation)
 		rr.Get("/v1/warehouse/ops/orders", d.Service.HandleOrders)
 		rr.Get("/v1/warehouse/ops/orders/*", d.Service.HandleOrders)
 		if d.OrderService != nil {

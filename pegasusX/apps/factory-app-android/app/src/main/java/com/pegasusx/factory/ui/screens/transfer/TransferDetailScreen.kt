@@ -36,8 +36,10 @@ fun TransferDetailScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    fun load() {
-        loading = true
+    fun load(silent: Boolean = false) {
+        if (!silent) {
+            loading = true
+        }
         error = null
         scope.launch {
             try {
@@ -50,7 +52,9 @@ fun TransferDetailScreen(
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) {
+                    loading = false
+                }
             }
         }
     }
@@ -88,7 +92,7 @@ fun TransferDetailScreen(
         ),
         onEvent = {
             if (!transitioning) {
-                load()
+                load(silent = true)
             }
         },
         onReconnect = {
@@ -98,7 +102,7 @@ fun TransferDetailScreen(
                     snackbarHostState.showSnackbar("Connection restored — transfer state refreshed from server.")
                 }
             }
-            load()
+            load(silent = true)
         },
     )
 
@@ -117,7 +121,7 @@ fun TransferDetailScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading -> FactoryLoadingState(
+            loading && transfer == null -> FactoryLoadingState(
                 title = "Loading transfer",
                 body = "Fetching the latest manifest details and item breakdown.",
                 modifier = Modifier

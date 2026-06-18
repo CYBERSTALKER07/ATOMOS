@@ -52,8 +52,10 @@ fun ManifestListScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
-        loading = true
+    fun load(silent: Boolean = false) {
+        if (!silent) {
+            loading = true
+        }
         error = null
         scope.launch {
             try {
@@ -66,7 +68,9 @@ fun ManifestListScreen(
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) {
+                    loading = false
+                }
             }
         }
     }
@@ -79,8 +83,8 @@ fun ManifestListScreen(
             FactoryRealtimeEventType.ManifestUpdate,
             FactoryRealtimeEventType.TransferUpdate,
         ),
-        onEvent = { load() },
-        onReconnect = { load() },
+        onEvent = { load(silent = true) },
+        onReconnect = { load(silent = true) },
     )
 
     Scaffold(
@@ -110,7 +114,7 @@ fun ManifestListScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> FactoryLoadingState(
+            loading && manifests.isEmpty() -> FactoryLoadingState(
                 title = "Loading manifests",
                 body = "Fetching manifest pipeline for the loading gate.",
                 modifier = Modifier.fillMaxSize().padding(innerPadding),

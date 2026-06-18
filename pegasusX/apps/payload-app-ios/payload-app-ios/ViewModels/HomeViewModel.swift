@@ -94,7 +94,7 @@ final class HomeViewModel {
                 self.online = self.ws.online
                 await self.reconcileSession()
                 self.recoverInFlightMutations()
-                await self.refreshTrucks()
+                await self.refreshTrucks(silent: !self.trucks.isEmpty)
                 await self.refreshManifest()
                 await self.loadNotifications()
                 await self.flushQueue()
@@ -107,10 +107,10 @@ final class HomeViewModel {
     }
 
     // MARK: - Truck list
-    func refreshTrucks() async {
-        loadingTrucks = true
-        error = nil
-        defer { loadingTrucks = false }
+    func refreshTrucks(silent: Bool = false) async {
+        if !silent { loadingTrucks = true }
+        if !silent { error = nil }
+        defer { if !silent { loadingTrucks = false } }
         do {
             let result = try await api.trucks()
             trucks = result

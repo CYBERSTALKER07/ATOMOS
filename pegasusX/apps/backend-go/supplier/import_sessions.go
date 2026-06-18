@@ -21,6 +21,13 @@ import (
 
 const (
 	supplierImportRoutePrefix   = "/v1/supplier/inventory/imports"
+	supplierImportSessionPath   = "/v1/supplier/inventory/imports/{id}"
+	supplierImportUploadedPath  = "/v1/supplier/inventory/imports/{id}/uploaded"
+	supplierImportIngestPath    = "/v1/supplier/inventory/imports/{id}/ingest"
+	supplierImportRowsPath      = "/v1/supplier/inventory/imports/{id}/rows"
+	supplierImportMappingPath   = "/v1/supplier/inventory/imports/{id}/mapping"
+	supplierImportApprovePath   = "/v1/supplier/inventory/imports/{id}/approve"
+	supplierImportApplyPath     = "/v1/supplier/inventory/imports/{id}/apply"
 	supplierImportMaxUploadSize = int64(50 * 1024 * 1024)
 	supplierImportDefaultLimit  = 100
 	supplierImportMaxLimit      = 1000

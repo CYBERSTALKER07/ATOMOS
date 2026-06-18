@@ -66,6 +66,8 @@ type Retailer struct {
 	H3Cell               string
 	ReceivingWindowOpen  string
 	ReceivingWindowClose string
+	DeliveryAddress      string
+	PlaceID              string
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 }
@@ -369,6 +371,8 @@ type RegisterRequest struct {
 	Name                 string  `json:"name,omitempty"`
 	Lat                  float64 `json:"lat"`
 	Lng                  float64 `json:"lng"`
+	DeliveryAddress      string  `json:"delivery_address,omitempty"`
+	PlaceID              string  `json:"place_id,omitempty"`
 	H3Cell               string  `json:"h3_cell"`
 	ReceivingWindowOpen  string  `json:"receiving_window_open,omitempty"`
 	ReceivingWindowClose string  `json:"receiving_window_close,omitempty"`
@@ -447,6 +451,8 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		CountryCode:          s.countryCode,
 		Lat:                  req.Lat,
 		Lng:                  req.Lng,
+		DeliveryAddress:      strings.TrimSpace(req.DeliveryAddress),
+		PlaceID:              strings.TrimSpace(req.PlaceID),
 		H3Cell:               h3Cell,
 		ReceivingWindowOpen:  windowOpen,
 		ReceivingWindowClose: windowClose,

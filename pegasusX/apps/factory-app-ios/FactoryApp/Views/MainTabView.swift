@@ -1,5 +1,4 @@
 import SwiftUI
-import Network
 
 enum AppTab: String, CaseIterable {
     case dashboard = "Dashboard"
@@ -26,11 +25,7 @@ enum AppTab: String, CaseIterable {
 }
 
 struct MainTabView: View {
-    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: AppTab = .dashboard
-    @State private var refreshEpoch: Int = 0
-    @State private var pathMonitor: NWPathMonitor?
-    @State private var wasOffline = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -39,65 +34,29 @@ struct MainTabView: View {
                 onOpenPayloadOverride: { selectedTab = .payloadOverride },
                 onOpenInsights: { selectedTab = .insights }
             )
-                .id("\(AppTab.dashboard.rawValue)-\(refreshEpoch)")
                 .tabItem { Label(AppTab.dashboard.rawValue, systemImage: AppTab.dashboard.icon) }
                 .tag(AppTab.dashboard)
             LoadingBayView()
-                .id("\(AppTab.loadingBay.rawValue)-\(refreshEpoch)")
                 .tabItem { Label(AppTab.loadingBay.rawValue, systemImage: AppTab.loadingBay.icon) }
                 .tag(AppTab.loadingBay)
             TransferListView()
-                .id("\(AppTab.transfers.rawValue)-\(refreshEpoch)")
                 .tabItem { Label(AppTab.transfers.rawValue, systemImage: AppTab.transfers.icon) }
                 .tag(AppTab.transfers)
             SupplyRequestsView()
-                .id("\(AppTab.supplyRequests.rawValue)-\(refreshEpoch)")
                 .tabItem { Label(AppTab.supplyRequests.rawValue, systemImage: AppTab.supplyRequests.icon) }
                 .tag(AppTab.supplyRequests)
             PayloadOverrideView()
-                .id("\(AppTab.payloadOverride.rawValue)-\(refreshEpoch)")
                 .tabItem { Label(AppTab.payloadOverride.rawValue, systemImage: AppTab.payloadOverride.icon) }
                 .tag(AppTab.payloadOverride)
             FleetView()
-                .id("\(AppTab.fleet.rawValue)-\(refreshEpoch)")
                 .tabItem { Label(AppTab.fleet.rawValue, systemImage: AppTab.fleet.icon) }
                 .tag(AppTab.fleet)
             StaffView()
-                .id("\(AppTab.staff.rawValue)-\(refreshEpoch)")
                 .tabItem { Label(AppTab.staff.rawValue, systemImage: AppTab.staff.icon) }
                 .tag(AppTab.staff)
             InsightsView()
-                .id("\(AppTab.insights.rawValue)-\(refreshEpoch)")
                 .tabItem { Label(AppTab.insights.rawValue, systemImage: AppTab.insights.icon) }
                 .tag(AppTab.insights)
-        }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
-                refreshEpoch += 1
-            }
-        }
-        .onAppear {
-            guard pathMonitor == nil else { return }
-            let monitor = NWPathMonitor()
-            let queue = DispatchQueue(label: "com.pegasus.factory.main-tab.network")
-            monitor.pathUpdateHandler = { path in
-                DispatchQueue.main.async {
-                    if path.status == .satisfied {
-                        if wasOffline {
-                            refreshEpoch += 1
-                        }
-                        wasOffline = false
-                    } else {
-                        wasOffline = true
-                    }
-                }
-            }
-            monitor.start(queue: queue)
-            pathMonitor = monitor
-        }
-        .onDisappear {
-            pathMonitor?.cancel()
-            pathMonitor = nil
         }
     }
 }

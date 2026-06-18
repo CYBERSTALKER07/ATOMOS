@@ -10,7 +10,7 @@ struct ManifestExceptionsView: View {
 
     var body: some View {
         Group {
-            if loading {
+            if loading && exceptions.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error {
@@ -72,7 +72,7 @@ struct ManifestExceptionsView: View {
                 onEvent: { event in
                     guard let eventType = event.eventType else { return }
                     guard eventType == .manifestUpdate || eventType == .transferUpdate else { return }
-                    load()
+                    load(silent: true)
                 }
             )
         }
@@ -81,9 +81,11 @@ struct ManifestExceptionsView: View {
         }
     }
 
-    private func load() {
+    private func load(silent: Bool = false) {
         Task { @MainActor in
-            loading = true
+            if !silent {
+                loading = true
+            }
             error = nil
             do {
                 let response = try await FactoryService.manifestExceptions(escalatedOnly: escalatedOnly)
@@ -91,7 +93,9 @@ struct ManifestExceptionsView: View {
             } catch {
                 self.error = error.localizedDescription
             }
-            loading = false
+            if !silent {
+                loading = false
+            }
         }
     }
 }

@@ -11,6 +11,7 @@ import type {
   SupplierTopologyWarehouse,
 } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
+import { LocationPicker } from "@/components/LocationPicker";
 
 const api = createSupplierApi();
 
@@ -24,6 +25,8 @@ type WarehouseDraft = {
   key: string;
   warehouse_id?: string;
   name: string;
+  address: string;
+  place_id?: string;
   lat: string;
   lng: string;
   coverage_radius_km: string;
@@ -39,6 +42,8 @@ type FactoryDraft = {
   key: string;
   factory_id?: string;
   name: string;
+  address: string;
+  place_id?: string;
   lat: string;
   lng: string;
   is_active: boolean;
@@ -51,6 +56,8 @@ function warehouseDraftFromNode(node: SupplierTopologyWarehouse, key: string): W
     key,
     warehouse_id: node.warehouse_id,
     name: node.name,
+    address: node.address ?? "",
+    place_id: node.place_id,
     lat: String(node.lat),
     lng: String(node.lng),
     coverage_radius_km: String(node.coverage_radius_km || 50),
@@ -85,6 +92,8 @@ function factoryDraftFromNode(node: SupplierTopologyFactory, key: string): Facto
     key,
     factory_id: node.factory_id,
     name: node.name,
+    address: node.address ?? "",
+    place_id: node.place_id,
     lat: String(node.lat),
     lng: String(node.lng),
     is_active: node.is_active,
@@ -124,19 +133,24 @@ function buildUpdateRequest(warehouses: WarehouseDraft[], factories: FactoryDraf
       if (!name) {
         throw new Error(`Warehouse ${index + 1}: name is required`);
       }
-      const lat = parseCoordinate(draft.lat, `Warehouse ${index + 1} latitude`);
-      const lng = parseCoordinate(draft.lng, `Warehouse ${index + 1} longitude`);
+      const lat = parseCoordinate(draft.lat, `Warehouse ${index + 1} location`);
+      const lng = parseCoordinate(draft.lng, `Warehouse ${index + 1} location`);
       if (lat < -90 || lat > 90) {
-        throw new Error(`Warehouse ${index + 1}: latitude out of range`);
+        throw new Error(`Warehouse ${index + 1}: location out of range`);
       }
       if (lng < -180 || lng > 180) {
-        throw new Error(`Warehouse ${index + 1}: longitude out of range`);
+        throw new Error(`Warehouse ${index + 1}: location out of range`);
+      }
+      if (!draft.address.trim()) {
+        throw new Error(`Warehouse ${index + 1}: address is required`);
       }
       const coverage = Number.parseFloat(draft.coverage_radius_km.trim());
       const body: SupplierTopologyUpdateRequest["warehouses"][number] = {
         name,
         lat,
         lng,
+        address: draft.address.trim(),
+        place_id: draft.place_id,
         coverage_radius_km: Number.isFinite(coverage) && coverage > 0 ? coverage : 50,
         is_active: draft.is_active,
         is_on_shift: draft.is_on_shift,
@@ -161,18 +175,23 @@ function buildUpdateRequest(warehouses: WarehouseDraft[], factories: FactoryDraf
       if (!name) {
         throw new Error(`Factory ${index + 1}: name is required`);
       }
-      const lat = parseCoordinate(draft.lat, `Factory ${index + 1} latitude`);
-      const lng = parseCoordinate(draft.lng, `Factory ${index + 1} longitude`);
+      const lat = parseCoordinate(draft.lat, `Factory ${index + 1} location`);
+      const lng = parseCoordinate(draft.lng, `Factory ${index + 1} location`);
       if (lat < -90 || lat > 90) {
-        throw new Error(`Factory ${index + 1}: latitude out of range`);
+        throw new Error(`Factory ${index + 1}: location out of range`);
       }
       if (lng < -180 || lng > 180) {
-        throw new Error(`Factory ${index + 1}: longitude out of range`);
+        throw new Error(`Factory ${index + 1}: location out of range`);
+      }
+      if (!draft.address.trim()) {
+        throw new Error(`Factory ${index + 1}: address is required`);
       }
       const body: SupplierTopologyUpdateRequest["factories"][number] = {
         name,
         lat,
         lng,
+        address: draft.address.trim(),
+        place_id: draft.place_id,
         is_active: draft.is_active,
       };
       if (draft.factory_id) {
@@ -250,6 +269,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                 {
                   key: `new-wh-${Date.now()}`,
                   name: `Warehouse ${prev.length + 1}`,
+                  address: "",
                   lat: "41.2995",
                   lng: "69.2401",
                   coverage_radius_km: "50",
@@ -286,26 +306,30 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                   )
                 }
               />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Field
-                  label="Latitude"
-                  value={warehouse.lat}
-                  onChange={(value) =>
-                    setWarehouses((prev) =>
-                      prev.map((row) => (row.key === warehouse.key ? { ...row, lat: value } : row)),
-                    )
-                  }
-                />
-                <Field
-                  label="Longitude"
-                  value={warehouse.lng}
-                  onChange={(value) =>
-                    setWarehouses((prev) =>
-                      prev.map((row) => (row.key === warehouse.key ? { ...row, lng: value } : row)),
-                    )
-                  }
-                />
-              </div>
+              <LocationPicker
+                label="Warehouse address"
+                value={{
+                  address: warehouse.address,
+                  lat: warehouse.lat,
+                  lng: warehouse.lng,
+                  place_id: warehouse.place_id,
+                }}
+                onChange={(loc) =>
+                  setWarehouses((prev) =>
+                    prev.map((row) =>
+                      row.key === warehouse.key
+                        ? {
+                            ...row,
+                            address: loc.address,
+                            lat: loc.lat,
+                            lng: loc.lng,
+                            place_id: loc.place_id,
+                          }
+                        : row,
+                    ),
+                  )
+                }
+              />
               <Field
                 label="Coverage radius (km)"
                 value={warehouse.coverage_radius_km}
@@ -492,6 +516,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                 {
                   key: `new-fc-${Date.now()}`,
                   name: `Factory ${prev.length + 1}`,
+                  address: "",
                   lat: "41.3111",
                   lng: "69.2797",
                   is_active: true,
@@ -523,26 +548,30 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                   )
                 }
               />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Field
-                  label="Latitude"
-                  value={factory.lat}
-                  onChange={(value) =>
-                    setFactories((prev) =>
-                      prev.map((row) => (row.key === factory.key ? { ...row, lat: value } : row)),
-                    )
-                  }
-                />
-                <Field
-                  label="Longitude"
-                  value={factory.lng}
-                  onChange={(value) =>
-                    setFactories((prev) =>
-                      prev.map((row) => (row.key === factory.key ? { ...row, lng: value } : row)),
-                    )
-                  }
-                />
-              </div>
+              <LocationPicker
+                label="Factory address"
+                value={{
+                  address: factory.address,
+                  lat: factory.lat,
+                  lng: factory.lng,
+                  place_id: factory.place_id,
+                }}
+                onChange={(loc) =>
+                  setFactories((prev) =>
+                    prev.map((row) =>
+                      row.key === factory.key
+                        ? {
+                            ...row,
+                            address: loc.address,
+                            lat: loc.lat,
+                            lng: loc.lng,
+                            place_id: loc.place_id,
+                          }
+                        : row,
+                    ),
+                  )
+                }
+              />
               <ToggleRow
                 label="Active"
                 checked={factory.is_active}

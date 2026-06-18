@@ -666,6 +666,8 @@ export interface SupplierTopologyWarehouseInput {
   name: string;
   lat: number;
   lng: number;
+  address?: string;
+  place_id?: string;
   coverage_radius_km?: number;
   is_active?: boolean;
   is_on_shift?: boolean;
@@ -681,6 +683,8 @@ export interface SupplierTopologyFactoryInput {
   name: string;
   lat: number;
   lng: number;
+  address?: string;
+  place_id?: string;
   is_active?: boolean;
 }
 
@@ -694,6 +698,8 @@ export interface SupplierTopologyWarehouse {
   name: string;
   lat: number;
   lng: number;
+  address?: string;
+  place_id?: string;
   coverage_radius_km: number;
   is_active: boolean;
   is_on_shift: boolean;
@@ -724,6 +730,8 @@ export interface SupplierTopologyFactory {
   name: string;
   lat: number;
   lng: number;
+  address?: string;
+  place_id?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;

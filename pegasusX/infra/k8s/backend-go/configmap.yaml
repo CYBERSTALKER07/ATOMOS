@@ -6,17 +6,25 @@ metadata:
     app: backend-go
     app.kubernetes.io/part-of: pegasusx
 data:
-  PORT: "8080"
+  # backend-go reads HTTP_PORT (not PORT).
+  HTTP_PORT: "8080"
   PEGASUSX_ENV: "production"
   REDIS_ADDR: "redis.pegasusx.svc.cluster.local:6379"
   KAFKA_BROKERS: "kafka.pegasusx.svc.cluster.local:9092"
   KAFKA_TOPIC_MAIN: "pegasusx-main"
+  KAFKA_TOPIC_FREEZE_LOCKS: "pegasusx-freeze-locks"
   SPANNER_PROJECT: "pegasusx-prod"
   SPANNER_INSTANCE: "pegasusx-instance"
   SPANNER_DATABASE: "pegasusx-db"
+  GCS_BUCKET_NAME: "pegasusx-prod-catalog"
+  ROUTING_OSRM_URL: "http://osrm.pegasusx.svc.cluster.local:5000"
+  OPTIMIZER_BASE_URL: "http://ai-worker.pegasusx.svc.cluster.local:8081"
+  GLOBAL_PAY_ENV: "production"
+  WS_ALLOWED_ORIGINS: "https://supplier.pegasusx.app,https://warehouse.pegasusx.app,https://factory.pegasusx.app,https://retailer.pegasusx.app"
   LOG_LEVEL: "info"
   LOG_FORMAT: "json"
   REQUIRE_INFRA_ADAPTERS: "true"
   RELIABILITY_MIDDLEWARE_ENABLED: "true"
-  FIREBASE_AUTH_ENABLED: "false"
+  FIREBASE_AUTH_ENABLED: "true"
+  AIRWALLEX_DIRECT_EXECUTION_ENABLED: "false"
   # DDL runs via infra/k8s/backend-go/migrate-job.yaml — never on pod boot.

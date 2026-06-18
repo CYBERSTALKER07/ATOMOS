@@ -63,30 +63,36 @@ fun DashboardScreen(
 ) {
     var data by remember { mutableStateOf(DashboardData()) }
     var loading by remember { mutableStateOf(true) }
+    var hasData by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
-        loading = true
+    fun load(silent: Boolean = false) {
+        if (!silent) loading = true
         error = null
         scope.launch {
             try {
                 val resp = api.getDashboard()
                 if (resp.isSuccessful && resp.body() != null) {
                     data = resp.body()!!
-                } else {
+                    hasData = true
+                } else if (!silent) {
                     error = "Failed to load (${resp.code()})"
                 }
             } catch (e: Exception) {
-                error = e.message ?: "Network error"
+                if (!silent) error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) loading = false
             }
         }
     }
 
     LaunchedEffect(Unit) {
         load()
+    }
+
+    LaunchedEffect(Unit) {
+        realtimeSignals.refreshTick.collect { load(silent = true) }
     }
 
     Scaffold(
@@ -108,12 +114,12 @@ fun DashboardScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> WarehouseLoadingState(
+            loading && !hasData -> WarehouseLoadingState(
                 title = "Loading dashboard…",
                 body = "Warehouse KPIs and fleet snapshot",
                 modifier = Modifier.padding(innerPadding),
             )
-            error != null -> WarehouseStatePane(
+            error != null && !hasData -> WarehouseStatePane(
                 kind = WarehouseStateKind.Error,
                 headline = "Dashboard unavailable",
                 body = error!!,

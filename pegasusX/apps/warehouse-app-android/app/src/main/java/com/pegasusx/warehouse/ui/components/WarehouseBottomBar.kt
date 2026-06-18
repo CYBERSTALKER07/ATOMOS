@@ -16,7 +16,7 @@ fun WarehouseBottomBar(
 ) {
     NavigationBar(modifier = modifier) {
         WarehouseSection.compactTabs.forEach { section ->
-            val selected = selectedRoute?.substringBefore("/") == section.route
+            val selected = WarehouseSection.fromRoute(selectedRoute) == section
             NavigationBarItem(
                 selected = selected,
                 onClick = { onSectionSelected(section) },

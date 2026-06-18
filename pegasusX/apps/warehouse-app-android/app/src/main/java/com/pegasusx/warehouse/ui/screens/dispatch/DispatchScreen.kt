@@ -116,8 +116,9 @@ fun DispatchScreen(
         }
     }
 
-    fun load() {
-        loading = true; error = null
+    fun load(silent: Boolean = false) {
+        if (!silent) loading = true
+        error = null
         scope.launch {
             try {
                 val previewResp = api.getDispatchPreview()
@@ -125,20 +126,23 @@ fun DispatchScreen(
                 val lockResp = api.getDispatchLocks()
                 val vehiclesResp = api.getVehicles()
                 if (previewResp.isSuccessful && previewResp.body() != null) preview = previewResp.body()!!
-                else error = codeMessage(previewResp.code(), "Failed to load dispatch preview")
+                else if (!silent) error = codeMessage(previewResp.code(), "Failed to load dispatch preview")
                 if (supplyResp.isSuccessful && supplyResp.body() != null) {
                     supplyRequests = supplyResp.body()!!.resolved()
                 }
-                else if (error == null) error = codeMessage(supplyResp.code(), "Failed to load supply requests")
+                else if (!silent && error == null) error = codeMessage(supplyResp.code(), "Failed to load supply requests")
                 if (lockResp.isSuccessful && lockResp.body() != null) {
                     dispatchLocks = lockResp.body()!!.locks
                 }
-                else if (error == null) error = codeMessage(lockResp.code(), "Failed to load dispatch locks")
+                else if (!silent && error == null) error = codeMessage(lockResp.code(), "Failed to load dispatch locks")
                 if (vehiclesResp.isSuccessful && vehiclesResp.body() != null) {
                     fleetVehicles = vehiclesResp.body()!!.vehicles
                 }
-            } catch (e: Exception) { error = e.message ?: "Network error" }
-            finally { loading = false }
+            } catch (e: Exception) {
+                if (!silent) error = e.message ?: "Network error"
+            } finally {
+                if (!silent) loading = false
+            }
         }
     }
 
@@ -438,19 +442,7 @@ fun DispatchScreen(
     LaunchedEffect(Unit) { load() }
 
     LaunchedEffect(Unit) {
-        realtimeSignals.refreshTick.collect {
-            loadVehicles()
-            if (preview != null) {
-                scope.launch {
-                    runCatching { api.getDispatchPreview() }
-                        .onSuccess { response ->
-                            if (response.isSuccessful && response.body() != null) {
-                                preview = response.body()!!
-                            }
-                        }
-                }
-            }
-        }
+        realtimeSignals.refreshTick.collect { load(silent = true) }
     }
 
     WarehouseReconnectRecoveryEffect(
@@ -522,12 +514,12 @@ fun DispatchScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> WarehouseLoadingState(
+            loading && preview == null -> WarehouseLoadingState(
                 title = "Loading dispatch…",
                 body = "Orders, drivers, supply, and locks",
                 modifier = Modifier.padding(innerPadding),
             )
-            error != null -> WarehouseStatePane(
+            error != null && preview == null -> WarehouseStatePane(
                 kind = WarehouseStateKind.Error,
                 headline = "Dispatch unavailable",
                 body = error!!,

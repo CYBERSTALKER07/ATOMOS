@@ -135,7 +135,6 @@ fun WarehouseNavigation(
     val startDestination = if (TokenHolder.isLoggedIn) WarehouseRoutes.DASHBOARD else WarehouseRoutes.LOGIN
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
-    var refreshEpoch by remember { mutableIntStateOf(0) }
     var networkAvailable by remember { mutableStateOf(true) }
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -181,14 +180,14 @@ fun WarehouseNavigation(
         }
     }
 
-    LaunchedEffect(refreshEpoch) {
+    LaunchedEffect(Unit) {
         loadClientPolicy()
     }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                refreshEpoch += 1
+                loadClientPolicy()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -206,9 +205,7 @@ fun WarehouseNavigation(
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 mainHandler.post {
-                    if (!networkAvailable) {
-                        refreshEpoch += 1
-                    }
+                    if (!networkAvailable) { /* per-screen refresh */ }
                     networkAvailable = true
                 }
             }
@@ -249,11 +246,14 @@ fun WarehouseNavigation(
     }
 
     fun backFor(route: String): (() -> Unit)? =
-        if (showBack(route)) ({ navController.popBackStack() }) else null
+        if (showBack(route)) ({
+            if (!navController.popBackStack()) {
+                navigateSection(WarehouseSection.DASHBOARD)
+            }
+        }) else null
 
     val navHost: @Composable (Modifier) -> Unit = { modifier ->
-        key(refreshEpoch) {
-            NavHost(
+        NavHost(
                 navController = navController,
                 startDestination = startDestination,
                 modifier = modifier,
@@ -298,6 +298,7 @@ fun WarehouseNavigation(
                 composable(WarehouseRoutes.ORDERS) {
                     OrdersScreen(
                         api = api,
+                        realtimeSignals = realtimeSignals,
                         onOrderClick = { id -> navController.navigate(WarehouseRoutes.orderDetail(id)) },
                         onBack = backFor(WarehouseRoutes.ORDERS),
                     )
@@ -490,7 +491,6 @@ fun WarehouseNavigation(
                     )
                 }
             }
-        }
     }
 
     if (showShell) {

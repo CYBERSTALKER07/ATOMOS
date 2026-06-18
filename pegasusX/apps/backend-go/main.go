@@ -24,6 +24,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/driverroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/enterprise"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
@@ -145,10 +146,12 @@ func main() {
 	}
 
 	infraroutes.RegisterRoutes(r, app.InfraHealth)
+	geocodeSvc := geolocation.NewService(cfg.GoogleMapsAPIKey)
 	platformroutes.RegisterRoutes(r, platformroutes.Deps{
-		Handler:   app.PlatformHandler,
-		JWTSecret: cfg.JWTSecret,
-		JWTIssuer: cfg.JWTIssuer,
+		Handler:        app.PlatformHandler,
+		GeocodeHandler: geolocation.NewHandler(geocodeSvc),
+		JWTSecret:      cfg.JWTSecret,
+		JWTIssuer:      cfg.JWTIssuer,
 	})
 	retailerroutes.RegisterRoutes(r, retailerroutes.Deps{
 		Service:             app.RetailerService,

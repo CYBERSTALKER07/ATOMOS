@@ -1,5 +1,9 @@
 package com.pegasusx.factory.ui.components
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import com.pegasus.design.PegasusCollapsibleRail
 import com.pegasus.design.PegasusRailGroup
 import com.pegasus.design.PegasusRailItem
@@ -13,6 +17,7 @@ fun FactoryNavigationDrawer(
     onToggleExpanded: () -> Unit,
     selectedRoute: String?,
     onSectionSelected: (FactorySection) -> Unit,
+    onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val selectedId = FactorySection.fromRoute(selectedRoute)?.route
@@ -27,9 +32,15 @@ fun FactoryNavigationDrawer(
         ),
         selectedItemId = selectedId,
         onItemSelected = { item ->
-            FactorySection.entries.firstOrNull { it.route == item.id }?.let(onSectionSelected)
+            FactorySection.fromRoute(item.id)?.let(onSectionSelected)
+                ?: FactorySection.entries.firstOrNull { it.route == item.id }?.let(onSectionSelected)
         },
         modifier = modifier,
+        footer = {
+            IconButton(onClick = onSignOut) {
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Sign out")
+            }
+        },
     )
 }
 

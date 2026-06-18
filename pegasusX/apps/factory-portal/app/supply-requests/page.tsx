@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
+import { usePolling } from '@pegasusx/api-client';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { downloadCsv } from '@/lib/csv';
 import { usePagination } from '@/lib/use-pagination';
@@ -173,13 +174,16 @@ export default function SupplyRequestsPage() {
     };
   }, [fetchRequests]);
 
-  useEffect(() => {
-    const refreshLiveData = () => {
-      if (document.visibilityState === 'visible') {
-        void fetchRequests({ background: true, silent: true });
-      }
-    };
+  usePolling(
+    async (signal) => {
+      if (signal.aborted) return;
+      await fetchRequests({ background: true, silent: true });
+    },
+    LIVE_REFRESH_MS,
+    [fetchRequests],
+  );
 
+  useEffect(() => {
     const handleOnline = () => {
       setIsOffline(false);
       toast('Connection restored. Refreshing supply queue.', 'info');
@@ -191,16 +195,12 @@ export default function SupplyRequestsPage() {
       toast('Offline. Showing the last synced supply queue.', 'warning');
     };
 
-    const interval = window.setInterval(refreshLiveData, LIVE_REFRESH_MS);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    document.addEventListener('visibilitychange', refreshLiveData);
 
     return () => {
-      window.clearInterval(interval);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      document.removeEventListener('visibilitychange', refreshLiveData);
     };
   }, [fetchRequests, toast]);
 

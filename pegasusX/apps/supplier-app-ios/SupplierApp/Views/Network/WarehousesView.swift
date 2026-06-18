@@ -4,6 +4,7 @@ struct WarehousesView: View {
     @State private var warehouses: [SupplierTopologyWarehouse] = []
     @State private var loading = true
     @State private var error: String?
+    @State private var showAdd = false
 
     var body: some View {
         Group {
@@ -12,7 +13,13 @@ struct WarehousesView: View {
             } else if let error, warehouses.isEmpty {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else if warehouses.isEmpty {
-                SupplierEmptyView(title: "No warehouses", message: "Configure warehouses in topology.")
+                TopologyCenteredEmptyState(
+                    title: "No warehouses",
+                    message: "Add your first distribution node to start fulfilling orders.",
+                    actionLabel: "Add first warehouse"
+                ) {
+                    showAdd = true
+                }
             } else {
                 List(warehouses) { warehouse in
                     VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
@@ -28,6 +35,20 @@ struct WarehousesView: View {
         }
         .background(SupplierTheme.background)
         .navigationTitle("Warehouses")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showAdd = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $showAdd) {
+            AddWarehouseSheet {
+                Task { await load(silent: true) }
+            }
+        }
         .task { await load() }
         .refreshable { await load(silent: true) }
     }

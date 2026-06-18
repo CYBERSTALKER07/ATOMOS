@@ -116,7 +116,7 @@ struct OrdersView: View {
     }
 }
 
-private struct OrderRow: View {
+struct OrderRow: View {
     let order: SupplierOrder
 
     var body: some View {
@@ -136,7 +136,7 @@ private struct OrderRow: View {
     }
 }
 
-private struct OrderDetailPanel: View {
+struct OrderDetailPanel: View {
     let order: SupplierOrder
     @Bindable var vm: OrdersViewModel
     @State private var note = ""

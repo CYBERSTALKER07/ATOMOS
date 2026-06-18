@@ -3,11 +3,15 @@ package com.pegasusx.supplier.ui.screens.network
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
@@ -25,10 +29,13 @@ fun WarehousesScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var warehouses by remember { mutableStateOf(emptyList<com.pegasusx.supplier.data.model.SupplierTopologyWarehouse>()) }
+    var showAdd by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
+    fun load() {
         scope.launch {
+            loading = true
+            error = null
             try {
                 val resp = ops.getTopology()
                 warehouses = if (resp.isSuccessful) resp.body()?.warehouses.orEmpty() else emptyList()
@@ -41,6 +48,8 @@ fun WarehousesScreen(
         }
     }
 
+    LaunchedEffect(Unit) { load() }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -50,23 +59,38 @@ fun WarehousesScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    IconButton(onClick = { showAdd = true }) {
+                        Icon(Icons.Default.Add, contentDescription = "Add warehouse")
+                    }
+                },
             )
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading warehouses…", "Topology nodes")
-            error != null -> SupplierStatePane(
+            loading -> SupplierLoadingState("Loading warehouses…", "Topology nodes", Modifier.padding(padding))
+            error != null && warehouses.isEmpty() -> SupplierStatePane(
                 kind = SupplierStateKind.Error,
                 headline = "Warehouses unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
+                actionLabel = "Retry",
+                onAction = { load() },
             )
-            warehouses.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
-                headline = "No warehouses",
-                body = "Warehouse nodes from topology will appear here.",
-                modifier = Modifier.padding(padding),
-            )
+            warehouses.isEmpty() -> Box(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                SupplierStatePane(
+                    kind = SupplierStateKind.Empty,
+                    headline = "No warehouses",
+                    body = "Add your first distribution node to start fulfilling orders.",
+                    actionLabel = "Add first warehouse",
+                    onAction = { showAdd = true },
+                )
+            }
             else -> LazyColumn(
                 modifier = Modifier.padding(padding),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
@@ -82,4 +106,58 @@ fun WarehousesScreen(
             }
         }
     }
+
+    if (showAdd) {
+        AddWarehouseDialog(
+            onDismiss = { showAdd = false },
+            onSave = { name, lat, lng, radius ->
+                scope.launch {
+                    appendWarehouseNode(ops, name, lat, lng, radius)
+                        .onSuccess {
+                            showAdd = false
+                            load()
+                        }
+                        .onFailure { error = it.message }
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun AddWarehouseDialog(
+    onDismiss: () -> Unit,
+    onSave: (String, Double, Double, Double) -> Unit,
+) {
+    val (defaultLat, defaultLng) = defaultWarehouseCoordinates()
+    var name by remember { mutableStateOf("") }
+    var lat by remember { mutableStateOf(defaultLat.toString()) }
+    var lng by remember { mutableStateOf(defaultLng.toString()) }
+    var radius by remember { mutableStateOf("50") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add warehouse") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
+                OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text("Latitude") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
+                OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text("Longitude") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
+                OutlinedTextField(value = radius, onValueChange = { radius = it }, label = { Text("Coverage km") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val latValue = lat.toDoubleOrNull()
+                    val lngValue = lng.toDoubleOrNull()
+                    if (name.isNotBlank() && latValue != null && lngValue != null) {
+                        onSave(name, latValue, lngValue, radius.toDoubleOrNull() ?: 50.0)
+                    }
+                },
+                enabled = name.isNotBlank(),
+            ) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }

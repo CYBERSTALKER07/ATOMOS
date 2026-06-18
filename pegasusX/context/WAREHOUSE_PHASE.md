@@ -255,3 +255,9 @@ cd pegasusX/apps/warehouse-app-ios && xcodegen generate && xcodebuild -scheme Wa
 | WH4-AUDIT-04 | Demand forecast insights fallback | yes | yes | yes | **CLOSED** |
 | WH4-AUDIT-05 | Demand forecast Series tab | no | yes | yes | native-ahead (keep) |
 | WH4-AUDIT-06 | SSMR `PX_E2E_WAREHOUSE_ANALYTICS_OK` | — | — | — | **CLOSED** |
+
+---
+
+## Enterprise production readiness (2026-06-18)
+
+**Row status:** `PROD_CANDIDATE` — AUTO dispatch + freeze locks, supply request idempotency, fleet live map WS, preorders/stock commitments. OSRM geometry via `ROUTING_OSRM_URL` in k8s configmap.

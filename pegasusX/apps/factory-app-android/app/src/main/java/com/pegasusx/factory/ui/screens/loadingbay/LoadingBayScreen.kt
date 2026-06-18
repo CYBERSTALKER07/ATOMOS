@@ -41,8 +41,10 @@ fun LoadingBayScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    fun load() {
-        loading = true
+    fun load(silent: Boolean = false) {
+        if (!silent) {
+            loading = true
+        }
         error = null
         scope.launch {
             try {
@@ -55,7 +57,9 @@ fun LoadingBayScreen(
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) {
+                    loading = false
+                }
             }
         }
     }
@@ -69,7 +73,7 @@ fun LoadingBayScreen(
         ),
     ) {
         if (!dispatching) {
-            load()
+            load(silent = transfers.isNotEmpty())
         }
     }
 
@@ -132,7 +136,7 @@ fun LoadingBayScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading -> FactoryLoadingState(
+            loading && transfers.isEmpty() -> FactoryLoadingState(
                 title = "Loading bay status",
                 body = "Fetching approved, loading, and dispatched transfer groups for the bay.",
                 modifier = Modifier

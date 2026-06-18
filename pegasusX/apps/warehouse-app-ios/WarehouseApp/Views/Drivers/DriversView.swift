@@ -13,10 +13,10 @@ struct DriversView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if loading {
+                if loading && drivers.isEmpty {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error {
+                } else if let error, drivers.isEmpty {
                     ContentUnavailableView {
                         Label("Error", systemImage: "exclamationmark.triangle")
                     } description: {
@@ -87,13 +87,15 @@ struct DriversView: View {
                 }
             }
             .task { load() }
-            .refreshable { load() }
+            .refreshable { load(silent: false) }
+            .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
+                load(silent: silent)
+            }
             .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
                 if updatingDriverId != nil {
                     updatingDriverId = nil
                     error = "Connection restored — verify assignment status before retrying."
                 }
-                load()
             }
             .sheet(isPresented: $showCreate) {
                 CreateDriverSheet { pin in
@@ -112,8 +114,8 @@ struct DriversView: View {
         }
     }
 
-    private func load() {
-        loading = true
+    private func load(silent: Bool = false) {
+        if !silent { loading = true }
         error = nil
         Task {
             do {
@@ -123,9 +125,9 @@ struct DriversView: View {
                 drivers = driverResp.drivers
                 vehicles = vehicleResp.vehicles
             } catch {
-                self.error = error.localizedDescription
+                if !silent { self.error = error.localizedDescription }
             }
-            loading = false
+            if !silent { loading = false }
         }
     }
 

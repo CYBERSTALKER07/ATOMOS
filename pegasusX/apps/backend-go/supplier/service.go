@@ -117,6 +117,8 @@ type WarehouseNode struct {
 	Name                  string    `json:"name"`
 	Lat                   float64   `json:"lat"`
 	Lng                   float64   `json:"lng"`
+	Address               string    `json:"address,omitempty"`
+	PlaceID               string    `json:"place_id,omitempty"`
 	CoverageRadiusKm      float64   `json:"coverage_radius_km"`
 	TransferMode          string    `json:"transfer_mode,omitempty"`
 	CoLocateWithFactoryID string    `json:"co_locate_with_factory_id,omitempty"`
@@ -142,6 +144,8 @@ type FactoryNode struct {
 	Name      string    `json:"name"`
 	Lat       float64   `json:"lat"`
 	Lng       float64   `json:"lng"`
+	Address   string    `json:"address,omitempty"`
+	PlaceID   string    `json:"place_id,omitempty"`
 	IsActive  bool      `json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

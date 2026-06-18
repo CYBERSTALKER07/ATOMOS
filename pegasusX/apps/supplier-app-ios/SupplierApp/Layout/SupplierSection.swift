@@ -98,9 +98,8 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     }
 
     static var opsSections: [SupplierSection] {
-        // Quantity negotiation disabled ecosystem-wide.
         [
-            .exceptions, .shopClosed, .earlyComplete, .manifests, .dispatchPreview, .activity,
+            .manifests, .dispatchPreview, .activity,
             .fleetOrders, .orgFleet, .treasury, .ledger, .payments, .chargebacks,
             .reconciliation, .operations,
         ]

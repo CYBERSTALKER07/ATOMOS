@@ -27,6 +27,15 @@ func (c *Config) ValidateProductionProfile() error {
 			return fmt.Errorf("%s must be set to a non-dev value when PEGASUSX_ENV=production", name)
 		}
 	}
+	gpEnv := strings.ToLower(strings.TrimSpace(c.GlobalPayEnv))
+	if gpEnv == "production" || gpEnv == "staging" {
+		if strings.TrimSpace(c.GlobalPayUsername) == "" || strings.TrimSpace(c.GlobalPayPassword) == "" {
+			return fmt.Errorf("GLOBAL_PAY_USERNAME and GLOBAL_PAY_PASSWORD must be set when GLOBAL_PAY_ENV=%s in production profile", gpEnv)
+		}
+		if strings.TrimSpace(c.GlobalPayServiceID) == "" {
+			return fmt.Errorf("GLOBAL_PAY_SERVICE_ID must be set when GLOBAL_PAY_ENV=%s in production profile", gpEnv)
+		}
+	}
 	return nil
 }
 

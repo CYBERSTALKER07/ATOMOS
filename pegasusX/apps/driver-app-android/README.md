@@ -35,3 +35,7 @@ Checked-in stub: `app/src/main/java/com/pegasusx/driver/generated/contracts/Pega
 | WS codegen | off by default (`driver.ws.codegen`) |
 
 Several delivery edge endpoints and notifications are scaffolded on the backend for simulator flows; production handlers land with Spanner-backed order lifecycle work.
+
+## Realtime refresh contract
+
+`ManifestViewModel.loadManifest(silent:)` on WS/reconnect; no `key(refreshEpoch) { NavHost }`. See `pegasusX/docs/ROLE_ROW_PARITY_MATRIX.md`.

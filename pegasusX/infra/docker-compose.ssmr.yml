@@ -133,6 +133,9 @@ services:
       KAFKA_BROKERS: kafka:29092
       OPTIMIZER_BASE_URL: http://ai-worker:8081
       INTERNAL_API_KEY: dev-internal-key
+      GLOBAL_PAY_ENV: dev
+      REQUIRE_INFRA_ADAPTERS: "true"
+      RELIABILITY_MIDDLEWARE_ENABLED: "true"
     command:
       - /bin/sh
       - -lc

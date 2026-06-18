@@ -1,114 +1,75 @@
 import SwiftUI
 
 struct PricingView: View {
-    @State private var rule: SupplierPricingRule?
-    @State private var baseMarkupBps = ""
-    @State private var retailerDiscountBps = ""
-    @State private var minMarginBps = ""
-    @State private var currency = ""
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
+    @State private var products: [CatalogProduct] = []
     @State private var loading = true
-    @State private var saving = false
     @State private var error: String?
+    @State private var query = ""
+
+    private var filtered: [CatalogProduct] {
+        guard !query.isEmpty else { return products }
+        return products.filter { $0.name.localizedCaseInsensitiveContains(query) }
+    }
 
     var body: some View {
         Group {
-            if loading {
+            if loading && products.isEmpty {
                 SupplierLoadingView(title: "Loading pricing…")
-            } else if let error, rule == nil {
+            } else if let error, products.isEmpty {
                 SupplierErrorView(message: error) { Task { await load() } }
-            } else if rule != nil {
-                Form {
-                    Section("Authority") {
-                        TextField("Base markup (bps)", text: $baseMarkupBps)
-                            .keyboardType(.numberPad)
-                        TextField("Retailer discount (bps)", text: $retailerDiscountBps)
-                            .keyboardType(.numberPad)
-                        TextField("Min margin (bps)", text: $minMarginBps)
-                            .keyboardType(.numberPad)
-                        TextField("Currency", text: $currency)
-                            .textInputAutocapitalization(.characters)
-                    }
-                    if let rule {
-                        Section("Status") {
-                            metricRow("Version", "\(rule.ruleVersion)")
-                            metricRow("Updated", rule.updatedAt.isEmpty ? "—" : rule.updatedAt)
+            } else if products.isEmpty {
+                SupplierEmptyView(
+                    title: "No products to price",
+                    message: "Add products in Catalog first. They will appear here for list and sale pricing."
+                )
+            } else if filtered.isEmpty {
+                SupplierEmptyView(title: "No matches", message: "No products match \"\(query)\".")
+            } else {
+                List(filtered) { product in
+                    NavigationLink {
+                        ProductPricingDetailView(product: product) {
+                            Task { await load(silent: true) }
                         }
-                    }
-                    if let error {
-                        Section {
-                            Text(error).foregroundStyle(.red)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(product.name).font(.headline)
+                            Text(formatPrice(product))
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
                         }
-                    }
-                    Section {
-                        Button(saving ? "Saving…" : "Save pricing rule") {
-                            Task { await save() }
-                        }
-                        .disabled(saving)
                     }
                 }
-            } else {
-                SupplierEmptyView(title: "No pricing rule", message: "Supplier pricing authority has not been configured.")
+                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)
         .navigationTitle("Pricing")
+        .searchable(text: $query, prompt: "Product name")
         .task { await load() }
+        .refreshable { await load(silent: true) }
+        .silentRealtimeRefresh(
+            refreshEpoch: realtimeHub.refreshEpoch,
+            reconnectEpoch: realtimeHub.reconnectEpoch
+        ) { silent in
+            Task { await load(silent: silent) }
+        }
     }
 
-    private func metricRow(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.headline)
-        }
-        .padding(.vertical, 4)
+    private func formatPrice(_ product: CatalogProduct) -> String {
+        let major = Double(product.priceMinor) / 100.0
+        return String(format: "%.2f %@", major, product.currency)
     }
 
     @MainActor
-    private func load() async {
-        loading = true
+    private func load(silent: Bool = false) async {
+        if !silent { loading = true }
         error = nil
         defer { loading = false }
         do {
-            let loaded = try await SupplierOperationsService.pricingRules()
-            rule = loaded
-            baseMarkupBps = String(loaded.baseMarkupBps)
-            retailerDiscountBps = String(loaded.retailerDiscountBps)
-            minMarginBps = String(loaded.minMarginBps)
-            currency = loaded.currency
+            products = try await SupplierService.catalogProducts()
         } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func save() async {
-        guard let base = Int64(baseMarkupBps.filter(\.isNumber)),
-              let discount = Int64(retailerDiscountBps.filter(\.isNumber)),
-              let margin = Int64(minMarginBps.filter(\.isNumber)),
-              base >= 0, discount >= 0, margin >= 0 else {
-            error = "Enter non-negative integer basis points"
-            return
-        }
-        saving = true
-        error = nil
-        defer { saving = false }
-        do {
-            let trimmedCurrency = currency.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-            let updated = try await SupplierService.updatePricingRules(
-                SupplierPricingRuleUpdateRequest(
-                    baseMarkupBps: Int(base),
-                    retailerDiscountBps: Int(discount),
-                    minMarginBps: Int(margin),
-                    currency: trimmedCurrency.count == 3 ? trimmedCurrency : nil
-                )
-            )
-            rule = updated
-            baseMarkupBps = String(updated.baseMarkupBps)
-            retailerDiscountBps = String(updated.retailerDiscountBps)
-            minMarginBps = String(updated.minMarginBps)
-            currency = updated.currency
-        } catch {
-            self.error = error.localizedDescription
+            if !silent { self.error = error.localizedDescription }
         }
     }
 }

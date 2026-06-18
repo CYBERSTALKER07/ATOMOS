@@ -9,8 +9,11 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.pegasus.design.RealtimeRefreshEffect
+import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.data.model.SupplierManifestRow
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasusx.supplier.ui.components.SupplierStateKind
@@ -22,6 +25,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ManifestsScreen(
     ops: SupplierOperationsRepository,
+    realtimeSignals: SupplierRealtimeSignals,
     onBack: () -> Unit,
     onOpenManifest: (String) -> Unit = {},
     onOpenGateExceptions: () -> Unit = {},
@@ -31,23 +35,35 @@ fun ManifestsScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
+    fun load(silent: Boolean = false) {
         scope.launch {
-            loading = true
-            error = null
+            if (!silent) {
+                loading = true
+                error = null
+            }
             try {
                 val resp = ops.getManifests()
-                rows = if (resp.isSuccessful) resp.body()?.manifests.orEmpty() else emptyList()
-                if (!resp.isSuccessful) error = "Failed (${resp.code()})"
+                if (resp.isSuccessful) {
+                    rows = resp.body()?.manifests.orEmpty()
+                } else if (!silent) {
+                    error = "Failed (${resp.code()})"
+                    rows = emptyList()
+                }
             } catch (e: Exception) {
-                error = e.message
+                if (!silent) error = e.message
             } finally {
-                loading = false
+                if (!silent) loading = false
             }
         }
     }
 
     LaunchedEffect(Unit) { load() }
+
+    RealtimeRefreshEffect(
+        refreshTick = realtimeSignals.refreshTick,
+        reconnectTick = realtimeSignals.reconnectTick,
+        onRefresh = { load(silent = it) },
+    )
 
     Scaffold(
         topBar = {
@@ -68,7 +84,7 @@ fun ManifestsScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState(
+            showFullScreenLoading(loading, rows.isNotEmpty()) -> SupplierLoadingState(
                 title = "Loading manifests…",
                 body = "Supplier manifest queue",
                 modifier = Modifier.padding(padding),

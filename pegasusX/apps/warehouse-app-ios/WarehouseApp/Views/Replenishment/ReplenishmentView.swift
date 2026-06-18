@@ -10,12 +10,12 @@ struct ReplenishmentView: View {
 
     var body: some View {
         Group {
-            if loading {
+            if loading && insights.isEmpty {
                 WarehouseLoadingView(
                     title: "Loading replenishment",
                     message: "Fetching stock insights and reorder recommendations."
                 )
-            } else if let error {
+            } else if let error, insights.isEmpty {
                 WarehouseErrorView(message: error) { load() }
             } else if insights.isEmpty {
                 WarehouseEmptyView(
@@ -78,13 +78,15 @@ struct ReplenishmentView: View {
             }
         }
         .task { load() }
-        .refreshable { load() }
+        .refreshable { load(silent: false) }
+        .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
+            load(silent: silent)
+        }
         .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
             if actingId != nil {
                 actingId = nil
                 statusMessage = "Connection restored — verify status before retrying."
             }
-            load()
         }
     }
 
@@ -96,17 +98,17 @@ struct ReplenishmentView: View {
         }
     }
 
-    private func load() {
-        loading = true
+    private func load(silent: Bool = false) {
+        if !silent { loading = true }
         error = nil
         Task {
             do {
                 let response = try await WarehouseService.replenishmentInsights()
                 insights = response.rows
             } catch {
-                self.error = error.localizedDescription
+                if !silent { self.error = error.localizedDescription }
             }
-            loading = false
+            if !silent { loading = false }
         }
     }
 

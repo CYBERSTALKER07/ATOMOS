@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pegasusx.supplier.data.model.SupplierEarnings
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +41,7 @@ data class ChargebacksUiState(
 class TreasuryViewModel @Inject constructor(
     private val api: SupplierApi,
     private val ops: SupplierOperationsRepository,
+    private val realtimeSignals: SupplierRealtimeSignals,
 ) : ViewModel() {
     private val _hubState = MutableStateFlow(TreasuryHubUiState())
     val hubState: StateFlow<TreasuryHubUiState> = _hubState.asStateFlow()
@@ -47,24 +49,41 @@ class TreasuryViewModel @Inject constructor(
     private val _chargebacksState = MutableStateFlow(ChargebacksUiState())
     val chargebacksState: StateFlow<ChargebacksUiState> = _chargebacksState.asStateFlow()
 
-    fun loadHub() {
+    init {
         viewModelScope.launch {
-            _hubState.update { it.copy(loading = true, error = null) }
+            realtimeSignals.refreshTick.collect { loadHub(silent = true) }
+        }
+        viewModelScope.launch {
+            realtimeSignals.reconnectTick.collect { loadHub(silent = true) }
+        }
+    }
+
+    fun loadHub(silent: Boolean = false) {
+        viewModelScope.launch {
+            if (!silent) {
+                _hubState.update { it.copy(loading = true, error = null) }
+            } else {
+                _hubState.update { it.copy(error = null) }
+            }
             try {
                 val earningsResp = api.getEarnings()
                 val ledgerResp = ops.getPaymentLedger()
                 val reconResp = ops.getPaymentReconciliationMismatches()
                 _hubState.update {
                     it.copy(
-                        earnings = if (earningsResp.isSuccessful) earningsResp.body() else null,
-                        ledgerEntryCount = ledgerResp.body()?.items?.size ?: 0,
-                        mismatchCount = reconResp.body()?.items?.size ?: 0,
+                        earnings = if (earningsResp.isSuccessful) earningsResp.body() else it.earnings,
+                        ledgerEntryCount = ledgerResp.body()?.items?.size ?: it.ledgerEntryCount,
+                        mismatchCount = reconResp.body()?.items?.size ?: it.mismatchCount,
                         loading = false,
-                        error = if (!earningsResp.isSuccessful) "Failed to load treasury KPIs" else null,
+                        error = if (!earningsResp.isSuccessful && !silent) "Failed to load treasury KPIs" else it.error,
                     )
                 }
             } catch (e: Exception) {
-                _hubState.update { it.copy(loading = false, error = e.message) }
+                if (!silent) {
+                    _hubState.update { it.copy(loading = false, error = e.message) }
+                } else {
+                    _hubState.update { it.copy(loading = false) }
+                }
             }
         }
     }

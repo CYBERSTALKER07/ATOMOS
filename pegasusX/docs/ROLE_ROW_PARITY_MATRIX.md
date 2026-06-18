@@ -2,13 +2,13 @@
 
 > **Canonical cross-role spec:** [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md) — use this matrix for screen-level parity; use the master plan for end-to-end flows, comms, and verification gates.
 
-Last updated: 2026-06-17 (factory FA9-03 Firebase OTP). Canonical reference: `pegasus/`. Delivery tree: `pegasusX/`.
+Last updated: 2026-06-17 (supplier nav cleanup + catalog-first pricing + topology create UX). Canonical reference: `pegasus/`. Delivery tree: `pegasusX/`.
 
 ## Summary
 
 | Role | pegasusX clients | Backend routes | Production v1 capability | UI parity (vs Pegasus) | E2E (SSMR) |
 |------|------------------|----------------|--------------------------|------------------------|------------|
-| SUPPLIER | supplier-portal, native iOS/Android | supplierroutes | Full ops spine on portal + native: register/business/billing onboarding, order vet, inventory adjust/import, retailer overrides, chargebacks, treasury hub, demand history, factories/warehouses browse, catalog detail; fleet live map on all clients | **Wired** — pegasusX single-tenant surface (~42 portal routes + native parity); pegasus multi-tenant extras (CRM, staff, country-overrides) out of scope | Full SSMR e2e incl. payment + factory |
+| SUPPLIER | supplier-portal, native iOS/Android | supplierroutes, catalogroutes, promotionroutes, returnsroutes, payloaderroutes (manifest lifecycle) | Full ops spine: onboarding, order vet, dispatch preview/execute (CEO override), topology CRUD, catalog-first pricing, inventory import wizard, org-fleet seeding, treasury, analytics, returns; orders+dispatch hub on native | **Wired** — ~43 portal routes + native parity; pegasus multi-tenant extras (CRM, staff, country-overrides) out of scope; exceptions routes exist but removed from primary nav (2026-06-17) | Full SSMR e2e incl. payment + factory |
 | RETAILER | desktop, iOS, Android | retailerroutes, orderroutes, catalogroutes | Order lifecycle (manual pre-order Standard vs Scheduled checkout, preorder confirm/edit, request-cancel), setup wizard, insights dismiss, catalog/search, tracking + dock, unified checkout | **Wired** — desktop richest; mobile Deliveries hub; Midnight Guard + `PRE_ORDER_*` events | Register, order create, tracking, `PX_E2E_MANUAL_PREORDER_OK`, `PX_E2E_CATALOG_OK`, retailer SSMR markers |
 | DRIVER | Android, iOS | driverroutes, orderroutes, telemetryroutes | Full delivery edges + reorder (PX12-B); planned route geometry + turn-by-turn + off-route reroute (`GET /v1/fleet/route/{routeID}/geometry`); maps + WS (PX12-F); Firebase phone OTP | **Wired** — live-ops + planned/breadcrumb map overlays; phone OTP + PIN dev on Android/iOS | Telemetry; shop-closed; negotiation; driver edges E2E; `PX_E2E_DRIVER_FIREBASE_OTP_OK` when test token set |
 | WAREHOUSE | portal, Android, iOS | warehouseroutes | Pre-order hub, stock commitments drill-down, ops settings (express toggle), reject/cancel anytime | **Wired** — `/preorders`, `/stock-commitments`, Midnight Guard sweeper, `PRE_ORDER_*` WS | `PX_E2E_MANUAL_PREORDER_OK`, `PX_E2E_WAREHOUSE_PREORDER_REJECT_OK`, dispatch SSMR markers |
@@ -17,32 +17,93 @@ Last updated: 2026-06-17 (factory FA9-03 Firebase OTP). Canonical reference: `pe
 
 ## SUPPLIER — screen map
 
-| Pegasus (`supplier-portal`) | pegasusX (`supplier-portal`) | Backend | Status |
-|--------------------------|------------------------------|---------|--------|
-| `/auth/register` | `/auth/register` | POST `/v1/auth/supplier/register` | Wired |
-| `/setup/billing` | `/setup/billing` | POST `/v1/supplier/billing/setup` | Wired |
-| `/supplier/dashboard` | `/(portal)/dashboard` | GET `/v1/supplier/dashboard` | Wired |
-| `/supplier/orders` | `/(portal)/orders` | GET `/v1/supplier/orders` | Wired |
-| `/fleet`, `/supplier/fleet` | `/(portal)/fleet` + dashboard `FleetLiveMap` | GET/POST `/v1/supplier/fleet/*`, `GET /v1/supplier/fleet/live-map` | Wired via org-fleet + live map |
-| `/supplier/dispatch` | `/(portal)/dispatch` | dispatch preview (warehouse) | Wired — route map on portal + Android/iOS |
-| `/supplier/inventory` | `/(portal)/inventory` | GET/PATCH `/v1/supplier/inventory` | Wired |
-| `/supplier/pricing` | `/(portal)/pricing` | GET/PATCH `/v1/supplier/pricing/rules` | Wired |
-| `/supplier/pricing/retailer-overrides` | `/(portal)/pricing/retailer-overrides` | GET/POST/DELETE `/v1/supplier/pricing/retailer-overrides` | Wired — portal + Android + iOS |
-| `/supplier/catalog` | `/(portal)/catalog` + `/(portal)/catalog/[productId]` | catalog routes (supplier) | Wired — detail + inline edit |
-| `/supplier/manifests` | `/(portal)/manifests` | factory/payload cross-read | Portal page |
-| `/treasury/*` | `/(portal)/treasury` | payment/settlement | Portal page |
-| `/supplier/analytics` | `/(portal)/analytics` + `/analytics/demand` | analytics + demand history | Wired — portal + native demand chart |
-| `/inventory/import` | `/(portal)/inventory/import` | import session wizard | Wired — portal + Android + iOS |
-| Native register / business / chargebacks | `Register*` / `BusinessSetup*` / `Chargebacks*` | auth + business + payment | Wired — no portal handoff |
-| `/supplier/geo-report` | `/(portal)/geo-report` | H3 coverage | Wired (ops guide) |
-| `/supplier/delivery-zones` | `/(portal)/delivery-zones` | perimeter / topology | Wired |
-| `/supplier/factories` | `/(portal)/factories` | topology | Wired |
-| `/supplier/warehouses` | `/(portal)/warehouses` | topology | Wired |
-| `/supplier/profile` | `/(portal)/profile` | GET/PUT profile | Wired |
-| `/supplier/returns` | `/(portal)/returns` | order returns | Wired (handoff) |
-| `/org-fleet` | `/org-fleet` | org + fleet | Wired |
-| `/payments`, `/earnings` | `/payments`, `/earnings` | payment + earnings | Wired |
-| `/ai/recommendations` | `/ai/recommendations` | AI recommendations | Wired |
+### Onboarding & auth
+
+| Pegasus (`supplier-portal`) | pegasusX portal | pegasusX native | Backend | Status |
+|-----------------------------|-----------------|-----------------|---------|--------|
+| `/auth/register` | `/auth/register` | `RegisterScreen` | `POST /v1/auth/supplier/register` | Wired |
+| `/auth/login` | `/auth/login` | `LoginScreen` | `POST /v1/auth/supplier/login` | Wired |
+| `/setup/business` | `/setup/business` | `BusinessSetupScreen` | `POST /v1/supplier/business/setup` | Wired |
+| `/setup/billing` | `/setup/billing` | `BillingScreen` (+ Android More) | `POST /v1/supplier/billing/setup`, `POST /v1/supplier/configure` | Wired — acceptor `SUPPLIER` or `WAREHOUSE` |
+
+### Primary & operations
+
+| Pegasus | pegasusX portal | pegasusX native | Backend | Cross-role | Status |
+|---------|-----------------|-----------------|---------|------------|--------|
+| `/supplier/dashboard` | `/(portal)/dashboard` | `DashboardScreen` | `GET /v1/supplier/dashboard` | Retailer order KPIs; driver map snippet | Wired |
+| `/supplier/orders` | `/(portal)/orders` | `OrdersHubScreen` (Orders \| Dispatch tabs) | `GET /v1/supplier/orders`, `POST /v1/supplier/orders/vet` | **Retailer** places; supplier vets | Wired |
+| `/supplier/dispatch` | `/(portal)/dispatch` | Orders hub Dispatch tab + `DispatchPreviewScreen` | `GET/POST /v1/supplier/dispatch/{preview,execute}` | **Warehouse** scope; **Driver** assignment | Wired — CEO override execute |
+| `/supplier/manifests` | `/(portal)/manifests` | `ManifestsScreen` | `GET /v1/supplier/manifests` | **Driver**, **Payload**, **Factory** gate | Wired |
+| Manifest detail | `/(portal)/manifests/[id]` | `ManifestDetailScreen` | `POST .../start-loading`, `inject-order`, `seal` | **Payload** lifecycle; **Retailer** orders | Wired |
+| Manifest gate exceptions | `/(portal)/manifest-exceptions` | `ManifestExceptionsScreen` | `GET /v1/supplier/manifest-exceptions` | **Payload**, **Warehouse**, **Factory** | Wired — linked from manifests |
+| `/fleet`, `/supplier/fleet` | `/(portal)/fleet` | `FleetScreen` + `FleetLiveMapScreen` | `GET/POST /v1/supplier/fleet/*`, `GET /v1/supplier/fleet/live-map` | **Driver** telemetry | Wired |
+| Fleet orders | `/(portal)/fleet/orders` | `FleetOrdersScreen` | `GET /v1/supplier/fleet/orders` | **Driver** ↔ **Retailer** order | Wired |
+| Operations / empathy | `/(portal)/operations` | `OperationsScreen` | `GET /v1/supplier/empathy/adoption`, `POST /v1/supplier/broadcast`, `POST /v1/supplier/replenishment/trigger`, `POST /v1/supplier/orders/payment-bypass` | Broadcast → **Driver/Retailer/Payload**; replenishment → **Warehouse**; bypass → **Retailer** payment | Wired |
+| Activity feed | dashboard snippet | `ActivityScreen` | `GET /v1/supplier/activity` | Cross-ecosystem events | Wired — native page; portal dashboard only |
+| Exceptions hub | `/(portal)/exceptions` | route exists; **not in nav** | `GET /v1/supplier/exceptions` | Multi-role | Wired — deep link only (removed from nav 2026-06-17) |
+| Shop closed | `/(portal)/exceptions/shop-closed` | route exists; **not in nav** | `GET/POST /v1/supplier/shop-closed/*` | **Driver** reports → **Retailer** | Wired — deep link only |
+| Early route complete | `/(portal)/exceptions/early-complete` | route exists; **not in nav** | `POST /v1/supplier/route/approve-early-complete` | **Driver** | Wired — deep link only |
+| Negotiations | `/(portal)/exceptions/negotiations` | disabled stub | `GET /v1/supplier/negotiations/pending` (empty) | **Driver** | **Disabled** ecosystem-wide |
+
+### Catalog, inventory & pricing
+
+| Pegasus | pegasusX portal | pegasusX native | Backend | Cross-role | Status |
+|---------|-----------------|-----------------|---------|------------|--------|
+| `/supplier/inventory` | `/(portal)/inventory` | `InventoryScreen` | `GET/PATCH /v1/supplier/inventory`, `GET .../audit` | Stock for **Retailer** orders | Wired |
+| `/inventory/import` | `/(portal)/inventory/import` | `InventoryImportScreen` | `POST/GET /v1/supplier/inventory/imports/*` | **Warehouse**-scoped rows; WS to warehouse hub | Wired |
+| `/supplier/catalog` | `/(portal)/catalog` | `CatalogScreen` | `GET/POST /v1/catalog/products`, categories | **Retailer** browse/order | Wired |
+| Catalog detail | `/(portal)/catalog/[productId]` | `CatalogDetailScreen` | `PUT /v1/catalog/products/{id}`, upload ticket | **Retailer** product view | Wired |
+| `/supplier/pricing` | `/(portal)/pricing` → `/(portal)/pricing/[productId]` | `PricingScreen` + `ProductPricingDetailView` (iOS) | `GET/PATCH /v1/supplier/pricing/rules` | **Retailer** list prices | Wired — catalog-first (2026-06-17) |
+| `/supplier/pricing/retailer-overrides` | `/(portal)/pricing/retailer-overrides` | `RetailerOverridesScreen` | `GET/POST/DELETE /v1/supplier/pricing/retailer-overrides` | **Retailer**-specific prices | Wired |
+| Promotions | `/(portal)/promotions` | `PromotionsScreen` | `GET/POST/PATCH/DELETE /v1/supplier/promotions` | **Retailer** checkout discounts | Wired |
+
+### Network / topology
+
+| Pegasus | pegasusX portal | pegasusX native | Backend | Cross-role | Status |
+|---------|-----------------|-----------------|---------|------------|--------|
+| Topology editor | `/(portal)/topology` | `TopologyScreen` | `GET/PUT /v1/supplier/topology` | **Warehouse** + **Factory** nodes | Wired |
+| `/supplier/factories` | `/(portal)/factories` | `FactoriesScreen` (topology PUT) | `PUT /v1/supplier/topology` | **Factory** app staff via org-fleet | Wired — empty-state create CTA (2026-06-17) |
+| `/supplier/warehouses` | `/(portal)/warehouses` | `WarehousesScreen` (topology PUT) | `PUT /v1/supplier/topology` | **Warehouse** app; dispatch origin | Wired — empty-state create CTA (2026-06-17) |
+| `/supplier/delivery-zones` | `/(portal)/delivery-zones` | `DeliveryZonesScreen` | `GET /v1/supplier/topology` (coverage radii) | **Retailer** delivery eligibility | Wired |
+| Supply lanes | `/(portal)/supply-lanes` | `SupplyLanesScreen` | `GET /v1/supplier/supply-lanes` | **Factory** ↔ **Warehouse** lanes | Wired |
+| `/supplier/geo-report` | `/(portal)/geo-report` | `GeoReportScreen` | `GET /v1/supplier/supply-lanes` (H3) | Network planning | Wired |
+
+### Intelligence & finance
+
+| Pegasus | pegasusX portal | pegasusX native | Backend | Cross-role | Status |
+|---------|-----------------|-----------------|---------|------------|--------|
+| `/supplier/analytics` | `/(portal)/analytics` | `AnalyticsScreen` | `GET /v1/supplier/analytics/{velocity,revenue,demand/today}` | **Retailer** demand | Wired |
+| Demand forecast | `/(portal)/analytics/demand` | `DemandHistoryScreen` | `GET /v1/supplier/analytics/demand/history` | **Retailer** patterns | Wired |
+| `/ai/recommendations` | `/ai/recommendations` | `AIRecommendationsScreen` | `GET/POST /v1/supplier/ai/recommendations` | Ops suggestions | Wired |
+| `/treasury/*` | `/(portal)/treasury` | `TreasuryHubScreen` | `GET /v1/supplier/earnings`, payment APIs | **Retailer** settlements | Wired |
+| `/payments` | `/payments` | `PaymentsScreen` | `GET /v1/payment/settlement/authority`, mismatches | Payment gateway | Wired |
+| `/earnings` | `/earnings` | `EarningsScreen` | `GET /v1/supplier/earnings` | **Retailer** order revenue | Wired |
+| Ledger | merged in earnings | `LedgerScreen` | `GET /v1/payment/ledger` | **Retailer** payments | Wired — native standalone |
+| Reconciliation | `/(portal)/reconciliation` | `ReconciliationScreen` | `GET /v1/payment/reconciliation/mismatches` | **Retailer** payment integrity | Wired |
+| Chargebacks | merged in `/earnings` | `ChargebacksScreen` | `POST /v1/payment/chargeback`, reversal | **Retailer** disputes | Wired — native standalone |
+
+### Org, account & settings
+
+| Pegasus | pegasusX portal | pegasusX native | Backend | Cross-role | Status |
+|---------|-----------------|-----------------|---------|------------|--------|
+| `/org-fleet` | `/org-fleet` | `OrgFleetScreen` | `GET/POST/PATCH/DELETE /v1/supplier/org/members`, `POST /v1/supplier/fleet/{drivers,vehicles}` | Seeds **Warehouse/Factory/Payload** admins + **Driver** fleet | Wired |
+| `/supplier/profile` | `/(portal)/profile` | `ProfileScreen` | `GET/PUT /v1/supplier/profile` | — | Wired |
+| `/supplier/returns` | `/(portal)/returns` | `ReturnsScreen` | `GET /v1/supplier/returns`, `POST .../resolve` | **Retailer** returns; **Driver** manifest | Wired |
+| Notifications | top-bar panel | `NotificationsScreen` | `GET /v1/user/notifications`, `POST .../read` | Cross-role alerts | Wired |
+| Portal handoff | — | `PortalHandoffScreen` (Android) | — (opens web) | Register, business setup, chargebacks | Android only |
+
+### SUPPLIER — cross-role touchpoint matrix
+
+| Other role | Supplier pages/features that interact |
+|------------|----------------------------------------|
+| **Retailer** | Orders (vet), catalog, pricing, promotions, retailer overrides, returns, shop-closed resolve, payment bypass, chargebacks, demand analytics, broadcasts |
+| **Driver** | Org-fleet CRUD, fleet live map, fleet orders, dispatch execute, manifest visibility, shop-closed, early-complete, order live location, broadcasts |
+| **Warehouse** | Topology/warehouses, dispatch origin + scope, inventory import per warehouse, delivery zones, supply lanes, replenishment trigger, org-fleet admins, billing acceptor option, manifest loading gate |
+| **Factory** | Topology/factories, supply lanes, org-fleet admins, co-located warehouses, manifest gate exceptions |
+| **Payload** | Manifest lifecycle (shared routes), manifest gate exceptions inbox, org-fleet staff seeding, broadcasts to PAYLOAD role |
+| **Treasury** | Billing setup, earnings, ledger, payments authority, reconciliation, chargebacks, payment bypass |
+
+**Topology dependency:** SUPPLIER creates warehouse/factory topology only. WAREHOUSE_ADMIN owns day-to-day fleet CRUD, dispatch locks, and capacity overrides. PAYLOAD seals per truck. DRIVER consumes assignment via profile + WS hubs.
 
 ## Native shell parity (collapsible icon rail)
 
@@ -53,7 +114,7 @@ All six native role apps use a shared monochrome design system (`packages/mobile
 | RETAILER | Collapsible sidebar 88↔280pt (iOS) / rail (Android) | Bottom tabs + overflow | B&W; `dynamicColor = false` on Android |
 | WAREHOUSE | `CollapsibleSidebar` / `PegasusCollapsibleRail` | 4-tab bottom bar + More | `PegasusMonochromeTheme` |
 | FACTORY | `FactoryAdaptiveShell` + rail | 4-tab + More hub | `PegasusMonochromeTheme` |
-| SUPPLIER | `CollapsibleSidebar` / tablet rail | 4-tab bottom bar | `PegasusMonochromeTheme` |
+| SUPPLIER | `CollapsibleSidebar` / `PegasusCollapsibleRail` (5 groups: Primary, Operations, Intelligence, Network, Account) | 4-tab bottom bar (Dashboard, Orders, Fleet, More) + Orders hub (Orders \| Dispatch) | `PegasusMonochromeTheme` |
 | PAYLOAD | Collapsible truck list (icon rail ↔ full list) | List-detail scaffold | `PegasusMonochromeTheme` (Android); `TermTheme` (iOS) |
 | DRIVER | Collapsible rail (4 tabs) | Bottom tabs + map overlay | B&W; `dynamicColor = false` |
 
@@ -72,7 +133,7 @@ Rail never fully hides on tablet — collapsed state keeps an 88dp/pt icon colum
 | Order lifecycle | `orderroutes` + outbox | All role hubs | Driver + retailer | All retailer + driver apps |
 | Payment / webhooks | `paymentroutes` + `webhookroutes` | Supplier + retailer | Retailer tokens | Desktop + mobile |
 | Shop-closed | `order/shop_closed.go` | Dispatcher | Yes | Driver wait-state VMs |
-| Negotiation | `order/negotiation.go` | Dispatcher | Yes | Supplier portal + driver |
+| Negotiation | `order/negotiation.go` | Dispatcher | Yes | **Disabled** — stub UI; contract symbols retained for parity check |
 | Manifest gate | `payloaderroutes` + Spanner manifests | `MANIFEST_*` events | Payload/factory hubs | Payload + factory row |
 | Client version policy | `GET /v1/platform/client-policy` | `SYSTEM_APP_OUTDATED` on WS | N/A | Driver + supplier native |
 | Supplier realtime | `supplier:` WS room | Kafka dispatcher | N/A | Portal + **PX11** native WS |
@@ -129,6 +190,10 @@ Per-role surfaces that must stay wired end-to-end (portal + native + terminal wh
 
 **Intentional portal-only deferrals (v1):** supplier empathy adoption depth on native; warehouse supply forecast create form depth on native (create from Dispatch tab); factory iOS analytics/exceptions as dashboard sheets not tabs.
 
+**Intentional nav removals (2026-06-17):** supplier exceptions hub, shop-closed, and early-complete removed from portal sidebar and native More/rail — routes and APIs remain for deep links and SSMR.
+
+**Recently closed gaps (2026-06-17):** supplier topology create UX (empty-state CTA + `PUT /v1/supplier/topology` on portal/Android/iOS); catalog-first pricing with per-product detail; orders+dispatch combined hub on native; Android rail full section parity (`ORG_FLEET`, treasury suite, `INVENTORY_IMPORT`, `RETAILER_OVERRIDES`); `PegasusCollapsibleRail` expanded-drawer layout fix (supplier/warehouse/factory tablet nav).
+
 **Recently closed gaps (2026-06-15):** warehouse smart dispatch AUTO commit (portal + Android + iOS) with post-solve capacity modal (accept partial / force); residual truck capacity (`free_volume_vu`, DRAFT/LOADING top-off); dispatch plan Redis cache + `plan_fingerprint`; manual dispatch Apply suggestion on portal; warehouse global client-policy banner (Android/iOS login + nav shell); warehouse Android/iOS AutoUpdater on outdated policy; warehouse native order delay/reject/overflow idempotency; warehouse iOS APNs push registration; warehouse portal driver CRUD + dispatch-lock scope idempotency fixes; driver global client-policy banner (Android/iOS login + nav shell); driver Android/iOS AutoUpdater on outdated policy; driver amend + transition-state idempotency; driver iOS APNs push registration + offline flush on network restore + map WS reconnect reconcile; payload global client-policy banner (Android/iOS/Expo login + app shell); payload Expo push token registration (`EXPO` + login `firebase_token`); payload Android AutoUpdater wired on outdated policy; payload iOS AutoUpdater in main target; retailer dock queue; supplier dispatch route map; supplier idempotency + policy; payload seal-completed idempotency alignment across terminal + iOS.
 
 ## SSMR fleet / dispatch / payload feature IDs (2026-06-14)
@@ -144,6 +209,48 @@ Per-role surfaces that must stay wired end-to-end (portal + native + terminal wh
 
 ### Topology dependency (SUPPLIER root)
 
-SUPPLIER creates warehouse/factory topology only. WAREHOUSE_ADMIN owns fleet CRUD, dispatch, and capacity overrides. PAYLOAD seals per truck then batch-activates drivers. DRIVER consumes assignment via profile + hubs.
+SUPPLIER creates warehouse/factory topology only (`PUT /v1/supplier/topology`). WAREHOUSE_ADMIN owns fleet CRUD, dispatch, and capacity overrides. FACTORY_ADMIN fulfills supply requests and loading-bay transfers. PAYLOAD seals per truck then batch-activates drivers. DRIVER consumes assignment via profile + hubs.
 
 Diagrams: `pegasusX/assets/diagrams/pegasusx-supplier-topology-dependency.mmd`, `pegasusx-fleet-dispatch-capacity-flow.mmd`, `pegasusx-payload-seal-multi-truck.mmd`.
+
+## Native realtime refresh contract (2026-06-17)
+
+All pegasusX native role apps share **stale-while-revalidate** over WebSocket — clients never consume Kafka directly.
+
+| Pattern | Android | iOS |
+| --- | --- | --- |
+| Refresh signal | `*RealtimeSignals.refreshTick` / `reconnectTick` | `*RealtimeHub.refreshEpoch` / `reconnectEpoch` |
+| Reload API | `load(silent: Boolean = false)` | `load(silent: Bool = false)` |
+| Compose/SwiftUI hook | `RealtimeRefreshEffect` (`mobile-android-design`) | `silentRealtimeRefresh` (`mobile-ios-design`) |
+| Loading UI rule | `showFullScreenLoading(loading, hasData)` | `loading && items.isEmpty` |
+| **Anti-pattern** | `key(refreshEpoch) { NavHost/Screen }` | `.id("tab-\(refreshEpoch)")` on tabs |
+
+**Manual test matrix (per app):** rapid tab switch (no bounce); background→foreground silent reload; WS event in-place update; pull-to-refresh still shows indicator; cold start shows skeleton.
+
+## UI / motion parity (Phase 4, 2026-06-17)
+
+Shared design packages now own cross-app chrome:
+
+| Concern | Android (`mobile-android-design`) | iOS (`mobile-ios-design`) | Web (`@pegasusx/motion-tokens`) |
+| --- | --- | --- | --- |
+| Motion | `PegasusMotionTokens`, `PegasusAnim` | `PegasusAnim`, `PegasusMotionDuration` | `duration`, `easing`, `spring`, `motionVariants` |
+| Loading / empty / error | `PegasusLoadingState`, `PegasusStatePane`, `PegasusStateKind` | `PegasusLoadingView`, `PegasusErrorView`, `PegasusEmptyView` | portal `FactoryPageState`, `EmptyState` (per-portal) |
+| Spacing | `PegasusSpacing` | `PegasusMonochromeTheme.spacing*` | `ui-kit` desktop foundation |
+| Realtime refresh | `RealtimeRefreshEffect` | `silentRealtimeRefresh` | `usePolling` in `@pegasusx/api-client` |
+
+**App wiring (representative):**
+- Supplier Android/iOS state panes → typealias to `Pegasus*` shared components
+- Retailer Android `MotionTokens` → typealias `PegasusMotionTokens`
+- Supplier iOS `SupplierAnim` → typealias `PegasusAnim`
+
+**Desktop stale-while-revalidate:** supplier/warehouse/factory portals migrated from raw `setInterval` to `usePolling` (visibility-aware, abort-safe, backpressure-aware). Pair with `loading: isLoading && !data` in hooks.
+
+**pegasus vs pegasusX component gaps (native):**
+
+| Component | pegasus (legacy) | pegasusX |
+| --- | --- | --- |
+| Collapsible rail / sidebar | per-app | `PegasusCollapsibleRail` / `CollapsibleSidebar` |
+| Monochrome theme | mixed teal/purple | `PegasusMonochromeTheme` |
+| List loading bounce | `key(refreshEpoch)` remounts | `load(silent:)` + shared state panes |
+| Motion tokens | duplicated per app | `PegasusMotionTokens` / `PegasusAnim` |
+| Desktop polling | `setInterval` in page effects | `usePolling` shared hook |

@@ -36,19 +36,27 @@ fun StaffScreen(
     var createdPin by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
-        loading = true; error = null
+    fun load(silent: Boolean = false) {
+        if (!silent) loading = true
+        error = null
         scope.launch {
             try {
                 val resp = api.getStaff()
                 if (resp.isSuccessful && resp.body() != null) staff = resp.body()!!.staff
-                else error = "Failed (${resp.code()})"
-            } catch (e: Exception) { error = e.message ?: "Network error" }
-            finally { loading = false }
+                else if (!silent) error = "Failed (${resp.code()})"
+            } catch (e: Exception) {
+                if (!silent) error = e.message ?: "Network error"
+            } finally {
+                if (!silent) loading = false
+            }
         }
     }
 
     LaunchedEffect(Unit) { load() }
+
+    LaunchedEffect(Unit) {
+        realtimeSignals.refreshTick.collect { load(silent = true) }
+    }
 
     Scaffold(
         topBar = {
@@ -63,8 +71,8 @@ fun StaffScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+            loading && staff.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            error != null && staff.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.lg))

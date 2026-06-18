@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: osrm
+  labels:
+    app: osrm
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: osrm
+  template:
+    metadata:
+      labels:
+        app: osrm
+    spec:
+      containers:
+        - name: osrm
+          # Pin to a regional extract matching your launch geography (UZ/Central Asia).
+          image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+          args:
+            - osrm-routed
+            - --algorithm
+            - mld
+            - /data/region.osrm
+          ports:
+            - name: http
+              containerPort: 5000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /route/v1/driving/69.24,41.31;69.25,41.32
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30

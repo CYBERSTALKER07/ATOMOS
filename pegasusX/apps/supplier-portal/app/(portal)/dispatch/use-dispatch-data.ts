@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { usePolling } from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
 import { SUPPLIER_DISPATCH_REFRESH_EVENTS } from "@/lib/supplier-ws-events";
 import { useSupplierWsRefresh } from "@/lib/use-supplier-ws-refresh";
@@ -36,7 +37,7 @@ export function useDispatchData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (_signal?: AbortSignal) => {
     try {
       const resp = await api.getSupplierManifests();
       const mapped = resp.manifests.map((row): ManifestData => {
@@ -61,13 +62,14 @@ export function useDispatchData() {
     }
   }, []);
 
-  useEffect(() => {
-    void refresh();
-    const interval = setInterval(() => {
-      void refresh();
-    }, 30_000);
-    return () => clearInterval(interval);
-  }, [refresh]);
+  usePolling(
+    async (signal) => {
+      if (signal.aborted) return;
+      await refresh(signal);
+    },
+    30_000,
+    [refresh],
+  );
 
   useSupplierWsRefresh(
     () => {

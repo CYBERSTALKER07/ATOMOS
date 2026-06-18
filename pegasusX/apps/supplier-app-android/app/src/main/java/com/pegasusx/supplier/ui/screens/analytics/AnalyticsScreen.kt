@@ -18,7 +18,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.pegasus.design.RealtimeRefreshEffect
+import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
@@ -38,9 +41,14 @@ private data class AnalyticsKpi(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnalyticsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
+fun AnalyticsScreen(
+    ops: SupplierOperationsRepository,
+    realtimeSignals: SupplierRealtimeSignals,
+    onBack: () -> Unit,
+) {
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var hasSnapshot by remember { mutableStateOf(false) }
     var pendingOrders by remember { mutableIntStateOf(0) }
     var inventorySKUs by remember { mutableIntStateOf(0) }
     var revenueTotal by remember { mutableStateOf<String?>(null) }
@@ -55,10 +63,12 @@ fun AnalyticsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
         return "${fmt.format(major)} $currency"
     }
 
-    fun load() {
+    fun load(silent: Boolean = false) {
         scope.launch {
-            loading = true
-            error = null
+            if (!silent) {
+                loading = true
+                error = null
+            }
             try {
                 val dashDeferred = async { ops.getDashboard() }
                 val revenueDeferred = async { ops.getAnalyticsRevenue() }
@@ -71,7 +81,7 @@ fun AnalyticsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 val velocityResp = velocityDeferred.await()
 
                 if (!dashResp.isSuccessful || !revenueResp.isSuccessful || !demandResp.isSuccessful || !velocityResp.isSuccessful) {
-                    error = "Failed to load analytics authority"
+                    if (!silent) error = "Failed to load analytics authority"
                     return@launch
                 }
 
@@ -89,15 +99,22 @@ fun AnalyticsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 velocityResp.body()?.let { velocity ->
                     velocityCreated = velocity.points.sumOf { point -> point.ordersCreated }
                 }
+                hasSnapshot = true
             } catch (e: Exception) {
-                error = e.message
+                if (!silent) error = e.message
             } finally {
-                loading = false
+                if (!silent) loading = false
             }
         }
     }
 
     LaunchedEffect(Unit) { load() }
+
+    RealtimeRefreshEffect(
+        refreshTick = realtimeSignals.refreshTick,
+        reconnectTick = realtimeSignals.reconnectTick,
+        onRefresh = { load(silent = it) },
+    )
 
     val intelligenceKpis = remember(revenueTotal, predictionCount, forecastUnits, velocityCreated) {
         listOf(
@@ -132,7 +149,7 @@ fun AnalyticsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState(
+            showFullScreenLoading(loading, hasSnapshot) -> SupplierLoadingState(
                 title = "Loading analytics…",
                 body = "Velocity, revenue, and demand",
                 modifier = Modifier.padding(padding),

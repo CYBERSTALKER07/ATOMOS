@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct InventoryView: View {
+    @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var items: [InventoryItem] = []
     @State private var loading = true
     @State private var error: String?
@@ -13,10 +14,10 @@ struct InventoryView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if loading {
+                if loading && items.isEmpty {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error {
+                } else if let error, items.isEmpty {
                     ContentUnavailableView {
                         Label("Error", systemImage: "exclamationmark.triangle")
                     } description: {
@@ -80,7 +81,10 @@ struct InventoryView: View {
                 }
             }
             .task { load() }
-            .refreshable { load() }
+            .refreshable { load(silent: false) }
+            .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
+                load(silent: silent)
+            }
             .onChange(of: lowOnly) { load() }
             .sheet(item: $adjustItem) { item in
                 AdjustInventorySheet(item: item) { load() }
@@ -88,17 +92,17 @@ struct InventoryView: View {
         }
     }
 
-    private func load() {
-        loading = true
+    private func load(silent: Bool = false) {
+        if !silent { loading = true }
         error = nil
         Task {
             do {
                 let resp = try await WarehouseService.inventory(lowStock: lowOnly)
                 items = resp.items
             } catch {
-                self.error = error.localizedDescription
+                if !silent { self.error = error.localizedDescription }
             }
-            loading = false
+            if !silent { loading = false }
         }
     }
 

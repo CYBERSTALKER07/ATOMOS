@@ -79,13 +79,13 @@ struct VehicleDetailView: View {
             }
         }
         .task(id: vehicleId) { load() }
-        .onChange(of: realtimeHub.refreshEpoch) { _, _ in load() }
+        .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
+            load(silent: silent)
+        }
     }
 
-    private func load() {
-        if vehicle == nil {
-            loading = true
-        }
+    private func load(silent: Bool = false) {
+        if !silent && vehicle == nil { loading = true }
         error = nil
         Task {
             do {
@@ -96,9 +96,9 @@ struct VehicleDetailView: View {
                     : "MANUAL_HOLD"
                 customNote = resp.vehicle.unavailableNote ?? ""
             } catch {
-                self.error = error.localizedDescription
+                if !silent { self.error = error.localizedDescription }
             }
-            loading = false
+            if !silent { loading = false }
         }
     }
 

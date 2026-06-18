@@ -3,11 +3,9 @@ import Network
 
 struct FactoryAdaptiveShell: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.scenePhase) private var scenePhase
     @State private var sidebarSelection: FactorySection? = .dashboard
     @State private var isSidebarExpanded = true
     @State private var compactTab: FactoryCompactTab = .dashboard
-    @State private var refreshEpoch = 0
     @State private var pathMonitor: NWPathMonitor?
     @State private var wasOffline = false
 
@@ -18,9 +16,6 @@ struct FactoryAdaptiveShell: View {
             } else {
                 compactShell
             }
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { refreshEpoch += 1 }
         }
         .onAppear { startNetworkMonitor() }
         .onDisappear {
@@ -118,7 +113,6 @@ struct FactoryAdaptiveShell: View {
         monitor.pathUpdateHandler = { path in
             DispatchQueue.main.async {
                 if path.status == .satisfied {
-                    if wasOffline { refreshEpoch += 1 }
                     wasOffline = false
                 } else {
                     wasOffline = true

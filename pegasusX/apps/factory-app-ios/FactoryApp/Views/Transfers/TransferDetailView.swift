@@ -10,7 +10,7 @@ struct TransferDetailView: View {
 
     var body: some View {
         Group {
-            if loading {
+            if loading && transfer == nil {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error {
@@ -126,7 +126,7 @@ struct TransferDetailView: View {
                     guard let eventType = event.eventType else { return }
                     guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
                     if !transitioning {
-                        Task { await load() }
+                        Task { await load(silent: true) }
                     }
                 },
                 onReconnect: {
@@ -134,7 +134,7 @@ struct TransferDetailView: View {
                         transitioning = false
                         error = "Connection restored — transfer state refreshed from server."
                     }
-                    Task { await load() }
+                    Task { await load(silent: true) }
                 }
             )
         }
@@ -144,8 +144,10 @@ struct TransferDetailView: View {
     }
 
     @MainActor
-    private func load() async {
-        loading = true
+    private func load(silent: Bool = false) async {
+        if !silent {
+            loading = true
+        }
         error = nil
 
         do {
@@ -154,7 +156,9 @@ struct TransferDetailView: View {
             self.error = error.localizedDescription
         }
 
-        loading = false
+        if !silent {
+            loading = false
+        }
     }
 
     @MainActor

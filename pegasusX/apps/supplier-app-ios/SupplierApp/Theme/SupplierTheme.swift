@@ -2,6 +2,8 @@ import SwiftUI
 
 typealias SupplierTheme = PegasusMonochromeTheme
 
+typealias SupplierAnim = PegasusAnim
+
 struct SupplierCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content

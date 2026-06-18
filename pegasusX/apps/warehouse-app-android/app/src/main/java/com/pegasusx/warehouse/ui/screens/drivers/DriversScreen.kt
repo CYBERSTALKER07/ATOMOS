@@ -63,28 +63,36 @@ fun DriversScreen(
         }
     }
 
-    fun load() {
-        loading = true; error = null
+    fun load(silent: Boolean = false) {
+        if (!silent) loading = true
+        error = null
         scope.launch {
             try {
                 val driverResp = api.getDrivers()
                 val vehicleResp = api.getVehicles()
                 if (driverResp.isSuccessful && driverResp.body() != null) {
                     drivers = driverResp.body()!!.drivers
-                } else {
+                } else if (!silent) {
                     error = "Failed (${driverResp.code()})"
                 }
                 if (vehicleResp.isSuccessful && vehicleResp.body() != null) {
                     vehicles = vehicleResp.body()!!.vehicles
-                } else if (error == null) {
+                } else if (!silent && error == null) {
                     error = "Failed (${vehicleResp.code()})"
                 }
-            } catch (e: Exception) { error = e.message ?: "Network error" }
-            finally { loading = false }
+            } catch (e: Exception) {
+                if (!silent) error = e.message ?: "Network error"
+            } finally {
+                if (!silent) loading = false
+            }
         }
     }
 
     LaunchedEffect(Unit) { load() }
+
+    LaunchedEffect(Unit) {
+        realtimeSignals.refreshTick.collect { load(silent = true) }
+    }
 
     Scaffold(
         topBar = {
@@ -100,12 +108,12 @@ fun DriversScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading -> WarehouseLoadingState(
+            loading && drivers.isEmpty() -> WarehouseLoadingState(
                 title = "Loading drivers…",
                 body = "Fleet driver roster",
                 modifier = Modifier.padding(innerPadding),
             )
-            error != null -> WarehouseStatePane(
+            error != null && drivers.isEmpty() -> WarehouseStatePane(
                 kind = WarehouseStateKind.Error,
                 headline = "Drivers unavailable",
                 body = error!!,

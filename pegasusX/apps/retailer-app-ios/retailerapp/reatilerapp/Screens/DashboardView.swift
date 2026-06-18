@@ -58,12 +58,12 @@ struct DashboardView: View {
             await loadData()
         }
         .task(id: refreshCenter.refreshToken) {
-            await loadData()
+            await loadData(silent: hasCachedDashboardData)
         }
         .task {
             for await event in RetailerWebSocket.shared.eventStream() {
                 if case .promotionChanged = event {
-                    await loadData()
+                    await loadData(silent: hasCachedDashboardData)
                 }
             }
         }
@@ -74,7 +74,7 @@ struct DashboardView: View {
             if orderActionPending {
                 orderActionPending = false
                 loadError = "Connection restored — verify order status before retrying."
-                Task { await loadData() }
+                Task { await loadData(silent: hasCachedDashboardData) }
             }
         }
     }
@@ -407,32 +407,38 @@ struct DashboardView: View {
 
     // MARK: - API
 
-    private func loadData() async {
+    private var hasCachedDashboardData: Bool {
+        !activeOrders.isEmpty || !predictions.isEmpty || !reorderProducts.isEmpty
+    }
+
+    private func loadData(silent: Bool = false) async {
         let rid = AuthManager.shared.currentUser?.id ?? ""
-        isLoading = true
-        loadError = nil
+        if !silent { isLoading = true }
+        if !silent { loadError = nil }
         do {
             let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
             activeOrders = orders.filter { $0.status.isActive }
         } catch {
-            activeOrders = []
-            loadError = "Could not load dashboard data. Pull to refresh or try again."
+            if !silent {
+                activeOrders = []
+                loadError = "Could not load dashboard data. Pull to refresh or try again."
+            }
         }
 
         do {
             let forecasts: [DemandForecast] = try await api.get(path: "/v1/ai/predictions?retailer_id=\(rid)")
             predictions = forecasts
         } catch {
-            predictions = []
+            if !silent { predictions = [] }
         }
 
         do {
             let products: [Product] = try await api.get(path: "/v1/catalog/products")
             reorderProducts = Array(products.prefix(6))
         } catch {
-            reorderProducts = []
+            if !silent { reorderProducts = [] }
         }
-        isLoading = false
+        if !silent { isLoading = false }
     }
 
     private func cancelOrder(_ orderId: String) async {

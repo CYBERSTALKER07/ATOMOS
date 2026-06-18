@@ -13,6 +13,10 @@ struct reatilerappApp: App {
     @State private var cartManager = CartManager()
     @State private var authManager = AuthManager.shared
 
+    init() {
+        FirebaseAuthHelper.shared.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {

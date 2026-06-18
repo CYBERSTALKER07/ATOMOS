@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +22,10 @@ import com.pegasusx.factory.ui.navigation.FactorySection
 fun FactoryMoreHubScreen(
     onNavigate: (String) -> Unit,
 ) {
+    val primaryOverflow = FactorySection.primarySections.filter {
+        it !in FactorySection.compactTabs.filter { tab -> tab != FactorySection.MORE }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("More") })
@@ -31,17 +36,19 @@ fun FactoryMoreHubScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
+            if (primaryOverflow.isNotEmpty()) {
+                item { SectionHeader("Primary") }
+                primaryOverflow.forEach { section ->
+                    item { MoreRow(section) { onNavigate(section.route) } }
+                }
+            }
             item { SectionHeader("Operations") }
             FactorySection.operationsSections.forEach { section ->
-                item {
-                    MoreRow(section) { onNavigate(section.route) }
-                }
+                item { MoreRow(section) { onNavigate(section.route) } }
             }
             item { SectionHeader("Intelligence") }
             FactorySection.intelligenceSections.forEach { section ->
-                item {
-                    MoreRow(section) { onNavigate(section.route) }
-                }
+                item { MoreRow(section) { onNavigate(section.route) } }
             }
         }
     }
@@ -53,6 +60,7 @@ private fun SectionHeader(title: String) {
         text = title.uppercase(),
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
     )
 }
 
@@ -63,4 +71,5 @@ private fun MoreRow(section: FactorySection, onClick: () -> Unit) {
         leadingContent = { Icon(section.icon, contentDescription = section.label) },
         modifier = Modifier.clickable(onClick = onClick),
     )
+    HorizontalDivider()
 }

@@ -149,9 +149,9 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    func loadMissions() async {
-        isLoadingMissions = true
-        defer { isLoadingMissions = false }
+    func loadMissions(silent: Bool = false) async {
+        if !silent { isLoadingMissions = true }
+        defer { if !silent { isLoadingMissions = false } }
 
         // Try real API first
         do {

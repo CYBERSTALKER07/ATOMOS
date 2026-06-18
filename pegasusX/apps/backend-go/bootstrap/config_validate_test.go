@@ -55,6 +55,23 @@ func TestLoadConfig_ProductionProfileFailsClosed(t *testing.T) {
 	}
 }
 
+func TestValidateProductionProfile_RequiresGlobalPayCredentialsInProductionEnv(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	cfg := testConfig()
+	cfg.GlobalPayWebhookSecret = "prod-global-pay-secret"
+	cfg.AdyenWebhookSecret = "prod-adyen-secret"
+	cfg.StripeWebhookSecret = "prod-stripe-secret"
+	cfg.PaymeWebhookSecret = "prod-payme-secret"
+	cfg.ClickWebhookSecret = "prod-click-secret"
+	cfg.GlobalPayEnv = "production"
+	cfg.GlobalPayUsername = ""
+	cfg.GlobalPayPassword = "secret"
+
+	if err := cfg.ValidateProductionProfile(); err == nil {
+		t.Fatal("expected missing GLOBAL_PAY_USERNAME to fail production profile")
+	}
+}
+
 func TestLoadConfig_SSMRDevSecretsAllowed(t *testing.T) {
 	_ = os.Unsetenv("PEGASUSX_ENV")
 	t.Setenv("GLOBAL_PAY_WEBHOOK_SECRET", "dev-global-pay-secret")

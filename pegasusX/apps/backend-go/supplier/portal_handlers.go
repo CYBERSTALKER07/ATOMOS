@@ -161,6 +161,8 @@ type topologyWarehouseInput struct {
 	Name                  string                    `json:"name"`
 	Lat                   float64                   `json:"lat"`
 	Lng                   float64                   `json:"lng"`
+	Address               string                    `json:"address,omitempty"`
+	PlaceID               string                    `json:"place_id,omitempty"`
 	CoverageRadiusKm      *float64                  `json:"coverage_radius_km,omitempty"`
 	IsActive              *bool                     `json:"is_active,omitempty"`
 	IsOnShift             *bool                     `json:"is_on_shift,omitempty"`
@@ -181,6 +183,8 @@ type topologyFactoryInput struct {
 	Name      string  `json:"name"`
 	Lat       float64 `json:"lat"`
 	Lng       float64 `json:"lng"`
+	Address   string  `json:"address,omitempty"`
+	PlaceID   string  `json:"place_id,omitempty"`
 	IsActive  *bool   `json:"is_active,omitempty"`
 }
 
@@ -452,6 +456,8 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 			Name:                    name,
 			Lat:                     wh.Lat,
 			Lng:                     wh.Lng,
+			Address:                 strings.TrimSpace(wh.Address),
+			PlaceID:                 strings.TrimSpace(wh.PlaceID),
 			CoverageRadiusKm:        coverage,
 			TransferMode:            normalizeTransferMode(wh.TransferMode),
 			CoLocateWithFactoryID:     strings.TrimSpace(wh.CoLocateWithFactoryID),
@@ -488,6 +494,8 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 			Name:      name,
 			Lat:       fc.Lat,
 			Lng:       fc.Lng,
+			Address:   strings.TrimSpace(fc.Address),
+			PlaceID:   strings.TrimSpace(fc.PlaceID),
 			IsActive:  isActive,
 		})
 	}

@@ -12,10 +12,10 @@ struct SupplyRequestDetailView: View {
 
     var body: some View {
         Group {
-            if loading {
+            if loading && request == nil {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error {
+            } else if let error, request == nil {
                 ContentUnavailableView {
                     Label("Error", systemImage: "exclamationmark.triangle")
                 } description: {
@@ -61,25 +61,27 @@ struct SupplyRequestDetailView: View {
             }
         }
         .task(id: requestId) { load() }
+        .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in
+            load(silent: silent)
+        }
         .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
             if busy {
                 busy = false
                 statusMessage = "Connection restored — verify status before retrying."
             }
-            load()
         }
     }
 
-    private func load() {
-        loading = true
+    private func load(silent: Bool = false) {
+        if !silent && request == nil { loading = true }
         error = nil
         Task {
             do {
                 request = try await WarehouseService.supplyRequest(id: requestId)
             } catch {
-                self.error = error.localizedDescription
+                if !silent { self.error = error.localizedDescription }
             }
-            loading = false
+            if !silent { loading = false }
         }
     }
 

@@ -6,15 +6,15 @@ final class OrdersViewModel {
     var orders: [SupplierOrder] = []
     var loading = true
     var error: String?
-    var statusFilter = "PENDING"
+    var statusFilter = "ACTIVE"
     var selection: SupplierOrder?
     var vettingOrderId: String?
 
     let filters: [(id: String, label: String)] = [
-        ("", "All"),
-        ("PENDING", "Pending"),
+        ("ACTIVE", "Active"),
         ("AWAITING_REVIEW", "Review"),
         ("COMPLETED", "Completed"),
+        ("CANCELLED", "Cancelled"),
     ]
 
     func load(silent: Bool = false) async {
@@ -22,10 +22,12 @@ final class OrdersViewModel {
         error = nil
         defer { loading = false }
         do {
-            let response = try await SupplierService.orders(
-                status: statusFilter.isEmpty ? nil : statusFilter,
-                limit: 500
-            )
+            let response: SupplierOrdersResponse
+            if statusFilter == "AWAITING_REVIEW" {
+                response = try await SupplierService.orders(status: statusFilter, limit: 500)
+            } else {
+                response = try await SupplierService.orders(filter: statusFilter, limit: 500)
+            }
             orders = response.orders
             if selection == nil { selection = orders.first }
         } catch {

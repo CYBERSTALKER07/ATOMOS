@@ -2,6 +2,7 @@ import PhotosUI
 import SwiftUI
 
 struct CatalogView: View {
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var products: [CatalogProduct] = []
     @State private var draftVU: [String: String] = [:]
     @State private var draftBarcode: [String: String] = [:]
@@ -20,7 +21,7 @@ struct CatalogView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if loading {
+                if loading && products.isEmpty {
                     SupplierLoadingView(title: "Loading catalog…")
                 } else if let error, products.isEmpty {
                     SupplierErrorView(message: error) { Task { await load() } }
@@ -54,6 +55,12 @@ struct CatalogView: View {
             }
             .task { await load() }
             .refreshable { await load(silent: true) }
+            .silentRealtimeRefresh(
+                refreshEpoch: realtimeHub.refreshEpoch,
+                reconnectEpoch: realtimeHub.reconnectEpoch
+            ) { silent in
+                Task { await load(silent: silent) }
+            }
         }
     }
 

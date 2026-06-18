@@ -100,7 +100,7 @@ struct SupplierAdaptiveShell: View {
         case .dashboard:
             DashboardView()
         case .orders:
-            OrdersView()
+            OrdersHubView()
         case .fleet:
             FleetView()
         case .exceptions:

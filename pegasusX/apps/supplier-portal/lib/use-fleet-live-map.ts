@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { usePolling } from "@pegasusx/api-client";
 import type { SupplierFleetLiveRoute } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
 import { SUPPLIER_FLEET_LIVE_REFRESH_EVENTS } from "@/lib/supplier-ws-events";
@@ -24,17 +25,20 @@ export function useFleetLiveMap(pollMs = 15_000) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "fleet_live_map_failed");
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, []);
 
-  useEffect(() => {
-    void refresh();
-    const timer = window.setInterval(() => {
-      void refresh(true);
-    }, pollMs);
-    return () => window.clearInterval(timer);
-  }, [pollMs, refresh]);
+  usePolling(
+    async (signal) => {
+      if (signal.aborted) return;
+      await refresh(routes.length > 0);
+    },
+    pollMs,
+    [pollMs, refresh, routes.length],
+  );
 
   useSupplierWsRefresh(
     () => {

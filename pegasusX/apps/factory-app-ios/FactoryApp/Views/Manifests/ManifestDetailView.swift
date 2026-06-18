@@ -11,7 +11,7 @@ struct ManifestDetailView: View {
 
     var body: some View {
         Group {
-            if loading {
+            if loading && detail == nil {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error {
@@ -79,11 +79,11 @@ struct ManifestDetailView: View {
                 onStateChange: { _ in },
                 onEvent: { event in
                     guard event.eventType == .manifestUpdate else { return }
-                    Task { await load() }
+                    Task { await load(silent: true) }
                 },
                 onReconnect: {
                     acting = false
-                    Task { await load() }
+                    Task { await load(silent: true) }
                 }
             )
         }
@@ -93,15 +93,19 @@ struct ManifestDetailView: View {
     }
 
     @MainActor
-    private func load() async {
-        loading = true
+    private func load(silent: Bool = false) async {
+        if !silent {
+            loading = true
+        }
         error = nil
         do {
             detail = try await FactoryService.manifestDetail(id: manifestId)
         } catch {
             self.error = error.localizedDescription
         }
-        loading = false
+        if !silent {
+            loading = false
+        }
     }
 
     @MainActor

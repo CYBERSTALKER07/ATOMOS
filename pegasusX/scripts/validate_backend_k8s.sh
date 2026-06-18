@@ -28,6 +28,9 @@ assert(container.dig('livenessProbe', 'httpGet', 'path') == '/healthz', 'livenes
 assert(container.dig('readinessProbe', 'httpGet', 'path') == '/ready', 'readiness must use /ready')
 
 assert(configmap.dig('data', 'PEGASUSX_ENV') == 'production', 'configmap must set PEGASUSX_ENV=production')
+assert(configmap.dig('data', 'HTTP_PORT') == '8080', 'configmap must set HTTP_PORT=8080 (backend-go reads HTTP_PORT, not PORT)')
+assert(configmap.dig('data', 'ROUTING_OSRM_URL'), 'configmap must set ROUTING_OSRM_URL for route geometry')
+assert(configmap.dig('data', 'GLOBAL_PAY_ENV'), 'configmap must set GLOBAL_PAY_ENV')
 assert(service.dig('spec', 'ports', 0, 'port') == 80, 'service port must be 80')
 
 assert(File.file?('apps/backend-go/Dockerfile'), 'apps/backend-go/Dockerfile must exist')

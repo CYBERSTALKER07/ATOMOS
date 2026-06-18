@@ -33,7 +33,6 @@ struct MainTabView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: AppTab = .home
     @State private var vm = FleetViewModel()
-    @State private var refreshEpoch: Int = 0
     @State private var pathMonitor: NWPathMonitor?
     @State private var wasOffline = false
 
@@ -43,7 +42,6 @@ struct MainTabView: View {
                 FleetMapView(vm: vm, goBack: {
                     withAnimation(Anim.snappy) { selectedTab = .home }
                 })
-                .id("map-\(refreshEpoch)")
             } else {
                 VStack(spacing: 0) {
                     TabView(selection: $selectedTab) {
@@ -51,17 +49,14 @@ struct MainTabView: View {
                             HomeView(vm: vm, onOpenMap: {
                                 withAnimation(Anim.snappy) { selectedTab = .map }
                             })
-                            .id("home-\(refreshEpoch)")
                         }
 
                         Tab("Rides", systemImage: "list.bullet", value: .rides) {
                             RidesListView(vm: vm)
-                                .id("rides-\(refreshEpoch)")
                         }
 
                         Tab("Profile", systemImage: "person.fill", value: .profile) {
                             ProfileView(vm: vm)
-                                .id("profile-\(refreshEpoch)")
                         }
                     }
                     .tabViewStyle(.tabBarOnly)
@@ -87,7 +82,7 @@ struct MainTabView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
-                refreshEpoch += 1
+                Task { await vm.loadMissions(silent: true) }
             }
         }
         .onAppear {
@@ -98,9 +93,9 @@ struct MainTabView: View {
                 DispatchQueue.main.async {
                     if path.status == .satisfied {
                         if wasOffline {
-                            refreshEpoch += 1
                             Task {
                                 await FleetServiceLive.shared.flushOfflineQueue()
+                                await vm.loadMissions(silent: true)
                             }
                         }
                         wasOffline = false

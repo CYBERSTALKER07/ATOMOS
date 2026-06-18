@@ -41,7 +41,7 @@ struct TransferListView: View {
 
                 Divider()
 
-                if loading {
+                if loading && transfers.isEmpty {
                     FactoryLoadingView(
                         title: "Loading transfers",
                         message: "Fetching the factory transfer queue and lifecycle states."
@@ -118,7 +118,7 @@ struct TransferListView: View {
                 onEvent: { event in
                     guard let eventType = event.eventType else { return }
                     guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
-                    Task { await load() }
+                    Task { await load(silent: true) }
                 }
             )
         }
@@ -128,8 +128,10 @@ struct TransferListView: View {
     }
 
     @MainActor
-    private func load() async {
-        loading = true
+    private func load(silent: Bool = false) async {
+        if !silent {
+            loading = true
+        }
         error = nil
 
         do {
@@ -146,7 +148,9 @@ struct TransferListView: View {
             self.error = error.localizedDescription
         }
 
-        loading = false
+        if !silent {
+            loading = false
+        }
     }
 }
 

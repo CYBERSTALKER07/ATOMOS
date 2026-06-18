@@ -1,12 +1,13 @@
 import SwiftUI
 
 struct TreasuryHubView: View {
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var vm = TreasuryViewModel()
 
     var body: some View {
         ScrollView {
             Group {
-                if vm.loading {
+                if vm.loading && vm.earnings == nil {
                     SupplierLoadingView(title: "Loading treasury…")
                 } else if let error = vm.error {
                     SupplierErrorView(message: error) { Task { await vm.load() } }
@@ -57,5 +58,11 @@ struct TreasuryHubView: View {
         .navigationTitle("Treasury")
         .task { await vm.load() }
         .refreshable { await vm.load(silent: true) }
+        .silentRealtimeRefresh(
+            refreshEpoch: realtimeHub.refreshEpoch,
+            reconnectEpoch: realtimeHub.reconnectEpoch
+        ) { silent in
+            Task { await vm.load(silent: silent) }
+        }
     }
 }

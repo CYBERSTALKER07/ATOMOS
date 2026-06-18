@@ -15,9 +15,9 @@ enum class FactorySection(
     FLEET(FactoryRoutes.FLEET, "Fleet", Icons.Default.LocalShipping),
     STAFF(FactoryRoutes.STAFF, "Staff", Icons.Default.People),
     SUPPLY_REQUESTS(FactoryRoutes.SUPPLY_REQUESTS, "Supply requests", Icons.Default.Sync),
-    PAYLOAD_OVERRIDE(FactoryRoutes.PAYLOAD_OVERRIDE, "Override", Icons.Default.SwapHoriz),
+    PAYLOAD_OVERRIDE(FactoryRoutes.PAYLOAD_OVERRIDE, "Payload override", Icons.Default.SwapHoriz),
     MANIFESTS(FactoryRoutes.MANIFESTS, "Manifests", Icons.Default.Description),
-    MANIFEST_EXCEPTIONS(FactoryRoutes.MANIFEST_EXCEPTIONS, "Exceptions", Icons.Default.Warning),
+    MANIFEST_EXCEPTIONS(FactoryRoutes.MANIFEST_EXCEPTIONS, "Gate exceptions", Icons.Default.Warning),
     INSIGHTS(FactoryRoutes.INSIGHTS, "Insights", Icons.Default.Insights),
     ANALYTICS(FactoryRoutes.ANALYTICS, "Analytics", Icons.Default.Analytics),
     NOTIFICATIONS(FactoryRoutes.NOTIFICATIONS, "Notifications", Icons.Default.Notifications),
@@ -39,10 +39,30 @@ enum class FactorySection(
             INSIGHTS, ANALYTICS, NOTIFICATIONS,
         )
 
+        /** Tablet rail — mirrors iOS sidebar + factory-portal nav. */
+        val drawerSections: List<FactorySection> =
+            primarySections + operationsSections + intelligenceSections
+
+        /** Phone More hub: everything not on the bottom tab bar (except More itself). */
+        val moreHubSections: List<FactorySection> =
+            primarySections.filter { it !in compactTabs.filter { tab -> tab != MORE } } +
+                operationsSections +
+                intelligenceSections
+
         fun fromRoute(route: String?): FactorySection? {
             if (route.isNullOrBlank()) return null
-            val base = route.substringBefore("/")
-            return entries.firstOrNull { it.route == base }
+            val exact = entries.firstOrNull { it.route == route }
+            if (exact != null) return exact
+            return when {
+                route == FactoryRoutes.TRANSFER_CREATE -> TRANSFERS
+                route.startsWith("transfers/") -> TRANSFERS
+                route.startsWith("manifests/") -> MANIFESTS
+                route.startsWith("staff/") -> STAFF
+                else -> {
+                    val base = route.substringBefore("/").substringBefore("?")
+                    entries.firstOrNull { it.route == base }
+                }
+            }
         }
     }
 }

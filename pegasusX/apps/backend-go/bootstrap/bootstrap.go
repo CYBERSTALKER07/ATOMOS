@@ -113,6 +113,7 @@ type Config struct {
 	RoutingOSRMURL   string
 	InternalAPIKey   string
 	GCSBucketName    string
+	GoogleMapsAPIKey string
 }
 
 // App holds every long-lived singleton. Wire new app-wide dependencies here,
@@ -218,6 +219,7 @@ func LoadConfig() (*Config, error) {
 		RoutingOSRMURL:                  envOr("ROUTING_OSRM_URL", ""),
 		InternalAPIKey:                  envOr("INTERNAL_API_KEY", "dev-internal-key"),
 		GCSBucketName:                   envOr("GCS_BUCKET_NAME", ""),
+		GoogleMapsAPIKey:                envOr("GOOGLE_MAPS_API_KEY", envOr("GOOGLE_PLACES_API_KEY", "")),
 	}
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET required")
@@ -744,12 +746,21 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		JWTIssuer:  cfg.JWTIssuer,
 		Idem:       idemStore,
 	})
+	paymentExec := payment.NewProviderExecutionRouter(payment.ProviderExecutionRouterConfig{
+		AirwallexDirectExecutionEnabled: cfg.AirwallexDirectExecutionEnabled,
+		GlobalPayEnv:                    cfg.GlobalPayEnv,
+		GlobalPayServiceID:              cfg.GlobalPayServiceID,
+		GlobalPayUsername:               cfg.GlobalPayUsername,
+		GlobalPayPassword:               cfg.GlobalPayPassword,
+		PaymentBreaker:                  outboundCircuits.Payment,
+	})
 	paymentSvc := payment.NewService(payment.ServiceConfig{
 		Repo:                            paymentRepo,
 		Cache:                           cacheClient,
 		Idem:                            idemStore,
 		SupplierID:                      supplierSeed.SupplierID,
 		Currency:                        cfg.SeedSupplierCurrency,
+		Execution:                       paymentExec,
 		GlobalPayEnv:                    cfg.GlobalPayEnv,
 		GlobalPayServiceID:              cfg.GlobalPayServiceID,
 		GlobalPayUsername:               cfg.GlobalPayUsername,

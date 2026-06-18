@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight qa-gate validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev
+.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight qa-gate validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev
 
 help:
 	@echo "pegasusX make targets"
@@ -6,7 +6,8 @@ help:
 	@echo "  infra-down            stop infra"
 	@echo "  ssmr-infra-up         start the isolated SSMR sandbox stack"
 	@echo "  ssmr-infra-down       stop the isolated SSMR sandbox stack"
-	@echo "  test-ssmr-infra       run the isolated SSMR smoke-check and always tear down"
+	@echo "  test-ssmr-infra       run isolated SSMR smoke + full-ecosystem PX_E2E marker gate"
+	@echo "  ssmr-ecosystem-marker-gate validate PX_E2E log against contracts/ssmr_ecosystem_markers.json"
 	@echo "  load-cert             PX9-F load certification (smoke profile, backend must be up)"
 	@echo "  load-cert-ssmr         SSMR stack up + load-cert smoke gate"
 	@echo "  load-cert-cloud        load cert against PUBLIC_BASE_URL (staging/prod SLOs)"
@@ -48,6 +49,10 @@ ssmr-infra-reset:
 
 test-ssmr-infra:
 	bash scripts/smoke_ssmr.sh
+
+ssmr-ecosystem-marker-gate:
+	@test -n "$(LOG)" || (echo "usage: make ssmr-ecosystem-marker-gate LOG=path/to/ssmr-e2e.log" >&2; exit 1)
+	bash scripts/parity/ssmr_ecosystem_marker_gate.sh "$(LOG)"
 
 load-cert:
 	PATH="/opt/homebrew/bin:/usr/local/bin:$$PATH" bash scripts/load/load_cert.sh

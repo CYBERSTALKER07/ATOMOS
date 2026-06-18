@@ -21,7 +21,7 @@ This run book is the release-owner checklist for the currently implemented pegas
 
 ## Preflight Sequence
 
-0. Production env contract: `PEGASUSX_ENV=production`, `REQUIRE_INFRA_ADAPTERS=true`, non-`dev-*` webhook secrets, and portal demo seed flags unset (`FACTORY_PORTAL_SEED`, `PAYLOAD_PORTAL_SEED`, `WAREHOUSE_PORTAL_SEED`).
+0. Production env contract: `PEGASUSX_ENV=production`, `REQUIRE_INFRA_ADAPTERS=true`, non-`dev-*` webhook secrets, `GLOBAL_PAY_USERNAME`/`PASSWORD`/`SERVICE_ID` when `GLOBAL_PAY_ENV=production`, and portal demo seed flags unset (`FACTORY_PORTAL_SEED`, `PAYLOAD_PORTAL_SEED`, `WAREHOUSE_PORTAL_SEED`). See `docs/CLOUD_CREDENTIALS_CHECKLIST.md` for the full API inventory.
 1. Run `make test-ssmr-infra` from the `pegasusX` root.
 2. Run `make validate-ai-worker-k8s` from the `pegasusX` root.
 3. Run `make validate-launch-readiness` from the `pegasusX` root.

@@ -2,12 +2,13 @@ import SwiftUI
 
 struct InventoryView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var vm = InventoryViewModel()
 
     var body: some View {
         NavigationStack {
             Group {
-                if vm.loading {
+                if vm.loading && vm.items.isEmpty {
                     SupplierLoadingView(title: "Loading inventory…")
                 } else if let error = vm.error {
                     SupplierErrorView(message: error) { Task { await vm.load() } }
@@ -25,6 +26,12 @@ struct InventoryView: View {
             .searchable(text: $vm.query, prompt: "SKU or product")
             .task { await vm.load() }
             .refreshable { await vm.load(silent: true) }
+            .silentRealtimeRefresh(
+                refreshEpoch: realtimeHub.refreshEpoch,
+                reconnectEpoch: realtimeHub.reconnectEpoch
+            ) { silent in
+                Task { await vm.load(silent: silent) }
+            }
         }
     }
 

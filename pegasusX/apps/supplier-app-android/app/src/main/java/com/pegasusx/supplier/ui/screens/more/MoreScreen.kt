@@ -23,9 +23,6 @@ private data class MoreDestination(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoreScreen(
-    onExceptions: () -> Unit,
-    onShopClosed: () -> Unit,
-    onNegotiations: () -> Unit,
     onManifests: () -> Unit,
     onDispatch: () -> Unit,
     onActivity: () -> Unit,
@@ -45,7 +42,6 @@ fun MoreScreen(
     onPricing: () -> Unit,
     onReturns: () -> Unit,
     onReconciliation: () -> Unit,
-    onEarlyComplete: () -> Unit,
     onOrgFleet: () -> Unit,
     onEarnings: () -> Unit,
     onProfile: () -> Unit,
@@ -66,11 +62,6 @@ fun MoreScreen(
         MoreDestination("Dispatch preview", "Pending orders & drivers", Icons.Default.LocalShipping, onDispatch),
         MoreDestination("Fleet orders", "In-flight assignments", Icons.Default.Route, onFleetOrders),
     )
-    val exceptions = listOf(
-        MoreDestination("Exceptions", "Operational queue", Icons.Default.Warning, onExceptions),
-        MoreDestination("Shop closed", "Driver wait cases", Icons.Default.Store, onShopClosed),
-        MoreDestination("Early route complete", "Approve driver escalation", Icons.Default.CheckCircle, onEarlyComplete),
-    )
     val intelligence = listOf(
         MoreDestination("Analytics", "Operational metrics", Icons.Default.BarChart, onAnalytics),
         MoreDestination("Demand history", "14-day forecast vs actual", Icons.Default.History, onDemandHistory),
@@ -79,8 +70,8 @@ fun MoreScreen(
     )
     val network = listOf(
         MoreDestination("Factories & warehouses", "Topology overview", Icons.Default.Apartment, onTopology),
-        MoreDestination("Factories", "Read-only factory nodes", Icons.Default.PrecisionManufacturing, onFactories),
-        MoreDestination("Warehouses", "Read-only warehouse nodes", Icons.Default.Store, onWarehouses),
+        MoreDestination("Factories", "Production nodes", Icons.Default.PrecisionManufacturing, onFactories),
+        MoreDestination("Warehouses", "Distribution nodes", Icons.Default.Store, onWarehouses),
         MoreDestination("Delivery zones", "Coverage areas", Icons.Default.Map, onDeliveryZones),
         MoreDestination("Supply lanes", "Lane utilization", Icons.Default.AltRoute, onSupplyLanes),
     )
@@ -102,7 +93,7 @@ fun MoreScreen(
         MoreDestination("Inventory", "SKU levels", Icons.Default.Inventory2, onInventory),
         MoreDestination("Inventory import", "Bulk CSV wizard", Icons.Default.Upload, onInventoryImport),
         MoreDestination("Retailer overrides", "Per-retailer pricing", Icons.Default.PriceCheck, onRetailerOverrides),
-        MoreDestination("Pricing", "Markup and discount rules", Icons.Default.PriceChange, onPricing),
+        MoreDestination("Pricing", "Catalog list and sale pricing", Icons.Default.PriceChange, onPricing),
         MoreDestination("Promotions", "Sales and discounts", Icons.Default.LocalOffer, onPromotions),
         MoreDestination("Returns", "Cancelled and rejected orders", Icons.Default.Undo, onReturns),
         MoreDestination("Org & fleet", "Drivers, vehicles, staff", Icons.Default.Groups, onOrgFleet),
@@ -119,8 +110,6 @@ fun MoreScreen(
         ) {
             item { SectionHeader("Fulfillment") }
             fulfillment.forEach { item { MoreRow(it) } }
-            item { SectionHeader("Exceptions") }
-            exceptions.forEach { item { MoreRow(it) } }
             item { SectionHeader("Intelligence") }
             intelligence.forEach { item { MoreRow(it) } }
             item { SectionHeader("Network") }

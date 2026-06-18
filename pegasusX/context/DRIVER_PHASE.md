@@ -118,3 +118,9 @@ cd pegasusX && make test-ssmr-infra   # PX_E2E_DRIVER_* markers
 3. ~~DR-10A Android deep UI/UX parity~~ — **CLOSED** (2026-06-15): shared `DriverUiComponents` / `DriverState`, HomeScreen + manifest + map + delivery flow — see DR-10A table
 4. ~~DR-11 Firebase phone OTP~~ — **CLOSED** (2026-06-17): OTP-first login on Android + iOS; DR9-03 → **WIRED**
 5. **Cross-role next** — platform hardening or Boss-picked row per `VEGETABLE_PLAN.md` §3
+
+---
+
+## Enterprise production readiness (2026-06-18)
+
+**Row status:** `PROD_CANDIDATE` — delivery edges idempotent, offline flush, telemetry → Redis → WS, Firebase OTP + FCM, Maps Android key required for production maps.

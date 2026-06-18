@@ -32,8 +32,10 @@ fun InsightsScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
-        loading = true
+    fun load(silent: Boolean = false) {
+        if (!silent) {
+            loading = true
+        }
         error = null
         scope.launch {
             try {
@@ -46,7 +48,9 @@ fun InsightsScreen(
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) {
+                    loading = false
+                }
             }
         }
     }
@@ -59,7 +63,7 @@ fun InsightsScreen(
             FactoryRealtimeEventType.TransferUpdate,
         ),
     ) {
-        load()
+        load(silent = true)
     }
 
     Scaffold(
@@ -76,7 +80,7 @@ fun InsightsScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> FactoryLoadingState(
+            loading && insights.isEmpty() -> FactoryLoadingState(
                 title = "Loading insights",
                 body = "Fetching replenishment pressure and restock signals for this factory.",
                 modifier = Modifier

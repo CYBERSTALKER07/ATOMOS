@@ -55,21 +55,21 @@ fun VehicleDetailScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    fun load() {
-        loading = true
+    fun load(silent: Boolean = false) {
+        if (!silent) loading = true
         error = null
         scope.launch {
             try {
                 val resp = api.getVehicle(vehicleId)
                 if (resp.isSuccessful && resp.body()?.vehicle != null) {
                     vehicle = resp.body()!!.vehicle
-                } else {
+                } else if (!silent) {
                     error = "Failed (${resp.code()})"
                 }
             } catch (e: Exception) {
-                error = e.message ?: "Network error"
+                if (!silent) error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) loading = false
             }
         }
     }
@@ -105,7 +105,7 @@ fun VehicleDetailScreen(
     LaunchedEffect(vehicleId) { load() }
 
     LaunchedEffect(Unit) {
-        realtimeSignals.refreshTick.collect { load() }
+        realtimeSignals.refreshTick.collect { load(silent = true) }
     }
 
     Scaffold(

@@ -227,7 +227,7 @@ private struct HomeLifecycleModifier: ViewModifier {
             .onChange(of: scenePhase) { _, phase in
                 guard phase == .active else { return }
                 Task {
-                    await viewModel.refreshTrucks()
+                    await viewModel.refreshTrucks(silent: !viewModel.trucks.isEmpty)
                     if viewModel.selectedTruckId != nil {
                         await viewModel.refreshManifest()
                     }
@@ -236,7 +236,7 @@ private struct HomeLifecycleModifier: ViewModifier {
             .onChange(of: viewModel.online) { _, online in
                 guard online else { return }
                 Task {
-                    await viewModel.refreshTrucks()
+                    await viewModel.refreshTrucks(silent: !viewModel.trucks.isEmpty)
                     if viewModel.selectedTruckId != nil {
                         await viewModel.refreshManifest()
                     }

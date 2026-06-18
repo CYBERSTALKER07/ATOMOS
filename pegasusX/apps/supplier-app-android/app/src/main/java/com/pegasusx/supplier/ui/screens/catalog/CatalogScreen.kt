@@ -44,6 +44,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.pegasus.design.RealtimeRefreshEffect
+import com.pegasus.design.showFullScreenLoading
 import com.pegasus.barcode.EanBarcode
 import com.pegasusx.supplier.data.model.CatalogCategory
 import com.pegasusx.supplier.data.model.CatalogProduct
@@ -51,6 +53,7 @@ import com.pegasusx.supplier.data.model.CatalogProductCreateRequest
 import com.pegasusx.supplier.data.model.CatalogProductUpdateRequest
 import com.pegasusx.supplier.data.remote.CatalogImageUploader
 import com.pegasusx.supplier.data.remote.SupplierApi
+import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
@@ -63,6 +66,7 @@ import java.util.Locale
 @Composable
 fun CatalogScreen(
     api: SupplierApi,
+    realtimeSignals: SupplierRealtimeSignals,
     onOpenProduct: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -137,24 +141,30 @@ fun CatalogScreen(
         }
     }
 
-    fun load() {
+    fun load(silent: Boolean = false) {
         scope.launch {
-            loading = true
-            error = null
+            if (!silent) {
+                loading = true
+                error = null
+            }
             try {
                 val profileResp = api.getProfile()
                 if (profileResp.isSuccessful) {
                     currency = profileResp.body()?.currency?.ifBlank { "UZS" } ?: "UZS"
                 }
                 val resp = api.listCatalogProducts()
-                products = if (resp.isSuccessful) resp.body().orEmpty() else emptyList()
-                if (!resp.isSuccessful) error = "Failed (${resp.code()})"
-                draftVU.clear()
-                draftBarcode.clear()
+                if (resp.isSuccessful) {
+                    products = resp.body().orEmpty()
+                    draftVU.clear()
+                    draftBarcode.clear()
+                } else if (!silent) {
+                    error = "Failed (${resp.code()})"
+                    products = emptyList()
+                }
             } catch (e: Exception) {
-                error = e.message
+                if (!silent) error = e.message
             } finally {
-                loading = false
+                if (!silent) loading = false
             }
         }
     }
@@ -175,6 +185,12 @@ fun CatalogScreen(
     }
 
     LaunchedEffect(Unit) { load() }
+
+    RealtimeRefreshEffect(
+        refreshTick = realtimeSignals.refreshTick,
+        reconnectTick = realtimeSignals.reconnectTick,
+        onRefresh = { load(silent = it) },
+    )
 
     fun saveUnitVolume(product: CatalogProduct) {
         val raw = draftVU[product.productId] ?: product.unitVolumeVu.toString()
@@ -305,7 +321,7 @@ fun CatalogScreen(
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when {
-                loading -> SupplierLoadingState("Loading catalog…", "Product VU")
+                showFullScreenLoading(loading, products.isNotEmpty()) -> SupplierLoadingState("Loading catalog…", "Product VU")
                 error != null && products.isEmpty() -> SupplierStatePane(
                     kind = SupplierStateKind.Error,
                     headline = "Catalog unavailable",
