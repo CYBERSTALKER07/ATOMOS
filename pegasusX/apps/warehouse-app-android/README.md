@@ -28,6 +28,8 @@ cd pegasusX/apps/warehouse-app-android
 
 ## Navigation map (`WarehouseSection`)
 
+On tablet width, navigation uses the shared **collapsible icon rail** (88dp collapsed / 280dp expanded) via `PegasusCollapsibleRail`. Phone layout uses a 4-tab bottom bar plus More hub.
+
 | Group | Android route | Portal |
 | --- | --- | --- |
 | Primary | `dashboard`, `orders`, `drivers`, `vehicles`, `inventory`, `dispatch`, `analytics`, `treasury`, `staff` | `/`, `/orders`, `/drivers`, `/vehicles`, `/inventory`, `/dispatch`, analytics, treasury, staff |

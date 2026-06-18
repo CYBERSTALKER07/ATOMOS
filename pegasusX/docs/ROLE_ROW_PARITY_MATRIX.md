@@ -44,6 +44,21 @@ Last updated: 2026-06-17 (factory FA9-03 Firebase OTP). Canonical reference: `pe
 | `/payments`, `/earnings` | `/payments`, `/earnings` | payment + earnings | Wired |
 | `/ai/recommendations` | `/ai/recommendations` | AI recommendations | Wired |
 
+## Native shell parity (collapsible icon rail)
+
+All six native role apps use a shared monochrome design system (`packages/mobile-ios-design`, `packages/mobile-android-design`):
+
+| Role | Tablet / regular width | Phone / compact | Theme |
+|------|------------------------|-----------------|-------|
+| RETAILER | Collapsible sidebar 88↔280pt (iOS) / rail (Android) | Bottom tabs + overflow | B&W; `dynamicColor = false` on Android |
+| WAREHOUSE | `CollapsibleSidebar` / `PegasusCollapsibleRail` | 4-tab bottom bar + More | `PegasusMonochromeTheme` |
+| FACTORY | `FactoryAdaptiveShell` + rail | 4-tab + More hub | `PegasusMonochromeTheme` |
+| SUPPLIER | `CollapsibleSidebar` / tablet rail | 4-tab bottom bar | `PegasusMonochromeTheme` |
+| PAYLOAD | Collapsible truck list (icon rail ↔ full list) | List-detail scaffold | `PegasusMonochromeTheme` (Android); `TermTheme` (iOS) |
+| DRIVER | Collapsible rail (4 tabs) | Bottom tabs + map overlay | B&W; `dynamicColor = false` |
+
+Rail never fully hides on tablet — collapsed state keeps an 88dp/pt icon column.
+
 ## Intentional deltas
 
 - Single deploy defaults to one seeded supplier; `MAX_SUPPLIERS` (default 10) allows additional registrations.

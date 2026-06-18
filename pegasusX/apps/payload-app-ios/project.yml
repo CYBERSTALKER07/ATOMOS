@@ -54,6 +54,7 @@ targets:
       - path: ../../packages/mobile-ios-barcode
         includes:
           - EANBarcodeScannerView.swift
+      - path: ../../packages/mobile-ios-design
     resources:
       - path: payload-app-ios/Assets.xcassets
     info:

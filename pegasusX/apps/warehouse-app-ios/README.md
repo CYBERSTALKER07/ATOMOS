@@ -4,6 +4,8 @@ Native SwiftUI client wired to `pegasusX/apps/backend-go` and parity with `wareh
 
 ## Run
 
+Tablet (regular width) uses the shared **collapsible sidebar** from `packages/mobile-ios-design` (88pt icon rail ↔ 280pt labeled drawer). iPhone uses a 4-tab shell plus More hub.
+
 ```bash
 cd pegasusX/apps/warehouse-app-ios
 xcodegen generate

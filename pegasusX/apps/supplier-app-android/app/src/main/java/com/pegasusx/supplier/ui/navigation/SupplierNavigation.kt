@@ -1,6 +1,13 @@
 package com.pegasusx.supplier.ui.navigation
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import com.pegasusx.supplier.ui.components.SupplierNavigationDrawer
+import com.pegasusx.supplier.ui.navigation.SupplierSection
 import com.pegasusx.supplier.BuildConfig
 import com.pegasusx.supplier.data.remote.TokenHolder
 import com.pegasusx.supplier.ui.components.ClientPolicyBanner
@@ -136,6 +143,7 @@ fun SupplierNavigation(
     api: SupplierApi,
     ops: SupplierOperationsRepository,
     realtimeSignals: SupplierRealtimeSignals,
+    windowSizeClass: WindowSizeClass,
 ) {
     var sessionEpoch by remember { mutableIntStateOf(0) }
     var refreshEpoch by remember { mutableIntStateOf(0) }
@@ -182,6 +190,8 @@ fun SupplierNavigation(
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val showBottomBar = currentRoute in tabs.map { it.route }
+    val useDrawer = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
+    var isRailExpanded by remember { mutableStateOf(true) }
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -216,35 +226,20 @@ fun SupplierNavigation(
         if (loggedIn) loadClientPolicy()
     }
 
-    Scaffold(
-        bottomBar = {
-            if (showBottomBar) {
-                NavigationBar {
-                    tabs.forEach { tab ->
-                        NavigationBarItem(
-                            selected = currentRoute == tab.route,
-                            onClick = {
-                                navController.navigate(tab.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(tab.icon, contentDescription = tab.label) },
-                            label = { Text(tab.label) },
-                        )
-                    }
-                }
-            }
-        },
-    ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            ClientPolicyBanner(clientPolicyMessage)
-            NavHost(
-                navController = navController,
-                startDestination = start,
-                modifier = Modifier.weight(1f),
-            ) {
+    fun navigateSection(section: SupplierSection) {
+        navController.navigate(section.route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    val navHost: @Composable (Modifier) -> Unit = { modifier ->
+        NavHost(
+            navController = navController,
+            startDestination = start,
+            modifier = modifier,
+        ) {
             composable(SupplierRoutes.BUSINESS_SETUP) {
                 BusinessSetupScreen(
                     onComplete = {
@@ -516,6 +511,39 @@ fun SupplierNavigation(
                 }
             }
         }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        ClientPolicyBanner(clientPolicyMessage)
+        if (useDrawer) {
+            Row(Modifier.weight(1f).fillMaxSize()) {
+                SupplierNavigationDrawer(
+                    isExpanded = isRailExpanded,
+                    onToggleExpanded = { isRailExpanded = !isRailExpanded },
+                    selectedRoute = currentRoute,
+                    onSectionSelected = ::navigateSection,
+                )
+                navHost(Modifier.weight(1f).fillMaxSize())
+            }
+        } else {
+            Scaffold(
+                bottomBar = {
+                    if (showBottomBar) {
+                        NavigationBar {
+                            tabs.forEach { tab ->
+                                NavigationBarItem(
+                                    selected = currentRoute == tab.route,
+                                    onClick = { navigateSection(SupplierSection.entries.first { it.route == tab.route }) },
+                                    icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                    label = { Text(tab.label) },
+                                )
+                            }
+                        }
+                    }
+                },
+            ) { padding ->
+                navHost(Modifier.padding(padding).fillMaxSize())
+            }
         }
     }
 }

@@ -10,6 +10,13 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -26,8 +33,14 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.pegasusx.factory.ui.components.FactoryBottomBar
+import com.pegasusx.factory.ui.components.FactoryNavigationDrawer
+import com.pegasusx.factory.ui.screens.more.FactoryMoreHubScreen
+import androidx.compose.ui.Modifier
+import com.pegasusx.factory.ui.navigation.FactorySection
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.TokenHolder
 import com.pegasusx.factory.ui.screens.analytics.AnalyticsScreen
@@ -66,6 +79,7 @@ object FactoryRoutes {
     const val MANIFEST_DETAIL = "manifests/{id}"
     const val STAFF_DETAIL = "staff/{id}"
     const val NOTIFICATIONS = "notifications"
+    const val MORE = "more"
 
     fun transferDetail(id: String) = "transfers/$id"
     fun manifestDetail(id: String) = "manifests/$id"
@@ -77,6 +91,7 @@ private const val MOTION_DURATION = 300
 @Composable
 fun FactoryNavigation(
     api: FactoryApi,
+    windowSizeClass: WindowSizeClass,
     navController: NavHostController = rememberNavController(),
 ) {
     val startDestination = if (TokenHolder.isLoggedIn) FactoryRoutes.DASHBOARD else FactoryRoutes.LOGIN
@@ -84,6 +99,19 @@ fun FactoryNavigation(
     val context = LocalContext.current
     var refreshEpoch by remember { mutableIntStateOf(0) }
     var networkAvailable by remember { mutableStateOf(true) }
+    val useDrawer = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
+    var isRailExpanded by remember { mutableStateOf(true) }
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    val showShell = currentRoute != null && currentRoute != FactoryRoutes.LOGIN
+
+    fun navigateSection(section: FactorySection) {
+        navController.navigate(section.route) {
+            popUpTo(FactoryRoutes.DASHBOARD) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -125,9 +153,11 @@ fun FactoryNavigation(
     }
 
     key(refreshEpoch) {
-        NavHost(
-            navController = navController,
-            startDestination = startDestination,
+        val navHost: @Composable (Modifier) -> Unit = { modifier ->
+            NavHost(
+                navController = navController,
+                startDestination = startDestination,
+                modifier = modifier,
             enterTransition = {
                 slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(MOTION_DURATION)) + fadeIn(tween(MOTION_DURATION))
             },
@@ -294,6 +324,40 @@ fun FactoryNavigation(
                     onBack = { navController.popBackStack() },
                 )
             }
+
+            composable(FactoryRoutes.MORE) {
+                FactoryMoreHubScreen(
+                    onNavigate = { route -> navController.navigate(route) },
+                )
+            }
+            }
+        }
+
+        if (showShell) {
+            Row(Modifier.fillMaxSize()) {
+                if (useDrawer) {
+                    FactoryNavigationDrawer(
+                        isExpanded = isRailExpanded,
+                        onToggleExpanded = { isRailExpanded = !isRailExpanded },
+                        selectedRoute = currentRoute,
+                        onSectionSelected = ::navigateSection,
+                    )
+                }
+                Scaffold(
+                    bottomBar = {
+                        if (!useDrawer) {
+                            FactoryBottomBar(
+                                selectedRoute = currentRoute,
+                                onSectionSelected = ::navigateSection,
+                            )
+                        }
+                    },
+                ) { innerPadding ->
+                    navHost(Modifier.padding(innerPadding).fillMaxSize())
+                }
+            }
+        } else {
+            navHost(Modifier.fillMaxSize())
         }
     }
 }

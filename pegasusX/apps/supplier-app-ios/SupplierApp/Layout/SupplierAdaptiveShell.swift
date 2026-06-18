@@ -13,6 +13,7 @@ struct SupplierAdaptiveShell: View {
     @Environment(TokenStore.self) private var tokenStore
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var sidebarSelection: SupplierSection? = .dashboard
+    @State private var isSidebarExpanded = true
     @State private var compactTab: CompactTab = .dashboard
     @State private var clientPolicyMessage: String?
 
@@ -41,23 +42,34 @@ struct SupplierAdaptiveShell: View {
     }
 
     private var regularShell: some View {
-        NavigationSplitView {
-            List(SupplierSection.sidebarSections, selection: $sidebarSelection) { section in
-                Label(section.rawValue, systemImage: section.icon)
-                    .tag(section)
-            }
-            .navigationTitle("Pegasus Supplier")
-            .listStyle(.sidebar)
-        } detail: {
+        CollapsibleSidebar(
+            title: "Pegasus Supplier",
+            isExpanded: $isSidebarExpanded,
+            selection: $sidebarSelection,
+            groups: sidebarGroups,
+        ) {
             if let section = sidebarSelection {
                 sectionView(section)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(SupplierTheme.background)
+                    .background(PegasusMonochromeTheme.background)
             } else {
                 ContentUnavailableView("Select a section", systemImage: "sidebar.left")
             }
         }
-        .navigationSplitViewStyle(.balanced)
+    }
+
+    private var sidebarGroups: [(title: String, items: [CollapsibleSidebarItem<SupplierSection>])] {
+        [
+            ("Primary", items(for: SupplierSection.compactTabs)),
+            ("Operations", items(for: SupplierSection.opsSections)),
+            ("Intelligence", items(for: SupplierSection.intelligenceSections)),
+            ("Network", items(for: SupplierSection.networkSections)),
+            ("Account", items(for: SupplierSection.accountSections)),
+        ]
+    }
+
+    private func items(for sections: [SupplierSection]) -> [CollapsibleSidebarItem<SupplierSection>] {
+        sections.map { CollapsibleSidebarItem(tag: $0, label: $0.rawValue, icon: $0.icon) }
     }
 
     private var compactShell: some View {

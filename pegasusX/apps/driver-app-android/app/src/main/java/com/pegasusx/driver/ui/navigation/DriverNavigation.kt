@@ -114,8 +114,6 @@ fun DriverNavigation(
     driverWebSocket: DriverWebSocket,
     windowSizeClass: WindowSizeClass? = null,
 ) {
-    @Suppress("UNUSED_VARIABLE")
-    val adaptiveLayoutClass = windowSizeClass
     val navController = rememberNavController()
     val startDest = if (TokenHolder.token != null) DriverRoutes.MAIN else DriverRoutes.LOGIN
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -307,6 +305,7 @@ fun DriverNavigation(
                         onClick = onOpenMap,
                     )
                 },
+                windowSizeClass = windowSizeClass,
             )
         }
 

@@ -30,6 +30,7 @@ targets:
         includes:
           - EANBarcodeScannerView.swift
           - EANBarcode.swift
+      - path: ../../packages/mobile-ios-design
     resources:
       - path: SupplierApp/Assets.xcassets
     info:

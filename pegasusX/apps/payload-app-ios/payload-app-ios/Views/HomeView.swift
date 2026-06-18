@@ -13,6 +13,7 @@ struct HomeView: View {
     @Environment(TokenStore.self) private var tokenStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = HomeViewModel()
+    @State private var isTruckSidebarExpanded = true
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var showInjectSheet = false
     @State private var showProductScanner = false
@@ -38,9 +39,13 @@ struct HomeView: View {
 
     private var navigationRoot: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            TruckSidebar(viewModel: viewModel)
-                .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 420)
-                .navigationTitle("Vehicles")
+            TruckSidebar(viewModel: viewModel, isExpanded: $isTruckSidebarExpanded)
+                .navigationSplitViewColumnWidth(
+                    min: isTruckSidebarExpanded ? 280 : 88,
+                    ideal: isTruckSidebarExpanded ? 340 : 88,
+                    max: isTruckSidebarExpanded ? 420 : 88
+                )
+                .navigationTitle(isTruckSidebarExpanded ? "Vehicles" : "")
                 .toolbar { sidebarToolbar }
         } detail: {
             ManifestDetailView(
@@ -353,56 +358,111 @@ private struct ReDispatchTarget: Identifiable { let id: String }
 
 private struct TruckSidebar: View {
     @Bindable var viewModel: HomeViewModel
+    @Binding var isExpanded: Bool
 
     var body: some View {
-        Group {
-            if viewModel.loadingTrucks && viewModel.trucks.isEmpty {
-                PayloadStateView(
-                    variant: .truck,
-                    title: "LOADING_VEHICLES",
-                    message: "Refreshing supplier fleet availability for this shift."
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.trucks.isEmpty {
-                PayloadStateView(
-                    variant: .truck,
-                    title: "NO_VEHICLES",
-                    message: "Pull to refresh once dispatch assigns trucks.",
-                    tone: .warning
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                if viewModel.batchReadyManifestIds.count > 1 {
-                    Section {
-                        VStack(alignment: .leading, spacing: TermTheme.s8) {
-                            PayloadSectionHeader(
-                                title: "BATCH FINALIZE",
-                                subtitle: "\(viewModel.batchReadyManifestIds.count) trucks ready to seal"
-                            )
-                            Button(viewModel.batchSealing ? "Finalizing…" : "Seal all trucks") {
-                                Task { await viewModel.finalizeBatchSeal() }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(viewModel.batchSealing)
-                        }
-                        .padding(.vertical, 4)
+        VStack(spacing: 0) {
+            HStack {
+                if isExpanded {
+                    Text("VEHICLES")
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .foregroundStyle(TermTheme.secondaryLabel)
+                }
+                Spacer(minLength: 0)
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        isExpanded.toggle()
                     }
+                } label: {
+                    Image(systemName: "sidebar.left")
+                        .foregroundStyle(TermTheme.secondaryLabel)
                 }
-                List(viewModel.trucks, selection: Binding(
-                    get: { viewModel.selectedTruckId },
-                    set: { id in if let id { Task { await viewModel.selectTruck(id) } } }
-                )) { truck in
-                    TruckRow(truck: truck)
-                        .tag(truck.id)
-                }
-                .refreshable { await viewModel.refreshTrucks() }
+                .buttonStyle(.plain)
             }
-            if let err = viewModel.error {
+            .padding(.horizontal, isExpanded ? 16 : 12)
+            .padding(.top, 8)
+
+            Group {
+                if viewModel.loadingTrucks && viewModel.trucks.isEmpty {
+                    PayloadStateView(
+                        variant: .truck,
+                        title: "LOADING_VEHICLES",
+                        message: "Refreshing supplier fleet availability for this shift."
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if viewModel.trucks.isEmpty {
+                    PayloadStateView(
+                        variant: .truck,
+                        title: "NO_VEHICLES",
+                        message: "Pull to refresh once dispatch assigns trucks.",
+                        tone: .warning
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if isExpanded {
+                    expandedTruckList
+                } else {
+                    collapsedTruckRail
+                }
+            }
+            if let err = viewModel.error, isExpanded {
                 Text(err)
                     .font(.footnote)
                     .foregroundStyle(.red)
                     .padding(.horizontal)
             }
+        }
+    }
+
+    private var expandedTruckList: some View {
+        Group {
+            if viewModel.batchReadyManifestIds.count > 1 {
+                Section {
+                    VStack(alignment: .leading, spacing: TermTheme.s8) {
+                        PayloadSectionHeader(
+                            title: "BATCH FINALIZE",
+                            subtitle: "\(viewModel.batchReadyManifestIds.count) trucks ready to seal"
+                        )
+                        Button(viewModel.batchSealing ? "Finalizing…" : "Seal all trucks") {
+                            Task { await viewModel.finalizeBatchSeal() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(viewModel.batchSealing)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            List(viewModel.trucks, selection: Binding(
+                get: { viewModel.selectedTruckId },
+                set: { id in if let id { Task { await viewModel.selectTruck(id) } } }
+            )) { truck in
+                TruckRow(truck: truck)
+                    .tag(truck.id)
+            }
+            .refreshable { await viewModel.refreshTrucks() }
+        }
+    }
+
+    private var collapsedTruckRail: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 8) {
+                ForEach(viewModel.trucks) { truck in
+                    let selected = viewModel.selectedTruckId == truck.id
+                    Button {
+                        Task { await viewModel.selectTruck(truck.id) }
+                    } label: {
+                        Image(systemName: "truck.box.fill")
+                            .font(.system(size: 20, weight: selected ? .bold : .regular))
+                            .foregroundStyle(selected ? TermTheme.accent : TermTheme.secondaryLabel)
+                            .frame(width: 44, height: 44)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(selected ? TermTheme.accent.opacity(0.12) : Color.clear)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 8)
         }
     }
 }

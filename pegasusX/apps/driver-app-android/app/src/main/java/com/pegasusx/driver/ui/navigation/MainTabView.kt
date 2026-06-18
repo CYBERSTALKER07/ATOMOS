@@ -40,6 +40,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MenuOpen
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import com.pegasus.design.PegasusCollapsibleRail
+import com.pegasus.design.PegasusRailGroup
+import com.pegasus.design.PegasusRailItem
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import com.pegasusx.driver.ui.theme.MotionTokens
 
 // ── Tab Enum ──
@@ -66,88 +78,140 @@ fun MainTabView(
     ridesContent: @Composable () -> Unit,
     profileContent: @Composable () -> Unit,
     activeRideBar: (@Composable (onOpenMap: () -> Unit) -> Unit)? = null,
+    windowSizeClass: WindowSizeClass? = null,
 ) {
     var selectedTab by remember { mutableStateOf(AppTab.HOME) }
     val openMapTab: () -> Unit = { selectedTab = AppTab.MAP }
+    val useRail = windowSizeClass?.widthSizeClass != null &&
+        windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
+    var isRailExpanded by remember { mutableStateOf(true) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Tab content with M3 emphasized decelerate enter / accelerate exit
-        AnimatedContent(
-            targetState = selectedTab,
-            transitionSpec = {
-                (fadeIn(
-                    animationSpec = tween(
-                        durationMillis = MotionTokens.DurationMedium2,
-                        easing = MotionTokens.EasingEmphasizedDecelerate
-                    )
-                ) + slideInVertically(
-                    initialOffsetY = { it / 20 },
-                    animationSpec = tween(
-                        durationMillis = MotionTokens.DurationMedium2,
-                        easing = MotionTokens.EasingEmphasizedDecelerate
-                    )
-                )) togetherWith (fadeOut(
-                    animationSpec = tween(
-                        durationMillis = MotionTokens.DurationShort3,
-                        easing = MotionTokens.EasingEmphasizedAccelerate
-                    )
-                ))
-            },
-            label = "tab_content"
-        ) { tab ->
-            when (tab) {
-                AppTab.HOME -> homeContent()
-                AppTab.MAP -> mapContent()
-                AppTab.RIDES -> ridesContent()
-                AppTab.PROFILE -> profileContent()
+    val tabContent: @Composable () -> Unit = {
+        Box(modifier = Modifier.fillMaxSize()) {
+            AnimatedContent(
+                targetState = selectedTab,
+                transitionSpec = {
+                    (fadeIn(
+                        animationSpec = tween(
+                            durationMillis = MotionTokens.DurationMedium2,
+                            easing = MotionTokens.EasingEmphasizedDecelerate
+                        )
+                    ) + slideInVertically(
+                        initialOffsetY = { it / 20 },
+                        animationSpec = tween(
+                            durationMillis = MotionTokens.DurationMedium2,
+                            easing = MotionTokens.EasingEmphasizedDecelerate
+                        )
+                    )) togetherWith (fadeOut(
+                        animationSpec = tween(
+                            durationMillis = MotionTokens.DurationShort3,
+                            easing = MotionTokens.EasingEmphasizedAccelerate
+                        )
+                    ))
+                },
+                label = "tab_content"
+            ) { tab ->
+                when (tab) {
+                    AppTab.HOME -> homeContent()
+                    AppTab.MAP -> mapContent()
+                    AppTab.RIDES -> ridesContent()
+                    AppTab.PROFILE -> profileContent()
+                }
+            }
+
+            if (!useRail) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth(),
+                ) {
+                    bottomChrome(selectedTab, openMapTab, activeRideBar) { selectedTab = it }
+                }
+            } else if (selectedTab != AppTab.MAP) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth(),
+                ) {
+                    activeRideBar?.invoke(openMapTab)
+                }
             }
         }
+    }
 
-        // Bottom overlay: active ride bar + M3 NavigationBar
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+    if (useRail) {
+        Row(Modifier.fillMaxSize()) {
+            PegasusCollapsibleRail(
+                appTitle = "Pegasus Driver",
+                isExpanded = isRailExpanded,
+                onToggleExpanded = { isRailExpanded = !isRailExpanded },
+                groups = listOf(
+                    PegasusRailGroup(
+                        "Primary",
+                        AppTab.entries.map {
+                            PegasusRailItem(it.name, it.label, it.selectedIcon)
+                        },
+                    ),
+                ),
+                selectedItemId = selectedTab.name,
+                onItemSelected = { item ->
+                    AppTab.entries.firstOrNull { it.name == item.id }?.let { selectedTab = it }
+                },
+            )
+            tabContent()
+        }
+    } else {
+        tabContent()
+    }
+}
+
+@Composable
+private fun bottomChrome(
+    selectedTab: AppTab,
+    openMapTab: () -> Unit,
+    activeRideBar: (@Composable (onOpenMap: () -> Unit) -> Unit)?,
+    onTabSelected: (AppTab) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        if (selectedTab != AppTab.MAP) {
+            activeRideBar?.invoke(openMapTab)
+        }
+
+        NavigationBar(
+            modifier = Modifier.height(88.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 0.dp,
+            windowInsets = NavigationBarDefaults.windowInsets,
         ) {
-            // Active ride bar (shown when route active)
-            if (selectedTab != AppTab.MAP) {
-                activeRideBar?.invoke(openMapTab)
-            }
-
-            // M3 NavigationBar
-            NavigationBar(
-                modifier = Modifier.height(88.dp),
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                tonalElevation = 0.dp,
-                windowInsets = NavigationBarDefaults.windowInsets,
-            ) {
-                AppTab.entries.forEach { tab ->
-                    val selected = tab == selectedTab
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = { selectedTab = tab },
-                        icon = {
-                            Icon(
-                                imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
-                                contentDescription = tab.label,
-                            )
-                        },
-                        label = {
-                            Text(
-                                tab.label,
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onSurface,
-                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                    )
-                }
+            AppTab.entries.forEach { tab ->
+                val selected = tab == selectedTab
+                NavigationBarItem(
+                    selected = selected,
+                    onClick = { onTabSelected(tab) },
+                    icon = {
+                        Icon(
+                            imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
+                            contentDescription = tab.label,
+                        )
+                    },
+                    label = {
+                        Text(
+                            tab.label,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.onSurface,
+                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                )
             }
         }
     }

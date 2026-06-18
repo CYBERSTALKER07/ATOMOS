@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -58,6 +59,8 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MenuOpen
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
@@ -73,6 +76,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -123,6 +127,7 @@ fun HomeScreen(
     var showInjectDialog by remember { mutableStateOf(false) }
     var showChecklistScanner by remember { mutableStateOf(false) }
     var exceptionTargetOrderId by remember { mutableStateOf<String?>(null) }
+    var isListExpanded by remember { mutableStateOf(true) }
 
     LaunchedEffect(state.trucks, state.selectedTruckId) {
         val truckId = state.selectedTruckId ?: state.trucks.firstOrNull()?.id ?: return@LaunchedEffect
@@ -223,6 +228,8 @@ fun HomeScreen(
                         error = state.error,
                         batchReadyCount = state.batchReadyManifestIds.size,
                         batchSealing = state.batchSealing,
+                        isExpanded = isListExpanded,
+                        onToggleExpanded = { isListExpanded = !isListExpanded },
                         onFinalizeBatch = viewModel::finalizeBatchSeal,
                         onSelect = { id ->
                             viewModel.selectTruck(id)
@@ -495,19 +502,60 @@ private fun TruckListPane(
     error: String?,
     batchReadyCount: Int,
     batchSealing: Boolean,
+    isExpanded: Boolean,
+    onToggleExpanded: () -> Unit,
     onFinalizeBatch: () -> Unit,
     onSelect: (String) -> Unit,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .width(if (isExpanded) 320.dp else 72.dp)
+            .fillMaxHeight(),
     ) {
         Column(Modifier.fillMaxSize()) {
-            PayloadSectionTitle(
-                title = "Vehicles",
-                subtitle = "Assigned loading vehicles",
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = PayloadSpacing.lg),
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (isExpanded) {
+                    PayloadSectionTitle(
+                        title = "Vehicles",
+                        subtitle = "Assigned loading vehicles",
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                IconButton(onClick = onToggleExpanded) {
+                    Icon(
+                        if (isExpanded) Icons.Default.MenuOpen else Icons.Default.Menu,
+                        contentDescription = if (isExpanded) "Collapse truck list" else "Expand truck list",
+                    )
+                }
+            }
+            if (!isExpanded) {
+                LazyColumn(
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    items(trucks, key = { it.id }) { truck ->
+                        val selected = truck.id == selectedTruckId
+                        IconButton(onClick = { onSelect(truck.id) }) {
+                            Icon(
+                                Icons.Default.LocalShipping,
+                                contentDescription = truck.label.ifBlank { truck.licensePlate },
+                                tint = if (selected) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        }
+                    }
+                }
+                return@Column
+            }
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (batchReadyCount > 1) {
                 ElevatedCard(

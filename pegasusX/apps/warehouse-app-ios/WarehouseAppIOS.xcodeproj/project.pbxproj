@@ -33,6 +33,7 @@
 		7361CF9C777FE785E7150C63 /* WarehouseAdaptiveShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61747FD56F8E6A031DC64753 /* WarehouseAdaptiveShell.swift */; };
 		790DE066913716D49FAA7265 /* VehiclesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 099B6981BACDB5CF1D58C323 /* VehiclesView.swift */; };
 		7E3729E8A79AAA17A1BE891A /* PaymentConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E3B52F0F1B78C73381C657 /* PaymentConfigView.swift */; };
+		83EEB6CA24987B9942F3B483 /* PegasusMonochromeTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E3F28874367381DEDC9487 /* PegasusMonochromeTheme.swift */; };
 		847FEAD79E9D1F03DBBEBD44 /* WarehouseSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A38306625F489B4D906CF07 /* WarehouseSection.swift */; };
 		87CDE0C61906C3696F97D7A2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1526416176EC1A52A2487036 /* RootView.swift */; };
 		8BB302FE0527A0541C5D0C1B /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = F00CFF576EF02B2163C0B3F2 /* FirebaseCore */; };
@@ -63,6 +64,7 @@
 		DC25E444D5E978B169F6199A /* OrderDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF76B09B9B959D532D9B4D2 /* OrderDetailView.swift */; };
 		E669C875AC849610CE44BD49 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD5278073B1CAAE9E0F8BAA /* APIClient.swift */; };
 		E9DBE1FFC1BCBB3426ADB5F5 /* SupplyRequestDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFB03717F0BDEC8F8801AC94 /* SupplyRequestDetailView.swift */; };
+		EC18276A3E30FEB64B7311A2 /* CollapsibleSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30C99FD5B076E82219D9ABA /* CollapsibleSidebar.swift */; };
 		ECB59F1746A20962159EC100 /* DispatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE62C51E893BF7E92C741E56 /* DispatchView.swift */; };
 		EE789B63C3247F7C6E14AD90 /* ReplenishmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 174F09277B9CE738135AF795 /* ReplenishmentView.swift */; };
 		F1EC5465A24D24427C9F2D1D /* ManifestsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84659B955E24FFFE335C582C /* ManifestsView.swift */; };
@@ -101,6 +103,7 @@
 		75F6F3B96E73461F86B14BD3 /* PushNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationManager.swift; sourceTree = "<group>"; };
 		790134486F9A09163C61766D /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
 		7AA807B005BF4D669F46C7A0 /* PortalHandoffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalHandoffView.swift; sourceTree = "<group>"; };
+		80E3F28874367381DEDC9487 /* PegasusMonochromeTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusMonochromeTheme.swift; sourceTree = "<group>"; };
 		83C7BC079C62FBFF2EF89681 /* TreasuryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreasuryView.swift; sourceTree = "<group>"; };
 		84659B955E24FFFE335C582C /* ManifestsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestsView.swift; sourceTree = "<group>"; };
 		86CB8FE602CF48790811D3AF /* PegasusWarehouseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusWarehouseApp.swift; sourceTree = "<group>"; };
@@ -120,6 +123,7 @@
 		BEDF5DC0D1406795DE0A4736 /* WarehouseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseService.swift; sourceTree = "<group>"; };
 		C6825A46582832B8CD1F641E /* CreateSupplyRequestSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateSupplyRequestSheet.swift; sourceTree = "<group>"; };
 		C824961AAD7954F52915E79C /* PegasusTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusTheme.swift; sourceTree = "<group>"; };
+		D30C99FD5B076E82219D9ABA /* CollapsibleSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollapsibleSidebar.swift; sourceTree = "<group>"; };
 		D40855777FD3B251364333F6 /* EANBarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EANBarcodeScannerView.swift; sourceTree = "<group>"; };
 		DCF79D6633E9BB22639AEE6C /* SupplyRequestsHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplyRequestsHubView.swift; sourceTree = "<group>"; };
 		DE063EB847CE470BFD912591 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -335,6 +339,7 @@
 			isa = PBXGroup;
 			children = (
 				60A50E063E538886B030E266 /* mobile-ios-barcode */,
+				AD1A995D1696BC38ED477895 /* mobile-ios-design */,
 			);
 			path = packages;
 			sourceTree = "<group>";
@@ -365,6 +370,15 @@
 				DCF79D6633E9BB22639AEE6C /* SupplyRequestsHubView.swift */,
 			);
 			path = SupplyRequests;
+			sourceTree = "<group>";
+		};
+		AD1A995D1696BC38ED477895 /* mobile-ios-design */ = {
+			isa = PBXGroup;
+			children = (
+				D30C99FD5B076E82219D9ABA /* CollapsibleSidebar.swift */,
+				80E3F28874367381DEDC9487 /* PegasusMonochromeTheme.swift */,
+			);
+			path = "mobile-ios-design";
 			sourceTree = "<group>";
 		};
 		AFF85A15CC7B254482613B5C /* PaymentConfig */ = {
@@ -597,6 +611,7 @@
 				6BA5666C405873005E70A4F8 /* AutoUpdater.swift in Sources */,
 				06145AB262C686E3FBFEE91B /* CRMView.swift in Sources */,
 				CF5BFE1B9756F27FDA763C24 /* ClientPolicyBanner.swift in Sources */,
+				EC18276A3E30FEB64B7311A2 /* CollapsibleSidebar.swift in Sources */,
 				72CA2B5FF6A38A618C561FA7 /* CreateSupplyRequestSheet.swift in Sources */,
 				D47F70983FC7C12DAAEEB6D3 /* DashboardView.swift in Sources */,
 				2F18755FAD1B248506FBA879 /* DemandForecastView.swift in Sources */,
@@ -619,6 +634,7 @@
 				DC25E444D5E978B169F6199A /* OrderDetailView.swift in Sources */,
 				555C0B7D96C65CD45AC026F4 /* OrdersView.swift in Sources */,
 				7E3729E8A79AAA17A1BE891A /* PaymentConfigView.swift in Sources */,
+				83EEB6CA24987B9942F3B483 /* PegasusMonochromeTheme.swift in Sources */,
 				955FE466ADA6AD692A4D21B2 /* PegasusTheme.swift in Sources */,
 				B0ABC1B6F48E708BE85B0101 /* PegasusWarehouseApp.swift in Sources */,
 				DB0F355DA27C5007C69F5E94 /* PortalHandoffView.swift in Sources */,

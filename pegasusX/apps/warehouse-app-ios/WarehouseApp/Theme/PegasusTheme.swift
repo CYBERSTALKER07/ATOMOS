@@ -1,55 +1,6 @@
 import SwiftUI
 
-enum LabTheme {
-    // MARK: - Colors (Adaptive)
-    static let background = Color(uiColor: .systemGroupedBackground)
-    static let secondaryBackground = Color(uiColor: .secondarySystemGroupedBackground)
-    static let tertiaryBackground = Color(uiColor: .tertiarySystemGroupedBackground)
-    static let label = Color(uiColor: .label)
-    static let secondaryLabel = Color(uiColor: .secondaryLabel)
-    static let tertiaryLabel = Color(uiColor: .tertiaryLabel)
-    static let separator = Color(uiColor: .separator)
-    static let fill = Color(uiColor: .systemFill)
-
-    // Semantic
-    static let destructive = Color.red
-    static let success = Color.green
-    static let warning = Color.orange
-    static let live = Color.green
-
-    /// Maps order/ops status strings to semantic badge tints (aligned with supplier/factory native).
-    static func statusTint(for status: String) -> Color {
-        switch status.uppercased() {
-        case "COMPLETED", "DONE", "ACTIVE", "APPROVED", "SEALED", "DISPATCHED", "RECEIVED", "PAID":
-            return success
-        case "PENDING", "AWAITING_REVIEW", "AWAITING_PAYMENT", "LOADING", "IN_TRANSIT", "OPEN",
-             "SUBMITTED", "ACKNOWLEDGED", "URGENT", "DRAFT":
-            return warning
-        case "CANCELLED", "REJECTED", "FAILED", "EXCEPTION", "CRITICAL", "OVERDUE":
-            return destructive
-        default:
-            return secondaryLabel
-        }
-    }
-
-    /// Keeps dense ops tables readable on iPad without stretching edge-to-edge.
-    static let readableMaxWidth: CGFloat = 960
-
-    // MARK: - Spacing
-    static let spacingXS: CGFloat = 4
-    static let spacingSM: CGFloat = 8
-    static let spacingMD: CGFloat = 12
-    static let spacingLG: CGFloat = 16
-    static let spacingXL: CGFloat = 24
-    static let spacingXXL: CGFloat = 32
-
-    // MARK: - Radius
-    static let radiusXS: CGFloat = 4
-    static let radiusSM: CGFloat = 8
-    static let radiusMD: CGFloat = 12
-    static let radiusLG: CGFloat = 16
-    static let radiusXL: CGFloat = 28
-}
+typealias LabTheme = PegasusMonochromeTheme
 
 // MARK: - Animation Presets
 enum Anim {

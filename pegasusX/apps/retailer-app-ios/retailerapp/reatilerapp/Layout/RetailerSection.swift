@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Canonical retailer navigation destinations — aligned with desktop routes and Android sidebar.
+/// Canonical retailer navigation destinations — aligned with desktop routes, Android sidebar, and `ContentView` `SideMenuTab` / `AppTab`.
 enum RetailerSection: String, CaseIterable, Identifiable {
     case dashboard = "Dashboard"
     case orders = "Orders"

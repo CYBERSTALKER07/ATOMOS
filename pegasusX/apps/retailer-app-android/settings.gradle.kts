@@ -21,3 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "PegasusXRetailer"
 include(":app")
+include(":mobile-design")
+project(":mobile-design").projectDir = file("../../packages/mobile-android-design")

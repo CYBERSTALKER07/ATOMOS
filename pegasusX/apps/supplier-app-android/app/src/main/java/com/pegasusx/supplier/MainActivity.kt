@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.lifecycle.lifecycleScope
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
@@ -27,6 +29,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var supplierWebSocket: SupplierWebSocket
     @Inject lateinit var realtimeSignals: SupplierRealtimeSignals
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -49,11 +52,13 @@ class MainActivity : ComponentActivity() {
             }
         }
         setContent {
+            val windowSizeClass = calculateWindowSizeClass(this)
             PegasusSupplierTheme {
                 SupplierNavigation(
                     api = supplierApi,
                     ops = supplierOps,
                     realtimeSignals = realtimeSignals,
+                    windowSizeClass = windowSizeClass,
                 )
             }
         }

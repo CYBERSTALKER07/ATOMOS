@@ -6,6 +6,7 @@ struct WarehouseAdaptiveShell: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var sidebarSelection: WarehouseSection? = .dashboard
+    @State private var isSidebarExpanded = true
     @State private var compactTab: WarehouseCompactTab = .dashboard
     @State private var refreshEpoch = 0
     @State private var pathMonitor: NWPathMonitor?
@@ -34,68 +35,53 @@ struct WarehouseAdaptiveShell: View {
     }
 
     private var regularShell: some View {
-        NavigationSplitView {
-            List(selection: $sidebarSelection) {
-                Section("Primary") {
-                    sidebarRows(WarehouseSection.primarySections)
-                }
-                Section("Fulfillment") {
-                    sidebarRows(WarehouseSection.fulfillmentSections)
-                }
-                Section("Inventory") {
-                    sidebarRows(WarehouseSection.inventorySections)
-                }
-                Section("Operations") {
-                    sidebarRows(WarehouseSection.operationsSections)
-                }
-                Section("Portal only") {
-                    sidebarRows(WarehouseSection.portalSections)
-                }
-            }
-            .navigationTitle("Pegasus Warehouse")
-            .listStyle(.sidebar)
-        } detail: {
+        CollapsibleSidebar(
+            title: "Pegasus Warehouse",
+            isExpanded: $isSidebarExpanded,
+            selection: $sidebarSelection,
+            groups: sidebarGroups,
+        ) {
             if let section = sidebarSelection {
                 sectionView(section)
-                    .id("\(section.id)-\(effectiveRefreshEpoch)")
             } else {
                 ContentUnavailableView("Select a section", systemImage: "sidebar.left")
             }
         }
-        .navigationSplitViewStyle(.balanced)
+    }
+
+    private var sidebarGroups: [(title: String, items: [CollapsibleSidebarItem<WarehouseSection>])] {
+        [
+            ("Primary", items(for: WarehouseSection.primarySections)),
+            ("Fulfillment", items(for: WarehouseSection.fulfillmentSections)),
+            ("Inventory", items(for: WarehouseSection.inventorySections)),
+            ("Operations", items(for: WarehouseSection.operationsSections)),
+            ("Portal only", items(for: WarehouseSection.portalSections)),
+        ]
+    }
+
+    private func items(for sections: [WarehouseSection]) -> [CollapsibleSidebarItem<WarehouseSection>] {
+        sections.map { CollapsibleSidebarItem(tag: $0, label: $0.rawValue, icon: $0.icon) }
     }
 
     private var compactShell: some View {
         TabView(selection: $compactTab) {
             sectionView(.dashboard)
-                .id("dash-\(effectiveRefreshEpoch)")
                 .tabItem { Label("Dashboard", systemImage: WarehouseSection.dashboard.icon) }
                 .tag(WarehouseCompactTab.dashboard)
 
             sectionView(.orders)
-                .id("orders-\(effectiveRefreshEpoch)")
                 .tabItem { Label("Orders", systemImage: WarehouseSection.orders.icon) }
                 .tag(WarehouseCompactTab.orders)
 
             sectionView(.dispatch)
-                .id("dispatch-\(effectiveRefreshEpoch)")
                 .tabItem { Label("Dispatch", systemImage: WarehouseSection.dispatch.icon) }
                 .tag(WarehouseCompactTab.dispatch)
 
             NavigationStack {
                 MoreHubView()
-                    .id("more-hub-\(effectiveRefreshEpoch)")
             }
             .tabItem { Label("More", systemImage: "ellipsis.circle") }
             .tag(WarehouseCompactTab.more)
-        }
-    }
-
-    @ViewBuilder
-    private func sidebarRows(_ sections: [WarehouseSection]) -> some View {
-        ForEach(sections) { section in
-            Label(section.rawValue, systemImage: section.icon)
-                .tag(section)
         }
     }
 

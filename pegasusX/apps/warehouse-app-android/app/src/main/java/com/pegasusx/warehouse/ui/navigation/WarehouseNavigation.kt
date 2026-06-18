@@ -141,6 +141,7 @@ fun WarehouseNavigation(
     val scope = rememberCoroutineScope()
     val autoUpdater = remember { AutoUpdater(context.applicationContext) }
     val useDrawer = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
+    var isRailExpanded by remember { mutableStateOf(true) }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val showShell = currentRoute != null && currentRoute != WarehouseRoutes.LOGIN
@@ -498,6 +499,8 @@ fun WarehouseNavigation(
             Row(Modifier.weight(1f)) {
             if (useDrawer) {
                 WarehouseNavigationDrawer(
+                    isExpanded = isRailExpanded,
+                    onToggleExpanded = { isRailExpanded = !isRailExpanded },
                     selectedRoute = currentRoute,
                     onSectionSelected = ::navigateSection,
                     onSignOut = ::signOut,

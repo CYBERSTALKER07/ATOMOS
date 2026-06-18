@@ -1,56 +1,6 @@
 import SwiftUI
 
-enum LabTheme {
-    // MARK: - Colors (Adaptive)
-    static let background = Color(uiColor: .systemGroupedBackground)
-    static let secondaryBackground = Color(uiColor: .secondarySystemGroupedBackground)
-    static let tertiaryBackground = Color(uiColor: .tertiarySystemGroupedBackground)
-    static let label = Color(uiColor: .label)
-    static let secondaryLabel = Color(uiColor: .secondaryLabel)
-    static let tertiaryLabel = Color(uiColor: .tertiaryLabel)
-    static let separator = Color(uiColor: .separator)
-    static let fill = Color(uiColor: .systemFill)
-
-    // Semantic
-    static let destructive = Color.red
-    static let success = Color.green
-    static let warning = Color.orange
-    static let live = Color.green
-
-    /// Maps transfer/manifest/ops status strings to semantic badge tints.
-    static func statusTint(for status: String) -> Color {
-        switch status.uppercased() {
-        case "COMPLETED", "DONE", "ACTIVE", "APPROVED", "SEALED", "DISPATCHED", "RECEIVED",
-             "FULFILLED", "READY", "AVAILABLE", "ON_SHIFT", "ONSHIFT":
-            return success
-        case "PENDING", "LOADING", "IN_TRANSIT", "IN_PRODUCTION", "OPEN", "SUBMITTED",
-             "ACKNOWLEDGED", "DRAFT", "STANDARD", "NORMAL":
-            return warning
-        case "CANCELLED", "REJECTED", "FAILED", "EXCEPTION", "CRITICAL", "URGENT", "OFFLINE":
-            return destructive
-        default:
-            return secondaryLabel
-        }
-    }
-
-    /// Keeps dense ops tables readable on iPad without stretching edge-to-edge.
-    static let readableMaxWidth: CGFloat = 960
-
-    // MARK: - Spacing
-    static let spacingXS: CGFloat = 4
-    static let spacingSM: CGFloat = 8
-    static let spacingMD: CGFloat = 12
-    static let spacingLG: CGFloat = 16
-    static let spacingXL: CGFloat = 24
-    static let spacingXXL: CGFloat = 32
-
-    // MARK: - Radius
-    static let radiusXS: CGFloat = 4
-    static let radiusSM: CGFloat = 8
-    static let radiusMD: CGFloat = 12
-    static let radiusLG: CGFloat = 16
-    static let radiusXL: CGFloat = 28
-}
+typealias LabTheme = PegasusMonochromeTheme
 
 // MARK: - Animation Presets
 enum Anim {
@@ -80,30 +30,6 @@ extension View {
     }
 }
 
-// MARK: - Staggered Appear
-struct StaggeredAppearModifier: ViewModifier {
-    let index: Int
-    @State private var appeared = false
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(appeared ? 1 : 0)
-            .offset(y: appeared ? 0 : 12)
-            .onAppear {
-                withAnimation(Anim.smooth.delay(Double(index) * 0.05)) {
-                    appeared = true
-                }
-            }
-    }
-}
-
-extension View {
-    func staggeredAppear(index: Int) -> some View {
-        modifier(StaggeredAppearModifier(index: index))
-    }
-}
-
-// MARK: - Pressable Button Style
 struct PressableButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
