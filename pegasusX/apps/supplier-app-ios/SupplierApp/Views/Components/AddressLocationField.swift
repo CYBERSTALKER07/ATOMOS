@@ -84,8 +84,8 @@ struct AddressLocationField: View {
     do {
       let loc = try await GeocodeService.reverse(lat: coord.latitude, lng: coord.longitude)
       apply(loc, fallback: query)
-    } catch {
-      self.error = error.localizedDescription
+    } catch let locError {
+      error = locError.localizedDescription
     }
   }
 

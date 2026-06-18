@@ -19,7 +19,7 @@ struct DeliveryZonesView: View {
                         ForEach(warehouses) { node in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(node.name.isEmpty ? "Unnamed warehouse" : node.name).font(.body)
-                                Text(String(format: "%.4f, %.4f", node.lat, node.lng))
+                                Text(node.address.isEmpty ? "Coordinates on file" : node.address)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

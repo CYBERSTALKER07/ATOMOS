@@ -4,8 +4,7 @@ private struct WarehouseDraft: Identifiable {
     let id: String
     var warehouseId: String?
     var name: String
-    var lat: String
-    var lng: String
+    var location: AddressLocationValue
     var coverageRadiusKm: String
 }
 
@@ -13,8 +12,7 @@ private struct FactoryDraft: Identifiable {
     let id: String
     var factoryId: String?
     var name: String
-    var lat: String
-    var lng: String
+    var location: AddressLocationValue
 }
 
 struct TopologyView: View {
@@ -76,8 +74,7 @@ struct TopologyView: View {
                 ForEach(warehouses) { node in
                     NodeRow(
                         name: node.name,
-                        lat: node.lat,
-                        lng: node.lng,
+                        address: node.address,
                         meta: String(format: "%.0f km coverage", node.coverageRadiusKm)
                     )
                 }
@@ -86,8 +83,7 @@ struct TopologyView: View {
                 ForEach(factories) { node in
                     NodeRow(
                         name: node.name,
-                        lat: node.lat,
-                        lng: node.lng,
+                        address: node.address,
                         meta: node.isActive ? "Active" : "Inactive"
                     )
                 }
@@ -99,17 +95,12 @@ struct TopologyView: View {
     private var editForm: some View {
         Form {
             if let error {
-                Section {
-                    Text(error).foregroundStyle(.red)
-                }
+                Section { Text(error).foregroundStyle(.red) }
             }
             Section("Warehouses") {
                 ForEach($warehouseDrafts) { $draft in
                     TextField("Name", text: $draft.name)
-                    TextField("Latitude", text: $draft.lat)
-                        .keyboardType(.decimalPad)
-                    TextField("Longitude", text: $draft.lng)
-                        .keyboardType(.decimalPad)
+                    AddressLocationField(value: $draft.location, label: "Warehouse address")
                     TextField("Coverage km", text: $draft.coverageRadiusKm)
                         .keyboardType(.decimalPad)
                 }
@@ -119,8 +110,7 @@ struct TopologyView: View {
                             id: "new-wh-\(warehouseDrafts.count)",
                             warehouseId: nil,
                             name: "Warehouse \(warehouseDrafts.count + 1)",
-                            lat: "41.2995",
-                            lng: "69.2401",
+                            location: AddressLocationValue(lat: TopologyMutation.defaultLat, lng: TopologyMutation.defaultLng),
                             coverageRadiusKm: "50"
                         )
                     )
@@ -129,10 +119,7 @@ struct TopologyView: View {
             Section("Factories") {
                 ForEach($factoryDrafts) { $draft in
                     TextField("Name", text: $draft.name)
-                    TextField("Latitude", text: $draft.lat)
-                        .keyboardType(.decimalPad)
-                    TextField("Longitude", text: $draft.lng)
-                        .keyboardType(.decimalPad)
+                    AddressLocationField(value: $draft.location, label: "Factory address")
                 }
                 Button("Add factory") {
                     factoryDrafts.append(
@@ -140,8 +127,7 @@ struct TopologyView: View {
                             id: "new-fc-\(factoryDrafts.count)",
                             factoryId: nil,
                             name: "Factory \(factoryDrafts.count + 1)",
-                            lat: "41.3111",
-                            lng: "69.2797"
+                            location: AddressLocationValue(lat: 41.3111, lng: 69.2797)
                         )
                     )
                 }
@@ -160,8 +146,12 @@ struct TopologyView: View {
                 id: node.warehouseId.isEmpty ? "wh-\(index)" : node.warehouseId,
                 warehouseId: node.warehouseId.isEmpty ? nil : node.warehouseId,
                 name: node.name,
-                lat: String(node.lat),
-                lng: String(node.lng),
+                location: AddressLocationValue(
+                    address: node.address,
+                    lat: node.lat,
+                    lng: node.lng,
+                    placeId: node.placeId
+                ),
                 coverageRadiusKm: String(node.coverageRadiusKm)
             )
         }
@@ -170,8 +160,12 @@ struct TopologyView: View {
                 id: node.factoryId.isEmpty ? "fc-\(index)" : node.factoryId,
                 factoryId: node.factoryId.isEmpty ? nil : node.factoryId,
                 name: node.name,
-                lat: String(node.lat),
-                lng: String(node.lng)
+                location: AddressLocationValue(
+                    address: node.address,
+                    lat: node.lat,
+                    lng: node.lng,
+                    placeId: node.placeId
+                )
             )
         }
     }
@@ -203,14 +197,17 @@ struct TopologyView: View {
             }
             let request = SupplierTopologyUpdateRequest(
                 warehouses: try warehouseDrafts.map { draft in
-                    guard let lat = Double(draft.lat), let lng = Double(draft.lng) else {
+                    guard !draft.location.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                          draft.location.lat != 0 || draft.location.lng != 0 else {
                         throw URLError(.badURL)
                     }
                     return SupplierTopologyWarehouseInput(
                         warehouseId: draft.warehouseId,
                         name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
-                        lat: lat,
-                        lng: lng,
+                        address: draft.location.address,
+                        placeId: draft.location.placeId,
+                        lat: draft.location.lat,
+                        lng: draft.location.lng,
                         coverageRadiusKm: Double(draft.coverageRadiusKm) ?? 50,
                         isActive: true,
                         isOnShift: true,
@@ -218,14 +215,17 @@ struct TopologyView: View {
                     )
                 },
                 factories: try factoryDrafts.map { draft in
-                    guard let lat = Double(draft.lat), let lng = Double(draft.lng) else {
+                    guard !draft.location.address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                          draft.location.lat != 0 || draft.location.lng != 0 else {
                         throw URLError(.badURL)
                     }
                     return SupplierTopologyFactoryInput(
                         factoryId: draft.factoryId,
                         name: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
-                        lat: lat,
-                        lng: lng,
+                        address: draft.location.address,
+                        placeId: draft.location.placeId,
+                        lat: draft.location.lat,
+                        lng: draft.location.lng,
                         isActive: true
                     )
                 }
@@ -235,21 +235,20 @@ struct TopologyView: View {
             factories = resp.factories
             editing = false
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Each node needs a valid address."
         }
     }
 }
 
 private struct NodeRow: View {
     let name: String
-    let lat: Double
-    let lng: Double
+    let address: String
     let meta: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(name.isEmpty ? "Unnamed node" : name).font(.body)
-            Text(String(format: "%.4f, %.4f", lat, lng))
+            Text(address.isEmpty ? "Coordinates on file" : address)
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text(meta)

@@ -94,6 +94,8 @@
 		FB3715A6869632A6D31CF73E /* DispatchPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BEDFB0FB4429B0FBC71A5B6 /* DispatchPreviewView.swift */; };
 		FB6655F782FC8DE4394220AE /* FleetDriverMarkerAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A513992A121CDF2127E0CE /* FleetDriverMarkerAnimator.swift */; };
 		FC25832A84A967B2DEEE01E5 /* ClientPolicyBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A14CAD6BD4D831470BA28E57 /* ClientPolicyBanner.swift */; };
+		E2A3B4C5D6E7F89012345672 /* AddressLocationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A3B4C5D6E7F89012345672 /* AddressLocationField.swift */; };
+		E1A2B3C4D5E6F78901234561 /* GeocodeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E6F78901234561 /* GeocodeService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -193,7 +195,8 @@
 		ED5ED8EEE8140BCE4C66F49F /* OnboardingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViewModel.swift; sourceTree = "<group>"; };
 		EE20CFC9300E04F74A699D62 /* TopologyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopologyView.swift; sourceTree = "<group>"; };
 		F0B618FA26B0FB76D293158E /* PricingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PricingView.swift; sourceTree = "<group>"; };
-		F51C636CB14CF4B20F955061 /* MoreHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreHubView.swift; sourceTree = "<group>"; };
+		F2A3B4C5D6E7F89012345672 /* AddressLocationField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressLocationField.swift; sourceTree = "<group>"; };
+		F1A2B3C4D5E6F78901234561 /* GeocodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeocodeService.swift; sourceTree = "<group>"; };
 		F63DA2C0F3385B834F584716 /* CatalogDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogDetailView.swift; sourceTree = "<group>"; };
 		F6D2D88DC5331A6974F157A8 /* EANBarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EANBarcodeScannerView.swift; sourceTree = "<group>"; };
 		F96AF3E52C1AA8B8D849BD8F /* SupplierSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierSection.swift; sourceTree = "<group>"; };
@@ -489,6 +492,7 @@
 			isa = PBXGroup;
 			children = (
 				A14CAD6BD4D831470BA28E57 /* ClientPolicyBanner.swift */,
+				F2A3B4C5D6E7F89012345672 /* AddressLocationField.swift */,
 				421138A37DC5E059D6E0A644 /* KpiTile.swift */,
 				2D2B554F709A9D80742C85AC /* SupplierStateViews.swift */,
 			);
@@ -560,6 +564,7 @@
 			isa = PBXGroup;
 			children = (
 				E813D3D72A1F27D8FA7361CA /* APIClient.swift */,
+				F1A2B3C4D5E6F78901234561 /* GeocodeService.swift */,
 				0EEC2781E62806CD90EED914 /* SupplierOperationsService.swift */,
 				EC3BAE35A958AB259ED82A51 /* SupplierRealtimeClient.swift */,
 				C8F10F630B2E3F1350B69329 /* SupplierRealtimeHub.swift */,
@@ -720,6 +725,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8C16E72DD1E90EEC9E0EF7BB /* AIRecommendationsView.swift in Sources */,
+				E2A3B4C5D6E7F89012345672 /* AddressLocationField.swift in Sources */,
 				CD41C60EB6B6CA9124ED4F57 /* APIClient.swift in Sources */,
 				A820107FB5E54E076104CEE0 /* ActivityView.swift in Sources */,
 				21DA2BAB3FC0C5C53A751010 /* AnalyticsView.swift in Sources */,
@@ -748,6 +754,7 @@
 				F2376B8ED9C921863917A31B /* FleetOrdersView.swift in Sources */,
 				A210A9E406318D26FB04C286 /* FleetView.swift in Sources */,
 				FAA8394B2AF9F3B102EEED86 /* GeoReportView.swift in Sources */,
+				E1A2B3C4D5E6F78901234561 /* GeocodeService.swift in Sources */,
 				59A62085CA9274C8C7BA9A69 /* InventoryImportView.swift in Sources */,
 				AC6A5D924A92AA45370F2C4E /* InventoryView.swift in Sources */,
 				84241F9A3BF5012A788A6273 /* InventoryViewModel.swift in Sources */,

@@ -71,6 +71,10 @@
 		F2027CD755C0AC6F8C6A4B67 /* DispatchSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEA00335123DBABEE6F0DE8F /* DispatchSettingsView.swift */; };
 		FB94B7668476D4B203F4C716 /* ReturnsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BC14978EB4C787C361EE07F /* ReturnsView.swift */; };
 		FC5FA964A3A7D626BDE3DE43 /* NotificationInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC7B48A3A550663694C41102 /* NotificationInboxView.swift */; };
+		E6A7B8C9D0E1F23456789016 /* WarehouseLocationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A7B8C9D0E1F23456789016 /* WarehouseLocationModels.swift */; };
+		E5A6B7C8D9E0F12345678905 /* LocationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5A6B7C8D9E0F12345678905 /* LocationSettingsView.swift */; };
+		E4A5B6C7D8E9F01234567894 /* AddressLocationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A5B6C7D8E9F01234567894 /* AddressLocationField.swift */; };
+		E3A4B5C6D7E8F90123456783 /* GeocodeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A4B5C6D7E8F90123456783 /* GeocodeService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -136,6 +140,10 @@
 		F83ED16032B6DABADAD77D9C /* AutoUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoUpdater.swift; sourceTree = "<group>"; };
 		FBD5278073B1CAAE9E0F8BAA /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		FBF76B09B9B959D532D9B4D2 /* OrderDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrderDetailView.swift; sourceTree = "<group>"; };
+		F6A7B8C9D0E1F23456789016 /* WarehouseLocationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseLocationModels.swift; sourceTree = "<group>"; };
+		F5A6B7C8D9E0F12345678905 /* LocationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSettingsView.swift; sourceTree = "<group>"; };
+		F4A5B6C7D8E9F01234567894 /* AddressLocationField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressLocationField.swift; sourceTree = "<group>"; };
+		F3A4B5C6D7E8F90123456783 /* GeocodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeocodeService.swift; sourceTree = "<group>"; };
 		FE9AD8CEA475BDD18C968457 /* WarehousePortalLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehousePortalLinks.swift; sourceTree = "<group>"; };
 		FFB03717F0BDEC8F8801AC94 /* SupplyRequestDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplyRequestDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -393,6 +401,7 @@
 			isa = PBXGroup;
 			children = (
 				08AAC0004822220E1F3A889B /* ClientPolicyBanner.swift */,
+				F4A5B6C7D8E9F01234567894 /* AddressLocationField.swift */,
 				A5483DF7C844BA0DF1BA8867 /* KpiTile.swift */,
 				68FAACF73D115016E1A79C6B /* WarehouseStateViews.swift */,
 			);
@@ -453,6 +462,7 @@
 			isa = PBXGroup;
 			children = (
 				40384D8041929DBF46242CFF /* InventoryView.swift */,
+				F5A6B7C8D9E0F12345678905 /* LocationSettingsView.swift */,
 				5F649BD717C1F3D4414E2821 /* OpsSettingsView.swift */,
 			);
 			path = Inventory;
@@ -474,6 +484,7 @@
 			children = (
 				FBD5278073B1CAAE9E0F8BAA /* APIClient.swift */,
 				DE063EB847CE470BFD912591 /* AppDelegate.swift */,
+				F3A4B5C6D7E8F90123456783 /* GeocodeService.swift */,
 				97A3D8F9EDDB53A7D75E811E /* FirebaseAuthHelper.swift */,
 				75F6F3B96E73461F86B14BD3 /* PushNotificationManager.swift */,
 				ADC341C9AAD3EFE7ED873269 /* TokenStore.swift */,
@@ -498,6 +509,7 @@
 			isa = PBXGroup;
 			children = (
 				42346A5EC575B103624DA7B5 /* WarehouseModels.swift */,
+				F6A7B8C9D0E1F23456789016 /* WarehouseLocationModels.swift */,
 				9261B8CE72327788E0CAA5CD /* WarehouseOpsModels.swift */,
 			);
 			path = Models;
@@ -606,6 +618,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E669C875AC849610CE44BD49 /* APIClient.swift in Sources */,
+				E4A5B6C7D8E9F01234567894 /* AddressLocationField.swift in Sources */,
 				1A6575E659D3664446DA9B06 /* AnalyticsView.swift in Sources */,
 				CA801C39D981F5AC7F8D07F5 /* AppDelegate.swift in Sources */,
 				6BA5666C405873005E70A4F8 /* AutoUpdater.swift in Sources */,
@@ -621,6 +634,7 @@
 				62C461820F4BD5D36335A0B3 /* DriversView.swift in Sources */,
 				4B806442F1637F7D6DED1EB2 /* EANBarcodeScannerView.swift in Sources */,
 				65C785FD3829E7B906D0E049 /* FirebaseAuthHelper.swift in Sources */,
+				E3A4B5C6D7E8F90123456783 /* GeocodeService.swift in Sources */,
 				52C1289EA1E9CFA9602854C6 /* FleetDriverMarkerAnimator.swift in Sources */,
 				209803EBC9301495F95BDE54 /* FleetLiveMapSection.swift in Sources */,
 				A2F79A2D63F8EF033A04EF32 /* FleetLiveMapView.swift in Sources */,
@@ -629,6 +643,7 @@
 				C693D3BCC084A0EF533F1059 /* LoginView.swift in Sources */,
 				F1EC5465A24D24427C9F2D1D /* ManifestsView.swift in Sources */,
 				8E3A118BB4A8F5B1A3C9A769 /* MoreHubView.swift in Sources */,
+				E5A6B7C8D9E0F12345678905 /* LocationSettingsView.swift in Sources */,
 				FC5FA964A3A7D626BDE3DE43 /* NotificationInboxView.swift in Sources */,
 				9C0BC628A2F31E782E4BA17E /* OpsSettingsView.swift in Sources */,
 				DC25E444D5E978B169F6199A /* OrderDetailView.swift in Sources */,
@@ -655,6 +670,7 @@
 				7361CF9C777FE785E7150C63 /* WarehouseAdaptiveShell.swift in Sources */,
 				974202DC06DD861BACF97ABA /* WarehouseIdempotency.swift in Sources */,
 				37A98DE5E6B0372968D90168 /* WarehouseModels.swift in Sources */,
+				E6A7B8C9D0E1F23456789016 /* WarehouseLocationModels.swift in Sources */,
 				586A5E35B5E72386A388AC4F /* WarehouseOperationsService.swift in Sources */,
 				58C6C45C18E83F6A76AA0FBF /* WarehouseOpsModels.swift in Sources */,
 				AFA3E129F61A2DA0655002F3 /* WarehousePortalFeature.swift in Sources */,

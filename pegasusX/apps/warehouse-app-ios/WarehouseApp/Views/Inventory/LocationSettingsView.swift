@@ -80,8 +80,8 @@ struct LocationSettingsView: View {
                 )
                 saveMessage = "Location saved"
                 load()
-            } catch {
-                saveMessage = error.localizedDescription
+            } catch let saveError {
+                saveMessage = saveError.localizedDescription
             }
             saving = false
         }

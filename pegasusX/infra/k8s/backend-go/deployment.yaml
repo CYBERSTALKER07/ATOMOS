@@ -87,6 +87,12 @@ spec:
                 secretKeyRef:
                   name: backend-go-secrets
                   key: internal-api-key
+            - name: GOOGLE_MAPS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: google-maps-api-key
+                  optional: true
             - name: FIREBASE_CREDENTIALS_PATH
               value: /var/secrets/firebase/service-account.json
           volumeMounts:

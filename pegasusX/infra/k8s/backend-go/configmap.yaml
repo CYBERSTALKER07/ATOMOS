@@ -26,5 +26,6 @@ data:
   REQUIRE_INFRA_ADAPTERS: "true"
   RELIABILITY_MIDDLEWARE_ENABLED: "true"
   FIREBASE_AUTH_ENABLED: "true"
+  # GOOGLE_MAPS_API_KEY is injected from backend-go-secrets (GSM) — enables Places autocomplete in prod.
   AIRWALLEX_DIRECT_EXECUTION_ENABLED: "false"
   # DDL runs via infra/k8s/backend-go/migrate-job.yaml — never on pod boot.
