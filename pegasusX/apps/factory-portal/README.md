@@ -1,6 +1,6 @@
 # factory-portal (desktop)
 
-Next.js 15 + **Tauri 2** desktop shell for **FACTORY_ADMIN** operators. Route map matches the Pegasus reference: dashboard, loading bay, transfers, supply requests, payload override, fleet, staff, insights.
+Next.js 15 + **Tauri 2** desktop shell for factory operators. All authenticated factory-scoped users may edit their assigned factory location (setup + Settings → Location).
 
 ## Stack
 

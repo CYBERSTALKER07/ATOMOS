@@ -90,6 +90,8 @@ struct FactoryAdaptiveShell: View {
             FleetView()
         case .staff:
             StaffView()
+        case .location:
+            NavigationStack { LocationSettingsView() }
         case .supplyRequests:
             SupplyRequestsView()
         case .payloadOverride:

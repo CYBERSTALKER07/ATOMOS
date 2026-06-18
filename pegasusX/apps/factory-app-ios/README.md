@@ -1,6 +1,6 @@
 # factory-app-ios
 
-SwiftUI **iPad-first** factory admin app for pegasusX. Parity with `pegasus/apps/factory-app-ios`.
+SwiftUI **iPad-first** factory operations app for pegasusX. All authenticated factory staff (`FACTORY`, `FACTORY_ADMIN`, `FACTORY_STAFF`) may read and update their assigned factory location.
 
 ## Stack
 

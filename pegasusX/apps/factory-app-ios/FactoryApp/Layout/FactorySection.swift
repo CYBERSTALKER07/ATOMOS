@@ -6,6 +6,7 @@ enum FactorySection: String, CaseIterable, Identifiable {
     case transfers = "Transfers"
     case fleet = "Fleet"
     case staff = "Staff"
+    case location = "Location"
     case supplyRequests = "Supply requests"
     case payloadOverride = "Override"
     case manifests = "Manifests"
@@ -23,6 +24,7 @@ enum FactorySection: String, CaseIterable, Identifiable {
         case .transfers: "arrow.left.arrow.right"
         case .fleet: "truck.box"
         case .staff: "person.2"
+        case .location: "mappin.and.ellipse"
         case .supplyRequests: "checklist"
         case .payloadOverride: "arrow.left.arrow.right.square"
         case .manifests: "doc.text"
@@ -36,7 +38,7 @@ enum FactorySection: String, CaseIterable, Identifiable {
     static var compactTabs: [FactorySection] { [.dashboard, .loadingBay, .transfers] }
 
     static var primarySections: [FactorySection] {
-        [.dashboard, .loadingBay, .transfers, .fleet, .staff]
+        [.dashboard, .loadingBay, .transfers, .fleet, .staff, .location]
     }
 
     static var operationsSections: [FactorySection] {

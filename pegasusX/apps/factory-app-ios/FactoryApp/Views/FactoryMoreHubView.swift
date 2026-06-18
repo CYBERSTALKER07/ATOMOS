@@ -5,6 +5,11 @@ struct FactoryMoreHubView: View {
 
     var body: some View {
         List {
+            Section("Primary") {
+                ForEach(FactorySection.primarySections.filter { !FactorySection.compactTabs.contains($0) }) { section in
+                    Button(section.rawValue) { onSelect(section) }
+                }
+            }
             Section("Operations") {
                 ForEach(FactorySection.operationsSections) { section in
                     Button(section.rawValue) { onSelect(section) }

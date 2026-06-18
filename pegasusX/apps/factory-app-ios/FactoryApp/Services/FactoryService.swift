@@ -196,4 +196,16 @@ enum FactoryService {
         }
         return try await api.get("v1/factory/manifest-exceptions", query: query)
     }
+
+    // MARK: - Location (all factory-scoped staff may read/write)
+    static func factoryLocation() async throws -> FactoryLocationResponse {
+        try await api.get("v1/factory/ops/location")
+    }
+
+    static func patchFactoryLocation(address: String, placeId: String?, lat: Double, lng: Double) async throws -> FactoryLocationResponse {
+        try await api.patch(
+            "v1/factory/ops/location",
+            body: FactoryLocationPatchRequest(address: address, placeId: placeId, lat: lat, lng: lng)
+        )
+    }
 }

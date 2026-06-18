@@ -835,3 +835,31 @@ enum ManifestLifecycleAction: String {
         }
     }
 }
+
+// MARK: - Location
+struct FactoryLocationResponse: Decodable {
+    let factoryId: String
+    let name: String
+    let address: String
+    let placeId: String?
+    let lat: Double
+    let lng: Double
+
+    enum CodingKeys: String, CodingKey {
+        case factoryId = "factory_id"
+        case name, address, lat, lng
+        case placeId = "place_id"
+    }
+}
+
+struct FactoryLocationPatchRequest: Encodable {
+    let address: String
+    let placeId: String?
+    let lat: Double
+    let lng: Double
+
+    enum CodingKeys: String, CodingKey {
+        case address, lat, lng
+        case placeId = "place_id"
+    }
+}
