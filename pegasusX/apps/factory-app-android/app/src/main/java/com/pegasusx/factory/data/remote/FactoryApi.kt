@@ -192,4 +192,13 @@ interface FactoryApi {
         @Query("version") version: String,
         @Query("channel") channel: String = "production",
     ): Response<ClientPolicyResponse>
+
+    // ── Location (factory-scoped staff have full read/write) ──
+    @GET("v1/factory/ops/location")
+    suspend fun getFactoryLocation(): Response<com.pegasusx.factory.data.model.FactoryLocationResponse>
+
+    @PATCH("v1/factory/ops/location")
+    suspend fun patchFactoryLocation(
+        @Body body: com.pegasusx.factory.data.model.FactoryLocationPatchRequest,
+    ): Response<com.pegasusx.factory.data.model.FactoryLocationResponse>
 }

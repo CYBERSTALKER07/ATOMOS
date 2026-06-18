@@ -37,12 +37,14 @@ import com.pegasusx.factory.ui.screens.more.FactoryMoreHubScreen
 import androidx.compose.ui.Modifier
 import com.pegasusx.factory.ui.navigation.FactorySection
 import com.pegasusx.factory.data.remote.FactoryApi
+import com.pegasusx.factory.data.remote.GeocodeApi
 import com.pegasusx.factory.data.remote.TokenHolder
 import com.pegasusx.factory.ui.screens.analytics.AnalyticsScreen
 import com.pegasusx.factory.ui.screens.auth.LoginScreen
 import com.pegasusx.factory.ui.screens.dashboard.DashboardScreen
 import com.pegasusx.factory.ui.screens.fleet.FleetScreen
 import com.pegasusx.factory.ui.screens.insights.InsightsScreen
+import com.pegasusx.factory.ui.screens.location.LocationSettingsScreen
 import com.pegasusx.factory.ui.screens.loadingbay.LoadingBayScreen
 import com.pegasusx.factory.ui.screens.manifest.ManifestDetailScreen
 import com.pegasusx.factory.ui.screens.manifest.ManifestListScreen
@@ -65,6 +67,7 @@ object FactoryRoutes {
     const val TRANSFER_CREATE = "transfers/create"
     const val FLEET = "fleet"
     const val STAFF = "staff"
+    const val LOCATION_SETTINGS = "location_settings"
     const val INSIGHTS = "insights"
     const val ANALYTICS = "analytics"
     const val SUPPLY_REQUESTS = "supply_requests"
@@ -91,6 +94,7 @@ private val compactTabRoutes = FactorySection.compactTabs
 @Composable
 fun FactoryNavigation(
     api: FactoryApi,
+    geocodeApi: GeocodeApi,
     windowSizeClass: WindowSizeClass,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -253,6 +257,14 @@ fun FactoryNavigation(
                     api = api,
                     onStaffClick = { id -> navController.navigate(FactoryRoutes.staffDetail(id)) },
                     onBack = requireBack(FactoryRoutes.STAFF),
+                )
+            }
+
+            composable(FactoryRoutes.LOCATION_SETTINGS) {
+                LocationSettingsScreen(
+                    api = api,
+                    geocodeApi = geocodeApi,
+                    onBack = requireBack(FactoryRoutes.LOCATION_SETTINGS),
                 )
             }
 

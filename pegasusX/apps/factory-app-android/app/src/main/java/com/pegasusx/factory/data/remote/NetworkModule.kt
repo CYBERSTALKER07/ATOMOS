@@ -160,4 +160,9 @@ object NetworkModule {
     @Singleton
     fun provideFactoryApi(retrofit: Retrofit): FactoryApi =
         retrofit.create(FactoryApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideGeocodeApi(retrofit: Retrofit): GeocodeApi =
+        retrofit.create(GeocodeApi::class.java)
 }

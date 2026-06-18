@@ -14,6 +14,7 @@ enum class FactorySection(
     TRANSFERS(FactoryRoutes.TRANSFERS, "Transfers", Icons.Default.SwapHoriz),
     FLEET(FactoryRoutes.FLEET, "Fleet", Icons.Default.LocalShipping),
     STAFF(FactoryRoutes.STAFF, "Staff", Icons.Default.People),
+    LOCATION(FactoryRoutes.LOCATION_SETTINGS, "Location", Icons.Default.Place),
     SUPPLY_REQUESTS(FactoryRoutes.SUPPLY_REQUESTS, "Supply requests", Icons.Default.Sync),
     PAYLOAD_OVERRIDE(FactoryRoutes.PAYLOAD_OVERRIDE, "Payload override", Icons.Default.SwapHoriz),
     MANIFESTS(FactoryRoutes.MANIFESTS, "Manifests", Icons.Default.Description),
@@ -28,7 +29,7 @@ enum class FactorySection(
         val compactTabs: List<FactorySection> = listOf(DASHBOARD, LOADING_BAY, TRANSFERS, MORE)
 
         val primarySections: List<FactorySection> = listOf(
-            DASHBOARD, LOADING_BAY, TRANSFERS, FLEET, STAFF,
+            DASHBOARD, LOADING_BAY, TRANSFERS, FLEET, STAFF, LOCATION,
         )
 
         val operationsSections: List<FactorySection> = listOf(

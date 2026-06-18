@@ -28,7 +28,9 @@ type factoryLocationPatch struct {
 	Lng     float64 `json:"lng"`
 }
 
-// HandleOpsLocation serves GET/PATCH /v1/factory/ops/location for factory staff.
+// HandleOpsLocation serves GET/PATCH /v1/factory/ops/location.
+// Any authenticated factory-scoped caller (FACTORY, FACTORY_ADMIN, FACTORY_STAFF JWT)
+// may read and update their assigned factory address — no admin-only gate.
 func (s *Service) HandleOpsLocation(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -108,6 +110,9 @@ func (s *Service) handleFactoryLocationPatch(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *Service) scopedFactoryID(r *http.Request) (string, bool) {
+	if scope := auth.GetFactoryScope(r.Context()); scope != nil && strings.TrimSpace(scope.FactoryID) != "" {
+		return scope.FactoryID, true
+	}
 	if fac := strings.TrimSpace(r.URL.Query().Get("factory_id")); fac != "" {
 		if claims, ok := auth.FromContext(r.Context()); ok {
 			if claims.HomeNodeID != "" && claims.HomeNodeID != fac {
@@ -123,11 +128,15 @@ func (s *Service) scopedFactoryID(r *http.Request) (string, bool) {
 }
 
 func (s *Service) loadFactoryLocation(ctx context.Context, factoryID string) (factoryLocationResponse, error) {
-	stmt := spanner.Statement{
-		SQL: `SELECT FactoryId, Name, COALESCE(Address, ''), COALESCE(PlaceId, ''), COALESCE(Lat, 0), COALESCE(Lng, 0), UpdatedAt
-		      FROM Factories WHERE FactoryId = @fid`,
-		Params: map[string]any{"fid": factoryID},
+	supplierID := strings.TrimSpace(s.supplierID)
+	sql := `SELECT FactoryId, Name, COALESCE(Address, ''), COALESCE(PlaceId, ''), COALESCE(Lat, 0), COALESCE(Lng, 0), UpdatedAt
+		      FROM Factories WHERE FactoryId = @fid`
+	params := map[string]any{"fid": factoryID}
+	if supplierID != "" {
+		sql += ` AND SupplierId = @sid`
+		params["sid"] = supplierID
 	}
+	stmt := spanner.Statement{SQL: sql, Params: params}
 	iter := s.spannerClient.Single().Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
