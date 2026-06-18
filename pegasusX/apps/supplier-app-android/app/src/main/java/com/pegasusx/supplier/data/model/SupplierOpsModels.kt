@@ -158,6 +158,8 @@ data class CreateRetailerPriceOverrideResponse(
 data class SupplierTopologyWarehouse(
     @SerialName("warehouse_id") val warehouseId: String,
     val name: String = "",
+    val address: String = "",
+    @SerialName("place_id") val placeId: String? = null,
     val lat: Double = 0.0,
     val lng: Double = 0.0,
     @SerialName("coverage_radius_km") val coverageRadiusKm: Double = 50.0,
@@ -171,6 +173,8 @@ data class SupplierTopologyWarehouse(
 data class SupplierTopologyFactory(
     @SerialName("factory_id") val factoryId: String,
     val name: String = "",
+    val address: String = "",
+    @SerialName("place_id") val placeId: String? = null,
     val lat: Double = 0.0,
     val lng: Double = 0.0,
     @SerialName("is_active") val isActive: Boolean = true,
@@ -180,6 +184,8 @@ data class SupplierTopologyFactory(
 data class SupplierTopologyWarehouseInput(
     @SerialName("warehouse_id") val warehouseId: String? = null,
     val name: String,
+    val address: String? = null,
+    @SerialName("place_id") val placeId: String? = null,
     val lat: Double,
     val lng: Double,
     @SerialName("coverage_radius_km") val coverageRadiusKm: Double? = null,
@@ -193,6 +199,8 @@ data class SupplierTopologyWarehouseInput(
 data class SupplierTopologyFactoryInput(
     @SerialName("factory_id") val factoryId: String? = null,
     val name: String,
+    val address: String? = null,
+    @SerialName("place_id") val placeId: String? = null,
     val lat: Double,
     val lng: Double,
     @SerialName("is_active") val isActive: Boolean? = null,

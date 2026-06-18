@@ -177,6 +177,10 @@ dependencies {
     // Barcode scanning (shared module: CameraX + ML Kit)
     implementation(project(":barcode-scanner"))
 
+    // Location (depot address picker)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("com.google.accompanist:accompanist-permissions:0.36.0")
+
     // Core
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.core:core-splashscreen:1.0.1")

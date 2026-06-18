@@ -5,6 +5,7 @@ import com.pegasusx.supplier.data.model.SupplierTopologyResponse
 import com.pegasusx.supplier.data.model.SupplierTopologyUpdateRequest
 import com.pegasusx.supplier.data.model.SupplierTopologyWarehouseInput
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.ui.components.AddressLocationValue
 
 private const val DEFAULT_LAT = 41.2995
 private const val DEFAULT_LNG = 69.2401
@@ -12,8 +13,7 @@ private const val DEFAULT_LNG = 69.2401
 suspend fun appendWarehouseNode(
     ops: SupplierOperationsRepository,
     name: String,
-    lat: Double,
-    lng: Double,
+    location: AddressLocationValue,
     coverageRadiusKm: Double = 50.0,
 ): Result<SupplierTopologyResponse> = runCatching {
     val topology = ops.getTopology().body() ?: error("topology_unavailable")
@@ -21,6 +21,8 @@ suspend fun appendWarehouseNode(
         SupplierTopologyWarehouseInput(
             warehouseId = node.warehouseId.takeIf { it.isNotBlank() },
             name = node.name,
+            address = node.address.takeIf { it.isNotBlank() },
+            placeId = node.placeId,
             lat = node.lat,
             lng = node.lng,
             coverageRadiusKm = node.coverageRadiusKm,
@@ -31,8 +33,10 @@ suspend fun appendWarehouseNode(
     } + SupplierTopologyWarehouseInput(
         warehouseId = null,
         name = name.trim(),
-        lat = lat,
-        lng = lng,
+        address = location.address.takeIf { it.isNotBlank() },
+        placeId = location.placeId,
+        lat = location.lat,
+        lng = location.lng,
         coverageRadiusKm = coverageRadiusKm,
         isActive = true,
         isOnShift = true,
@@ -42,6 +46,8 @@ suspend fun appendWarehouseNode(
         SupplierTopologyFactoryInput(
             factoryId = node.factoryId.takeIf { it.isNotBlank() },
             name = node.name,
+            address = node.address.takeIf { it.isNotBlank() },
+            placeId = node.placeId,
             lat = node.lat,
             lng = node.lng,
             isActive = node.isActive,
@@ -55,8 +61,7 @@ suspend fun appendWarehouseNode(
 suspend fun appendFactoryNode(
     ops: SupplierOperationsRepository,
     name: String,
-    lat: Double,
-    lng: Double,
+    location: AddressLocationValue,
 ): Result<SupplierTopologyResponse> = runCatching {
     val topology = ops.getTopology().body() ?: error("topology_unavailable")
     if (topology.warehouses.isEmpty()) error("Add at least one warehouse first.")
@@ -64,6 +69,8 @@ suspend fun appendFactoryNode(
         SupplierTopologyWarehouseInput(
             warehouseId = node.warehouseId.takeIf { it.isNotBlank() },
             name = node.name,
+            address = node.address.takeIf { it.isNotBlank() },
+            placeId = node.placeId,
             lat = node.lat,
             lng = node.lng,
             coverageRadiusKm = node.coverageRadiusKm,
@@ -76,6 +83,8 @@ suspend fun appendFactoryNode(
         SupplierTopologyFactoryInput(
             factoryId = node.factoryId.takeIf { it.isNotBlank() },
             name = node.name,
+            address = node.address.takeIf { it.isNotBlank() },
+            placeId = node.placeId,
             lat = node.lat,
             lng = node.lng,
             isActive = node.isActive,
@@ -83,8 +92,10 @@ suspend fun appendFactoryNode(
     } + SupplierTopologyFactoryInput(
         factoryId = null,
         name = name.trim(),
-        lat = lat,
-        lng = lng,
+        address = location.address.takeIf { it.isNotBlank() },
+        placeId = location.placeId,
+        lat = location.lat,
+        lng = location.lng,
         isActive = true,
     )
     val resp = ops.updateTopology(SupplierTopologyUpdateRequest(warehouses = warehouses, factories = factories))

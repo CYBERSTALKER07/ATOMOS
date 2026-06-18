@@ -366,4 +366,15 @@ enum WarehouseService {
             idempotencyKey: WarehouseIdempotency.dispatchSettings(autoDispatchEnabled: enabled)
         )
     }
+
+    static func warehouseLocation() async throws -> WarehouseLocationResponse {
+        try await api.get("v1/warehouse/ops/location")
+    }
+
+    static func patchWarehouseLocation(address: String, placeId: String?, lat: Double, lng: Double) async throws -> WarehouseLocationResponse {
+        try await api.patch(
+            "v1/warehouse/ops/location",
+            body: WarehouseLocationPatchRequest(address: address, placeId: placeId, lat: lat, lng: lng)
+        )
+    }
 }

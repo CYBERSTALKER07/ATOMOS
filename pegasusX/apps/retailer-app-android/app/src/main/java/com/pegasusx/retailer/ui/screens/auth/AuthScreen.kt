@@ -126,10 +126,12 @@ fun AuthScreen(
         LocationPickerScreen(
             initialLat = if (latitude != 0.0) latitude else 41.2995,
             initialLng = if (longitude != 0.0) longitude else 69.2401,
+            resolveAddress = { lat, lng -> viewModel.resolveAddress(lat, lng) },
             onConfirm = { picked ->
                 latitude = picked.latitude
                 longitude = picked.longitude
                 locationLabel = picked.displayText
+                addressText = picked.displayText
                 gpsError = null
                 showMapPicker = false
             },
@@ -306,7 +308,9 @@ fun AuthScreen(
                                         if (loc != null) {
                                             latitude = loc.latitude
                                             longitude = loc.longitude
-                                            locationLabel = "%.5f, %.5f".format(loc.latitude, loc.longitude)
+                                            locationLabel = viewModel.resolveAddress(loc.latitude, loc.longitude)
+                                                ?: "Pinned location"
+                                            addressText = locationLabel
                                             gpsError = null
                                         } else {
                                             gpsError = "Current location unavailable. Try again in a few seconds"

@@ -178,6 +178,10 @@ dependencies {
     // Barcode scanning for catalog EAN capture
     implementation(project(":barcode-scanner"))
 
+    // Location (address picker)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("com.google.accompanist:accompanist-permissions:0.36.0")
+
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

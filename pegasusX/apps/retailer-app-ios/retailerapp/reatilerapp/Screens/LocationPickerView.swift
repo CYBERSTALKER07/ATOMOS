@@ -12,6 +12,8 @@ struct LocationPickerView: View {
 
     @State private var cameraPosition: MapCameraPosition
     @State private var centerCoordinate: CLLocationCoordinate2D
+    @State private var addressLabel: String?
+    @State private var resolving = false
 
     init(
         initialLatitude: Double = 0.0,
@@ -45,6 +47,7 @@ struct LocationPickerView: View {
             .mapStyle(.standard(elevation: .realistic))
             .onMapCameraChange(frequency: .onEnd) { context in
                 centerCoordinate = context.camera.centerCoordinate
+                Task { await resolveAddress() }
             }
             .ignoresSafeArea()
 
@@ -118,18 +121,23 @@ struct LocationPickerView: View {
             VStack {
                 Spacer()
                 VStack(spacing: AppTheme.spacingSM) {
-                    Text(String(format: "%.5f, %.5f", centerCoordinate.latitude, centerCoordinate.longitude))
-                        .font(.system(.body, design: .monospaced))
+                    Text(
+                        resolving
+                            ? "Resolving address…"
+                            : (addressLabel?.isEmpty == false ? addressLabel! : "Drag map to adjust pin position")
+                    )
+                        .font(.system(.body, design: .rounded))
                         .foregroundStyle(AppTheme.textSecondary)
-
-                    Text("Drag map to adjust pin position")
-                        .font(.system(.caption, design: .rounded))
-                        .foregroundStyle(AppTheme.textTertiary)
+                        .multilineTextAlignment(.center)
 
                     Button {
-                        let displayText = String(format: "%.5f, %.5f", centerCoordinate.latitude, centerCoordinate.longitude)
-                        onConfirm(centerCoordinate.latitude, centerCoordinate.longitude, displayText)
-                        dismiss()
+                        Task {
+                            let label = addressLabel?.isEmpty == false
+                                ? addressLabel!
+                                : (await GeocodeService.reverse(lat: centerCoordinate.latitude, lng: centerCoordinate.longitude) ?? "Pinned location")
+                            onConfirm(centerCoordinate.latitude, centerCoordinate.longitude, label)
+                            dismiss()
+                        }
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "checkmark")
@@ -152,6 +160,14 @@ struct LocationPickerView: View {
                 .padding(.bottom, AppTheme.spacingMD)
             }
         }
+        .task { await resolveAddress() }
+    }
+
+    @MainActor
+    private func resolveAddress() async {
+        resolving = true
+        defer { resolving = false }
+        addressLabel = await GeocodeService.reverse(lat: centerCoordinate.latitude, lng: centerCoordinate.longitude)
     }
 
     private func requestAndMoveToUserLocation() {

@@ -97,6 +97,14 @@ interface WarehouseApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<Map<String, String>>
 
+    @GET("v1/warehouse/ops/location")
+    suspend fun getWarehouseLocation(): Response<WarehouseLocationResponse>
+
+    @PATCH("v1/warehouse/ops/location")
+    suspend fun patchWarehouseLocation(
+        @Body body: WarehouseLocationPatchRequest,
+    ): Response<WarehouseLocationResponse>
+
     // ── Products ──
     @GET("v1/warehouse/ops/products")
     suspend fun getProducts(

@@ -94,6 +94,9 @@ class AuthViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isLoading = false, isAuthenticated = true, error = null, loadIssue = null)
     }
 
+    suspend fun resolveAddress(lat: Double, lng: Double): String? =
+        runCatching { api.reverseGeocode(lat, lng).address.takeIf { it.isNotBlank() } }.getOrNull()
+
     // ── Register ──
 
     fun register(
@@ -125,7 +128,9 @@ class AuthViewModel @Inject constructor(
                 val response = api.register(RegisterRequest(
                     phoneNumber = formatted, password = password,
                     storeName = storeName, ownerName = ownerName,
-                    addressText = addressText, latitude = latitude, longitude = longitude,
+                    addressText = addressText,
+                    deliveryAddress = addressText.takeIf { it.isNotBlank() },
+                    latitude = latitude, longitude = longitude,
                     taxId = taxId?.takeIf { it.isNotBlank() },
                     receivingWindowOpen = receivingWindowOpen?.takeIf { it.isNotBlank() },
                     receivingWindowClose = receivingWindowClose?.takeIf { it.isNotBlank() },

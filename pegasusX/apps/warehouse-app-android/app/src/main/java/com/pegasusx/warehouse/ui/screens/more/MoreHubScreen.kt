@@ -38,6 +38,7 @@ private val inventory = listOf(
     MoreDestination("Replenishment", "Stock velocity insights", Icons.Default.Inventory2, WarehouseRoutes.REPLENISHMENT),
     MoreDestination("Demand Forecast", "Projected demand", Icons.Default.ShowChart, WarehouseRoutes.DEMAND_FORECAST),
     MoreDestination("Ops settings", "Stock policy + hours", Icons.Default.Settings, WarehouseRoutes.OPS_SETTINGS),
+    MoreDestination("Depot location", "Address for dispatch routing", Icons.Default.Place, WarehouseRoutes.LOCATION_SETTINGS),
 )
 
 private val operations = listOf(

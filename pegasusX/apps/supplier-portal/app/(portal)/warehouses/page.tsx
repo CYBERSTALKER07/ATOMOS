@@ -3,12 +3,16 @@
 import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierTopologyWarehouse, SupplierTopologyUpdateRequest } from "@pegasusx/types";
+import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
 import { PortalSurface } from "../_components/PortalSurface";
 
 const api = createSupplierApi();
 
-const DEFAULT_LAT = 41.2995;
-const DEFAULT_LNG = 69.2401;
+const DEFAULT_LOCATION: LocationValue = {
+  address: "",
+  lat: "41.2995",
+  lng: "69.2401",
+};
 
 export default function WarehousesPage() {
   const [topology, setTopology] = useState<{ warehouses: SupplierTopologyWarehouse[]; factories: SupplierTopologyUpdateRequest["factories"] } | null>(null);
@@ -17,8 +21,7 @@ export default function WarehousesPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
-  const [lat, setLat] = useState(String(DEFAULT_LAT));
-  const [lng, setLng] = useState(String(DEFAULT_LNG));
+  const [location, setLocation] = useState<LocationValue>(DEFAULT_LOCATION);
   const [radius, setRadius] = useState("50");
 
   const load = () => {
@@ -38,11 +41,11 @@ export default function WarehousesPage() {
   const addWarehouse = async () => {
     if (!topology) return;
     const trimmed = name.trim();
-    const latValue = Number.parseFloat(lat);
-    const lngValue = Number.parseFloat(lng);
+    const latValue = Number.parseFloat(location.lat);
+    const lngValue = Number.parseFloat(location.lng);
     const radiusValue = Number.parseFloat(radius);
-    if (!trimmed || !Number.isFinite(latValue) || !Number.isFinite(lngValue)) {
-      setError("Name and coordinates are required.");
+    if (!trimmed || !location.address.trim() || !Number.isFinite(latValue) || !Number.isFinite(lngValue)) {
+      setError("Name and address are required.");
       return;
     }
     setSaving(true);
@@ -53,6 +56,8 @@ export default function WarehousesPage() {
           ...topology.warehouses.map((w) => ({
             warehouse_id: w.warehouse_id,
             name: w.name,
+            address: w.address,
+            place_id: w.place_id,
             lat: w.lat,
             lng: w.lng,
             coverage_radius_km: w.coverage_radius_km,
@@ -62,6 +67,8 @@ export default function WarehousesPage() {
           })),
           {
             name: trimmed,
+            address: location.address.trim(),
+            place_id: location.place_id,
             lat: latValue,
             lng: lngValue,
             coverage_radius_km: Number.isFinite(radiusValue) && radiusValue > 0 ? radiusValue : 50,
@@ -75,6 +82,7 @@ export default function WarehousesPage() {
       await api.updateSupplierTopology(body);
       setShowForm(false);
       setName("");
+      setLocation(DEFAULT_LOCATION);
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "save_warehouse_failed");
@@ -106,20 +114,11 @@ export default function WarehousesPage() {
             <span className="md-typescale-label-medium">Name</span>
             <input className="md-input w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder="Main warehouse" />
           </label>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <label className="block space-y-1">
-              <span className="md-typescale-label-medium">Latitude</span>
-              <input className="md-input w-full" value={lat} onChange={(e) => setLat(e.target.value)} />
-            </label>
-            <label className="block space-y-1">
-              <span className="md-typescale-label-medium">Longitude</span>
-              <input className="md-input w-full" value={lng} onChange={(e) => setLng(e.target.value)} />
-            </label>
-            <label className="block space-y-1">
-              <span className="md-typescale-label-medium">Coverage km</span>
-              <input className="md-input w-full" value={radius} onChange={(e) => setRadius(e.target.value)} />
-            </label>
-          </div>
+          <LocationPicker value={location} onChange={setLocation} label="Warehouse address" />
+          <label className="block space-y-1">
+            <span className="md-typescale-label-medium">Coverage km</span>
+            <input className="md-input w-full max-w-xs" value={radius} onChange={(e) => setRadius(e.target.value)} />
+          </label>
           <div className="flex gap-2">
             <button type="button" className="md-btn md-btn-filled px-4 py-2" disabled={saving} onClick={() => void addWarehouse()}>
               {saving ? "Saving…" : "Save warehouse"}
@@ -144,7 +143,7 @@ export default function WarehousesPage() {
             <li key={w.warehouse_id || w.name} className="p-4 md-typescale-body-medium">
               <div className="font-medium">{w.name}</div>
               <div className="text-[var(--color-md-outline)] text-sm mt-1">
-                {w.lat}, {w.lng} · Radius {w.coverage_radius_km} km · {w.is_on_shift ? "On shift" : "Off shift"} ·{" "}
+                {(w.address || "Coordinates on file").toString()} · Radius {w.coverage_radius_km} km · {w.is_on_shift ? "On shift" : "Off shift"} ·{" "}
                 {w.is_active ? "Active" : "Inactive"}
               </div>
             </li>

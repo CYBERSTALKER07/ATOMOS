@@ -3,7 +3,6 @@ package com.pegasusx.supplier.ui.screens.network
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -11,8 +10,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
+import com.pegasusx.supplier.data.remote.GeocodeApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.ui.components.AddressLocationField
+import com.pegasusx.supplier.ui.components.AddressLocationValue
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasusx.supplier.ui.components.SupplierStateKind
@@ -24,6 +25,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun FactoriesScreen(
     ops: SupplierOperationsRepository,
+    geocodeApi: GeocodeApi,
     onBack: () -> Unit,
 ) {
     var loading by remember { mutableStateOf(true) }
@@ -99,7 +101,7 @@ fun FactoriesScreen(
                 items(factories, key = { it.factoryId }) { factory ->
                     SupplierOpsListCard(
                         headline = factory.name.ifBlank { factory.factoryId },
-                        supporting = "${factory.lat}, ${factory.lng}",
+                        supporting = factory.address.ifBlank { "Coordinates on file" },
                         status = if (factory.isActive) "ACTIVE" else "INACTIVE",
                     )
                 }
@@ -109,10 +111,11 @@ fun FactoriesScreen(
 
     if (showAdd) {
         AddFactoryDialog(
+            geocodeApi = geocodeApi,
             onDismiss = { showAdd = false },
-            onSave = { name, lat, lng ->
+            onSave = { name, location ->
                 scope.launch {
-                    appendFactoryNode(ops, name, lat, lng)
+                    appendFactoryNode(ops, name, location)
                         .onSuccess {
                             showAdd = false
                             load()
@@ -126,12 +129,12 @@ fun FactoriesScreen(
 
 @Composable
 private fun AddFactoryDialog(
+    geocodeApi: GeocodeApi,
     onDismiss: () -> Unit,
-    onSave: (String, Double, Double) -> Unit,
+    onSave: (String, AddressLocationValue) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
-    var lat by remember { mutableStateOf("41.3111") }
-    var lng by remember { mutableStateOf("69.2797") }
+    var location by remember { mutableStateOf(AddressLocationValue(lat = 41.3111, lng = 69.2797)) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -139,20 +142,22 @@ private fun AddFactoryDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
-                OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text("Latitude") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
-                OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text("Longitude") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
+                AddressLocationField(
+                    geocodeApi = geocodeApi,
+                    value = location,
+                    onValueChange = { location = it },
+                    label = "Factory address",
+                )
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    val latValue = lat.toDoubleOrNull()
-                    val lngValue = lng.toDoubleOrNull()
-                    if (name.isNotBlank() && latValue != null && lngValue != null) {
-                        onSave(name, latValue, lngValue)
+                    if (name.isNotBlank() && location.address.isNotBlank() && location.lat != 0.0 && location.lng != 0.0) {
+                        onSave(name, location)
                     }
                 },
-                enabled = name.isNotBlank(),
+                enabled = name.isNotBlank() && location.address.isNotBlank(),
             ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },

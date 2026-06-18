@@ -20,6 +20,8 @@ struct RegisterRequest: Encodable {
     let storeName: String
     let ownerName: String
     let addressText: String
+    let deliveryAddress: String?
+    let placeId: String?
     let latitude: Double
     let longitude: Double
     let taxId: String?
@@ -34,6 +36,8 @@ struct RegisterRequest: Encodable {
         case storeName = "store_name"
         case ownerName = "owner_name"
         case addressText = "address_text"
+        case deliveryAddress = "delivery_address"
+        case placeId = "place_id"
         case latitude, longitude
         case taxId = "tax_id"
         case receivingWindowOpen = "receiving_window_open"

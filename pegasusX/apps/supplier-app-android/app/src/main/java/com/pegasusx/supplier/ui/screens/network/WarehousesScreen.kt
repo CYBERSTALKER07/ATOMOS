@@ -12,7 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import com.pegasusx.supplier.data.remote.GeocodeApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.ui.components.AddressLocationField
+import com.pegasusx.supplier.ui.components.AddressLocationValue
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasusx.supplier.ui.components.SupplierStateKind
@@ -24,6 +27,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun WarehousesScreen(
     ops: SupplierOperationsRepository,
+    geocodeApi: GeocodeApi,
     onBack: () -> Unit,
 ) {
     var loading by remember { mutableStateOf(true) }
@@ -97,9 +101,10 @@ fun WarehousesScreen(
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
                 items(warehouses, key = { it.warehouseId }) { warehouse ->
+                    val locationLabel = warehouse.address.ifBlank { "Coordinates on file" }
                     SupplierOpsListCard(
                         headline = warehouse.name.ifBlank { warehouse.warehouseId },
-                        supporting = "Radius ${warehouse.coverageRadiusKm} km · ${warehouse.lat}, ${warehouse.lng}",
+                        supporting = "Radius ${warehouse.coverageRadiusKm} km · $locationLabel",
                         status = if (warehouse.isActive) "ACTIVE" else "INACTIVE",
                     )
                 }
@@ -109,10 +114,11 @@ fun WarehousesScreen(
 
     if (showAdd) {
         AddWarehouseDialog(
+            geocodeApi = geocodeApi,
             onDismiss = { showAdd = false },
-            onSave = { name, lat, lng, radius ->
+            onSave = { name, location, radius ->
                 scope.launch {
-                    appendWarehouseNode(ops, name, lat, lng, radius)
+                    appendWarehouseNode(ops, name, location, radius)
                         .onSuccess {
                             showAdd = false
                             load()
@@ -126,13 +132,15 @@ fun WarehousesScreen(
 
 @Composable
 private fun AddWarehouseDialog(
+    geocodeApi: GeocodeApi,
     onDismiss: () -> Unit,
-    onSave: (String, Double, Double, Double) -> Unit,
+    onSave: (String, AddressLocationValue, Double) -> Unit,
 ) {
     val (defaultLat, defaultLng) = defaultWarehouseCoordinates()
     var name by remember { mutableStateOf("") }
-    var lat by remember { mutableStateOf(defaultLat.toString()) }
-    var lng by remember { mutableStateOf(defaultLng.toString()) }
+    var location by remember {
+        mutableStateOf(AddressLocationValue(lat = defaultLat, lng = defaultLng))
+    }
     var radius by remember { mutableStateOf("50") }
 
     AlertDialog(
@@ -141,21 +149,23 @@ private fun AddWarehouseDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
-                OutlinedTextField(value = lat, onValueChange = { lat = it }, label = { Text("Latitude") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
-                OutlinedTextField(value = lng, onValueChange = { lng = it }, label = { Text("Longitude") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
+                AddressLocationField(
+                    geocodeApi = geocodeApi,
+                    value = location,
+                    onValueChange = { location = it },
+                    label = "Warehouse address",
+                )
                 OutlinedTextField(value = radius, onValueChange = { radius = it }, label = { Text("Coverage km") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    val latValue = lat.toDoubleOrNull()
-                    val lngValue = lng.toDoubleOrNull()
-                    if (name.isNotBlank() && latValue != null && lngValue != null) {
-                        onSave(name, latValue, lngValue, radius.toDoubleOrNull() ?: 50.0)
+                    if (name.isNotBlank() && location.address.isNotBlank() && location.lat != 0.0 && location.lng != 0.0) {
+                        onSave(name, location, radius.toDoubleOrNull() ?: 50.0)
                     }
                 },
-                enabled = name.isNotBlank(),
+                enabled = name.isNotBlank() && location.address.isNotBlank(),
             ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },

@@ -55,6 +55,7 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.pegasusx.retailer.ui.theme.PillShape
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -73,6 +74,7 @@ data class PickedLocation(
 fun LocationPickerScreen(
     initialLat: Double = 0.0,
     initialLng: Double = 0.0,
+    resolveAddress: suspend (Double, Double) -> String? = { _, _ -> null },
     onConfirm: (PickedLocation) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -94,11 +96,17 @@ fun LocationPickerScreen(
 
     var selectedPosition by remember { mutableStateOf(startPosition) }
     var mapError by remember { mutableStateOf<String?>(null) }
+    var addressLabel by remember { mutableStateOf<String?>(null) }
+    var resolving by remember { mutableStateOf(false) }
 
     // Track camera center as the selected position
     LaunchedEffect(cameraPositionState.isMoving) {
         if (!cameraPositionState.isMoving) {
             selectedPosition = cameraPositionState.position.target
+            resolving = true
+            delay(300)
+            addressLabel = resolveAddress(selectedPosition.latitude, selectedPosition.longitude)
+            resolving = false
         }
     }
 
@@ -168,9 +176,14 @@ fun LocationPickerScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "%.5f, %.5f".format(selectedPosition.latitude, selectedPosition.longitude),
+                text = when {
+                    resolving -> "Resolving address…"
+                    !addressLabel.isNullOrBlank() -> addressLabel!!
+                    else -> "Move the map to pin your store"
+                },
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Black.copy(alpha = 0.6f),
+                color = Color.Black.copy(alpha = 0.75f),
+                textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(4.dp))
             Text(
@@ -190,16 +203,18 @@ fun LocationPickerScreen(
             Spacer(Modifier.height(12.dp))
             Button(
                 onClick = {
-                    onConfirm(
-                        PickedLocation(
-                            latitude = selectedPosition.latitude,
-                            longitude = selectedPosition.longitude,
-                            displayText = "%.5f, %.5f".format(
-                                selectedPosition.latitude,
-                                selectedPosition.longitude,
+                    scope.launch {
+                        val label = addressLabel?.takeIf { it.isNotBlank() }
+                            ?: resolveAddress(selectedPosition.latitude, selectedPosition.longitude)
+                            ?: "Pinned location"
+                        onConfirm(
+                            PickedLocation(
+                                latitude = selectedPosition.latitude,
+                                longitude = selectedPosition.longitude,
+                                displayText = label,
                             ),
-                        ),
-                    )
+                        )
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()

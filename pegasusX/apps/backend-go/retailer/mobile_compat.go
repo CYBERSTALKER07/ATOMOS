@@ -201,6 +201,9 @@ func (s *Service) HandleMobileRegister(w http.ResponseWriter, r *http.Request) {
 		StoreName            string  `json:"store_name"`
 		Latitude             float64 `json:"latitude"`
 		Longitude            float64 `json:"longitude"`
+		DeliveryAddress      string  `json:"delivery_address"`
+		AddressText          string  `json:"address_text"`
+		PlaceID              string  `json:"place_id"`
 		ReceivingWindowOpen  string  `json:"receiving_window_open"`
 		ReceivingWindowClose string  `json:"receiving_window_close"`
 	}
@@ -212,11 +215,17 @@ func (s *Service) HandleMobileRegister(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = strings.TrimSpace(req.OwnerName)
 	}
+	deliveryAddr := strings.TrimSpace(req.DeliveryAddress)
+	if deliveryAddr == "" {
+		deliveryAddr = strings.TrimSpace(req.AddressText)
+	}
 	reg, err := s.Register(r.Context(), RegisterRequest{
 		Phone:                strings.TrimSpace(req.PhoneNumber),
 		Name:                 name,
 		Lat:                  req.Latitude,
 		Lng:                  req.Longitude,
+		DeliveryAddress:      deliveryAddr,
+		PlaceID:              strings.TrimSpace(req.PlaceID),
 		ReceivingWindowOpen:  req.ReceivingWindowOpen,
 		ReceivingWindowClose: req.ReceivingWindowClose,
 	})

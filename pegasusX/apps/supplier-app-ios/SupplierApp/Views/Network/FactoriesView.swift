@@ -24,7 +24,7 @@ struct FactoriesView: View {
                 List(factories) { factory in
                     VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
                         Text(factory.name).font(.headline)
-                        Text(String(format: "%.4f, %.4f", factory.lat, factory.lng))
+                        Text(factory.address.isEmpty ? "Coordinates on file" : factory.address)
                             .font(.caption.monospaced())
                             .foregroundStyle(.secondary)
                         SupplierStatusBadge(text: factory.isActive ? "ACTIVE" : "INACTIVE")

@@ -43,6 +43,9 @@ struct MoreHubView: View {
                 NavigationLink { OpsSettingsView() } label: {
                     Label("Ops settings", systemImage: "gearshape")
                 }
+                NavigationLink { LocationSettingsView() } label: {
+                    Label("Depot location", systemImage: "mappin.and.ellipse")
+                }
             }
             Section("Operations") {
                 NavigationLink { CRMView() } label: {

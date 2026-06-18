@@ -586,12 +586,22 @@ data class LoginRequest(
 )
 
 @Serializable
+data class ResolvedLocationResponse(
+    val address: String = "",
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
+    @SerialName("place_id") val placeId: String? = null,
+)
+
+@Serializable
 data class RegisterRequest(
     @SerialName("phone_number") val phoneNumber: String,
     @SerialName("password") val password: String,
     @SerialName("store_name") val storeName: String,
     @SerialName("owner_name") val ownerName: String,
     @SerialName("address_text") val addressText: String,
+    @SerialName("delivery_address") val deliveryAddress: String? = null,
+    @SerialName("place_id") val placeId: String? = null,
     @SerialName("latitude") val latitude: Double,
     @SerialName("longitude") val longitude: Double,
     @SerialName("tax_id") val taxId: String? = null,

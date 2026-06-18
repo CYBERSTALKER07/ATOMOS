@@ -331,6 +331,8 @@ struct SupplierTopologyWarehouse: Decodable, Identifiable {
     var id: String { warehouseId }
     let warehouseId: String
     let name: String
+    let address: String
+    let placeId: String?
     let lat: Double
     let lng: Double
     let coverageRadiusKm: Double
@@ -341,7 +343,9 @@ struct SupplierTopologyWarehouse: Decodable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case warehouseId = "warehouse_id"
-        case name, lat, lng
+        case name, address
+        case placeId = "place_id"
+        case lat, lng
         case coverageRadiusKm = "coverage_radius_km"
         case isActive = "is_active"
         case isOnShift = "is_on_shift"
@@ -353,6 +357,8 @@ struct SupplierTopologyWarehouse: Decodable, Identifiable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         warehouseId = try container.decode(String.self, forKey: .warehouseId)
         name = try container.decode(String.self, forKey: .name)
+        address = try container.decodeIfPresent(String.self, forKey: .address) ?? ""
+        placeId = try container.decodeIfPresent(String.self, forKey: .placeId)
         lat = try container.decode(Double.self, forKey: .lat)
         lng = try container.decode(Double.self, forKey: .lng)
         coverageRadiusKm = try container.decodeIfPresent(Double.self, forKey: .coverageRadiusKm) ?? 50
@@ -367,13 +373,17 @@ struct SupplierTopologyFactory: Decodable, Identifiable {
     var id: String { factoryId }
     let factoryId: String
     let name: String
+    let address: String
+    let placeId: String?
     let lat: Double
     let lng: Double
     let isActive: Bool
 
     enum CodingKeys: String, CodingKey {
         case factoryId = "factory_id"
-        case name, lat, lng
+        case name, address
+        case placeId = "place_id"
+        case lat, lng
         case isActive = "is_active"
     }
 
@@ -381,6 +391,8 @@ struct SupplierTopologyFactory: Decodable, Identifiable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         factoryId = try container.decode(String.self, forKey: .factoryId)
         name = try container.decode(String.self, forKey: .name)
+        address = try container.decodeIfPresent(String.self, forKey: .address) ?? ""
+        placeId = try container.decodeIfPresent(String.self, forKey: .placeId)
         lat = try container.decode(Double.self, forKey: .lat)
         lng = try container.decode(Double.self, forKey: .lng)
         isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
@@ -390,6 +402,8 @@ struct SupplierTopologyFactory: Decodable, Identifiable {
 struct SupplierTopologyWarehouseInput: Encodable {
     let warehouseId: String?
     let name: String
+    let address: String?
+    let placeId: String?
     let lat: Double
     let lng: Double
     let coverageRadiusKm: Double?
@@ -399,7 +413,9 @@ struct SupplierTopologyWarehouseInput: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case warehouseId = "warehouse_id"
-        case name, lat, lng
+        case name, address
+        case placeId = "place_id"
+        case lat, lng
         case coverageRadiusKm = "coverage_radius_km"
         case isActive = "is_active"
         case isOnShift = "is_on_shift"
@@ -410,13 +426,17 @@ struct SupplierTopologyWarehouseInput: Encodable {
 struct SupplierTopologyFactoryInput: Encodable {
     let factoryId: String?
     let name: String
+    let address: String?
+    let placeId: String?
     let lat: Double
     let lng: Double
     let isActive: Bool?
 
     enum CodingKeys: String, CodingKey {
         case factoryId = "factory_id"
-        case name, lat, lng
+        case name, address
+        case placeId = "place_id"
+        case lat, lng
         case isActive = "is_active"
     }
 }

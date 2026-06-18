@@ -7,6 +7,7 @@ import { Button } from "@heroui/react";
 import { ShieldCheck, Phone, KeyRound, Loader2, ChevronRight, AlertTriangle, User, Mail, MapPin } from "lucide-react";
 import Link from "next/link";
 import { storeToken } from "../../../lib/bridge";
+import { LocationPicker } from "../../../components/LocationPicker";
 import {
   COUNTRIES,
   INITIAL_STATE,
@@ -84,6 +85,8 @@ export default function RetailerRegisterPage() {
         password: state.verification.otpCode,
         store_name: state.profile.legalName.trim(),
         owner_name: state.profile.contactName.trim(),
+        delivery_address: state.profile.deliveryAddress.trim(),
+        place_id: state.profile.placeId.trim() || undefined,
         latitude: lat,
         longitude: lng,
         receiving_window_open: normalizeReceivingWindow(state.profile.receivingWindowOpen),
@@ -275,39 +278,29 @@ export default function RetailerRegisterPage() {
                     {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-1">
-                        Latitude
-                      </label>
-                      <div className="relative group">
-                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--desk-text-tertiary)] group-focus-within:text-[var(--desk-accent)] transition-colors" size={18} />
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          className="w-full h-12 pl-12 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] border border-transparent focus:border-[var(--desk-accent)] transition-all md-typescale-body-medium font-bold"
-                          value={state.profile.latitude}
-                          onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, latitude: e.target.value } }))}
-                        />
-                      </div>
-                      {errors.latitude && <p className="text-red-500 text-xs mt-1">{errors.latitude}</p>}
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-1">
-                        Longitude
-                      </label>
-                      <div className="relative group">
-                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--desk-text-tertiary)] group-focus-within:text-[var(--desk-accent)] transition-colors" size={18} />
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          className="w-full h-12 pl-12 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] border border-transparent focus:border-[var(--desk-accent)] transition-all md-typescale-body-medium font-bold"
-                          value={state.profile.longitude}
-                          onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, longitude: e.target.value } }))}
-                        />
-                      </div>
-                      {errors.longitude && <p className="text-red-500 text-xs mt-1">{errors.longitude}</p>}
-                    </div>
+                  <div className="space-y-1.5">
+                    <LocationPicker
+                      label="Store address"
+                      value={{
+                        address: state.profile.deliveryAddress,
+                        lat: state.profile.latitude,
+                        lng: state.profile.longitude,
+                        place_id: state.profile.placeId || undefined,
+                      }}
+                      onChange={(next) =>
+                        setState((s) => ({
+                          ...s,
+                          profile: {
+                            ...s.profile,
+                            deliveryAddress: next.address,
+                            placeId: next.place_id ?? "",
+                            latitude: next.lat,
+                            longitude: next.lng,
+                          },
+                        }))
+                      }
+                    />
+                    {errors.deliveryAddress && <p className="text-red-500 text-xs mt-1">{errors.deliveryAddress}</p>}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

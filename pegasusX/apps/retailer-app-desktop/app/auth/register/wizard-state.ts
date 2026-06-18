@@ -35,6 +35,8 @@ export interface ProfileStep {
   legalName: string;
   contactName: string;
   email: string;
+  deliveryAddress: string;
+  placeId: string;
   latitude: string;
   longitude: string;
   receivingWindowOpen: string;
@@ -61,6 +63,8 @@ export const INITIAL_STATE: WizardState = {
     legalName: "",
     contactName: "",
     email: "",
+    deliveryAddress: "",
+    placeId: "",
     latitude: "41.2995",
     longitude: "69.2401",
     receivingWindowOpen: "09:00",
@@ -101,11 +105,12 @@ export function validateProfile(s: ProfileStep): Record<string, string> {
   if (s.legalName.trim().length < 2) e.legalName = "Legal name is required";
   if (s.contactName.trim().length < 2) e.contactName = "Contact name is required";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email)) e.email = "Valid email is required";
+  if (s.deliveryAddress.trim().length < 5) e.deliveryAddress = "Store address is required";
   const lat = Number.parseFloat(s.latitude.trim());
   const lng = Number.parseFloat(s.longitude.trim());
-  if (!Number.isFinite(lat) || lat < -90 || lat > 90) e.latitude = "Valid latitude required";
-  if (!Number.isFinite(lng) || lng < -180 || lng > 180) e.longitude = "Valid longitude required";
-  if (lat === 0 && lng === 0) e.latitude = "Store coordinates required";
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) e.deliveryAddress = "Select a valid address";
+  if (!Number.isFinite(lng) || lng < -180 || lng > 180) e.deliveryAddress = "Select a valid address";
+  if (lat === 0 && lng === 0) e.deliveryAddress = "Store address is required";
   const openError = validateReceivingWindowField(s.receivingWindowOpen);
   if (openError) e.receivingWindowOpen = openError;
   const closeError = validateReceivingWindowField(s.receivingWindowClose);

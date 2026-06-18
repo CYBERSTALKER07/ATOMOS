@@ -8,6 +8,7 @@ import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSiz
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.pegasusx.warehouse.data.remote.TokenHolder
+import com.pegasusx.warehouse.data.remote.GeocodeApi
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeClient
@@ -26,6 +27,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var warehouseApi: WarehouseApi
     @Inject lateinit var warehouseOpsRepository: WarehouseOperationsRepository
+    @Inject lateinit var geocodeApi: GeocodeApi
     @Inject lateinit var warehouseRealtimeClient: WarehouseRealtimeClient
     @Inject lateinit var realtimeSignals: WarehouseRealtimeSignals
 
@@ -42,6 +44,7 @@ class MainActivity : ComponentActivity() {
                 WarehouseNavigation(
                     api = warehouseApi,
                     opsRepository = warehouseOpsRepository,
+                    geocodeApi = geocodeApi,
                     realtimeSignals = realtimeSignals,
                     windowSizeClass = windowSizeClass,
                     onAuthenticated = { connectRealtimeIfAuthenticated() },

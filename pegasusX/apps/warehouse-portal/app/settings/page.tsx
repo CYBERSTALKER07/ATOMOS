@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/auth';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { useToast } from '@/components/Toast';
+import { LocationPicker, type LocationValue } from '@/components/LocationPicker';
 
 type WarehouseSettings = {
   warehouse_id: string;
@@ -14,21 +15,43 @@ type WarehouseSettings = {
   ops_always_available?: boolean;
 };
 
+type WarehouseLocation = {
+  warehouse_id: string;
+  name: string;
+  address?: string;
+  place_id?: string;
+  lat: number;
+  lng: number;
+};
+
 export default function WarehouseSettingsPage() {
   const { toast } = useToast();
   const [settings, setSettings] = useState<WarehouseSettings | null>(null);
   const [policy, setPolicy] = useState<'REJECT' | 'ACCEPT_BACKORDER'>('REJECT');
   const [scheduleJSON, setScheduleJSON] = useState('{\n  "is_24h": true\n}');
+  const [location, setLocation] = useState<LocationValue>({ address: '', lat: '0', lng: '0' });
   const [saving, setSaving] = useState(false);
+  const [savingLocation, setSavingLocation] = useState(false);
 
   const load = useCallback(async () => {
     const res = await apiFetch('/v1/warehouse/ops/settings');
-    if (!res.ok) return;
-    const data = (await res.json()) as WarehouseSettings;
-    setSettings(data);
-    setPolicy(data.default_out_of_stock_policy === 'ACCEPT_BACKORDER' ? 'ACCEPT_BACKORDER' : 'REJECT');
-    if (data.operating_schedule) {
-      setScheduleJSON(JSON.stringify(data.operating_schedule, null, 2));
+    if (res.ok) {
+      const data = (await res.json()) as WarehouseSettings;
+      setSettings(data);
+      setPolicy(data.default_out_of_stock_policy === 'ACCEPT_BACKORDER' ? 'ACCEPT_BACKORDER' : 'REJECT');
+      if (data.operating_schedule) {
+        setScheduleJSON(JSON.stringify(data.operating_schedule, null, 2));
+      }
+    }
+    const locRes = await apiFetch('/v1/warehouse/ops/location');
+    if (locRes.ok) {
+      const loc = (await locRes.json()) as WarehouseLocation;
+      setLocation({
+        address: loc.address ?? '',
+        lat: String(loc.lat ?? 0),
+        lng: String(loc.lng ?? 0),
+        place_id: loc.place_id,
+      });
     }
   }, []);
 
@@ -65,6 +88,34 @@ export default function WarehouseSettingsPage() {
     }
   }
 
+  async function saveLocation() {
+    if (!location.address.trim()) {
+      toast('Depot address is required', 'error');
+      return;
+    }
+    setSavingLocation(true);
+    try {
+      const res = await apiFetch('/v1/warehouse/ops/location', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          address: location.address.trim(),
+          place_id: location.place_id,
+          lat: Number.parseFloat(location.lat),
+          lng: Number.parseFloat(location.lng),
+        }),
+      });
+      if (res.ok) {
+        toast('Depot location saved', 'success');
+        await load();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast((data as { error?: string }).error || 'Save failed', 'error');
+      }
+    } finally {
+      setSavingLocation(false);
+    }
+  }
+
   return (
     <PageTransition>
       <PageChrome
@@ -72,6 +123,22 @@ export default function WarehouseSettingsPage() {
         description="Stock policy for retailer checkout and display operating hours. Dispatch and delivery are not blocked outside these hours."
       >
         <div className="max-w-2xl space-y-6">
+          <section className="border border-[var(--border)] rounded-xl p-4 space-y-3">
+            <h2 className="text-sm font-semibold">Depot location</h2>
+            <p className="text-xs text-[var(--muted)]">
+              Smart dispatch uses this address for routing. Coordinates are stored but not shown to ops staff.
+            </p>
+            <LocationPicker value={location} onChange={setLocation} label="Warehouse address" />
+            <button
+              type="button"
+              disabled={savingLocation}
+              onClick={() => void saveLocation()}
+              className="px-4 py-2 rounded-lg text-sm font-semibold button--primary disabled:opacity-50"
+            >
+              {savingLocation ? 'Saving…' : 'Save location'}
+            </button>
+          </section>
+
           <section className="border border-[var(--border)] rounded-xl p-4 space-y-3">
             <h2 className="text-sm font-semibold">Out-of-stock orders</h2>
             <p className="text-xs text-[var(--muted)]">

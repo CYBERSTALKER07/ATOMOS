@@ -8,6 +8,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.lifecycle.lifecycleScope
+import com.pegasusx.supplier.data.remote.GeocodeApi
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
@@ -26,6 +27,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var supplierApi: SupplierApi
     @Inject lateinit var supplierOps: SupplierOperationsRepository
+    @Inject lateinit var geocodeApi: GeocodeApi
     @Inject lateinit var supplierWebSocket: SupplierWebSocket
     @Inject lateinit var realtimeSignals: SupplierRealtimeSignals
 
@@ -57,6 +59,7 @@ class MainActivity : ComponentActivity() {
                 SupplierNavigation(
                     api = supplierApi,
                     ops = supplierOps,
+                    geocodeApi = geocodeApi,
                     realtimeSignals = realtimeSignals,
                     windowSizeClass = windowSizeClass,
                 )

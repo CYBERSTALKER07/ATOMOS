@@ -7,8 +7,7 @@ enum TopologyMutation {
   @MainActor
   static func appendWarehouse(
     name: String,
-    lat: Double,
-    lng: Double,
+    location: AddressLocationValue,
     coverageRadiusKm: Double = 50
   ) async throws -> SupplierTopologyResponse {
     let topology = try await SupplierOperationsService.topology()
@@ -16,6 +15,8 @@ enum TopologyMutation {
       SupplierTopologyWarehouseInput(
         warehouseId: node.warehouseId.isEmpty ? nil : node.warehouseId,
         name: node.name,
+        address: node.address.isEmpty ? nil : node.address,
+        placeId: node.placeId,
         lat: node.lat,
         lng: node.lng,
         coverageRadiusKm: node.coverageRadiusKm,
@@ -28,8 +29,10 @@ enum TopologyMutation {
       SupplierTopologyWarehouseInput(
         warehouseId: nil,
         name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-        lat: lat,
-        lng: lng,
+        address: location.address.isEmpty ? nil : location.address,
+        placeId: location.placeId,
+        lat: location.lat,
+        lng: location.lng,
         coverageRadiusKm: coverageRadiusKm,
         isActive: true,
         isOnShift: true,
@@ -40,6 +43,8 @@ enum TopologyMutation {
       SupplierTopologyFactoryInput(
         factoryId: node.factoryId.isEmpty ? nil : node.factoryId,
         name: node.name,
+        address: node.address.isEmpty ? nil : node.address,
+        placeId: node.placeId,
         lat: node.lat,
         lng: node.lng,
         isActive: node.isActive
@@ -51,12 +56,14 @@ enum TopologyMutation {
   }
 
   @MainActor
-  static func appendFactory(name: String, lat: Double, lng: Double) async throws -> SupplierTopologyResponse {
+  static func appendFactory(name: String, location: AddressLocationValue) async throws -> SupplierTopologyResponse {
     let topology = try await SupplierOperationsService.topology()
     let warehouses = topology.warehouses.map { node in
       SupplierTopologyWarehouseInput(
         warehouseId: node.warehouseId.isEmpty ? nil : node.warehouseId,
         name: node.name,
+        address: node.address.isEmpty ? nil : node.address,
+        placeId: node.placeId,
         lat: node.lat,
         lng: node.lng,
         coverageRadiusKm: node.coverageRadiusKm,
@@ -69,6 +76,8 @@ enum TopologyMutation {
       SupplierTopologyFactoryInput(
         factoryId: node.factoryId.isEmpty ? nil : node.factoryId,
         name: node.name,
+        address: node.address.isEmpty ? nil : node.address,
+        placeId: node.placeId,
         lat: node.lat,
         lng: node.lng,
         isActive: node.isActive
@@ -78,8 +87,10 @@ enum TopologyMutation {
       SupplierTopologyFactoryInput(
         factoryId: nil,
         name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-        lat: lat,
-        lng: lng,
+        address: location.address.isEmpty ? nil : location.address,
+        placeId: location.placeId,
+        lat: location.lat,
+        lng: location.lng,
         isActive: true
       )
     )
@@ -121,8 +132,7 @@ struct AddWarehouseSheet: View {
   var onSaved: () -> Void
 
   @State private var name = ""
-  @State private var lat = String(TopologyMutation.defaultLat)
-  @State private var lng = String(TopologyMutation.defaultLng)
+  @State private var location = AddressLocationValue(lat: TopologyMutation.defaultLat, lng: TopologyMutation.defaultLng)
   @State private var coverageKm = "50"
   @State private var saving = false
   @State private var error: String?
@@ -135,14 +145,8 @@ struct AddWarehouseSheet: View {
         }
         Section("Warehouse") {
           TextField("Name", text: $name)
-          TextField("Latitude", text: $lat).keyboardType(.decimalPad)
-          TextField("Longitude", text: $lng).keyboardType(.decimalPad)
+          AddressLocationField(value: $location, label: "Warehouse address")
           TextField("Coverage radius (km)", text: $coverageKm).keyboardType(.decimalPad)
-        }
-        Section {
-          Text("Set coordinates for your distribution node. You can refine location later in topology.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
       }
       .navigationTitle("Add warehouse")
@@ -152,7 +156,7 @@ struct AddWarehouseSheet: View {
         }
         ToolbarItem(placement: .confirmationAction) {
           Button(saving ? "Saving…" : "Save") { Task { await save() } }
-            .disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || location.address.isEmpty)
         }
       }
     }
@@ -160,18 +164,13 @@ struct AddWarehouseSheet: View {
 
   @MainActor
   private func save() async {
-    guard let latValue = Double(lat), let lngValue = Double(lng) else {
-      error = "Latitude and longitude must be numbers."
-      return
-    }
     saving = true
     error = nil
     defer { saving = false }
     do {
       _ = try await TopologyMutation.appendWarehouse(
         name: name,
-        lat: latValue,
-        lng: lngValue,
+        location: location,
         coverageRadiusKm: Double(coverageKm) ?? 50
       )
       onSaved()
@@ -187,8 +186,7 @@ struct AddFactorySheet: View {
   var onSaved: () -> Void
 
   @State private var name = ""
-  @State private var lat = "41.3111"
-  @State private var lng = "69.2797"
+  @State private var location = AddressLocationValue(lat: 41.3111, lng: 69.2797)
   @State private var saving = false
   @State private var error: String?
 
@@ -200,8 +198,7 @@ struct AddFactorySheet: View {
         }
         Section("Factory") {
           TextField("Name", text: $name)
-          TextField("Latitude", text: $lat).keyboardType(.decimalPad)
-          TextField("Longitude", text: $lng).keyboardType(.decimalPad)
+          AddressLocationField(value: $location, label: "Factory address")
         }
       }
       .navigationTitle("Add factory")
@@ -211,7 +208,7 @@ struct AddFactorySheet: View {
         }
         ToolbarItem(placement: .confirmationAction) {
           Button(saving ? "Saving…" : "Save") { Task { await save() } }
-            .disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || location.address.isEmpty)
         }
       }
     }
@@ -219,15 +216,11 @@ struct AddFactorySheet: View {
 
   @MainActor
   private func save() async {
-    guard let latValue = Double(lat), let lngValue = Double(lng) else {
-      error = "Latitude and longitude must be numbers."
-      return
-    }
     saving = true
     error = nil
     defer { saving = false }
     do {
-      _ = try await TopologyMutation.appendFactory(name: name, lat: latValue, lng: lngValue)
+      _ = try await TopologyMutation.appendFactory(name: name, location: location)
       onSaved()
       dismiss()
     } catch {

@@ -110,7 +110,10 @@ final class AuthManager {
             let body = RegisterRequest(
                 phoneNumber: formatted, password: password,
                 storeName: storeName, ownerName: ownerName,
-                addressText: addressText, latitude: latitude, longitude: longitude,
+                addressText: addressText,
+                deliveryAddress: addressText.isEmpty ? nil : addressText,
+                placeId: nil,
+                latitude: latitude, longitude: longitude,
                 taxId: taxId?.isEmpty == true ? nil : taxId,
                 receivingWindowOpen: receivingWindowOpen?.isEmpty == true ? nil : receivingWindowOpen,
                 receivingWindowClose: receivingWindowClose?.isEmpty == true ? nil : receivingWindowClose,

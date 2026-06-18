@@ -24,7 +24,7 @@ struct WarehousesView: View {
                 List(warehouses) { warehouse in
                     VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
                         Text(warehouse.name).font(.headline)
-                        Text(String(format: "%.4f, %.4f · %.0f km coverage", warehouse.lat, warehouse.lng, warehouse.coverageRadiusKm))
+                        Text(warehouse.address.isEmpty ? "Coordinates on file" : warehouse.address)
                             .font(.caption.monospaced())
                             .foregroundStyle(.secondary)
                         SupplierStatusBadge(text: warehouse.isOnShift ? "ON_SHIFT" : "OFF_SHIFT")

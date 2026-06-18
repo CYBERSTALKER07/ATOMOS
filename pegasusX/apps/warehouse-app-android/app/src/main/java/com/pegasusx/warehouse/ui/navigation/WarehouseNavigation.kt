@@ -41,6 +41,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.pegasusx.warehouse.BuildConfig
 import com.pegasusx.warehouse.data.remote.TokenHolder
+import com.pegasusx.warehouse.data.remote.GeocodeApi
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
@@ -58,6 +59,7 @@ import com.pegasusx.warehouse.ui.screens.drivers.DriversScreen
 import com.pegasusx.warehouse.ui.screens.fleet.FleetLiveMapScreen
 import com.pegasusx.warehouse.ui.screens.forecast.DemandForecastScreen
 import com.pegasusx.warehouse.ui.screens.inventory.InventoryScreen
+import com.pegasusx.warehouse.ui.screens.inventory.LocationSettingsScreen
 import com.pegasusx.warehouse.ui.screens.inventory.OpsSettingsScreen
 import com.pegasusx.warehouse.ui.screens.preorders.PreordersScreen
 import com.pegasusx.warehouse.ui.screens.preorders.StockCommitmentsScreen
@@ -105,6 +107,7 @@ object WarehouseRoutes {
     const val REPLENISHMENT = "replenishment"
     const val DISPATCH_SETTINGS = "dispatch_settings"
     const val OPS_SETTINGS = "ops_settings"
+    const val LOCATION_SETTINGS = "location_settings"
     const val PREORDERS = "preorders"
     const val STOCK_COMMITMENTS = "stock_commitments"
     const val PAYMENT_CONFIG = "payment_config"
@@ -127,6 +130,7 @@ private val compactTabRoutes = WarehouseSection.compactTabs.map { it.route }.toS
 fun WarehouseNavigation(
     api: WarehouseApi,
     opsRepository: WarehouseOperationsRepository,
+    geocodeApi: GeocodeApi,
     realtimeSignals: WarehouseRealtimeSignals,
     windowSizeClass: WindowSizeClass,
     onAuthenticated: () -> Unit = {},
@@ -435,6 +439,13 @@ fun WarehouseNavigation(
 
                 composable(WarehouseRoutes.OPS_SETTINGS) {
                     OpsSettingsScreen(api = api, onBack = backFor(WarehouseRoutes.OPS_SETTINGS))
+                }
+                composable(WarehouseRoutes.LOCATION_SETTINGS) {
+                    LocationSettingsScreen(
+                        api = api,
+                        geocodeApi = geocodeApi,
+                        onBack = backFor(WarehouseRoutes.LOCATION_SETTINGS),
+                    )
                 }
                 composable(WarehouseRoutes.PREORDERS) {
                     PreordersScreen(api = api, onBack = backFor(WarehouseRoutes.PREORDERS))

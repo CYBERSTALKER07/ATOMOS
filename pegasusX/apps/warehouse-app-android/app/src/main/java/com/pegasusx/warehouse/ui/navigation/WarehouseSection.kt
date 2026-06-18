@@ -34,6 +34,7 @@ enum class WarehouseSection(
     RETURNS(WarehouseRoutes.RETURNS, "Returns", Icons.AutoMirrored.Filled.Undo),
     PAYMENT_CONFIG(WarehouseRoutes.PAYMENT_CONFIG, "Payment config", Icons.Default.Payment),
     OPS_SETTINGS(WarehouseRoutes.OPS_SETTINGS, "Ops settings", Icons.Default.Settings),
+    LOCATION_SETTINGS(WarehouseRoutes.LOCATION_SETTINGS, "Depot location", Icons.Default.Place),
     NOTIFICATIONS(WarehouseRoutes.NOTIFICATIONS, "Notifications", Icons.Default.Notifications),
     PORTAL_SETUP(WarehouseRoutes.portalHandoff("setup"), "Warehouse setup", Icons.Default.Business),
     PORTAL_PROFILE(WarehouseRoutes.portalHandoff("profile"), "Profile", Icons.Default.Person),
@@ -60,6 +61,7 @@ enum class WarehouseSection(
             REPLENISHMENT,
             DEMAND_FORECAST,
             OPS_SETTINGS,
+            LOCATION_SETTINGS,
         )
 
         val operationsSections: List<WarehouseSection> = listOf(

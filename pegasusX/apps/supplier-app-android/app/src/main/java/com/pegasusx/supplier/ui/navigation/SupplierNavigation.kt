@@ -28,6 +28,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import com.pegasusx.supplier.data.remote.GeocodeApi
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
@@ -142,6 +143,7 @@ private data class SupplierTab(val route: String, val label: String, val icon: I
 fun SupplierNavigation(
     api: SupplierApi,
     ops: SupplierOperationsRepository,
+    geocodeApi: GeocodeApi,
     realtimeSignals: SupplierRealtimeSignals,
     windowSizeClass: WindowSizeClass,
 ) {
@@ -486,10 +488,10 @@ fun SupplierNavigation(
                  DemandHistoryScreen(ops) { navController.popBackStack() } 
             }
             composable(SupplierRoutes.FACTORIES) {
-                 FactoriesScreen(ops) { navController.popBackStack() } 
+                 FactoriesScreen(ops, geocodeApi) { navController.popBackStack() } 
             }
             composable(SupplierRoutes.WAREHOUSES) {
-                 WarehousesScreen(ops) { navController.popBackStack() } 
+                 WarehousesScreen(ops, geocodeApi) { navController.popBackStack() } 
             }
             composable(SupplierRoutes.EARLY_COMPLETE) {
                  EarlyCompleteScreen(ops, realtimeSignals) { navController.popBackStack() } 

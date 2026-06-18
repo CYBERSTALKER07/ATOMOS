@@ -55,6 +55,12 @@ interface PegasusApi {
     @POST("/v1/auth/retailer/register")
     suspend fun register(@Body body: RegisterRequest): AuthResponse
 
+    @GET("/v1/platform/geocode/reverse")
+    suspend fun reverseGeocode(
+        @Query("lat") lat: Double,
+        @Query("lng") lng: Double,
+    ): ResolvedLocationResponse
+
     @POST("/v1/user/device-token")
     suspend fun registerDeviceToken(@Body body: Map<String, String>): ApiResponse
 

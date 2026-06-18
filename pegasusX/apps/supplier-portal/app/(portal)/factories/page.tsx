@@ -3,9 +3,16 @@
 import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierTopologyFactory, SupplierTopologyUpdateRequest, SupplierTopologyWarehouse } from "@pegasusx/types";
+import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
 import { PortalSurface } from "../_components/PortalSurface";
 
 const api = createSupplierApi();
+
+const DEFAULT_LOCATION: LocationValue = {
+  address: "",
+  lat: "41.3111",
+  lng: "69.2797",
+};
 
 export default function FactoriesPage() {
   const [warehouses, setWarehouses] = useState<SupplierTopologyWarehouse[]>([]);
@@ -15,8 +22,7 @@ export default function FactoriesPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
-  const [lat, setLat] = useState("41.3111");
-  const [lng, setLng] = useState("69.2797");
+  const [location, setLocation] = useState<LocationValue>(DEFAULT_LOCATION);
 
   const load = () => {
     setLoading(true);
@@ -37,10 +43,10 @@ export default function FactoriesPage() {
 
   const addFactory = async () => {
     const trimmed = name.trim();
-    const latValue = Number.parseFloat(lat);
-    const lngValue = Number.parseFloat(lng);
-    if (!trimmed || !Number.isFinite(latValue) || !Number.isFinite(lngValue)) {
-      setError("Name and coordinates are required.");
+    const latValue = Number.parseFloat(location.lat);
+    const lngValue = Number.parseFloat(location.lng);
+    if (!trimmed || !location.address.trim() || !Number.isFinite(latValue) || !Number.isFinite(lngValue)) {
+      setError("Name and address are required.");
       return;
     }
     if (warehouses.length === 0) {
@@ -54,6 +60,8 @@ export default function FactoriesPage() {
         warehouses: warehouses.map((w) => ({
           warehouse_id: w.warehouse_id,
           name: w.name,
+          address: w.address,
+          place_id: w.place_id,
           lat: w.lat,
           lng: w.lng,
           coverage_radius_km: w.coverage_radius_km,
@@ -65,16 +73,26 @@ export default function FactoriesPage() {
           ...factories.map((f) => ({
             factory_id: f.factory_id,
             name: f.name,
+            address: f.address,
+            place_id: f.place_id,
             lat: f.lat,
             lng: f.lng,
             is_active: f.is_active,
           })),
-          { name: trimmed, lat: latValue, lng: lngValue, is_active: true },
+          {
+            name: trimmed,
+            address: location.address.trim(),
+            place_id: location.place_id,
+            lat: latValue,
+            lng: lngValue,
+            is_active: true,
+          },
         ],
       };
       await api.updateSupplierTopology(body);
       setShowForm(false);
       setName("");
+      setLocation(DEFAULT_LOCATION);
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "save_factory_failed");
@@ -90,7 +108,7 @@ export default function FactoriesPage() {
       loading={loading}
       error={error}
       empty={factories.length === 0 && !showForm}
-      emptyMessage="No factories yet. Add your first production node."
+      emptyMessage="No factories yet. Add a production node linked to your warehouse network."
       actions={
         <button type="button" className="md-btn md-btn-filled md-typescale-label-large px-4 py-2" onClick={() => setShowForm(true)}>
           Add factory
@@ -104,16 +122,7 @@ export default function FactoriesPage() {
             <span className="md-typescale-label-medium">Name</span>
             <input className="md-input w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder="Main factory" />
           </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="block space-y-1">
-              <span className="md-typescale-label-medium">Latitude</span>
-              <input className="md-input w-full" value={lat} onChange={(e) => setLat(e.target.value)} />
-            </label>
-            <label className="block space-y-1">
-              <span className="md-typescale-label-medium">Longitude</span>
-              <input className="md-input w-full" value={lng} onChange={(e) => setLng(e.target.value)} />
-            </label>
-          </div>
+          <LocationPicker value={location} onChange={setLocation} label="Factory address" />
           <div className="flex gap-2">
             <button type="button" className="md-btn md-btn-filled px-4 py-2" disabled={saving} onClick={() => void addFactory()}>
               {saving ? "Saving…" : "Save factory"}
@@ -127,7 +136,7 @@ export default function FactoriesPage() {
 
       {factories.length === 0 && !showForm ? (
         <div className="flex flex-col items-center justify-center py-16 gap-4">
-          <p className="md-typescale-body-medium text-[var(--color-md-outline)]">Add your first factory to link production to your network.</p>
+          <p className="md-typescale-body-medium text-[var(--color-md-outline)]">Add your first factory to link production to warehouses.</p>
           <button type="button" className="md-btn md-btn-filled px-6 py-3" onClick={() => setShowForm(true)}>
             Add first factory
           </button>
@@ -138,7 +147,7 @@ export default function FactoriesPage() {
             <li key={f.factory_id || f.name} className="p-4 md-typescale-body-medium">
               <div className="font-medium">{f.name}</div>
               <div className="text-[var(--color-md-outline)] text-sm mt-1">
-                {f.lat.toFixed(4)}, {f.lng.toFixed(4)} · {f.is_active ? "Active" : "Inactive"}
+                {(f.address || "Coordinates on file").toString()} · {f.is_active ? "Active" : "Inactive"}
               </div>
             </li>
           ))}
