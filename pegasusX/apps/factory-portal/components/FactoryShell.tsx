@@ -28,6 +28,7 @@ const NAV: NavSection[] = [
     items: [
       { href: '/fleet', icon: 'fleet', label: 'Fleet' },
       { href: '/staff', icon: 'staff', label: 'Staff' },
+      { href: '/settings/location', icon: 'loadingBay', label: 'Location' },
       { href: '/insights', icon: 'insights', label: 'Insights' },
       { href: '/analytics', icon: 'analytics', label: 'Analytics' },
     ],

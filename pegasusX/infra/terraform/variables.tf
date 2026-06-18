@@ -175,3 +175,10 @@ variable "stripe_webhook_secret" {
   default     = ""
   sensitive   = true
 }
+
+variable "google_maps_api_key" {
+  description = "Google Maps Platform API key for Places autocomplete and geocoding (stored in Secret Manager)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}

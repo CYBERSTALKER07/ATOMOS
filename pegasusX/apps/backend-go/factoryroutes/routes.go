@@ -31,6 +31,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/factory/analytics/overview", d.Service.HandleAnalyticsOverview)
 		rr.Get("/v1/factory/dashboard", d.Service.HandleDashboard)
 		rr.Get("/v1/factory/profile", d.Service.HandleProfile)
+		rr.Get("/v1/factory/ops/location", d.Service.HandleOpsLocation)
+		rr.Patch("/v1/factory/ops/location", d.Service.HandleOpsLocation)
 		rr.Get("/v1/factory/transfers", d.Service.HandleTransfers)
 		rr.Post("/v1/factory/transfers/create", d.Service.HandleTransfers)
 		rr.Get("/v1/factory/transfers/{transferID}", d.Service.HandleTransferByID)

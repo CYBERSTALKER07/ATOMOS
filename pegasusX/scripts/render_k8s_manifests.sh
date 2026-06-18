@@ -17,7 +17,8 @@ Required:
 
 Optional:
   JWT_SECRET_GSM, GLOBAL_PAY_GSM, ADYEN_GSM, STRIPE_GSM  Secret Manager secret ids
-  OUT_DIR                 Output directory (default: artifacts/k8s-rendered)
+  GOOGLE_MAPS_GSM                                        Google Maps API key secret id
+  OUT_DIR                                                 Output directory (default: artifacts/k8s-rendered)
 
 Quick start:
   cp .env.k8s.example .env.k8s   # edit values
@@ -55,6 +56,7 @@ JWT_SECRET_GSM="${JWT_SECRET_GSM:-pegasusx-prod-jwt-secret}"
 GLOBAL_PAY_GSM="${GLOBAL_PAY_GSM:-pegasusx-prod-global-pay-webhook-secret}"
 ADYEN_GSM="${ADYEN_GSM:-pegasusx-prod-adyen-webhook-secret}"
 STRIPE_GSM="${STRIPE_GSM:-pegasusx-prod-stripe-webhook-secret}"
+GOOGLE_MAPS_GSM="${GOOGLE_MAPS_GSM:-pegasusx-prod-google-maps-api-key}"
 
 OUT_DIR="${OUT_DIR:-${ROOT}/artifacts/k8s-rendered}"
 mkdir -p "$OUT_DIR"
@@ -71,6 +73,7 @@ render() {
     -e "s|PEGASUSX_GLOBAL_PAY_WEBHOOK_GSM_NAME_PLACEHOLDER|${GLOBAL_PAY_GSM}|g" \
     -e "s|PEGASUSX_ADYEN_WEBHOOK_GSM_NAME_PLACEHOLDER|${ADYEN_GSM}|g" \
     -e "s|PEGASUSX_STRIPE_WEBHOOK_GSM_NAME_PLACEHOLDER|${STRIPE_GSM}|g" \
+    -e "s|PEGASUSX_GOOGLE_MAPS_API_KEY_GSM_NAME_PLACEHOLDER|${GOOGLE_MAPS_GSM}|g" \
     "$src" >"$dest"
 }
 

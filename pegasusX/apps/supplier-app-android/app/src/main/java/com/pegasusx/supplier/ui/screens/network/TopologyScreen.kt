@@ -48,6 +48,9 @@ private data class WarehouseDraft(
     val lat: String,
     val lng: String,
     val coverageRadiusKm: String,
+    val isActive: Boolean,
+    val isOnShift: Boolean,
+    val transferMode: String,
 )
 
 private data class FactoryDraft(
@@ -56,6 +59,7 @@ private data class FactoryDraft(
     val name: String,
     val lat: String,
     val lng: String,
+    val isActive: Boolean,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,6 +86,9 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                     lat = node.lat.toString(),
                     lng = node.lng.toString(),
                     coverageRadiusKm = node.coverageRadiusKm.toString(),
+                    isActive = node.isActive,
+                    isOnShift = node.isOnShift,
+                    transferMode = node.transferMode?.takeIf { it.isNotBlank() } ?: "TRUCK",
                 ),
             )
         }
@@ -93,6 +100,7 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                     name = node.name,
                     lat = node.lat.toString(),
                     lng = node.lng.toString(),
+                    isActive = node.isActive,
                 ),
             )
         }
@@ -136,9 +144,9 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                             lat = draft.lat.toDoubleOrNull() ?: throw IllegalArgumentException("Invalid latitude"),
                             lng = draft.lng.toDoubleOrNull() ?: throw IllegalArgumentException("Invalid longitude"),
                             coverageRadiusKm = draft.coverageRadiusKm.toDoubleOrNull() ?: 50.0,
-                            isActive = true,
-                            isOnShift = true,
-                            transferMode = "TRUCK",
+                            isActive = draft.isActive,
+                            isOnShift = draft.isOnShift,
+                            transferMode = draft.transferMode,
                         )
                     },
                     factories = factoryDrafts.map { draft ->
@@ -147,7 +155,7 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                             name = draft.name.trim(),
                             lat = draft.lat.toDoubleOrNull() ?: throw IllegalArgumentException("Invalid latitude"),
                             lng = draft.lng.toDoubleOrNull() ?: throw IllegalArgumentException("Invalid longitude"),
-                            isActive = true,
+                            isActive = draft.isActive,
                         )
                     },
                 )
@@ -248,6 +256,9 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                                 lat = "41.2995",
                                 lng = "69.2401",
                                 coverageRadiusKm = "50",
+                                isActive = true,
+                                isOnShift = true,
+                                transferMode = "TRUCK",
                             ),
                         )
                     }) { Text("Add warehouse") }
@@ -280,6 +291,7 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                                 name = "Factory ${factoryDrafts.size + 1}",
                                 lat = "41.3111",
                                 lng = "69.2797",
+                                isActive = true,
                             ),
                         )
                     }) { Text("Add factory") }

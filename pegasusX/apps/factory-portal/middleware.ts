@@ -75,6 +75,7 @@ export const config = {
     '/dispatch/:path*',
     '/supply-requests/:path*',
     '/payload-override/:path*',
+    '/settings/:path*',
     '/setup/:path*',
   ],
 };

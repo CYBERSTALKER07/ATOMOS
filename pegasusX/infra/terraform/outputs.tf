@@ -94,6 +94,11 @@ output "stripe_webhook_secret_id" {
   value       = google_secret_manager_secret.stripe_webhook_secret.secret_id
 }
 
+output "google_maps_api_key_secret_id" {
+  description = "Secret Manager secret id for Google Maps Platform API key."
+  value       = google_secret_manager_secret.google_maps_api_key.secret_id
+}
+
 output "artifact_registry_url" {
   description = "Artifact Registry repository URL when enable_gke=true."
   value = var.enable_gke ? "${google_artifact_registry_repository.pegasusx[0].location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.pegasusx[0].repository_id}" : ""

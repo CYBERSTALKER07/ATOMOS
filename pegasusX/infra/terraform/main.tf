@@ -17,6 +17,7 @@ locals {
   secret_global_pay_webhook      = "${local.resource_prefix}-global-pay-webhook-secret"
   secret_adyen_webhook           = "${local.resource_prefix}-adyen-webhook-secret"
   secret_stripe_webhook          = "${local.resource_prefix}-stripe-webhook-secret"
+  secret_google_maps_api_key     = "${local.resource_prefix}-google-maps-api-key"
   labels = {
     app         = "pegasusx"
     tenant      = local.tenant_slug
@@ -222,6 +223,20 @@ resource "google_secret_manager_secret_version" "stripe_webhook_secret" {
   count       = trimspace(var.stripe_webhook_secret) != "" ? 1 : 0
   secret      = google_secret_manager_secret.stripe_webhook_secret.id
   secret_data = var.stripe_webhook_secret
+}
+
+resource "google_secret_manager_secret" "google_maps_api_key" {
+  secret_id = local.secret_google_maps_api_key
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "google_maps_api_key" {
+  count       = trimspace(var.google_maps_api_key) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.google_maps_api_key.id
+  secret_data = var.google_maps_api_key
 }
 
 # ------------------------------------------------------------------------------

@@ -226,7 +226,7 @@ struct TopologyView: View {
                         placeId: draft.location.placeId,
                         lat: draft.location.lat,
                         lng: draft.location.lng,
-                        isActive: true
+                        isActive: draft.isActive
                     )
                 }
             )
