@@ -14,6 +14,15 @@ Before any code edit, audit:
 2. Role / scope correctness (claims-derived, not body-derived).
 3. Outbox + cache invalidation coverage for mutations.
 4. Cross-role-row sync (a feature for a role lands on all that role's clients).
+5. **Ecosystem alignment** — follow `.cursor/rules/pegasusx-ecosystem-alignment.mdc`: map blast radius, update every touched surface (backend owner, contracts, all role-row clients, SSMR markers, infra env) in the same batch.
+
+### Ecosystem alignment quick checklist
+- [ ] Canonical route owner + repository (no parallel mutation paths)
+- [ ] Outbox + cache + WS for mutations; inventory/payment side effects on cancel paths
+- [ ] `packages/types` + `packages/api-client` + `events.schema.json` if shapes changed
+- [ ] All role-row clients (portal / Android / iOS / desktop / terminal)
+- [ ] `e2e_check.go` + `ssmr_ecosystem_markers.json` when behavior is ecosystem-visible
+- [ ] `context/*_PHASE.md` / parity matrix updated
 
 ## Companion
 If a prompt is risky, incomplete, or production-breaking, do NOT execute blindly. Explain the safer execution plan, then execute the safer plan.
