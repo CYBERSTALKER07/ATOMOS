@@ -101,7 +101,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("order create: %w", err)
 	}
-	if err := runRetailerCancelE2E(ctx, client, base, retailerToken, orderID, retailerID); err != nil {
+	if err := runRetailerCancelE2E(ctx, client, base, cfg, supplierID, retailerToken, orderID, retailerID); err != nil {
 		return fmt.Errorf("retailer cancel: %w", err)
 	}
 	if err := runRetailerCardInitiateE2E(ctx, client, base, retailerToken); err != nil {
@@ -139,6 +139,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	}
 	if err := runSupplierInventoryImportE2E(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("supplier inventory import (staging substrate): %w", err)
+	}
+	if err := runInventoryReleaseBypassCancelE2E(ctx, client, base, cfg, supplierID, cookie, retailerToken, h3Cell); err != nil {
+		return fmt.Errorf("inventory release bypass cancel paths: %w", err)
 	}
 	if err := runSupplierImportWizardE2E(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("supplier import session wizard: %w", err)
@@ -1171,7 +1174,16 @@ func runRetailerCatalogProductsE2E(ctx context.Context, client *http.Client, bas
 	return nil
 }
 
-func runRetailerCancelE2E(ctx context.Context, client *http.Client, base, retailerToken, orderID, retailerID string) error {
+func runRetailerCancelE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID, retailerToken, orderID, retailerID string) error {
+	const orderQty int64 = 2
+	sku := envOr("SSMR_SMOKE_SKU", "SSMR-SKU-1")
+	whID := demoWarehouseID()
+
+	reservedAfterCreate, err := supplierInventoryReserved(ctx, cfg, supplierID, whID, sku)
+	if err != nil {
+		return fmt.Errorf("reserved after create: %w", err)
+	}
+
 	cancelBody, _ := json.Marshal(map[string]string{
 		"order_id":    orderID,
 		"retailer_id": retailerID,
@@ -1183,7 +1195,18 @@ func runRetailerCancelE2E(ctx context.Context, client *http.Client, base, retail
 	if status != http.StatusOK {
 		return fmt.Errorf("POST order/cancel status %d body %s", status, string(body))
 	}
+
+	reservedAfterCancel, err := supplierInventoryReserved(ctx, cfg, supplierID, whID, sku)
+	if err != nil {
+		return fmt.Errorf("reserved after cancel: %w", err)
+	}
+	if reservedAfterCancel+orderQty != reservedAfterCreate {
+		return fmt.Errorf("retailer cancel inventory release: reserved_after_create=%d reserved_after_cancel=%d want=%d",
+			reservedAfterCreate, reservedAfterCancel, reservedAfterCreate-orderQty)
+	}
+
 	fmt.Println("PX_E2E_RETAILER_CANCEL_OK")
+	fmt.Println("PX_E2E_INVENTORY_RELEASE_RETAILER_CANCEL_OK")
 	return nil
 }
 
@@ -3925,9 +3948,13 @@ func registerRetailerWithPhone(ctx context.Context, client *http.Client, base st
 }
 
 func createOrder(ctx context.Context, client *http.Client, base, bearer string, cfg *bootstrap.Config, h3Cell string) (string, error) {
+	return createOrderWithQuantity(ctx, client, base, bearer, cfg, h3Cell, 2)
+}
+
+func createOrderWithQuantity(ctx context.Context, client *http.Client, base, bearer string, cfg *bootstrap.Config, h3Cell string, quantity int64) (string, error) {
 	body, _ := json.Marshal(map[string]any{
 		"line_items": []map[string]any{
-			{"sku": "SSMR-SKU-1", "quantity": 2, "unit_price_minor": 50000},
+			{"sku": "SSMR-SKU-1", "quantity": quantity, "unit_price_minor": 50000},
 		},
 		"h3_cell": h3Cell,
 		"lat":     cfg.DeliveryZoneCenterLat,
@@ -3950,6 +3977,134 @@ func createOrder(ctx context.Context, client *http.Client, base, bearer string, 
 		return "", fmt.Errorf("order create missing order_id")
 	}
 	return resp.OrderID, nil
+}
+
+func runInventoryReleaseBypassCancelE2E(
+	ctx context.Context,
+	client *http.Client,
+	base string,
+	cfg *bootstrap.Config,
+	supplierID, cookie, retailerToken, h3Cell string,
+) error {
+	const orderQty int64 = 1
+	sku := envOr("SSMR_SMOKE_SKU", "SSMR-SKU-1")
+	whID := demoWarehouseID()
+
+	// Supplier vet REJECT should release reservations created at order create.
+	baseline, err := supplierInventoryReserved(ctx, cfg, supplierID, whID, sku)
+	if err != nil {
+		return fmt.Errorf("vet reject baseline reserved: %w", err)
+	}
+	vetOrderID, err := createOrderWithQuantity(ctx, client, base, retailerToken, cfg, h3Cell, orderQty)
+	if err != nil {
+		return fmt.Errorf("vet reject order create: %w", err)
+	}
+	reservedAfterCreate, err := supplierInventoryReserved(ctx, cfg, supplierID, whID, sku)
+	if err != nil {
+		return fmt.Errorf("vet reject reserved after create: %w", err)
+	}
+	if reservedAfterCreate < baseline+orderQty {
+		return fmt.Errorf("vet reject reservation missing: baseline=%d after_create=%d want>=%d", baseline, reservedAfterCreate, baseline+orderQty)
+	}
+	if err := setOrderConfirmationStatus(ctx, cfg, vetOrderID, "PENDING"); err != nil {
+		return fmt.Errorf("vet reject await vet: %w", err)
+	}
+	vetBody, _ := json.Marshal(map[string]string{
+		"order_id": vetOrderID,
+		"decision": "REJECTED",
+		"note":     "SSMR vet reject inventory release",
+	})
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/orders/vet", vetBody, cookie, "ssmr-vet-reject-inventory:"+vetOrderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("supplier vet reject status %d body %s", status, string(respBody))
+	}
+	reservedAfterVet, err := supplierInventoryReserved(ctx, cfg, supplierID, whID, sku)
+	if err != nil {
+		return fmt.Errorf("vet reject reserved after reject: %w", err)
+	}
+	if reservedAfterVet != baseline {
+		return fmt.Errorf("vet reject inventory release: baseline=%d after_reject=%d", baseline, reservedAfterVet)
+	}
+	fmt.Println("PX_E2E_INVENTORY_RELEASE_VET_REJECT_OK")
+
+	// Warehouse reject should release reservations on a live pending order.
+	baseline, err = supplierInventoryReserved(ctx, cfg, supplierID, whID, sku)
+	if err != nil {
+		return fmt.Errorf("warehouse reject baseline reserved: %w", err)
+	}
+	whRejectOrderID, err := createOrderWithQuantity(ctx, client, base, retailerToken, cfg, h3Cell, orderQty)
+	if err != nil {
+		return fmt.Errorf("warehouse reject order create: %w", err)
+	}
+	reservedAfterCreate, err = supplierInventoryReserved(ctx, cfg, supplierID, whID, sku)
+	if err != nil {
+		return fmt.Errorf("warehouse reject reserved after create: %w", err)
+	}
+	if reservedAfterCreate < baseline+orderQty {
+		return fmt.Errorf("warehouse reject reservation missing: baseline=%d after_create=%d want>=%d", baseline, reservedAfterCreate, baseline+orderQty)
+	}
+	rejectBody, _ := json.Marshal(map[string]string{"reason": "SSMR_WAREHOUSE_REJECT_INVENTORY"})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/warehouse/ops/orders/"+whRejectOrderID+"/reject", rejectBody, cookie, "ssmr-wh-reject-inventory:"+whRejectOrderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse reject status %d body %s", status, string(respBody))
+	}
+	reservedAfterReject, err := supplierInventoryReserved(ctx, cfg, supplierID, whID, sku)
+	if err != nil {
+		return fmt.Errorf("warehouse reject reserved after reject: %w", err)
+	}
+	if reservedAfterReject != baseline {
+		return fmt.Errorf("warehouse reject inventory release: baseline=%d after_reject=%d", baseline, reservedAfterReject)
+	}
+	fmt.Println("PX_E2E_INVENTORY_RELEASE_WAREHOUSE_REJECT_OK")
+	return nil
+}
+
+func supplierInventoryReserved(ctx context.Context, cfg *bootstrap.Config, supplierID, warehouseID, productID string) (int64, error) {
+	client, err := spanner.NewClient(ctx, spannerDatabasePath(cfg), spannerClientOptions(cfg)...)
+	if err != nil {
+		return 0, err
+	}
+	defer client.Close()
+
+	row, err := client.Single().ReadRow(ctx, "SupplierInventoryV2",
+		spanner.Key{supplierID, warehouseID, productID},
+		[]string{"QuantityReserved"})
+	if err != nil {
+		if spanner.ErrCode(err) == 5 {
+			return 0, nil
+		}
+		return 0, err
+	}
+	var reserved int64
+	if err := row.Columns(&reserved); err != nil {
+		return 0, err
+	}
+	return reserved, nil
+}
+
+func setOrderConfirmationStatus(ctx context.Context, cfg *bootstrap.Config, orderID, confirmationStatus string) error {
+	client, err := spanner.NewClient(ctx, spannerDatabasePath(cfg), spannerClientOptions(cfg)...)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.UpdateMap("Orders", map[string]any{
+				"OrderId":            orderID,
+				"ConfirmationStatus": confirmationStatus,
+				"UpdatedAt":          spanner.CommitTimestamp,
+			}),
+		})
+	})
+	return err
 }
 
 func runManualPreorderE2E(ctx context.Context, client *http.Client, base, retailerToken, cookie string, cfg *bootstrap.Config, h3Cell string) error {
