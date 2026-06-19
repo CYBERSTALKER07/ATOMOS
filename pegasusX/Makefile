@@ -7,6 +7,7 @@ help:
 	@echo "  ssmr-infra-up         start the isolated SSMR sandbox stack"
 	@echo "  ssmr-infra-down       stop the isolated SSMR sandbox stack"
 	@echo "  test-ssmr-infra       run isolated SSMR smoke + full-ecosystem PX_E2E marker gate"
+	@echo "  (hybrid)              merge .env.ssmr.hybrid.example for free cloud APIs + local Docker"
 	@echo "  ssmr-ecosystem-marker-gate validate PX_E2E log against contracts/ssmr_ecosystem_markers.json"
 	@echo "  load-cert             PX9-F load certification (smoke profile, backend must be up)"
 	@echo "  load-cert-ssmr         SSMR stack up + load-cert smoke gate"
