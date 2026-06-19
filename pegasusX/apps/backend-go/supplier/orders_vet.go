@@ -2,6 +2,7 @@ package supplier
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
@@ -61,7 +63,8 @@ func (r *SpannerRepository) VetOrder(ctx context.Context, supplierID string, par
 			"OrderId", "SupplierId", "RetailerId",
 			"WarehouseId", "DriverId", "VehicleId",
 			"RouteId", "ManifestId",
-			"Status", "ConfirmationStatus", "TotalMinor", "Currency", "Version",
+			"Status", "OrderSource", "ConfirmationStatus", "LineItemsJson",
+			"TotalMinor", "Currency", "Version",
 			"CreatedAt", "UpdatedAt",
 		})
 		if err != nil {
@@ -74,6 +77,8 @@ func (r *SpannerRepository) VetOrder(ctx context.Context, supplierID string, par
 		var (
 			current       SupplierOrder
 			confirmation  string
+			orderSource   string
+			lineItemsRaw  []byte
 			version       int64
 			warehouseID   spanner.NullString
 			driverID      spanner.NullString
@@ -93,7 +98,9 @@ func (r *SpannerRepository) VetOrder(ctx context.Context, supplierID string, par
 			&routeID,
 			&manifestID,
 			&current.Status,
+			&orderSource,
 			&confirmation,
+			&lineItemsRaw,
 			&current.TotalMinor,
 			&current.Currency,
 			&version,
@@ -137,6 +144,15 @@ func (r *SpannerRepository) VetOrder(ctx context.Context, supplierID string, par
 		if decision == "REJECTED" {
 			nextConfirmation = "REJECTED"
 			nextStatus = "CANCELLED"
+			var lineItems []order.LineItem
+			if len(lineItemsRaw) > 0 {
+				if err := json.Unmarshal(lineItemsRaw, &lineItems); err != nil {
+					return fmt.Errorf("parse line items %s: %w", orderID, err)
+				}
+			}
+			if err := order.ReleaseReservationsInTxn(ctx, txn, supplierID, current.WarehouseID, order.OrderSource(orderSource), lineItems); err != nil {
+				return fmt.Errorf("release reservations %s: %w", orderID, err)
+			}
 		}
 		decisionAt := time.Now().UTC()
 		nextVersion := version + 1
