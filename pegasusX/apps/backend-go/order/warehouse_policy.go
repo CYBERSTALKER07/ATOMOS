@@ -187,6 +187,36 @@ func ValidateLineQuantities(items []LineItem, policy WarehouseOpsPolicy) map[str
 	return errs
 }
 
+// EffectiveMaxQuantity returns min(available, warehouse line max) for UI caps.
+func EffectiveMaxQuantity(available int64, policy WarehouseOpsPolicy) int64 {
+	if available < 0 {
+		available = 0
+	}
+	if policy.OrderLineMaxQuantity != nil && *policy.OrderLineMaxQuantity < available {
+		return *policy.OrderLineMaxQuantity
+	}
+	return available
+}
+
+// ComputeOrderableQuantities derives per-SKU checkout caps and line errors when stock cannot satisfy minimums.
+func ComputeOrderableQuantities(available map[string]int64, policy WarehouseOpsPolicy) (map[string]int64, map[string]string) {
+	orderable := make(map[string]int64, len(available))
+	lineErrs := make(map[string]string)
+	for sku, avail := range available {
+		effective := EffectiveMaxQuantity(avail, policy)
+		if policy.OrderLineMinQuantity != nil && effective < *policy.OrderLineMinQuantity {
+			lineErrs[sku] = fmt.Sprintf("only %d available; minimum quantity is %d", effective, *policy.OrderLineMinQuantity)
+			orderable[sku] = 0
+			continue
+		}
+		orderable[sku] = effective
+	}
+	if len(lineErrs) == 0 {
+		lineErrs = nil
+	}
+	return orderable, lineErrs
+}
+
 func mergeLineErrors(a, b map[string]string) map[string]string {
 	if len(a) == 0 && len(b) == 0 {
 		return nil

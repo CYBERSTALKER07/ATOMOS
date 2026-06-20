@@ -59,3 +59,18 @@ func TestClassifyDelivery_WarehouseLeadWindow(t *testing.T) {
 	require.Equal(t, OrderSourceManualPreorder, source)
 	require.Equal(t, StatusScheduled, status)
 }
+
+func TestEffectiveMaxQuantity_CapsByLineMax(t *testing.T) {
+	max := int64(50)
+	policy := WarehouseOpsPolicy{OrderLineMaxQuantity: &max}
+	require.Equal(t, int64(50), EffectiveMaxQuantity(100, policy))
+	require.Equal(t, int64(30), EffectiveMaxQuantity(30, policy))
+}
+
+func TestComputeOrderableQuantities_MinStockBlock(t *testing.T) {
+	min := int64(10)
+	policy := WarehouseOpsPolicy{OrderLineMinQuantity: &min}
+	orderable, errs := ComputeOrderableQuantities(map[string]int64{"sku-a": 5}, policy)
+	require.Equal(t, int64(0), orderable["sku-a"])
+	require.Contains(t, errs["sku-a"], "minimum")
+}

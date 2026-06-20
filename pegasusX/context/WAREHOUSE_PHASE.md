@@ -222,6 +222,19 @@ cd pegasusX && make parity-contract-full
 
 ---
 
+## Phase WH-15 — Concurrent stock checkout (REJECT + reservations)
+
+**Status:** **CLOSED** (2026-06-17) — `QuantityReserved` incremented at create for **all** non-backorder orders (including `SCHEDULED` manual pre-orders); idempotent `OrderStockReservationMarkers` backfill on bootstrap; checkout preview exposes `orderable_quantities` = `min(available, line_max)`; SSMR `PX_E2E_CONCURRENT_STOCK_REJECT_OK` (parallel creates, one winner).
+
+| ID | Surface | Notes |
+|----|---------|-------|
+| WH15-01 | Backend | `ReserveLineItemsInTxn`, removed `StatusScheduled` skip, `BackfillScheduledReservations` |
+| WH15-02 | Schema | `OrderStockReservationMarkers` DDL + migration `20250625_order_stock_reservation_markers.ddl` |
+| WH15-03 | Preview | `orderable_quantities`, line-min block when stock &lt; min |
+| WH15-04 | SSMR | Parallel retailer creates exceed on-hand → exactly one 201 + one `inventory_exhausted` |
+
+---
+
 ## Phase WH-12 — Native ops depth + ecosystem parity (P1/P2)
 
 **Status:** **CLOSED** (2026-06-15) — ops settings, per-SKU inventory policy, enriched supply-request create on Android + iOS; nav README + notifications label fix; WAREHOUSE row **Wired** in parity matrix.

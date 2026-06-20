@@ -164,6 +164,7 @@ fun CartScreen(
                             if (item.variant.id.isNotBlank()) item.variant.id else item.product.id
                         ] ?: 0L) > 0L,
                         maxQuantity = viewModel.effectiveMaxQuantityFor(item),
+                        stockLeftHint = viewModel.stockLeftHintFor(item),
                         onUpdateQuantity = viewModel::updateQuantity,
                         onRemove = viewModel::removeItem,
                     )
@@ -316,6 +317,7 @@ private fun CartItemCard(
     item: CartItem,
     isOos: Boolean,
     maxQuantity: Int?,
+    stockLeftHint: String? = null,
     onUpdateQuantity: (String, Int) -> Unit,
     onRemove: (String) -> Unit,
 ) {
@@ -363,6 +365,13 @@ private fun CartItemCard(
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 )
+                if (!stockLeftHint.isNullOrBlank()) {
+                    Text(
+                        stockLeftHint,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Medium),
+                        color = StatusRed.copy(alpha = 0.85f),
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(8.dp))

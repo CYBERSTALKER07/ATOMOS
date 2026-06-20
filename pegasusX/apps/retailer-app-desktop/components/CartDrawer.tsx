@@ -13,7 +13,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@heroui/react";
 import { useCart } from "../lib/cart";
-import { productMaxQuantity } from "../lib/stock-policy";
+import { effectiveCartMaxQuantity } from "../lib/stock-policy";
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -26,7 +26,7 @@ export default function CartDrawer({
   onClose,
   onCheckout,
 }: CartDrawerProps) {
-  const { items, updateQuantity, removeFromCart, total } = useCart();
+  const { items, updateQuantity, removeFromCart, total, previewOrderableQuantities, previewShowStockCounts } = useCart();
 
   return (
     <AnimatePresence>
@@ -74,7 +74,7 @@ export default function CartDrawer({
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <AnimatePresence mode="popLayout">
                 {items.map((item) => {
-                  const maxQty = productMaxQuantity(item);
+                  const maxQty = effectiveCartMaxQuantity(item, previewOrderableQuantities);
                   const atCap = maxQty != null && item.quantity >= maxQty;
                   return (
                   <motion.div
@@ -125,9 +125,9 @@ export default function CartDrawer({
                           <span className="md-typescale-label-small font-bold w-4 text-center tabular-nums">
                             {item.quantity}
                           </span>
-                          {item.show_stock_counts && maxQty != null && (
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--desk-text-tertiary)] ml-1">
-                              Max {maxQty}
+                          {previewShowStockCounts && maxQty != null && (
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--desk-danger)] ml-1">
+                              Only {maxQty} left
                             </span>
                           )}
                           <button

@@ -172,7 +172,8 @@ final class CartManager {
     }
 
     func applyPreviewCaps(_ preview: CheckoutPreviewResponse) {
-        guard let maxQuantities = preview.maxQuantities else { return }
+        let caps = preview.orderableQuantities ?? preview.maxQuantities
+        guard let maxQuantities = caps else { return }
         for index in items.indices {
             if items[index].product.acceptsBackorder { continue }
             let sku = items[index].variant.id.isEmpty ? items[index].product.id : items[index].variant.id
@@ -185,8 +186,11 @@ final class CartManager {
 
     func maxQuantity(for item: CartItem, preview: CheckoutPreviewResponse?) -> Int {
         let sku = item.variant.id.isEmpty ? item.product.id : item.variant.id
-        if !item.product.acceptsBackorder, let preview, let cap = preview.maxQuantities?[sku] {
-            return max(1, Int(cap))
+        if !item.product.acceptsBackorder, let preview {
+            let caps = preview.orderableQuantities ?? preview.maxQuantities
+            if let cap = caps?[sku] {
+                return max(1, Int(cap))
+            }
         }
         if let cartCap = item.product.cartMaxQuantity {
             if item.product.acceptsBackorder, let lineMax = preview?.orderLineMaxQuantity {

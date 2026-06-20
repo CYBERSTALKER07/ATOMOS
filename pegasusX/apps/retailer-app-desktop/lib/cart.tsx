@@ -5,10 +5,11 @@ import { apiFetch, readToken } from './auth';
 import { useOptionalWebSocket } from './ws';
 import {
   clampCartQuantity,
+  orderableCapsFromPreview,
   stockMetaFromProduct,
   type StockAwareProduct,
 } from './stock-policy';
-import type { Product } from './types';
+import type { CheckoutPreviewResponse, Product } from './types';
 
 export interface CartItem {
   product_id: string;
@@ -41,6 +42,9 @@ type CartContextType = {
   subtotal: number;
   discount: number;
   total: number;
+  previewOrderableQuantities: Record<string, number>;
+  previewShowStockCounts: boolean;
+  applyPreviewOrderableCaps: (preview: CheckoutPreviewResponse) => void;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -138,12 +142,55 @@ async function fetchPromotionTotals(cartItems: CartItem[]): Promise<{
   return { subtotal, discount, total: Math.max(0, subtotal - discount) };
 }
 
+function readRetailerProfileId(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('retailer_profile');
+    if (!raw) return null;
+    const profile = JSON.parse(raw) as { id?: string };
+    return profile.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchCheckoutPreviewCaps(
+  cartItems: CartItem[],
+): Promise<CheckoutPreviewResponse | null> {
+  const retailerId = readRetailerProfileId();
+  if (!retailerId || cartItems.length === 0) {
+    return null;
+  }
+  const res = await apiFetch('/v1/checkout/preview', {
+    method: 'POST',
+    body: JSON.stringify({
+      retailer_id: retailerId,
+      latitude: 0,
+      longitude: 0,
+      items: cartItems.map((item) => ({
+        sku_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: Math.round(item.price),
+      })),
+    }),
+  });
+  if (!res.ok) {
+    return null;
+  }
+  return (await res.json()) as CheckoutPreviewResponse;
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [subtotal, setSubtotal] = useState(0);
   const [discount, setDiscount] = useState(0);
   const [total, setTotal] = useState(0);
+  const [previewOrderableQuantities, setPreviewOrderableQuantities] = useState<
+    Record<string, number>
+  >({});
+  const [previewShowStockCounts, setPreviewShowStockCounts] = useState(false);
   const quoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ws = useOptionalWebSocket();
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextSyncRef = useRef(false);
@@ -277,7 +324,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = (product: AddToCartProduct | Product, quantity = 1) => {
     const meta = stockMetaFromProduct(product as Product);
-    const cappedQty = clampCartQuantity(meta, quantity);
+    const cappedQty = clampCartQuantity(meta, quantity, previewOrderableQuantities);
     setItems((prev) => {
       const existing = prev.find((i) => i.product_id === product.id);
       if (existing) {
@@ -289,8 +336,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           max_quantity: meta.max_quantity ?? existing.max_quantity,
         };
         const nextQty = clampCartQuantity(
-          mergedMeta,
+          { ...mergedMeta, product_id: product.id },
           existing.quantity + cappedQty,
+          previewOrderableQuantities,
         );
         return prev.map((i) =>
           i.product_id === product.id
@@ -321,6 +369,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems((prev) => prev.filter((i) => i.product_id !== product_id));
   };
 
+  const applyPreviewOrderableCaps = useCallback((preview: CheckoutPreviewResponse) => {
+    const caps = orderableCapsFromPreview(preview);
+    if (!caps) return;
+    setPreviewOrderableQuantities(caps);
+    setPreviewShowStockCounts(Boolean(preview.show_stock_counts));
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.accepts_backorder) return item;
+        const cap = caps[item.product_id];
+        if (cap == null || item.quantity <= cap) return item;
+        return { ...item, quantity: cap };
+      }),
+    );
+  }, []);
+
   const updateQuantity = (product_id: string, quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(product_id);
@@ -331,7 +394,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (i.product_id !== product_id) {
           return i;
         }
-        const nextQty = clampCartQuantity(i, quantity);
+        const nextQty = clampCartQuantity(i, quantity, previewOrderableQuantities);
         return { ...i, quantity: nextQty };
       }),
     );
@@ -342,6 +405,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setSubtotal(0);
     setDiscount(0);
     setTotal(0);
+    setPreviewOrderableQuantities({});
+    setPreviewShowStockCounts(false);
   };
 
   useEffect(() => {
@@ -377,6 +442,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, [items]);
 
+  useEffect(() => {
+    if (!readToken() || items.length === 0) {
+      setPreviewOrderableQuantities({});
+      setPreviewShowStockCounts(false);
+      return;
+    }
+
+    if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current);
+    }
+    previewTimerRef.current = setTimeout(() => {
+      void fetchCheckoutPreviewCaps(items)
+        .then((preview) => {
+          if (preview) {
+            applyPreviewOrderableCaps(preview);
+          }
+        })
+        .catch(() => {
+          // Keep last preview caps when refresh fails transiently.
+        });
+    }, 300);
+
+    return () => {
+      if (previewTimerRef.current) {
+        clearTimeout(previewTimerRef.current);
+      }
+    };
+  }, [items, applyPreviewOrderableCaps]);
+
   return (
     <CartContext.Provider
       value={{
@@ -388,6 +482,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         subtotal,
         discount,
         total,
+        previewOrderableQuantities,
+        previewShowStockCounts,
+        applyPreviewOrderableCaps,
       }}
     >
       {children}

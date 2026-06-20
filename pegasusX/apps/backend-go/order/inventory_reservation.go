@@ -1,0 +1,147 @@
+package order
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"cloud.google.com/go/spanner"
+	"google.golang.org/api/iterator"
+)
+
+// ReserveLineItemsInTxn increments QuantityReserved for each line when stock is available.
+func ReserveLineItemsInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID, warehouseID string, lineItems []LineItem) error {
+	if strings.TrimSpace(warehouseID) == "" || len(lineItems) == 0 {
+		return nil
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	for _, item := range lineItems {
+		sku := strings.TrimSpace(item.SKU)
+		if sku == "" || item.Quantity <= 0 {
+			continue
+		}
+		row, err := txn.ReadRow(ctx, "SupplierInventoryV2",
+			spanner.Key{supplierID, warehouseID, sku},
+			[]string{"QuantityOnHand", "QuantityReserved"})
+		if err != nil {
+			if spanner.ErrCode(err) == 5 {
+				return fmt.Errorf("%w: sku %s not found in warehouse %s", ErrInventoryExhausted, sku, warehouseID)
+			}
+			return fmt.Errorf("read inventory %s: %w", sku, err)
+		}
+		var qoh, qr int64
+		if err := row.Columns(&qoh, &qr); err != nil {
+			return fmt.Errorf("decode inventory columns: %w", err)
+		}
+		if qoh-qr < item.Quantity {
+			return fmt.Errorf("%w: sku %s has %d available, requested %d", ErrInventoryExhausted, sku, qoh-qr, item.Quantity)
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("SupplierInventoryV2", map[string]any{
+			"SupplierId":       supplierID,
+			"WarehouseId":      warehouseID,
+			"ProductId":        sku,
+			"QuantityReserved": qr + item.Quantity,
+			"UpdatedAt":        spanner.CommitTimestamp,
+		})}); err != nil {
+			return fmt.Errorf("buffer inventory update: %w", err)
+		}
+	}
+	return nil
+}
+
+func insertStockReservationMarkerInTxn(txn *spanner.ReadWriteTransaction, orderID string) error {
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" {
+		return nil
+	}
+	return txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("OrderStockReservationMarkers", map[string]any{
+		"OrderId":    orderID,
+		"ReservedAt": spanner.CommitTimestamp,
+	})})
+}
+
+// BackfillScheduledReservations reserves inventory for legacy scheduled pre-orders created before at-create reservation.
+func (s *Service) BackfillScheduledReservations(ctx context.Context, limit int) (int, error) {
+	if s == nil || s.spannerClient == nil {
+		return 0, nil
+	}
+	if limit <= 0 {
+		limit = 200
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT o.OrderId, o.SupplierId, o.WarehouseId, o.LineItemsJson, o.OrderSource, o.Status
+		      FROM Orders o
+		      LEFT JOIN OrderStockReservationMarkers m ON m.OrderId = o.OrderId
+		      WHERE m.OrderId IS NULL
+		        AND o.OrderSource = @src
+		        AND o.Status IN ('SCHEDULED', 'AUTO_ACCEPTED')
+		        AND o.WarehouseId IS NOT NULL
+		      LIMIT @lim`,
+		Params: map[string]any{
+			"src": string(OrderSourceManualPreorder),
+			"lim": int64(limit),
+		},
+	}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	type candidate struct {
+		orderID     string
+		supplierID  string
+		warehouseID string
+		lineItems   []LineItem
+	}
+	var pending []candidate
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return 0, fmt.Errorf("backfill list orders: %w", err)
+		}
+		var orderID, supplierID, warehouseID, source, status string
+		var lineItemsRaw []byte
+		if err := row.Columns(&orderID, &supplierID, &warehouseID, &lineItemsRaw, &source, &status); err != nil {
+			return 0, fmt.Errorf("backfill scan order: %w", err)
+		}
+		if source == string(OrderSourceBackorder) {
+			continue
+		}
+		var items []LineItem
+		if len(lineItemsRaw) > 0 {
+			_ = json.Unmarshal(lineItemsRaw, &items)
+		}
+		if len(items) == 0 {
+			continue
+		}
+		pending = append(pending, candidate{
+			orderID:     orderID,
+			supplierID:  supplierID,
+			warehouseID: warehouseID,
+			lineItems:   items,
+		})
+	}
+
+	backfilled := 0
+	for _, c := range pending {
+		_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			if err := ReserveLineItemsInTxn(ctx, txn, c.supplierID, c.warehouseID, c.lineItems); err != nil {
+				return err
+			}
+			return insertStockReservationMarkerInTxn(txn, c.orderID)
+		})
+		if err != nil {
+			if s.log != nil {
+				s.log.Warn("scheduled reservation backfill skipped order", "order_id", c.orderID, "err", err)
+			}
+			continue
+		}
+		backfilled++
+	}
+	if backfilled > 0 && s.cache != nil {
+		s.cache.Invalidate(ctx, "catalog:products:"+s.supplierID)
+	}
+	return backfilled, nil
+}

@@ -181,6 +181,18 @@ cd pegasusX/apps/retailer-app-android && ./gradlew compileDebugKotlin
 
 ---
 
+## Phase RT-9 — Concurrent stock checkout (preview caps + client clamp)
+
+**Status:** **CLOSED** (2026-06-17) — Checkout preview `orderable_quantities` drives quantity steppers on desktop/Android/iOS; clients refresh preview on `inventory_exhausted`; catalog `available_stock` reflects reservations once scheduled pre-orders reserve at create.
+
+| ID | Feature | Backend | Desktop | Android | iOS | Status |
+|----|---------|---------|---------|---------|-----|--------|
+| RT9-01 | Preview caps | `orderable_quantities` | `cart.tsx` debounced preview | `CartViewModel.orderableCaps()` | `CartManager` caps | **WIRED** |
+| RT9-02 | UX | — | CartDrawer “Only N left” | Cart item hint | Checkout stepper max | **WIRED** |
+| RT9-03 | SSMR | `PX_E2E_CONCURRENT_STOCK_REJECT_OK` | — | — | — | **WIRED** |
+
+---
+
 ## Known remaining gaps (backend / cross-role)
 
 - Card tokenization Spanner persistence may return stub/503 on some stacks — clients show honest errors.

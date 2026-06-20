@@ -751,6 +751,7 @@ data class CheckoutPreviewResponse(
     val shortfall: Map<String, Long> = emptyMap(),
     @SerialName("stock_warnings") val stockWarnings: List<StockWarning> = emptyList(),
     @SerialName("max_quantities") val maxQuantities: Map<String, Long> = emptyMap(),
+    @SerialName("orderable_quantities") val orderableQuantities: Map<String, Long> = emptyMap(),
     @SerialName("line_errors") val lineErrors: Map<String, String> = emptyMap(),
     @SerialName("backordered_item_count") val backorderedItemCount: Int = 0,
     @SerialName("show_stock_counts") val showStockCounts: Boolean = false,

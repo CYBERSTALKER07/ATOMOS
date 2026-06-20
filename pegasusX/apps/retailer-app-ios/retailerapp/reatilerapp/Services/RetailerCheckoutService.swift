@@ -67,6 +67,7 @@ struct CheckoutPreviewResponse: Decodable {
     let shortfall: [String: Int64]?
     let stockWarnings: [StockWarning]
     let maxQuantities: [String: Int64]?
+    let orderableQuantities: [String: Int64]?
     let backorderedItemCount: Int?
     let showStockCounts: Bool?
     let deliveryFeeMinor: Int64?
@@ -82,6 +83,7 @@ struct CheckoutPreviewResponse: Decodable {
         case oosItems = "oos_items"
         case stockWarnings = "stock_warnings"
         case maxQuantities = "max_quantities"
+        case orderableQuantities = "orderable_quantities"
         case backorderedItemCount = "backordered_item_count"
         case showStockCounts = "show_stock_counts"
         case deliveryFeeMinor = "delivery_fee_minor"
@@ -103,6 +105,7 @@ struct CheckoutPreviewResponse: Decodable {
         shortfall = try container.decodeIfPresent([String: Int64].self, forKey: .shortfall)
         stockWarnings = try container.decodeIfPresent([StockWarning].self, forKey: .stockWarnings) ?? []
         maxQuantities = try container.decodeIfPresent([String: Int64].self, forKey: .maxQuantities)
+        orderableQuantities = try container.decodeIfPresent([String: Int64].self, forKey: .orderableQuantities)
         backorderedItemCount = try container.decodeIfPresent(Int.self, forKey: .backorderedItemCount)
         showStockCounts = try container.decodeIfPresent(Bool.self, forKey: .showStockCounts)
         deliveryFeeMinor = try container.decodeIfPresent(Int64.self, forKey: .deliveryFeeMinor)

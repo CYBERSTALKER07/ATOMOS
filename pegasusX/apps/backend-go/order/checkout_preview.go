@@ -23,6 +23,7 @@ type CheckoutPreviewResponse struct {
 	Shortfall             map[string]int64 `json:"shortfall,omitempty"`
 	StockWarnings         []StockWarning   `json:"stock_warnings,omitempty"`
 	MaxQuantities         map[string]int64 `json:"max_quantities,omitempty"`
+	OrderableQuantities   map[string]int64 `json:"orderable_quantities,omitempty"`
 	LineErrors            map[string]string `json:"line_errors,omitempty"`
 	BackorderItemCount    int              `json:"backordered_item_count,omitempty"`
 	ShowStockCounts       bool             `json:"show_stock_counts,omitempty"`
@@ -111,7 +112,7 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 		return CheckoutPreviewResponse{}, fmt.Errorf("%w: no_eligible_warehouse", ErrZoneMiss)
 	}
 
-	resp := CheckoutPreviewResponse{OK: true, MaxQuantities: map[string]int64{}}
+	resp := CheckoutPreviewResponse{OK: true, MaxQuantities: map[string]int64{}, OrderableQuantities: map[string]int64{}}
 	whPolicy, policyErr := LoadWarehouseOpsPolicy(ctx, s.spannerClient, warehouseID)
 	if policyErr == nil {
 		resp.ShowStockCounts = whPolicy.ShowStockCountsToRetailers
@@ -128,19 +129,20 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 		}
 		if len(lineErrs) > 0 {
 			return CheckoutPreviewResponse{
-				OK:                   false,
-				Blocked:              true,
-				Code:                 ErrLineQuantityOutOfRange.Error(),
-				Message:              "line quantity policy violated",
-				LineErrors:           lineErrs,
-				MaxQuantities:        resp.MaxQuantities,
-				ShowStockCounts:      resp.ShowStockCounts,
-				PreorderMinLeadDays:  resp.PreorderMinLeadDays,
-				PreorderMaxLeadDays:  resp.PreorderMaxLeadDays,
-				OrderLineMinQuantity: resp.OrderLineMinQuantity,
-				OrderLineMaxQuantity: resp.OrderLineMaxQuantity,
-				DeliveryFeeMinor:     resp.DeliveryFeeMinor,
-				DeliveryDistanceKm:   resp.DeliveryDistanceKm,
+				OK:                    false,
+				Blocked:               true,
+				Code:                  ErrLineQuantityOutOfRange.Error(),
+				Message:               "line quantity policy violated",
+				LineErrors:            lineErrs,
+				MaxQuantities:         resp.MaxQuantities,
+				OrderableQuantities:   resp.OrderableQuantities,
+				ShowStockCounts:       resp.ShowStockCounts,
+				PreorderMinLeadDays:   resp.PreorderMinLeadDays,
+				PreorderMaxLeadDays:   resp.PreorderMaxLeadDays,
+				OrderLineMinQuantity:  resp.OrderLineMinQuantity,
+				OrderLineMaxQuantity:  resp.OrderLineMaxQuantity,
+				DeliveryFeeMinor:      resp.DeliveryFeeMinor,
+				DeliveryDistanceKm:    resp.DeliveryDistanceKm,
 			}, nil
 		}
 	} else if s.spannerClient != nil {
@@ -149,27 +151,52 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 	if s.spannerClient != nil {
 		if maxQty, err := loadAvailableQuantities(ctx, s.spannerClient, s.supplierID, warehouseID, lineItems); err == nil {
 			resp.MaxQuantities = maxQty
+			if policyErr == nil {
+				orderable, stockLineErrs := ComputeOrderableQuantities(maxQty, whPolicy)
+				resp.OrderableQuantities = orderable
+				if len(stockLineErrs) > 0 {
+					return CheckoutPreviewResponse{
+						OK:                    false,
+						Blocked:               true,
+						Code:                  ErrLineQuantityOutOfRange.Error(),
+						Message:               "insufficient stock for line minimum",
+						LineErrors:            stockLineErrs,
+						MaxQuantities:         resp.MaxQuantities,
+						OrderableQuantities:   resp.OrderableQuantities,
+						ShowStockCounts:       resp.ShowStockCounts,
+						PreorderMinLeadDays:   resp.PreorderMinLeadDays,
+						PreorderMaxLeadDays:   resp.PreorderMaxLeadDays,
+						OrderLineMinQuantity:  resp.OrderLineMinQuantity,
+						OrderLineMaxQuantity:  resp.OrderLineMaxQuantity,
+						DeliveryFeeMinor:      resp.DeliveryFeeMinor,
+						DeliveryDistanceKm:    resp.DeliveryDistanceKm,
+					}, nil
+				}
+			} else {
+				resp.OrderableQuantities = maxQty
+			}
 		}
 		invPlan, err := PlanInventoryCheckout(ctx, s.spannerClient, s.supplierID, warehouseID, lineItems)
 		if err != nil {
 			var ice *InventoryCheckoutError
 			if errors.As(err, &ice) {
 				return CheckoutPreviewResponse{
-					OK:                   false,
-					Blocked:              true,
-					Code:                 ice.Code,
-					Message:              ice.Message,
-					RejectedSKUs:         ice.RejectedSKUs,
-					OOSItems:             ice.OOSItems,
-					Shortfall:            ice.Shortfall,
-					MaxQuantities:        resp.MaxQuantities,
-					ShowStockCounts:      resp.ShowStockCounts,
-					PreorderMinLeadDays:  resp.PreorderMinLeadDays,
-					PreorderMaxLeadDays:  resp.PreorderMaxLeadDays,
-					OrderLineMinQuantity: resp.OrderLineMinQuantity,
-					OrderLineMaxQuantity: resp.OrderLineMaxQuantity,
-					DeliveryFeeMinor:     resp.DeliveryFeeMinor,
-					DeliveryDistanceKm:   resp.DeliveryDistanceKm,
+					OK:                    false,
+					Blocked:               true,
+					Code:                  ice.Code,
+					Message:               ice.Message,
+					RejectedSKUs:          ice.RejectedSKUs,
+					OOSItems:              ice.OOSItems,
+					Shortfall:             ice.Shortfall,
+					MaxQuantities:         resp.MaxQuantities,
+					OrderableQuantities:   resp.OrderableQuantities,
+					ShowStockCounts:       resp.ShowStockCounts,
+					PreorderMinLeadDays:   resp.PreorderMinLeadDays,
+					PreorderMaxLeadDays:   resp.PreorderMaxLeadDays,
+					OrderLineMinQuantity:  resp.OrderLineMinQuantity,
+					OrderLineMaxQuantity:  resp.OrderLineMaxQuantity,
+					DeliveryFeeMinor:      resp.DeliveryFeeMinor,
+					DeliveryDistanceKm:    resp.DeliveryDistanceKm,
 				}, nil
 			}
 			return CheckoutPreviewResponse{}, err

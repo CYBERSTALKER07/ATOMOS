@@ -555,6 +555,13 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		orderSvc.SetGatewayPolicyReader(gatewayPolicyReader)
 	}
 	order.StartPreorderSweeper(orderSvc)
+	if spannerClient != nil {
+		if n, err := orderSvc.BackfillScheduledReservations(context.Background(), 500); err != nil {
+			log.Warn("scheduled reservation backfill failed", "err", err)
+		} else if n > 0 {
+			log.Info("scheduled reservation backfill complete", "orders", n)
+		}
+	}
 	var optimizerCli *optimizerclient.Client
 	if strings.TrimSpace(cfg.OptimizerBaseURL) != "" && strings.TrimSpace(cfg.InternalAPIKey) != "" {
 		optimizerCli = optimizerclient.New(cfg.OptimizerBaseURL, cfg.InternalAPIKey)

@@ -45,11 +45,39 @@ export function productMaxQuantity(product: StockAwareProduct): number | null {
   return null;
 }
 
+export function effectiveCartMaxQuantity(
+  item: StockAwareProduct & { product_id?: string },
+  previewCaps?: Record<string, number>,
+): number | null {
+  if (item.accepts_backorder) {
+    return productMaxQuantity(item);
+  }
+  const sku = item.product_id;
+  if (sku && previewCaps?.[sku] != null && previewCaps[sku] > 0) {
+    return previewCaps[sku];
+  }
+  return productMaxQuantity(item);
+}
+
+export function orderableCapsFromPreview(preview: {
+  orderable_quantities?: Record<string, number>;
+  max_quantities?: Record<string, number>;
+}): Record<string, number> | undefined {
+  if (preview.orderable_quantities && Object.keys(preview.orderable_quantities).length > 0) {
+    return preview.orderable_quantities;
+  }
+  return preview.max_quantities;
+}
+
 export function clampCartQuantity(
   product: StockAwareProduct,
   quantity: number,
+  previewCaps?: Record<string, number>,
 ): number {
-  const max = productMaxQuantity(product);
+  const max = effectiveCartMaxQuantity(
+    product,
+    previewCaps,
+  );
   if (max != null && quantity > max) {
     return max;
   }

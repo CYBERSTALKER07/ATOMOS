@@ -270,6 +270,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runDeliveryProposalE2E(ctx, client, base, retailerToken, cookie, cfg, h3Cell); err != nil {
 		return fmt.Errorf("delivery proposal: %w", err)
 	}
+	if err := runConcurrentStockRejectE2E(ctx, client, base, cfg, supplierID, retailerToken, cookie, h3Cell); err != nil {
+		return fmt.Errorf("concurrent stock reject: %w", err)
+	}
 
 	fmt.Println("PX_E2E_ORDER_OK")
 	fmt.Println("PX_E2E_PAYMENT_OK")
@@ -4162,6 +4165,132 @@ func supplierInventoryReserved(ctx context.Context, cfg *bootstrap.Config, suppl
 		return 0, err
 	}
 	return reserved, nil
+}
+
+func setSupplierInventoryLevels(ctx context.Context, cfg *bootstrap.Config, supplierID, warehouseID, productID string, qoh, qr int64) error {
+	client, err := spanner.NewClient(ctx, spannerDatabasePath(cfg), spannerClientOptions(cfg)...)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	_, err = client.Apply(ctx, []*spanner.Mutation{
+		spanner.UpdateMap("SupplierInventoryV2", map[string]any{
+			"SupplierId":       supplierID,
+			"WarehouseId":      warehouseID,
+			"ProductId":        productID,
+			"QuantityOnHand":   qoh,
+			"QuantityReserved": qr,
+			"UpdatedAt":        spanner.CommitTimestamp,
+		}),
+	})
+	return err
+}
+
+func runConcurrentStockRejectE2E(
+	ctx context.Context,
+	client *http.Client,
+	base string,
+	cfg *bootstrap.Config,
+	supplierID, retailerToken, cookie, h3Cell string,
+) error {
+	const (
+		stockQty int64 = 80
+		orderQty int64 = 50
+	)
+	whID := demoWarehouseID()
+	sku := envOr("SSMR_SMOKE_SKU", "SSMR-SKU-1")
+
+	settingsURL := base + "/v1/warehouse/ops/settings?warehouse_id=" + whID
+	patchBody, _ := json.Marshal(map[string]string{"default_out_of_stock_policy": "REJECT"})
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPatch, settingsURL, patchBody, cookie, "ssmr-concurrent-stock-reject-policy")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("concurrent stock reject policy patch status %d body %s", status, string(respBody))
+	}
+
+	baselineReserved, err := supplierInventoryReserved(ctx, cfg, supplierID, whID, sku)
+	if err != nil {
+		return fmt.Errorf("concurrent stock reject baseline reserved: %w", err)
+	}
+	if err := setSupplierInventoryLevels(ctx, cfg, supplierID, whID, sku, stockQty, baselineReserved); err != nil {
+		return fmt.Errorf("concurrent stock reject seed inventory: %w", err)
+	}
+
+	retailer2ID, h3Cell2, err := registerRetailerWithPhone(ctx, client, base, cfg, "+998901000199")
+	if err != nil {
+		return fmt.Errorf("concurrent stock reject register retailer2: %w", err)
+	}
+	retailer2Token, err := auth.Issue(auth.Claims{
+		Subject:    retailer2ID,
+		Role:       auth.RoleRetailer,
+		SupplierID: supplierID,
+	}, auth.IssueOptions{
+		Secret: cfg.JWTSecret,
+		Issuer: cfg.JWTIssuer,
+		TTL:    30 * time.Minute,
+	})
+	if err != nil {
+		return fmt.Errorf("concurrent stock reject issue retailer2 jwt: %w", err)
+	}
+
+	type createOutcome struct {
+		status int
+		body   []byte
+		err    error
+	}
+	results := make(chan createOutcome, 2)
+	launchCreate := func(token, idemKey, cell string) {
+		body, _ := json.Marshal(map[string]any{
+			"line_items": []map[string]any{
+				{"sku": sku, "quantity": orderQty, "unit_price_minor": 50000},
+			},
+			"h3_cell": cell,
+			"lat":     cfg.DeliveryZoneCenterLat,
+			"lng":     cfg.DeliveryZoneCenterLng,
+		})
+		go func() {
+			status, respBody, _, err := clientPost(ctx, client, base+"/v1/order/create", body, token, idemKey)
+			results <- createOutcome{status: status, body: respBody, err: err}
+		}()
+	}
+	launchCreate(retailerToken, "ssmr-concurrent-stock-a", h3Cell)
+	launchCreate(retailer2Token, "ssmr-concurrent-stock-b", h3Cell2)
+
+	var created, rejected int
+	for i := 0; i < 2; i++ {
+		out := <-results
+		if out.err != nil {
+			return out.err
+		}
+		switch out.status {
+		case http.StatusCreated:
+			created++
+		case http.StatusUnprocessableEntity:
+			if !strings.Contains(string(out.body), "inventory_exhausted") {
+				return fmt.Errorf("expected inventory_exhausted rejection, got %s", string(out.body))
+			}
+			rejected++
+		default:
+			return fmt.Errorf("unexpected concurrent create status %d body %s", out.status, string(out.body))
+		}
+	}
+	if created != 1 || rejected != 1 {
+		return fmt.Errorf("concurrent stock reject want 1 create + 1 reject, got created=%d rejected=%d", created, rejected)
+	}
+
+	reservedAfter, err := supplierInventoryReserved(ctx, cfg, supplierID, whID, sku)
+	if err != nil {
+		return fmt.Errorf("concurrent stock reject reserved after: %w", err)
+	}
+	if reservedAfter != baselineReserved+orderQty {
+		return fmt.Errorf("concurrent stock reject reserved=%d want=%d", reservedAfter, baselineReserved+orderQty)
+	}
+
+	fmt.Println("PX_E2E_CONCURRENT_STOCK_REJECT_OK")
+	return nil
 }
 
 func setOrderConfirmationStatus(ctx context.Context, cfg *bootstrap.Config, orderID, confirmationStatus string) error {

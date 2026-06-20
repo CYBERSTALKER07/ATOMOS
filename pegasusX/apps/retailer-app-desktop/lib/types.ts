@@ -230,6 +230,7 @@ export interface CheckoutPreviewResponse {
   shortfall?: Record<string, number>;
   stock_warnings?: StockWarning[];
   max_quantities?: Record<string, number>;
+  orderable_quantities?: Record<string, number>;
   line_errors?: Record<string, string>;
   backordered_item_count?: number;
   show_stock_counts?: boolean;

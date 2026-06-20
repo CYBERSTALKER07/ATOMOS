@@ -994,3 +994,9 @@ CREATE NULL_FILTERED INDEX UQ_OptimizationJobs_Idempotency ON OptimizationJobs(S
 
 -- Warehouse stock policy: REJECT blocks retailer checkout when short; ACCEPT_BACKORDER allows with delayed fulfillment.
 -- Per-SKU OutOfStockPolicy on SupplierInventoryV2 overrides warehouse DefaultOutOfStockPolicy when set (INHERIT = use warehouse default).
+
+CREATE TABLE OrderStockReservationMarkers (
+  OrderId     STRING(36) NOT NULL,
+  ReservedAt  TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (OrderId);
+

@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@heroui/react";
 import { useCart } from "../lib/cart";
+import { orderableCapsFromPreview } from "../lib/stock-policy";
 import { apiFetch } from "../lib/auth";
 import { useWebSocket } from "../lib/ws";
 import { useRouter } from "next/navigation";
@@ -53,7 +54,7 @@ export default function CheckoutModal({
   onClose,
   total,
 }: CheckoutModalProps) {
-  const { items, clearCart } = useCart();
+  const { items, clearCart, applyPreviewOrderableCaps } = useCart();
   const [method, setMethod] = useState<"global_pay" | "cash">("cash");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -244,6 +245,19 @@ export default function CheckoutModal({
       }
       const preview = (await previewRes.json()) as CheckoutPreviewResponse;
       setDeliveryFeeMinor(preview.delivery_fee_minor ?? 0);
+      applyPreviewOrderableCaps(preview);
+      const previewCaps = orderableCapsFromPreview(preview);
+      const submitItems = items.map((item) => {
+        let quantity = item.quantity;
+        if (!item.accepts_backorder && previewCaps?.[item.product_id] != null) {
+          quantity = Math.min(quantity, previewCaps[item.product_id]);
+        }
+        return {
+          sku_id: item.product_id,
+          quantity,
+          unit_price: item.price,
+        };
+      });
       if (preview.blocked) {
         if (preview.line_errors && Object.keys(preview.line_errors).length > 0) {
           throw new Error(Object.values(preview.line_errors).join("; "));
@@ -267,7 +281,7 @@ export default function CheckoutModal({
         setStockWarnings(preview.stock_warnings);
       }
 
-      const cartKey = lineItems
+      const cartKey = submitItems
         .map((item) => `${item.sku_id}:${item.quantity}:${item.unit_price}`)
         .sort()
         .join("|");
@@ -278,7 +292,7 @@ export default function CheckoutModal({
         payment_gateway: gatewayMap[method] || "GLOBAL_PAY",
         latitude: 0,
         longitude: 0,
-        items: lineItems,
+        items: submitItems,
         delivery_mode: deliveryMode,
         delivery_priority: expressPriority ? "EXPRESS" : "STANDARD",
       };
@@ -301,6 +315,15 @@ export default function CheckoutModal({
 
       if (!cartRes.ok) {
         const errBody = await cartRes.json().catch(() => null);
+        if (
+          cartRes.status === 422 &&
+          (errBody?.error === "inventory_exhausted" ||
+            errBody?.code === "inventory_exhausted")
+        ) {
+          throw new Error(
+            "Stock changed while checking out. Review your cart and try again.",
+          );
+        }
         if (
           cartRes.status === 409 &&
           errBody?.code === "ALL_ITEMS_OUT_OF_STOCK"

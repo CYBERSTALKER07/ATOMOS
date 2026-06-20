@@ -56,6 +56,7 @@ data class CartUiState(
     val oosItems: List<String> = emptyList(),
     val stockWarnings: List<StockWarning> = emptyList(),
     val previewMaxQuantities: Map<String, Int> = emptyMap(),
+    val previewShowStockCounts: Boolean = false,
     val previewShortfall: Map<String, Long> = emptyMap(),
     val previewLoading: Boolean = false,
     val deliveryMode: String = "STANDARD",
@@ -108,6 +109,11 @@ private fun checkoutPaymentLabel(gateway: String, options: List<CheckoutPaymentO
     }
 }
 
+private fun com.pegasusx.retailer.data.model.CheckoutPreviewResponse.orderableCaps(): Map<String, Int> {
+    val source = orderableQuantities.ifEmpty { maxQuantities }
+    return source.mapValues { it.value.toInt() }
+}
+
 private fun standardPaymentOptions(): List<CheckoutPaymentOption> = listOf(
     CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay (New)"),
     CheckoutPaymentOption(gateway = "ADYEN", label = "Adyen"),
@@ -129,6 +135,7 @@ class CartViewModel @Inject constructor(
     private var cartSyncDebounceJob: Job? = null
     private var cartSyncEventsJob: Job? = null
     private var quoteDebounceJob: Job? = null
+    private var previewDebounceJob: Job? = null
     private var lastCartSignature: String = ""
 
 init { 
@@ -397,6 +404,7 @@ init {
         }
         scheduleCartSyncPush()
         scheduleQuoteRefresh()
+        schedulePreviewRefresh()
     }
 
     fun updateQuantity(itemId: String, quantity: Int) {
@@ -416,6 +424,7 @@ init {
         }
         scheduleCartSyncPush()
         scheduleQuoteRefresh()
+        schedulePreviewRefresh()
     }
 
     private fun skuIdFor(item: CartItem): String {
@@ -437,8 +446,8 @@ init {
     }
 
     private fun applyPreviewCaps(preview: com.pegasusx.retailer.data.model.CheckoutPreviewResponse) {
+        val maxMap = preview.orderableCaps()
         _uiState.update { state ->
-            val maxMap = preview.maxQuantities.mapValues { it.value.toInt() }
             state.copy(
                 items = state.items.map { item ->
                     if (item.product.acceptsBackorder) return@map item
@@ -460,6 +469,7 @@ init {
         }
         scheduleCartSyncPush()
         scheduleQuoteRefresh()
+        schedulePreviewRefresh()
     }
 
     fun clearRemovedItemMessage() {
@@ -482,6 +492,14 @@ init {
         quoteDebounceJob = viewModelScope.launch {
             delay(300)
             refreshCheckoutQuote()
+        }
+    }
+
+    private fun schedulePreviewRefresh() {
+        previewDebounceJob?.cancel()
+        previewDebounceJob = viewModelScope.launch {
+            delay(300)
+            refreshCheckoutPreview()
         }
     }
 
@@ -576,7 +594,8 @@ init {
             applyPreviewCaps(preview)
             _uiState.update {
                 it.copy(
-                    previewMaxQuantities = preview.maxQuantities.mapValues { entry -> entry.value.toInt() },
+                    previewMaxQuantities = preview.orderableCaps(),
+                    previewShowStockCounts = preview.showStockCounts,
                     previewShortfall = preview.shortfall,
                     oosItems = preview.oosItems.ifEmpty { preview.rejectedSkus },
                     stockWarnings = preview.stockWarnings,
@@ -674,7 +693,8 @@ init {
                             checkoutError = preview.message ?: "Checkout blocked by stock policy",
                             oosItems = preview.oosItems.ifEmpty { preview.rejectedSkus },
                             stockWarnings = preview.stockWarnings,
-                            previewMaxQuantities = preview.maxQuantities.mapValues { entry -> entry.value.toInt() },
+                            previewMaxQuantities = preview.orderableCaps(),
+                            previewShowStockCounts = preview.showStockCounts,
                             previewShortfall = preview.shortfall,
                         )
                     }
@@ -774,6 +794,13 @@ init {
 
     fun effectiveMaxQuantityFor(item: CartItem): Int? {
         return effectiveMaxQuantity(item, _uiState.value)
+    }
+
+    fun stockLeftHintFor(item: CartItem): String? {
+        val state = _uiState.value
+        if (!state.previewShowStockCounts || item.product.acceptsBackorder) return null
+        val cap = state.previewMaxQuantities[skuIdFor(item)] ?: return null
+        return if (cap > 0) "Only $cap left" else null
     }
 
     private fun checkoutIdempotencyKey(request: UnifiedCheckoutRequest): String {
