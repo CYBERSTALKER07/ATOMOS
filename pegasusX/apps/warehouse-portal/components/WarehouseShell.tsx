@@ -4,7 +4,6 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState, useRef, useMemo, useCallback, memo } from 'react';
-import { Button } from '@heroui/react';
 import Icon from './Icon';
 import { useTheme, type ThemeMode } from './ThemeProvider';
 import { PanelLeftClose, PanelLeft } from 'lucide-react';
@@ -12,7 +11,7 @@ import NotificationPanel from './NotificationPanel';
 import ClientPolicyBanner from './ClientPolicyBanner';
 import { useNotifications, type WarehouseWsState } from '@/lib/useNotifications';
 import { clearSession, readTokenFromCookie } from '@/lib/auth';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 type NavEntry = { href: string; icon: string; label: string; globalOnly?: boolean; factoryHidden?: boolean };
 type NavSection = { label?: string; items: NavEntry[] };
@@ -88,7 +87,7 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
   return crumbs;
 }
 
-const BARE_ROUTES = ["/auth/", "/setup/billing"];
+const BARE_ROUTES = ["/auth/", "/setup/"];
 
 function liveIndicatorCopy(state: WarehouseWsState): { label: string; stale: boolean } {
   switch (state) {
@@ -103,61 +102,6 @@ function liveIndicatorCopy(state: WarehouseWsState): { label: string; stale: boo
   }
 }
 
-function SplashScreen({ onComplete }: { onComplete: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 1 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      onAnimationComplete={(definition) => {
-        if (definition === 'exit') onComplete();
-      }}
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
-      style={{ background: 'var(--desk-canvas)' }}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 flex flex-col items-center gap-6"
-      >
-        <div
-          className="w-16 h-16 flex items-center justify-center"
-          style={{
-            background: 'var(--desk-accent)',
-            color: 'var(--desk-accent-on)',
-            borderRadius: 16,
-          }}
-        >
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/>
-          </svg>
-        </div>
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 1 }}
-          className="flex flex-col items-center"
-        >
-          <h2 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--desk-text-primary)' }}>pegasusX</h2>
-          <p className="text-[10px] uppercase tracking-[0.3em] mt-1" style={{ color: 'var(--desk-text-tertiary)' }}>Warehouse Hub</p>
-        </motion.div>
-        
-        <div className="w-32 h-0.5 rounded-full mt-4 overflow-hidden" style={{ background: 'var(--desk-border)' }}>
-          <motion.div 
-            initial={{ x: '-100%' }}
-            animate={{ x: '100%' }}
-            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-            className="w-full h-full"
-            style={{ background: 'var(--desk-accent)' }}
-          />
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
 const ALL_NAV_ITEMS = NAV.flatMap(s => s.items);
 
 const THEME_META: Record<ThemeMode, { icon: string; label: string; next: ThemeMode }> = {
@@ -170,15 +114,14 @@ function ThemeToggle() {
   const { mode, cycle } = useTheme();
   const meta = THEME_META[mode];
   return (
-    <Button
-      variant="ghost"
-      isIconOnly
-      onPress={cycle}
+    <button
+      type="button"
+      className="portal-btn portal-btn--ghost desk-icon-btn w-10 h-10 min-w-0 p-0"
+      onClick={cycle}
       aria-label={`${meta.label} — switch to ${meta.next}`}
-      className="desk-btn-ghost w-10 h-10 min-w-0 p-0"
     >
       <Icon name={meta.icon} />
-    </Button>
+    </button>
   );
 }
 
@@ -275,9 +218,11 @@ const DrawerContent = memo(function DrawerContent({
                   >
                     <Link
                       href={item.href as any}
-                      className={`desk-sidebar-item ${active ? 'desk-sidebar-item--accent' : ''}`}
+                      className={`desk-sidebar-item desk-sidebar-link${active ? ' desk-sidebar-link--active' : ''}`}
+                      data-active={active ? 'true' : undefined}
                       title={isRail ? item.label : undefined}
                       aria-label={item.label}
+                      aria-current={active ? 'page' : undefined}
                       style={isRail ? { justifyContent: 'center', padding: '0', height: 44 } : undefined}
                     >
                       <Icon name={item.icon} size={18} className="desk-sidebar-item-icon" />
@@ -326,13 +271,7 @@ const DrawerContent = memo(function DrawerContent({
 export default function WarehouseShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isBare = BARE_ROUTES.some(r => pathname === r || pathname.startsWith(r));
-
-  const [splashDone, setSplashDone] = useState(false);
-  const dismissSplash = useCallback(() => setSplashDone(true), []);
-
-  useEffect(() => {
-    if (isBare) setSplashDone(true);
-  }, [isBare]);
+  const reducedMotion = useReducedMotion();
 
   const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -425,11 +364,9 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
 
   return (
     <>
-      {!splashDone && <SplashScreen onComplete={dismissSplash} />}
-
       <motion.aside
         animate={{ width: collapsed ? 72 : 264 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+        transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 200, damping: 25 }}
         data-shell-sidebar
         className="hidden md:flex flex-col justify-between shrink-0 overflow-hidden"
         style={{

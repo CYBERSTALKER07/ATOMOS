@@ -1,10 +1,8 @@
 'use client';
 
-import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { useTheme } from '@/components/ThemeProvider';
 
-// ─── Theme toggle icon (sun/moon) ──────────────────────────────────────────
 function ThemeToggle({
   isDark,
   onToggle,
@@ -41,6 +39,25 @@ function ThemeToggle({
   );
 }
 
+function BrandLogo({ size = 96 }: { size?: number }) {
+  return (
+    <div
+      className="flex items-center justify-center rounded-2xl"
+      style={{
+        width: size,
+        height: size,
+        background: 'var(--desk-accent, #c4a574)',
+        color: 'var(--desk-accent-on, #1a1208)',
+      }}
+      aria-hidden
+    >
+      <svg width={size * 0.45} height={size * 0.45} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z" />
+      </svg>
+    </div>
+  );
+}
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const { resolved, setMode } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -66,32 +83,16 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className={`auth-shell ${isDark ? 'auth-dark' : 'auth-light'}`}>
-      {/* ── Splash Screen ── */}
       {!splashDone && (
         <div className={`auth-splash ${mounted ? 'auth-splash-exit' : ''}`}>
-          <Image
-            className="auth-splash-logo"
-            src={isDark ? '/logo-dark-square.png' : '/logo-light-square.png'}
-            alt=""
-            width={96}
-            height={96}
-            priority
-          />
+          <BrandLogo size={96} />
         </div>
       )}
 
-      {/* ── Left: Branding Panel ── */}
       <div className="auth-brand-panel">
         <div className={`auth-brand-content relative z-10 ${mounted ? 'auth-brand-enter' : ''}`}>
           <div className="auth-brand-logo">
-            <Image
-              src={isDark ? '/logo-light-square.png' : '/logo-dark-square.png'}
-              alt="pegasusX Warehouse"
-              width={500}
-              height={500}
-              priority
-              className="auth-brand-logo-img"
-            />
+            <BrandLogo size={160} />
           </div>
         </div>
 
@@ -100,7 +101,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </p>
       </div>
 
-      {/* ── Right: Form Panel ── */}
       <div className="auth-form-panel">
         <div className="flex items-center justify-end pt-4 pr-6 px-6 shrink-0 relative z-10">
           <ThemeToggle

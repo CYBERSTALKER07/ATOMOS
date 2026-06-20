@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { warehouseApiBaseUrl, persistSession } from "@/lib/auth";
 import {
@@ -13,6 +13,7 @@ import {
   validateVerification,
   validateProfile,
 } from "./wizard-state";
+import { PortalField, PortalInput, PortalSelect, FormAlert } from "@/components/portal";
 
 
 
@@ -112,23 +113,19 @@ export default function RegisterPage() {
         {state.step === "profile"      && <ProfileStepView state={state} setState={setState} errors={errors} />}
       </section>
 
-      {submitError && (
-        <p role="alert" className="md-typescale-body-medium mt-4" style={{ color: "var(--color-md-error)" }}>
-          {submitError}
-        </p>
-      )}
+      {submitError ? <FormAlert variant="error">{submitError}</FormAlert> : null}
 
       <footer className="mt-6 flex items-center justify-between gap-4">
-        <button type="button" className="md-btn md-btn-text" onClick={back} disabled={stepIndex === 0 || submitting}>
+        <button type="button" className="portal-btn portal-btn--ghost" onClick={back} disabled={stepIndex === 0 || submitting}>
           Back
         </button>
         {state.step !== "profile" ? (
-          <button type="button" className="md-btn md-btn-filled" onClick={next} disabled={submitting}>
+          <button type="button" className="portal-btn portal-btn--primary" onClick={next} disabled={submitting}>
             Continue
           </button>
         ) : (
-          <button type="button" className="md-btn md-btn-filled" onClick={submit} disabled={submitting}>
-            {submitting ? "Creating..." : "Create supplier"}
+          <button type="button" className="portal-btn portal-btn--primary" onClick={submit} disabled={submitting}>
+            {submitting ? "Creating…" : "Create warehouse"}
           </button>
         )}
       </footer>
@@ -138,20 +135,25 @@ export default function RegisterPage() {
 
 function Stepper({ currentIndex }: { currentIndex: number }) {
   return (
-    <ol className="auth-step-indicator" aria-label="Onboarding progress">
+    <ol className="setup-step-list mt-4" aria-label="Onboarding progress">
       {STEP_ORDER.map((id, index) => {
         const done = index < currentIndex;
         const active = index === currentIndex;
+        const stateClass = done ? "setup-step-item--done" : active ? "setup-step-item--active" : "";
         return (
-          <li key={id} className="flex items-center gap-3">
-            {index > 0 ? <span className="auth-step-connector" aria-hidden /> : null}
-            <span
-              className={`auth-step-dot ${active ? "auth-step-dot--active" : ""} ${done ? "auth-step-dot--done" : ""}`}
-              aria-current={active ? "step" : undefined}
-              title={STEP_LABELS[id]}
-            >
-              {index + 1}
+          <li key={id} className={`setup-step-item ${stateClass}`} aria-current={active ? "step" : undefined}>
+            <span className="setup-step-badge" aria-hidden>
+              {done ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+              ) : (
+                index + 1
+              )}
             </span>
+            <div className="setup-step-copy">
+              <span className="setup-step-label">{STEP_LABELS[id]}</span>
+            </div>
           </li>
         );
       })}
@@ -171,111 +173,68 @@ function IdentityStepView({ state, setState, errors, dialCode }: ViewProps & { d
   return (
     <div className="grid gap-4">
       <div className="grid grid-cols-[160px,1fr] gap-3">
-        <Field id="countryCode" label="Country" error={errors.countryCode}>
-          <select
+        <PortalField id="countryCode" label="Country" error={errors.countryCode}>
+          <PortalSelect
             id="countryCode"
-            className="md-input-outlined"
             value={state.identity.countryCode}
-            onChange={(e) => setState((s) => ({ ...s, identity: { ...s.identity, countryCode: e.target.value } }))}
+            onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, identity: { ...s.identity, countryCode: e.target.value } }))}
+            error={errors.countryCode}
           >
             {COUNTRIES.map((c) => (
               <option key={c.code} value={c.code}>{c.name}</option>
             ))}
-          </select>
-        </Field>
-        <Field id="phoneLocal" label="Phone" error={errors.phoneLocal} hint={`Will be sent as ${dialCode}${state.identity.phoneLocal || "…"}`}>
+          </PortalSelect>
+        </PortalField>
+        <PortalField id="phoneLocal" label="Phone" error={errors.phoneLocal} hint={`Will be sent as ${dialCode}${state.identity.phoneLocal || "…"}`}>
           <div className="flex">
-            <span
-              className="inline-flex items-center px-3 border border-r-0 rounded-l text-sm"
-              style={{
-                borderColor: "var(--color-md-outline)",
-                background: "var(--color-md-surface-container-high)",
-              }}
-            >
+            <span className="inline-flex items-center px-3 border border-r-0 rounded-l text-sm portal-input" style={{ width: "auto", minWidth: 56, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
               {dialCode}
             </span>
-            <input
+            <PortalInput
               id="phoneLocal"
               inputMode="numeric"
-              className="md-input-outlined"
+              className="rounded-l-none"
               style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
               value={state.identity.phoneLocal}
-              aria-invalid={!!errors.phoneLocal}
-              onChange={(e) => setState((s) => ({ ...s, identity: { ...s.identity, phoneLocal: e.target.value.replace(/\D/g, "") } }))}
+              onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, identity: { ...s.identity, phoneLocal: e.target.value.replace(/\D/g, "") } }))}
+              error={errors.phoneLocal}
             />
           </div>
-        </Field>
+        </PortalField>
       </div>
-      <div id="recaptcha-container"></div>
+      <div id="recaptcha-container" />
     </div>
   );
 }
 
 function VerificationStepView({ state, setState, errors }: ViewProps) {
   return (
-    <div className="grid gap-4">
-      <Field id="otpCode" label="Verification Code" error={errors.otpCode} hint="Enter the 6-digit code sent via SMS.">
-        <input
-          id="otpCode"
-          inputMode="numeric"
-          className="md-input-outlined tracking-widest text-lg font-mono text-center"
-          value={state.verification.otpCode}
-          maxLength={6}
-          aria-invalid={!!errors.otpCode}
-          onChange={(e) => setState((s) => ({ ...s, verification: { ...s.verification, otpCode: e.target.value.replace(/\D/g, "") } }))}
-        />
-      </Field>
-    </div>
+    <PortalField id="otpCode" label="Verification code" error={errors.otpCode} hint="Enter the 6-digit code sent via SMS.">
+      <PortalInput
+        id="otpCode"
+        inputMode="numeric"
+        className="tracking-widest text-lg font-mono text-center"
+        value={state.verification.otpCode}
+        maxLength={6}
+        onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, verification: { ...s.verification, otpCode: e.target.value.replace(/\D/g, "") } }))}
+        error={errors.otpCode}
+      />
+    </PortalField>
   );
 }
 
 function ProfileStepView({ state, setState, errors }: ViewProps) {
   return (
     <div className="grid gap-4">
-      <Field id="legalName" label="Legal company name" error={errors.legalName}>
-        <input
-          id="legalName"
-          className="md-input-outlined"
-          value={state.profile.legalName}
-          aria-invalid={!!errors.legalName}
-          onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, legalName: e.target.value } }))}
-        />
-      </Field>
-      <Field id="contactName" label="Primary contact name" error={errors.contactName}>
-        <input
-          id="contactName"
-          className="md-input-outlined"
-          value={state.profile.contactName}
-          aria-invalid={!!errors.contactName}
-          onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, contactName: e.target.value } }))}
-        />
-      </Field>
-      <Field id="email" label="Work email" error={errors.email}>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          className="md-input-outlined"
-          value={state.profile.email}
-          aria-invalid={!!errors.email}
-          onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, email: e.target.value } }))}
-        />
-      </Field>
+      <PortalField id="legalName" label="Legal company name" error={errors.legalName}>
+        <PortalInput id="legalName" value={state.profile.legalName} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, profile: { ...s.profile, legalName: e.target.value } }))} error={errors.legalName} />
+      </PortalField>
+      <PortalField id="contactName" label="Primary contact name" error={errors.contactName}>
+        <PortalInput id="contactName" value={state.profile.contactName} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, profile: { ...s.profile, contactName: e.target.value } }))} error={errors.contactName} />
+      </PortalField>
+      <PortalField id="email" label="Work email" error={errors.email}>
+        <PortalInput id="email" type="email" autoComplete="email" value={state.profile.email} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, profile: { ...s.profile, email: e.target.value } }))} error={errors.email} />
+      </PortalField>
     </div>
   );
 }
-
-// ── Helpers ──────────────────────────────────────────────────────────────
-
-function Field({ id, label, error, hint, children }: { id: string; label: string; error?: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label htmlFor={id} className="md-label">{label}</label>
-      {children}
-      {error
-        ? <p className="md-helper" data-error="true">{error}</p>
-        : hint ? <p className="md-helper">{hint}</p> : null}
-    </div>
-  );
-}
-

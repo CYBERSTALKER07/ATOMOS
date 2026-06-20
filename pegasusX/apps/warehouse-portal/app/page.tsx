@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import PageTransition from '@/components/PageTransition';
 import FleetLiveMapPanel from '@/components/FleetLiveMapPanel';
 import { PageSection } from '@/components/PageSection';
-import { PageSkeleton } from '@/components/Skeleton';
+import { PageChrome } from '@/components/PageChrome';
 
 interface DashboardData {
   active_orders: number;
@@ -90,20 +90,6 @@ export default function WarehouseDashboard() {
     load();
   }, [reloadToken]);
 
-  if (loading) {
-    return (
-      <div className="desk-page">
-        <div className="desk-page-header">
-          <div>
-            <h1 className="desk-page-title">Warehouse dashboard</h1>
-            <p className="desk-page-subtitle">Live node operations, fleet, and inventory at a glance.</p>
-          </div>
-        </div>
-        <PageSkeleton variant="dashboard" />
-      </div>
-    );
-  }
-
   if (!data && loadIssue) {
     const stateContent: Record<DashboardLoadIssue, { headline: string; body: string }> = {
       offline: {
@@ -124,17 +110,19 @@ export default function WarehouseDashboard() {
 
     return (
       <PageTransition className="p-6 space-y-6">
-        <EmptyState
-          variant={loadIssue}
-          headline={content.headline}
-          body={content.body}
-          action="Retry"
-          onAction={() => {
-            setLoading(true);
-            setLoadIssue(null);
-            setReloadToken(v => v + 1);
-          }}
-        />
+        <PageChrome icon="dashboard" title="Warehouse dashboard" description="Live node operations, fleet, and inventory at a glance.">
+          <EmptyState
+            variant={loadIssue}
+            headline={content.headline}
+            body={content.body}
+            action="Retry"
+            onAction={() => {
+              setLoading(true);
+              setLoadIssue(null);
+              setReloadToken(v => v + 1);
+            }}
+          />
+        </PageChrome>
       </PageTransition>
     );
   }
@@ -142,26 +130,23 @@ export default function WarehouseDashboard() {
   if (!data) {
     return (
       <PageTransition className="p-6 space-y-6">
-        <EmptyState
-          variant="no-data"
-          headline="No warehouse metrics yet"
-          body="As dispatch, fleet, and inventory activity starts, this dashboard will populate automatically."
-          action="Refresh"
-          onAction={() => {
-            setLoading(true);
-            setReloadToken(v => v + 1);
-          }}
-        />
+        <PageChrome icon="dashboard" title="Warehouse dashboard" description="Live node operations, fleet, and inventory at a glance.">
+          <EmptyState
+            variant="no-data"
+            headline="No warehouse metrics yet"
+            body="As dispatch, fleet, and inventory activity starts, this dashboard will populate automatically."
+            action="Refresh"
+            onAction={() => {
+              setLoading(true);
+              setReloadToken(v => v + 1);
+            }}
+          />
+        </PageChrome>
       </PageTransition>
     );
   }
 
-  const d = data || {
-    active_orders: 0, completed_today: 0, pending_dispatch: 0,
-    total_drivers: 0, on_route_drivers: 0, idle_drivers: 0,
-    total_vehicles: 0, today_revenue: 0, low_stock_count: 0,
-    total_staff: 0, fleet_status: [],
-  };
+  const d = data;
 
   const fmt = (n: number) => new Intl.NumberFormat('en-US').format(n);
   const fmtCurrency = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'UZS', maximumFractionDigits: 0 }).format(n);
@@ -180,25 +165,24 @@ export default function WarehouseDashboard() {
 
   return (
     <PageTransition>
-      <div className="desk-page space-y-6">
-        <div className="desk-page-header">
-          <div>
-            <h1 className="desk-page-title">Warehouse dashboard</h1>
-            <p className="desk-page-subtitle">Live node operations, fleet, and inventory at a glance.</p>
-          </div>
-          <div className="desk-toolbar">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setReloadToken((v) => v + 1)}
-              className="desk-icon-btn"
-              aria-label="Refresh dashboard"
-            >
-              <Icon name="refresh" size={18} />
-            </motion.button>
-          </div>
-        </div>
-
+      <PageChrome
+        icon="dashboard"
+        title="Warehouse dashboard"
+        description="Live node operations, fleet, and inventory at a glance."
+        loading={loading}
+        skeletonVariant="dashboard"
+        actions={
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setReloadToken((v) => v + 1)}
+            className="desk-icon-btn"
+            aria-label="Refresh dashboard"
+          >
+            <Icon name="refresh" size={18} />
+          </motion.button>
+        }
+      >
       <motion.div
         initial="hidden"
         animate="show"
@@ -263,7 +247,7 @@ export default function WarehouseDashboard() {
           </div>
         </PageSection>
       )}
-    </div>
+      </PageChrome>
     </PageTransition>
   );
 }

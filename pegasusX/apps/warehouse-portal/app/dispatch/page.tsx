@@ -447,6 +447,7 @@ export default function DispatchPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="dispatch"
         title="Dispatch"
         description="Manual truck assignment or smart dispatch across the fleet. Capacity uses product VU × quantity."
         loading={loading}

@@ -36,6 +36,7 @@ export default function CRMPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="crm"
         title="Retailer CRM"
         description="Retailer relationships, order volume, and revenue for this warehouse."
         actions={

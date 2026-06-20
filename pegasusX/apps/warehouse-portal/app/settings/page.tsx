@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import { apiFetch } from '@/lib/auth';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { useToast } from '@/components/Toast';
 import { LocationPicker, type LocationValue } from '@/components/LocationPicker';
+import { PortalField, PortalInput, PortalSection } from '@/components/portal';
 import type { DeliveryFeeRules, WarehouseOpsSettings, WarehouseOpsSettingsPatchRequest } from '@pegasusx/types';
 
 type WarehouseLocation = {
@@ -192,81 +193,65 @@ export default function WarehouseSettingsPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="settings"
         title="Warehouse settings"
         description="Checkout policy, pre-order lead window, per-line quantity limits, delivery surcharges, and depot location."
       >
         <div className="max-w-2xl space-y-6">
-          <section className="border border-[var(--border)] rounded-xl p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Depot location</h2>
-            <p className="text-xs text-[var(--muted)]">
-              Delivery fee distance is measured warehouse lat/lng → retailer delivery pin at checkout.
-            </p>
+          <PortalSection icon="warehouse" title="Depot location" description="Delivery fee distance is measured warehouse lat/lng → retailer delivery pin at checkout.">
             <LocationPicker value={location} onChange={setLocation} label="Warehouse address" />
             <button
               type="button"
               disabled={savingLocation}
               onClick={() => void saveLocation()}
-              className="px-4 py-2 rounded-lg text-sm font-semibold button--primary disabled:opacity-50"
+              className="portal-btn portal-btn--primary disabled:opacity-50"
             >
               {savingLocation ? 'Saving…' : 'Save location'}
             </button>
-          </section>
+          </PortalSection>
 
-          <section className="border border-[var(--border)] rounded-xl p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Pre-order lead window (days)</h2>
+          <PortalSection icon="orders" title="Pre-order lead window" description="Days between order placement and earliest fulfillment.">
             <div className="grid grid-cols-2 gap-3">
-              <label className="text-sm">
-                Min lead
-                <input className="w-full mt-1 rounded border p-2 text-sm" value={preorderMinLeadDays} onChange={(e) => setPreorderMinLeadDays(e.target.value)} />
-              </label>
-              <label className="text-sm">
-                Max lead
-                <input className="w-full mt-1 rounded border p-2 text-sm" value={preorderMaxLeadDays} onChange={(e) => setPreorderMaxLeadDays(e.target.value)} />
-              </label>
+              <PortalField id="preorderMinLeadDays" label="Min lead (days)">
+                <PortalInput id="preorderMinLeadDays" value={preorderMinLeadDays} onChange={(e: ChangeEvent<HTMLInputElement>) => setPreorderMinLeadDays(e.target.value)} />
+              </PortalField>
+              <PortalField id="preorderMaxLeadDays" label="Max lead (days)">
+                <PortalInput id="preorderMaxLeadDays" value={preorderMaxLeadDays} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setPreorderMaxLeadDays(e.target.value)} />
+              </PortalField>
             </div>
-          </section>
+          </PortalSection>
 
-          <section className="border border-[var(--border)] rounded-xl p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Line quantity limits</h2>
-            <p className="text-xs text-[var(--muted)]">Leave blank to clear a limit. Applies to standard and scheduled checkout.</p>
+          <PortalSection icon="inventory" title="Line quantity limits" description="Leave blank to clear a limit. Applies to standard and scheduled checkout.">
             <div className="grid grid-cols-2 gap-3">
-              <label className="text-sm">
-                Min per SKU
-                <input className="w-full mt-1 rounded border p-2 text-sm" value={orderLineMin} onChange={(e) => setOrderLineMin(e.target.value)} />
-              </label>
-              <label className="text-sm">
-                Max per SKU
-                <input className="w-full mt-1 rounded border p-2 text-sm" value={orderLineMax} onChange={(e) => setOrderLineMax(e.target.value)} />
-              </label>
+              <PortalField id="orderLineMin" label="Min per SKU">
+                <PortalInput id="orderLineMin" value={orderLineMin} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setOrderLineMin(e.target.value)} />
+              </PortalField>
+              <PortalField id="orderLineMax" label="Max per SKU">
+                <PortalInput id="orderLineMax" value={orderLineMax} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setOrderLineMax(e.target.value)} />
+              </PortalField>
             </div>
-          </section>
+          </PortalSection>
 
-          <section className="border border-[var(--border)] rounded-xl p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Delivery fee tiers</h2>
+          <PortalSection icon="payment" title="Delivery fee tiers">
             <div className="grid grid-cols-2 gap-3">
-              <label className="text-sm">
-                Base fee (minor)
-                <input className="w-full mt-1 rounded border p-2 text-sm" value={feeBaseMinor} onChange={(e) => setFeeBaseMinor(e.target.value)} />
-              </label>
-              <label className="text-sm">
-                Currency
-                <input className="w-full mt-1 rounded border p-2 text-sm" value={feeCurrency} onChange={(e) => setFeeCurrency(e.target.value)} />
-              </label>
-              <label className="text-sm">
-                Free within km
-                <input className="w-full mt-1 rounded border p-2 text-sm" value={feeTierKm} onChange={(e) => setFeeTierKm(e.target.value)} />
-              </label>
-              <label className="text-sm">
-                Beyond-tier fee (minor)
-                <input className="w-full mt-1 rounded border p-2 text-sm" value={feeTierMinor} onChange={(e) => setFeeTierMinor(e.target.value)} />
-              </label>
+              <PortalField id="feeBaseMinor" label="Base fee (minor)">
+                <PortalInput id="feeBaseMinor" value={feeBaseMinor} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFeeBaseMinor(e.target.value)} />
+              </PortalField>
+              <PortalField id="feeCurrency" label="Currency">
+                <PortalInput id="feeCurrency" value={feeCurrency} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFeeCurrency(e.target.value)} />
+              </PortalField>
+              <PortalField id="feeTierKm" label="Free within km">
+                <PortalInput id="feeTierKm" value={feeTierKm} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFeeTierKm(e.target.value)} />
+              </PortalField>
+              <PortalField id="feeTierMinor" label="Beyond-tier fee (minor)">
+                <PortalInput id="feeTierMinor" value={feeTierMinor} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFeeTierMinor(e.target.value)} />
+              </PortalField>
             </div>
-          </section>
+          </PortalSection>
 
-          <section className="border border-[var(--border)] rounded-xl p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Out-of-stock orders</h2>
+          <PortalSection icon="settings" title="Out-of-stock orders">
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={showStockCounts} onChange={(e) => setShowStockCounts(e.target.checked)} />
+              <input type="checkbox" checked={showStockCounts} onChange={(e: ChangeEvent<HTMLInputElement>) => setShowStockCounts(e.target.checked)} />
               Show stock counts to retailers
             </label>
             <label className="flex items-center gap-2 text-sm">
@@ -277,41 +262,42 @@ export default function WarehouseSettingsPage() {
               <input type="radio" checked={policy === 'ACCEPT_BACKORDER'} onChange={() => setPolicy('ACCEPT_BACKORDER')} />
               Accept orders — warn retailer, fulfill when stock arrives
             </label>
-          </section>
+          </PortalSection>
 
-          <section className="border border-[var(--border)] rounded-xl p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Order acceptance hours</h2>
-            <p className="text-xs text-[var(--muted)]">When enforcement is on, retailers cannot preview or create orders outside the window.</p>
+          <PortalSection icon="settings" title="Order acceptance hours" description="When enforcement is on, retailers cannot preview or create orders outside the window.">
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={enforceOrderAcceptance} onChange={(e) => setEnforceOrderAcceptance(e.target.checked)} />
+              <input type="checkbox" checked={enforceOrderAcceptance} onChange={(e: ChangeEvent<HTMLInputElement>) => setEnforceOrderAcceptance(e.target.checked)} />
               Enforce order acceptance hours
             </label>
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={scheduleIs24h} onChange={(e) => setScheduleIs24h(e.target.checked)} />
+              <input type="checkbox" checked={scheduleIs24h} onChange={(e: ChangeEvent<HTMLInputElement>) => setScheduleIs24h(e.target.checked)} />
               Open 24 hours
             </label>
-            <label className="text-sm block">
-              Timezone
-              <input className="w-full mt-1 rounded border p-2 text-sm" value={scheduleTimezone} onChange={(e) => setScheduleTimezone(e.target.value)} />
-            </label>
+            <PortalField id="scheduleTimezone" label="Timezone">
+              <PortalInput id="scheduleTimezone" value={scheduleTimezone} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setScheduleTimezone(e.target.value)} />
+            </PortalField>
             <div className="grid grid-cols-2 gap-3">
-              <label className="text-sm">Weekday open<input className="w-full mt-1 rounded border p-2 text-sm" value={weekdayOpen} onChange={(e) => setWeekdayOpen(e.target.value)} /></label>
-              <label className="text-sm">Weekday close<input className="w-full mt-1 rounded border p-2 text-sm" value={weekdayClose} onChange={(e) => setWeekdayClose(e.target.value)} /></label>
+              <PortalField id="weekdayOpen" label="Weekday open">
+                <PortalInput id="weekdayOpen" value={weekdayOpen} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setWeekdayOpen(e.target.value)} />
+              </PortalField>
+              <PortalField id="weekdayClose" label="Weekday close">
+                <PortalInput id="weekdayClose" value={weekdayClose} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setWeekdayClose(e.target.value)} />
+              </PortalField>
             </div>
             <h3 className="text-xs font-semibold text-[var(--muted)]">Advanced JSON</h3>
             <textarea
               className="w-full min-h-[140px] font-mono text-xs rounded-lg border p-3"
               style={{ borderColor: 'var(--field-border)', background: 'var(--field-background)' }}
               value={scheduleJSON}
-              onChange={(e) => setScheduleJSON(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setScheduleJSON(e.target.value)}
             />
-          </section>
+          </PortalSection>
 
           <button
             type="button"
             disabled={saving}
             onClick={() => void save()}
-            className="px-4 py-2 rounded-lg text-sm font-semibold button--primary disabled:opacity-50"
+            className="portal-btn portal-btn--primary disabled:opacity-50"
           >
             {saving ? 'Saving…' : 'Save settings'}
           </button>

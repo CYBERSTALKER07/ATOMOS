@@ -6,7 +6,7 @@ import { warehouseApi } from '@/lib/warehouse-api';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
-import { PageSection } from '@/components/PageSection';
+import { HubCard } from '@/components/portal';
 import EmptyState from '@/components/EmptyState';
 
 interface TreasuryOverview {
@@ -84,6 +84,7 @@ export default function TreasuryPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="treasury"
         title="Treasury"
         description="Invoiced revenue, payouts, and outstanding liabilities for this warehouse."
         loading={loading}
@@ -104,6 +105,14 @@ export default function TreasuryPage() {
         }
       >
       <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <HubCard
+          href="/payment-config"
+          icon="payment"
+          title="Payment config"
+          description="View checkout gateways and settlement routing for this node."
+        />
+      </div>
       <KpiStatGrid columns={3}>
         <KpiStatCard label="Total invoiced" value={`${fmt(ov.total_invoiced)} UZS`} />
         <KpiStatCard
@@ -119,11 +128,15 @@ export default function TreasuryPage() {
       </KpiStatGrid>
 
       {!loading && view === 'invoices' && (
-        <PageSection title="Invoices" description="Retailer billing rows for this warehouse node.">
+        <section className="desk-card overflow-hidden">
+          <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--desk-border)' }}>
+            <h2 className="bento-card-title">Invoices</h2>
+            <p className="text-sm mt-1" style={{ color: 'var(--desk-text-secondary)' }}>Retailer billing rows for this warehouse node.</p>
+          </div>
         {invoices.length === 0 ? (
           <EmptyState variant="no-data" headline="No invoices found" body="Invoices appear when retailers are billed for fulfilled orders." />
         ) : (
-          <div className="overflow-x-auto -mx-5 px-5">
+          <div className="desk-table-wrap">
             <table className="desk-table w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--border)]">
@@ -159,7 +172,7 @@ export default function TreasuryPage() {
             </table>
           </div>
         )}
-        </PageSection>
+        </section>
       )}
       </div>
       </PageChrome>

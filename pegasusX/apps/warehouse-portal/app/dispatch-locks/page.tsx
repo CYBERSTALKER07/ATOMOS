@@ -102,6 +102,7 @@ export default function DispatchLocksPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="lock"
         title="Dispatch Locks"
         description="Prevent concurrent dispatch operations during loading."
         loading={loading}

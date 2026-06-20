@@ -117,6 +117,7 @@ export default function PreordersPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="orders"
         title="Pre-orders"
         description="Scheduled and auto-accepted manual pre-orders"
         loading={loading}

@@ -86,6 +86,7 @@ export default function SupplyRequestsPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="supplyRequests"
         title="Supply Requests"
         description="Factory replenishment requests scoped to this warehouse node."
         loading={loading}

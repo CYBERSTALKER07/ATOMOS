@@ -84,6 +84,9 @@ export const config = {
     '/replenishment/:path*',
     '/transfers/:path*',
     '/profile/:path*',
+    '/settings/:path*',
+    '/stock-commitments/:path*',
+    '/preorders/:path*',
     '/setup/:path*',
   ],
 };

@@ -89,6 +89,7 @@ export default function StaffPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="staff"
         title="Staff"
         description="Warehouse staff and payloader accounts for terminal execution."
         actions={

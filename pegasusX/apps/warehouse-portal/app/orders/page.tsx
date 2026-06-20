@@ -91,6 +91,7 @@ export default function OrdersPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="orders"
         title="Orders"
         description="Warehouse-scoped order queue with state filters and CSV export."
         actions={

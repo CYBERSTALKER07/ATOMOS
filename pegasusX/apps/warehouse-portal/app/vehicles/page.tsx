@@ -53,6 +53,7 @@ export default function VehiclesPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="fleet"
         title="Trucks"
         description="Fleet trucks with capacity, driver assignment, and live availability."
         loading={loading}

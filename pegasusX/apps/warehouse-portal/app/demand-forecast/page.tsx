@@ -104,6 +104,7 @@ export default function DemandForecastPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="forecast"
         title="Demand Forecast"
         description="AI-powered stock recommendations from 4 data sources."
         loading={loading}

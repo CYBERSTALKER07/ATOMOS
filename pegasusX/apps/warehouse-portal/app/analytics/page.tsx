@@ -80,6 +80,7 @@ export default function AnalyticsPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="analytics"
         title="Analytics"
         description="Warehouse revenue, order health, fleet utilization, and import telemetry."
         loading={loading}

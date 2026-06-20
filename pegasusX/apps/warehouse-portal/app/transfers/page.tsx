@@ -31,6 +31,7 @@ export default function TransfersPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="transfers"
         title="Transfer actions"
         description="Factory inbound transfer controls for warehouse operators."
         skeletonVariant="form"

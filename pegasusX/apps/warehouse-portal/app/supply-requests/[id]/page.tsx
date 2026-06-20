@@ -176,6 +176,7 @@ export default function SupplyRequestDetailPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="supplyRequests"
         title="Supply Request"
         description={detail?.request_id}
         loading={loading}

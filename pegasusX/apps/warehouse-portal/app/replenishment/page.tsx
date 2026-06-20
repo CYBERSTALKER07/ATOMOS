@@ -73,6 +73,7 @@ export default function ReplenishmentPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="forecast"
         title="Replenishment insights"
         description="Stock velocity alerts with approve/dismiss actions for this warehouse node."
         loading={loading}

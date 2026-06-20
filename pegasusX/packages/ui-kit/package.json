@@ -8,6 +8,17 @@
   "exports": {
     "./styles/desktop-foundation.css": "./styles/desktop-foundation.css",
     "./styles/auth-layout.css": "./styles/auth-layout.css",
+    "./styles/portal-ui.css": "./styles/portal-ui.css",
+    "./styles/setup-onboarding.css": "./styles/setup-onboarding.css",
+    "./portal": "./src/portal/index.ts",
     "./tailwind.config": "./tailwind.config.ts"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "next": ">=14"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "19.0.0"
   }
 }

@@ -37,6 +37,7 @@ export default function ManifestsPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="manifests"
         title="Manifests"
         description="Daily loading manifests for drivers and vehicles at this node."
         loading={loading}

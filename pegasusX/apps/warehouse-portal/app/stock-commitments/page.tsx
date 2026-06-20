@@ -38,6 +38,7 @@ export default function StockCommitmentsPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="inventory"
         title="Stock commitments"
         description="SKU-level ASAP + scheduled demand vs on-hand"
         loading={loading}

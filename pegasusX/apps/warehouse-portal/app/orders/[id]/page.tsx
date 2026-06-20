@@ -92,6 +92,7 @@ export default function OrderDetailPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="orders"
         title={`Order ${orderId.slice(0, 8)}…`}
         description="Warehouse-scoped order detail and exception actions."
         loading={loading}

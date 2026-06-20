@@ -218,6 +218,7 @@ export default function InventoryPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="inventory"
         title="Inventory"
         description="On-hand stock levels with live sync and quantity adjustments."
         error={loadError}

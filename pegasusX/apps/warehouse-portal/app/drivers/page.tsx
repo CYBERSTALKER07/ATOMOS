@@ -155,6 +155,7 @@ export default function DriversPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="fleet"
         title="Drivers"
         description="Home-node drivers with vehicle assignment and availability."
         actions={

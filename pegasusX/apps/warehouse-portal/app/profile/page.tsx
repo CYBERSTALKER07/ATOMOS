@@ -31,6 +31,7 @@ export default function WarehouseProfilePage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="warehouse"
         title="Profile"
         description="Warehouse operator session and scope."
       >

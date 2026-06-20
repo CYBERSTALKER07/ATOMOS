@@ -99,6 +99,7 @@ export default function TruckDetailPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="fleet"
         title={title}
         description={vehicle ? `${vehicle.license_plate} · ${vehicle.vehicle_class}` : 'Truck detail'}
         loading={loading}

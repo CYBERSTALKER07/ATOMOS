@@ -131,6 +131,7 @@ export default function ReturnsPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="returns"
         title="Inbound Returns"
         description="Scan driver-returned goods at the warehouse gate — restock or write off."
         actions={

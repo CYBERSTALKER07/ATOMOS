@@ -54,6 +54,7 @@ export default function DispatchSettingsPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="settings"
         title="Dispatch settings"
         description="Configure warehouse auto-dispatch policy for this node."
         loading={loading}

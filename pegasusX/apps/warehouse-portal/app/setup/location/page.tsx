@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
+import Icon from "@/components/Icon";
+import { PortalField, PortalInput, FormAlert } from "@/components/portal";
 import { warehouseApiBaseUrl } from "@/lib/auth";
 
 interface WarehouseSetupState {
@@ -58,7 +60,7 @@ export default function WarehouseLocationSetupPage() {
         const body = await res.json().catch(() => null);
         throw new Error(body?.message || `Setup failed: ${res.status}`);
       }
-      
+
       window.location.href = "/";
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : String(err));
@@ -70,80 +72,80 @@ export default function WarehouseLocationSetupPage() {
   function getCookie(name: string) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(';').shift();
+    if (parts.length === 2) return parts.pop()?.split(";").shift();
   }
 
   return (
     <>
       <header className="setup-header">
         <div className="setup-header-icon" aria-hidden>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 3L2 12h3v8h14v-8h3L12 3z" />
-          </svg>
+          <Icon name="warehouse" size={22} />
         </div>
         <div>
-          <h1 className="md-typescale-title-large" style={{ margin: 0 }}>
-            Warehouse Location
-          </h1>
-          <p className="desk-page-subtitle">
-            Configure your warehouse location and operating capacity.
-          </p>
+          <h1>Warehouse location</h1>
+          <p className="setup-header-sub">Configure your warehouse location and operating capacity.</p>
         </div>
       </header>
 
-      <section className="auth-card grid gap-4">
-        <h2 className="md-typescale-title-large">General</h2>
-        <Field id="warehouseName" label="Warehouse Name" error={errors.warehouseName}>
-          <input id="warehouseName" className="md-input-outlined" value={state.warehouseName}
-            onChange={(e) => setState((s) => ({ ...s, warehouseName: e.target.value }))} />
-        </Field>
-        <Field id="totalCapacitySqM" label="Total Capacity (Square Meters)" error={errors.totalCapacitySqM}>
-          <input id="totalCapacitySqM" type="number" className="md-input-outlined" value={state.totalCapacitySqM}
-            onChange={(e) => setState((s) => ({ ...s, totalCapacitySqM: e.target.value }))} />
-        </Field>
-        
-        <h2 className="md-typescale-title-large mt-4">Location</h2>
-        <Field id="address" label="Street Address" error={errors.address}>
-          <input id="address" className="md-input-outlined" value={state.address}
-            onChange={(e) => setState((s) => ({ ...s, address: e.target.value }))} />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field id="city" label="City" error={errors.city}>
-            <input id="city" className="md-input-outlined" value={state.city}
-              onChange={(e) => setState((s) => ({ ...s, city: e.target.value }))} />
-          </Field>
-          <Field id="postalCode" label="Postal Code" error={errors.postalCode}>
-            <input id="postalCode" className="md-input-outlined" value={state.postalCode}
-              onChange={(e) => setState((s) => ({ ...s, postalCode: e.target.value }))} />
-          </Field>
+      <section className="setup-card space-y-4">
+        <h2 className="setup-section-title">General</h2>
+        <PortalField id="warehouseName" label="Warehouse name" error={errors.warehouseName}>
+          <PortalInput
+            id="warehouseName"
+            value={state.warehouseName}
+            onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, warehouseName: e.target.value }))}
+            error={errors.warehouseName}
+          />
+        </PortalField>
+        <PortalField id="totalCapacitySqM" label="Total capacity (square meters)" error={errors.totalCapacitySqM}>
+          <PortalInput
+            id="totalCapacitySqM"
+            type="number"
+            value={state.totalCapacitySqM}
+            onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, totalCapacitySqM: e.target.value }))}
+            error={errors.totalCapacitySqM}
+          />
+        </PortalField>
+
+        <h2 className="setup-section-title mt-4">Location</h2>
+        <PortalField id="address" label="Street address" error={errors.address}>
+          <PortalInput
+            id="address"
+            value={state.address}
+            onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, address: e.target.value }))}
+            error={errors.address}
+          />
+        </PortalField>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <PortalField id="city" label="City" error={errors.city}>
+            <PortalInput
+              id="city"
+              value={state.city}
+              onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, city: e.target.value }))}
+              error={errors.city}
+            />
+          </PortalField>
+          <PortalField id="postalCode" label="Postal code" optional error={errors.postalCode}>
+            <PortalInput
+              id="postalCode"
+              value={state.postalCode}
+              onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, postalCode: e.target.value }))}
+              error={errors.postalCode}
+            />
+          </PortalField>
         </div>
       </section>
 
-      {submitError && (
-        <p role="alert" className="md-typescale-body-medium mt-4" style={{ color: "var(--color-md-error)" }}>
-          {submitError}
-        </p>
-      )}
+      {submitError ? <FormAlert variant="error">{submitError}</FormAlert> : null}
 
-      <footer className="mt-6 flex items-center justify-between gap-4">
-        <div /> {/* spacing */}
-        <button type="button" className="md-btn md-btn-filled" onClick={submit} disabled={submitting}>
-          {submitting ? "Saving…" : "Complete Setup"}
+      <footer className="setup-footer">
+        <div />
+        <button type="button" className="portal-btn portal-btn--primary" onClick={submit} disabled={submitting}>
+          {submitting ? "Saving…" : "Complete setup"}
+          {!submitting ? <Icon name="arrow_forward" size={16} /> : null}
         </button>
       </footer>
     </>
-  );
-}
-
-function Field({ id, label, error, hint, children }: { id: string; label: string; error?: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label htmlFor={id} className="md-label">{label}</label>
-      {children}
-      {error
-        ? <p className="md-helper" data-error="true">{error}</p>
-        : hint ? <p className="md-helper">{hint}</p> : null}
-    </div>
   );
 }
 

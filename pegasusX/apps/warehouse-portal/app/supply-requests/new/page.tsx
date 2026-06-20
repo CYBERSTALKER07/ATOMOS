@@ -108,6 +108,7 @@ export default function NewSupplyRequestPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="supplyRequests"
         title="New Supply Request"
         description="Create a factory replenishment request from forecast or manual line items."
         actions={

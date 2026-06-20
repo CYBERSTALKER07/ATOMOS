@@ -41,6 +41,7 @@ export default function ProductsPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="catalog"
         title="Product Catalog"
         description="Read-only view of supplier product catalog."
         actions={

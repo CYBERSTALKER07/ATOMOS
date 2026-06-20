@@ -34,6 +34,7 @@ export default function PaymentConfigPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="payment"
         title="Payment Config"
         description="Read-only view. Payment gateways are configured by the supplier admin."
         actions={
