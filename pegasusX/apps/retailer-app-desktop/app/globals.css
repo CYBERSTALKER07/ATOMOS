@@ -4,6 +4,7 @@
 @import "@pegasusx/ui-kit/styles/auth-layout.css";
 @import "@pegasusx/ui-kit/styles/portal-ui.css";
 @import "@pegasusx/ui-kit/styles/setup-onboarding.css";
+@import "@pegasusx/ui-kit/styles/monochrome-desktop.css";
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* Pre-hydration Splash Screen                                                */
@@ -118,12 +119,12 @@
     --field-placeholder: oklch(0.45 0 0);
     --field-border: oklch(0.25 0 0);
 
-    --success: oklch(0.68 0.18 145);
-    --success-foreground: oklch(0.2 0.06 145);
-    --warning: oklch(0.72 0.16 75);
-    --warning-foreground: oklch(0.2 0.06 75);
-    --danger: oklch(0.65 0.18 20);
-    --danger-foreground: oklch(0.2 0.08 20);
+    --success: oklch(0.75 0 0);
+    --success-foreground: oklch(0.2 0 0);
+    --warning: oklch(0.72 0 0);
+    --warning-foreground: oklch(0.2 0 0);
+    --danger: oklch(0.65 0 0);
+    --danger-foreground: oklch(0.2 0 0);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -234,7 +235,7 @@
     --color-md-on-tertiary-container: oklch(25% 0 0);
 
     /* ── Error (Muted red) ─────────────────────────── */
-    --color-md-error: oklch(55% 0.2 25);
+    --color-md-error: oklch(55% 0 0);
     --color-md-on-error: oklch(97% 0.01 25);
     --color-md-error-container: oklch(93% 0.04 25);
     --color-md-on-error-container: oklch(30% 0.08 25);
@@ -266,15 +267,15 @@
     --color-md-shadow: oklch(0% 0 0);
 
     /* ── Semantic (muted functional) ───────────────── */
-    --color-md-success: oklch(55% 0.16 145);
+    --color-md-success: oklch(55% 0 0);
     --color-md-on-success: oklch(98% 0.02 145);
     --color-md-success-container: oklch(93% 0.04 145);
     --color-md-on-success-container: oklch(25% 0.06 145);
-    --color-md-warning: oklch(65% 0.16 75);
+    --color-md-warning: oklch(65% 0 0);
     --color-md-on-warning: oklch(98% 0.02 75);
     --color-md-warning-container: oklch(93% 0.04 75);
     --color-md-on-warning-container: oklch(30% 0.06 75);
-    --color-md-info: oklch(55% 0.12 240);
+    --color-md-info: oklch(55% 0 0);
     --color-md-on-info: oklch(98% 0.02 240);
     --color-md-info-container: oklch(93% 0.04 240);
     --color-md-on-info-container: oklch(25% 0.06 240);
@@ -448,7 +449,7 @@ body {
     --color-md-surface-container-highest: oklch(23% 0 0);
     --color-md-outline: oklch(45% 0 0);
     --color-md-outline-variant: oklch(30% 0 0);
-    --color-md-error: oklch(65% 0.2 25);
+    --color-md-error: oklch(65% 0 0);
     --color-md-on-error: oklch(15% 0.04 25);
     --color-md-error-container: oklch(25% 0.08 25);
     --color-md-on-error-container: oklch(85% 0.08 25);
@@ -2655,10 +2656,10 @@ body {
     --color-md-tertiary-container: oklch(16% 0 0);
     --color-md-on-tertiary-container: oklch(75% 0 0);
 
-    --color-md-error: oklch(65% 0.18 20);
-    --color-md-on-error: oklch(20% 0.08 20);
-    --color-md-error-container: oklch(22% 0.06 20);
-    --color-md-on-error-container: oklch(85% 0.06 20);
+    --color-md-error: oklch(65% 0 0);
+    --color-md-on-error: oklch(20% 0 0);
+    --color-md-error-container: oklch(22% 0 0);
+    --color-md-on-error-container: oklch(85% 0 0);
 
     --color-md-surface: oklch(0% 0 0);
     --color-md-on-surface: oklch(93% 0 0);
@@ -2682,18 +2683,18 @@ body {
     --color-md-scrim: oklch(0% 0 0);
     --color-md-shadow: oklch(0% 0 0);
 
-    --color-md-success: oklch(68% 0.18 145);
-    --color-md-on-success: oklch(20% 0.06 145);
-    --color-md-success-container: oklch(20% 0.05 145);
-    --color-md-on-success-container: oklch(85% 0.06 145);
-    --color-md-warning: oklch(72% 0.16 75);
-    --color-md-on-warning: oklch(20% 0.06 75);
-    --color-md-warning-container: oklch(20% 0.04 75);
-    --color-md-on-warning-container: oklch(85% 0.06 75);
-    --color-md-info: oklch(65% 0.12 240);
-    --color-md-on-info: oklch(20% 0.05 240);
-    --color-md-info-container: oklch(18% 0.04 240);
-    --color-md-on-info-container: oklch(85% 0.05 240);
+    --color-md-success: oklch(68% 0 0);
+    --color-md-on-success: oklch(20% 0 0);
+    --color-md-success-container: oklch(20% 0 0);
+    --color-md-on-success-container: oklch(85% 0 0);
+    --color-md-warning: oklch(72% 0 0);
+    --color-md-on-warning: oklch(20% 0 0);
+    --color-md-warning-container: oklch(20% 0 0);
+    --color-md-on-warning-container: oklch(85% 0 0);
+    --color-md-info: oklch(65% 0 0);
+    --color-md-on-info: oklch(20% 0 0);
+    --color-md-info-container: oklch(18% 0 0);
+    --color-md-on-info-container: oklch(85% 0 0);
 
     --color-accent: oklch(100% 0 0);
     --color-on-accent: oklch(0% 0 0);
@@ -3343,7 +3344,7 @@ body {
     --color-on-dark: var(--desk-surface);
     --color-on-dark-soft: var(--desk-text-secondary);
 
-    /* Vibrant orange primary */
+    /* Monochrome primary */
     --color-primary: var(--desk-accent);
     --color-primary-active: var(--desk-accent-strong);
 
@@ -3357,11 +3358,11 @@ body {
     --color-semantic-error: var(--desk-danger);
 
     /* Gradient orbs (legacy decorative — de-emphasised to neutral) */
-    --color-gradient-mint: #d6f1e6;
-    --color-gradient-peach: var(--desk-accent-soft);
-    --color-gradient-lavender: #ece6f5;
-    --color-gradient-sky: #dde9f5;
-    --color-gradient-rose: #f5dee4;
+    --color-gradient-mint: #f5f5f5;
+    --color-gradient-peach: #e5e5e5;
+    --color-gradient-lavender: #f5f5f5;
+    --color-gradient-sky: #e5e5e5;
+    --color-gradient-rose: #f5f5f5;
 
     /* Legacy M3 compatibility mappings */
     --color-md-surface: var(--color-canvas);
@@ -3524,7 +3525,7 @@ body {
     --color-md-surface-container-highest: oklch(23% 0 0);
     --color-md-outline: oklch(45% 0 0);
     --color-md-outline-variant: oklch(30% 0 0);
-    --color-md-error: oklch(65% 0.2 25);
+    --color-md-error: oklch(65% 0 0);
     --color-md-on-error: oklch(15% 0.04 25);
     --color-md-error-container: oklch(25% 0.08 25);
     --color-md-on-error-container: oklch(85% 0.08 25);
@@ -5633,10 +5634,10 @@ body {
     --color-md-tertiary-container: oklch(16% 0 0);
     --color-md-on-tertiary-container: oklch(75% 0 0);
 
-    --color-md-error: oklch(65% 0.18 20);
-    --color-md-on-error: oklch(20% 0.08 20);
-    --color-md-error-container: oklch(22% 0.06 20);
-    --color-md-on-error-container: oklch(85% 0.06 20);
+    --color-md-error: oklch(65% 0 0);
+    --color-md-on-error: oklch(20% 0 0);
+    --color-md-error-container: oklch(22% 0 0);
+    --color-md-on-error-container: oklch(85% 0 0);
 
     --color-md-surface: oklch(0% 0 0);
     --color-md-on-surface: oklch(93% 0 0);
@@ -5660,18 +5661,18 @@ body {
     --color-md-scrim: oklch(0% 0 0);
     --color-md-shadow: oklch(0% 0 0);
 
-    --color-md-success: oklch(68% 0.18 145);
-    --color-md-on-success: oklch(20% 0.06 145);
-    --color-md-success-container: oklch(20% 0.05 145);
-    --color-md-on-success-container: oklch(85% 0.06 145);
-    --color-md-warning: oklch(72% 0.16 75);
-    --color-md-on-warning: oklch(20% 0.06 75);
-    --color-md-warning-container: oklch(20% 0.04 75);
-    --color-md-on-warning-container: oklch(85% 0.06 75);
-    --color-md-info: oklch(65% 0.12 240);
-    --color-md-on-info: oklch(20% 0.05 240);
-    --color-md-info-container: oklch(18% 0.04 240);
-    --color-md-on-info-container: oklch(85% 0.05 240);
+    --color-md-success: oklch(68% 0 0);
+    --color-md-on-success: oklch(20% 0 0);
+    --color-md-success-container: oklch(20% 0 0);
+    --color-md-on-success-container: oklch(85% 0 0);
+    --color-md-warning: oklch(72% 0 0);
+    --color-md-on-warning: oklch(20% 0 0);
+    --color-md-warning-container: oklch(20% 0 0);
+    --color-md-on-warning-container: oklch(85% 0 0);
+    --color-md-info: oklch(65% 0 0);
+    --color-md-on-info: oklch(20% 0 0);
+    --color-md-info-container: oklch(18% 0 0);
+    --color-md-on-info-container: oklch(85% 0 0);
 
     --color-accent: oklch(100% 0 0);
     --color-on-accent: oklch(0% 0 0);

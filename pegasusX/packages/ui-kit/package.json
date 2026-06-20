@@ -6,10 +6,26 @@
     "./styles/*.css"
   ],
   "exports": {
-    "./styles/desktop-foundation.css": "./styles/desktop-foundation.css",
-    "./styles/auth-layout.css": "./styles/auth-layout.css",
-    "./styles/portal-ui.css": "./styles/portal-ui.css",
-    "./styles/setup-onboarding.css": "./styles/setup-onboarding.css",
+    "./styles/desktop-foundation.css": {
+      "style": "./styles/desktop-foundation.css",
+      "default": "./styles/desktop-foundation.css"
+    },
+    "./styles/auth-layout.css": {
+      "style": "./styles/auth-layout.css",
+      "default": "./styles/auth-layout.css"
+    },
+    "./styles/portal-ui.css": {
+      "style": "./styles/portal-ui.css",
+      "default": "./styles/portal-ui.css"
+    },
+    "./styles/setup-onboarding.css": {
+      "style": "./styles/setup-onboarding.css",
+      "default": "./styles/setup-onboarding.css"
+    },
+    "./styles/monochrome-desktop.css": {
+      "style": "./styles/monochrome-desktop.css",
+      "default": "./styles/monochrome-desktop.css"
+    },
     "./portal": "./src/portal/index.ts",
     "./auth": "./src/auth/index.ts",
     "./tailwind.config": "./tailwind.config.ts"

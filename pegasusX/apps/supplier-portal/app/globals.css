@@ -4,6 +4,7 @@
 @import "@pegasusx/ui-kit/styles/auth-layout.css";
 @import "@pegasusx/ui-kit/styles/portal-ui.css";
 @import "@pegasusx/ui-kit/styles/setup-onboarding.css";
+@import "@pegasusx/ui-kit/styles/monochrome-desktop.css";
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* Pre-hydration Splash Screen                                                */
@@ -202,7 +203,7 @@
     --color-on-primary: var(--desk-accent-on);
     --color-on-dark: var(--desk-surface);
     --color-on-dark-soft: var(--desk-text-secondary);
-    /* Vibrant orange primary */
+    /* Monochrome primary — black on light, white on dark */
     --color-primary: var(--desk-accent);
     --color-primary-active: var(--desk-accent-strong);
 
@@ -216,11 +217,11 @@
     --color-semantic-error: var(--desk-danger);
 
     /* Gradient orbs (legacy decorative — de-emphasised to neutral) */
-    --color-gradient-mint: #d6f1e6;
-    --color-gradient-peach: var(--desk-accent-soft);
-    --color-gradient-lavender: #ece6f5;
-    --color-gradient-sky: #dde9f5;
-    --color-gradient-rose: #f5dee4;
+    --color-gradient-mint: #f5f5f5;
+    --color-gradient-peach: #e5e5e5;
+    --color-gradient-lavender: #f5f5f5;
+    --color-gradient-sky: #e5e5e5;
+    --color-gradient-rose: #f5f5f5;
 
     /* Legacy M3 compatibility mappings */
     --color-md-surface: var(--color-canvas);
@@ -355,10 +356,10 @@ body {
     --color-md-surface-container-highest: oklch(23% 0 0);
     --color-md-outline: oklch(45% 0 0);
     --color-md-outline-variant: oklch(30% 0 0);
-    --color-md-error: oklch(65% 0.2 25);
-    --color-md-on-error: oklch(15% 0.04 25);
-    --color-md-error-container: oklch(25% 0.08 25);
-    --color-md-on-error-container: oklch(85% 0.08 25);
+    --color-md-error: oklch(65% 0 0);
+    --color-md-on-error: oklch(15% 0 0);
+    --color-md-error-container: oklch(25% 0 0);
+    --color-md-on-error-container: oklch(85% 0 0);
     --color-md-secondary-container: oklch(25% 0 0);
     --color-md-on-secondary-container: oklch(90% 0 0);
 }
@@ -2516,10 +2517,10 @@ body {
     --color-md-tertiary-container: oklch(16% 0 0);
     --color-md-on-tertiary-container: oklch(75% 0 0);
 
-    --color-md-error: oklch(65% 0.18 20);
-    --color-md-on-error: oklch(20% 0.08 20);
-    --color-md-error-container: oklch(22% 0.06 20);
-    --color-md-on-error-container: oklch(85% 0.06 20);
+    --color-md-error: oklch(65% 0 0);
+    --color-md-on-error: oklch(20% 0 0);
+    --color-md-error-container: oklch(22% 0 0);
+    --color-md-on-error-container: oklch(85% 0 0);
 
     --color-md-surface: oklch(0% 0 0);
     --color-md-on-surface: oklch(93% 0 0);
@@ -2543,18 +2544,18 @@ body {
     --color-md-scrim: oklch(0% 0 0);
     --color-md-shadow: oklch(0% 0 0);
 
-    --color-md-success: oklch(68% 0.18 145);
-    --color-md-on-success: oklch(20% 0.06 145);
-    --color-md-success-container: oklch(20% 0.05 145);
-    --color-md-on-success-container: oklch(85% 0.06 145);
-    --color-md-warning: oklch(72% 0.16 75);
-    --color-md-on-warning: oklch(20% 0.06 75);
-    --color-md-warning-container: oklch(20% 0.04 75);
-    --color-md-on-warning-container: oklch(85% 0.06 75);
-    --color-md-info: oklch(65% 0.12 240);
-    --color-md-on-info: oklch(20% 0.05 240);
-    --color-md-info-container: oklch(18% 0.04 240);
-    --color-md-on-info-container: oklch(85% 0.05 240);
+    --color-md-success: oklch(68% 0 0);
+    --color-md-on-success: oklch(20% 0 0);
+    --color-md-success-container: oklch(20% 0 0);
+    --color-md-on-success-container: oklch(85% 0 0);
+    --color-md-warning: oklch(72% 0 0);
+    --color-md-on-warning: oklch(20% 0 0);
+    --color-md-warning-container: oklch(20% 0 0);
+    --color-md-on-warning-container: oklch(85% 0 0);
+    --color-md-info: oklch(65% 0 0);
+    --color-md-on-info: oklch(20% 0 0);
+    --color-md-info-container: oklch(18% 0 0);
+    --color-md-on-info-container: oklch(85% 0 0);
 
     --color-accent: oklch(100% 0 0);
     --color-on-accent: oklch(0% 0 0);

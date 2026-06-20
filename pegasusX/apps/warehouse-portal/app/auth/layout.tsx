@@ -46,8 +46,8 @@ function BrandLogo({ size = 96 }: { size?: number }) {
       style={{
         width: size,
         height: size,
-        background: 'var(--desk-accent, #c4a574)',
-        color: 'var(--desk-accent-on, #1a1208)',
+        background: 'var(--desk-ink, #000000)',
+        color: 'var(--desk-on-ink, #ffffff)',
       }}
       aria-hidden
     >

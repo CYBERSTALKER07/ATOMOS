@@ -1,0 +1,93 @@
+/* Final monochrome sweep — neutralizes app-level chromatic token leaks */
+
+:root {
+    --color-gradient-mint: #f5f5f5;
+    --color-gradient-peach: #e5e5e5;
+    --color-gradient-lavender: #f5f5f5;
+    --color-gradient-sky: #e5e5e5;
+    --color-gradient-rose: #f5f5f5;
+}
+
+:root.dark,
+.dark {
+    --color-md-error: oklch(65% 0 0);
+    --color-md-on-error: oklch(10% 0 0);
+    --color-md-error-container: oklch(22% 0 0);
+    --color-md-on-error-container: oklch(85% 0 0);
+    --color-md-success: oklch(68% 0 0);
+    --color-md-on-success: oklch(10% 0 0);
+    --color-md-success-container: oklch(22% 0 0);
+    --color-md-on-success-container: oklch(85% 0 0);
+    --color-md-warning: oklch(72% 0 0);
+    --color-md-on-warning: oklch(10% 0 0);
+    --color-md-warning-container: oklch(22% 0 0);
+    --color-md-on-warning-container: oklch(85% 0 0);
+    --color-md-info: oklch(65% 0 0);
+    --color-md-on-info: oklch(10% 0 0);
+    --color-md-info-container: oklch(18% 0 0);
+    --color-md-on-info-container: oklch(85% 0 0);
+
+    --success: oklch(0.68 0 0);
+    --warning: oklch(0.72 0 0);
+    --danger: oklch(0.65 0 0);
+
+    --background: oklch(0 0 0);
+    --surface: oklch(0.1 0 0);
+    --color-md-primary-container: oklch(22% 0 0);
+    --color-md-secondary-container: oklch(22% 0 0);
+}
+
+.auth-dark {
+    --color-md-error: oklch(65% 0 0);
+    --color-md-on-error: oklch(15% 0 0);
+    --color-md-error-container: oklch(25% 0 0);
+    --color-md-on-error-container: oklch(85% 0 0);
+}
+
+/* Form alerts — greyscale only */
+.form-alert--error,
+[class*="FormAlert"][data-variant="error"] {
+    background: #f5f5f5 !important;
+    color: #171717 !important;
+    border-color: #d4d4d4 !important;
+}
+
+/* HeroUI status chips — greyscale only */
+[data-slot="base"][data-color="success"],
+[data-slot="base"][data-color="warning"],
+[data-slot="base"][data-color="danger"] {
+    background: var(--desk-surface-subtle) !important;
+    color: var(--desk-text-primary) !important;
+    border: 1px solid var(--desk-border) !important;
+}
+
+[data-slot="base"][data-color="accent"] {
+    background: var(--desk-surface-subtle) !important;
+    color: var(--desk-text-primary) !important;
+    border: 1px solid var(--desk-border-strong) !important;
+}
+
+/* Neutralize legacy synthwave theme if present */
+:root.synthwave {
+    --background: oklch(0 0 0);
+    --foreground: oklch(0.98 0 0);
+    --surface: oklch(0.1 0 0);
+    --surface-foreground: oklch(0.95 0 0);
+    --overlay: oklch(0.08 0 0);
+    --color-md-primary: oklch(100% 0 0);
+    --color-md-on-primary: oklch(0% 0 0);
+    --color-md-primary-container: oklch(22% 0 0);
+    --color-md-on-primary-container: oklch(95% 0 0);
+    --color-md-secondary: oklch(75% 0 0);
+    --color-md-on-secondary: oklch(10% 0 0);
+    --color-md-secondary-container: oklch(22% 0 0);
+    --color-md-on-secondary-container: oklch(92% 0 0);
+    --color-md-tertiary: oklch(80% 0 0);
+    --color-md-on-tertiary: oklch(10% 0 0);
+    --color-md-surface: oklch(0% 0 0);
+    --color-md-surface-container-low: oklch(8% 0 0);
+    --color-md-surface-container: oklch(12% 0 0);
+    --color-md-surface-container-high: oklch(18% 0 0);
+    --color-md-outline: oklch(40% 0 0);
+    --color-md-outline-variant: oklch(25% 0 0);
+}
