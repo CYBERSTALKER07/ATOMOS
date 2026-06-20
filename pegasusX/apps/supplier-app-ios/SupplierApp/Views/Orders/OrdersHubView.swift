@@ -92,7 +92,12 @@ struct OrdersQueueView: View {
             NavigationLink {
               OrderDetailPanel(order: order, vm: vm)
             } label: {
-              OrderRow(order: order)
+              OrderRow(
+                order: order,
+                showWarehouseMenu: vm.canWarehouseOps(for: order),
+                onDelay: { Task { await vm.delayWarehouseOrder(order, reason: nil) } },
+                onReject: nil,
+              )
             }
           }
           .listStyle(.insetGrouped)

@@ -58,6 +58,7 @@ import com.pegasusx.supplier.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.supplier.ui.screens.more.MoreScreen
 import com.pegasusx.supplier.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.supplier.ui.screens.operations.OperationsScreen
+import com.pegasusx.supplier.ui.screens.orders.OrderDetailScreen
 import com.pegasusx.supplier.ui.screens.orders.OrdersHubScreen
 import com.pegasusx.supplier.ui.screens.profile.ProfileScreen
 import com.pegasusx.supplier.ui.screens.orgfleet.OrgFleetScreen
@@ -89,6 +90,7 @@ object SupplierRoutes {
     const val BILLING = "billing"
     const val DASHBOARD = "dashboard"
     const val ORDERS = "orders"
+    const val ORDER_DETAIL = "orders/{orderId}"
     const val FLEET = "fleet"
     const val MORE = "more"
     const val INVENTORY = "inventory"
@@ -117,6 +119,7 @@ object SupplierRoutes {
     const val MANIFEST_EXCEPTIONS = "manifest_exceptions"
 
     fun manifestDetail(manifestId: String) = "manifest_detail/$manifestId"
+    fun orderDetail(orderId: String) = "orders/$orderId"
     fun catalogDetail(productId: String) = "catalog_detail/$productId"
     const val DISPATCH_PREVIEW = "dispatch_preview"
     const val ACTIVITY = "activity"
@@ -283,7 +286,23 @@ fun SupplierNavigation(
                 
             }
             composable(SupplierRoutes.ORDERS) {
-                OrdersHubScreen(ops = ops, realtimeSignals = realtimeSignals)
+                OrdersHubScreen(
+                    ops = ops,
+                    realtimeSignals = realtimeSignals,
+                    onOrderClick = { order -> navController.navigate(SupplierRoutes.orderDetail(order.orderId)) },
+                )
+            }
+
+            composable(
+                route = SupplierRoutes.ORDER_DETAIL,
+                arguments = listOf(navArgument("orderId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId") ?: return@composable
+                OrderDetailScreen(
+                    orderId = orderId,
+                    ops = ops,
+                    onBack = { navController.popBackStack() },
+                )
             }
             composable(SupplierRoutes.FLEET) {
                 

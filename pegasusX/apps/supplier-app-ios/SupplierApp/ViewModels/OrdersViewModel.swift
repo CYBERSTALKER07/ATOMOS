@@ -13,6 +13,7 @@ final class OrdersViewModel {
     let filters: [(id: String, label: String)] = [
         ("ACTIVE", "Active"),
         ("AWAITING_REVIEW", "Review"),
+        ("SCHEDULED", "Scheduled"),
         ("COMPLETED", "Completed"),
         ("CANCELLED", "Cancelled"),
     ]
@@ -25,6 +26,8 @@ final class OrdersViewModel {
             let response: SupplierOrdersResponse
             if statusFilter == "AWAITING_REVIEW" {
                 response = try await SupplierService.orders(status: statusFilter, limit: 500)
+            } else if statusFilter == "SCHEDULED" {
+                response = try await SupplierService.orders(status: "SCHEDULED", limit: 500)
             } else {
                 response = try await SupplierService.orders(filter: statusFilter, limit: 500)
             }
@@ -48,6 +51,45 @@ final class OrdersViewModel {
             try await SupplierOperationsService.vetOrder(
                 body: body,
                 idempotencyKey: "supplier-vet:\(order.orderId):\(decision)"
+            )
+            await load(silent: true)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    func canWarehouseOps(for order: SupplierOrder) -> Bool {
+        guard let warehouseId = order.warehouseId, !warehouseId.isEmpty else { return false }
+        return statusFilter == "ACTIVE" || statusFilter == "SCHEDULED"
+    }
+
+    func delayWarehouseOrder(_ order: SupplierOrder, reason: String?) async {
+        guard let warehouseId = order.warehouseId, !warehouseId.isEmpty else { return }
+        vettingOrderId = order.orderId
+        defer { vettingOrderId = nil }
+        do {
+            _ = try await SupplierOperationsService.delayWarehouseOrder(
+                orderId: order.orderId,
+                warehouseId: warehouseId,
+                reason: reason,
+                idempotencyKey: "warehouse-order-delay:\(order.orderId)"
+            )
+            await load(silent: true)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    func rejectWarehouseOrder(_ order: SupplierOrder, reason: String) async {
+        guard let warehouseId = order.warehouseId, !warehouseId.isEmpty else { return }
+        vettingOrderId = order.orderId
+        defer { vettingOrderId = nil }
+        do {
+            _ = try await SupplierOperationsService.rejectWarehouseOrder(
+                orderId: order.orderId,
+                warehouseId: warehouseId,
+                reason: reason,
+                idempotencyKey: "warehouse-order-reject:\(order.orderId):\(reason.hashValue)"
             )
             await load(silent: true)
         } catch {

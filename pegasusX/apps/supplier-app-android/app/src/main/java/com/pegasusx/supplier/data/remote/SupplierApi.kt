@@ -385,4 +385,26 @@ interface SupplierApi {
         @Query("version") version: String,
         @Query("channel") channel: String = "production",
     ): Response<ClientPolicyResponse>
+
+    @GET("v1/warehouse/ops/orders/{orderId}")
+    suspend fun getWarehouseOrder(
+        @Path("orderId") orderId: String,
+        @Query("warehouse_id") warehouseId: String?,
+    ): Response<WarehouseOrderDetail>
+
+    @POST("v1/warehouse/ops/orders/{orderId}/delay")
+    suspend fun delayWarehouseOrder(
+        @Path("orderId") orderId: String,
+        @Query("warehouse_id") warehouseId: String,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+        @Body body: WarehouseOrderMutationRequest,
+    ): Response<WarehouseOrderMutationResponse>
+
+    @POST("v1/warehouse/ops/orders/{orderId}/reject")
+    suspend fun rejectWarehouseOrder(
+        @Path("orderId") orderId: String,
+        @Query("warehouse_id") warehouseId: String,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+        @Body body: WarehouseOrderMutationRequest,
+    ): Response<WarehouseOrderMutationResponse>
 }

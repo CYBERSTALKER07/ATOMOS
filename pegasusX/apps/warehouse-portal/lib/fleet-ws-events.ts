@@ -23,6 +23,26 @@ export const WAREHOUSE_DISPATCH_REFRESH_EVENTS = new Set([
   'VEHICLE_AVAILABILITY_CHANGED',
 ]);
 
+/** Orders + pre-orders queue surfaces. */
+export const WAREHOUSE_ORDERS_REFRESH_EVENTS = new Set([
+  'ORDER_CREATED',
+  'ORDER_STATUS_CHANGED',
+  'ORDER_ASSIGNED',
+  'ORDER_REASSIGNED',
+  'ORDER_AMENDED',
+  'ORDER_FINALIZED',
+  'PRE_ORDER_NOTIFIED',
+  'PRE_ORDER_NUDGE',
+  'PRE_ORDER_CONFIRMATION',
+  'PRE_ORDER_CONFIRMED',
+  'PRE_ORDER_EDITED',
+  'PRE_ORDER_CANCELLED',
+  'PRE_ORDER_AUTO_ACCEPTED',
+  'PRE_ORDER_DATE_PROPOSED',
+  'PRE_ORDER_DATE_ACCEPTED',
+  'PRE_ORDER_DATE_REJECTED',
+]);
+
 export function parseWarehouseWsEventType(raw: unknown): string | null {
   if (typeof raw !== 'string' || raw.trim() === '') {
     return null;

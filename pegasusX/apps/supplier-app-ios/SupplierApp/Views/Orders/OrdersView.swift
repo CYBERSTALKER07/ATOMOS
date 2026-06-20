@@ -118,12 +118,15 @@ struct OrdersView: View {
 
 struct OrderRow: View {
     let order: SupplierOrder
+    var showWarehouseMenu: Bool = false
+    var onDelay: (() -> Void)?
+    var onReject: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
             HStack {
-                Text(order.orderId)
-                    .font(.subheadline.monospaced())
+                Text(order.retailerId.isEmpty ? String(order.orderId.prefix(12)) : order.retailerId)
+                    .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                 Spacer()
                 SupplierStatusBadge(text: order.status)
@@ -131,8 +134,21 @@ struct OrderRow: View {
             Text(MoneyFormat.minor(order.totalMinor, currency: order.currency))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Text(order.orderId)
+                .font(.caption2.monospaced())
+                .foregroundStyle(.secondary)
         }
         .padding(.vertical, SupplierTheme.spacingXS)
+        .contextMenu {
+            if showWarehouseMenu {
+                if let onDelay {
+                    Button("Delay delivery") { onDelay() }
+                }
+                if let onReject {
+                    Button("Reject", role: .destructive) { onReject() }
+                }
+            }
+        }
     }
 }
 
@@ -140,6 +156,10 @@ struct OrderDetailPanel: View {
     let order: SupplierOrder
     @Bindable var vm: OrdersViewModel
     @State private var note = ""
+    @State private var warehouseDetail: WarehouseOrderDetail?
+    @State private var opsReason = ""
+    @State private var showDelayDialog = false
+    @State private var showRejectDialog = false
 
     private var canVet: Bool {
         ["PENDING", "AWAITING_REVIEW"].contains(order.status.uppercased())
@@ -149,15 +169,28 @@ struct OrderDetailPanel: View {
         List {
             Section("Order") {
                 LabeledContent("ID", value: order.orderId)
-                LabeledContent("Retailer", value: order.retailerId)
+                LabeledContent("Retailer", value: warehouseDetail?.retailerName ?? order.retailerId)
                 LabeledContent("Status") {
-                    SupplierStatusBadge(text: order.status)
+                    SupplierStatusBadge(text: warehouseDetail?.state ?? warehouseDetail?.status ?? order.status)
                 }
                 if let decision = order.decision, !decision.isEmpty {
                     LabeledContent("Decision", value: decision)
                 }
                 LabeledContent("Total", value: MoneyFormat.minor(order.totalMinor, currency: order.currency))
                 LabeledContent("Updated", value: order.updatedAt)
+            }
+
+            if let items = warehouseDetail?.lineItems, !items.isEmpty {
+                Section("Line items") {
+                    ForEach(items) { item in
+                        VStack(alignment: .leading) {
+                            Text(item.productName ?? item.productId ?? "—")
+                            Text("Qty \(item.quantity ?? 0)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
             }
 
             if canVet {
@@ -177,7 +210,50 @@ struct OrderDetailPanel: View {
                     }
                 }
             }
+
+            if vm.canWarehouseOps(for: order) {
+                Section("Warehouse admin") {
+                    TextField("Reason", text: $opsReason)
+                    Button("Delay delivery") { showDelayDialog = true }
+                    Button("Reject order", role: .destructive) { showRejectDialog = true }
+                }
+            }
         }
         .navigationTitle("Order")
+        .task { await loadWarehouseDetail() }
+        .alert("Delay delivery", isPresented: $showDelayDialog) {
+            Button("Delay") {
+                Task {
+                    await vm.delayWarehouseOrder(order, reason: opsReason.isEmpty ? nil : opsReason)
+                    opsReason = ""
+                    await loadWarehouseDetail()
+                }
+            }
+            Button("Cancel", role: .cancel) { opsReason = "" }
+        }
+        .alert("Reject order", isPresented: $showRejectDialog) {
+            Button("Reject", role: .destructive) {
+                Task {
+                    await vm.rejectWarehouseOrder(order, reason: opsReason)
+                    opsReason = ""
+                    await loadWarehouseDetail()
+                }
+            }
+            Button("Cancel", role: .cancel) { opsReason = "" }
+        } message: {
+            Text("Reason is required for reject.")
+        }
+    }
+
+    private func loadWarehouseDetail() async {
+        guard let warehouseId = order.warehouseId, !warehouseId.isEmpty else { return }
+        do {
+            warehouseDetail = try await SupplierOperationsService.getWarehouseOrder(
+                orderId: order.orderId,
+                warehouseId: warehouseId
+            )
+        } catch {
+            warehouseDetail = nil
+        }
     }
 }

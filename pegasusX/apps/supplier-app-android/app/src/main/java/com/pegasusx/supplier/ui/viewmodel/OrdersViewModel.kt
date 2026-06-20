@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 
-enum class OrderFilterTab { ACTIVE, REVIEW, COMPLETED, CANCELLED }
+enum class OrderFilterTab { ACTIVE, REVIEW, SCHEDULED, COMPLETED, CANCELLED }
 
 data class OrdersUiState(
     val filter: OrderFilterTab = OrderFilterTab.ACTIVE,
@@ -60,6 +60,7 @@ class OrdersViewModel @Inject constructor(
                 val filter = _state.value.filter
                 val resp = when (filter) {
                     OrderFilterTab.REVIEW -> ops.getOrders(status = "AWAITING_REVIEW", limit = 500)
+                    OrderFilterTab.SCHEDULED -> ops.getOrders(status = "SCHEDULED", limit = 500)
                     else -> ops.getOrders(filter = filter.name, limit = 500)
                 }
                 if (resp.isSuccessful) {
@@ -99,6 +100,57 @@ class OrdersViewModel @Inject constructor(
                 val resp = ops.vetOrder(body, key)
                 if (resp.isSuccessful) load(silent = true) else {
                     _state.update { it.copy(error = "Vet failed (${resp.code()})") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(error = e.message) }
+            } finally {
+                _state.update { it.copy(vettingId = null) }
+            }
+        }
+    }
+
+    fun canWarehouseOps(order: SupplierOrder): Boolean {
+        val warehouseId = order.warehouseId ?: return false
+        if (warehouseId.isBlank()) return false
+        val filter = _state.value.filter
+        return filter == OrderFilterTab.ACTIVE || filter == OrderFilterTab.SCHEDULED
+    }
+
+    fun delayWarehouseOrder(order: SupplierOrder, reason: String?) {
+        val warehouseId = order.warehouseId ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(vettingId = order.orderId) }
+            try {
+                val resp = ops.delayWarehouseOrder(
+                    order.orderId,
+                    warehouseId,
+                    reason,
+                    SupplierIdempotencyKeys.warehouseOrderDelay(order.orderId),
+                )
+                if (resp.isSuccessful) load(silent = true) else {
+                    _state.update { it.copy(error = "Delay failed (${resp.code()})") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(error = e.message) }
+            } finally {
+                _state.update { it.copy(vettingId = null) }
+            }
+        }
+    }
+
+    fun rejectWarehouseOrder(order: SupplierOrder, reason: String) {
+        val warehouseId = order.warehouseId ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(vettingId = order.orderId) }
+            try {
+                val resp = ops.rejectWarehouseOrder(
+                    order.orderId,
+                    warehouseId,
+                    reason,
+                    SupplierIdempotencyKeys.warehouseOrderReject(order.orderId, reason),
+                )
+                if (resp.isSuccessful) load(silent = true) else {
+                    _state.update { it.copy(error = "Reject failed (${resp.code()})") }
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message) }

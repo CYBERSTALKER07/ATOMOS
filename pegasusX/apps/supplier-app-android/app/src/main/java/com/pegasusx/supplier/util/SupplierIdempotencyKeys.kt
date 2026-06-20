@@ -31,6 +31,11 @@ object SupplierIdempotencyKeys {
     fun vetOrder(orderId: String, decision: String): String =
         "supplier-vet-order:$orderId:${decision.uppercase()}"
 
+    fun warehouseOrderDelay(orderId: String): String = "warehouse-order-delay:$orderId"
+
+    fun warehouseOrderReject(orderId: String, reason: String): String =
+        "warehouse-order-reject:$orderId:${stableHash(reason)}"
+
     fun importCreate(scopeId: String, fileName: String, fileSizeBytes: Int): String =
         "supplier-import-create:$scopeId:${stableHash("$fileName:$fileSizeBytes")}"
 

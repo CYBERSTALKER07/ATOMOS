@@ -1,16 +1,21 @@
 package com.pegasusx.supplier.ui.screens.orders
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pegasus.design.showFullScreenLoading
+import com.pegasusx.supplier.data.model.SupplierOrder
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
@@ -30,11 +35,12 @@ private enum class OrdersHubSurface { Queue, Dispatch }
 fun OrdersHubScreen(
     ops: SupplierOperationsRepository,
     realtimeSignals: SupplierRealtimeSignals,
+    onOrderClick: (SupplierOrder) -> Unit,
     viewModel: OrdersViewModel = hiltViewModel(),
 ) {
     var surface by remember { mutableStateOf(OrdersHubSurface.Queue) }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val showVetActions = state.filter == OrderFilterTab.REVIEW || state.filter == OrderFilterTab.ACTIVE
+    val showVetActions = state.filter == OrderFilterTab.REVIEW
 
     Scaffold(
         topBar = {
@@ -67,7 +73,14 @@ fun OrdersHubScreen(
                             Tab(
                                 selected = state.filter == tab,
                                 onClick = { viewModel.setFilter(tab) },
-                                text = { Text(tab.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                                text = {
+                                    Text(
+                                        when (tab) {
+                                            OrderFilterTab.SCHEDULED -> "Scheduled"
+                                            else -> tab.name.lowercase().replaceFirstChar { it.uppercase() }
+                                        },
+                                    )
+                                },
                             )
                         }
                     }
@@ -82,6 +95,10 @@ fun OrdersHubScreen(
                 showVetActions = showVetActions,
                 onRetry = { viewModel.load() },
                 onVet = { order, decision -> viewModel.vetOrder(order, decision) },
+                onOrderClick = onOrderClick,
+                canWarehouseOps = viewModel::canWarehouseOps,
+                onDelay = { order, reason -> viewModel.delayWarehouseOrder(order, reason) },
+                onReject = { order, reason -> viewModel.rejectWarehouseOrder(order, reason) },
             )
             OrdersHubSurface.Dispatch -> DispatchPreviewScreen(
                 ops = ops,
@@ -99,7 +116,11 @@ private fun OrdersQueueContent(
     state: com.pegasusx.supplier.ui.viewmodel.OrdersUiState,
     showVetActions: Boolean,
     onRetry: () -> Unit,
-    onVet: (com.pegasusx.supplier.data.model.SupplierOrder, String) -> Unit,
+    onVet: (SupplierOrder, String) -> Unit,
+    onOrderClick: (SupplierOrder) -> Unit,
+    canWarehouseOps: (SupplierOrder) -> Boolean,
+    onDelay: (SupplierOrder, String?) -> Unit,
+    onReject: (SupplierOrder, String) -> Unit,
 ) {
     when {
         showFullScreenLoading(state.loading, state.orders.isNotEmpty()) -> SupplierLoadingState(
@@ -129,16 +150,99 @@ private fun OrdersQueueContent(
             items(state.orders, key = { it.orderId }) { order ->
                 val amount = formatMinorAmount(order.totalMinor, order.currency)
                 val vetting = state.vettingId == order.orderId
-                SupplierOpsListCard(
-                    headline = order.orderId.take(12),
-                    supporting = buildString {
-                        append(amount)
-                        append(" · Retailer ")
-                        append(order.retailerId.take(8))
-                        order.updatedAt.takeIf { it.isNotBlank() }?.let { append(" · $it") }
-                    },
-                    status = order.status.ifBlank { order.decision },
-                )
+                var menuExpanded by remember(order.orderId) { mutableStateOf(false) }
+                var rejectDialog by remember(order.orderId) { mutableStateOf(false) }
+                var delayDialog by remember(order.orderId) { mutableStateOf(false) }
+                var reason by remember(order.orderId) { mutableStateOf("") }
+                val warehouseOps = canWarehouseOps(order)
+
+                if (rejectDialog) {
+                    AlertDialog(
+                        onDismissRequest = { rejectDialog = false; reason = "" },
+                        title = { Text("Reject order") },
+                        text = {
+                            OutlinedTextField(
+                                value = reason,
+                                onValueChange = { reason = it },
+                                label = { Text("Reason") },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    onReject(order, reason.trim())
+                                    rejectDialog = false
+                                    reason = ""
+                                },
+                                enabled = reason.isNotBlank(),
+                            ) { Text("Reject") }
+                        },
+                        dismissButton = { TextButton(onClick = { rejectDialog = false; reason = "" }) { Text("Cancel") } },
+                    )
+                }
+                if (delayDialog) {
+                    AlertDialog(
+                        onDismissRequest = { delayDialog = false; reason = "" },
+                        title = { Text("Delay delivery") },
+                        text = {
+                            OutlinedTextField(
+                                value = reason,
+                                onValueChange = { reason = it },
+                                label = { Text("Reason (optional)") },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                onDelay(order, reason.trim().ifBlank { null })
+                                delayDialog = false
+                                reason = ""
+                            }) { Text("Delay") }
+                        },
+                        dismissButton = { TextButton(onClick = { delayDialog = false; reason = "" }) { Text("Cancel") } },
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SupplierOpsListCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onOrderClick(order) },
+                        headline = order.retailerId.ifBlank { order.orderId.take(12) },
+                        supporting = buildString {
+                            append(amount)
+                            append(" · ")
+                            append(order.orderId.take(12))
+                            order.updatedAt.takeIf { it.isNotBlank() }?.let { append(" · $it") }
+                        },
+                        status = order.status.ifBlank { order.decision },
+                    )
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(44.dp)) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Order actions")
+                        }
+                        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                            DropdownMenuItem(
+                                text = { Text("View details") },
+                                onClick = { menuExpanded = false; onOrderClick(order) },
+                            )
+                            if (warehouseOps) {
+                                DropdownMenuItem(
+                                    text = { Text("Delay delivery") },
+                                    onClick = { menuExpanded = false; delayDialog = true },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Reject") },
+                                    onClick = { menuExpanded = false; rejectDialog = true },
+                                )
+                            }
+                        }
+                    }
+                }
                 if (showVetActions && order.status.equals("AWAITING_REVIEW", ignoreCase = true)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),

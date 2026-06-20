@@ -1966,6 +1966,47 @@ export interface WarehouseOrdersResponse {
   orders: WarehouseOrderRow[];
 }
 
+/** Portal list row (compact ops shape from GET /v1/warehouse/ops/orders). */
+export interface WarehouseOrderListItem {
+  order_id: OrderId;
+  retailer_name?: string;
+  retailer_id?: RetailerId;
+  state?: string;
+  status?: string;
+  total_uzs?: number;
+  total_minor?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface WarehouseOrderLineItem {
+  product_id?: string;
+  product_name?: string;
+  quantity?: number;
+  unit_price?: number;
+}
+
+export interface WarehouseOrderDetail {
+  order_id: OrderId;
+  retailer_name?: string;
+  state?: string;
+  status?: string;
+  total_uzs?: number;
+  total_minor?: number;
+  line_items?: WarehouseOrderLineItem[];
+}
+
+export interface WarehousePreordersResponse {
+  preorders: RetailerOrderLifecycleResponse[];
+  items?: RetailerOrderLifecycleResponse[];
+}
+
+export interface WarehousePreorderEditRequest {
+  line_items?: RetailerOrderLineItem[];
+  requested_delivery_date: string;
+  reason: string;
+}
+
 /** Legacy compact shape; prefer WarehouseDispatchPreview from GET/POST dispatch/preview. */
 export interface WarehouseDispatchPreviewResponse {
   status: string;

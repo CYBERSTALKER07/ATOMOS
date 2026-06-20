@@ -326,6 +326,7 @@ fun WarehouseNavigation(
                 composable(WarehouseRoutes.ORDERS) {
                     OrdersScreen(
                         api = api,
+                        opsRepository = opsRepository,
                         realtimeSignals = realtimeSignals,
                         onOrderClick = { id -> navController.navigate(WarehouseRoutes.orderDetail(id)) },
                         onBack = backFor(WarehouseRoutes.ORDERS),
@@ -405,6 +406,7 @@ fun WarehouseNavigation(
                         opsRepository = opsRepository,
                         realtimeSignals = realtimeSignals,
                         onVehicleClick = { id -> navController.navigate(WarehouseRoutes.vehicleDetail(id)) },
+                        onOrderClick = { id -> navController.navigate(WarehouseRoutes.orderDetail(id)) },
                         onBack = backFor(WarehouseRoutes.DISPATCH),
                     )
                 }

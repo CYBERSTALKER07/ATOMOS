@@ -477,6 +477,45 @@ enum SupplierIdempotency {
         "supplier-payment-bypass:\(orderId):\(stableHash(reason))"
     }
 
+    static func getWarehouseOrder(orderId: String, warehouseId: String) async throws -> WarehouseOrderDetail {
+        try await APIClient.shared.get(
+            "v1/warehouse/ops/orders/\(orderId)",
+            query: ["warehouse_id": warehouseId]
+        )
+    }
+
+    static func delayWarehouseOrder(
+        orderId: String,
+        warehouseId: String,
+        reason: String?,
+        idempotencyKey: String
+    ) async throws -> WarehouseOrderMutationResponse {
+        var components = URLComponents()
+        components.queryItems = [URLQueryItem(name: "warehouse_id", value: warehouseId)]
+        let query = components.percentEncodedQuery.map { "?\($0)" } ?? ""
+        return try await APIClient.shared.post(
+            "v1/warehouse/ops/orders/\(orderId)/delay\(query)",
+            body: WarehouseOrderMutationRequest(reason: reason),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func rejectWarehouseOrder(
+        orderId: String,
+        warehouseId: String,
+        reason: String,
+        idempotencyKey: String
+    ) async throws -> WarehouseOrderMutationResponse {
+        var components = URLComponents()
+        components.queryItems = [URLQueryItem(name: "warehouse_id", value: warehouseId)]
+        let query = components.percentEncodedQuery.map { "?\($0)" } ?? ""
+        return try await APIClient.shared.post(
+            "v1/warehouse/ops/orders/\(orderId)/reject\(query)",
+            body: WarehouseOrderMutationRequest(reason: reason),
+            idempotencyKey: idempotencyKey
+        )
+    }
+
     private static func stableHash(_ input: String) -> String {
         var hash: UInt32 = 2166136261
         for scalar in input.unicodeScalars {

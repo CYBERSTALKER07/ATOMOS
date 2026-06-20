@@ -120,9 +120,12 @@ import type {
   WarehouseOpsSettings,
   WarehouseOpsSettingsPatchRequest,
   CheckoutPreviewResponse,
+  WarehouseOrderDetail,
   WarehouseOrderMutationRequest,
   WarehouseOrderMutationResponse,
   WarehouseOrdersResponse,
+  WarehousePreorderEditRequest,
+  WarehousePreordersResponse,
   WarehouseDispatchSettingsPatchRequest,
   WarehouseDispatchSettingsResponse,
   WarehouseReplenishmentInsightActionResponse,
@@ -949,10 +952,43 @@ export class ApiClient {
     return this.request<WarehouseOrdersResponse>(appendQuery("/v1/warehouse/ops/orders", query as Record<string, unknown>), "GET");
   }
 
-  async getWarehousePreorders(query: { limit?: number; offset?: number } = {}): Promise<{ preorders: unknown[]; items: unknown[] }> {
-    return this.request<{ preorders: unknown[]; items: unknown[] }>(
+  async getWarehouseOrder(orderId: string, query: { warehouse_id?: string } = {}): Promise<WarehouseOrderDetail> {
+    return this.request<WarehouseOrderDetail>(
+      appendQuery(`/v1/warehouse/ops/orders/${orderId}`, query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async getWarehousePreorders(query: { limit?: number; offset?: number; warehouse_id?: string } = {}): Promise<WarehousePreordersResponse> {
+    return this.request<WarehousePreordersResponse>(
       appendQuery("/v1/warehouse/ops/preorders", query as Record<string, unknown>),
       "GET",
+    );
+  }
+
+  async postWarehouseOrderProposeDelivery(
+    orderId: string,
+    request: ProposeDeliveryDateRequest,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<RetailerOrderLifecycleResponse> {
+    return this.request<RetailerOrderLifecycleResponse>(
+      appendQuery(`/v1/warehouse/ops/orders/${orderId}/propose-delivery`, query as Record<string, unknown>),
+      "POST",
+      { body: request, idempotencyKey },
+    );
+  }
+
+  async postWarehousePreorderEdit(
+    orderId: string,
+    request: WarehousePreorderEditRequest,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<RetailerOrderLifecycleResponse> {
+    return this.request<RetailerOrderLifecycleResponse>(
+      appendQuery(`/v1/warehouse/ops/preorders/${orderId}/edit`, query as Record<string, unknown>),
+      "POST",
+      { body: request, idempotencyKey },
     );
   }
 

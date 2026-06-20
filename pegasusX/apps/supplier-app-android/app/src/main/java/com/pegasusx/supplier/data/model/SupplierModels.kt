@@ -60,6 +60,7 @@ data class SupplierOrdersResponse(
 data class SupplierOrder(
     @SerialName("order_id") val orderId: String,
     @SerialName("retailer_id") val retailerId: String,
+    @SerialName("warehouse_id") val warehouseId: String? = null,
     val status: String = "",
     val decision: String? = null,
     val note: String? = null,
@@ -67,6 +68,31 @@ data class SupplierOrder(
     val currency: String = "",
     @SerialName("updated_at") val updatedAt: String = "",
 )
+
+@Serializable
+data class WarehouseOrderLineItem(
+    @SerialName("product_id") val productId: String? = null,
+    @SerialName("product_name") val productName: String? = null,
+    val quantity: Double? = null,
+    @SerialName("unit_price") val unitPrice: Long? = null,
+)
+
+@Serializable
+data class WarehouseOrderDetail(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("retailer_name") val retailerName: String? = null,
+    val state: String? = null,
+    val status: String? = null,
+    @SerialName("total_uzs") val totalUzs: Long? = null,
+    @SerialName("total_minor") val totalMinor: Long? = null,
+    @SerialName("line_items") val lineItems: List<WarehouseOrderLineItem> = emptyList(),
+)
+
+@Serializable
+data class WarehouseOrderMutationRequest(val reason: String? = null)
+
+@Serializable
+data class WarehouseOrderMutationResponse(val status: String? = null)
 
 @Serializable
 data class FleetDriversResponse(

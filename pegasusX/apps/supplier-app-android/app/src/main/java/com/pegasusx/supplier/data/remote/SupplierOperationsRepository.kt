@@ -154,6 +154,35 @@ class SupplierOperationsRepository @Inject constructor(
         offset: Int? = null,
     ): Response<SupplierOrdersResponse> = api.getOrders(status, filter, limit, offset)
 
+    suspend fun getWarehouseOrder(orderId: String, warehouseId: String): Response<WarehouseOrderDetail> =
+        api.getWarehouseOrder(orderId, warehouseId)
+
+    suspend fun delayWarehouseOrder(
+        orderId: String,
+        warehouseId: String,
+        reason: String?,
+        idempotencyKey: String,
+    ): Response<WarehouseOrderMutationResponse> =
+        api.delayWarehouseOrder(
+            orderId,
+            warehouseId,
+            idempotencyKey,
+            WarehouseOrderMutationRequest(reason = reason),
+        )
+
+    suspend fun rejectWarehouseOrder(
+        orderId: String,
+        warehouseId: String,
+        reason: String,
+        idempotencyKey: String,
+    ): Response<WarehouseOrderMutationResponse> =
+        api.rejectWarehouseOrder(
+            orderId,
+            warehouseId,
+            idempotencyKey,
+            WarehouseOrderMutationRequest(reason = reason),
+        )
+
     suspend fun getReturns(
         status: String = "PENDING",
         limit: Int = 100,

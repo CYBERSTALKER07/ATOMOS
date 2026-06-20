@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import type {
   WarehouseDispatchCapacityWarning,
   WarehouseDispatchDriver,
@@ -26,6 +27,7 @@ import { PageChrome } from '@/components/PageChrome';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
 import { PageSection } from '@/components/PageSection';
 import EmptyState from '@/components/EmptyState';
+import { OrderKebabMenu } from '@/components/orders';
 
 const TETRIS_BUFFER = 0.95;
 
@@ -67,6 +69,7 @@ function routeVolumeVU(route: WarehouseDispatchProposedRoute) {
 }
 
 export default function DispatchPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<WarehouseDispatchOrder[]>([]);
   const [drivers, setDrivers] = useState<WarehouseDispatchDriver[]>([]);
   const [unavailableDrivers, setUnavailableDrivers] = useState<WarehouseUnavailableDispatchDriver[]>([]);
@@ -667,26 +670,33 @@ export default function DispatchPage() {
             ) : (
               <div className="space-y-2 max-h-80 overflow-y-auto -mx-5 px-5">
                 {orders.map(order => (
-                  <label
+                  <div
                     key={order.order_id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-(--border) cursor-pointer"
+                    className="flex items-center gap-3 p-3 rounded-lg border border-(--border)"
+                    onDoubleClick={() => router.push(`/orders/${order.order_id}?from=dispatch`)}
                   >
-                    <input
-                      type="checkbox"
-                      checked={selectedOrderIds.has(order.order_id)}
-                      onChange={() => toggleOrder(order.order_id)}
+                    <label className="flex items-center gap-3 flex-1 cursor-pointer min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={selectedOrderIds.has(order.order_id)}
+                        onChange={() => toggleOrder(order.order_id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="flex-1 flex items-center justify-between gap-3 min-w-0">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">{order.retailer_name || 'Unknown'}</div>
+                          <div className="text-xs text-(--muted) font-mono">{order.order_id.slice(0, 8)}...</div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-sm font-mono">{fmt(order.total_uzs)} UZS</div>
+                          <div className="text-xs text-(--muted)">{formatVU(order.volume_vu ?? 0)} VU</div>
+                        </div>
+                      </div>
+                    </label>
+                    <OrderKebabMenu
+                      onViewDetails={() => router.push(`/orders/${order.order_id}?from=dispatch`)}
                     />
-                    <div className="flex-1 flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-medium">{order.retailer_name || 'Unknown'}</div>
-                        <div className="text-xs text-(--muted) font-mono">{order.order_id.slice(0, 8)}...</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-mono">{fmt(order.total_uzs)} UZS</div>
-                        <div className="text-xs text-(--muted)">{formatVU(order.volume_vu ?? 0)} VU</div>
-                      </div>
-                    </div>
-                  </label>
+                  </div>
                 ))}
               </div>
             )}

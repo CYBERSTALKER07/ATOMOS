@@ -73,6 +73,9 @@ struct DispatchView: View {
         }
         .background(LabTheme.background)
         .navigationTitle("Dispatch")
+        .navigationDestination(for: String.self) { orderId in
+            OrderDetailView(orderId: orderId)
+        }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if selectedSegment == 2 {
@@ -341,25 +344,27 @@ struct DispatchView: View {
                 }
                 Section("Orders") {
                     ForEach(preview.undispatchedOrders) { order in
-                        Button {
-                            if selectedOrderIds.contains(order.orderId) {
-                                selectedOrderIds.remove(order.orderId)
-                            } else {
-                                selectedOrderIds.insert(order.orderId)
-                            }
-                        } label: {
-                            HStack {
+                        HStack(alignment: .center, spacing: LabTheme.spacingSM) {
+                            Button {
+                                if selectedOrderIds.contains(order.orderId) {
+                                    selectedOrderIds.remove(order.orderId)
+                                } else {
+                                    selectedOrderIds.insert(order.orderId)
+                                }
+                            } label: {
                                 Image(systemName: selectedOrderIds.contains(order.orderId) ? "checkmark.circle.fill" : "circle")
                                     .foregroundStyle(selectedOrderIds.contains(order.orderId) ? Color.accentColor : .secondary)
+                            }
+                            .buttonStyle(.plain)
+
+                            NavigationLink(value: order.orderId) {
                                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                     Text(order.retailerName.isEmpty ? String(order.orderId.prefix(8)) : order.retailerName)
                                         .font(.headline)
-                                        .foregroundStyle(.primary)
                                     Text("\(order.totalUzs.formatted()) UZS · \(order.volumeVu, specifier: "%.1f") VU")
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                 }
-                                Spacer()
                             }
                         }
                     }

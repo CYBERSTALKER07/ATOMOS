@@ -34,7 +34,7 @@ import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.components.DispatchPreviewMapLibre
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
 import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
-import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
+import com.pegasusx.warehouse.ui.components.OrderOpsCard
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 import com.pegasusx.warehouse.ui.components.WarehouseStateKind
 import com.pegasusx.warehouse.ui.components.WarehouseStatePane
@@ -63,6 +63,7 @@ fun DispatchScreen(
     opsRepository: WarehouseOperationsRepository,
     realtimeSignals: WarehouseRealtimeSignals,
     onVehicleClick: (String) -> Unit = {},
+    onOrderClick: (String) -> Unit = {},
     onBack: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
@@ -682,8 +683,18 @@ fun DispatchScreen(
                                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                                 ) {
                                 items(preview!!.undispatchedOrders, key = { it.orderId }) { o ->
-                                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                                    OrderOpsCard(
+                                        retailerName = o.retailerName,
+                                        orderId = o.orderId,
+                                        state = "PENDING",
+                                        amountLabel = fmt.format(o.totalUzs) + " UZS · ${"%.1f".format(o.volumeVu)} VU",
+                                        showOpsMenu = true,
+                                        canDelay = false,
+                                        canReject = false,
+                                        onOpenDetail = { onOrderClick(o.orderId) },
+                                        onDelay = null,
+                                        onReject = null,
+                                        leadingContent = {
                                             Checkbox(
                                                 checked = selectedOrderIds.contains(o.orderId),
                                                 onCheckedChange = { checked ->
@@ -694,16 +705,8 @@ fun DispatchScreen(
                                                     }
                                                 },
                                             )
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(o.retailerName.ifBlank { o.orderId.take(8) }, style = MaterialTheme.typography.titleSmall)
-                                                Text(
-                                                    fmt.format(o.totalUzs) + " UZS · ${"%.1f".format(o.volumeVu)} VU",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                )
-                                            }
-                                        }
-                                    }
+                                        },
+                                    )
                                 }
                                 if (preview!!.windowConstrainedCount > 0 || preview!!.optimizerWarnings.isNotEmpty()) {
                                     item {

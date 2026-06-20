@@ -120,6 +120,7 @@ struct SupplierOrder: Decodable, Identifiable, Hashable {
     var id: String { orderId }
     let orderId: String
     let retailerId: String
+    let warehouseId: String?
     let status: String
     let decision: String?
     let note: String?
@@ -130,11 +131,54 @@ struct SupplierOrder: Decodable, Identifiable, Hashable {
     enum CodingKeys: String, CodingKey {
         case orderId = "order_id"
         case retailerId = "retailer_id"
+        case warehouseId = "warehouse_id"
         case status, decision, note
         case totalMinor = "total_minor"
         case currency
         case updatedAt = "updated_at"
     }
+}
+
+struct WarehouseOrderLineItem: Decodable, Identifiable, Hashable {
+    var id: String { productId ?? productName ?? UUID().uuidString }
+    let productId: String?
+    let productName: String?
+    let quantity: Double?
+    let unitPrice: Int64?
+
+    enum CodingKeys: String, CodingKey {
+        case productId = "product_id"
+        case productName = "product_name"
+        case quantity
+        case unitPrice = "unit_price"
+    }
+}
+
+struct WarehouseOrderDetail: Decodable {
+    let orderId: String
+    let retailerName: String?
+    let state: String?
+    let status: String?
+    let totalUzs: Int64?
+    let totalMinor: Int64?
+    let lineItems: [WarehouseOrderLineItem]
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case retailerName = "retailer_name"
+        case state, status
+        case totalUzs = "total_uzs"
+        case totalMinor = "total_minor"
+        case lineItems = "line_items"
+    }
+}
+
+struct WarehouseOrderMutationRequest: Encodable {
+    let reason: String?
+}
+
+struct WarehouseOrderMutationResponse: Decodable {
+    let status: String?
 }
 
 struct SupplierReturnRow: Decodable, Identifiable, Hashable {
