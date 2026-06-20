@@ -1,7 +1,6 @@
+import SetupWizardShell from "@/components/setup/SetupWizardShell";
+import "./setup-onboarding.css";
+
 export default function SetupLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="setup-shell">
-      <div className="setup-inner">{children}</div>
-    </div>
-  );
+  return <SetupWizardShell>{children}</SetupWizardShell>;
 }

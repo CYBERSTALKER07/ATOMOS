@@ -2,6 +2,15 @@
 
 import { useState } from "react";
 import { supplierFetch } from "@/lib/auth";
+import {
+  SelectionOption,
+  SetupCallout,
+  SetupField,
+  SetupFooter,
+  SetupInput,
+  SetupPageHeader,
+  SetupSection,
+} from "@/components/setup/SetupPrimitives";
 
 // /setup/billing — bank + payment-gateway configuration.
 // Decoupled from the 4-step registration wizard to reduce friction.
@@ -9,13 +18,33 @@ import { supplierFetch } from "@/lib/auth";
 // that suppliers reach AFTER /auth/register. Do not merge into the wizard.
 
 const GATEWAYS = [
-  { id: "GLOBAL_PAY", label: "Global Pay" },
-  { id: "ADYEN",      label: "Adyen" },
-  { id: "AIRWALLEX",  label: "Airwallex" },
-  { id: "CASH",       label: "Cash on delivery only" },
+  {
+    id: "GLOBAL_PAY",
+    label: "Global Pay",
+    description: "Card payments via the pegasusX global rail.",
+    icon: "global",
+  },
+  {
+    id: "ADYEN",
+    label: "Adyen",
+    description: "Enterprise card acquiring with local payment methods.",
+    icon: "payment",
+  },
+  {
+    id: "AIRWALLEX",
+    label: "Airwallex",
+    description: "Cross-border payouts and multi-currency settlement.",
+    icon: "treasury",
+  },
+  {
+    id: "CASH",
+    label: "Cash on delivery",
+    description: "Retailers collect cash; reconcile manually.",
+    icon: "pricing",
+  },
 ] as const;
 
-type GatewayId = typeof GATEWAYS[number]["id"];
+type GatewayId = (typeof GATEWAYS)[number]["id"];
 
 type BillingState = {
   bankName: string;
@@ -37,6 +66,21 @@ const INITIAL: BillingState = {
   paymentAcceptor: "SUPPLIER",
 };
 
+const ACCEPTOR_OPTIONS = [
+  {
+    id: "SUPPLIER" as const,
+    label: "Supplier accepts payments",
+    description: "Card revenue settles to your supplier treasury account.",
+    icon: "supplier",
+  },
+  {
+    id: "WAREHOUSE" as const,
+    label: "Warehouse accepts payments",
+    description: "Fulfilling nodes collect payment per dispatch lane.",
+    icon: "warehouse",
+  },
+];
+
 export default function BillingSetupPage() {
   const [state, setState] = useState<BillingState>(INITIAL);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -45,10 +89,10 @@ export default function BillingSetupPage() {
 
   function validate(): Record<string, string> {
     const e: Record<string, string> = {};
-    if (state.bankName.trim().length < 2) e.bankName = "Bank name required";
-    if (state.accountHolder.trim().length < 2) e.accountHolder = "Account holder required";
-    if (state.accountNumber.trim().length < 4) e.accountNumber = "Account number required";
-    if (state.swiftBic.trim().length < 4) e.swiftBic = "SWIFT / BIC required";
+    if (state.bankName.trim().length < 2) e.bankName = "Bank name is required";
+    if (state.accountHolder.trim().length < 2) e.accountHolder = "Account holder name is required";
+    if (state.accountNumber.trim().length < 4) e.accountNumber = "Account number is required";
+    if (state.swiftBic.trim().length < 4) e.swiftBic = "SWIFT / BIC is required";
     if (state.selectedGateways.length === 0) e.selectedGateways = "Choose at least one gateway";
     return e;
   }
@@ -56,8 +100,14 @@ export default function BillingSetupPage() {
   function toggleGateway(id: GatewayId) {
     setState((s) => {
       const set = new Set(s.selectedGateways);
-      if (set.has(id)) set.delete(id); else set.add(id);
+      if (set.has(id)) set.delete(id);
+      else set.add(id);
       return { ...s, selectedGateways: Array.from(set) as GatewayId[] };
+    });
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.selectedGateways;
+      return next;
     });
   }
 
@@ -87,123 +137,145 @@ export default function BillingSetupPage() {
     }
   }
 
-  async function skip() {
-    // Per onboarding gate spec, skip is allowed but flags is_configured=false
-    // so the gate keeps redirecting until the supplier completes setup.
+  function skip() {
     window.location.href = "/?billing=skipped";
+  }
+
+  function goBack() {
+    window.location.href = "/setup/business";
   }
 
   return (
     <>
-      <header className="setup-header">
-        <div className="setup-header-icon" aria-hidden>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z" />
-          </svg>
+      <SetupPageHeader
+        icon="treasury"
+        title="Billing & payment gateways"
+        subtitle="Configure where payouts land and which checkout rails retailers can use."
+      />
+
+      <SetupCallout>
+        Bank details are transmitted securely. You can add or change gateways anytime under Treasury settings.
+      </SetupCallout>
+
+      <SetupSection
+        icon="treasury"
+        title="Payout bank account"
+        description="Where supplier earnings are deposited after settlement."
+      >
+        <SetupField id="bankName" label="Bank name" error={errors.bankName}>
+          <SetupInput
+            id="bankName"
+            error={errors.bankName}
+            value={state.bankName}
+            autoComplete="organization"
+            placeholder="e.g. HSBC, Chase"
+            onChange={(e) => setState((s) => ({ ...s, bankName: e.target.value }))}
+          />
+        </SetupField>
+        <SetupField id="accountHolder" label="Account holder name" error={errors.accountHolder}>
+          <SetupInput
+            id="accountHolder"
+            error={errors.accountHolder}
+            value={state.accountHolder}
+            autoComplete="name"
+            onChange={(e) => setState((s) => ({ ...s, accountHolder: e.target.value }))}
+          />
+        </SetupField>
+        <div className="setup-grid-2">
+          <SetupField id="accountNumber" label="Account number" error={errors.accountNumber}>
+            <SetupInput
+              id="accountNumber"
+              error={errors.accountNumber}
+              value={state.accountNumber}
+              inputMode="numeric"
+              autoComplete="off"
+              onChange={(e) => setState((s) => ({ ...s, accountNumber: e.target.value }))}
+            />
+          </SetupField>
+          <SetupField id="swiftBic" label="SWIFT / BIC" error={errors.swiftBic}>
+            <SetupInput
+              id="swiftBic"
+              error={errors.swiftBic}
+              value={state.swiftBic}
+              autoComplete="off"
+              placeholder="e.g. CHASUS33"
+              onChange={(e) => setState((s) => ({ ...s, swiftBic: e.target.value }))}
+            />
+          </SetupField>
         </div>
-        <div>
-          <h1 className="md-typescale-title-large" style={{ margin: 0 }}>
-            Billing &amp; payment gateways
-          </h1>
-          <p className="desk-page-subtitle">
-            Configure payouts and the gateways retailers use at checkout.
+        <SetupField id="iban" label="IBAN" optional hint="Optional for non-IBAN regions.">
+          <SetupInput
+            id="iban"
+            value={state.iban}
+            autoComplete="off"
+            onChange={(e) => setState((s) => ({ ...s, iban: e.target.value }))}
+          />
+        </SetupField>
+      </SetupSection>
+
+      <SetupSection
+        icon="payment"
+        title="Payment acceptor"
+        description="Who receives card revenue when an order is fulfilled."
+      >
+        <div className="setup-selection-grid setup-selection-grid--2" role="radiogroup" aria-label="Payment acceptor">
+          {ACCEPTOR_OPTIONS.map((option) => (
+            <SelectionOption
+              key={option.id}
+              selected={state.paymentAcceptor === option.id}
+              title={option.label}
+              description={option.description}
+              icon={option.icon}
+              checkType="single"
+              onClick={() => setState((s) => ({ ...s, paymentAcceptor: option.id }))}
+            />
+          ))}
+        </div>
+      </SetupSection>
+
+      <SetupSection
+        icon="global"
+        title="Payment gateways"
+        description="Retailers see these options at checkout. Select all that apply."
+      >
+        <div className="setup-selection-grid setup-selection-grid--2" role="group" aria-label="Payment gateways">
+          {GATEWAYS.map((gateway) => (
+            <SelectionOption
+              key={gateway.id}
+              selected={state.selectedGateways.includes(gateway.id)}
+              title={gateway.label}
+              description={gateway.description}
+              icon={gateway.icon}
+              checkType="multi"
+              onClick={() => toggleGateway(gateway.id)}
+            />
+          ))}
+        </div>
+        {errors.selectedGateways ? (
+          <p className="setup-helper setup-helper--error" role="alert" style={{ marginTop: "var(--space-3)" }}>
+            {errors.selectedGateways}
           </p>
-        </div>
-      </header>
+        ) : null}
+      </SetupSection>
 
-      <section className="auth-card grid gap-4">
-        <h2 className="md-typescale-title-large">Bank account</h2>
-        <Field id="bankName" label="Bank name" error={errors.bankName}>
-          <input id="bankName" className="md-input-outlined" value={state.bankName}
-            onChange={(e) => setState((s) => ({ ...s, bankName: e.target.value }))} />
-        </Field>
-        <Field id="accountHolder" label="Account holder name" error={errors.accountHolder}>
-          <input id="accountHolder" className="md-input-outlined" value={state.accountHolder}
-            onChange={(e) => setState((s) => ({ ...s, accountHolder: e.target.value }))} />
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field id="accountNumber" label="Account number" error={errors.accountNumber}>
-            <input id="accountNumber" className="md-input-outlined" value={state.accountNumber}
-              onChange={(e) => setState((s) => ({ ...s, accountNumber: e.target.value }))} />
-          </Field>
-          <Field id="swiftBic" label="SWIFT / BIC" error={errors.swiftBic}>
-            <input id="swiftBic" className="md-input-outlined" value={state.swiftBic}
-              onChange={(e) => setState((s) => ({ ...s, swiftBic: e.target.value }))} />
-          </Field>
-        </div>
-        <Field id="iban" label="IBAN" error={errors.iban} hint="Optional for non-IBAN regions.">
-          <input id="iban" className="md-input-outlined" value={state.iban}
-            onChange={(e) => setState((s) => ({ ...s, iban: e.target.value }))} />
-        </Field>
+      {submitError ? <SetupCallout variant="error">{submitError}</SetupCallout> : null}
 
-        <h2 className="md-typescale-title-large mt-4">Payment acceptor</h2>
-        <p className="md-typescale-body-medium" style={{ color: "var(--color-md-outline)" }}>
-          Choose whether card payments settle to the supplier account or the warehouse node fulfilling the order.
-        </p>
-        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Payment acceptor">
-          {([
-            { id: "SUPPLIER", label: "Supplier accepts payments" },
-            { id: "WAREHOUSE", label: "Warehouse accepts payments" },
-          ] as const).map((option) => {
-            const pressed = state.paymentAcceptor === option.id;
-            return (
-              <button
-                key={option.id}
-                type="button"
-                className="md-chip"
-                aria-pressed={pressed}
-                onClick={() => setState((s) => ({ ...s, paymentAcceptor: option.id }))}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
+      <SetupFooter
+        back={{ label: "Back", onClick: goBack, disabled: submitting }}
+        primary={{ label: "Complete setup", onClick: submit, disabled: submitting, loading: submitting }}
+      />
 
-        <h2 className="md-typescale-title-large mt-4">Payment gateways</h2>
-        <p className="md-typescale-body-medium" style={{ color: "var(--color-md-outline)" }}>
-          Pick every gateway you want retailers to use at checkout. You can change this later.
-        </p>
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Payment gateways">
-          {GATEWAYS.map((g) => {
-            const pressed = state.selectedGateways.includes(g.id);
-            return (
-              <button key={g.id} type="button" className="md-chip" aria-pressed={pressed} onClick={() => toggleGateway(g.id)}>
-                {g.label}
-              </button>
-            );
-          })}
-        </div>
-        {errors.selectedGateways && <p className="md-helper" data-error="true">{errors.selectedGateways}</p>}
-      </section>
-
-      {submitError && (
-        <p role="alert" className="md-typescale-body-medium mt-4" style={{ color: "var(--color-md-error)" }}>
-          {submitError}
-        </p>
-      )}
-
-      <footer className="mt-6 flex items-center justify-between gap-4">
-        <button type="button" className="md-btn md-btn-text" onClick={skip} disabled={submitting}>
-          Skip for now
+      <div style={{ marginTop: "var(--space-4)", textAlign: "center" }}>
+        <button
+          type="button"
+          className="setup-btn setup-btn--ghost"
+          onClick={skip}
+          disabled={submitting}
+        >
+          Skip for now — finish later
         </button>
-        <button type="button" className="md-btn md-btn-filled" onClick={submit} disabled={submitting}>
-          {submitting ? "Saving…" : "Save billing"}
-        </button>
-      </footer>
+      </div>
     </>
-  );
-}
-
-function Field({ id, label, error, hint, children }: { id: string; label: string; error?: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label htmlFor={id} className="md-label">{label}</label>
-      {children}
-      {error
-        ? <p className="md-helper" data-error="true">{error}</p>
-        : hint ? <p className="md-helper">{hint}</p> : null}
-    </div>
   );
 }
 
