@@ -102,6 +102,25 @@ async function tryRefreshToken(): Promise<string | null> {
   }
 }
 
+export async function refreshWarehouseSession(): Promise<{ ok: boolean; isConfigured?: boolean }> {
+  const refresh = readRefreshFromCookie();
+  if (!refresh) return { ok: false };
+  try {
+    const res = await fetch(`${API}/v1/auth/warehouse/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!res.ok) return { ok: false };
+    const data = (await res.json()) as { token?: string; refresh_token?: string; is_configured?: boolean };
+    if (!data.token) return { ok: false };
+    persistSession(data.token, data.refresh_token);
+    return { ok: true, isConfigured: data.is_configured === true };
+  } catch {
+    return { ok: false };
+  }
+}
+
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   const token = await getWarehouseToken();
   const headers: Record<string, string> = {

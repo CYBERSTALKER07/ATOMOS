@@ -29,7 +29,7 @@ func DevCORSMiddleware() func(http.Handler) http.Handler {
 		return func(next http.Handler) http.Handler { return next }
 	}
 
-	allowHeaders := "Accept, Authorization, Content-Type, X-Trace-Id, X-Idempotency-Key, X-Request-Id"
+	allowHeaders := "Accept, Authorization, Content-Type, Idempotency-Key, X-Trace-Id, X-Idempotency-Key, X-Request-Id"
 	allowMethods := "GET, POST, PUT, PATCH, DELETE, OPTIONS"
 
 	return func(next http.Handler) http.Handler {

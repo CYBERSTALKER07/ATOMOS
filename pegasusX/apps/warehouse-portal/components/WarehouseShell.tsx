@@ -10,7 +10,7 @@ import { PanelLeftClose, PanelLeft } from 'lucide-react';
 import NotificationPanel from './NotificationPanel';
 import ClientPolicyBanner from './ClientPolicyBanner';
 import { useNotifications, type WarehouseWsState } from '@/lib/useNotifications';
-import { clearSession, readTokenFromCookie } from '@/lib/auth';
+import { clearSession, decodeJwtPayload, readTokenFromCookie } from '@/lib/auth';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 type NavEntry = { href: string; icon: string; label: string; globalOnly?: boolean; factoryHidden?: boolean };
@@ -287,7 +287,15 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
 
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
-  const { items: notifItems, unreadCount, markRead, markAllRead, wsState } = useNotifications();
+  const isConfigured = useMemo(() => {
+    const token = readTokenFromCookie();
+    const claims = token ? decodeJwtPayload(token) : null;
+    return claims?.is_configured === true;
+  }, [pathname]);
+  const notificationsEnabled = !isBare && isConfigured;
+  const { items: notifItems, unreadCount, markRead, markAllRead, wsState } = useNotifications({
+    enabled: notificationsEnabled,
+  });
   const liveIndicator = liveIndicatorCopy(wsState);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);

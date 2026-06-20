@@ -195,7 +195,7 @@ export default function WarehouseSettingsPage() {
       <PageChrome
         icon="settings"
         title="Warehouse settings"
-        description="Checkout policy, pre-order lead window, per-line quantity limits, delivery surcharges, and depot location."
+        description="Checkout policy, pre-order lead window, per-line quantity limits, delivery surcharges, and depot location. Changes sync with dispatch and delivery routing."
       >
         <div className="max-w-2xl space-y-6">
           <PortalSection icon="warehouse" title="Depot location" description="Delivery fee distance is measured warehouse lat/lng → retailer delivery pin at checkout.">

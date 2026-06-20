@@ -1,64 +1,122 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Icon from "@/components/Icon";
-import { PortalField, PortalInput, FormAlert } from "@/components/portal";
-import { warehouseApiBaseUrl } from "@/lib/auth";
+import { FormAlert, PortalField, PortalInput } from "@/components/portal";
+import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
+import {
+  apiFetch,
+  decodeJwtPayload,
+  persistSession,
+  readTokenFromCookie,
+  refreshWarehouseSession,
+} from "@/lib/auth";
 
-interface WarehouseSetupState {
-  warehouseName: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  totalCapacitySqM: string;
-}
-
-const INITIAL: WarehouseSetupState = {
-  warehouseName: "",
-  address: "",
-  city: "",
-  postalCode: "",
-  totalCapacitySqM: "",
+type WarehouseLocation = {
+  warehouse_id: string;
+  name: string;
+  address?: string;
+  place_id?: string;
+  lat: number;
+  lng: number;
 };
 
+const EMPTY_LOCATION: LocationValue = { address: "", lat: "0", lng: "0" };
+
 export default function WarehouseLocationSetupPage() {
-  const [state, setState] = useState<WarehouseSetupState>(INITIAL);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [warehouseName, setWarehouseName] = useState("");
+  const [location, setLocation] = useState<LocationValue>(EMPTY_LOCATION);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  function validate(): Record<string, string> {
-    const e: Record<string, string> = {};
-    if (state.warehouseName.trim().length < 3) e.warehouseName = "Name required";
-    if (state.address.trim().length < 5) e.address = "Address required";
-    if (state.city.trim().length < 2) e.city = "City required";
-    if (!/^\d+$/.test(state.totalCapacitySqM)) e.totalCapacitySqM = "Capacity must be a number";
-    return e;
-  }
+  const hasAssignedWarehouse = useMemo(() => {
+    const token = readTokenFromCookie();
+    const claims = token ? decodeJwtPayload(token) : null;
+    return typeof claims?.home_node_id === "string" && claims.home_node_id.length > 0;
+  }, []);
+
+  const loadExisting = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (!hasAssignedWarehouse) return;
+
+      const res = await apiFetch("/v1/warehouse/ops/location");
+      if (!res.ok) return;
+      const loc = (await res.json()) as WarehouseLocation;
+      setWarehouseName(loc.name ?? "");
+      setLocation({
+        address: loc.address ?? "",
+        lat: String(loc.lat ?? 0),
+        lng: String(loc.lng ?? 0),
+        place_id: loc.place_id,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [hasAssignedWarehouse]);
+
+  useEffect(() => {
+    void loadExisting();
+  }, [loadExisting]);
 
   async function submit() {
-    const e = validate();
-    setErrors(e);
-    if (Object.keys(e).length > 0) return;
-    setSubmitting(true);
     setSubmitError(null);
-    try {
-      const res = await fetch(`${warehouseApiBaseUrl}/v1/warehouse/setup`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Idempotency-Key": cryptoRandomId(),
-          Authorization: `Bearer ${getCookie("pegasus_warehouse_jwt")}`,
-        },
-        body: JSON.stringify({
-          ...state,
-          totalCapacitySqM: parseInt(state.totalCapacitySqM, 10),
-        }),
-      });
+    if (!hasAssignedWarehouse && warehouseName.trim().length < 3) {
+      setSubmitError("Warehouse name is required (at least 3 characters).");
+      return;
+    }
+    if (!location.address.trim()) {
+      setSubmitError("Select an address or share your location.");
+      return;
+    }
+    const lat = Number.parseFloat(location.lat);
+    const lng = Number.parseFloat(location.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
+      setSubmitError("Valid coordinates are required. Use address search or share location.");
+      return;
+    }
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message || `Setup failed: ${res.status}`);
+    setSubmitting(true);
+    try {
+      if (hasAssignedWarehouse) {
+        const res = await apiFetch("/v1/warehouse/ops/location", {
+          method: "PATCH",
+          body: JSON.stringify({
+            address: location.address.trim(),
+            place_id: location.place_id,
+            lat,
+            lng,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          throw new Error((body as { error?: string })?.error || `Setup failed: ${res.status}`);
+        }
+        const refreshed = await refreshWarehouseSession();
+        if (!refreshed.ok) {
+          throw new Error("Location saved but session could not be refreshed. Sign in again.");
+        }
+      } else {
+        const res = await apiFetch("/v1/warehouse/setup", {
+          method: "POST",
+          body: JSON.stringify({
+            name: warehouseName.trim(),
+            address: location.address.trim(),
+            place_id: location.place_id,
+            lat,
+            lng,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          throw new Error((body as { error?: string })?.error || `Setup failed: ${res.status}`);
+        }
+        const data = (await res.json()) as { token?: string; refresh_token?: string };
+        if (!data.token) {
+          throw new Error("Setup succeeded but no session was returned.");
+        }
+        persistSession(data.token, data.refresh_token);
       }
 
       window.location.href = "/";
@@ -69,12 +127,6 @@ export default function WarehouseLocationSetupPage() {
     }
   }
 
-  function getCookie(name: string) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(";").shift();
-  }
-
   return (
     <>
       <header className="setup-header">
@@ -83,73 +135,58 @@ export default function WarehouseLocationSetupPage() {
         </div>
         <div>
           <h1>Warehouse location</h1>
-          <p className="setup-header-sub">Configure your warehouse location and operating capacity.</p>
+          <p className="setup-header-sub">
+            {hasAssignedWarehouse
+              ? "Confirm or update your depot address. Changes stay in sync with dispatch, delivery fees, and fleet routing."
+              : "Name your warehouse and set the depot address so dispatch, delivery fees, and fleet routing can start."}
+          </p>
         </div>
       </header>
 
       <section className="setup-card space-y-4">
-        <h2 className="setup-section-title">General</h2>
-        <PortalField id="warehouseName" label="Warehouse name" error={errors.warehouseName}>
-          <PortalInput
-            id="warehouseName"
-            value={state.warehouseName}
-            onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, warehouseName: e.target.value }))}
-            error={errors.warehouseName}
-          />
-        </PortalField>
-        <PortalField id="totalCapacitySqM" label="Total capacity (square meters)" error={errors.totalCapacitySqM}>
-          <PortalInput
-            id="totalCapacitySqM"
-            type="number"
-            value={state.totalCapacitySqM}
-            onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, totalCapacitySqM: e.target.value }))}
-            error={errors.totalCapacitySqM}
-          />
-        </PortalField>
+        {loading ? (
+          <p className="text-sm text-(--muted)">Loading warehouse details…</p>
+        ) : (
+          <>
+            {!hasAssignedWarehouse ? (
+              <PortalField id="warehouseName" label="Warehouse name">
+                <PortalInput
+                  id="warehouseName"
+                  value={warehouseName}
+                  onChange={(e) => setWarehouseName(e.target.value)}
+                  placeholder="Central depot"
+                />
+              </PortalField>
+            ) : warehouseName ? (
+              <div>
+                <p className="text-xs font-medium text-(--muted)">Warehouse</p>
+                <p className="text-sm font-semibold">{warehouseName}</p>
+              </div>
+            ) : null}
 
-        <h2 className="setup-section-title mt-4">Location</h2>
-        <PortalField id="address" label="Street address" error={errors.address}>
-          <PortalInput
-            id="address"
-            value={state.address}
-            onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, address: e.target.value }))}
-            error={errors.address}
-          />
-        </PortalField>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <PortalField id="city" label="City" error={errors.city}>
-            <PortalInput
-              id="city"
-              value={state.city}
-              onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, city: e.target.value }))}
-              error={errors.city}
-            />
-          </PortalField>
-          <PortalField id="postalCode" label="Postal code" optional error={errors.postalCode}>
-            <PortalInput
-              id="postalCode"
-              value={state.postalCode}
-              onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setState((s) => ({ ...s, postalCode: e.target.value }))}
-              error={errors.postalCode}
-            />
-          </PortalField>
-        </div>
+            <LocationPicker value={location} onChange={setLocation} label="Depot address" />
+
+            <p className="text-xs text-(--muted)">
+              Search for your street address or use share location. You can edit this anytime under Settings.
+            </p>
+          </>
+        )}
       </section>
 
       {submitError ? <FormAlert variant="error">{submitError}</FormAlert> : null}
 
       <footer className="setup-footer">
         <div />
-        <button type="button" className="portal-btn portal-btn--primary" onClick={submit} disabled={submitting}>
+        <button
+          type="button"
+          className="portal-btn portal-btn--primary"
+          onClick={() => void submit()}
+          disabled={submitting || loading}
+        >
           {submitting ? "Saving…" : "Complete setup"}
           {!submitting ? <Icon name="arrow_forward" size={16} /> : null}
         </button>
       </footer>
     </>
   );
-}
-
-function cryptoRandomId() {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }

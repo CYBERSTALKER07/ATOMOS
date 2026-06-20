@@ -6,7 +6,7 @@ import { readTokenFromCookie, resolveSupplierToken, supplierFetch } from './auth
 import { runSupplierSessionReconcile } from './session-reconcile';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-const SUPPLIER_NOTIFICATIONS_WS_PATH = '/v1/ws/supplier';
+const SUPPLIER_NOTIFICATIONS_WS_PATH = '/v1/ws';
 
 interface BackendNotification {
   notification_id: string;

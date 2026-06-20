@@ -95,7 +95,7 @@ export default function SetupWizardShell({ children }: { children: React.ReactNo
             <div>
               <h2 className="setup-rail-title">Warehouse setup</h2>
               <p className="setup-rail-sub">
-                Configure your node location and capacity so dispatch, inventory, and fleet operations can start.
+                Configure your depot location so dispatch, inventory, and fleet operations can start.
               </p>
             </div>
           </div>

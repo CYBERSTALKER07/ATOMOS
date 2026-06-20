@@ -8,7 +8,7 @@ export const SETUP_STEPS = [
   {
     id: "location",
     label: "Warehouse location",
-    description: "Address & capacity",
+    description: "Address & geolocation",
     href: "/setup/location",
   },
 ] as const;

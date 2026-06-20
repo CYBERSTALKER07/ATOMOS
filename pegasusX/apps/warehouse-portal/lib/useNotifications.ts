@@ -12,7 +12,7 @@ const API = (
   'http://localhost:8180'
 ).replace(/\/$/, '');
 
-const WAREHOUSE_NOTIFICATIONS_WS_PATH = '/v1/ws/warehouse';
+const WAREHOUSE_NOTIFICATIONS_WS_PATH = '/v1/ws';
 
 interface BackendNotification {
   notification_id: string;
@@ -83,7 +83,8 @@ interface NotificationsState {
 
 export type WarehouseWsState = 'connected' | 'connecting' | 'reconnecting' | 'offline';
 
-export function useNotifications() {
+export function useNotifications(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled !== false;
   const [state, setState] = useState<NotificationsState>({
     items: [],
     unreadCount: 0,
@@ -121,6 +122,7 @@ export function useNotifications() {
 
   // ── Fetch inbox ──
   const fetchInbox = useCallback(async (signal?: AbortSignal) => {
+    if (!enabled) return;
     try {
       const data = await fetchAllInboxPages(signal);
       if (!data) return;
@@ -134,7 +136,7 @@ export function useNotifications() {
       if (disposedRef.current) return;
       setState(s => ({ ...s, loading: false }));
     }
-  }, [fetchAllInboxPages]);
+  }, [fetchAllInboxPages, enabled]);
 
   // ── Mark single notification read ──
   const markRead = useCallback(async (notificationId: string) => {
@@ -176,7 +178,7 @@ export function useNotifications() {
 
   // ── WebSocket for real-time notifications ──
   const connectWS = useCallback(() => {
-    if (disposedRef.current) return;
+    if (!enabled || disposedRef.current) return;
     const token = readTokenFromCookie();
     if (!token) {
       setWsState('offline');
@@ -258,10 +260,19 @@ export function useNotifications() {
     };
 
     ws.onerror = () => ws.close();
-  }, [fetchInbox]);
+  }, [fetchInbox, enabled]);
 
   // ── Lifecycle ──
   useEffect(() => {
+    if (!enabled) {
+      disposedRef.current = true;
+      clearTimeout(reconnectTimer.current);
+      wsRef.current?.close();
+      wsRef.current = null;
+      reconnectAttemptRef.current = 0;
+      setWsState('offline');
+      return;
+    }
     disposedRef.current = false;
     const ac = new AbortController();
     fetchInbox(ac.signal);
@@ -312,7 +323,7 @@ export function useNotifications() {
       reconnectAttemptRef.current = 0;
       setWsState('offline');
     };
-  }, [fetchInbox, connectWS]);
+  }, [fetchInbox, connectWS, enabled]);
 
   return { ...state, wsState, fetchInbox, markRead, markAllRead };
 }

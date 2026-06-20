@@ -104,10 +104,6 @@ func (s *Service) HandleWarehouseLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	warehouseID := strings.TrimSpace(staff.AssignedWarehouseID)
-	if warehouseID == "" {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_not_assigned"})
-		return
-	}
 	if s.jwtSecret == "" {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "jwt_not_configured"})
 		return
@@ -118,6 +114,11 @@ func (s *Service) HandleWarehouseLogin(w http.ResponseWriter, r *http.Request) {
 		supplierID = s.supplierID
 	}
 
+	isConfigured := false
+	if warehouseID != "" {
+		isConfigured = s.warehouseIsConfigured(r.Context(), warehouseID)
+	}
+
 	jwtClaims := auth.Claims{
 		Subject:      staff.UserID,
 		Role:         auth.RoleWarehouse,
@@ -125,7 +126,7 @@ func (s *Service) HandleWarehouseLogin(w http.ResponseWriter, r *http.Request) {
 		SupplierRole: auth.Role(strings.TrimSpace(staff.SupplierRole)),
 		HomeNodeType: auth.HomeNodeWarehouse,
 		HomeNodeID:   warehouseID,
-		IsConfigured: true,
+		IsConfigured: isConfigured,
 		PhoneNumber:  staff.Phone,
 	}
 	if strings.EqualFold(staff.SupplierRole, string(auth.RoleWarehouseAdmin)) {
@@ -143,12 +144,13 @@ func (s *Service) HandleWarehouseLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{
-		"token":         token,
-		"refresh_token": refresh,
-		"warehouse_id":  warehouseID,
-		"role":          string(jwtClaims.Role),
-		"name":          staff.Name,
+	writeJSON(w, http.StatusOK, map[string]any{
+		"token":          token,
+		"refresh_token":  refresh,
+		"warehouse_id":   warehouseID,
+		"role":           string(jwtClaims.Role),
+		"name":           staff.Name,
+		"is_configured":  isConfigured,
 	})
 }
 
@@ -248,6 +250,8 @@ func (s *Service) HandleWarehouseRefresh(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	claims.IsConfigured = s.warehouseIsConfigured(r.Context(), claims.HomeNodeID)
+
 	token, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_token_failed"})
@@ -259,10 +263,11 @@ func (s *Service) HandleWarehouseRefresh(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"token":         token,
 		"refresh_token": newRefresh,
 		"warehouse_id":  claims.HomeNodeID,
 		"role":          string(claims.Role),
+		"is_configured": claims.IsConfigured,
 	})
 }

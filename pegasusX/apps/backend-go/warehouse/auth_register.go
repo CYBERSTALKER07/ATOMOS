@@ -120,7 +120,7 @@ func (s *Service) HandleWarehouseRegister(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	isConfigured := warehouseID != ""
+	isConfigured := s.warehouseIsConfigured(r.Context(), warehouseID)
 	jwtClaims := auth.Claims{
 		Subject:      userID,
 		Role:         auth.RoleWarehouse,

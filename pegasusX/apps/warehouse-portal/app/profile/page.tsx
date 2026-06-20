@@ -50,8 +50,8 @@ export default function WarehouseProfilePage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link href="/setup/location" className="md-btn md-btn-outlined md-typescale-label-large px-4 py-2">
-              Location setup
+            <Link href="/settings" className="md-btn md-btn-outlined md-typescale-label-large px-4 py-2">
+              Warehouse settings
             </Link>
             <button
               type="button"
