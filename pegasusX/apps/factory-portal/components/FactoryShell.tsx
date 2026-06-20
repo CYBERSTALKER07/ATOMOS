@@ -10,7 +10,7 @@ import { apiFetch } from '@/lib/auth';
 import ClientPolicyBanner from './ClientPolicyBanner';
 import NotificationPanel from './NotificationPanel';
 import { useNotifications } from '@/lib/useNotifications';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 
 type NavEntry = { href: string; icon: string; label: string };
 type NavSection = { label?: string; items: NavEntry[] };
@@ -45,7 +45,7 @@ const NAV: NavSection[] = [
 ];
 
 const ALL_NAV_ITEMS = NAV.flatMap((section) => section.items);
-const BARE_ROUTES = ['/auth/'];
+const BARE_ROUTES = ['/auth/', '/setup/'];
 
 function isActiveRoute(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';
@@ -63,9 +63,11 @@ const ThemeToggle = memo(function ThemeToggle() {
 
   return (
     <button
+      type="button"
       onClick={cycle}
-      className="desk-icon-btn"
+      className="portal-btn portal-btn--ghost desk-icon-btn"
       title={`Theme: ${mode}`}
+      aria-label={`Theme: ${mode}`}
     >
       <Icon name={iconName[mode]} size={18} />
     </button>
@@ -144,7 +146,9 @@ const DrawerContent = memo(function DrawerContent({
                     <Link
                       href={item.href}
                       prefetch={false}
-                      className={`desk-sidebar-item ${active ? 'desk-sidebar-item--accent' : ''}`}
+                      className={`desk-sidebar-item desk-sidebar-link${active ? ' desk-sidebar-link--active' : ''}`}
+                      data-active={active ? 'true' : undefined}
+                      aria-current={active ? 'page' : undefined}
                       title={isRail ? item.label : undefined}
                       aria-label={item.label}
                       style={isRail ? { justifyContent: 'center', padding: '0', height: 44 } : undefined}
@@ -196,6 +200,7 @@ const DrawerContent = memo(function DrawerContent({
 /* ── Shell ── */
 export default function FactoryShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const reducedMotion = useReducedMotion();
   const [collapsed, setCollapsed] = useState(false);
   const [factoryName, setFactoryName] = useState('Factory Portal');
   const [refreshEpoch, setRefreshEpoch] = useState(0);
@@ -263,7 +268,7 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
       <motion.aside
         initial={false}
         animate={{ width: collapsed ? 72 : 264 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30 }}
         className="hidden md:flex flex-col shrink-0 overflow-hidden"
         style={{
           borderRight: '1px solid var(--desk-border)',

@@ -1,24 +1,29 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Icon from "./Icon";
 import EmptyState from "./EmptyState";
 import { PageSkeleton } from "./Skeleton";
+import { PageChrome as KitPageChrome } from "@pegasusx/ui-kit/portal";
 
 type PageChromeProps = {
   title: string;
   description?: string;
+  icon?: string;
   actions?: ReactNode;
   loading?: boolean;
   skeletonVariant?: "dashboard" | "table" | "form";
   error?: string | null;
   empty?: boolean;
   emptyMessage?: string;
-  children: ReactNode;
+  emptyIcon?: string;
+  children?: ReactNode;
 };
 
 export function PageChrome({
   title,
   description,
+  icon,
   actions,
   loading,
   skeletonVariant = "dashboard",
@@ -28,24 +33,19 @@ export function PageChrome({
   children,
 }: PageChromeProps) {
   return (
-    <div className="desk-page">
-      <div className="desk-page-header">
-        <div>
-          <h1 className="desk-page-title">{title}</h1>
-          {description ? <p className="desk-page-subtitle">{description}</p> : null}
-        </div>
-        {actions ? <div className="desk-toolbar">{actions}</div> : null}
-      </div>
-
-      {loading ? (
-        <PageSkeleton variant={skeletonVariant} />
-      ) : error ? (
-        <EmptyState variant="error" headline="Unable to load" body={error} />
-      ) : empty ? (
-        <EmptyState variant="no-data" headline={emptyMessage} />
-      ) : (
-        children
-      )}
-    </div>
+    <KitPageChrome
+      title={title}
+      description={description}
+      icon={icon ? <Icon name={icon} size={22} /> : undefined}
+      actions={actions}
+      loading={loading}
+      error={error}
+      empty={empty}
+      renderLoading={() => <PageSkeleton variant={skeletonVariant} />}
+      renderError={(message) => <EmptyState variant="error" headline="Unable to load" body={message} />}
+      renderEmpty={() => <EmptyState variant="no-data" headline={emptyMessage} />}
+    >
+      {children}
+    </KitPageChrome>
   );
 }

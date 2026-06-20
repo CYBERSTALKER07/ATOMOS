@@ -8,7 +8,7 @@ import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile'
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import FactoryPageState from '@/components/FactoryPageState';
+import { PageChrome } from '@/components/PageChrome';
 
 interface TransferItem {
   sku_id: string;
@@ -122,48 +122,45 @@ export default function TransferDetailPage() {
 
   if (loading) {
     return (
-      <PageTransition className="p-6 md:p-8">
-        <FactoryPageState
-          kind="loading"
-          title="Transfer Detail"
-          subtitle="Loading the current manifest and item breakdown for this transfer."
-          skeleton={
-            <div className="space-y-4">
-              <div className="md-skeleton" style={{ height: 24, width: '30%' }} />
-              <div className="md-skeleton md-skeleton-card" />
-            </div>
-          }
-        />
+      <PageTransition>
+        <PageChrome
+          icon="transfers"
+          title="Transfer detail"
+          description="Loading the current manifest and item breakdown for this transfer."
+          loading
+          skeletonVariant="form"
+        >
+          <span />
+        </PageChrome>
       </PageTransition>
     );
   }
 
   if (error) {
     return (
-      <PageTransition className="p-6 md:p-8">
-        <FactoryPageState
-          kind="error"
-          title="Transfer Detail"
-          headline="Unable to load transfer detail"
-          body={error}
-          actionLabel="Back"
-          onAction={() => router.back()}
-        />
+      <PageTransition>
+        <PageChrome icon="transfers" title="Transfer detail" error={error}>
+          <button type="button" className="portal-btn portal-btn--ghost" onClick={() => router.back()}>
+            Back
+          </button>
+        </PageChrome>
       </PageTransition>
     );
   }
 
   if (notFound || !transfer) {
     return (
-      <PageTransition className="p-6 md:p-8">
-        <FactoryPageState
-          kind="no-results"
-          title="Transfer Detail"
-          headline="Transfer not found"
-          body="The selected transfer is no longer available or could not be located for this factory."
-          actionLabel="Back"
-          onAction={() => router.back()}
-        />
+      <PageTransition>
+        <PageChrome
+          icon="transfers"
+          title="Transfer detail"
+          empty
+          emptyMessage="The selected transfer is no longer available or could not be located for this factory."
+        >
+          <button type="button" className="portal-btn portal-btn--ghost" onClick={() => router.back()}>
+            Back
+          </button>
+        </PageChrome>
       </PageTransition>
     );
   }
@@ -178,34 +175,31 @@ export default function TransferDetailPage() {
   ];
 
   return (
-    <div className="space-y-6 p-6 md:animate-in md:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <button onClick={() => router.back()} className="mt-1 rounded-xl border border-[var(--border)] bg-[var(--background)] p-2 transition-colors hover:bg-[var(--surface)]">
-            <Icon name="arrowBack" size={18} />
-          </button>
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Transfer detail</p>
-            <h1 className="truncate text-2xl font-semibold tracking-tight text-[var(--foreground)]">
-              Transfer to {transferTitle}
-            </h1>
-            <p className="mt-1 text-sm font-mono text-[var(--muted)]">{transfer.id}</p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <span className={`status-chip ${stateClass(transfer.state)}`}>{transfer.state}</span>
-          {next && (
-            <button
-              onClick={handleProgress}
-              disabled={progressing}
-              className="button--primary inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
-            >
-              {progressing ? 'Processing...' : next.label}
+    <PageTransition>
+      <PageChrome
+        icon="transfers"
+        title={`Transfer to ${transferTitle}`}
+        description={transfer.id}
+        actions={
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={() => router.back()} className="portal-btn portal-btn--ghost p-2" aria-label="Back">
+              <Icon name="arrowBack" size={18} />
             </button>
-          )}
-        </div>
-      </div>
+            <span className={`status-chip ${stateClass(transfer.state)}`}>{transfer.state}</span>
+            {next && (
+              <button
+                type="button"
+                onClick={handleProgress}
+                disabled={progressing}
+                className="portal-btn portal-btn--primary disabled:opacity-50"
+              >
+                {progressing ? 'Processing...' : next.label}
+              </button>
+            )}
+          </div>
+        }
+      >
+    <div className="space-y-6">
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {summaryCards.map((metric) => (
@@ -229,7 +223,7 @@ export default function TransferDetailPage() {
           </div>
 
           {transfer.items?.length > 0 ? (
-            <div className="mt-5 overflow-x-auto">
+            <div className="mt-5 desk-table-wrap">
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="table__header border-b border-[var(--border)]">
@@ -288,9 +282,10 @@ export default function TransferDetailPage() {
             </p>
             {next && (
               <button
+                type="button"
                 onClick={handleProgress}
                 disabled={progressing}
-                className="button--primary mt-5 inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
+                className="portal-btn portal-btn--primary mt-5 disabled:opacity-50"
               >
                 {progressing ? 'Processing...' : next.label}
               </button>
@@ -306,5 +301,7 @@ export default function TransferDetailPage() {
         </aside>
       </div>
     </div>
+      </PageChrome>
+    </PageTransition>
   );
 }

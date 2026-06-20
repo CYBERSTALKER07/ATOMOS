@@ -7,7 +7,7 @@ import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth'
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import FactoryPageState from '@/components/FactoryPageState';
+import { PageChrome } from '@/components/PageChrome';
 import { MANIFEST_STATE_ORDER, manifestTransitionIdempotencyKey, nextManifestLifecycleAction } from '@/lib/manifest-lifecycle';
 import { factoryOperatorId } from '@/lib/factory-scope';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
@@ -141,9 +141,9 @@ export default function ManifestDetailPage() {
   if (loading) {
     return (
       <PageTransition>
-        <div className="p-6">
-          <FactoryPageState kind="loading" title="Manifest detail" subtitle="Loading manifest snapshot." />
-        </div>
+        <PageChrome icon="manifests" title="Manifest detail" description="Loading manifest snapshot." loading skeletonVariant="form">
+          <span />
+        </PageChrome>
       </PageTransition>
     );
   }
@@ -151,15 +151,9 @@ export default function ManifestDetailPage() {
   if (error || !detail) {
     return (
       <PageTransition>
-        <div className="p-6">
-          <FactoryPageState
-            kind="error"
-            headline="Unable to load manifest"
-            body={error || 'Manifest not found'}
-            actionLabel="Retry"
-            onAction={() => void load()}
-          />
-        </div>
+        <PageChrome icon="manifests" title="Manifest detail" error={error || 'Manifest not found'}>
+          <span />
+        </PageChrome>
       </PageTransition>
     );
   }
@@ -168,17 +162,15 @@ export default function ManifestDetailPage() {
   const stateIndex = MANIFEST_STATE_ORDER.indexOf(detail.manifest.state as (typeof MANIFEST_STATE_ORDER)[number]);
 
   return (
-    <PageTransition className="space-y-6 p-6 md:p-8">
-      <div>
-        <Link href="/manifests" className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]">← Back to manifests</Link>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] font-mono">{detail.manifest.manifest_id}</h1>
-          <span className={`status-chip ${stateClass(detail.manifest.state)}`}>{detail.manifest.state}</span>
-        </div>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          Route {detail.route_id || '—'} · {detail.order_count ?? detail.transfers.length} orders · {detail.stop_count ?? '—'} stops
-        </p>
-      </div>
+    <PageTransition>
+      <PageChrome
+        icon="manifests"
+        title={detail.manifest.manifest_id}
+        description={`Route ${detail.route_id || '—'} · ${detail.order_count ?? detail.transfers.length} orders · ${detail.stop_count ?? '—'} stops`}
+        actions={<span className={`status-chip ${stateClass(detail.manifest.state)}`}>{detail.manifest.state}</span>}
+      >
+      <Link href="/manifests" className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]">← Back to manifests</Link>
+      <div className="mt-6 space-y-6">
 
       <section className="rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6 space-y-4">
         <h2 className="text-lg font-semibold">LEO lifecycle</h2>
@@ -199,7 +191,7 @@ export default function ManifestDetailPage() {
             type="button"
             disabled={acting}
             onClick={() => void runLifecycle()}
-            className="md-btn md-btn-filled md-typescale-label-large inline-flex items-center gap-2 px-6 py-2 disabled:opacity-60"
+            className="portal-btn portal-btn--primary inline-flex items-center gap-2 disabled:opacity-60"
           >
             <Icon name="loadingBay" size={18} />
             {acting ? 'Applying…' : next.label}
@@ -256,6 +248,8 @@ export default function ManifestDetailPage() {
           </ul>
         </section>
       )}
+      </div>
+      </PageChrome>
     </PageTransition>
   );
 }

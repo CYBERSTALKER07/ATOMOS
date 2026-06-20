@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/auth';
 import PageTransition from '@/components/PageTransition';
-import FactoryPageState from '@/components/FactoryPageState';
+import { PageChrome } from '@/components/PageChrome';
 
 interface StaffDetail {
   id: string;
@@ -43,9 +43,9 @@ export default function StaffDetailPage() {
   if (loading) {
     return (
       <PageTransition>
-        <div className="p-6">
-          <FactoryPageState kind="loading" title="Staff detail" subtitle="Loading operator profile." />
-        </div>
+        <PageChrome icon="staff" title="Staff detail" description="Loading operator profile." loading skeletonVariant="form">
+          <span />
+        </PageChrome>
       </PageTransition>
     );
   }
@@ -53,38 +53,36 @@ export default function StaffDetailPage() {
   if (error || !staff) {
     return (
       <PageTransition>
-        <div className="p-6">
-          <FactoryPageState kind="error" headline="Unable to load staff" body={error || 'Not found'} actionLabel="Retry" onAction={() => void load()} />
-        </div>
+        <PageChrome icon="staff" title="Staff detail" error={error || 'Not found'}>
+          <span />
+        </PageChrome>
       </PageTransition>
     );
   }
 
   return (
-    <PageTransition className="space-y-6 p-6 md:p-8">
-      <div>
+    <PageTransition>
+      <PageChrome icon="staff" title={staff.name} description={staff.role}>
         <Link href="/staff" className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]">← Back to staff</Link>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--foreground)]">{staff.name}</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">{staff.role}</p>
-      </div>
-      <div className="md-card md-elevation-1 md-shape-md p-6 space-y-4 max-w-lg">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Staff ID</p>
-          <p className="font-mono text-sm mt-1">{staff.staff_id || staff.id}</p>
+        <div className="desk-card mt-6 p-6 space-y-4 max-w-lg">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Staff ID</p>
+            <p className="font-mono text-sm mt-1">{staff.staff_id || staff.id}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Phone</p>
+            <p className="text-sm mt-1">{staff.phone?.trim() || '—'}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Status</p>
+            <p className="text-sm mt-1">{staff.status || 'ACTIVE'}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Joined</p>
+            <p className="text-sm mt-1">{staff.joined_at?.trim() || '—'}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Phone</p>
-          <p className="text-sm mt-1">{staff.phone?.trim() || '—'}</p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Status</p>
-          <p className="text-sm mt-1">{staff.status || 'ACTIVE'}</p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Joined</p>
-          <p className="text-sm mt-1">{staff.joined_at?.trim() || '—'}</p>
-        </div>
-      </div>
+      </PageChrome>
     </PageTransition>
   );
 }

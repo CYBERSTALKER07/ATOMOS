@@ -5,7 +5,8 @@ import { usePolling } from '@pegasusx/api-client';
 import Link from 'next/link';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
-import FactoryPageState from '@/components/FactoryPageState';
+import EmptyState from '@/components/EmptyState';
+import { PageChrome } from '@/components/PageChrome';
 import { motion } from 'framer-motion';
 import PageTransition from '@/components/PageTransition';
 
@@ -104,11 +105,13 @@ export default function FactoryDashboard() {
 
   if (loading && !stats) {
     return (
-      <PageTransition className="p-6 md:p-8">
-        <FactoryPageState
-          kind="loading"
-          title="Factory Dashboard"
-          subtitle="Loading transfer, bay, fleet, and staffing metrics for this node."
+      <PageTransition>
+        <PageChrome
+          icon="dashboard"
+          title="Factory dashboard"
+          description="Transfer, bay, fleet, and staffing metrics for this node."
+          loading
+          skeletonVariant="dashboard"
         />
       </PageTransition>
     );
@@ -133,40 +136,44 @@ export default function FactoryDashboard() {
     const content = stateContent[loadIssue];
 
     return (
-      <PageTransition className="space-y-6 p-6 md:p-8">
-        <FactoryPageState
-          kind={loadIssue}
-          headline={content.headline}
-          body={content.body}
-          actionLabel="Retry"
-          onAction={() => {
-            setLoading(true);
-            setLoadIssue(null);
-            setReloadToken(v => v + 1);
-          }}
-        />
+      <PageTransition>
+        <PageChrome icon="dashboard" title="Factory dashboard" description="Transfer, bay, fleet, and staffing metrics for this node.">
+          <EmptyState
+            variant={loadIssue}
+            headline={content.headline}
+            body={content.body}
+            action="Retry"
+            onAction={() => {
+              setLoading(true);
+              setLoadIssue(null);
+              setReloadToken(v => v + 1);
+            }}
+          />
+        </PageChrome>
       </PageTransition>
     );
   }
 
   if (!stats) {
     return (
-      <PageTransition className="space-y-6 p-6 md:p-8">
-        <FactoryPageState
-          kind="empty"
-          headline="No factory metrics yet"
-          body="Once transfer and loading activity starts, operational metrics will appear here."
-          actionLabel="Refresh"
-          onAction={() => {
-            setLoading(true);
-            setReloadToken(v => v + 1);
-          }}
-        />
+      <PageTransition>
+        <PageChrome icon="dashboard" title="Factory dashboard" description="Transfer, bay, fleet, and staffing metrics for this node.">
+          <EmptyState
+            variant="no-data"
+            headline="No factory metrics yet"
+            body="Once transfer and loading activity starts, operational metrics will appear here."
+            action="Refresh"
+            onAction={() => {
+              setLoading(true);
+              setReloadToken(v => v + 1);
+            }}
+          />
+        </PageChrome>
       </PageTransition>
     );
   }
 
-  const s = stats ?? EMPTY_STATS;
+  const s = stats;
   const primaryKpis = [
     { label: 'Pending Transfers', value: s.pending_transfers, icon: 'transfers', href: '/transfers', detail: 'Approved and waiting to load' },
     { label: 'Now Loading', value: s.loading_transfers, icon: 'loadingBay', href: '/loading-bay', detail: 'Active bay work this shift' },
@@ -238,19 +245,26 @@ export default function FactoryDashboard() {
   ];
 
   return (
-    <PageTransition className="space-y-8 p-6 md:p-8">
+    <PageTransition>
+      <PageChrome
+        icon="dashboard"
+        title="Factory dashboard"
+        description="Keep outbound transfer flow visible before loading gets congested."
+        actions={
+          <button
+            type="button"
+            className="desk-icon-btn"
+            onClick={() => setReloadToken((v) => v + 1)}
+            aria-label="Refresh dashboard"
+          >
+            <Icon name="refresh" size={18} />
+          </button>
+        }
+      >
+    <div className="space-y-8">
       <section className="rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6 shadow-[var(--shadow-md-elevation-1)]">
         <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Factory command overview</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--foreground)]">
-              Keep outbound transfer flow visible before loading gets congested.
-            </h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-              The factory desktop is optimized for a shift lead: review transfer readiness, bay throughput, dispatch output, and staffing pressure without hopping between disconnected screens.
-            </p>
-
-            <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {actionCards.map((card) => (
                 <Link
                   key={card.href}
@@ -271,7 +285,6 @@ export default function FactoryDashboard() {
                 </motion.div>
               </Link>
               ))}
-            </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
@@ -376,6 +389,8 @@ export default function FactoryDashboard() {
           </div>
         </div>
       </section>
+    </div>
+      </PageChrome>
     </PageTransition>
   );
 }

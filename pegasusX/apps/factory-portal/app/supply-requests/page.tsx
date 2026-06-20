@@ -294,6 +294,7 @@ export default function SupplyRequestsPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="supplyRequests"
         title="Supply requests"
         description="Factory operators review and advance warehouse demand from this queue."
         loading={loading}
@@ -304,7 +305,7 @@ export default function SupplyRequestsPage() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => void fetchRequests({ background: requests.length > 0 })}
-            className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium hover-lift active-press"
+            className="portal-btn portal-btn--ghost inline-flex h-10 items-center gap-2"
           >
             <Icon name="refresh" size={16} /> Refresh
           </motion.button>

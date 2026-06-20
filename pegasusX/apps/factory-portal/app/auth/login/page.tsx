@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ChangeEvent } from "react";
 import { persistSession, factoryApiBaseUrl } from "@/lib/auth";
 import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from "@/lib/firebase";
+import { PortalField, PortalInput, PortalSelect, FormAlert } from "@/components/portal";
 import { COUNTRIES } from "../register/wizard-state";
 
 type LoginStep = "phone" | "otp";
@@ -15,7 +16,7 @@ export default function FactoryLoginPage() {
   const [countryCode, setCountryCode] = useState("UZ");
   const [phoneLocal, setPhoneLocal] = useState("");
   const [otpCode, setOtpCode] = useState("");
-  
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -49,7 +50,7 @@ export default function FactoryLoginPage() {
       setError("Enter the 6-digit code");
       return;
     }
-    
+
     setLoading(true);
     try {
       const phone = `${dialCode}${phoneLocal}`;
@@ -68,7 +69,7 @@ export default function FactoryLoginPage() {
         const errorData = await res.json().catch(() => null);
         throw new Error(errorData?.message || errorData?.error || "Login failed");
       }
-      
+
       const data = await res.json();
       persistSession(data.token, data.refresh_token);
       router.replace(data.is_configured ? "/" : "/setup/factory");
@@ -90,74 +91,66 @@ export default function FactoryLoginPage() {
         </p>
       </div>
 
-      {error && (
-        <p className="md-typescale-body-small" style={{ color: "var(--desk-danger)" }}>
-          {error}
-        </p>
-      )}
+      {error ? <FormAlert variant="error">{error}</FormAlert> : null}
 
       {step === "phone" ? (
         <form onSubmit={handleSendOtp} className="space-y-4">
           <div className="grid grid-cols-[120px,1fr] gap-3">
-            <label className="block space-y-1">
-              <span className="md-typescale-label-medium">Country</span>
-              <select
-                className="md-input-outlined"
+            <PortalField id="countryCode" label="Country">
+              <PortalSelect
+                id="countryCode"
                 value={countryCode}
-                onChange={(e) => setCountryCode(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => setCountryCode(e.target.value)}
               >
                 {COUNTRIES.map((c) => (
                   <option key={c.code} value={c.code}>{c.name}</option>
                 ))}
-              </select>
-            </label>
-            <label className="block space-y-1">
-              <span className="md-typescale-label-medium">Phone</span>
+              </PortalSelect>
+            </PortalField>
+            <PortalField id="phoneLocal" label="Phone" hint={`Will be sent as ${dialCode}${phoneLocal || "…"}`}>
               <div className="flex">
                 <span
-                  className="inline-flex items-center px-3 border border-r-0 rounded-l text-sm"
-                  style={{
-                    borderColor: "var(--color-md-outline)",
-                    background: "var(--color-md-surface-container-high)",
-                  }}
+                  className="inline-flex items-center px-3 border border-r-0 rounded-l text-sm portal-input"
+                  style={{ width: "auto", minWidth: 56, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
                 >
                   {dialCode}
                 </span>
-                <input
+                <PortalInput
+                  id="phoneLocal"
                   type="tel"
                   inputMode="numeric"
-                  className="md-input-outlined"
+                  className="rounded-l-none"
                   style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
                   value={phoneLocal}
-                  onChange={(e) => setPhoneLocal(e.target.value.replace(/\D/g, ""))}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setPhoneLocal(e.target.value.replace(/\D/g, ""))}
                   required
                 />
               </div>
-            </label>
+            </PortalField>
           </div>
-          <div id="recaptcha-container"></div>
-          <button type="submit" className="md-btn md-btn-filled w-full" disabled={loading}>
-            Continue
+          <div id="recaptcha-container" />
+          <button type="submit" className="portal-btn portal-btn--primary w-full" disabled={loading}>
+            {loading ? "Sending code…" : "Continue"}
           </button>
         </form>
       ) : (
         <form onSubmit={handleVerifyOtp} className="space-y-4">
-          <label className="block space-y-1">
-            <span className="md-typescale-label-medium">Verification Code</span>
-            <input
+          <PortalField id="otpCode" label="Verification code">
+            <PortalInput
+              id="otpCode"
               type="text"
               inputMode="numeric"
-              className="md-input-outlined tracking-widest text-lg font-mono text-center"
+              className="tracking-widest text-lg font-mono text-center"
               maxLength={6}
               value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setOtpCode(e.target.value.replace(/\D/g, ""))}
               required
             />
-          </label>
+          </PortalField>
           <div className="flex gap-3">
             <button
               type="button"
-              className="md-btn md-btn-text w-full"
+              className="portal-btn portal-btn--ghost w-full"
               onClick={() => {
                 resetPhoneOtpFlow();
                 setOtpCode("");
@@ -167,7 +160,7 @@ export default function FactoryLoginPage() {
             >
               Back
             </button>
-            <button type="submit" className="md-btn md-btn-filled w-full" disabled={loading}>
+            <button type="submit" className="portal-btn portal-btn--primary w-full" disabled={loading}>
               {loading ? "Signing in…" : "Sign in"}
             </button>
           </div>

@@ -44,6 +44,7 @@ export default function FactoryAnalyticsPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="analytics"
         title="Analytics overview"
         description="Factory throughput, manifest pressure, and exception queue from the analytics endpoint."
         loading={loading}
@@ -56,7 +57,7 @@ export default function FactoryAnalyticsPage() {
               setLoading(true);
               void load();
             }}
-            className="button--secondary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm"
+            className="portal-btn portal-btn--ghost flex items-center gap-1.5"
           >
             <Icon name="refresh" size={16} /> Refresh
           </button>
@@ -83,7 +84,7 @@ export default function FactoryAnalyticsPage() {
               <div className="mt-6">
                 <Link
                   href="/manifest-exceptions"
-                  className="button--secondary inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm"
+                  className="portal-btn portal-btn--ghost inline-flex items-center gap-2"
                 >
                   <Icon name="warning" size={16} />
                   Open gate exceptions ({overview.exception_queue})

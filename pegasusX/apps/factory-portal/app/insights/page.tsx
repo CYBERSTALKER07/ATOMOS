@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import FactoryPageState from '@/components/FactoryPageState';
+import { PageChrome } from '@/components/PageChrome';
 import { motion } from 'framer-motion';
 
 interface InsightRow {
@@ -129,123 +129,97 @@ export default function InsightsPage() {
 
   return (
     <PageTransition>
-      <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold tracking-tight text-[var(--foreground)]">Replenishment Insights</h1>
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => load()} 
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary hover-lift active-press"
-          >
+      <PageChrome
+        icon="insights"
+        title="Replenishment insights"
+        description="Stock velocity signals and reorder recommendations across connected warehouses."
+        loading={loading}
+        skeletonVariant="table"
+        error={error && insights.length === 0 ? error : null}
+        empty={!loading && !error && insights.length === 0}
+        emptyMessage="No replenishment insights at this time. Insights are generated based on stock velocity."
+        actions={
+          <button type="button" className="portal-btn portal-btn--ghost inline-flex items-center gap-1.5" onClick={() => void load()}>
             <Icon name="refresh" size={16} /> Refresh
-          </motion.button>
-        </div>
-
+          </button>
+        }
+      >
         {actionError && (
-          <p className="text-sm" style={{ color: 'var(--color-md-error)' }}>{actionError}</p>
+          <p className="mb-4 text-sm text-[var(--destructive)]">{actionError}</p>
         )}
 
-        {loading ? (
-          <FactoryPageState
-            kind="loading"
-            skeleton={
-              <div className="space-y-1">
-                {Array.from({ length: 6 }).map((_, i) => <div key={i} className="md-skeleton md-skeleton-row" />)}
-              </div>
-            }
-          />
-        ) : error && insights.length === 0 ? (
-          <FactoryPageState
-            kind="error"
-            headline="Unable to load replenishment insights"
-            body={error}
-            actionLabel="Retry"
-            onAction={() => void load()}
-          />
-        ) : insights.length === 0 ? (
-          <FactoryPageState
-            kind="empty"
-            imageUrl="/images/empty-predictions.png"
-            headline="No replenishment insights"
-            body="No replenishment insights at this time. Insights are generated based on stock velocity."
-          />
-        ) : (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]"
-          >
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="table__header border-b border-[var(--border)] bg-[var(--default)]">
-                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Warehouse</th>
-                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Product</th>
-                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Urgency</th>
-                  <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Stock</th>
-                  <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Velocity/day</th>
-                  <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Days Left</th>
-                  <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Reorder Qty</th>
-                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Status</th>
-                  <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {insights.map((ins, index) => (
-                  <motion.tr 
-                    key={ins.id} 
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="table__row border-b border-[var(--border)] last:border-0 hover:bg-[var(--default)]/50 transition-colors"
-                  >
-                    <td className="py-3 px-4 font-medium">{ins.warehouse_name}</td>
-                    <td className="py-3 px-4">{ins.product_name}</td>
-                    <td className="py-3 px-4">
-                      <span className={`status-chip ${urgencyClass(ins.urgency)}`}>{ins.urgency}</span>
-                    </td>
-                    <td className="py-3 px-4 text-right tabular-nums font-mono">{ins.current_stock}</td>
-                    <td className="py-3 px-4 text-right tabular-nums font-mono">{ins.daily_velocity.toFixed(1)}</td>
-                    <td className="py-3 px-4 text-right tabular-nums font-mono">{ins.days_to_empty.toFixed(1)}</td>
-                    <td className="py-3 px-4 text-right tabular-nums font-mono">{ins.reorder_qty}</td>
-                    <td className="py-3 px-4">
-                      <span className={`status-chip ${ins.status === 'ACTIVE' ? 'status-chip--approved' : 'status-chip--draft'}`}>
-                        {ins.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      {ins.status === 'OPEN' ? (
-                        <div className="flex justify-end gap-2">
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            disabled={actingId === ins.id}
-                            onClick={() => void runInsightAction(ins.id, 'approve')}
-                            className="button--primary rounded-lg px-3 py-1 text-xs disabled:opacity-50"
-                          >
-                            Approve
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            disabled={actingId === ins.id}
-                            onClick={() => void runInsightAction(ins.id, 'dismiss')}
-                            className="button--secondary rounded-lg px-3 py-1 text-xs disabled:opacity-50"
-                          >
-                            Dismiss
-                          </motion.button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-[var(--muted)]">—</span>
-                      )}
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </motion.div>
-        )}
-      </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="desk-table-wrap"
+        >
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="table__header border-b border-[var(--border)] bg-[var(--default)]">
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Warehouse</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Product</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Urgency</th>
+                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Stock</th>
+                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Velocity/day</th>
+                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Days Left</th>
+                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Reorder Qty</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Status</th>
+                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {insights.map((ins, index) => (
+                <motion.tr
+                  key={ins.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="table__row border-b border-[var(--border)] last:border-0 hover:bg-[var(--default)]/50 transition-colors"
+                >
+                  <td className="py-3 px-4 font-medium">{ins.warehouse_name}</td>
+                  <td className="py-3 px-4">{ins.product_name}</td>
+                  <td className="py-3 px-4">
+                    <span className={`status-chip ${urgencyClass(ins.urgency)}`}>{ins.urgency}</span>
+                  </td>
+                  <td className="py-3 px-4 text-right tabular-nums font-mono">{ins.current_stock}</td>
+                  <td className="py-3 px-4 text-right tabular-nums font-mono">{ins.daily_velocity.toFixed(1)}</td>
+                  <td className="py-3 px-4 text-right tabular-nums font-mono">{ins.days_to_empty.toFixed(1)}</td>
+                  <td className="py-3 px-4 text-right tabular-nums font-mono">{ins.reorder_qty}</td>
+                  <td className="py-3 px-4">
+                    <span className={`status-chip ${ins.status === 'ACTIVE' ? 'status-chip--approved' : 'status-chip--draft'}`}>
+                      {ins.status}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    {ins.status === 'OPEN' ? (
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          disabled={actingId === ins.id}
+                          onClick={() => void runInsightAction(ins.id, 'approve')}
+                          className="portal-btn portal-btn--primary text-xs disabled:opacity-50"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          disabled={actingId === ins.id}
+                          onClick={() => void runInsightAction(ins.id, 'dismiss')}
+                          className="portal-btn portal-btn--ghost text-xs disabled:opacity-50"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-[var(--muted)]">—</span>
+                    )}
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </motion.div>
+      </PageChrome>
     </PageTransition>
   );
 }

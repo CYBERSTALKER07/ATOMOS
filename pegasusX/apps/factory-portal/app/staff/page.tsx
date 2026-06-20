@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import FactoryPageState from '@/components/FactoryPageState';
+import { PageChrome } from '@/components/PageChrome';
 import { motion } from 'framer-motion';
 
 interface StaffMember {
@@ -59,92 +59,68 @@ export default function StaffPage() {
 
   return (
     <PageTransition>
-      <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold tracking-tight text-[var(--foreground)]">Factory Staff</h1>
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => load()} 
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary hover-lift active-press"
-          >
+      <PageChrome
+        icon="staff"
+        title="Factory staff"
+        description="Operators and shift coverage registered for this factory node."
+        loading={loading}
+        skeletonVariant="table"
+        error={error && staff.length === 0 ? error : null}
+        empty={!loading && !error && staff.length === 0}
+        emptyMessage="There are no staff members registered for this factory."
+        actions={
+          <button type="button" className="portal-btn portal-btn--ghost inline-flex items-center gap-1.5" onClick={() => void load()}>
             <Icon name="refresh" size={16} /> Refresh
-          </motion.button>
-        </div>
-
-        {loading ? (
-          <FactoryPageState
-            kind="loading"
-            skeleton={
-              <div className="space-y-1">
-                {Array.from({ length: 4 }).map((_, i) => <div key={i} className="md-skeleton md-skeleton-row" />)}
-              </div>
-            }
-          />
-        ) : error && staff.length === 0 ? (
-          <FactoryPageState
-            kind="error"
-            headline="Unable to load staff"
-            body={error}
-            actionLabel="Retry"
-            onAction={() => void load()}
-          />
-        ) : staff.length === 0 ? (
-          <FactoryPageState
-            kind="empty"
-            imageUrl="/images/empty-products.png"
-            headline="No staff registered"
-            body="There are no staff members registered for this factory."
-          />
-        ) : (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]"
-          >
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="table__header border-b border-[var(--border)] bg-[var(--default)]">
-                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Name</th>
-                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Phone</th>
-                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Role</th>
-                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Status</th>
-                  <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Joined</th>
-                  <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {staff.map((s, index) => (
-                  <motion.tr 
-                    key={s.id} 
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="table__row border-b border-[var(--border)] last:border-0 hover:bg-[var(--default)]/50 transition-colors"
-                  >
-                    <td className="py-3 px-4 font-medium">{s.name}</td>
-                    <td className="py-3 px-4 text-[var(--muted)]">{s.phone}</td>
-                    <td className="py-3 px-4">{s.role}</td>
-                    <td className="py-3 px-4">
-                      <span className={`status-chip ${s.status === 'ACTIVE' ? 'status-chip--stable' : 'status-chip--draft'}`}>
-                        {s.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right text-[var(--muted)] tabular-nums font-mono">
-                      {new Date(s.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <Link href={`/staff/${s.id}`} className="md-btn md-btn-tonal md-typescale-label-large px-3 py-1.5">
-                        Open
-                      </Link>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </motion.div>
-        )}
-      </div>
+          </button>
+        }
+      >
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="desk-table-wrap"
+        >
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="table__header border-b border-[var(--border)] bg-[var(--default)]">
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Name</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Phone</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Role</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Status</th>
+                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Joined</th>
+                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {staff.map((s, index) => (
+                <motion.tr
+                  key={s.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="table__row border-b border-[var(--border)] last:border-0 hover:bg-[var(--default)]/50 transition-colors"
+                >
+                  <td className="py-3 px-4 font-medium">{s.name}</td>
+                  <td className="py-3 px-4 text-[var(--muted)]">{s.phone}</td>
+                  <td className="py-3 px-4">{s.role}</td>
+                  <td className="py-3 px-4">
+                    <span className={`status-chip ${s.status === 'ACTIVE' ? 'status-chip--stable' : 'status-chip--draft'}`}>
+                      {s.status}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right text-[var(--muted)] tabular-nums font-mono">
+                    {new Date(s.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <Link href={`/staff/${s.id}`} className="portal-btn portal-btn--ghost text-xs">
+                      Open
+                    </Link>
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </motion.div>
+      </PageChrome>
     </PageTransition>
   );
 }

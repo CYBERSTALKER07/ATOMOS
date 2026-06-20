@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Icon from "@/components/Icon";
+import { PortalField, PortalInput, PortalSelect, PortalSection, FormAlert } from "@/components/portal";
 import { factoryApiBaseUrl, persistSession } from "@/lib/auth";
 import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
 
@@ -91,104 +93,63 @@ export default function FactorySetupPage() {
     <>
       <header className="setup-header">
         <div className="setup-header-icon" aria-hidden>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M22 10v12H2V10l10-8 10 8zm-2 1H4v10h16v-10zm-5 1v6h-6v-6h6z" />
-          </svg>
+          <Icon name="factory" size={22} />
         </div>
         <div>
-          <h1 className="md-typescale-title-large" style={{ margin: 0 }}>
-            Factory Details
-          </h1>
-          <p className="desk-page-subtitle">
-            Configure your factory facility type and location.
-          </p>
+          <h1>Factory details</h1>
+          <p className="setup-header-sub">Configure your facility type and location.</p>
         </div>
       </header>
 
-      <section className="auth-card grid gap-4">
-        <h2 className="md-typescale-title-large">General</h2>
-        <Field id="factoryName" label="Factory Name" error={errors.factoryName}>
-          <input
+      <PortalSection icon="factory" title="General">
+        <PortalField id="factoryName" label="Factory name" error={errors.factoryName}>
+          <PortalInput
             id="factoryName"
-            className="md-input-outlined"
             value={state.factoryName}
             onChange={(e) => setState((s) => ({ ...s, factoryName: e.target.value }))}
+            error={errors.factoryName}
           />
-        </Field>
-
-        <Field id="facilityType" label="Facility Type" error={errors.facilityType}>
-          <select
+        </PortalField>
+        <PortalField id="facilityType" label="Facility type" error={errors.facilityType}>
+          <PortalSelect
             id="facilityType"
-            className="md-input-outlined"
             value={state.facilityType}
             onChange={(e) => setState((s) => ({ ...s, facilityType: e.target.value }))}
+            error={errors.facilityType}
           >
             <option value="MANUFACTURING">Manufacturing</option>
             <option value="ASSEMBLY">Assembly</option>
             <option value="PACKAGING">Packaging</option>
             <option value="PROCESSING">Processing</option>
-          </select>
-        </Field>
-
-        <Field id="totalCapacitySqM" label="Total Capacity (Square Meters)" error={errors.totalCapacitySqM}>
-          <input
+          </PortalSelect>
+        </PortalField>
+        <PortalField id="totalCapacitySqM" label="Total capacity (square meters)" error={errors.totalCapacitySqM}>
+          <PortalInput
             id="totalCapacitySqM"
             type="number"
-            className="md-input-outlined"
             value={state.totalCapacitySqM}
             onChange={(e) => setState((s) => ({ ...s, totalCapacitySqM: e.target.value }))}
+            error={errors.totalCapacitySqM}
           />
-        </Field>
+        </PortalField>
+      </PortalSection>
 
-        <h2 className="md-typescale-title-large mt-4">Location</h2>
-        <Field id="address" label="Factory address" error={errors.address}>
+      <PortalSection icon="loadingBay" title="Location" className="mt-6">
+        <PortalField id="address" label="Factory address" error={errors.address}>
           <LocationPicker value={location} onChange={setLocation} label="Street address" />
-        </Field>
-      </section>
+        </PortalField>
+      </PortalSection>
 
-      {submitError && (
-        <p role="alert" className="md-typescale-body-medium mt-4" style={{ color: "var(--color-md-error)" }}>
-          {submitError}
-        </p>
-      )}
+      {submitError ? <FormAlert variant="error">{submitError}</FormAlert> : null}
 
-      <footer className="mt-6 flex items-center justify-between gap-4">
+      <footer className="setup-footer">
         <div />
-        <button type="button" className="md-btn md-btn-filled" onClick={submit} disabled={submitting}>
-          {submitting ? "Saving…" : "Complete Setup"}
+        <button type="button" className="portal-btn portal-btn--primary" onClick={submit} disabled={submitting}>
+          {submitting ? "Saving…" : "Complete setup"}
+          {!submitting ? <Icon name="arrow_forward" size={16} /> : null}
         </button>
       </footer>
     </>
-  );
-}
-
-function Field({
-  id,
-  label,
-  error,
-  hint,
-  children,
-}: {
-  id: string;
-  label: string;
-  error?: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="md-label">
-        {label}
-      </label>
-      {children}
-      {error ? (
-        <p className="md-helper" data-error="true">
-          {error}
-        </p>
-      ) : hint ? (
-        <p className="md-helper">{hint}</p>
-      ) : null}
-    </div>
   );
 }
 

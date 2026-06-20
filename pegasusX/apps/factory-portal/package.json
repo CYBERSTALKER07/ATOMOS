@@ -17,8 +17,8 @@
     "tauri:build:debug": "TAURI_BUILD=1 tauri build --debug"
   },
   "dependencies": {
-    "@heroui/react": "^3.0.2",
-    "@heroui/styles": "^3.0.2",
+    "@heroui/react": "^3.1.0",
+    "@heroui/styles": "^3.1.0",
     "@pegasusx/api-client": "workspace:*",
     "@pegasusx/i18n": "workspace:*",
     "@pegasusx/ui-kit": "workspace:*",

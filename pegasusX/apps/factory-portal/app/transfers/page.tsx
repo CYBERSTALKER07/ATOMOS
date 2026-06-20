@@ -137,6 +137,7 @@ export default function TransfersPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="transfers"
         title="Transfers"
         description="Review warehouse destination movements, filter by state, and open a transfer when it needs action from the factory floor."
         loading={loading}
@@ -146,14 +147,14 @@ export default function TransfersPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/transfers/create"
-              className="button--primary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
+              className="portal-btn portal-btn--primary inline-flex h-10 items-center gap-2"
             >
               <Icon name="add" size={16} /> Create transfer
             </Link>
             <button
               type="button"
               onClick={() => void load()}
-              className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
+              className="portal-btn portal-btn--ghost inline-flex h-10 items-center gap-2"
             >
               <Icon name="refresh" size={16} /> Refresh
             </button>

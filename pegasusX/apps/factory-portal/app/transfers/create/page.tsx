@@ -10,7 +10,8 @@ import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile'
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import FactoryPageState from '@/components/FactoryPageState';
+import { PageChrome } from '@/components/PageChrome';
+import { PortalField, PortalInput, PortalSelect } from '@/components/portal';
 
 interface FleetDriver {
   driver_id: string;
@@ -122,9 +123,7 @@ export default function CreateTransferPage() {
   if (loadingFleet) {
     return (
       <PageTransition>
-        <div className="p-6">
-          <FactoryPageState kind="loading" title="Create Transfer" subtitle="Loading fleet assignment options." />
-        </div>
+        <PageChrome icon="transfers" title="Create transfer" description="Loading fleet assignment options." loading skeletonVariant="form" />
       </PageTransition>
     );
   }
@@ -132,108 +131,71 @@ export default function CreateTransferPage() {
   if (error) {
     return (
       <PageTransition>
-        <div className="p-6">
-          <FactoryPageState
-            kind="error"
-            title="Create Transfer"
-            headline="Unable to prepare transfer form"
-            body={error}
-            actionLabel="Retry"
-            onAction={() => void loadFleet()}
-          />
-        </div>
+        <PageChrome
+          icon="transfers"
+          title="Create transfer"
+          description="Stage a factory-to-warehouse movement."
+          error={error}
+          actions={
+            <button type="button" className="portal-btn portal-btn--outline" onClick={() => void loadFleet()}>
+              Retry
+            </button>
+          }
+        />
       </PageTransition>
     );
   }
 
   return (
-    <PageTransition className="space-y-6 p-6 md:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Link href="/transfers" className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]">
+    <PageTransition>
+      <PageChrome
+        icon="transfers"
+        title="Create transfer"
+        description="Stage a factory-to-warehouse movement. Volume is captured in VU; optional order and fleet assignment can be set now or during loading."
+        actions={
+          <Link href="/transfers" className="portal-btn portal-btn--ghost text-sm">
             ← Back to transfers
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--foreground)]">Create Transfer</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-            Stage a factory-to-warehouse movement. Volume is captured in VU; optional order and fleet assignment can be set now or during loading.
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={(event) => void handleSubmit(event)} className="max-w-xl space-y-5 rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6">
-        <div>
-          <label htmlFor="order_id" className="mb-1.5 block text-sm font-medium">Order ID (optional)</label>
-          <input
-            id="order_id"
-            value={orderId}
-            onChange={(e) => setOrderId(e.target.value)}
-            placeholder="ord_…"
-            className="md-input-outlined w-full px-4 py-3"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="total_vu" className="mb-1.5 block text-sm font-medium">Total volume (VU)</label>
-          <input
-            id="total_vu"
-            type="number"
-            min={1}
-            step={1}
-            required
-            value={totalVu}
-            onChange={(e) => setTotalVu(e.target.value)}
-            className="md-input-outlined w-full px-4 py-3"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="driver_id" className="mb-1.5 block text-sm font-medium">Driver (optional)</label>
-          <select
-            id="driver_id"
-            value={driverId}
-            onChange={(e) => setDriverId(e.target.value)}
-            className="md-input-outlined w-full px-4 py-3"
-          >
+        }
+      >
+      <form onSubmit={(event) => void handleSubmit(event)} className="max-w-xl space-y-4">
+        <PortalField id="order_id" label="Order ID" optional>
+          <PortalInput id="order_id" value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="ord_…" />
+        </PortalField>
+        <PortalField id="total_vu" label="Total volume (VU)">
+          <PortalInput id="total_vu" type="number" min={1} step={1} required value={totalVu} onChange={(e) => setTotalVu(e.target.value)} />
+        </PortalField>
+        <PortalField id="driver_id" label="Driver" optional>
+          <PortalSelect id="driver_id" value={driverId} onChange={(e) => setDriverId(e.target.value)}>
             <option value="">Unassigned</option>
             {drivers.map((driver) => (
               <option key={driver.driver_id} value={driver.driver_id}>
                 {driver.name} {driver.on_shift ? '(on shift)' : ''}
               </option>
             ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="vehicle_id" className="mb-1.5 block text-sm font-medium">Vehicle (optional)</label>
-          <select
-            id="vehicle_id"
-            value={vehicleId}
-            onChange={(e) => setVehicleId(e.target.value)}
-            className="md-input-outlined w-full px-4 py-3"
-          >
+          </PortalSelect>
+        </PortalField>
+        <PortalField id="vehicle_id" label="Vehicle" optional>
+          <PortalSelect id="vehicle_id" value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
             <option value="">Unassigned</option>
             {vehicles.map((vehicle) => (
               <option key={vehicle.vehicle_id} value={vehicle.vehicle_id}>
                 {vehicle.plate_no} · {vehicle.state}
               </option>
             ))}
-          </select>
-        </div>
-
+          </PortalSelect>
+        </PortalField>
         <div className="flex flex-wrap gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="md-btn md-btn-filled md-typescale-label-large inline-flex items-center gap-2 px-6 py-2 disabled:opacity-60"
-          >
+          <button type="submit" disabled={submitting} className="portal-btn portal-btn--primary inline-flex items-center gap-2">
             <Icon name="add" size={18} />
             {submitting ? 'Creating…' : 'Create transfer'}
           </button>
-          <Link href="/transfers" className="md-btn md-btn-outlined md-typescale-label-large px-6 py-2">
+          <Link href="/transfers" className="portal-btn portal-btn--outline">
             Cancel
           </Link>
         </div>
       </form>
+      </PageChrome>
     </PageTransition>
   );
 }

@@ -113,6 +113,7 @@ export default function LoadingBayPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="loadingBay"
         title="Loading bay"
         description="Review approved factory transfers, advance active loading, and dispatch manifests without losing warehouse context."
         loading={loading}
@@ -122,7 +123,7 @@ export default function LoadingBayPage() {
             <button
               type="button"
               onClick={() => void load()}
-              className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
+              className="portal-btn portal-btn--ghost inline-flex h-10 items-center gap-2"
             >
               <Icon name="refresh" size={16} /> Refresh
             </button>
@@ -130,7 +131,7 @@ export default function LoadingBayPage() {
               type="button"
               onClick={handleDispatch}
               disabled={dispatching}
-              className="button--primary inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
+              className="portal-btn portal-btn--primary inline-flex h-10 items-center gap-2 disabled:opacity-50"
             >
               {dispatching ? 'Dispatching...' : 'Batch dispatch'}
             </button>

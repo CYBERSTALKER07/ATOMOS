@@ -1,5 +1,9 @@
 @import "tailwindcss";
+@import "@heroui/styles";
 @import "@pegasusx/ui-kit/styles/desktop-foundation.css";
+@import "@pegasusx/ui-kit/styles/auth-layout.css";
+@import "@pegasusx/ui-kit/styles/portal-ui.css";
+@import "@pegasusx/ui-kit/styles/setup-onboarding.css";
 
 @theme {
     --color-background: var(--background);
@@ -881,34 +885,7 @@ button:disabled,
     font-size: 10px;
 }
 
-/* Auth shell — Geist typography for all form text */
-.auth-shell {
-    font-family: var(--font-geist-sans), sans-serif;
-}
-.auth-shell h2 {
-    font-family: var(--font-geist-sans), sans-serif;
-    font-weight: 800;
-    letter-spacing: -1.5px;
-}
-.auth-shell label {
-    font-family: var(--font-geist-sans), sans-serif;
-    font-weight: 600;
-    letter-spacing: -0.2px;
-}
-.auth-shell .md-input-outlined {
-    font-family: var(--font-geist-sans), sans-serif;
-    font-weight: 400;
-    letter-spacing: -0.1px;
-}
-.auth-shell .md-chip {
-    font-family: var(--font-geist-sans), sans-serif;
-    font-weight: 600;
-}
-.auth-shell .auth-step-label {
-    font-family: var(--font-geist-sans), sans-serif;
-    font-weight: 600;
-    letter-spacing: -0.1px;
-}
+/* Auth shell typography uses Plus Jakarta Sans from root layout — Geist overrides removed (see auth-layout.css). */
 
 /* Animated logo pulse */
 .auth-logo-pulse {

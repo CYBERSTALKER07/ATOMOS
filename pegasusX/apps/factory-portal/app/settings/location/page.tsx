@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/auth";
 import PageTransition from "@/components/PageTransition";
 import { PageChrome } from "@/components/PageChrome";
+import { PortalSection } from "@/components/portal";
 import { useToast } from "@/components/Toast";
 import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
 
@@ -77,31 +78,29 @@ export default function FactoryLocationSettingsPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="loadingBay"
         title="Factory location"
-        subtitle="Street address used for supply routing and dispatch."
-      />
-      <section className="auth-card grid gap-4 max-w-xl">
-        {loading ? (
-          <p className="md-typescale-body-medium">Loading location…</p>
-        ) : (
-          <>
-            {factoryName ? (
-              <p className="md-typescale-body-medium">
-                <strong>{factoryName}</strong>
-              </p>
-            ) : null}
-            <LocationPicker value={location} onChange={setLocation} label="Factory address" />
-            <button
-              type="button"
-              className="md-btn md-btn-filled w-fit"
-              onClick={() => void saveLocation()}
-              disabled={saving}
-            >
-              {saving ? "Saving…" : "Save location"}
-            </button>
-          </>
-        )}
-      </section>
+        description="Street address used for supply routing and dispatch."
+        loading={loading}
+        skeletonVariant="form"
+      >
+        <PortalSection icon="factory" title="Depot address" className="max-w-xl">
+          {factoryName ? (
+            <p className="text-sm" style={{ color: "var(--desk-text-secondary)" }}>
+              <strong>{factoryName}</strong>
+            </p>
+          ) : null}
+          <LocationPicker value={location} onChange={setLocation} label="Factory address" />
+          <button
+            type="button"
+            className="portal-btn portal-btn--primary"
+            onClick={() => void saveLocation()}
+            disabled={saving}
+          >
+            {saving ? "Saving…" : "Save location"}
+          </button>
+        </PortalSection>
+      </PageChrome>
     </PageTransition>
   );
 }

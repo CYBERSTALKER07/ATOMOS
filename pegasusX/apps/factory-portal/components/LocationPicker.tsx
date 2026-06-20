@@ -96,10 +96,10 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
 
   return (
     <div className="space-y-2">
-      <label className="md-label">{label}</label>
+      <label className="portal-label">{label}</label>
       <div className="relative">
         <input
-          className="md-input-outlined w-full"
+          className="portal-input w-full"
           placeholder="Start typing street address…"
           value={query}
           onChange={(e) => onInputChange(e.target.value)}
@@ -127,8 +127,7 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          className="md-btn md-btn-outlined"
-          style={{ fontSize: "0.75rem", padding: "0.375rem 0.75rem" }}
+          className="portal-btn portal-btn--ghost text-xs"
           onClick={useMyLocation}
           disabled={locating}
         >

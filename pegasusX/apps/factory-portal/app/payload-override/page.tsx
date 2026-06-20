@@ -6,9 +6,9 @@ import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth'
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import { PageSkeleton } from '@/components/Skeleton';
+import { PageChrome } from '@/components/PageChrome';
 import EmptyState from '@/components/EmptyState';
-import { motion } from 'framer-motion';
+import { PortalField, PortalSelect } from '@/components/portal';
 
 interface Transfer {
   transfer_id: string;
@@ -257,10 +257,15 @@ export default function PayloadOverridePage() {
   if (loading) {
     return (
       <PageTransition>
-        <div className="p-6 space-y-4">
-          <h1 className="text-xl font-semibold">Payload Override</h1>
-          <PageSkeleton />
-        </div>
+        <PageChrome
+          icon="manifests"
+          title="Payload override"
+          description="Rebalance or cancel transfers on manifests currently in LOADING state."
+          loading
+          skeletonVariant="table"
+        >
+          <span />
+        </PageChrome>
       </PageTransition>
     );
   }
@@ -268,63 +273,51 @@ export default function PayloadOverridePage() {
   if (error && manifests.length === 0) {
     return (
       <PageTransition>
-        <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold">Payload Override</h1>
-            <button
-              onClick={() => void fetchManifests()}
-              className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
-            >
+        <PageChrome
+          icon="manifests"
+          title="Payload override"
+          description="Rebalance or cancel transfers on manifests currently in LOADING state."
+          error={error}
+          actions={
+            <button type="button" className="portal-btn portal-btn--ghost inline-flex items-center gap-2" onClick={() => void fetchManifests()}>
               <Icon name="refresh" size={16} /> Retry
             </button>
-          </div>
-          <div
-            className="rounded-2xl border p-6 text-sm"
-            style={{
-              borderColor: 'var(--color-md-outline-variant)',
-              background: 'var(--color-md-surface-container-lowest)',
-              color: 'var(--color-md-on-surface-variant)',
-            }}
-          >
-            {error}
-          </div>
-        </div>
+          }
+        >
+          <span />
+        </PageChrome>
       </PageTransition>
     );
   }
 
   return (
     <PageTransition>
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold">Payload Override</h1>
-            <p className="text-sm mt-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
-              Rebalance or cancel transfers on manifests currently in LOADING state
-            </p>
-          </div>
+      <PageChrome
+        icon="manifests"
+        title="Payload override"
+        description="Rebalance or cancel transfers on manifests currently in LOADING state."
+        actions={
           <div className="flex items-center gap-3">
-            <span className="text-sm" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+            <span className="text-sm text-[var(--muted)]">
               {loadingManifests.length} loading manifest{loadingManifests.length !== 1 ? 's' : ''}
             </span>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => void fetchManifests({ background: manifests.length > 0 })}
-            className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium hover-lift active-press"
-          >
-            <Icon name="refresh" size={16} /> Refresh
-          </motion.button>
+            <button
+              type="button"
+              onClick={() => void fetchManifests({ background: manifests.length > 0 })}
+              className="portal-btn portal-btn--ghost inline-flex items-center gap-2"
+            >
+              <Icon name="refresh" size={16} /> Refresh
+            </button>
           </div>
-        </div>
+        }
+      >
 
         <div
-          className="rounded-2xl border px-4 py-3 text-sm"
-          style={{
-            borderColor: isOffline || error ? 'var(--color-md-warning)' : 'var(--color-md-outline-variant)',
-            background: isOffline || error ? 'var(--color-md-surface-container-high)' : 'var(--color-md-surface-container-low)',
-            color: 'var(--color-md-on-surface-variant)',
-          }}
+          className={`mb-6 rounded-2xl border px-4 py-3 text-sm ${
+            isOffline || error
+              ? 'border-[var(--warning)] bg-[var(--surface-muted)]'
+              : 'border-[var(--border)] bg-[var(--surface)]'
+          } text-[var(--muted)]`}
         >
           {runtimeMessage}
         </div>
@@ -340,56 +333,51 @@ export default function PayloadOverridePage() {
             {loadingManifests.map((manifest) => (
               <div
                 key={manifest.manifest_id}
-                className="rounded-xl border overflow-hidden"
-                style={{ borderColor: 'var(--color-md-outline-variant)', background: 'var(--color-md-surface-container-lowest)' }}
+                className="desk-card overflow-hidden"
               >
-                <div
-                  className="flex items-center justify-between px-4 py-3 border-b"
-                  style={{ background: 'var(--color-md-surface-container)', borderColor: 'var(--color-md-outline-variant)' }}
-                >
+                <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3">
                   <div className="flex items-center gap-3">
                     <Icon name="fleet" size={18} />
                     <div>
                       <span className="font-medium text-sm">{manifest.truck_plate || manifest.truck_id.slice(0, 8)}</span>
-                      <span className="text-xs ml-2" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                      <span className="text-xs ml-2 text-[var(--muted)]">
                         {manifest.manifest_id.slice(0, 8)}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-xs">
-                      <span style={{ color: 'var(--color-md-on-surface-variant)' }}>Capacity: </span>
+                      <span className="text-[var(--muted)]">Capacity: </span>
                       <span className="font-medium tabular-nums">
                         {manifest.total_volume_vu.toLocaleString()} / {manifest.max_capacity_vu.toLocaleString()} VU
                       </span>
                     </div>
-                    <div className="h-2 w-24 rounded-full overflow-hidden" style={{ background: 'var(--color-md-surface-container-high)' }}>
+                    <div className="h-2 w-24 rounded-full overflow-hidden bg-[var(--surface-muted)]">
                       <div
                         className="h-full rounded-full transition-all"
                         style={{
                           width: `${Math.min(100, (manifest.total_volume_vu / manifest.max_capacity_vu) * 100)}%`,
                           background: manifest.total_volume_vu > manifest.max_capacity_vu * 0.9
-                            ? 'var(--color-md-error)'
-                            : 'var(--color-md-primary)',
+                            ? 'var(--destructive)'
+                            : 'var(--accent)',
                         }}
                       />
                     </div>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                    <button
+                      type="button"
                       onClick={() => void handleCancelManifest(manifest.manifest_id)}
                       disabled={acting === manifest.manifest_id}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50 hover-lift active-press"
-                      style={{ background: 'var(--color-md-error-container)', color: 'var(--color-md-on-error-container)' }}
+                      className="portal-btn portal-btn--ghost text-xs text-[var(--destructive)] disabled:opacity-50"
                     >
                       {acting === manifest.manifest_id ? '...' : 'Cancel Manifest'}
-                    </motion.button>
+                    </button>
                   </div>
                 </div>
 
+                <div className="desk-table-wrap">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr style={{ background: 'var(--color-md-surface-container)' }}>
+                    <tr className="bg-[var(--surface)]">
                       <th className="text-left px-4 py-2 font-medium text-xs">Transfer</th>
                       <th className="text-left px-4 py-2 font-medium text-xs">Product</th>
                       <th className="text-right px-4 py-2 font-medium text-xs">Qty</th>
@@ -399,7 +387,7 @@ export default function PayloadOverridePage() {
                   </thead>
                   <tbody>
                     {(manifest.transfers || []).map((transfer) => (
-                      <tr key={transfer.transfer_id} className="border-t" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
+                      <tr key={transfer.transfer_id} className="border-t border-[var(--border)]">
                         <td className="px-4 py-2.5">
                           <span className="font-mono text-xs">{transfer.transfer_id.slice(0, 8)}</span>
                         </td>
@@ -408,39 +396,36 @@ export default function PayloadOverridePage() {
                         <td className="px-4 py-2.5 text-right tabular-nums">{transfer.volume_vu.toLocaleString()}</td>
                         <td className="px-4 py-2.5 text-right">
                           <div className="flex gap-2 justify-end">
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
+                            <button
+                              type="button"
                               onClick={() => setRebalanceModal({ transfer, sourceManifest: manifest.manifest_id })}
                               disabled={acting === transfer.transfer_id}
-                              className="px-2.5 py-1 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50 hover-lift active-press"
-                              style={{ background: 'var(--color-md-primary-container)', color: 'var(--color-md-on-primary-container)' }}
+                              className="portal-btn portal-btn--ghost text-xs disabled:opacity-50"
                             >
                               Move
-                            </motion.button>
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => void handleCancelTransfer(transfer.transfer_id, manifest.manifest_id)}
                               disabled={acting === transfer.transfer_id}
-                              className="px-2.5 py-1 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50 hover-lift active-press"
-                              style={{ background: 'var(--color-md-error-container)', color: 'var(--color-md-on-error-container)' }}
+                              className="portal-btn portal-btn--ghost text-xs text-[var(--destructive)] disabled:opacity-50"
                             >
                               Remove
-                            </motion.button>
+                            </button>
                           </div>
                         </td>
                       </tr>
                     ))}
                     {(!manifest.transfers || manifest.transfers.length === 0) && (
                       <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-xs" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                        <td colSpan={5} className="px-4 py-8 text-center text-xs text-[var(--muted)]">
                           No transfers in this manifest
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             ))}
           </div>
@@ -449,27 +434,19 @@ export default function PayloadOverridePage() {
         {rebalanceModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setRebalanceModal(null)}>
             <div
-              className="rounded-2xl p-6 w-full max-w-md space-y-4"
-              style={{ background: 'var(--color-md-surface-container-high)' }}
+              className="desk-card p-6 w-full max-w-md space-y-4"
               onClick={(event) => event.stopPropagation()}
             >
-              <h2 className="text-lg font-semibold">Move Transfer</h2>
-              <p className="text-sm" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+              <h2 className="text-lg font-semibold">Move transfer</h2>
+              <p className="text-sm text-[var(--muted)]">
                 Moving <span className="font-mono">{rebalanceModal.transfer.transfer_id.slice(0, 8)}</span>
                 {' '}({rebalanceModal.transfer.volume_vu} VU) to another manifest
               </p>
 
-              <div>
-                <label className="text-xs font-medium block mb-1">Target Manifest</label>
-                <select
+              <PortalField id="target-manifest" label="Target manifest">
+                <PortalSelect
                   value={targetManifestId}
                   onChange={(event) => setTargetManifestId(event.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm border"
-                  style={{
-                    background: 'var(--color-md-surface)',
-                    borderColor: 'var(--color-md-outline)',
-                    color: 'var(--color-md-on-surface)',
-                  }}
                 >
                   <option value="">Select a manifest...</option>
                   {loadingManifests
@@ -479,30 +456,30 @@ export default function PayloadOverridePage() {
                         {manifest.truck_plate || manifest.truck_id.slice(0, 8)} — {manifest.total_volume_vu}/{manifest.max_capacity_vu} VU
                       </option>
                     ))}
-                </select>
-              </div>
+                </PortalSelect>
+              </PortalField>
 
               <div className="flex gap-3 justify-end">
                 <button
+                  type="button"
                   onClick={() => { setRebalanceModal(null); setTargetManifestId(''); }}
-                  className="px-4 py-2 rounded-lg text-sm font-medium"
-                  style={{ color: 'var(--color-md-on-surface-variant)' }}
+                  className="portal-btn portal-btn--ghost"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={() => void handleRebalance()}
                   disabled={!targetManifestId || acting === rebalanceModal.transfer.transfer_id}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
-                  style={{ background: 'var(--color-md-primary)' }}
+                  className="portal-btn portal-btn--primary disabled:opacity-50"
                 >
-                  {acting ? 'Moving...' : 'Move Transfer'}
+                  {acting ? 'Moving...' : 'Move transfer'}
                 </button>
               </div>
             </div>
           </div>
         )}
-      </div>
+      </PageChrome>
     </PageTransition>
   );
 }

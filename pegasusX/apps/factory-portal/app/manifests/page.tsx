@@ -90,6 +90,7 @@ export default function ManifestsPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="manifests"
         title="Manifests"
         description="LEO loading gate — advance manifests through draft, loading, sealed, dispatched, and completed states."
         loading={loading}
@@ -99,7 +100,7 @@ export default function ManifestsPage() {
           <button
             type="button"
             onClick={() => void load()}
-            className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
+            className="portal-btn portal-btn--ghost inline-flex h-10 items-center gap-2"
           >
             <Icon name="refresh" size={16} /> Refresh
           </button>
@@ -144,7 +145,7 @@ export default function ManifestsPage() {
                         <td className="px-4 py-3">{manifest.total_volume_vu ?? '—'}</td>
                         <td className="px-4 py-3">{next?.label ?? '—'}</td>
                         <td className="px-4 py-3 text-right">
-                          <Link href={`/manifests/${manifest.manifest_id}`} className="button--secondary inline-flex rounded-lg px-4 py-2 text-sm">
+                          <Link href={`/manifests/${manifest.manifest_id}`} className="portal-btn portal-btn--ghost inline-flex text-sm">
                             Open
                           </Link>
                         </td>

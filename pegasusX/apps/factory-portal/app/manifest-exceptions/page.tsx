@@ -171,6 +171,7 @@ export default function ManifestExceptionsPage() {
   return (
     <PageTransition>
       <PageChrome
+        icon="insights"
         title="Gate exceptions"
         description="Transfers removed from manifests during loading — overflow, damage, or manual pull."
         loading={loading}
@@ -179,7 +180,7 @@ export default function ManifestExceptionsPage() {
         actions={
           <button
             type="button"
-            className={`${escalatedOnly ? 'desk-btn-primary' : 'button--secondary'} inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm`}
+            className={`portal-btn ${escalatedOnly ? 'portal-btn--primary' : 'portal-btn--ghost'} inline-flex items-center gap-2`}
             onClick={() => setEscalatedOnly((value) => !value)}
           >
             <Icon name="error" size={18} />
