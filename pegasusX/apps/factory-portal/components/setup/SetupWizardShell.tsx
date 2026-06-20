@@ -95,7 +95,7 @@ export default function SetupWizardShell({ children }: { children: React.ReactNo
             <div>
               <h2 className="setup-rail-title">Factory setup</h2>
               <p className="setup-rail-sub">
-                Configure your facility type and location so loading bay, transfers, and manifests can start.
+                Name your factory and set the facility address so loading bay, transfers, and manifests can start.
               </p>
             </div>
           </div>

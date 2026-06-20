@@ -125,10 +125,6 @@ func (s *Service) HandleFactoryLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	factoryID := strings.TrimSpace(staff.AssignedFactoryID)
-	if factoryID == "" {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "factory_not_assigned"})
-		return
-	}
 	if s.jwtSecret == "" {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "jwt_not_configured"})
 		return
@@ -139,6 +135,11 @@ func (s *Service) HandleFactoryLogin(w http.ResponseWriter, r *http.Request) {
 		supplierID = s.supplierID
 	}
 
+	isConfigured := false
+	if factoryID != "" {
+		isConfigured = s.factoryIsConfigured(r.Context(), factoryID)
+	}
+
 	jwtClaims := auth.Claims{
 		Subject:      staff.UserID,
 		Role:         auth.RoleFactory,
@@ -146,7 +147,7 @@ func (s *Service) HandleFactoryLogin(w http.ResponseWriter, r *http.Request) {
 		SupplierRole: auth.Role(strings.TrimSpace(staff.SupplierRole)),
 		HomeNodeType: auth.HomeNodeFactory,
 		HomeNodeID:   factoryID,
-		IsConfigured: true,
+		IsConfigured: isConfigured,
 		PhoneNumber:  staff.Phone,
 	}
 	if strings.EqualFold(staff.SupplierRole, string(auth.RoleFactoryAdmin)) {
@@ -166,14 +167,15 @@ func (s *Service) HandleFactoryLogin(w http.ResponseWriter, r *http.Request) {
 
 	factoryName, _ := s.lookupFactoryName(r.Context(), factoryID)
 
-	writeJSON(w, http.StatusOK, map[string]string{
-		"token":         token,
-		"refresh_token": refresh,
-		"factory_id":    factoryID,
-		"factory_name":  factoryName,
-		"role":          string(jwtClaims.Role),
-		"factory_role":  string(jwtClaims.SupplierRole),
-		"name":          staff.Name,
+	writeJSON(w, http.StatusOK, map[string]any{
+		"token":          token,
+		"refresh_token":  refresh,
+		"factory_id":     factoryID,
+		"factory_name":   factoryName,
+		"role":           string(jwtClaims.Role),
+		"factory_role":   string(jwtClaims.SupplierRole),
+		"name":           staff.Name,
+		"is_configured":  isConfigured,
 	})
 }
 
@@ -356,6 +358,8 @@ func (s *Service) HandleFactoryRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	claims.IsConfigured = s.factoryIsConfigured(r.Context(), claims.HomeNodeID)
+
 	token, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_token_failed"})
@@ -367,9 +371,10 @@ func (s *Service) HandleFactoryRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"token":         token,
 		"refresh_token": newRefresh,
 		"factory_id":    claims.HomeNodeID,
+		"is_configured": claims.IsConfigured,
 	})
 }

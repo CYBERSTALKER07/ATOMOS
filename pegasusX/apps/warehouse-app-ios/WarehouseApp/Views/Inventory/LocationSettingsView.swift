@@ -13,7 +13,11 @@ struct LocationSettingsView: View {
             if loading {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error {
-                ContentUnavailableView("Error", systemImage: "exclamationmark.triangle", description: Text(error)) {
+                ContentUnavailableView {
+                    Label("Error", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(error)
+                } actions: {
                     Button("Retry") { load() }
                 }
             } else {
@@ -71,19 +75,24 @@ struct LocationSettingsView: View {
         saving = true
         saveMessage = nil
         Task {
+            defer { saving = false }
+            guard let resolved = await GeocodeLocationSupport.resolveLocationValue(location) else {
+                saveMessage = "Select an address from the suggestions or share your location."
+                return
+            }
+            location = resolved
             do {
                 _ = try await WarehouseService.patchWarehouseLocation(
-                    address: location.address,
-                    placeId: location.placeId,
-                    lat: location.lat,
-                    lng: location.lng
+                    address: resolved.address,
+                    placeId: resolved.placeId,
+                    lat: resolved.lat,
+                    lng: resolved.lng
                 )
                 saveMessage = "Location saved"
                 load()
             } catch let saveError {
                 saveMessage = saveError.localizedDescription
             }
-            saving = false
         }
     }
 }

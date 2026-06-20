@@ -12,8 +12,23 @@ enum WarehouseService {
         try await api.post("v1/auth/warehouse/login", body: LoginRequest(idToken: idToken))
     }
 
-    static func setup(body: [String: String]) async throws {
-        try await api.postVoid("v1/warehouse/setup", body: body)
+    static func setup(
+        name: String,
+        address: String,
+        placeId: String?,
+        lat: Double,
+        lng: Double
+    ) async throws -> WarehouseSetupResponse {
+        try await api.post(
+            "v1/warehouse/setup",
+            body: WarehouseSetupRequest(
+                name: name,
+                address: address,
+                placeId: placeId,
+                lat: lat,
+                lng: lng
+            )
+        )
     }
 
     // MARK: - Dashboard

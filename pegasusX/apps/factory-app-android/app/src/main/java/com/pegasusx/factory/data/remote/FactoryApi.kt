@@ -18,7 +18,7 @@ interface FactoryApi {
     suspend fun refreshToken(): Response<AuthResponse>
 
     @POST("v1/factory/setup")
-    suspend fun setupFactory(@Body body: JsonElement): Response<JsonElement>
+    suspend fun setupFactory(@Body body: com.pegasusx.factory.data.model.FactorySetupRequest): Response<com.pegasusx.factory.data.model.FactorySetupResponse>
 
     // ── Dashboard ──
     @GET("v1/factory/dashboard")

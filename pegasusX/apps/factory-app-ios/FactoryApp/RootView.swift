@@ -5,13 +5,16 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if tokenStore.isAuthenticated {
-                FactoryAdaptiveShell()
-            } else {
+            if !tokenStore.isAuthenticated {
                 LoginView()
+            } else if !tokenStore.isConfigured {
+                LocationSetupView()
+            } else {
+                FactoryAdaptiveShell()
             }
         }
         .buttonStyle(PressableButtonStyle())
         .animation(.smooth, value: tokenStore.isAuthenticated)
+        .animation(.smooth, value: tokenStore.isConfigured)
     }
 }

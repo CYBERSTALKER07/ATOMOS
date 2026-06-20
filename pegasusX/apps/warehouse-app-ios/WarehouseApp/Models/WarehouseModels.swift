@@ -24,11 +24,21 @@ struct AuthResponse: Decodable {
     let token: String
     let refreshToken: String
     let warehouseId: String
+    let isConfigured: Bool
 
     enum CodingKeys: String, CodingKey {
         case token
         case refreshToken = "refresh_token"
         case warehouseId = "warehouse_id"
+        case isConfigured = "is_configured"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        token = try container.decode(String.self, forKey: .token)
+        refreshToken = try container.decode(String.self, forKey: .refreshToken)
+        warehouseId = try container.decodeIfPresent(String.self, forKey: .warehouseId) ?? ""
+        isConfigured = try container.decodeIfPresent(Bool.self, forKey: .isConfigured) ?? false
     }
 }
 

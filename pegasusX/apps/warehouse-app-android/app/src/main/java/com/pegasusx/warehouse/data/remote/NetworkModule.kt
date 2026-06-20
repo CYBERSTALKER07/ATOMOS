@@ -21,6 +21,8 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
+import com.pegasusx.warehouse.util.JwtPayload
+
 object TokenHolder {
     private const val PREF_NAME = "warehouse_secure_prefs"
     private const val KEY_TOKEN = "pegasus_warehouse_jwt"
@@ -59,6 +61,10 @@ object TokenHolder {
     }
 
     val isLoggedIn: Boolean get() = !token.isNullOrBlank()
+
+    val isConfigured: Boolean get() = JwtPayload.isConfigured(token)
+
+    val hasAssignedWarehouse: Boolean get() = !JwtPayload.homeNodeId(token).isNullOrBlank()
 }
 
 private class AuthInterceptor : Interceptor {
@@ -107,6 +113,9 @@ private class TokenRefreshAuthenticator(
             val auth = json.decodeFromString<com.pegasusx.warehouse.data.model.AuthResponse>(responseBody)
             TokenHolder.token = auth.token
             TokenHolder.refreshToken = auth.refreshToken
+            if (auth.warehouseId.isNotBlank()) {
+                TokenHolder.warehouseId = auth.warehouseId
+            }
 
             response.request.newBuilder()
                 .header("Authorization", "Bearer ${auth.token}")

@@ -44,7 +44,8 @@ function normalizeNotification(item: BackendNotification): Notification {
   };
 }
 
-export function useNotifications() {
+export function useNotifications(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled !== false;
   const [state, setState] = useState<NotificationsState>({
     items: [],
     unreadCount: 0,
@@ -76,7 +77,7 @@ export function useNotifications() {
   }, []);
 
   const fetchInbox = useCallback(async (signal?: AbortSignal) => {
-    if (!readTokenFromCookie()) {
+    if (!enabled || !readTokenFromCookie()) {
       if (!disposedRef.current) {
         setState({ items: [], unreadCount: 0, loading: false });
       }
@@ -95,7 +96,7 @@ export function useNotifications() {
         setState(s => ({ ...s, loading: false }));
       }
     }
-  }, [fetchAllInboxPages]);
+  }, [fetchAllInboxPages, enabled]);
 
   const markRead = useCallback(async (notificationId: string) => {
     try {
@@ -134,6 +135,11 @@ export function useNotifications() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) {
+      disposedRef.current = true;
+      setState({ items: [], unreadCount: 0, loading: false });
+      return;
+    }
     disposedRef.current = false;
     const ac = new AbortController();
     void fetchInbox(ac.signal);
@@ -156,7 +162,7 @@ export function useNotifications() {
       window.removeEventListener('pageshow', handleWake);
       document.removeEventListener('visibilitychange', handleWake);
     };
-  }, [fetchInbox]);
+  }, [fetchInbox, enabled]);
 
   return { ...state, fetchInbox, markRead, markAllRead };
 }

@@ -47,6 +47,14 @@ enum GeocodeService {
     )
   }
 
+  static func forward(address: String) async throws -> ResolvedLocation {
+    struct ForwardRequest: Encodable { let address: String }
+    return try await APIClient.shared.post(
+      "v1/platform/geocode/forward",
+      body: ForwardRequest(address: address.trimmingCharacters(in: .whitespacesAndNewlines))
+    )
+  }
+
   private struct AutocompleteResponse: Decodable {
     let predictions: [GeocodePrediction]
   }

@@ -10,30 +10,38 @@ struct RootView: View {
         VStack(spacing: 0) {
             ClientPolicyBanner(message: clientPolicyMessage)
             Group {
-                if tokenStore.isAuthenticated {
-                    WarehouseAdaptiveShell()
-                } else {
+                if !tokenStore.isAuthenticated {
                     LoginView()
+                } else if !tokenStore.isConfigured {
+                    LocationSetupView()
+                } else {
+                    WarehouseAdaptiveShell()
                 }
             }
         }
         .buttonStyle(PressableButtonStyle())
         .animation(.smooth, value: tokenStore.isAuthenticated)
+        .animation(.smooth, value: tokenStore.isConfigured)
         .task(id: tokenStore.isAuthenticated) {
             await loadClientPolicy()
+        }
+        .task(id: tokenStore.isConfigured) {
+            if tokenStore.isAuthenticated && tokenStore.isConfigured {
+                connectRealtime()
+            }
         }
         .task {
             await PushNotificationManager.shared.requestAuthorization()
         }
         .onChange(of: tokenStore.isAuthenticated) { _, authenticated in
-            if authenticated {
+            if authenticated && tokenStore.isConfigured {
                 connectRealtime()
             } else {
                 realtime.disconnect()
             }
         }
         .onAppear {
-            if tokenStore.isAuthenticated {
+            if tokenStore.isAuthenticated && tokenStore.isConfigured {
                 connectRealtime()
             }
         }

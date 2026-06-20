@@ -16,13 +16,26 @@ struct AddressLocationField: View {
   @State private var suggestions: [GeocodePrediction] = []
   @State private var error: String?
   @State private var locating = false
+  @State private var resolving = false
+  @FocusState private var focused: Bool
+
+  private var pinned: Bool {
+    GeocodeLocationSupport.hasValidCoordinates(lat: value.lat, lng: value.lng)
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       TextField(label, text: $query)
         .textInputAutocapitalization(.words)
+        .focused($focused)
         .onChange(of: query) { _, text in
+          value.address = text
           Task { await search(text) }
+        }
+        .onChange(of: focused) { _, isFocused in
+          if !isFocused {
+            Task { await resolveOnBlur() }
+          }
         }
       ForEach(suggestions.prefix(5), id: \.description) { item in
         Button(item.description) {
@@ -33,26 +46,73 @@ struct AddressLocationField: View {
       Button(locating ? "Locating…" : "Share my location") {
         Task { await useMyLocation() }
       }
-      .disabled(locating)
+      .disabled(locating || resolving)
+      if pinned {
+        Text("Pinned for supply routing")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      } else if resolving {
+        Text("Resolving address…")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
       if let error {
         Text(error).foregroundStyle(.red).font(.caption)
       }
     }
     .onAppear { query = value.address }
+    .onChange(of: value.address) { _, next in
+      if query != next { query = next }
+    }
   }
 
   @MainActor
   private func search(_ text: String) async {
-    suggestions = (try? await GeocodeService.autocomplete(text)) ?? []
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.count >= 3 else {
+      suggestions = []
+      return
+    }
+    suggestions = (try? await GeocodeService.autocomplete(trimmed)) ?? []
   }
 
   @MainActor
   private func pick(placeId: String, fallback: String) async {
+    let id = placeId.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !id.isEmpty else {
+      await resolveText(fallback)
+      return
+    }
     do {
-      let loc = try await GeocodeService.resolvePlace(placeId)
+      let loc = try await GeocodeService.resolvePlace(id)
       apply(loc, fallback: fallback)
-    } catch let pickError {
-      error = pickError.localizedDescription
+    } catch {
+      await resolveText(fallback)
+    }
+  }
+
+  @MainActor
+  private func resolveOnBlur() async {
+    let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return }
+    if trimmed == value.address.trimmingCharacters(in: .whitespacesAndNewlines),
+       GeocodeLocationSupport.hasValidCoordinates(lat: value.lat, lng: value.lng) {
+      return
+    }
+    await resolveText(trimmed)
+  }
+
+  @MainActor
+  private func resolveText(_ text: String) async {
+    resolving = true
+    defer { resolving = false }
+    if let resolved = await GeocodeLocationSupport.resolveLocationValue(
+      AddressLocationValue(address: text, lat: value.lat, lng: value.lng, placeId: value.placeId)
+    ) {
+      value = resolved
+      query = resolved.address
+      suggestions = []
+      error = nil
     }
   }
 
@@ -61,6 +121,7 @@ struct AddressLocationField: View {
     locating = true
     defer { locating = false }
     let manager = CLLocationManager()
+    manager.requestWhenInUseAuthorization()
     guard let coord = manager.location?.coordinate else {
       error = "Current location unavailable."
       return
@@ -83,5 +144,6 @@ struct AddressLocationField: View {
     )
     query = value.address
     suggestions = []
+    error = nil
   }
 }

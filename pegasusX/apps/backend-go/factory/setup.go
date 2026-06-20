@@ -12,121 +12,149 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
 )
 
+type factorySetupRequest struct {
+	Name         string  `json:"name"`
+	FactoryName  string  `json:"factoryName"`
+	Address      string  `json:"address"`
+	PlaceID      string  `json:"place_id"`
+	Lat          float64 `json:"lat"`
+	Lng          float64 `json:"lng"`
+	FacilityType string  `json:"facilityType"`
+}
+
 // HandleFactorySetup serves POST /v1/factory/setup
+// Creates a factory for self-serve onboarding or updates location on an existing assigned factory.
 func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 	if s.spannerClient == nil {
 		web.JSONError(w, "Spanner not configured", http.StatusServiceUnavailable)
 		return
 	}
-
-	var req struct {
-		Name              string  `json:"name"`
-		FactoryName       string  `json:"factoryName"`
-		Address           string  `json:"address"`
-		City              string  `json:"city"`
-		PostalCode        string  `json:"postalCode"`
-		PlaceID           string  `json:"place_id"`
-		Lat               float64 `json:"lat"`
-		Lng               float64 `json:"lng"`
-		FacilityType      string  `json:"facilityType"`
-		TotalCapacitySqM  int     `json:"totalCapacitySqM"`
+	if s.jwtSecret == "" {
+		web.JSONError(w, "jwt_not_configured", http.StatusServiceUnavailable)
+		return
 	}
+
+	claims, ok := s.parseSetupClaims(r)
+	if !ok || strings.TrimSpace(claims.Subject) == "" {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req factorySetupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		web.JSONError(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
-	name := strings.TrimSpace(req.Name)
-	if name == "" {
-		name = strings.TrimSpace(req.FactoryName)
+	if strings.TrimSpace(req.Address) == "" {
+		web.JSONError(w, "address is required", http.StatusBadRequest)
+		return
 	}
-	if name == "" {
-		web.JSONError(w, "name is required", http.StatusBadRequest)
+	if req.Lat < -90 || req.Lat > 90 || req.Lng < -180 || req.Lng > 180 {
+		web.JSONError(w, "coordinates_out_of_range", http.StatusBadRequest)
 		return
 	}
 
-	address := strings.TrimSpace(req.Address)
-	if city := strings.TrimSpace(req.City); city != "" {
-		if address != "" {
-			address = address + ", " + city
-		} else {
-			address = city
-		}
-	}
-	if postal := strings.TrimSpace(req.PostalCode); postal != "" && address != "" {
-		address = address + " " + postal
-	}
-
-	facID := "fac-" + uuid.NewString()[:8]
 	now := s.now().UTC()
+	factoryID := strings.TrimSpace(claims.HomeNodeID)
+	supplierID := strings.TrimSpace(claims.SupplierID)
+	if supplierID == "" {
+		supplierID = s.supplierID
+	}
 
-	m := spanner.Insert("Factories",
-		[]string{"FactoryId", "SupplierId", "Name", "Address", "PlaceId", "Lat", "Lng", "IsActive", "CreatedAt", "UpdatedAt"},
-		[]any{facID, s.supplierID, name, factoryNullableString(address), factoryNullableString(strings.TrimSpace(req.PlaceID)), req.Lat, req.Lng, true, now, now},
-	)
+	mutations := make([]*spanner.Mutation, 0, 2)
 
-	mutations := []*spanner.Mutation{m}
-	var staffUserID string
-	var staffPhone string
-	var staffRole string
-	if claims, ok := s.parseSetupClaims(r); ok && strings.TrimSpace(claims.Subject) != "" {
-		staffUserID = strings.TrimSpace(claims.Subject)
-		staffPhone = strings.TrimSpace(claims.PhoneNumber)
-		staffRole = string(claims.SupplierRole)
-		if staffRole == "" {
-			staffRole = string(auth.RoleFactory)
+	if factoryID == "" {
+		name := strings.TrimSpace(req.Name)
+		if name == "" {
+			name = strings.TrimSpace(req.FactoryName)
 		}
+		if name == "" {
+			web.JSONError(w, "name is required", http.StatusBadRequest)
+			return
+		}
+		factoryID = "fac-" + uuid.NewString()[:8]
+		mutations = append(mutations, spanner.Insert("Factories",
+			[]string{"FactoryId", "SupplierId", "Name", "Address", "PlaceId", "Lat", "Lng", "IsActive", "CreatedAt", "UpdatedAt"},
+			[]any{
+				factoryID,
+				supplierID,
+				name,
+				strings.TrimSpace(req.Address),
+				factoryNullableString(strings.TrimSpace(req.PlaceID)),
+				req.Lat,
+				req.Lng,
+				true,
+				now,
+				now,
+			},
+		))
 		mutations = append(mutations, spanner.UpdateMap("SupplierUsers", map[string]any{
-			"UserId":            staffUserID,
-			"AssignedFactoryId": facID,
+			"UserId":            claims.Subject,
+			"AssignedFactoryId": factoryID,
 			"UpdatedAt":         now,
 		}))
+	} else {
+		update := map[string]any{
+			"FactoryId": factoryID,
+			"Address":   strings.TrimSpace(req.Address),
+			"PlaceId":   factoryNullableString(strings.TrimSpace(req.PlaceID)),
+			"Lat":       req.Lat,
+			"Lng":       req.Lng,
+			"UpdatedAt": now,
+		}
+		if name := strings.TrimSpace(req.Name); name != "" {
+			update["Name"] = name
+		} else if name := strings.TrimSpace(req.FactoryName); name != "" {
+			update["Name"] = name
+		}
+		mutations = append(mutations, spanner.UpdateMap("Factories", update))
 	}
 
 	if _, err := s.spannerClient.Apply(r.Context(), mutations); err != nil {
-		s.log.ErrorContext(r.Context(), "failed to create factory", "err", err)
-		web.JSONError(w, "Failed to create factory", http.StatusInternalServerError)
+		s.log.ErrorContext(r.Context(), "failed to complete factory setup", "err", err)
+		web.JSONError(w, "Failed to complete factory setup", http.StatusInternalServerError)
 		return
 	}
 
-	resp := map[string]any{
-		"factory_id":  facID,
-		"supplier_id": s.supplierID,
-		"name":        name,
-		"address":     address,
-		"lat":         req.Lat,
-		"lng":         req.Lng,
-		"is_configured": staffUserID != "",
+	isConfigured := s.factoryIsConfigured(r.Context(), factoryID)
+	staffRole := string(claims.SupplierRole)
+	if staffRole == "" {
+		staffRole = string(auth.RoleFactory)
+	}
+	jwtClaims := auth.Claims{
+		Subject:      claims.Subject,
+		Role:         auth.RoleFactory,
+		SupplierID:   supplierID,
+		SupplierRole: auth.Role(staffRole),
+		HomeNodeType: auth.HomeNodeFactory,
+		HomeNodeID:   factoryID,
+		IsConfigured: isConfigured,
+		PhoneNumber:  claims.PhoneNumber,
+	}
+	if strings.EqualFold(staffRole, string(auth.RoleFactoryAdmin)) {
+		jwtClaims.SupplierRole = auth.RoleFactoryAdmin
 	}
 
-	if staffUserID != "" && s.jwtSecret != "" {
-		jwtClaims := auth.Claims{
-			Subject:      staffUserID,
-			Role:         auth.RoleFactory,
-			SupplierID:   s.supplierID,
-			SupplierRole: auth.Role(staffRole),
-			HomeNodeType: auth.HomeNodeFactory,
-			HomeNodeID:   facID,
-			IsConfigured: true,
-			PhoneNumber:  staffPhone,
-		}
-		if strings.EqualFold(staffRole, string(auth.RoleFactoryAdmin)) {
-			jwtClaims.SupplierRole = auth.RoleFactoryAdmin
-		}
-		token, err := auth.Issue(jwtClaims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
-		if err == nil {
-			refresh, refreshErr := auth.Issue(jwtClaims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 7 * 24 * time.Hour})
-			if refreshErr == nil {
-				resp["token"] = token
-				resp["refresh_token"] = refresh
-			}
-		}
+	token, err := auth.Issue(jwtClaims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
+	if err != nil {
+		web.JSONError(w, "issue_token_failed", http.StatusInternalServerError)
+		return
+	}
+	refresh, err := auth.Issue(jwtClaims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 7 * 24 * time.Hour})
+	if err != nil {
+		web.JSONError(w, "issue_refresh_failed", http.StatusInternalServerError)
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(resp)
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"factory_id":    factoryID,
+		"supplier_id":   supplierID,
+		"token":         token,
+		"refresh_token": refresh,
+		"is_configured": isConfigured,
+	})
 }
 
 func (s *Service) parseSetupClaims(r *http.Request) (auth.Claims, bool) {

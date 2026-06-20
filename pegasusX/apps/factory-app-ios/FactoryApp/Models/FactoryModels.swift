@@ -24,12 +24,23 @@ struct AuthResponse: Decodable {
     let refreshToken: String
     let factoryId: String
     let factoryName: String
+    let isConfigured: Bool
 
     enum CodingKeys: String, CodingKey {
         case token
         case refreshToken = "refresh_token"
         case factoryId = "factory_id"
         case factoryName = "factory_name"
+        case isConfigured = "is_configured"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        token = try container.decode(String.self, forKey: .token)
+        refreshToken = try container.decode(String.self, forKey: .refreshToken)
+        factoryId = try container.decodeIfPresent(String.self, forKey: .factoryId) ?? ""
+        factoryName = try container.decodeIfPresent(String.self, forKey: .factoryName) ?? ""
+        isConfigured = try container.decodeIfPresent(Bool.self, forKey: .isConfigured) ?? false
     }
 }
 
@@ -861,5 +872,34 @@ struct FactoryLocationPatchRequest: Encodable {
     enum CodingKeys: String, CodingKey {
         case address, lat, lng
         case placeId = "place_id"
+    }
+}
+
+struct FactorySetupRequest: Encodable {
+    let factoryName: String
+    let address: String
+    let placeId: String?
+    let lat: Double
+    let lng: Double
+    let facilityType: String
+
+    enum CodingKeys: String, CodingKey {
+        case factoryName, address, lat, lng
+        case placeId = "place_id"
+        case facilityType
+    }
+}
+
+struct FactorySetupResponse: Decodable {
+    let factoryId: String
+    let token: String?
+    let refreshToken: String?
+    let isConfigured: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case factoryId = "factory_id"
+        case token
+        case refreshToken = "refresh_token"
+        case isConfigured = "is_configured"
     }
 }

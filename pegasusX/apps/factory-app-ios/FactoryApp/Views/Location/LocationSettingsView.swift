@@ -71,19 +71,24 @@ struct LocationSettingsView: View {
     saving = true
     saveMessage = nil
     Task {
+      defer { saving = false }
+      guard let resolved = await GeocodeLocationSupport.resolveLocationValue(location) else {
+        saveMessage = "Select an address from the suggestions or share your location."
+        return
+      }
+      location = resolved
       do {
         _ = try await FactoryService.patchFactoryLocation(
-          address: location.address,
-          placeId: location.placeId,
-          lat: location.lat,
-          lng: location.lng
+          address: resolved.address,
+          placeId: resolved.placeId,
+          lat: resolved.lat,
+          lng: resolved.lng
         )
         saveMessage = "Location saved"
         load()
       } catch let saveError {
         saveMessage = saveError.localizedDescription
       }
-      saving = false
     }
   }
 }

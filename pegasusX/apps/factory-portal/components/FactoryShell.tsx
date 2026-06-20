@@ -6,7 +6,7 @@ import { memo, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import Icon from './Icon';
 import { useTheme, type ThemeMode } from './ThemeProvider';
-import { apiFetch } from '@/lib/auth';
+import { apiFetch, decodeJwtPayload, readTokenFromCookie } from '@/lib/auth';
 import ClientPolicyBanner from './ClientPolicyBanner';
 import NotificationPanel from './NotificationPanel';
 import { useNotifications } from '@/lib/useNotifications';
@@ -201,12 +201,21 @@ const DrawerContent = memo(function DrawerContent({
 export default function FactoryShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const reducedMotion = useReducedMotion();
+  const isBare = BARE_ROUTES.some((route) => pathname.startsWith(route));
+  const isConfigured = useMemo(() => {
+    const token = readTokenFromCookie();
+    const claims = token ? decodeJwtPayload(token) : null;
+    return claims?.is_configured === true;
+  }, [pathname]);
+  const notificationsEnabled = !isBare && isConfigured;
   const [collapsed, setCollapsed] = useState(false);
   const [factoryName, setFactoryName] = useState('Factory Portal');
   const [refreshEpoch, setRefreshEpoch] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
-  const { items: notifItems, unreadCount, markRead, markAllRead } = useNotifications();
+  const { items: notifItems, unreadCount, markRead, markAllRead } = useNotifications({
+    enabled: notificationsEnabled,
+  });
 
   const currentEntry = useMemo(
     () => ALL_NAV_ITEMS.find((item) => isActiveRoute(pathname, item.href)) ?? ALL_NAV_ITEMS[0],
@@ -232,10 +241,11 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
   }, []);
 
   useEffect(() => {
+    if (!notificationsEnabled) return;
     loadFactoryProfile().catch((error) => {
       console.error('[FactoryShell] profile load failed', error);
     });
-  }, [loadFactoryProfile]);
+  }, [loadFactoryProfile, notificationsEnabled]);
 
   useEffect(() => {
     const wakeRefresh = () => {
@@ -259,8 +269,8 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
     };
   }, [loadFactoryProfile]);
 
-  const isBare = BARE_ROUTES.some((route) => pathname.startsWith(route));
-  if (isBare) return <>{children}</>;
+  const isBareRoute = BARE_ROUTES.some((route) => pathname.startsWith(route));
+  if (isBareRoute) return <>{children}</>;
 
   return (
     <div className="flex h-dvh overflow-hidden" style={{ background: 'var(--desk-canvas)' }}>

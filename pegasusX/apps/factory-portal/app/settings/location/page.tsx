@@ -6,7 +6,8 @@ import PageTransition from "@/components/PageTransition";
 import { PageChrome } from "@/components/PageChrome";
 import { PortalSection } from "@/components/portal";
 import { useToast } from "@/components/Toast";
-import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
+import { LocationPicker, resolveLocationValue, type LocationValue } from "@/components/LocationPicker";
+import { hasValidCoordinates } from "@/lib/geocode";
 
 type FactoryLocation = {
   factory_id: string;
@@ -54,13 +55,23 @@ export default function FactoryLocationSettingsPage() {
     }
     setSaving(true);
     try {
+      let resolved = location;
+      if (!hasValidCoordinates(location.lat, location.lng)) {
+        const next = await resolveLocationValue(location);
+        if (!next) {
+          toast("Pick an address from the suggestions or share your location", "error");
+          return;
+        }
+        resolved = next;
+        setLocation(next);
+      }
       const res = await apiFetch("/v1/factory/ops/location", {
         method: "PATCH",
         body: JSON.stringify({
-          address: location.address.trim(),
-          place_id: location.place_id,
-          lat: Number(location.lat),
-          lng: Number(location.lng),
+          address: resolved.address.trim(),
+          place_id: resolved.place_id,
+          lat: Number.parseFloat(resolved.lat),
+          lng: Number.parseFloat(resolved.lng),
         }),
       });
       if (res.ok) {
@@ -80,7 +91,7 @@ export default function FactoryLocationSettingsPage() {
       <PageChrome
         icon="loadingBay"
         title="Factory location"
-        description="Street address used for supply routing and dispatch."
+        description="Street address used for supply routing and loading bay operations. Changes sync across the factory network."
         loading={loading}
         skeletonVariant="form"
       >

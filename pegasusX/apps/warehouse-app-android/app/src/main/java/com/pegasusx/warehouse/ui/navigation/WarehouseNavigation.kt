@@ -73,7 +73,7 @@ import com.pegasusx.warehouse.ui.screens.portal.PortalHandoffScreen
 import com.pegasusx.warehouse.ui.screens.products.ProductsScreen
 import com.pegasusx.warehouse.ui.screens.replenishment.ReplenishmentScreen
 import com.pegasusx.warehouse.ui.screens.returns.ReturnsScreen
-import com.pegasusx.warehouse.ui.screens.staff.StaffScreen
+import com.pegasusx.warehouse.ui.screens.setup.LocationSetupScreen
 import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestDetailScreen
 import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestsScreen
 import com.pegasusx.warehouse.ui.screens.transfers.TransferActionsScreen
@@ -107,6 +107,7 @@ object WarehouseRoutes {
     const val REPLENISHMENT = "replenishment"
     const val DISPATCH_SETTINGS = "dispatch_settings"
     const val OPS_SETTINGS = "ops_settings"
+    const val LOCATION_SETUP = "location_setup"
     const val LOCATION_SETTINGS = "location_settings"
     const val PREORDERS = "preorders"
     const val STOCK_COMMITMENTS = "stock_commitments"
@@ -136,7 +137,11 @@ fun WarehouseNavigation(
     onAuthenticated: () -> Unit = {},
     navController: NavHostController = rememberNavController(),
 ) {
-    val startDestination = if (TokenHolder.isLoggedIn) WarehouseRoutes.DASHBOARD else WarehouseRoutes.LOGIN
+    val startDestination = when {
+        !TokenHolder.isLoggedIn -> WarehouseRoutes.LOGIN
+        !TokenHolder.isConfigured -> WarehouseRoutes.LOCATION_SETUP
+        else -> WarehouseRoutes.DASHBOARD
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
     var networkAvailable by remember { mutableStateOf(true) }
@@ -147,7 +152,9 @@ fun WarehouseNavigation(
     var isRailExpanded by remember { mutableStateOf(true) }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val showShell = currentRoute != null && currentRoute != WarehouseRoutes.LOGIN
+    val showShell = currentRoute != null &&
+        currentRoute != WarehouseRoutes.LOGIN &&
+        currentRoute != WarehouseRoutes.LOCATION_SETUP
     var lastNavWasTab by remember { mutableStateOf(true) }
 
     DisposableEffect(autoUpdater) {
@@ -279,8 +286,25 @@ fun WarehouseNavigation(
                         api = api,
                         onLoginSuccess = {
                             onAuthenticated()
-                            navController.navigate(WarehouseRoutes.DASHBOARD) {
+                            val dest = if (TokenHolder.isConfigured) {
+                                WarehouseRoutes.DASHBOARD
+                            } else {
+                                WarehouseRoutes.LOCATION_SETUP
+                            }
+                            navController.navigate(dest) {
                                 popUpTo(WarehouseRoutes.LOGIN) { inclusive = true }
+                            }
+                        },
+                    )
+                }
+
+                composable(WarehouseRoutes.LOCATION_SETUP) {
+                    LocationSetupScreen(
+                        api = api,
+                        geocodeApi = geocodeApi,
+                        onComplete = {
+                            navController.navigate(WarehouseRoutes.DASHBOARD) {
+                                popUpTo(WarehouseRoutes.LOCATION_SETUP) { inclusive = true }
                             }
                         },
                     )

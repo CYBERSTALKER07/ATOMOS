@@ -111,7 +111,7 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	isConfigured := factoryID != ""
+	isConfigured := s.factoryIsConfigured(r.Context(), factoryID)
 	jwtClaims := auth.Claims{
 		Subject:      userID,
 		Role:         auth.RoleFactory,

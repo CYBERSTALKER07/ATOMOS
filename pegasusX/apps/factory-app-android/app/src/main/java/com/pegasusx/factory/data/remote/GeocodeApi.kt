@@ -1,8 +1,11 @@
 package com.pegasusx.factory.data.remote
 
+import com.pegasusx.factory.data.model.ForwardGeocodeRequest
 import com.pegasusx.factory.data.model.GeocodeAutocompleteResponse
 import com.pegasusx.factory.data.model.ResolvedLocation
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.Query
 
 interface GeocodeApi {
@@ -14,4 +17,7 @@ interface GeocodeApi {
 
     @GET("v1/platform/geocode/reverse")
     suspend fun reverse(@Query("lat") lat: Double, @Query("lng") lng: Double): ResolvedLocation
+
+    @POST("v1/platform/geocode/forward")
+    suspend fun forward(@Body body: ForwardGeocodeRequest): ResolvedLocation
 }

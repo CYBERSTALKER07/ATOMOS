@@ -12,6 +12,10 @@ final class TokenStore {
 
     var isAuthenticated: Bool { token != nil }
 
+    var isConfigured: Bool { JwtPayload.isConfigured(token: token) }
+
+    var hasAssignedWarehouse: Bool { JwtPayload.homeNodeId(token: token) != nil }
+
     private let service = "com.pegasus.warehouse"
 
     private init() {
@@ -29,11 +33,15 @@ final class TokenStore {
         writeKeychain(account: "warehouse_id", value: auth.warehouseId)
     }
 
-    func updateTokens(token: String, refresh: String) {
+    func updateTokens(token: String, refresh: String, warehouseId: String? = nil) {
         self.token = token
         self.refreshToken = refresh
         writeKeychain(account: "pegasus_warehouse_jwt", value: token)
         writeKeychain(account: "warehouse_refresh_token", value: refresh)
+        if let warehouseId, !warehouseId.isEmpty {
+            self.warehouseId = warehouseId
+            writeKeychain(account: "warehouse_id", value: warehouseId)
+        }
     }
 
     func clear() {

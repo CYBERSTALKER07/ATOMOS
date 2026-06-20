@@ -56,12 +56,42 @@ export function persistSession(token: string, refreshToken?: string) {
   }
 }
 
+export function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(payload) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 export function useToken(): string {
   const [token, setToken] = useState('');
   useEffect(() => {
     setToken(readTokenFromCookie());
   }, []);
   return token;
+}
+
+export async function refreshFactorySession(): Promise<{ ok: boolean; isConfigured?: boolean }> {
+  const refresh = readRefreshFromCookie();
+  if (!refresh) return { ok: false };
+  try {
+    const res = await fetch(`${API}/v1/auth/factory/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!res.ok) return { ok: false };
+    const data = (await res.json()) as { token?: string; refresh_token?: string; is_configured?: boolean };
+    if (!data.token) return { ok: false };
+    persistSession(data.token, data.refresh_token);
+    return { ok: true, isConfigured: data.is_configured === true };
+  } catch {
+    return { ok: false };
+  }
 }
 
 export async function getFactoryToken(): Promise<string> {

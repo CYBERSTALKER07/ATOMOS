@@ -68,9 +68,6 @@ struct MoreHubView: View {
                 }
             }
             Section("Portal only") {
-                NavigationLink { PortalHandoffView(feature: .setup) } label: {
-                    Label("Warehouse setup", systemImage: "gearshape.2")
-                }
                 NavigationLink { PortalHandoffView(feature: .profile) } label: {
                     Label("Profile", systemImage: "person.crop.circle")
                 }

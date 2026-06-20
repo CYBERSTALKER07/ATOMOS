@@ -14,6 +14,7 @@ import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.ui.components.AddressLocationField
 import com.pegasusx.warehouse.ui.components.AddressLocationValue
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasusx.warehouse.util.GeocodeLocationSupport
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,20 +59,23 @@ fun LocationSettingsScreen(
     }
 
     fun save() {
-        if (location.address.isBlank() || location.lat == 0.0 || location.lng == 0.0) {
-            saveMessage = "Select a valid address"
-            return
-        }
         scope.launch {
             saving = true
             saveMessage = null
             try {
+                val resolved = GeocodeLocationSupport.resolveLocationValue(geocodeApi, location)
+                    ?: run {
+                        saveMessage = "Select an address from the suggestions or share your location."
+                        saving = false
+                        return@launch
+                    }
+                location = resolved
                 val resp = api.patchWarehouseLocation(
                     WarehouseLocationPatchRequest(
-                        address = location.address,
-                        placeId = location.placeId,
-                        lat = location.lat,
-                        lng = location.lng,
+                        address = resolved.address,
+                        placeId = resolved.placeId,
+                        lat = resolved.lat,
+                        lng = resolved.lng,
                     ),
                 )
                 saveMessage = if (resp.isSuccessful) "Location saved" else "Save failed (${resp.code()})"

@@ -21,6 +21,8 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
+import com.pegasusx.factory.util.JwtPayload
+
 // ── Token Holder (EncryptedSharedPreferences) ──
 object TokenHolder {
     private const val PREF_NAME = "factory_secure_prefs"
@@ -60,6 +62,10 @@ object TokenHolder {
     }
 
     val isLoggedIn: Boolean get() = !token.isNullOrBlank()
+
+    val isConfigured: Boolean get() = JwtPayload.isConfigured(token)
+
+    val hasAssignedFactory: Boolean get() = !JwtPayload.homeNodeId(token).isNullOrBlank()
 }
 
 // ── Auth Interceptor ──

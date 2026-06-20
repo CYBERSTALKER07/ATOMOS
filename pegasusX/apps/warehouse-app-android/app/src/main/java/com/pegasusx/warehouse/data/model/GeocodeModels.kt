@@ -4,6 +4,28 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class ForwardGeocodeRequest(
+    val address: String,
+)
+
+@Serializable
+data class WarehouseSetupRequest(
+    val name: String = "",
+    val address: String,
+    @SerialName("place_id") val placeId: String? = null,
+    val lat: Double,
+    val lng: Double,
+)
+
+@Serializable
+data class WarehouseSetupResponse(
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    val token: String? = null,
+    @SerialName("refresh_token") val refreshToken: String? = null,
+    @SerialName("is_configured") val isConfigured: Boolean = false,
+)
+
+@Serializable
 data class GeocodeAutocompleteResponse(
     val predictions: List<GeocodePrediction> = emptyList(),
 )

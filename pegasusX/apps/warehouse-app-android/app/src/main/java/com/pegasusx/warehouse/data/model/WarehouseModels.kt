@@ -18,6 +18,7 @@ data class AuthResponse(
     @SerialName("warehouse_id") val warehouseId: String = "",
     val role: String = "",
     val name: String = "",
+    @SerialName("is_configured") val isConfigured: Boolean = false,
 )
 
 @Serializable

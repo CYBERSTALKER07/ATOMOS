@@ -18,6 +18,7 @@ data class AuthResponse(
     @SerialName("refresh_token") val refreshToken: String,
     @SerialName("factory_id") val factoryId: String,
     @SerialName("factory_name") val factoryName: String,
+    @SerialName("is_configured") val isConfigured: Boolean = false,
 )
 
 // ── Dashboard ──

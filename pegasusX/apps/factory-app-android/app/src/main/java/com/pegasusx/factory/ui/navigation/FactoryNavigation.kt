@@ -51,7 +51,7 @@ import com.pegasusx.factory.ui.screens.manifest.ManifestListScreen
 import com.pegasusx.factory.ui.screens.exceptions.ManifestExceptionsScreen
 import com.pegasusx.factory.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.factory.ui.screens.override.PayloadOverrideScreen
-import com.pegasusx.factory.ui.screens.staff.StaffDetailScreen
+import com.pegasusx.factory.ui.screens.setup.LocationSetupScreen
 import com.pegasusx.factory.ui.screens.staff.StaffScreen
 import com.pegasusx.factory.ui.screens.supply.SupplyRequestsScreen
 import com.pegasusx.factory.ui.screens.transfer.CreateTransferScreen
@@ -67,6 +67,7 @@ object FactoryRoutes {
     const val TRANSFER_CREATE = "transfers/create"
     const val FLEET = "fleet"
     const val STAFF = "staff"
+    const val LOCATION_SETUP = "location_setup"
     const val LOCATION_SETTINGS = "location_settings"
     const val INSIGHTS = "insights"
     const val ANALYTICS = "analytics"
@@ -98,14 +99,20 @@ fun FactoryNavigation(
     windowSizeClass: WindowSizeClass,
     navController: NavHostController = rememberNavController(),
 ) {
-    val startDestination = if (TokenHolder.isLoggedIn) FactoryRoutes.DASHBOARD else FactoryRoutes.LOGIN
+    val startDestination = when {
+        !TokenHolder.isLoggedIn -> FactoryRoutes.LOGIN
+        !TokenHolder.isConfigured -> FactoryRoutes.LOCATION_SETUP
+        else -> FactoryRoutes.DASHBOARD
+    }
     val context = LocalContext.current
     var networkAvailable by remember { mutableStateOf(true) }
     val useDrawer = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
     var isRailExpanded by remember { mutableStateOf(true) }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val showShell = currentRoute != null && currentRoute != FactoryRoutes.LOGIN
+    val showShell = currentRoute != null &&
+        currentRoute != FactoryRoutes.LOGIN &&
+        currentRoute != FactoryRoutes.LOCATION_SETUP
 
     fun navigateSection(section: FactorySection) {
         navController.navigate(section.route) {
@@ -189,10 +196,27 @@ fun FactoryNavigation(
                 LoginScreen(
                     api = api,
                     onLoginSuccess = {
-                        navController.navigate(FactoryRoutes.DASHBOARD) {
+                        val dest = if (TokenHolder.isConfigured) {
+                            FactoryRoutes.DASHBOARD
+                        } else {
+                            FactoryRoutes.LOCATION_SETUP
+                        }
+                        navController.navigate(dest) {
                             popUpTo(FactoryRoutes.LOGIN) { inclusive = true }
                         }
-                    }
+                    },
+                )
+            }
+
+            composable(FactoryRoutes.LOCATION_SETUP) {
+                LocationSetupScreen(
+                    api = api,
+                    geocodeApi = geocodeApi,
+                    onComplete = {
+                        navController.navigate(FactoryRoutes.DASHBOARD) {
+                            popUpTo(FactoryRoutes.LOCATION_SETUP) { inclusive = true }
+                        }
+                    },
                 )
             }
 

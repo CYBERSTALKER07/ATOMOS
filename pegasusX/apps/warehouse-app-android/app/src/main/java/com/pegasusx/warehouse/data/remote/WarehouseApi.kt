@@ -14,7 +14,7 @@ interface WarehouseApi {
     suspend fun refreshToken(@Body body: RefreshTokenRequest): Response<AuthResponse>
 
     @POST("v1/warehouse/setup")
-    suspend fun setupWarehouse(@Body body: com.google.gson.JsonElement): Response<com.google.gson.JsonElement>
+    suspend fun setupWarehouse(@Body body: com.pegasusx.warehouse.data.model.WarehouseSetupRequest): Response<com.pegasusx.warehouse.data.model.WarehouseSetupResponse>
 
 
     // ── Dashboard ──

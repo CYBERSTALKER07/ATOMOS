@@ -33,6 +33,7 @@ import com.pegasusx.factory.data.remote.GeocodeApi
 import com.pegasusx.factory.ui.components.AddressLocationField
 import com.pegasusx.factory.ui.components.AddressLocationValue
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.util.GeocodeLocationSupport
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,20 +78,23 @@ fun LocationSettingsScreen(
     }
 
     fun save() {
-        if (location.address.isBlank() || location.lat == 0.0 || location.lng == 0.0) {
-            saveMessage = "Select a valid address"
-            return
-        }
         scope.launch {
             saving = true
             saveMessage = null
             try {
+                val resolved = GeocodeLocationSupport.resolveLocationValue(geocodeApi, location)
+                    ?: run {
+                        saveMessage = "Select an address from the suggestions or share your location."
+                        saving = false
+                        return@launch
+                    }
+                location = resolved
                 val resp = api.patchFactoryLocation(
                     FactoryLocationPatchRequest(
-                        address = location.address,
-                        placeId = location.placeId,
-                        lat = location.lat,
-                        lng = location.lng,
+                        address = resolved.address,
+                        placeId = resolved.placeId,
+                        lat = resolved.lat,
+                        lng = resolved.lng,
                     ),
                 )
                 saveMessage = if (resp.isSuccessful) "Location saved" else "Save failed (${resp.code()})"

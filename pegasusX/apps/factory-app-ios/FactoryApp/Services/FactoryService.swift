@@ -21,8 +21,25 @@ enum FactoryService {
         return try await api.post("v1/auth/factory/refresh", body: EmptyBody())
     }
 
-    static func setup(body: [String: String]) async throws {
-        try await api.postVoid("v1/factory/setup", body: body)
+    static func setup(
+        factoryName: String,
+        address: String,
+        placeId: String?,
+        lat: Double,
+        lng: Double,
+        facilityType: String = "MANUFACTURING"
+    ) async throws -> FactorySetupResponse {
+        try await api.post(
+            "v1/factory/setup",
+            body: FactorySetupRequest(
+                factoryName: factoryName,
+                address: address,
+                placeId: placeId,
+                lat: lat,
+                lng: lng,
+                facilityType: facilityType
+            )
+        )
     }
 
     // MARK: - Dashboard
