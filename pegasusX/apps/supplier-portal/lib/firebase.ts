@@ -28,7 +28,6 @@ function shouldUseAuthEmulator(): boolean {
 function resolveAuthEmulatorHost(): string {
   const configured = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST?.trim();
   if (configured) return configured;
-  // Same-origin proxy (see next.config.mjs rewrites) — avoids Tauri CSP / localhost IPv6.
   if (typeof window !== "undefined") return window.location.origin;
   return "http://127.0.0.1:9099";
 }
@@ -44,9 +43,7 @@ if (
   (auth as any)._emulatorConnected = true;
 }
 
-export async function exchangeCustomToken(
-  customToken: string
-): Promise<string> {
+export async function exchangeCustomToken(customToken: string): Promise<string> {
   if (!customToken) return "";
   try {
     const cred = await signInWithCustomToken(auth, customToken);

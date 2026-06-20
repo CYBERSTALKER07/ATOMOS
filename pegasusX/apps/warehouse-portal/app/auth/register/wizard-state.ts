@@ -38,6 +38,7 @@ export interface IdentityStep {
 
 export interface VerificationStep {
   otpCode: string;
+  idToken: string;
 }
 
 export interface ProfileStep {
@@ -61,6 +62,7 @@ export const INITIAL_STATE: WizardState = {
   },
   verification: {
     otpCode: "",
+    idToken: "",
   },
   profile: {
     legalName: "",

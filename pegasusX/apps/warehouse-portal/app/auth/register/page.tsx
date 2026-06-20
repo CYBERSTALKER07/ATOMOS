@@ -3,6 +3,7 @@
 import { useMemo, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { warehouseApiBaseUrl, persistSession } from "@/lib/auth";
+import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from "@/lib/firebase";
 import {
   COUNTRIES,
   INITIAL_STATE,
@@ -26,6 +27,7 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [stepBusy, setStepBusy] = useState(false);
   const router = useRouter();
 
   const stepIndex = STEP_ORDER.indexOf(state.step);
@@ -42,16 +44,57 @@ export default function RegisterPage() {
     }
   }
 
-  function next() {
+  async function next() {
     const e = validateCurrent();
     setErrors(e);
     if (Object.keys(e).length > 0) return;
+
+    if (state.step === "identity") {
+      setStepBusy(true);
+      setSubmitError(null);
+      try {
+        const phone = `${dialCode}${state.identity.phoneLocal}`;
+        await sendPhoneOtp(phone);
+        setState((s) => ({
+          ...s,
+          step: "verification",
+          verification: { otpCode: "", idToken: "" },
+        }));
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : "Failed to send verification code");
+      } finally {
+        setStepBusy(false);
+      }
+      return;
+    }
+
+    if (state.step === "verification") {
+      setStepBusy(true);
+      setSubmitError(null);
+      try {
+        const idToken = await verifyPhoneOtp(state.verification.otpCode);
+        setState((s) => ({
+          ...s,
+          step: "profile",
+          verification: { ...s.verification, idToken },
+        }));
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : "Invalid verification code");
+      } finally {
+        setStepBusy(false);
+      }
+      return;
+    }
+
     const ni = Math.min(stepIndex + 1, STEP_ORDER.length - 1);
     setState((s) => ({ ...s, step: STEP_ORDER[ni] }));
   }
 
   function back() {
     const pi = Math.max(stepIndex - 1, 0);
+    if (state.step === "verification") {
+      resetPhoneOtpFlow();
+    }
     setState((s) => ({ ...s, step: STEP_ORDER[pi] }));
   }
 
@@ -71,7 +114,7 @@ export default function RegisterPage() {
           country: state.identity.countryCode,
           phone,
         },
-        id_token: state.verification.otpCode,
+        id_token: state.verification.idToken,
       };
       
       const res = await fetch(`${warehouseApiBaseUrl}/v1/auth/warehouse/register`, {
@@ -116,12 +159,12 @@ export default function RegisterPage() {
       {submitError ? <FormAlert variant="error">{submitError}</FormAlert> : null}
 
       <footer className="mt-6 flex items-center justify-between gap-4">
-        <button type="button" className="portal-btn portal-btn--ghost" onClick={back} disabled={stepIndex === 0 || submitting}>
+        <button type="button" className="portal-btn portal-btn--ghost" onClick={back} disabled={stepIndex === 0 || submitting || stepBusy}>
           Back
         </button>
         {state.step !== "profile" ? (
-          <button type="button" className="portal-btn portal-btn--primary" onClick={next} disabled={submitting}>
-            Continue
+          <button type="button" className="portal-btn portal-btn--primary" onClick={next} disabled={submitting || stepBusy}>
+            {stepBusy ? "Please wait…" : "Continue"}
           </button>
         ) : (
           <button type="button" className="portal-btn portal-btn--primary" onClick={submit} disabled={submitting}>

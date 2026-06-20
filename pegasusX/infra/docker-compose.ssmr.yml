@@ -138,6 +138,9 @@ services:
       GLOBAL_PAY_ENV: dev
       REQUIRE_INFRA_ADAPTERS: "true"
       RELIABILITY_MIDDLEWARE_ENABLED: "true"
+      FIREBASE_AUTH_ENABLED: "true"
+      FIREBASE_PROJECT_ID: demo-pegasus
+      FIREBASE_AUTH_EMULATOR_HOST: host.docker.internal:9099
     command:
       - /bin/sh
       - -lc

@@ -118,6 +118,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(bootstrap.TraceMiddleware)
+	r.Use(bootstrap.DevCORSMiddleware())
 	r.Use(auth.SessionAuth(cfg.JWTSecret))
 
 	// Phase 1/2 Integration: Auth0 Identity Middleware
@@ -138,9 +139,10 @@ func main() {
 		if cfg.FirebaseProjectID == "" {
 			slog.Warn("firebase auth enabled but FIREBASE_PROJECT_ID is empty")
 		} else {
-			firebaseVerifier = auth.NewFirebaseTokenVerifier(cfg.FirebaseProjectID, auth.FirebaseTokenVerifierOptions{
-				CertsURL: cfg.FirebaseCertsURL,
-			})
+			firebaseVerifier = auth.NewFirebaseTokenVerifier(
+				cfg.FirebaseProjectID,
+				auth.FirebaseVerifierOptionsForProject(cfg.FirebaseCertsURL),
+			)
 			slog.Info("firebase auth verifier initialized", "project_id", cfg.FirebaseProjectID)
 		}
 	}

@@ -11,6 +11,7 @@
     "./styles/portal-ui.css": "./styles/portal-ui.css",
     "./styles/setup-onboarding.css": "./styles/setup-onboarding.css",
     "./portal": "./src/portal/index.ts",
+    "./auth": "./src/auth/index.ts",
     "./tailwind.config": "./tailwind.config.ts"
   },
   "peerDependencies": {
