@@ -5,7 +5,7 @@ import { supplierFetch } from "@/lib/auth";
 import { createSupplierApi } from "@/lib/api";
 import { ListToolbar } from "@/components/ListToolbar";
 import { usePagination } from "@/lib/use-pagination";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 import { normalizeEanBarcode } from "@pegasusx/validation";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -347,7 +347,8 @@ export default function CatalogPage() {
   }
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="catalog"
       title="Catalog"
       description="Create products and set volumetric units (VU) for warehouse dispatch capacity."
       loading={loading}
@@ -709,6 +710,6 @@ export default function CatalogPage() {
           </tbody>
         </table>
       </div>
-    </PortalSurface>
+    </PageChrome>
   );
 }

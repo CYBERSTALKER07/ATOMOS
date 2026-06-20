@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierTopologyWarehouse, SupplierTopologyUpdateRequest } from "@pegasusx/types";
 import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 
 const api = createSupplierApi();
 
@@ -94,7 +94,8 @@ export default function WarehousesPage() {
   const warehouses = topology?.warehouses ?? [];
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="warehouse"
       title="Warehouses"
       description="Distribution nodes and coverage for retailer serviceability."
       loading={loading}
@@ -150,6 +151,6 @@ export default function WarehousesPage() {
           ))}
         </ul>
       )}
-    </PortalSurface>
+    </PageChrome>
   );
 }

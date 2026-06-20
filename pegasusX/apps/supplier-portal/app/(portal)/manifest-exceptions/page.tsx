@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierManifestExceptionRow } from "@pegasusx/types";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 
 const api = createSupplierApi();
 
@@ -40,7 +40,8 @@ export default function ManifestExceptionsPage() {
   }, [load]);
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="warning"
       title="Manifest gate exceptions"
       description="Loading-gate overflows, damage reports, and manual removals raised during manifest execution."
       loading={loading}
@@ -109,6 +110,6 @@ export default function ManifestExceptionsPage() {
           </tbody>
         </table>
       </div>
-    </PortalSurface>
+    </PageChrome>
   );
 }

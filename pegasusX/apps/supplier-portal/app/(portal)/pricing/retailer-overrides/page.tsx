@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { supplierFetch } from "@/lib/auth";
 import type { CreateRetailerPriceOverrideRequest, RetailerPriceOverride } from "@pegasusx/types";
-import { PortalSurface } from "../../_components/PortalSurface";
+import { PageChrome } from '@/components/PageChrome';
 
 const api = createSupplierApi();
 
@@ -143,7 +143,8 @@ export default function RetailerOverridesPage() {
   }
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="pricing"
       title="Retailer overrides"
       description="Set custom prices per retailer and product SKU."
       loading={loading}
@@ -335,7 +336,7 @@ export default function RetailerOverridesPage() {
           </table>
         </div>
       ) : null}
-    </PortalSurface>
+    </PageChrome>
   );
 }
 

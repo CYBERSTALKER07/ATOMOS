@@ -11,7 +11,7 @@ import { ListToolbar } from '@/components/ListToolbar';
 import { AdminOrderOpsPanel } from '@/components/AdminOrderOpsPanel';
 import { useToast } from '@/components/Toast';
 import StatusBadge from '@/components/StatusBadge';
-import { PortalSurface } from '../_components/PortalSurface';
+import { PageChrome } from '@/components/PageChrome';
 import type { SupplierOrder } from '@pegasusx/types';
 
 type OrderFilter = 'ACTIVE' | 'REVIEW' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
@@ -161,7 +161,8 @@ export default function OrdersPage() {
   };
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="orders"
       title="Orders"
       description="Durable supplier-scoped orders with assignment and live driver snapshots."
       actions={
@@ -302,6 +303,6 @@ export default function OrdersPage() {
         </table>
       </div>
       </div>
-    </PortalSurface>
+    </PageChrome>
   );
 }

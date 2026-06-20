@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@heroui/react";
 import { supplierResolveReturnKey } from "@pegasusx/api-client";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 import { supplierFetch } from "@/lib/auth";
 
 type Resolution = "WRITE_OFF" | "RETURN_TO_STOCK";
@@ -97,7 +97,8 @@ export default function ReturnsPage() {
   const totalDamageValue = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="returns"
       title="Dispute & Returns"
       description="Driver-rejected quantities awaiting write-off or return-to-stock."
       loading={loading}
@@ -191,6 +192,6 @@ export default function ReturnsPage() {
           </li>
         ))}
       </ul>
-    </PortalSurface>
+    </PageChrome>
   );
 }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierProfile, SupplierProfileUpdateRequest } from "@pegasusx/types";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 
 const api = createSupplierApi();
 
@@ -92,7 +92,8 @@ export default function ProfilePage() {
   }
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="supplier"
       title="Profile"
       description="Supplier legal identity and registration state."
       loading={loading}
@@ -162,7 +163,7 @@ export default function ProfilePage() {
           </div>
         </div>
       ) : null}
-    </PortalSurface>
+    </PageChrome>
   );
 }
 

@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { normalizeEanBarcode } from "@pegasusx/validation";
-import { PortalSurface } from "../../_components/PortalSurface";
+import { PageChrome } from '@/components/PageChrome';
 
 type CatalogProduct = {
   product_id: string;
@@ -141,7 +141,8 @@ export default function CatalogProductDetailPage() {
   }
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="catalog"
       title="Product detail"
       description={productId}
       loading={loading}
@@ -235,7 +236,7 @@ export default function CatalogProductDetailPage() {
           </div>
         </div>
       ) : null}
-    </PortalSurface>
+    </PageChrome>
   );
 }
 

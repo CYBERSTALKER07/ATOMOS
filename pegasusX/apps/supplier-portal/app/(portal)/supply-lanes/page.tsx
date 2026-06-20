@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierSupplyLaneRow } from "@pegasusx/types";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 
 const api = createSupplierApi();
 
@@ -21,7 +21,8 @@ export default function SupplyLanesPage() {
   }, []);
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="fleet"
       title="Supply lanes"
       description="Warehouse lanes derived from topology and live order volume."
       loading={loading}
@@ -100,6 +101,6 @@ export default function SupplyLanesPage() {
           ))}
         </div>
       ) : null}
-    </PortalSurface>
+    </PageChrome>
   );
 }

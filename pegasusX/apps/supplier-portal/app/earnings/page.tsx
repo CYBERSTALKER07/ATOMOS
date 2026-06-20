@@ -15,6 +15,8 @@ import {
   parseDate,
   useSupplierFinanceLiveRefresh,
 } from "../payments/_shared/finance";
+import { PageChrome } from "@/components/PageChrome";
+import { PortalSection } from "@/components/portal";
 
 type LoadState =
   | { status: "loading" }
@@ -126,48 +128,28 @@ export default function EarningsPage() {
   }
 
   return (
-    <div className="desk-page">
-      <div className="desk-page-header">
-        <div>
-          <h1 className="desk-page-title">Earnings &amp; Treasury</h1>
-          <p className="desk-page-subtitle">
-            Supplier treasury authority, disputes, and reconciliation operations sourced directly from payment ledger state.
-          </p>
-        </div>
-        <div className="desk-toolbar">
-          <button className="md-btn md-btn-outlined" type="button" onClick={() => setRefreshTick((value) => value + 1)}>
-            {isRefreshing ? "Refreshing..." : "Refresh now"}
-          </button>
-        </div>
-      </div>
-
-      <section className="md-card md-shape-md p-4 mb-6">
-        <p className="md-typescale-label-medium" style={{ color: "var(--color-md-outline)" }}>
-          Live treasury stream
-        </p>
-        <p className="md-typescale-body-medium mt-2">{liveState.message}</p>
+    <PageChrome
+      icon="treasury"
+      title="Earnings & Treasury"
+      description="Supplier treasury authority, disputes, and reconciliation operations sourced directly from payment ledger state."
+      loading={state.status === "loading"}
+      skeletonVariant="table"
+      error={state.status === "error" ? state.message : null}
+      actions={
+        <button className="portal-btn portal-btn--outline" type="button" onClick={() => setRefreshTick((value) => value + 1)}>
+          {isRefreshing ? "Refreshing…" : "Refresh now"}
+        </button>
+      }
+    >
+      <PortalSection title="Live treasury stream" icon="treasury">
+        <p className="md-typescale-body-medium">{liveState.message}</p>
         {(liveState.lastEventType || liveState.lastEventAt) && (
-          <p className="md-typescale-body-small mt-2" style={{ color: "var(--color-md-outline)" }}>
+          <p className="md-typescale-body-small mt-2" style={{ color: "var(--desk-text-secondary)" }}>
             {liveState.lastEventType ? `Last event: ${liveState.lastEventType}. ` : ""}
             {liveState.lastEventAt ? `Updated ${formatDateTime(liveState.lastEventAt)}.` : ""}
           </p>
         )}
-      </section>
-
-      {state.status === "loading" && (
-        <section className="md-card md-shape-md p-6">
-          <p className="md-typescale-body-large">Loading treasury authority...</p>
-        </section>
-      )}
-
-      {state.status === "error" && (
-        <section className="md-card md-shape-md p-6" role="alert">
-          <h2 className="md-typescale-title-large">Treasury authority unavailable</h2>
-          <p className="md-typescale-body-medium mt-2" style={{ color: "var(--color-md-error)" }}>
-            {state.message}
-          </p>
-        </section>
-      )}
+      </PortalSection>
 
       {state.status === "ready" && (
         <>
@@ -336,7 +318,7 @@ export default function EarningsPage() {
           </section>
         </>
       )}
-    </div>
+    </PageChrome>
   );
 }
 

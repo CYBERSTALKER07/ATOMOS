@@ -7,7 +7,7 @@ import type {
   SupplierPromotionScopeType,
   SupplierPromotionUpsertRequest,
 } from "@pegasusx/types";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 
 const api = createSupplierApi();
 
@@ -134,7 +134,8 @@ export default function PromotionsPage() {
   }
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="pricing"
       title="Promotions"
       description="Product, category, and volume-based sales with retailer targeting and time windows."
       loading={loading}
@@ -403,7 +404,7 @@ export default function PromotionsPage() {
           </div>
         </section>
       </div>
-    </PortalSurface>
+    </PageChrome>
   );
 }
 

@@ -7,7 +7,7 @@ import { supplierApproveEarlyCompleteKey } from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
 import { ApiError } from "@pegasusx/api-client";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
-import { PortalSurface } from "../../_components/PortalSurface";
+import { PageChrome } from '@/components/PageChrome';
 
 const api = createSupplierApi();
 
@@ -48,7 +48,8 @@ export default function EarlyCompletePage() {
   };
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="warning"
       title="Early route complete"
       description="Approve a driver request to finish the route before all stops are completed."
       error={error}
@@ -81,6 +82,6 @@ export default function EarlyCompletePage() {
           {busy ? "Approving…" : "Approve early complete"}
         </button>
       </div>
-    </PortalSurface>
+    </PageChrome>
   );
 }

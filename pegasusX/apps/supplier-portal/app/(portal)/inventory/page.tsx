@@ -5,7 +5,7 @@ import { supplierFetch } from "@/lib/auth";
 import { downloadCsv } from "@/lib/csv";
 import { usePagination } from "@/lib/use-pagination";
 import { ListToolbar } from "@/components/ListToolbar";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 
 type InventoryRow = {
   sku_id: string;
@@ -72,7 +72,8 @@ export default function PortalInventoryPage() {
   const pagination = usePagination(rows, 20);
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="inventory"
       title="Inventory"
       description="SKU availability and audit trail for supplier operations."
       loading={loading}
@@ -148,6 +149,6 @@ export default function PortalInventoryPage() {
           </tbody>
         </table>
       </div>
-    </PortalSurface>
+    </PageChrome>
   );
 }

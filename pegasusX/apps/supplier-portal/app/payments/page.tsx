@@ -12,6 +12,8 @@ import {
   loadFinanceAuthoritySnapshot,
   useSupplierFinanceLiveRefresh,
 } from "./_shared/finance";
+import { PageChrome } from "@/components/PageChrome";
+import { FormAlert, PortalSection } from "@/components/portal";
 
 type LoadState =
   | { status: "loading" }
@@ -64,57 +66,37 @@ export default function PaymentsAuthorityPage() {
   }, [api, refreshTick, state.status]);
 
   return (
-    <div className="desk-page">
-      <div className="desk-page-header">
-        <div>
-          <h1 className="desk-page-title">Payment settlement authority</h1>
-          <p className="desk-page-subtitle">
-            Immutable ledger-derived settlement and reconciliation view for supplier finance and support.
-          </p>
-        </div>
-        <div className="desk-toolbar">
-          <button className="md-btn md-btn-outlined" type="button" onClick={() => setRefreshTick((value) => value + 1)}>
-            {isRefreshing ? "Refreshing..." : "Refresh now"}
-          </button>
-        </div>
-      </div>
-
-      <section className="md-card md-shape-md p-4 mb-6">
-        <p className="md-typescale-label-medium" style={{ color: "var(--color-md-outline)" }}>
-          Live finance stream
-        </p>
-        <p className="md-typescale-body-medium mt-2">{liveState.message}</p>
+    <PageChrome
+      icon="payment"
+      title="Payment settlement authority"
+      description="Immutable ledger-derived settlement and reconciliation view for supplier finance and support."
+      loading={state.status === "loading"}
+      skeletonVariant="table"
+      error={state.status === "error" ? state.message : null}
+      actions={
+        <button
+          className="portal-btn portal-btn--outline"
+          type="button"
+          onClick={() => setRefreshTick((value) => value + 1)}
+        >
+          {isRefreshing ? "Refreshing…" : "Refresh now"}
+        </button>
+      }
+    >
+      <PortalSection title="Live finance stream" icon="treasury">
+        <p className="md-typescale-body-medium">{liveState.message}</p>
         {(liveState.lastEventType || liveState.lastEventAt) && (
-          <p className="md-typescale-body-small mt-2" style={{ color: "var(--color-md-outline)" }}>
+          <p className="md-typescale-body-small mt-2" style={{ color: "var(--desk-text-secondary)" }}>
             {liveState.lastEventType ? `Last event: ${liveState.lastEventType}. ` : ""}
             {liveState.lastEventAt ? `Updated ${formatDateTime(liveState.lastEventAt)}.` : ""}
           </p>
         )}
-      </section>
-
-      {state.status === "loading" && (
-        <section className="md-card md-shape-md p-6">
-          <p className="md-typescale-body-large">Loading settlement authority view...</p>
-        </section>
-      )}
-
-      {state.status === "error" && (
-        <section className="md-card md-shape-md p-6" role="alert">
-          <h2 className="md-typescale-title-large">Payment authority unavailable</h2>
-          <p className="md-typescale-body-medium mt-2" style={{ color: "var(--color-md-error)" }}>
-            {state.message}
-          </p>
-        </section>
-      )}
+      </PortalSection>
 
       {state.status === "ready" && (
         <>
           {state.snapshot.source === "ledger_fallback" && (
-            <section className="md-card md-shape-md p-4 mb-4">
-              <p className="md-typescale-body-medium" style={{ color: "var(--color-md-outline)" }}>
-                Settlement summary endpoint unavailable. Showing derived fallback from payment ledger entries.
-              </p>
-            </section>
+            <FormAlert>Settlement summary endpoint unavailable. Showing derived fallback from payment ledger entries.</FormAlert>
           )}
 
           <section className="grid gap-4 md:grid-cols-4 mb-6">
@@ -251,6 +233,6 @@ export default function PaymentsAuthorityPage() {
           </section>
         </>
       )}
-    </div>
+    </PageChrome>
   );
 }

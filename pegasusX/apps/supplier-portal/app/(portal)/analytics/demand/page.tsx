@@ -16,7 +16,7 @@ import {
 import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierDemandHistoryResponse, SupplierDemandSummaryResponse } from "@pegasusx/types";
-import { PortalSurface } from "../../_components/PortalSurface";
+import { PageChrome } from '@/components/PageChrome';
 
 const api = createSupplierApi();
 
@@ -56,7 +56,8 @@ export default function DemandAnalyticsPage() {
   );
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="analytics"
       title="Demand forecast"
       description="Predicted versus actual order volume from supplier analytics authority."
       loading={loading}
@@ -118,6 +119,6 @@ export default function DemandAnalyticsPage() {
           </table>
         </section>
       ) : null}
-    </PortalSurface>
+    </PageChrome>
   );
 }

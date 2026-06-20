@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { CatalogProduct } from "@pegasusx/types";
 import { supplierFetch } from "@/lib/auth";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
+import { DataList, DataListRow } from "@/components/portal";
 
 function formatPrice(product: CatalogProduct) {
   try {
@@ -35,7 +36,7 @@ export default function PricingPage() {
   }, []);
 
   return (
-    <PortalSurface
+    <PageChrome
       title="Pricing"
       description="Set list and sale pricing per catalog product. Add products in Catalog first."
       loading={loading}
@@ -48,22 +49,22 @@ export default function PricingPage() {
         </Link>
       }
     >
-      <ul className="md-card divide-y divide-[var(--color-md-outline-variant)]">
+      <DataList>
         {products.map((product) => (
-          <li key={product.product_id}>
+          <DataListRow key={product.product_id}>
             <Link
               href={`/pricing/${encodeURIComponent(product.product_id)}`}
-              className="flex items-center justify-between p-4 hover:bg-[var(--color-md-surface-container-low)]"
+              className="flex flex-1 items-center justify-between gap-4 min-w-0 text-inherit no-underline"
             >
-              <div>
+              <div className="min-w-0">
                 <div className="md-typescale-body-large font-medium">{product.name}</div>
                 <div className="text-[var(--color-md-outline)] text-sm mt-1">{product.product_id}</div>
               </div>
-              <div className="md-typescale-title-medium">{formatPrice(product)}</div>
+              <div className="md-typescale-title-medium shrink-0">{formatPrice(product)}</div>
             </Link>
-          </li>
+          </DataListRow>
         ))}
-      </ul>
-    </PortalSurface>
+      </DataList>
+    </PageChrome>
   );
 }

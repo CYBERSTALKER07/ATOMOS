@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { CatalogProduct, SupplierPromotion } from "@pegasusx/types";
 import { supplierFetch } from "@/lib/auth";
-import { PortalSurface } from "../../_components/PortalSurface";
+import { PageChrome } from '@/components/PageChrome';
 
 export default function ProductPricingPage() {
   const params = useParams<{ productId: string }>();
@@ -113,7 +113,8 @@ export default function ProductPricingPage() {
   };
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="pricing"
       title={product?.name ?? "Product pricing"}
       description="List price and optional product-scoped sale discount."
       loading={loading}
@@ -143,6 +144,6 @@ export default function ProductPricingPage() {
           </button>
         </div>
       ) : null}
-    </PortalSurface>
+    </PageChrome>
   );
 }

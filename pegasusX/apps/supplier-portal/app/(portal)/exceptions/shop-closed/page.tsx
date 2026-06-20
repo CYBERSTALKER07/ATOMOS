@@ -6,7 +6,7 @@ import { createSupplierApi } from "@/lib/api";
 import { supplierShopClosedResolveKey } from "@pegasusx/api-client";
 import type { ShopClosedAttemptRow } from "@pegasusx/types";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
-import { PortalSurface } from "../../_components/PortalSurface";
+import { PageChrome } from '@/components/PageChrome';
 
 const api = createSupplierApi();
 
@@ -58,7 +58,8 @@ export default function ShopClosedExceptionsPage() {
   };
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="warning"
       title="Shop closed escalations"
       description="Active driver reports where the retailer did not confirm within the grace window."
       loading={loading}
@@ -111,6 +112,6 @@ export default function ShopClosedExceptionsPage() {
           </li>
         ))}
       </ul>
-    </PortalSurface>
+    </PageChrome>
   );
 }

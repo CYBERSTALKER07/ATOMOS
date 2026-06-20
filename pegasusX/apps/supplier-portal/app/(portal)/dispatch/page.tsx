@@ -9,7 +9,7 @@ import type { SupplierDispatchPreview, SupplierTopologyWarehouse } from "@pegasu
 import { useDispatchData, type ManifestData } from "./use-dispatch-data";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { setSupplierReconcileScope } from "@/lib/supplier-reconnect";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 import DispatchPreviewMap from "@/components/DispatchPreviewMap";
 import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
 import Icon from "@/components/Icon";
@@ -123,7 +123,8 @@ export default function DispatchPage() {
   );
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="dispatch"
       title="Dispatch queue"
       description="Manage manifests and dispatch operations."
       loading={loading}
@@ -289,7 +290,7 @@ export default function DispatchPage() {
         </div>
       </div>
       </div>
-    </PortalSurface>
+    </PageChrome>
   );
 }
 

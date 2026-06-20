@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import type { Route } from "next";
-import { PortalSurface } from "../../_components/PortalSurface";
+import { PageChrome } from '@/components/PageChrome';
 
 /** Quantity negotiation is disabled across the ecosystem. */
 export default function NegotiationsExceptionsPage() {
   return (
-    <PortalSurface
+    <PageChrome
+      icon="warning"
       title="Quantity negotiations"
       description="This feature is not available."
       loading={false}
@@ -20,6 +21,6 @@ export default function NegotiationsExceptionsPage() {
       <Link href={"/exceptions" as Route} className="mt-4 inline-block text-[var(--color-md-primary)] underline">
         Back to exceptions
       </Link>
-    </PortalSurface>
+    </PageChrome>
   );
 }

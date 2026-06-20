@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierExceptionRow } from "@pegasusx/types";
 import StatusBadge from "@/components/StatusBadge";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 
 const api = createSupplierApi();
 
@@ -24,9 +24,10 @@ export default function ExceptionsPage() {
   }, []);
 
   return (
-    <PortalSurface
+    <PageChrome
       title="Exceptions"
       description="Shop-closed, payment, and delivery escalation queues."
+      icon="warning"
       loading={loading}
       error={error}
       empty={!loading && exceptions.length === 0}
@@ -64,6 +65,6 @@ export default function ExceptionsPage() {
           Orders
         </Link>
       </div>
-    </PortalSurface>
+    </PageChrome>
   );
 }

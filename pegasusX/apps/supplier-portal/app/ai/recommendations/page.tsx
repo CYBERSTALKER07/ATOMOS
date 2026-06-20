@@ -3,6 +3,8 @@
 import { ApiClient, ApiError } from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierAIRecommendation, SupplierAIRecommendationDecision } from "@pegasusx/types";
+import { PageChrome } from "@/components/PageChrome";
+import { FormAlert } from "@/components/portal";
 import { useEffect, useMemo, useState } from "react";
 
 type StatusFilter = "ALL" | "PENDING" | "ACKNOWLEDGED" | "OVERRIDDEN" | "DISMISSED";
@@ -136,27 +138,24 @@ export default function SupplierAIRecommendationsPage() {
   }
 
   return (
-    <div className="desk-page">
-      <div className="desk-page-header">
-        <div>
-          <h1 className="desk-page-title">AI recommendation review</h1>
-          <p className="desk-page-subtitle">
-            Supplier-scoped advisory outputs with explanation evidence and human decision authority.
-            {lastLoadedAt ? ` Last refreshed ${formatDateTime(lastLoadedAt)}.` : ""}
-          </p>
-        </div>
-        <div className="desk-toolbar">
-          <button className="md-btn md-btn-outlined" type="button" onClick={() => setRefreshTick((value) => value + 1)}>
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      <section className="md-card md-shape-md p-4 mb-6">
+    <PageChrome
+      icon="ai"
+      title="AI recommendation review"
+      description={`Supplier-scoped advisory outputs with explanation evidence and human decision authority.${lastLoadedAt ? ` Last refreshed ${formatDateTime(lastLoadedAt)}.` : ""}`}
+      loading={loading && items.length === 0}
+      skeletonVariant="table"
+      error={error}
+      actions={
+        <button className="portal-btn portal-btn--outline" type="button" onClick={() => setRefreshTick((value) => value + 1)}>
+          Refresh
+        </button>
+      }
+    >
+      <section className="desk-card p-4 mb-6">
         <div className="flex flex-wrap gap-3">
           {statusFilters.map((nextFilter) => (
             <button
-              className={filter === nextFilter ? "md-btn md-btn-filled" : "md-btn md-btn-outlined"}
+              className={filter === nextFilter ? "portal-btn portal-btn--primary" : "portal-btn portal-btn--outline"}
               key={nextFilter}
               type="button"
               onClick={() => setFilter(nextFilter)}
@@ -167,56 +166,15 @@ export default function SupplierAIRecommendationsPage() {
         </div>
       </section>
 
-      {offline ? (
-        <section className="md-card md-shape-md p-4 mb-6" role="status">
-          <p className="md-typescale-body-medium" style={{ color: "var(--color-md-warning)" }}>
-            Network disconnected. Existing rows may be stale until the connection returns.
-          </p>
-        </section>
-      ) : null}
+      {restricted ? <FormAlert variant="error">Access restricted for this supplier session.</FormAlert> : null}
+      {offline ? <FormAlert>You are offline. Showing the last loaded recommendations.</FormAlert> : null}
+      {staleMessage ? <FormAlert>{staleMessage}</FormAlert> : null}
+      {feedback ? <FormAlert>{feedback}</FormAlert> : null}
 
-      {staleMessage ? (
-        <section className="md-card md-shape-md p-4 mb-6" role="status">
-          <p className="md-typescale-body-medium" style={{ color: "var(--color-md-warning)" }}>
-            Refresh failed. Showing the last loaded recommendation set. {staleMessage}
-          </p>
-        </section>
-      ) : null}
-
-      {feedback ? (
-        <section className="md-card md-shape-md p-4 mb-6" role="status">
-          <p className="md-typescale-body-medium">{feedback}</p>
-        </section>
-      ) : null}
-
-      {loading && items.length === 0 ? (
-        <section className="md-card md-shape-md p-6">
-          <p className="md-typescale-body-large">Loading AI recommendations...</p>
-        </section>
-      ) : null}
-
-      {restricted ? (
-        <section className="md-card md-shape-md p-6" role="alert">
-          <h2 className="md-typescale-title-large">Access restricted</h2>
-          <p className="md-typescale-body-medium mt-2" style={{ color: "var(--color-md-outline)" }}>
-            This supplier session is not allowed to review AI recommendations.
-          </p>
-        </section>
-      ) : null}
-
-      {error && !restricted ? (
-        <section className="md-card md-shape-md p-6" role="alert">
-          <h2 className="md-typescale-title-large">Recommendations unavailable</h2>
-          <p className="md-typescale-body-medium mt-2" style={{ color: "var(--color-md-error)" }}>
-            {error}
-          </p>
-        </section>
-      ) : null}
-
-      {!loading && !error && !restricted && items.length === 0 ? (
-        <section className="md-card md-shape-md p-6">
+      {!restricted && !error && items.length === 0 && !loading ? (
+        <section className="desk-card p-6">
           <h2 className="md-typescale-title-large">No recommendations</h2>
-          <p className="md-typescale-body-medium mt-2" style={{ color: "var(--color-md-outline)" }}>
+          <p className="md-typescale-body-medium mt-2" style={{ color: "var(--desk-text-secondary)" }}>
             No {filter.toLowerCase()} advisory rows are available for this supplier.
           </p>
         </section>
@@ -308,6 +266,6 @@ export default function SupplierAIRecommendationsPage() {
           ))}
         </section>
       ) : null}
-    </div>
+    </PageChrome>
   );
 }

@@ -11,7 +11,7 @@ import NotificationPanel from './NotificationPanel';
 import ClientPolicyBanner from './ClientPolicyBanner';
 import { useNotifications } from '@/lib/useNotifications';
 import { clearSession, readTokenFromCookie } from '@/lib/auth';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 type NavEntry = { href: string; icon: string; label: string; globalOnly?: boolean; factoryHidden?: boolean };
 type NavSection = { label?: string; items: NavEntry[] };
@@ -29,6 +29,7 @@ const NAV: NavSection[] = [
       { href: "/fleet", icon: "fleet", label: "Fleet" },
       { href: "/fleet/orders", icon: "orders", label: "Fleet Orders" },
       { href: "/operations", icon: "dispatch", label: "Operations" },
+      { href: "/exceptions", icon: "warning", label: "Exceptions" },
     ],
   },
   {
@@ -106,63 +107,6 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
 }
 
 const BARE_ROUTES = ["/auth/", "/setup/"];
-
-function SplashScreen({ onComplete }: { onComplete: () => void }) {
-  useEffect(() => {
-    const id = window.setTimeout(onComplete, 900);
-    return () => clearTimeout(id);
-  }, [onComplete]);
-
-  return (
-    <motion.div
-      initial={{ opacity: 1 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
-      style={{ background: 'var(--desk-canvas)' }}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 flex flex-col items-center gap-6"
-      >
-        <div
-          className="w-16 h-16 flex items-center justify-center"
-          style={{
-            background: 'var(--desk-accent)',
-            color: 'var(--desk-accent-on)',
-            borderRadius: 16,
-          }}
-        >
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/>
-          </svg>
-        </div>
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 1 }}
-          className="flex flex-col items-center"
-        >
-          <h2 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--desk-text-primary)' }}>pegasusX</h2>
-          <p className="text-[10px] uppercase tracking-[0.3em] mt-1" style={{ color: 'var(--desk-text-tertiary)' }}>Supplier Hub</p>
-        </motion.div>
-        
-        <div className="w-32 h-0.5 rounded-full mt-4 overflow-hidden" style={{ background: 'var(--desk-border)' }}>
-          <motion.div 
-            initial={{ x: '-100%' }}
-            animate={{ x: '100%' }}
-            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-            className="w-full h-full"
-            style={{ background: 'var(--desk-accent)' }}
-          />
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
 
 const ALL_NAV_ITEMS = NAV.flatMap(s => s.items);
 
@@ -338,9 +282,7 @@ export default function SupplierShell({ children }: { children: React.ReactNode 
 
 function SupplierAppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-
-  const [splashDone, setSplashDone] = useState(false);
-  const dismissSplash = useCallback(() => setSplashDone(true), []);
+  const reduceMotion = useReducedMotion();
 
   const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -430,15 +372,9 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <AnimatePresence>
-        {!splashDone && (
-          <SplashScreen key="supplier-splash" onComplete={dismissSplash} />
-        )}
-      </AnimatePresence>
-
       <motion.aside
         animate={{ width: collapsed ? 72 : 264 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+        transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 200, damping: 25 }}
         data-shell-sidebar
         className="hidden md:flex flex-col justify-between shrink-0 overflow-hidden"
         style={{

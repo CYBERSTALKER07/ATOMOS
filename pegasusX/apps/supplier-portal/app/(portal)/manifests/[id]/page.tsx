@@ -12,7 +12,7 @@ import {
 } from "@pegasusx/api-client";
 import type { SupplierManifestDetail } from "@pegasusx/types";
 import StatusBadge from "@/components/StatusBadge";
-import { PortalSurface } from "../../_components/PortalSurface";
+import { PageChrome } from '@/components/PageChrome';
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 
 const api = createSupplierApi();
@@ -65,7 +65,8 @@ export default function ManifestDetailPage() {
   const state = (manifest?.state || manifest?.status || "").toUpperCase();
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="manifests"
       title="Manifest detail"
       description={manifestId}
       loading={loading}
@@ -190,7 +191,7 @@ export default function ManifestDetailPage() {
           ) : null}
         </div>
       ) : null}
-    </PortalSurface>
+    </PageChrome>
   );
 }
 

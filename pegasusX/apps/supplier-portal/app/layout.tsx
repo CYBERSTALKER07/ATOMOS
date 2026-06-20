@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, EB_Garamond } from "next/font/google";
+import { Plus_Jakarta_Sans, EB_Garamond } from "next/font/google";
 import Providers from "@/components/Providers";
 import "./globals.css";
 
-const fontInter = Inter({
-  variable: "--font-inter",
+const fontJakarta = Plus_Jakarta_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 const fontGaramond = EB_Garamond({
@@ -25,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${fontInter.variable} ${fontGaramond.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${fontJakarta.variable} ${fontGaramond.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){try{var m=localStorage.getItem('pegasus-theme-mode');
@@ -34,7 +35,7 @@ export default function RootLayout({
         `}} />
       </head>
       <body
-        className={`${fontInter.variable} ${fontGaramond.variable} font-sans flex h-screen overflow-hidden bg-background text-foreground`}
+        className={`${fontJakarta.variable} ${fontGaramond.variable} font-sans flex h-screen overflow-hidden bg-background text-foreground`}
       >
         <div id="app-splash" aria-hidden="true">
           <div

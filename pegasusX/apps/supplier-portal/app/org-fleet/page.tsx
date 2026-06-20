@@ -10,6 +10,8 @@ import type {
   SupplierOrgMemberCreateRequest,
   SupplierTopologyResponse,
 } from "@pegasusx/types";
+import { PageChrome } from "@/components/PageChrome";
+import { PortalSection } from "@/components/portal";
 import { useEffect, useMemo, useState } from "react";
 
 type ReadyState = {
@@ -268,32 +270,14 @@ export default function OrgFleetPage() {
   }
 
   return (
-    <div className="desk-page">
-      <div className="desk-page-header">
-        <div>
-          <h1 className="desk-page-title">Org, staff, and fleet onboarding</h1>
-          <p className="desk-page-subtitle">
-            Seed node admins, payload staff, drivers, and vehicles from the supplier control plane so downstream factory,
-            warehouse, payload, and driver work is not blocked by missing entity contracts.
-          </p>
-        </div>
-      </div>
-
-      {state.status === "loading" && (
-        <section className="md-card md-shape-md p-6">
-          <p className="md-typescale-body-large">Loading org and fleet setup...</p>
-        </section>
-      )}
-
-      {state.status === "error" && (
-        <section className="md-card md-shape-md p-6" role="alert">
-          <h2 className="md-typescale-title-large">Onboarding authority unavailable</h2>
-          <p className="md-typescale-body-medium mt-2" style={{ color: "var(--color-md-error)" }}>
-            {state.message}
-          </p>
-        </section>
-      )}
-
+    <PageChrome
+      icon="person-add"
+      title="Org, staff, and fleet onboarding"
+      description="Seed node admins, payload staff, drivers, and vehicles from the supplier control plane so downstream factory, warehouse, payload, and driver work is not blocked by missing entity contracts."
+      loading={state.status === "loading"}
+      skeletonVariant="form"
+      error={state.status === "error" ? state.message : null}
+    >
       {state.status === "ready" && (
         <>
           <section className="grid gap-4 md:grid-cols-4 mb-6">
@@ -691,7 +675,7 @@ export default function OrgFleetPage() {
           </section>
         </>
       )}
-    </div>
+    </PageChrome>
   );
 }
 

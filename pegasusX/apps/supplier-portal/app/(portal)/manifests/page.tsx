@@ -8,7 +8,7 @@ import { downloadCsv } from "@/lib/csv";
 import { usePagination } from "@/lib/use-pagination";
 import { ListToolbar } from "@/components/ListToolbar";
 import StatusBadge from "@/components/StatusBadge";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 
 const api = createSupplierApi();
 
@@ -28,7 +28,8 @@ export default function ManifestsPage() {
   const pagination = usePagination(manifests, 15);
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="manifests"
       title="Manifests"
       description="Loading manifests, seal, and dispatch lifecycle. Use Dispatch for active queue operations."
       loading={loading}
@@ -95,6 +96,6 @@ export default function ManifestsPage() {
           Manifest gate exceptions
         </Link>
       </p>
-    </PortalSurface>
+    </PageChrome>
   );
 }

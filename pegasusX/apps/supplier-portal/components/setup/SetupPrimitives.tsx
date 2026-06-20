@@ -1,7 +1,8 @@
 "use client";
 
 import Icon from "@/components/Icon";
-import type { ReactNode } from "react";
+import { PortalField, PortalInput, FormAlert as PortalFormAlert } from "@/components/portal";
+import type { InputHTMLAttributes, ReactNode } from "react";
 
 export function SetupPageHeader({
   icon,
@@ -68,20 +69,9 @@ export function SetupField({
   children: ReactNode;
 }) {
   return (
-    <div className="setup-field">
-      <label htmlFor={id} className="setup-label">
-        {label}
-        {optional ? <span className="setup-label-optional"> (optional)</span> : null}
-      </label>
+    <PortalField id={id} label={label} optional={optional} error={error} hint={hint}>
       {children}
-      {error ? (
-        <p className="setup-helper setup-helper--error" role="alert">
-          {error}
-        </p>
-      ) : hint ? (
-        <p className="setup-helper">{hint}</p>
-      ) : null}
-    </div>
+    </PortalField>
   );
 }
 
@@ -89,15 +79,8 @@ export function SetupInput({
   id,
   error,
   ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { error?: string }) {
-  return (
-    <input
-      id={id}
-      className="setup-input"
-      aria-invalid={error ? true : undefined}
-      {...props}
-    />
-  );
+}: InputHTMLAttributes<HTMLInputElement> & { error?: string }) {
+  return <PortalInput id={id} error={error} className="setup-input" {...props} />;
 }
 
 export function SetupCallout({
@@ -107,12 +90,7 @@ export function SetupCallout({
   variant?: "info" | "error";
   children: ReactNode;
 }) {
-  return (
-    <div className={`setup-callout setup-callout--${variant}`} role={variant === "error" ? "alert" : undefined}>
-      <Icon name={variant === "error" ? "error" : "verified"} size={18} />
-      <p className="setup-callout-text">{children}</p>
-    </div>
-  );
+  return <PortalFormAlert variant={variant}>{children}</PortalFormAlert>;
 }
 
 export function SetupFooter({

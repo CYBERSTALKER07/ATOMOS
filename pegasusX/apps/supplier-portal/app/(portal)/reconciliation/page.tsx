@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
-import { PortalSurface } from "../_components/PortalSurface";
+import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
+import { PageChrome } from "@/components/PageChrome";
+import { HubCard } from "@/components/portal";
 import { formatMinor, loadFinanceAuthoritySnapshot } from "@/app/payments/_shared/finance";
 
 export default function ReconciliationPage() {
@@ -42,29 +43,29 @@ export default function ReconciliationPage() {
   }, [api]);
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="reconcile"
       title="Reconciliation"
       description="Treasury splits, settlement authority, and payment mismatches."
       loading={loading}
       error={error}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="md-card p-6">
-          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Settlement net (authority)</p>
-          <p className="md-typescale-display-small mt-2">{formatMinor(netMinor, currency)}</p>
-        </div>
-        <div className="md-card p-6">
-          <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Open mismatches</p>
-          <p className="md-typescale-display-small mt-2">{mismatchCount}</p>
-        </div>
+      <KpiStatGrid columns={2}>
+        <KpiStatCard label="Settlement net (authority)" value={formatMinor(netMinor, currency)} />
+        <KpiStatCard
+          label="Open mismatches"
+          value={mismatchCount}
+          sub={mismatchCount > 0 ? "Review on payments" : "All clear"}
+        />
+      </KpiStatGrid>
+      <div className="mt-6">
+        <HubCard
+          href="/payments"
+          icon="payment"
+          title="Payments & ledger"
+          description="Full ledger, chargebacks, and reconciliation tools."
+        />
       </div>
-      <p className="md-typescale-body-medium text-[var(--color-md-outline)]">
-        Full ledger and chargeback tools live on{" "}
-        <Link href="/payments" className="text-[var(--color-md-primary)] underline">
-          payments
-        </Link>
-        .
-      </p>
-    </PortalSurface>
+    </PageChrome>
   );
 }

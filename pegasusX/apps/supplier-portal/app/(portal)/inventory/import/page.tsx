@@ -16,7 +16,7 @@ import type {
 } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
 import { decodeJwtPayload, readTokenFromCookie } from "@/lib/auth";
-import { PortalSurface } from "../../_components/PortalSurface";
+import { PageChrome } from '@/components/PageChrome';
 
 const api = createSupplierApi();
 
@@ -140,7 +140,8 @@ export default function InventoryImportPage() {
   }
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="inventory"
       title="Inventory import wizard"
       description="Upload CSV, review column mapping, approve, and apply to warehouse inventory."
       error={error}
@@ -279,6 +280,6 @@ export default function InventoryImportPage() {
           </Link>
         </div>
       ) : null}
-    </PortalSurface>
+    </PageChrome>
   );
 }

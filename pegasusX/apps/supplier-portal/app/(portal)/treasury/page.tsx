@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import Icon from "@/components/Icon";
 import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
 import { createSupplierApi } from "@/lib/api";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
+import { HubCard } from "@/components/portal";
 import { errorToMessage, formatMinor, loadFinanceAuthoritySnapshot } from "../../payments/_shared/finance";
 
 export default function TreasuryPage() {
@@ -39,7 +38,8 @@ export default function TreasuryPage() {
   }, [api]);
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="treasury"
       title="Treasury"
       description="Payments, settlement authority, earnings, and reconciliation health."
       loading={loading}
@@ -61,35 +61,19 @@ export default function TreasuryPage() {
       </KpiStatGrid>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-        <Link
+        <HubCard
           href="/payments"
-          className="desk-card p-6 block transition-colors hover:border-[var(--desk-accent)] group"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="bento-card-title">Payments & ledger</h2>
-              <p className="mt-2 md-typescale-body-medium" style={{ color: "var(--desk-text-secondary)" }}>
-                Live finance stream, chargebacks, and reconciliation.
-              </p>
-            </div>
-            <Icon name="payment" size={22} className="opacity-60 group-hover:opacity-100 transition-opacity" />
-          </div>
-        </Link>
-        <Link
+          icon="payment"
+          title="Payments & ledger"
+          description="Live finance stream, chargebacks, and reconciliation."
+        />
+        <HubCard
           href="/earnings"
-          className="desk-card p-6 block transition-colors hover:border-[var(--desk-accent)] group"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="bento-card-title">Earnings & disputes</h2>
-              <p className="mt-2 md-typescale-body-medium" style={{ color: "var(--desk-text-secondary)" }}>
-                Treasury splits and dispute operations.
-              </p>
-            </div>
-            <Icon name="pricing" size={22} className="opacity-60 group-hover:opacity-100 transition-opacity" />
-          </div>
-        </Link>
+          icon="treasury"
+          title="Earnings & disputes"
+          description="Treasury splits and dispute operations."
+        />
       </div>
-    </PortalSurface>
+    </PageChrome>
   );
 }

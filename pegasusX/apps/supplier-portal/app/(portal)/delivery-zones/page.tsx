@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierTopologyResponse } from "@pegasusx/types";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
+import { DataList, DataListRow } from "@/components/portal";
 
 const api = createSupplierApi();
 
@@ -22,25 +23,28 @@ export default function DeliveryZonesPage() {
   }, []);
 
   return (
-    <PortalSurface
+    <PageChrome
       title="Delivery zones"
       description="H3 perimeter and warehouse coverage configured via topology."
+      icon="pin"
       loading={loading}
       error={error}
       empty={!topology || topology.warehouses.length === 0}
       emptyMessage="No warehouse coverage configured."
     >
-      <ul className="md-card divide-y divide-[var(--color-md-outline-variant)]">
+      <DataList>
         {topology?.warehouses.map((warehouse) => (
-          <li key={warehouse.warehouse_id || warehouse.name} className="p-4 md-typescale-body-medium">
-            <div className="font-medium">{warehouse.name}</div>
-            <div className="text-[var(--color-md-outline)] text-sm mt-1">
-              Radius {warehouse.coverage_radius_km} km · {warehouse.lat.toFixed(4)}, {warehouse.lng.toFixed(4)} ·{" "}
-              {warehouse.is_active ? "Active" : "Inactive"}
+          <DataListRow key={warehouse.warehouse_id || warehouse.name}>
+            <div className="min-w-0 md-typescale-body-medium">
+              <div className="font-medium">{warehouse.name}</div>
+              <div className="text-[var(--color-md-outline)] text-sm mt-1">
+                Radius {warehouse.coverage_radius_km} km · {warehouse.lat.toFixed(4)}, {warehouse.lng.toFixed(4)} ·{" "}
+                {warehouse.is_active ? "Active" : "Inactive"}
+              </div>
             </div>
-          </li>
+          </DataListRow>
         ))}
-      </ul>
+      </DataList>
       <p className="md-typescale-body-medium text-[var(--color-md-outline)]">
         Edit coverage on{" "}
         <Link href="/topology" className="text-[var(--color-md-primary)] underline">
@@ -48,6 +52,6 @@ export default function DeliveryZonesPage() {
         </Link>
         .
       </p>
-    </PortalSurface>
+    </PageChrome>
   );
 }

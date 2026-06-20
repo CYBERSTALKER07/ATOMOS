@@ -3,11 +3,12 @@
 import Link from "next/link";
 import FleetLiveMapPanel from "@/components/FleetLiveMapPanel";
 import Icon from "@/components/Icon";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 
 export default function FleetPage() {
   return (
-    <PortalSurface
+    <PageChrome
+      icon="fleet"
       title="Fleet & org"
       description="Live sealed-route execution and fleet onboarding."
     >
@@ -38,6 +39,6 @@ export default function FleetPage() {
           Open org & fleet onboarding
         </Link>
       </div>
-    </PortalSurface>
+    </PageChrome>
   );
 }

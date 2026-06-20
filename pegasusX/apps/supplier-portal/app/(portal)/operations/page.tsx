@@ -8,7 +8,7 @@ import { PageSection } from "@/components/PageSection";
 import { createSupplierApi } from "@/lib/api";
 import { decodeJwtPayload, readTokenFromCookie } from "@/lib/auth";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 import { errorToMessage } from "../../payments/_shared/finance";
 
 const api = createSupplierApi();
@@ -122,7 +122,8 @@ export default function OperationsPage() {
   };
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="operations"
       title="Operations"
       description="Empathy adoption, operator broadcast, replenishment trigger, and payment bypass."
       loading={loading}
@@ -273,6 +274,6 @@ export default function OperationsPage() {
           {error}
         </p>
       ) : null}
-    </PortalSurface>
+    </PageChrome>
   );
 }

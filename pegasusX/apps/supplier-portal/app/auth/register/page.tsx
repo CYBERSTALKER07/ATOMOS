@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PortalField, PortalInput, PortalSelect, FormAlert } from "@/components/portal";
 import { persistSession, supplierFetch } from "@/lib/auth";
 import {
   COUNTRIES,
@@ -114,23 +115,19 @@ export default function RegisterPage() {
         {state.step === "profile"      && <ProfileStepView state={state} setState={setState} errors={errors} />}
       </section>
 
-      {submitError && (
-        <p role="alert" className="md-typescale-body-medium mt-4" style={{ color: "var(--color-md-error)" }}>
-          {submitError}
-        </p>
-      )}
+      {submitError && <FormAlert variant="error">{submitError}</FormAlert>}
 
       <footer className="mt-6 flex items-center justify-between gap-4">
-        <button type="button" className="md-btn md-btn-text" onClick={back} disabled={stepIndex === 0 || submitting}>
+        <button type="button" className="portal-btn portal-btn--ghost" onClick={back} disabled={stepIndex === 0 || submitting}>
           Back
         </button>
         {state.step !== "profile" ? (
-          <button type="button" className="md-btn md-btn-filled" onClick={next} disabled={submitting}>
+          <button type="button" className="portal-btn portal-btn--primary" onClick={next} disabled={submitting}>
             Continue
           </button>
         ) : (
-          <button type="button" className="md-btn md-btn-filled" onClick={submit} disabled={submitting}>
-            {submitting ? "Creating..." : "Create supplier"}
+          <button type="button" className="portal-btn portal-btn--primary" onClick={submit} disabled={submitting}>
+            {submitting ? "Creating…" : "Create supplier"}
           </button>
         )}
       </footer>
@@ -140,20 +137,25 @@ export default function RegisterPage() {
 
 function Stepper({ currentIndex }: { currentIndex: number }) {
   return (
-    <ol className="auth-step-indicator" aria-label="Onboarding progress">
+    <ol className="setup-step-list !mt-0 !mb-0" aria-label="Onboarding progress">
       {STEP_ORDER.map((id, index) => {
         const done = index < currentIndex;
         const active = index === currentIndex;
+        const stateClass = done ? "setup-step-item--done" : active ? "setup-step-item--active" : "";
         return (
-          <li key={id} className="flex items-center gap-3">
-            {index > 0 ? <span className="auth-step-connector" aria-hidden /> : null}
-            <span
-              className={`auth-step-dot ${active ? "auth-step-dot--active" : ""} ${done ? "auth-step-dot--done" : ""}`}
-              aria-current={active ? "step" : undefined}
-              title={STEP_LABELS[id]}
-            >
-              {index + 1}
+          <li key={id} className={`setup-step-item ${stateClass}`} aria-current={active ? "step" : undefined}>
+            <span className="setup-step-badge" aria-hidden>
+              {done ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+              ) : (
+                index + 1
+              )}
             </span>
+            <div className="setup-step-copy">
+              <span className="setup-step-label">{STEP_LABELS[id]}</span>
+            </div>
           </li>
         );
       })}
@@ -271,13 +273,9 @@ function ProfileStepView({ state, setState, errors }: ViewProps) {
 
 function Field({ id, label, error, hint, children }: { id: string; label: string; error?: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label htmlFor={id} className="md-label">{label}</label>
+    <PortalField id={id} label={label} error={error} hint={hint}>
       {children}
-      {error
-        ? <p className="md-helper" data-error="true">{error}</p>
-        : hint ? <p className="md-helper">{hint}</p> : null}
-    </div>
+    </PortalField>
   );
 }
 

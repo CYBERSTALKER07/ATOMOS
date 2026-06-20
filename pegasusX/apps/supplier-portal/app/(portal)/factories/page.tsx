@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierTopologyFactory, SupplierTopologyUpdateRequest, SupplierTopologyWarehouse } from "@pegasusx/types";
 import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 
 const api = createSupplierApi();
 
@@ -102,7 +102,8 @@ export default function FactoriesPage() {
   };
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="factory"
       title="Factories"
       description="Production nodes for manifests and warehouse replenishment."
       loading={loading}
@@ -153,6 +154,6 @@ export default function FactoriesPage() {
           ))}
         </ul>
       )}
-    </PortalSurface>
+    </PageChrome>
   );
 }

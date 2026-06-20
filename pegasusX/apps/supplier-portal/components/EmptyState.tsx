@@ -38,7 +38,7 @@ export default function EmptyState({
       ) : null}
       {children}
       {action && onAction ? (
-        <button type="button" className="desk-btn-primary mt-2" onClick={onAction}>
+        <button type="button" className="portal-btn portal-btn--primary mt-2" onClick={onAction}>
           {action}
         </button>
       ) : null}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierTopologyResponse } from "@pegasusx/types";
 import { TopologyEditor } from "@/components/TopologyEditor";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 
 const api = createSupplierApi();
 
@@ -28,7 +28,8 @@ export default function TopologyPage() {
   }, []);
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="topology"
       title="Factories & warehouses"
       description="Create and edit warehouse and factory nodes. Coverage radius and co-location drive delivery zones and supply lanes."
       loading={loading}
@@ -42,6 +43,6 @@ export default function TopologyPage() {
           onSaved={(updated) => setTopology(updated)}
         />
       ) : null}
-    </PortalSurface>
+    </PageChrome>
   );
 }

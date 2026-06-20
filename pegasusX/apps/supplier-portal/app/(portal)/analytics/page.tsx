@@ -20,7 +20,7 @@ import type {
   SupplierAnalyticsVelocityResponse,
   SupplierDemandSummaryResponse,
 } from "@pegasusx/types";
-import { PortalSurface } from "../_components/PortalSurface";
+import { PageChrome } from "@/components/PageChrome";
 
 const api = createSupplierApi();
 
@@ -87,7 +87,8 @@ export default function AnalyticsPage() {
   );
 
   return (
-    <PortalSurface
+    <PageChrome
+      icon="analytics"
       title="Analytics"
       description="Financial overview and operational intelligence."
       loading={loading}
@@ -239,6 +240,6 @@ export default function AnalyticsPage() {
           </ul>
         </section>
       ) : null}
-    </PortalSurface>
+    </PageChrome>
   );
 }
