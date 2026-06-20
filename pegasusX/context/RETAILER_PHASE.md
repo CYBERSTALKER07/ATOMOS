@@ -168,6 +168,19 @@ cd pegasusX/apps/retailer-app-android && ./gradlew compileDebugKotlin
 
 ---
 
+## Phase RT-8 — Warehouse delivery-date proposal review
+
+**Status:** **CLOSED** (2026-06-17) — Retailer accept/reject when `confirmation_status=PENDING_WAREHOUSE`; `REVIEW_DELIVERY` badge; inbox/push deep link opens review sheet; WS on `PRE_ORDER_DATE_*`; SSMR propose → accept and propose → reject-cancel paths.
+
+| ID | Feature | Backend | Desktop | Android | iOS | Status |
+|----|---------|---------|---------|---------|-----|--------|
+| RT8-01 | Accept/reject proposal APIs | `AcceptDeliveryProposal`, `RejectDeliveryProposal` | `/orders` review panel | `OrdersScreen` banner | `DeliveryProposalReviewSheet` | **WIRED** |
+| RT8-02 | Reject draft preorder | `RejectPreorder` | — | — | — | **WIRED** |
+| RT8-03 | Notifications + WS | `PRE_ORDER_DATE_PROPOSED` deep link | WS + path deep link | FCM + WS | push + WS | **WIRED** |
+| RT8-04 | SSMR | smokecheck | — | — | — | **WIRED** (`PX_E2E_DELIVERY_PROPOSAL_OK`, `PX_E2E_DELIVERY_PROPOSAL_REJECT_CANCEL_OK`) |
+
+---
+
 ## Known remaining gaps (backend / cross-role)
 
 - Card tokenization Spanner persistence may return stub/503 on some stacks — clients show honest errors.

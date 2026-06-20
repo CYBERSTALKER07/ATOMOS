@@ -1160,6 +1160,19 @@ export class ApiClient {
     );
   }
 
+  async postWarehousePreorderReject(
+    orderId: string,
+    request: WarehouseOrderMutationRequest,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<WarehouseOrderMutationResponse> {
+    return this.request<WarehouseOrderMutationResponse>(
+      appendQuery(`/v1/warehouse/ops/preorders/${orderId}/reject`, query as Record<string, unknown>),
+      "POST",
+      { body: request, idempotencyKey },
+    );
+  }
+
   async postWarehouseOrderOverflow(
     orderId: string,
     request: WarehouseOrderMutationRequest = {},

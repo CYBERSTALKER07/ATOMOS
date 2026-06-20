@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useWsEvent } from "../../../lib/ws";
 import {
   Copy,
@@ -28,7 +28,7 @@ import { PageSection } from "../../../components/PageSection";
 import { ListRowSkeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
-import { confirmAiOrder, rejectAiOrder, confirmPreorder, editPreorder } from "../../../lib/api";
+import { confirmAiOrder, rejectAiOrder, confirmPreorder, editPreorder, acceptDeliveryProposal, rejectDeliveryProposal } from "../../../lib/api";
 import {
   retailerCancelKey,
   retailerRequestCancelKey,
@@ -94,6 +94,8 @@ export default function OrdersPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const ws = useOptionalWebSocket();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   const refreshAll = useCallback(() => {
     void mutateOrders();
@@ -113,6 +115,42 @@ export default function OrdersPage() {
   );
   useWsEvent(
     "DRIVER_APPROACHING",
+    useCallback(() => mutateOrders(), [mutateOrders]),
+  );
+  useWsEvent(
+    "PRE_ORDER_DATE_PROPOSED",
+    useCallback(() => mutateOrders(), [mutateOrders]),
+  );
+  useWsEvent(
+    "PRE_ORDER_DATE_ACCEPTED",
+    useCallback(() => mutateOrders(), [mutateOrders]),
+  );
+  useWsEvent(
+    "PRE_ORDER_DATE_REJECTED",
+    useCallback(() => mutateOrders(), [mutateOrders]),
+  );
+  useWsEvent(
+    "PRE_ORDER_CANCELLED",
+    useCallback(() => mutateOrders(), [mutateOrders]),
+  );
+  useWsEvent(
+    "PRE_ORDER_NUDGE",
+    useCallback(() => mutateOrders(), [mutateOrders]),
+  );
+  useWsEvent(
+    "PRE_ORDER_CONFIRMATION",
+    useCallback(() => mutateOrders(), [mutateOrders]),
+  );
+  useWsEvent(
+    "PRE_ORDER_AUTO_ACCEPTED",
+    useCallback(() => mutateOrders(), [mutateOrders]),
+  );
+  useWsEvent(
+    "PRE_ORDER_CONFIRMED",
+    useCallback(() => mutateOrders(), [mutateOrders]),
+  );
+  useWsEvent(
+    "PRE_ORDER_EDITED",
     useCallback(() => mutateOrders(), [mutateOrders]),
   );
 
@@ -219,6 +257,60 @@ export default function OrdersPage() {
     },
     [mutateOrders, mutateTracking],
   );
+
+  const handleAcceptDeliveryProposal = useCallback(
+    async (orderId: string) => {
+      setPreorderActionPending(true);
+      setActionError(null);
+      try {
+        const res = await acceptDeliveryProposal(orderId);
+        if (!res.ok) {
+          throw new Error(`Accept delivery proposal failed with ${res.status}`);
+        }
+        await Promise.all([mutateOrders(), mutateTracking()]);
+      } catch (err) {
+        setActionError(
+          err instanceof Error ? err.message : "Accept delivery proposal failed",
+        );
+      } finally {
+        setPreorderActionPending(false);
+      }
+    },
+    [mutateOrders, mutateTracking],
+  );
+
+  const handleRejectDeliveryProposal = useCallback(
+    async (orderId: string) => {
+      setPreorderActionPending(true);
+      setActionError(null);
+      try {
+        const res = await rejectDeliveryProposal(orderId, "Retailer declined proposed date");
+        if (!res.ok) {
+          throw new Error(`Reject delivery proposal failed with ${res.status}`);
+        }
+        await Promise.all([mutateOrders(), mutateTracking()]);
+      } catch (err) {
+        setActionError(
+          err instanceof Error ? err.message : "Reject delivery proposal failed",
+        );
+      } finally {
+        setPreorderActionPending(false);
+      }
+    },
+    [mutateOrders, mutateTracking],
+  );
+
+  useEffect(() => {
+    const pathMatch = pathname?.match(/\/orders\/([^/?]+)/);
+    if (pathMatch?.[1]) {
+      setSelectedId(pathMatch[1]);
+      return;
+    }
+    const orderId = searchParams.get("order_id");
+    if (orderId) {
+      setSelectedId(orderId);
+    }
+  }, [pathname, searchParams]);
 
   const cancellableStates = useMemo(
     () =>
@@ -342,6 +434,9 @@ export default function OrdersPage() {
     detail?.order_source === "MANUAL_PREORDER" &&
     detail?.state === "SCHEDULED" &&
     (detail?.confirmation_status === "DRAFT" || !detail?.confirmation_status);
+  const showDeliveryProposalReview =
+    detail?.confirmation_status === "PENDING_WAREHOUSE" ||
+    detail?.preorder_badge === "REVIEW_DELIVERY";
   const showCancelAction =
     !!detail &&
     (cancellableStates.has(detail.state) ||
@@ -666,6 +761,12 @@ export default function OrdersPage() {
                       <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] truncate">
                         {order.payment_gateway || "UNSPECIFIED"}
                       </p>
+                      {(order.preorder_badge === "REVIEW_DELIVERY" ||
+                        order.confirmation_status === "PENDING_WAREHOUSE") && (
+                        <Chip size="sm" color="warning" variant="flat" className="mt-1">
+                          Review Delivery
+                        </Chip>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
@@ -766,6 +867,50 @@ export default function OrdersPage() {
                       "Confirm Suggestion"
                     )}
                   </Button>
+                </div>
+              )}
+
+              {showDeliveryProposalReview && (
+                <div className="mb-10 rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-5 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Chip color="warning" variant="soft">Review Delivery</Chip>
+                    <span className="md-typescale-label-medium text-[var(--desk-text-secondary)]">
+                      Warehouse proposed a new delivery date
+                    </span>
+                  </div>
+                  {detail?.proposed_delivery_date && (
+                    <p className="md-typescale-body-medium">
+                      Proposed: {detail.proposed_delivery_date}
+                    </p>
+                  )}
+                  {detail?.delivery_proposal_reason && (
+                    <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
+                      {detail.delivery_proposal_reason}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      variant="secondary"
+                      isDisabled={preorderActionPending}
+                      onPress={() => detail && void handleRejectDeliveryProposal(detail.order_id)}
+                      className="h-11 px-5 rounded-xl font-bold"
+                    >
+                      Reject Proposal
+                    </Button>
+                    <Button
+                      variant="primary"
+                      isDisabled={preorderActionPending}
+                      onPress={() => detail && void handleAcceptDeliveryProposal(detail.order_id)}
+                      className="h-11 px-5 rounded-xl font-bold"
+                      style={{ background: "var(--desk-accent)", color: "white" }}
+                    >
+                      {preorderActionPending ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        "Accept Date"
+                      )}
+                    </Button>
+                  </div>
                 </div>
               )}
 

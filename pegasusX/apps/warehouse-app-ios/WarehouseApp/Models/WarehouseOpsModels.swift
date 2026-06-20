@@ -132,6 +132,16 @@ struct WarehouseOrderMutationRequest: Encodable {
     let reason: String?
 }
 
+struct WarehouseProposeDeliveryRequest: Encodable {
+    let proposedDeliveryDate: String
+    let reason: String
+
+    enum CodingKeys: String, CodingKey {
+        case proposedDeliveryDate = "proposed_delivery_date"
+        case reason
+    }
+}
+
 struct WarehouseOrderMutationResponse: Decodable {
     let orderId: String
     let status: String

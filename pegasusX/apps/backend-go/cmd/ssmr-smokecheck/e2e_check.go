@@ -267,6 +267,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runManualPreorderE2E(ctx, client, base, retailerToken, cookie, cfg, h3Cell); err != nil {
 		return fmt.Errorf("manual preorder: %w", err)
 	}
+	if err := runDeliveryProposalE2E(ctx, client, base, retailerToken, cookie, cfg, h3Cell); err != nil {
+		return fmt.Errorf("delivery proposal: %w", err)
+	}
 
 	fmt.Println("PX_E2E_ORDER_OK")
 	fmt.Println("PX_E2E_PAYMENT_OK")
@@ -4264,6 +4267,117 @@ func runManualPreorderE2E(ctx context.Context, client *http.Client, base, retail
 	}
 	fmt.Println("PX_E2E_MANUAL_PREORDER_OK")
 	fmt.Println("PX_E2E_WAREHOUSE_PREORDER_REJECT_OK")
+	return nil
+}
+
+func runDeliveryProposalE2E(ctx context.Context, client *http.Client, base, retailerToken, cookie string, cfg *bootstrap.Config, h3Cell string) error {
+	delivery := time.Now().UTC().AddDate(0, 0, 14).Truncate(24 * time.Hour).Add(12 * time.Hour)
+	proposed := delivery.AddDate(0, 0, 5)
+	createBody, _ := json.Marshal(map[string]any{
+		"line_items": []map[string]any{
+			{"sku": "SSMR-SKU-1", "quantity": 2, "unit_price_minor": 50000},
+		},
+		"h3_cell":                 h3Cell,
+		"lat":                     cfg.DeliveryZoneCenterLat,
+		"lng":                     cfg.DeliveryZoneCenterLng,
+		"delivery_mode":           "SCHEDULED",
+		"requested_delivery_date": delivery.Format(time.RFC3339),
+	})
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/order/create", createBody, retailerToken, "ssmr-delivery-proposal-create")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated {
+		return fmt.Errorf("delivery proposal create status %d body %s", status, string(respBody))
+	}
+	var created struct {
+		OrderID string `json:"order_id"`
+	}
+	if err := json.Unmarshal(respBody, &created); err != nil || created.OrderID == "" {
+		return fmt.Errorf("delivery proposal create missing order_id")
+	}
+	confirmBody, _ := json.Marshal(map[string]string{"order_id": created.OrderID})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/orders/confirm-preorder", confirmBody, retailerToken, "ssmr-delivery-proposal-confirm-"+created.OrderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("delivery proposal confirm status %d body %s", status, string(respBody))
+	}
+	proposeBody, _ := json.Marshal(map[string]string{
+		"proposed_delivery_date": proposed.Format(time.RFC3339),
+		"reason":                 "SSMR_PROPOSE_DATE",
+	})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/warehouse/ops/preorders/"+created.OrderID+"/propose-delivery", proposeBody, cookie, "ssmr-delivery-propose-"+created.OrderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse propose delivery status %d body %s", status, string(respBody))
+	}
+	if !strings.Contains(string(respBody), "PENDING_WAREHOUSE") {
+		return fmt.Errorf("propose response missing PENDING_WAREHOUSE: %s", string(respBody))
+	}
+	acceptBody, _ := json.Marshal(map[string]string{"order_id": created.OrderID})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/orders/accept-delivery-proposal", acceptBody, retailerToken, "ssmr-delivery-accept-"+created.OrderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("accept delivery proposal status %d body %s", status, string(respBody))
+	}
+	fmt.Println("PX_E2E_DELIVERY_PROPOSAL_OK")
+
+	rejectCreate, _ := json.Marshal(map[string]any{
+		"line_items": []map[string]any{
+			{"sku": "SSMR-SKU-1", "quantity": 1, "unit_price_minor": 50000},
+		},
+		"h3_cell":                 h3Cell,
+		"lat":                     cfg.DeliveryZoneCenterLat,
+		"lng":                     cfg.DeliveryZoneCenterLng,
+		"delivery_mode":           "SCHEDULED",
+		"requested_delivery_date": delivery.Format(time.RFC3339),
+	})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/create", rejectCreate, retailerToken, "ssmr-delivery-proposal-reject-create")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated {
+		return fmt.Errorf("delivery proposal reject create status %d body %s", status, string(respBody))
+	}
+	var rejectOrder struct {
+		OrderID string `json:"order_id"`
+	}
+	if err := json.Unmarshal(respBody, &rejectOrder); err != nil || rejectOrder.OrderID == "" {
+		return fmt.Errorf("delivery proposal reject create missing order_id")
+	}
+	confirmBody2, _ := json.Marshal(map[string]string{"order_id": rejectOrder.OrderID})
+	status, _, _, err = clientPost(ctx, client, base+"/v1/orders/confirm-preorder", confirmBody2, retailerToken, "ssmr-delivery-proposal-reject-confirm-"+rejectOrder.OrderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("delivery proposal reject confirm status %d", status)
+	}
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/warehouse/ops/preorders/"+rejectOrder.OrderID+"/propose-delivery", proposeBody, cookie, "ssmr-delivery-propose-reject-"+rejectOrder.OrderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse propose for reject path status %d body %s", status, string(respBody))
+	}
+	rejectBody, _ := json.Marshal(map[string]string{"order_id": rejectOrder.OrderID, "reason": "SSMR_REJECT_PROPOSAL"})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/orders/reject-delivery-proposal", rejectBody, retailerToken, "ssmr-delivery-reject-"+rejectOrder.OrderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("reject delivery proposal status %d body %s", status, string(respBody))
+	}
+	if !strings.Contains(string(respBody), "CANCELLED") {
+		return fmt.Errorf("reject proposal response missing CANCELLED: %s", string(respBody))
+	}
+	fmt.Println("PX_E2E_DELIVERY_PROPOSAL_REJECT_CANCEL_OK")
 	return nil
 }
 

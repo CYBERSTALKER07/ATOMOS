@@ -296,6 +296,46 @@ class OrdersViewModel @Inject constructor(
         }
     }
 
+    fun acceptDeliveryProposal(orderId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
+            try {
+                api.acceptDeliveryProposal(
+                    body = mapOf("order_id" to orderId),
+                    idempotencyKey = RetailerIdempotencyKeys.acceptDeliveryProposal(orderId),
+                )
+                refresh()
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
+            }
+        }
+    }
+
+    fun rejectDeliveryProposal(orderId: String, reason: String = "Retailer rejected proposed date") {
+        viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
+            try {
+                api.rejectDeliveryProposal(
+                    body = mapOf("order_id" to orderId, "reason" to reason),
+                    idempotencyKey = RetailerIdempotencyKeys.rejectDeliveryProposal(orderId, reason),
+                )
+                refresh()
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
+            }
+        }
+    }
+
     fun editPreorder(order: Order, requestedDeliveryDate: String? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(orderActionPending = true, error = null) }

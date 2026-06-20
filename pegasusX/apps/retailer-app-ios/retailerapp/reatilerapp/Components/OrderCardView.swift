@@ -7,6 +7,7 @@ struct OrderCardView: View {
     var onRejectAi: (() -> Void)? = nil
     var onConfirmPreorder: (() -> Void)? = nil
     var onEditPreorder: (() -> Void)? = nil
+    var onReviewDeliveryProposal: (() -> Void)? = nil
 
     @State private var appeared = false
 
@@ -38,6 +39,24 @@ struct OrderCardView: View {
 
                 // Status Badge
                 statusBadge
+            }
+
+            if order.needsDeliveryProposalReview {
+                HStack(spacing: AppTheme.spacingSM) {
+                    Text("Review Delivery")
+                        .font(.system(.caption2, design: .rounded, weight: .bold))
+                        .foregroundStyle(AppTheme.warning)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppTheme.warning.opacity(0.15))
+                        .clipShape(.capsule)
+                    if let date = order.proposedDeliveryDate, !date.isEmpty {
+                        Text("Proposed: \(date)")
+                            .font(.system(.caption2, design: .rounded))
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .lineLimit(1)
+                    }
+                }
             }
 
             // Progress indicator for active orders
@@ -94,13 +113,28 @@ struct OrderCardView: View {
             }
 
             // Footer
-            if order.status == .pendingReview || order.status == .scheduled || (order.status.canCancel && onCancel != nil) {
+            if order.status == .pendingReview || order.needsDeliveryProposalReview ||
+                (order.status == .scheduled && order.needsManualPreorderAction) ||
+                (order.status.canCancel && onCancel != nil) {
                 Rectangle()
                     .fill(AppTheme.separator.opacity(0.5))
                     .frame(height: AppTheme.separatorHeight)
 
                 HStack {
-                    if order.status == .pendingReview {
+                    if order.needsDeliveryProposalReview {
+                        Button {
+                            Haptics.medium()
+                            onReviewDeliveryProposal?()
+                        } label: {
+                            Text("Review Proposal")
+                                .font(.system(.caption, design: .rounded, weight: .bold))
+                                .foregroundStyle(AppTheme.cardBackground)
+                                .padding(.horizontal, AppTheme.spacingMD)
+                                .padding(.vertical, AppTheme.spacingSM)
+                                .background(AppTheme.accent)
+                                .clipShape(.capsule)
+                        }
+                    } else if order.status == .pendingReview {
                         Button {
                             Haptics.medium()
                             onRejectAi?()
@@ -128,7 +162,7 @@ struct OrderCardView: View {
                                 .background(AppTheme.accent)
                                 .clipShape(.capsule)
                         }
-                    } else if order.status == .scheduled {
+                    } else if order.status == .scheduled, order.needsManualPreorderAction {
                         Button {
                             Haptics.medium()
                             onEditPreorder?()

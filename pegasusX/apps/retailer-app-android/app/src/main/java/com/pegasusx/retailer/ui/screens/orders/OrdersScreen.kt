@@ -243,6 +243,8 @@ fun OrdersScreen(
                         onRejectAi = { order -> viewModel.rejectAiOrder(order.id) },
                         onConfirmPreorder = { order -> viewModel.confirmPreorder(order.id) },
                         onEditPreorder = { order -> viewModel.editPreorder(order) },
+                        onAcceptDeliveryProposal = { order -> viewModel.acceptDeliveryProposal(order.id) },
+                        onRejectDeliveryProposal = { order -> viewModel.rejectDeliveryProposal(order.id) },
                     )
                     2 -> AiPlannedList(
                         predictions = uiState.predictions,
@@ -302,6 +304,8 @@ private fun OrderedList(
     onRejectAi: (Order) -> Unit = {},
     onConfirmPreorder: (Order) -> Unit = {},
     onEditPreorder: (Order) -> Unit = {},
+    onAcceptDeliveryProposal: (Order) -> Unit = {},
+    onRejectDeliveryProposal: (Order) -> Unit = {},
 ) {
     if (isLoading && orders.isEmpty()) {
         ShimmerOrderList()
@@ -321,6 +325,8 @@ private fun OrderedList(
                 onRejectAi = { onRejectAi(order) },
                 onConfirmPreorder = { onConfirmPreorder(order) },
                 onEditPreorder = { onEditPreorder(order) },
+                onAcceptDeliveryProposal = { onAcceptDeliveryProposal(order) },
+                onRejectDeliveryProposal = { onRejectDeliveryProposal(order) },
             )
         }
         item { Spacer(modifier = Modifier.height(32.dp)) }
@@ -495,6 +501,8 @@ private fun OrderedCard(
     onRejectAi: () -> Unit = {},
     onConfirmPreorder: () -> Unit = {},
     onEditPreorder: () -> Unit = {},
+    onAcceptDeliveryProposal: () -> Unit = {},
+    onRejectDeliveryProposal: () -> Unit = {},
 ) {
     val ringColor = order.status.statusColor()
 
@@ -542,6 +550,39 @@ private fun OrderedCard(
                 OrderStatusBadge(order.status)
             }
 
+            if (order.needsDeliveryProposalReview) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(StatusOrange.copy(alpha = 0.12f), SoftSquircleShape)
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Review Delivery",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = StatusOrange,
+                    )
+                    order.proposedDeliveryDate?.let { date ->
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Proposed: $date",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        )
+                    }
+                }
+                order.deliveryProposalReason?.takeIf { it.isNotBlank() }?.let { reason ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        reason,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    )
+                }
+            }
+
             // Tag pills
             if (order.items.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -567,7 +608,28 @@ private fun OrderedCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (order.needsAiConfirmation) {
+                if (order.needsDeliveryProposalReview) {
+                    Text(
+                        "Reject",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = StatusRed,
+                        modifier = Modifier
+                            .clip(PillShape)
+                            .clickable { onRejectDeliveryProposal() }
+                            .background(StatusRed.copy(alpha = 0.1f), PillShape)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                    Text(
+                        "Accept Date",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = Color.White,
+                        modifier = Modifier
+                            .clip(PillShape)
+                            .clickable { onAcceptDeliveryProposal() }
+                            .background(MaterialTheme.colorScheme.primary, PillShape)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                } else if (order.needsAiConfirmation) {
                     Text(
                         "Reject",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),

@@ -5,6 +5,7 @@ import {
   warehouseForceReceiveKey,
   warehouseOrderDelayKey,
   warehouseOrderOverflowKey,
+  warehouseOrderProposeDeliveryKey,
   warehouseOrderRejectKey,
   warehouseReceiveTransferKey,
 } from '@pegasusx/api-client';
@@ -22,6 +23,20 @@ export const warehouseOps = {
     ),
   rejectOrder: (orderId: string, reason: string) =>
     warehouseApi.postWarehouseOrderReject(
+      orderId,
+      { reason },
+      {},
+      warehouseOrderRejectKey(orderId, reason),
+    ),
+  proposePreorderDelivery: (orderId: string, proposedDeliveryDate: string, reason: string) =>
+    warehouseApi.postWarehouseProposeDelivery(
+      orderId,
+      { proposed_delivery_date: proposedDeliveryDate, reason },
+      {},
+      warehouseOrderProposeDeliveryKey(orderId, proposedDeliveryDate, reason),
+    ),
+  rejectPreorder: (orderId: string, reason: string) =>
+    warehouseApi.postWarehousePreorderReject(
       orderId,
       { reason },
       {},

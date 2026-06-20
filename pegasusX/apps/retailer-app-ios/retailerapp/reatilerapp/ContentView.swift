@@ -794,7 +794,8 @@ struct ContentView: View {
                 await loadActiveOrders()
             case .orderStatusChanged, .orderReassigned:
                 await loadActiveOrders()
-            case .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited, .preOrderNudge, .preOrderConfirmationPush:
+            case .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited, .preOrderNudge, .preOrderConfirmationPush,
+                 .preOrderDateProposed, .preOrderDateAccepted, .preOrderDateRejected, .preOrderCancelled:
                 await loadActiveOrders()
             case .shopClosedAlert(let alert):
                 shopClosedAlert = alert

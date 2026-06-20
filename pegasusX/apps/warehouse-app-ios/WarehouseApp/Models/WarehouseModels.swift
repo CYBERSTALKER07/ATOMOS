@@ -500,15 +500,33 @@ struct WarehousePreorderRow: Decodable, Identifiable {
     let orderId: String
     let status: String
     let orderSource: String?
+    let confirmationStatus: String?
     let requestedDeliveryDate: String?
+    let proposedDeliveryDate: String?
+    let deliveryProposalReason: String?
     let preorderBadge: String?
 
     enum CodingKeys: String, CodingKey {
         case orderId = "order_id"
         case status
         case orderSource = "order_source"
+        case confirmationStatus = "confirmation_status"
         case requestedDeliveryDate = "requested_delivery_date"
+        case proposedDeliveryDate = "proposed_delivery_date"
+        case deliveryProposalReason = "delivery_proposal_reason"
         case preorderBadge = "preorder_badge"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        orderId = try c.decode(String.self, forKey: .orderId)
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        orderSource = try c.decodeIfPresent(String.self, forKey: .orderSource)
+        confirmationStatus = try c.decodeIfPresent(String.self, forKey: .confirmationStatus)
+        requestedDeliveryDate = try c.decodeIfPresent(String.self, forKey: .requestedDeliveryDate)
+        proposedDeliveryDate = try c.decodeIfPresent(String.self, forKey: .proposedDeliveryDate)
+        deliveryProposalReason = try c.decodeIfPresent(String.self, forKey: .deliveryProposalReason)
+        preorderBadge = try c.decodeIfPresent(String.self, forKey: .preorderBadge)
     }
 }
 

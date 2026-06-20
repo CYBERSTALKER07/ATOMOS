@@ -53,7 +53,8 @@ final class OrdersViewModel {
             case .paymentRequired, .driverApproaching, .orderCompleted, .paymentSettled,
                  .paymentFailed, .paymentExpired, .orderStatusChanged, .orderReassigned,
                  .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited,
-                 .preOrderNudge, .preOrderConfirmationPush:
+                 .preOrderNudge, .preOrderConfirmationPush,
+                 .preOrderDateProposed, .preOrderDateAccepted, .preOrderDateRejected, .preOrderCancelled:
                 await loadData(silent: !allOrders.isEmpty)
             case .transportReconnected:
                 await flushPendingOrders(modelContext: modelContext)
@@ -146,6 +147,32 @@ final class OrdersViewModel {
             await loadData()
         } catch {
             loadError = "Failed to confirm preorder"
+        }
+    }
+
+    func acceptDeliveryProposal(_ orderId: String) async {
+        guard !orderActionPending else { return }
+        orderActionPending = true
+        defer { orderActionPending = false }
+        do {
+            try await api.acceptDeliveryProposal(orderId: orderId)
+            Haptics.success()
+            await loadData()
+        } catch {
+            loadError = "Failed to accept delivery proposal"
+        }
+    }
+
+    func rejectDeliveryProposal(_ orderId: String, reason: String? = "Retailer rejected proposed date") async {
+        guard !orderActionPending else { return }
+        orderActionPending = true
+        defer { orderActionPending = false }
+        do {
+            try await api.rejectDeliveryProposal(orderId: orderId, reason: reason)
+            Haptics.light()
+            await loadData()
+        } catch {
+            loadError = "Failed to reject delivery proposal"
         }
     }
 

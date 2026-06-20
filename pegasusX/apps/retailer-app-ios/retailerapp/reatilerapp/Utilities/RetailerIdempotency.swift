@@ -39,4 +39,25 @@ enum RetailerIdempotency {
     static func shopClosedResponse(orderId: String, response: String) -> String {
         "shop-closed-response:\(orderId):\(response)"
     }
+
+    static func acceptDeliveryProposal(orderId: String) -> String {
+        "retailer-accept-delivery-proposal:\(orderId)"
+    }
+
+    static func rejectDeliveryProposal(orderId: String, reason: String = "") -> String {
+        "retailer-reject-delivery-proposal:\(orderId):\(stableHash(reason))"
+    }
+
+    static func rejectPreorder(orderId: String, reason: String = "") -> String {
+        "retailer-reject-preorder:\(orderId):\(stableHash(reason))"
+    }
+
+    private static func stableHash(_ input: String) -> String {
+        var hash: UInt32 = 2166136261
+        for scalar in input.unicodeScalars {
+            hash ^= scalar.value
+            hash = hash &* 16777619
+        }
+        return String(hash, radix: 36)
+    }
 }

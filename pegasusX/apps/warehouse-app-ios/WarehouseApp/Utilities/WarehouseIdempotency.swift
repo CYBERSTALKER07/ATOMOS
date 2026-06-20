@@ -120,6 +120,10 @@ enum WarehouseIdempotency {
         "warehouse-order-reject:\(orderId):\(stableHash(reason))"
     }
 
+    static func orderProposeDelivery(orderId: String, proposedDate: String, reason: String) -> String {
+        "warehouse-order-propose-delivery:\(orderId):\(stableHash(proposedDate)):\(stableHash(reason))"
+    }
+
     static func orderOverflow(orderId: String) -> String {
         "warehouse-order-overflow:\(orderId)"
     }

@@ -68,6 +68,30 @@ enum WarehouseOperationsService {
         )
     }
 
+    static func proposePreorderDelivery(
+        orderId: String,
+        proposedDeliveryDate: String,
+        reason: String
+    ) async throws -> WarehouseOrderMutationResponse {
+        try await api.post(
+            "v1/warehouse/ops/preorders/\(orderId)/propose-delivery",
+            body: WarehouseProposeDeliveryRequest(proposedDeliveryDate: proposedDeliveryDate, reason: reason),
+            idempotencyKey: WarehouseIdempotency.orderProposeDelivery(
+                orderId: orderId,
+                proposedDate: proposedDeliveryDate,
+                reason: reason
+            )
+        )
+    }
+
+    static func rejectPreorder(orderId: String, reason: String) async throws -> WarehouseOrderMutationResponse {
+        try await api.post(
+            "v1/warehouse/ops/preorders/\(orderId)/reject",
+            body: WarehouseOrderMutationRequest(reason: reason),
+            idempotencyKey: WarehouseIdempotency.orderReject(orderId: orderId, reason: reason)
+        )
+    }
+
     static func overflowOrder(orderId: String, reason: String? = nil) async throws -> WarehouseOrderMutationResponse {
         try await api.post(
             "v1/warehouse/ops/orders/\(orderId)/overflow",

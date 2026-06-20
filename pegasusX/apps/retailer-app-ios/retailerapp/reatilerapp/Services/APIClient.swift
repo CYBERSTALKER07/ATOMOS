@@ -218,6 +218,23 @@ final class APIClient {
         let orderId: String
         enum CodingKeys: String, CodingKey { case orderId = "order_id" }
     }
+
+    struct AcceptDeliveryProposalRequest: Encodable {
+        let orderId: String
+        enum CodingKeys: String, CodingKey { case orderId = "order_id" }
+    }
+
+    struct RejectDeliveryProposalRequest: Encodable {
+        let orderId: String
+        let reason: String?
+        enum CodingKeys: String, CodingKey { case orderId = "order_id"; case reason }
+    }
+
+    struct RejectPreorderRequest: Encodable {
+        let orderId: String
+        let reason: String?
+        enum CodingKeys: String, CodingKey { case orderId = "order_id"; case reason }
+    }
     
     struct EditPreorderItem: Encodable {
         let sku: String
@@ -262,6 +279,30 @@ final class APIClient {
             path: "/v1/orders/confirm-preorder",
             body: ConfirmPreorderRequest(orderId: orderId),
             headers: ["Idempotency-Key": RetailerIdempotency.confirmPreorder(orderId: orderId)]
+        )
+    }
+
+    func acceptDeliveryProposal(orderId: String) async throws {
+        let _: APIResponse<String> = try await post(
+            path: "/v1/orders/accept-delivery-proposal",
+            body: AcceptDeliveryProposalRequest(orderId: orderId),
+            headers: ["Idempotency-Key": RetailerIdempotency.acceptDeliveryProposal(orderId: orderId)]
+        )
+    }
+
+    func rejectDeliveryProposal(orderId: String, reason: String? = nil) async throws {
+        let _: APIResponse<String> = try await post(
+            path: "/v1/orders/reject-delivery-proposal",
+            body: RejectDeliveryProposalRequest(orderId: orderId, reason: reason),
+            headers: ["Idempotency-Key": RetailerIdempotency.rejectDeliveryProposal(orderId: orderId, reason: reason ?? "")]
+        )
+    }
+
+    func rejectPreorder(orderId: String, reason: String? = nil) async throws {
+        let _: APIResponse<String> = try await post(
+            path: "/v1/orders/reject-preorder",
+            body: RejectPreorderRequest(orderId: orderId, reason: reason),
+            headers: ["Idempotency-Key": RetailerIdempotency.rejectPreorder(orderId: orderId, reason: reason ?? "")]
         )
     }
 

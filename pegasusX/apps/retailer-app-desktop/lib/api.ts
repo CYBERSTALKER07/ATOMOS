@@ -2,6 +2,8 @@ import { apiFetch } from './auth';
 import {
   retailerConfirmAIKey,
   retailerConfirmPreorderKey,
+  retailerAcceptDeliveryProposalKey,
+  retailerRejectDeliveryProposalKey,
 } from '@pegasusx/api-client';
 
 // ── AI & Preorder Integrations ──
@@ -41,6 +43,22 @@ export async function editPreorder(
       requested_delivery_date: requestedDeliveryDate,
       line_items: lineItems,
     }),
+  });
+}
+
+export async function acceptDeliveryProposal(orderId: string): Promise<Response> {
+  return apiFetch('/v1/orders/accept-delivery-proposal', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': retailerAcceptDeliveryProposalKey(orderId) },
+    body: JSON.stringify({ order_id: orderId }),
+  });
+}
+
+export async function rejectDeliveryProposal(orderId: string, reason: string): Promise<Response> {
+  return apiFetch('/v1/orders/reject-delivery-proposal', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': retailerRejectDeliveryProposalKey(orderId, reason) },
+    body: JSON.stringify({ order_id: orderId, reason }),
   });
 }
 

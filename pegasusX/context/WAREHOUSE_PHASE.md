@@ -209,6 +209,19 @@ cd pegasusX && make parity-contract-full
 
 ---
 
+## Phase WH-14 — Pre-order hub + delivery-date negotiation
+
+**Status:** **CLOSED** (2026-06-17) — `ProposedDeliveryDate` columns, `PENDING_WAREHOUSE` confirmation status, warehouse `propose-delivery` + retailer accept/reject-proposal, active orders list excludes `SCHEDULED` manual pre-orders, `PRE_ORDER_DATE_*` notifications with `/orders/{id}?review=1`, role-row calendar propose + review sheet, SSMR `PX_E2E_DELIVERY_PROPOSAL_OK`, `PX_E2E_DELIVERY_PROPOSAL_REJECT_CANCEL_OK`.
+
+| ID | Surface | Notes |
+|----|---------|-------|
+| WH14-01 | Backend | `delivery_proposal.go`, warehouse/retailer routes, T-2 lock, inventory release on reject |
+| WH14-02 | Warehouse row | Android DatePicker propose, iOS sheet, portal actions column, WS refresh |
+| WH14-03 | Retailer row | Review Delivery badge, accept/reject proposal, push deep link `?review=1` |
+| WH14-04 | Contracts | `packages/types`, `api-client`, `events.schema.json`, i18n notification copy |
+
+---
+
 ## Phase WH-12 — Native ops depth + ecosystem parity (P1/P2)
 
 **Status:** **CLOSED** (2026-06-15) — ops settings, per-SKU inventory policy, enriched supply-request create on Android + iOS; nav README + notifications label fix; WAREHOUSE row **Wired** in parity matrix.

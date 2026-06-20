@@ -148,6 +148,10 @@ enum RetailerWSEvent {
     case preOrderEdited(orderId: String)
     case preOrderNudge(orderId: String)
     case preOrderConfirmationPush(orderId: String)
+    case preOrderDateProposed(orderId: String)
+    case preOrderDateAccepted(orderId: String)
+    case preOrderDateRejected(orderId: String)
+    case preOrderCancelled(orderId: String)
     case shopClosedAlert(ShopClosedAlertEvent)
     case cartSyncUpdated(CartSyncUpdatedEvent)
     case promotionChanged(supplierId: String)
@@ -324,7 +328,8 @@ final class RetailerWebSocket {
             }
         case "ORDER_REASSIGNED":
             emit(.orderReassigned)
-        case "PRE_ORDER_AUTO_ACCEPTED", "PRE_ORDER_CONFIRMED", "PRE_ORDER_EDITED", "PRE_ORDER_NUDGE", "PRE_ORDER_CONFIRMATION":
+        case "PRE_ORDER_AUTO_ACCEPTED", "PRE_ORDER_CONFIRMED", "PRE_ORDER_EDITED", "PRE_ORDER_NUDGE", "PRE_ORDER_CONFIRMATION",
+             "PRE_ORDER_DATE_PROPOSED", "PRE_ORDER_DATE_ACCEPTED", "PRE_ORDER_DATE_REJECTED", "PRE_ORDER_CANCELLED":
             if let orderId = json["order_id"] as? String {
                 switch type {
                 case "PRE_ORDER_AUTO_ACCEPTED": emit(.preOrderAutoAccepted(orderId: orderId))
@@ -332,6 +337,10 @@ final class RetailerWebSocket {
                 case "PRE_ORDER_EDITED": emit(.preOrderEdited(orderId: orderId))
                 case "PRE_ORDER_NUDGE": emit(.preOrderNudge(orderId: orderId))
                 case "PRE_ORDER_CONFIRMATION": emit(.preOrderConfirmationPush(orderId: orderId))
+                case "PRE_ORDER_DATE_PROPOSED": emit(.preOrderDateProposed(orderId: orderId))
+                case "PRE_ORDER_DATE_ACCEPTED": emit(.preOrderDateAccepted(orderId: orderId))
+                case "PRE_ORDER_DATE_REJECTED": emit(.preOrderDateRejected(orderId: orderId))
+                case "PRE_ORDER_CANCELLED": emit(.preOrderCancelled(orderId: orderId))
                 default: break
                 }
             }

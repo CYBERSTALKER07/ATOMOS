@@ -223,6 +223,8 @@ struct Order: Codable, Identifiable, Hashable {
     let confirmationStatus: String?
     let deliveryPriority: String?
     let preorderBadge: String?
+    let proposedDeliveryDate: String?
+    let deliveryProposalReason: String?
     let createdAt: String
     let updatedAt: String
     let estimatedDelivery: String?
@@ -247,6 +249,8 @@ struct Order: Codable, Identifiable, Hashable {
         case confirmationStatus = "confirmation_status"
         case deliveryPriority = "delivery_priority"
         case preorderBadge = "preorder_badge"
+        case proposedDeliveryDate = "proposed_delivery_date"
+        case deliveryProposalReason = "delivery_proposal_reason"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case estimatedDelivery = "estimated_delivery"
@@ -254,7 +258,7 @@ struct Order: Codable, Identifiable, Hashable {
         case version = "version"
     }
 
-    init(id: String, retailerId: String, supplierId: String?, supplierName: String?, status: OrderStatus, items: [OrderLineItem], totalAmount: Int64, currency: String = "UZS", paymentGateway: String = "", paymentStatus: String? = nil, routeId: String? = nil, autoConfirmAt: String? = nil, deliverBefore: String? = nil, orderSource: String?, confirmationStatus: String? = nil, deliveryPriority: String? = nil, preorderBadge: String? = nil, createdAt: String, updatedAt: String, estimatedDelivery: String?, qrCode: String?, version: Int64 = 0) {
+    init(id: String, retailerId: String, supplierId: String?, supplierName: String?, status: OrderStatus, items: [OrderLineItem], totalAmount: Int64, currency: String = "UZS", paymentGateway: String = "", paymentStatus: String? = nil, routeId: String? = nil, autoConfirmAt: String? = nil, deliverBefore: String? = nil, orderSource: String?, confirmationStatus: String? = nil, deliveryPriority: String? = nil, preorderBadge: String? = nil, proposedDeliveryDate: String? = nil, deliveryProposalReason: String? = nil, createdAt: String, updatedAt: String, estimatedDelivery: String?, qrCode: String?, version: Int64 = 0) {
         self.id = id
         self.retailerId = retailerId
         self.supplierId = supplierId
@@ -272,6 +276,8 @@ struct Order: Codable, Identifiable, Hashable {
         self.confirmationStatus = confirmationStatus
         self.deliveryPriority = deliveryPriority
         self.preorderBadge = preorderBadge
+        self.proposedDeliveryDate = proposedDeliveryDate
+        self.deliveryProposalReason = deliveryProposalReason
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.estimatedDelivery = estimatedDelivery
@@ -305,6 +311,8 @@ struct Order: Codable, Identifiable, Hashable {
         self.confirmationStatus = try c.decodeIfPresent(String.self, forKey: .confirmationStatus)
         self.deliveryPriority = try c.decodeIfPresent(String.self, forKey: .deliveryPriority)
         self.preorderBadge = try c.decodeIfPresent(String.self, forKey: .preorderBadge)
+        self.proposedDeliveryDate = try c.decodeIfPresent(String.self, forKey: .proposedDeliveryDate)
+        self.deliveryProposalReason = try c.decodeIfPresent(String.self, forKey: .deliveryProposalReason)
         self.createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
                 self.updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt) ?? self.createdAt
                 self.estimatedDelivery = try c.decodeIfPresent(String.self, forKey: .estimatedDelivery) ?? self.deliverBefore
@@ -319,6 +327,10 @@ struct Order: Codable, Identifiable, Hashable {
     var needsManualPreorderAction: Bool {
         orderSource == "MANUAL_PREORDER" && status == .scheduled &&
             (confirmationStatus == nil || confirmationStatus == "DRAFT")
+    }
+
+    var needsDeliveryProposalReview: Bool {
+        confirmationStatus == "PENDING_WAREHOUSE" || preorderBadge == "REVIEW_DELIVERY"
     }
 
     var displayTotal: String {

@@ -42,6 +42,12 @@ const retailerNotificationEventTypes = new Set([
   'PRE_ORDER_AUTO_ACCEPTED',
   'PRE_ORDER_CONFIRMED',
   'PRE_ORDER_EDITED',
+  'PRE_ORDER_DATE_PROPOSED',
+  'PRE_ORDER_DATE_ACCEPTED',
+  'PRE_ORDER_DATE_REJECTED',
+  'PRE_ORDER_CANCELLED',
+  'PRE_ORDER_NUDGE',
+  'PRE_ORDER_CONFIRMATION',
 ]);
 
 export function normalizeNotification(item: BackendNotificationItem): RetailerNotificationItem {
