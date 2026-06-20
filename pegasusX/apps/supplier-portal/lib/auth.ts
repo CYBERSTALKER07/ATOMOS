@@ -4,7 +4,7 @@ const SUPPLIER_JWT_COOKIE = "supplier_jwt";
 const SUPPLIER_REFRESH_COOKIE = "pegasus_supplier_refresh";
 const SUPPLIER_JWT_STORAGE = "supplier_jwt";
 
-export function supplierApiBaseUrl(): string {
+function tauriBackendBaseUrl(): string {
   const envUrl = (
     process.env.NEXT_PUBLIC_API_URL ||
     process.env.NEXT_PUBLIC_SUPPLIER_BACKEND_BASE_URL ||
@@ -12,8 +12,16 @@ export function supplierApiBaseUrl(): string {
     ""
   ).replace(/\/$/, "");
   if (envUrl) return envUrl;
-  if (typeof window !== "undefined" && isTauri()) {
+  // 10.0.2.2 is the Android emulator host alias; desktop/macOS uses localhost.
+  if (typeof navigator !== "undefined" && /android/i.test(navigator.userAgent)) {
     return "http://10.0.2.2:8180";
+  }
+  return "http://localhost:8180";
+}
+
+export function supplierApiBaseUrl(): string {
+  if (typeof window !== "undefined" && isTauri()) {
+    return tauriBackendBaseUrl();
   }
   if (typeof window !== "undefined") {
     return "/api";
@@ -137,11 +145,25 @@ export async function supplierFetch(path: string, init?: RequestInit): Promise<R
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
-  const res = await fetch(url, {
-    ...init,
-    headers,
-    credentials: base === "/api" ? "include" : init?.credentials,
-  });
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 30_000);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      headers,
+      credentials: base === "/api" ? "include" : init?.credentials,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    window.clearTimeout(timeout);
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error(`Request timed out contacting ${base}`);
+    }
+    throw new Error(`Cannot reach API at ${base}. Is the backend running on port 8180?`);
+  } finally {
+    window.clearTimeout(timeout);
+  }
 
   if (res.status === 401) {
     if (!refreshInFlight) {
