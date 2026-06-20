@@ -44,6 +44,8 @@ type CartContextType = {
   total: number;
   previewOrderableQuantities: Record<string, number>;
   previewShowStockCounts: boolean;
+  previewStockPolicyReject: boolean;
+  checkoutPolicyToken: string | null;
   applyPreviewOrderableCaps: (preview: CheckoutPreviewResponse) => void;
 };
 
@@ -189,6 +191,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     Record<string, number>
   >({});
   const [previewShowStockCounts, setPreviewShowStockCounts] = useState(false);
+  const [previewStockPolicyReject, setPreviewStockPolicyReject] = useState(true);
+  const [checkoutPolicyToken, setCheckoutPolicyToken] = useState<string | null>(null);
   const quoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ws = useOptionalWebSocket();
@@ -324,7 +328,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = (product: AddToCartProduct | Product, quantity = 1) => {
     const meta = stockMetaFromProduct(product as Product);
-    const cappedQty = clampCartQuantity(meta, quantity, previewOrderableQuantities);
+    const cappedQty = clampCartQuantity(meta, quantity, previewOrderableQuantities, previewStockPolicyReject);
     setItems((prev) => {
       const existing = prev.find((i) => i.product_id === product.id);
       if (existing) {
@@ -339,6 +343,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           { ...mergedMeta, product_id: product.id },
           existing.quantity + cappedQty,
           previewOrderableQuantities,
+          previewStockPolicyReject,
         );
         return prev.map((i) =>
           i.product_id === product.id
@@ -374,9 +379,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!caps) return;
     setPreviewOrderableQuantities(caps);
     setPreviewShowStockCounts(Boolean(preview.show_stock_counts));
+    setPreviewStockPolicyReject(preview.default_out_of_stock_policy !== "ACCEPT_BACKORDER");
+    setCheckoutPolicyToken(preview.checkout_policy_token ?? null);
     setItems((prev) =>
       prev.map((item) => {
-        if (item.accepts_backorder) return item;
+        if (preview.default_out_of_stock_policy === "ACCEPT_BACKORDER" || item.accepts_backorder) return item;
         const cap = caps[item.product_id];
         if (cap == null || item.quantity <= cap) return item;
         return { ...item, quantity: cap };
@@ -394,7 +401,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (i.product_id !== product_id) {
           return i;
         }
-        const nextQty = clampCartQuantity(i, quantity, previewOrderableQuantities);
+        const nextQty = clampCartQuantity(i, quantity, previewOrderableQuantities, previewStockPolicyReject);
         return { ...i, quantity: nextQty };
       }),
     );
@@ -407,6 +414,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setTotal(0);
     setPreviewOrderableQuantities({});
     setPreviewShowStockCounts(false);
+    setPreviewStockPolicyReject(true);
+    setCheckoutPolicyToken(null);
   };
 
   useEffect(() => {
@@ -484,6 +493,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         total,
         previewOrderableQuantities,
         previewShowStockCounts,
+        previewStockPolicyReject,
+        checkoutPolicyToken,
         applyPreviewOrderableCaps,
       }}
     >

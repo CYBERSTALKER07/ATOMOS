@@ -76,6 +76,12 @@ struct CheckoutPreviewResponse: Decodable {
     let preorderMaxLeadDays: Int64?
     let orderLineMinQuantity: Int64?
     let orderLineMaxQuantity: Int64?
+    let defaultOutOfStockPolicy: String?
+    let checkoutPolicyToken: String?
+    let checkoutPolicyExpiresAt: String?
+    let orderAcceptanceOpen: Bool?
+    let orderAcceptanceWindowLabel: String?
+    let nextOrderAcceptanceAt: String?
 
     enum CodingKeys: String, CodingKey {
         case ok, blocked, code, message, shortfall
@@ -92,6 +98,12 @@ struct CheckoutPreviewResponse: Decodable {
         case preorderMaxLeadDays = "preorder_max_lead_days"
         case orderLineMinQuantity = "order_line_min_quantity"
         case orderLineMaxQuantity = "order_line_max_quantity"
+        case defaultOutOfStockPolicy = "default_out_of_stock_policy"
+        case checkoutPolicyToken = "checkout_policy_token"
+        case checkoutPolicyExpiresAt = "checkout_policy_expires_at"
+        case orderAcceptanceOpen = "order_acceptance_open"
+        case orderAcceptanceWindowLabel = "order_acceptance_window_label"
+        case nextOrderAcceptanceAt = "next_order_acceptance_at"
     }
 
     init(from decoder: Decoder) throws {
@@ -114,5 +126,11 @@ struct CheckoutPreviewResponse: Decodable {
         preorderMaxLeadDays = try container.decodeIfPresent(Int64.self, forKey: .preorderMaxLeadDays)
         orderLineMinQuantity = try container.decodeIfPresent(Int64.self, forKey: .orderLineMinQuantity)
         orderLineMaxQuantity = try container.decodeIfPresent(Int64.self, forKey: .orderLineMaxQuantity)
+        defaultOutOfStockPolicy = try container.decodeIfPresent(String.self, forKey: .defaultOutOfStockPolicy)
+        checkoutPolicyToken = try container.decodeIfPresent(String.self, forKey: .checkoutPolicyToken)
+        checkoutPolicyExpiresAt = try container.decodeIfPresent(String.self, forKey: .checkoutPolicyExpiresAt)
+        orderAcceptanceOpen = try container.decodeIfPresent(Bool.self, forKey: .orderAcceptanceOpen)
+        orderAcceptanceWindowLabel = try container.decodeIfPresent(String.self, forKey: .orderAcceptanceWindowLabel)
+        nextOrderAcceptanceAt = try container.decodeIfPresent(String.self, forKey: .nextOrderAcceptanceAt)
     }
 }

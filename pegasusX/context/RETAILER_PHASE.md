@@ -193,6 +193,21 @@ cd pegasusX/apps/retailer-app-android && ./gradlew compileDebugKotlin
 
 ---
 
+
+
+## Phase RT-10 — Stock policy grace + order acceptance (client parity)
+
+**Status:** **CLOSED** (2026-06-17) — Retailer desktop/Android/iOS clamp cart quantities using preview `default_out_of_stock_policy` (not catalog `accepts_backorder` alone); submit passes `checkout_policy_token`; preview surfaces `order_acceptance_closed` with window label.
+
+| ID | Feature | Desktop | Android | iOS | Status |
+|----|---------|---------|---------|-----|--------|
+| RT10-01 | Policy-aware clamp | `stock-policy.ts` | `CartViewModel.orderableCaps` | `CartManager` | **WIRED** |
+| RT10-02 | Policy grace token | `CheckoutModal` | `UnifiedCheckoutRequest` | `CheckoutView` | **WIRED** |
+| RT10-03 | Acceptance closed UX | preview banner | `order_acceptance_closed` | preview banner | **WIRED** |
+| RT10-04 | SSMR | — | — | — | `PX_E2E_CHECKOUT_POLICY_GRACE_OK` |
+
+---
+
 ## Known remaining gaps (backend / cross-role)
 
 - Card tokenization Spanner persistence may return stub/503 on some stacks — clients show honest errors.

@@ -74,3 +74,22 @@ func TestComputeOrderableQuantities_MinStockBlock(t *testing.T) {
 	require.Equal(t, int64(0), orderable["sku-a"])
 	require.Contains(t, errs["sku-a"], "minimum")
 }
+
+func TestComputeOrderableQuantities_RejectVsBackorder(t *testing.T) {
+	max := int64(50)
+	policy := WarehouseOpsPolicy{
+		DefaultOutOfStockPolicy: outOfStockPolicyReject,
+		OrderLineMaxQuantity:    &max,
+	}
+	avail := map[string]int64{"sku-a": 20}
+	perSKU := map[string]string{"sku-a": outOfStockPolicyReject}
+	orderable, errs := ComputeOrderableQuantitiesForPolicy(avail, perSKU, policy)
+	require.Empty(t, errs)
+	require.Equal(t, int64(20), orderable["sku-a"])
+
+	policy.DefaultOutOfStockPolicy = outOfStockPolicyAcceptBackorder
+	perSKU["sku-a"] = outOfStockPolicyAcceptBackorder
+	orderable, errs = ComputeOrderableQuantitiesForPolicy(avail, perSKU, policy)
+	require.Empty(t, errs)
+	require.Equal(t, int64(50), orderable["sku-a"])
+}

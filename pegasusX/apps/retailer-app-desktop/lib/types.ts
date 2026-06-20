@@ -240,6 +240,12 @@ export interface CheckoutPreviewResponse {
   order_line_max_quantity?: number;
   delivery_fee_minor?: number;
   delivery_distance_km?: number;
+  default_out_of_stock_policy?: string;
+  checkout_policy_token?: string;
+  checkout_policy_expires_at?: string;
+  order_acceptance_open?: boolean;
+  order_acceptance_window_label?: string;
+  next_order_acceptance_at?: string;
 }
 
 export interface UnifiedCheckoutResponse {

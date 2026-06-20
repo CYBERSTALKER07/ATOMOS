@@ -54,7 +54,7 @@ export default function CheckoutModal({
   onClose,
   total,
 }: CheckoutModalProps) {
-  const { items, clearCart, applyPreviewOrderableCaps } = useCart();
+  const { items, clearCart, applyPreviewOrderableCaps, checkoutPolicyToken } = useCart();
   const [method, setMethod] = useState<"global_pay" | "cash">("cash");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -258,6 +258,9 @@ export default function CheckoutModal({
           unit_price: item.price,
         };
       });
+      if (preview.code === "order_acceptance_closed") {
+        throw new Error(preview.message || "This supplier is not accepting orders at this time.");
+      }
       if (preview.blocked) {
         if (preview.line_errors && Object.keys(preview.line_errors).length > 0) {
           throw new Error(Object.values(preview.line_errors).join("; "));
@@ -295,6 +298,7 @@ export default function CheckoutModal({
         items: submitItems,
         delivery_mode: deliveryMode,
         delivery_priority: expressPriority ? "EXPRESS" : "STANDARD",
+        checkout_policy_token: checkoutPolicyToken ?? preview.checkout_policy_token,
       };
       if (deliveryDate) {
         const iso = new Date(`${deliveryDate}T12:00:00+05:00`).toISOString();

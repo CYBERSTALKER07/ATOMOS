@@ -37,3 +37,5 @@ type DayWindow struct {
 	Open  string `json:"open"`
 	Close string `json:"close"`
 }
+
+// EnforceOrderAcceptance on OperatingSchedule gates retailer order create/preview when true.

@@ -151,7 +151,8 @@ final class CartManager {
         longitude: Double = 0,
         deliveryMode: String? = nil,
         requestedDeliveryDate: String? = nil,
-        deliveryPriority: String? = nil
+        deliveryPriority: String? = nil,
+        checkoutPolicyToken: String? = nil
     ) -> UnifiedCheckoutPayload {
         UnifiedCheckoutPayload(
             retailerId: retailerId,
@@ -167,7 +168,8 @@ final class CartManager {
             },
             deliveryMode: deliveryMode,
             requestedDeliveryDate: requestedDeliveryDate,
-            deliveryPriority: deliveryPriority
+            deliveryPriority: deliveryPriority,
+            checkoutPolicyToken: checkoutPolicyToken
         )
     }
 
@@ -175,7 +177,8 @@ final class CartManager {
         let caps = preview.orderableQuantities ?? preview.maxQuantities
         guard let maxQuantities = caps else { return }
         for index in items.indices {
-            if items[index].product.acceptsBackorder { continue }
+            let rejectPolicy = preview.defaultOutOfStockPolicy?.uppercased() != "ACCEPT_BACKORDER"
+            if !rejectPolicy || items[index].product.acceptsBackorder { continue }
             let sku = items[index].variant.id.isEmpty ? items[index].product.id : items[index].variant.id
             guard let cap = maxQuantities[sku] else { continue }
             if items[index].quantity > Int(cap) {
@@ -186,7 +189,8 @@ final class CartManager {
 
     func maxQuantity(for item: CartItem, preview: CheckoutPreviewResponse?) -> Int {
         let sku = item.variant.id.isEmpty ? item.product.id : item.variant.id
-        if !item.product.acceptsBackorder, let preview {
+        let rejectPolicy = preview.defaultOutOfStockPolicy?.uppercased() != "ACCEPT_BACKORDER"
+        if rejectPolicy && !item.product.acceptsBackorder, let preview {
             let caps = preview.orderableQuantities ?? preview.maxQuantities
             if let cap = caps?[sku] {
                 return max(1, Int(cap))
@@ -263,6 +267,7 @@ struct UnifiedCheckoutPayload: Codable {
     let deliveryMode: String?
     let requestedDeliveryDate: String?
     let deliveryPriority: String?
+    let checkoutPolicyToken: String?
 
     struct Item: Codable {
         let skuId: String
@@ -283,6 +288,7 @@ struct UnifiedCheckoutPayload: Codable {
         case deliveryMode = "delivery_mode"
         case requestedDeliveryDate = "requested_delivery_date"
         case deliveryPriority = "delivery_priority"
+        case checkoutPolicyToken = "checkout_policy_token"
     }
 }
 

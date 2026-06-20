@@ -26,7 +26,7 @@ export default function CartDrawer({
   onClose,
   onCheckout,
 }: CartDrawerProps) {
-  const { items, updateQuantity, removeFromCart, total, previewOrderableQuantities, previewShowStockCounts } = useCart();
+  const { items, updateQuantity, removeFromCart, total, previewOrderableQuantities, previewShowStockCounts, previewStockPolicyReject } = useCart();
 
   return (
     <AnimatePresence>
@@ -74,7 +74,7 @@ export default function CartDrawer({
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <AnimatePresence mode="popLayout">
                 {items.map((item) => {
-                  const maxQty = effectiveCartMaxQuantity(item, previewOrderableQuantities);
+                  const maxQty = effectiveCartMaxQuantity(item, previewOrderableQuantities, previewStockPolicyReject);
                   const atCap = maxQty != null && item.quantity >= maxQty;
                   return (
                   <motion.div

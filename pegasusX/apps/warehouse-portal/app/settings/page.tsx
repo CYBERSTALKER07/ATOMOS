@@ -31,6 +31,11 @@ export default function WarehouseSettingsPage() {
   const [feeTierKm, setFeeTierKm] = useState('5');
   const [feeTierMinor, setFeeTierMinor] = useState('100000');
   const [scheduleJSON, setScheduleJSON] = useState('{\n  "is_24h": true\n}');
+  const [enforceOrderAcceptance, setEnforceOrderAcceptance] = useState(false);
+  const [scheduleIs24h, setScheduleIs24h] = useState(true);
+  const [scheduleTimezone, setScheduleTimezone] = useState('UTC');
+  const [weekdayOpen, setWeekdayOpen] = useState('09:00');
+  const [weekdayClose, setWeekdayClose] = useState('17:00');
   const [location, setLocation] = useState<LocationValue>({ address: '', lat: '0', lng: '0' });
   const [saving, setSaving] = useState(false);
   const [savingLocation, setSavingLocation] = useState(false);
@@ -57,6 +62,14 @@ export default function WarehouseSettingsPage() {
       }
       if (data.operating_schedule) {
         setScheduleJSON(JSON.stringify(data.operating_schedule, null, 2));
+        const sched = data.operating_schedule as Record<string, unknown>;
+        setEnforceOrderAcceptance(Boolean(sched.enforce_order_acceptance));
+        setScheduleIs24h(Boolean(sched.is_24h ?? true));
+        if (typeof sched.timezone === 'string') setScheduleTimezone(sched.timezone);
+        const weekdays = sched.schedules as Record<string, { open?: string; close?: string }> | undefined;
+        const mon = weekdays?.monday;
+        if (mon?.open) setWeekdayOpen(mon.open);
+        if (mon?.close) setWeekdayClose(mon.close);
       }
     }
     const locRes = await apiFetch('/v1/warehouse/ops/location');
@@ -78,13 +91,26 @@ export default function WarehouseSettingsPage() {
   async function save() {
     setSaving(true);
     try {
-      let operating_schedule: unknown;
+      let operating_schedule: Record<string, unknown>;
       try {
-        operating_schedule = JSON.parse(scheduleJSON);
+        operating_schedule = JSON.parse(scheduleJSON) as Record<string, unknown>;
       } catch {
-        toast('Operating schedule must be valid JSON', 'error');
-        return;
+        operating_schedule = {};
       }
+      const weekdayWindow = { open: weekdayOpen, close: weekdayClose };
+      operating_schedule = {
+        ...operating_schedule,
+        enforce_order_acceptance: enforceOrderAcceptance,
+        is_24h: scheduleIs24h,
+        timezone: scheduleTimezone,
+        schedules: {
+          monday: weekdayWindow,
+          tuesday: weekdayWindow,
+          wednesday: weekdayWindow,
+          thursday: weekdayWindow,
+          friday: weekdayWindow,
+        },
+      };
       const minLead = Number.parseInt(preorderMinLeadDays, 10);
       const maxLead = Number.parseInt(preorderMaxLeadDays, 10);
       if (!Number.isFinite(minLead) || !Number.isFinite(maxLead)) {
@@ -254,7 +280,25 @@ export default function WarehouseSettingsPage() {
           </section>
 
           <section className="border border-[var(--border)] rounded-xl p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Operating hours (display only)</h2>
+            <h2 className="text-sm font-semibold">Order acceptance hours</h2>
+            <p className="text-xs text-[var(--muted)]">When enforcement is on, retailers cannot preview or create orders outside the window.</p>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={enforceOrderAcceptance} onChange={(e) => setEnforceOrderAcceptance(e.target.checked)} />
+              Enforce order acceptance hours
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={scheduleIs24h} onChange={(e) => setScheduleIs24h(e.target.checked)} />
+              Open 24 hours
+            </label>
+            <label className="text-sm block">
+              Timezone
+              <input className="w-full mt-1 rounded border p-2 text-sm" value={scheduleTimezone} onChange={(e) => setScheduleTimezone(e.target.value)} />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-sm">Weekday open<input className="w-full mt-1 rounded border p-2 text-sm" value={weekdayOpen} onChange={(e) => setWeekdayOpen(e.target.value)} /></label>
+              <label className="text-sm">Weekday close<input className="w-full mt-1 rounded border p-2 text-sm" value={weekdayClose} onChange={(e) => setWeekdayClose(e.target.value)} /></label>
+            </div>
+            <h3 className="text-xs font-semibold text-[var(--muted)]">Advanced JSON</h3>
             <textarea
               className="w-full min-h-[140px] font-mono text-xs rounded-lg border p-3"
               style={{ borderColor: 'var(--field-border)', background: 'var(--field-background)' }}

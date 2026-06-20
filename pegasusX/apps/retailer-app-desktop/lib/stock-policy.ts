@@ -48,8 +48,9 @@ export function productMaxQuantity(product: StockAwareProduct): number | null {
 export function effectiveCartMaxQuantity(
   item: StockAwareProduct & { product_id?: string },
   previewCaps?: Record<string, number>,
+  previewStockPolicyReject = true,
 ): number | null {
-  if (item.accepts_backorder) {
+  if (item.accepts_backorder || !previewStockPolicyReject) {
     return productMaxQuantity(item);
   }
   const sku = item.product_id;
@@ -73,10 +74,12 @@ export function clampCartQuantity(
   product: StockAwareProduct,
   quantity: number,
   previewCaps?: Record<string, number>,
+  previewStockPolicyReject = true,
 ): number {
   const max = effectiveCartMaxQuantity(
     product,
     previewCaps,
+    previewStockPolicyReject,
   );
   if (max != null && quantity > max) {
     return max;

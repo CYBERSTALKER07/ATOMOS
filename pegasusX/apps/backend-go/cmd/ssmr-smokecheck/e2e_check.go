@@ -273,6 +273,12 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runConcurrentStockRejectE2E(ctx, client, base, cfg, supplierID, retailerToken, cookie, h3Cell); err != nil {
 		return fmt.Errorf("concurrent stock reject: %w", err)
 	}
+	if err := runCheckoutPolicyGraceE2E(ctx, client, base, cfg, supplierID, retailerToken, cookie, h3Cell); err != nil {
+		return fmt.Errorf("checkout policy grace: %w", err)
+	}
+	if err := runOrderAcceptanceClosedE2E(ctx, client, base, cookie, retailerToken, cfg, h3Cell); err != nil {
+		return fmt.Errorf("order acceptance closed: %w", err)
+	}
 
 	fmt.Println("PX_E2E_ORDER_OK")
 	fmt.Println("PX_E2E_PAYMENT_OK")
@@ -4310,6 +4316,150 @@ func setOrderConfirmationStatus(ctx context.Context, cfg *bootstrap.Config, orde
 		})
 	})
 	return err
+}
+
+
+
+func runCheckoutPolicyGraceE2E(
+	ctx context.Context,
+	client *http.Client,
+	base string,
+	cfg *bootstrap.Config,
+	supplierID, retailerToken, cookie, h3Cell string,
+) error {
+	whID := demoWarehouseID()
+	sku := envOr("SSMR_SMOKE_SKU", "SSMR-SKU-1")
+	settingsURL := base + "/v1/warehouse/ops/settings?warehouse_id=" + whID
+
+	patchBackorder, _ := json.Marshal(map[string]string{"default_out_of_stock_policy": "ACCEPT_BACKORDER"})
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPatch, settingsURL, patchBackorder, cookie, "ssmr-policy-grace-backorder")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("policy grace backorder patch status %d body %s", status, string(respBody))
+	}
+
+	if err := setSupplierInventoryLevels(ctx, cfg, supplierID, whID, sku, 5, 0); err != nil {
+		return fmt.Errorf("policy grace seed inventory: %w", err)
+	}
+
+	previewBody, _ := json.Marshal(map[string]any{
+		"latitude":  cfg.DeliveryZoneCenterLat,
+		"longitude": cfg.DeliveryZoneCenterLng,
+		"items": []map[string]any{
+			{"sku_id": sku, "quantity": 10, "unit_price": 50000},
+		},
+	})
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/checkout/preview", previewBody, retailerToken, "ssmr-policy-grace-preview")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("policy grace preview status %d body %s", status, string(respBody))
+	}
+	var preview struct {
+		CheckoutPolicyToken string `json:"checkout_policy_token"`
+	}
+	if err := json.Unmarshal(respBody, &preview); err != nil {
+		return err
+	}
+	if preview.CheckoutPolicyToken == "" {
+		return fmt.Errorf("policy grace preview missing checkout_policy_token")
+	}
+
+	patchReject, _ := json.Marshal(map[string]string{"default_out_of_stock_policy": "REJECT"})
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, settingsURL, patchReject, cookie, "ssmr-policy-grace-reject")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("policy grace reject patch status %d body %s", status, string(respBody))
+	}
+
+	createBody, _ := json.Marshal(map[string]any{
+		"line_items": []map[string]any{
+			{"sku": sku, "quantity": 10, "unit_price_minor": 50000},
+		},
+		"h3_cell":               h3Cell,
+		"lat":                   cfg.DeliveryZoneCenterLat,
+		"lng":                   cfg.DeliveryZoneCenterLng,
+		"checkout_policy_token": preview.CheckoutPolicyToken,
+	})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/create", createBody, retailerToken, "ssmr-policy-grace-create")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated {
+		return fmt.Errorf("policy grace create status %d body %s", status, string(respBody))
+	}
+	var created struct {
+		BackorderedItemCount int `json:"backordered_item_count"`
+	}
+	_ = json.Unmarshal(respBody, &created)
+	if created.BackorderedItemCount < 1 {
+		return fmt.Errorf("policy grace expected backorder child, got %s", string(respBody))
+	}
+
+	fmt.Println("PX_E2E_CHECKOUT_POLICY_GRACE_OK")
+	return nil
+}
+
+func runOrderAcceptanceClosedE2E(
+	ctx context.Context,
+	client *http.Client,
+	base, cookie, retailerToken string,
+	cfg *bootstrap.Config,
+	h3Cell string,
+) error {
+	whID := demoWarehouseID()
+	settingsURL := base + "/v1/warehouse/ops/settings?warehouse_id=" + whID
+	weekdayKeys := []string{"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"}
+	otherDay := weekdayKeys[(int(time.Now().UTC().Weekday())+3)%7]
+	closedSchedule, _ := json.Marshal(map[string]any{
+		"operating_schedule": map[string]any{
+			"enforce_order_acceptance": true,
+			"is_24h":                   false,
+			"timezone":                 "UTC",
+			"schedules": map[string]any{
+				otherDay: map[string]string{"open": "09:00", "close": "17:00"},
+			},
+		},
+	})
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPatch, settingsURL, closedSchedule, cookie, "ssmr-order-acceptance-closed")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("order acceptance closed patch status %d body %s", status, string(respBody))
+	}
+
+	sku := envOr("SSMR_SMOKE_SKU", "SSMR-SKU-1")
+	createBody, _ := json.Marshal(map[string]any{
+		"line_items": []map[string]any{
+			{"sku": sku, "quantity": 1, "unit_price_minor": 50000},
+		},
+		"h3_cell": h3Cell,
+		"lat":     cfg.DeliveryZoneCenterLat,
+		"lng":     cfg.DeliveryZoneCenterLng,
+	})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/order/create", createBody, retailerToken, "ssmr-order-acceptance-closed-create")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusUnprocessableEntity {
+		return fmt.Errorf("order acceptance closed want 422 got %d body %s", status, string(respBody))
+	}
+	if !strings.Contains(string(respBody), "order_acceptance_closed") {
+		return fmt.Errorf("order acceptance closed missing code: %s", string(respBody))
+	}
+
+	// Restore open schedule for downstream tests.
+	openSchedule, _ := json.Marshal(map[string]any{"operating_schedule": map[string]any{"is_24h": true, "enforce_order_acceptance": false}})
+	_, _, _, _ = clientDo(ctx, client, http.MethodPatch, settingsURL, openSchedule, cookie, "ssmr-order-acceptance-restore")
+
+	fmt.Println("PX_E2E_ORDER_ACCEPTANCE_CLOSED_OK")
+	return nil
 }
 
 func runManualPreorderE2E(ctx context.Context, client *http.Client, base, retailerToken, cookie string, cfg *bootstrap.Config, h3Cell string) error {

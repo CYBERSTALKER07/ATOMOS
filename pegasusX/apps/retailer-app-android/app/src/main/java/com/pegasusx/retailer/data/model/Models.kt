@@ -761,6 +761,12 @@ data class CheckoutPreviewResponse(
     @SerialName("order_line_max_quantity") val orderLineMaxQuantity: Long? = null,
     @SerialName("delivery_fee_minor") val deliveryFeeMinor: Long = 0,
     @SerialName("delivery_distance_km") val deliveryDistanceKm: Double? = null,
+    @SerialName("default_out_of_stock_policy") val defaultOutOfStockPolicy: String? = null,
+    @SerialName("checkout_policy_token") val checkoutPolicyToken: String? = null,
+    @SerialName("checkout_policy_expires_at") val checkoutPolicyExpiresAt: String? = null,
+    @SerialName("order_acceptance_open") val orderAcceptanceOpen: Boolean? = null,
+    @SerialName("order_acceptance_window_label") val orderAcceptanceWindowLabel: String? = null,
+    @SerialName("next_order_acceptance_at") val nextOrderAcceptanceAt: String? = null,
 )
 
 @Serializable
@@ -841,6 +847,10 @@ data class UnifiedCheckoutRequest(
     @SerialName("latitude") val latitude: Double = 0.0,
     @SerialName("longitude") val longitude: Double = 0.0,
     @SerialName("items") val items: List<CheckoutLineItem>,
+    @SerialName("delivery_mode") val deliveryMode: String? = null,
+    @SerialName("requested_delivery_date") val requestedDeliveryDate: String? = null,
+    @SerialName("delivery_priority") val deliveryPriority: String? = null,
+    @SerialName("checkout_policy_token") val checkoutPolicyToken: String? = null,
 )
 
 // ── Delivery Tracking (real-time driver positions) ──

@@ -319,6 +319,7 @@ type CreateRequest struct {
 	RequestedDeliveryDate string     `json:"requested_delivery_date,omitempty"`
 	DeliverBefore         string     `json:"deliver_before,omitempty"`
 	DeliveryPriority      string     `json:"delivery_priority,omitempty"`
+	CheckoutPolicyToken   string     `json:"checkout_policy_token,omitempty"`
 }
 
 // CreateResponse is what callers get back.
@@ -886,6 +887,9 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		if packErrs := validatePackMultiples(ctx, s.spannerClient, lineItems); len(packErrs) > 0 {
 			return CreateResponse{}, fmt.Errorf("%w: %v", ErrLineQuantityOutOfRange, packErrs)
 		}
+		if open, _, _, closedMsg := checkOrderAcceptanceGate(whPolicy, now); !open {
+			return CreateResponse{}, fmt.Errorf("%w: %s", ErrOrderAcceptanceClosed, closedMsg)
+		}
 		deliveryFeeMinor, _ = ComputeOrderDeliveryFee(whPolicy, req.Lat, req.Lng)
 	}
 
@@ -899,7 +903,8 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 
 	var invPlan InventoryPlan
 	if s.spannerClient != nil {
-		invPlan, err = PlanInventoryCheckout(ctx, s.spannerClient, s.supplierID, warehouseID, lineItems)
+		policyOverride, _ := s.resolveCheckoutPolicyOverride(whPolicy, req.CheckoutPolicyToken)
+		invPlan, err = PlanInventoryCheckout(ctx, s.spannerClient, s.supplierID, warehouseID, lineItems, policyOverride)
 		if err != nil {
 			return CreateResponse{}, err
 		}
@@ -2024,6 +2029,8 @@ func (s *Service) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, ErrZoneMiss):
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrZoneMiss.Error()})
+		case errors.Is(err, ErrOrderAcceptanceClosed):
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error(), "code": ErrOrderAcceptanceClosed.Error()})
 		case errors.Is(err, ErrServiceabilityUnavailable):
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": ErrServiceabilityUnavailable.Error()})
 		default:

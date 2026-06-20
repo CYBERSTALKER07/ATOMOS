@@ -27,6 +27,11 @@ struct OpsSettingsView: View {
     @State private var feeTiers: [FeeTierDraft] = [FeeTierDraft(maxKm: "5", feeMinor: "0")]
     @State private var clearFeeRules = true
     @State private var scheduleJSON = "{\n  \"is_24h\": true\n}"
+    @State private var enforceOrderAcceptance = false
+    @State private var scheduleIs24h = true
+    @State private var scheduleTimezone = "UTC"
+    @State private var weekdayOpen = "09:00"
+    @State private var weekdayClose = "17:00"
     @State private var loading = true
     @State private var saving = false
     @State private var error: String?
@@ -126,10 +131,18 @@ struct OpsSettingsView: View {
                         }
                     }
 
-                    Section("Operating hours (display only)") {
-                        Text("Shown to retailers for planning. Dispatch and delivery are not blocked outside these hours.")
+                    Section("Order acceptance hours") {
+                        Text("When enforcement is on, retailers cannot preview or create orders outside the window.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        Toggle("Enforce order acceptance hours", isOn: $enforceOrderAcceptance)
+                        Toggle("Open 24 hours", isOn: $scheduleIs24h)
+                        TextField("Timezone", text: $scheduleTimezone)
+                        HStack {
+                            TextField("Weekday open", text: $weekdayOpen)
+                            TextField("Weekday close", text: $weekdayClose)
+                        }
+                        Text("Advanced JSON").font(.caption).foregroundStyle(.secondary)
                         TextEditor(text: $scheduleJSON)
                             .font(.system(.caption, design: .monospaced))
                             .frame(minHeight: 140)
@@ -159,6 +172,38 @@ struct OpsSettingsView: View {
             }
         }
         .task { load() }
+    }
+
+
+
+    private func applyScheduleFields(from schedule: [String: AnyCodable]) {
+        if let v = schedule["enforce_order_acceptance"]?.value as? Bool { enforceOrderAcceptance = v }
+        if let v = schedule["is_24h"]?.value as? Bool { scheduleIs24h = v }
+        if let v = schedule["timezone"]?.value as? String { scheduleTimezone = v }
+        if let weekdays = schedule["schedules"]?.value as? [String: Any],
+           let mon = weekdays["monday"] as? [String: Any] {
+            if let open = mon["open"] as? String { weekdayOpen = open }
+            if let close = mon["close"] as? String { weekdayClose = close }
+        }
+    }
+
+    private func buildScheduleForSave() -> [String: Any]? {
+        guard let data = scheduleJSON.data(using: .utf8),
+              var object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        let weekdayWindow: [String: String] = ["open": weekdayOpen, "close": weekdayClose]
+        object["enforce_order_acceptance"] = enforceOrderAcceptance
+        object["is_24h"] = scheduleIs24h
+        object["timezone"] = scheduleTimezone
+        object["schedules"] = [
+            "monday": weekdayWindow,
+            "tuesday": weekdayWindow,
+            "wednesday": weekdayWindow,
+            "thursday": weekdayWindow,
+            "friday": weekdayWindow,
+        ]
+        return object
     }
 
     private func load() {
@@ -208,6 +253,7 @@ struct OpsSettingsView: View {
                 }
                 if let schedule = settings.operatingSchedule {
                     scheduleJSON = schedule.prettyJSONString()
+                    applyScheduleFields(from: schedule)
                 }
             } catch {
                 self.error = error.localizedDescription
@@ -220,8 +266,7 @@ struct OpsSettingsView: View {
         saving = true
         saveMessage = nil
         scheduleError = nil
-        guard let data = scheduleJSON.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        guard let object = buildScheduleForSave() else {
             scheduleError = "Operating schedule must be valid JSON"
             saving = false
             return

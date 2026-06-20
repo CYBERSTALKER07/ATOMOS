@@ -57,6 +57,8 @@ data class CartUiState(
     val stockWarnings: List<StockWarning> = emptyList(),
     val previewMaxQuantities: Map<String, Int> = emptyMap(),
     val previewShowStockCounts: Boolean = false,
+    val previewStockPolicyReject: Boolean = true,
+    val checkoutPolicyToken: String? = null,
     val previewShortfall: Map<String, Long> = emptyMap(),
     val previewLoading: Boolean = false,
     val deliveryMode: String = "STANDARD",
@@ -433,7 +435,8 @@ init {
 
     private fun effectiveMaxQuantity(item: CartItem, state: CartUiState): Int? {
         val sku = skuIdFor(item)
-        if (!item.product.acceptsBackorder) {
+        val rejectPolicy = state.previewStockPolicyReject && !item.product.acceptsBackorder
+        if (rejectPolicy) {
             state.previewMaxQuantities[sku]?.let { return it }
         }
         return item.product.cartMaxQuantity?.let { cap ->
@@ -450,7 +453,7 @@ init {
         _uiState.update { state ->
             state.copy(
                 items = state.items.map { item ->
-                    if (item.product.acceptsBackorder) return@map item
+                    if (!state.previewStockPolicyReject || item.product.acceptsBackorder) return@map item
                     val sku = skuIdFor(item)
                     val cap = maxMap[sku] ?: return@map item
                     if (item.quantity > cap) item.copy(quantity = cap) else item
@@ -596,6 +599,8 @@ init {
                 it.copy(
                     previewMaxQuantities = preview.orderableCaps(),
                     previewShowStockCounts = preview.showStockCounts,
+                    previewStockPolicyReject = preview.defaultOutOfStockPolicy?.uppercase() != "ACCEPT_BACKORDER",
+                    checkoutPolicyToken = preview.checkoutPolicyToken,
                     previewShortfall = preview.shortfall,
                     oosItems = preview.oosItems.ifEmpty { preview.rejectedSkus },
                     stockWarnings = preview.stockWarnings,
@@ -643,6 +648,7 @@ init {
             deliveryMode = state.deliveryMode,
             requestedDeliveryDate = if (state.deliveryMode == "SCHEDULED") requestedDeliveryDate else null,
             deliveryPriority = if (state.expressPriority) "EXPRESS" else "STANDARD",
+            checkoutPolicyToken = state.checkoutPolicyToken,
         )
     }
 
@@ -686,6 +692,15 @@ init {
                 val preview = api.checkoutPreview(buildCheckoutRequest(state, retailerId, finalGateway))
                 applyPreviewCaps(preview)
                 val refreshedState = _uiState.value
+                if (preview.code == "order_acceptance_closed") {
+                    _uiState.update {
+                        it.copy(
+                            checkoutPhase = CheckoutPhase.REVIEW,
+                            checkoutError = preview.message ?: "Orders are not accepted at this time.",
+                        )
+                    }
+                    return@launch
+                }
                 if (preview.blocked) {
                     _uiState.update {
                         it.copy(

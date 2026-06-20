@@ -68,6 +68,7 @@ func PlanInventoryCheckout(
 	client *spanner.Client,
 	supplierID, warehouseID string,
 	items []LineItem,
+	warehousePolicyOverride string,
 ) (InventoryPlan, error) {
 	plan := InventoryPlan{}
 	if client == nil || warehouseID == "" || len(items) == 0 {
@@ -78,6 +79,9 @@ func PlanInventoryCheckout(
 	warehouseDefault, err := loadWarehouseDefaultPolicy(ctx, client, warehouseID)
 	if err != nil {
 		return plan, err
+	}
+	if override := strings.TrimSpace(warehousePolicyOverride); override != "" {
+		warehouseDefault = resolveOutOfStockPolicy(override, "")
 	}
 
 	type skuState struct {

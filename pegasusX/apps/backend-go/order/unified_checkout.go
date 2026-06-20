@@ -35,6 +35,7 @@ type UnifiedCheckoutRequest struct {
 	RequestedDeliveryDate string `json:"requested_delivery_date,omitempty"`
 	DeliverBefore         string `json:"deliver_before,omitempty"`
 	DeliveryPriority      string `json:"delivery_priority,omitempty"`
+	CheckoutPolicyToken   string `json:"checkout_policy_token,omitempty"`
 }
 
 // SupplierOrderResult is one supplier slice returned to clients.
@@ -194,6 +195,7 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 		RequestedDeliveryDate: req.RequestedDeliveryDate,
 		DeliverBefore:         req.DeliverBefore,
 		DeliveryPriority:      req.DeliveryPriority,
+		CheckoutPolicyToken:   req.CheckoutPolicyToken,
 	})
 	if err != nil {
 		return UnifiedCheckoutResponse{}, err

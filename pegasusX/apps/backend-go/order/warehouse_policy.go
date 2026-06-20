@@ -12,7 +12,12 @@ import (
 	"cloud.google.com/go/spanner"
 )
 
-var ErrLineQuantityOutOfRange = errors.New("line_quantity_out_of_range")
+var (
+	ErrLineQuantityOutOfRange = errors.New("line_quantity_out_of_range")
+	ErrOrderAcceptanceClosed  = errors.New("order_acceptance_closed")
+)
+
+const uncappedOrderableQuantity int64 = 99999
 
 // DeliveryFeeTier is one distance band for delivery surcharges.
 type DeliveryFeeTier struct {
@@ -40,6 +45,7 @@ type WarehouseOpsPolicy struct {
 	OrderLineMinQuantity       *int64
 	OrderLineMaxQuantity       *int64
 	DeliveryFeeRules           *DeliveryFeeRules
+	OperatingSchedule          OperatingSchedule
 	Lat                        float64
 	Lng                        float64
 }
@@ -56,6 +62,7 @@ func LoadWarehouseOpsPolicy(ctx context.Context, client *spanner.Client, warehou
 			"DefaultOutOfStockPolicy", "ShowStockCountsToRetailers", "IsOnShift",
 			"PreorderMinLeadDays", "PreorderMaxLeadDays",
 			"OrderLineMinQuantity", "OrderLineMaxQuantity", "DeliveryFeeRules",
+			"OperatingSchedule",
 		})
 	if err != nil {
 		return WarehouseOpsPolicy{}, fmt.Errorf("read warehouse %s: %w", warehouseID, err)
@@ -66,6 +73,7 @@ func LoadWarehouseOpsPolicy(ctx context.Context, client *spanner.Client, warehou
 		defaultPolicy              spanner.NullString
 		orderLineMin, orderLineMax spanner.NullInt64
 		feeRulesRaw                spanner.NullJSON
+		scheduleRaw                spanner.NullJSON
 		lat, lng                   spanner.NullFloat64
 	)
 	if err := row.Columns(
@@ -81,6 +89,7 @@ func LoadWarehouseOpsPolicy(ctx context.Context, client *spanner.Client, warehou
 		&orderLineMin,
 		&orderLineMax,
 		&feeRulesRaw,
+		&scheduleRaw,
 	); err != nil {
 		return WarehouseOpsPolicy{}, err
 	}
@@ -106,6 +115,12 @@ func LoadWarehouseOpsPolicy(ctx context.Context, client *spanner.Client, warehou
 			return WarehouseOpsPolicy{}, err
 		}
 		policy.DeliveryFeeRules = rules
+	}
+	if scheduleRaw.Valid {
+		policy.OperatingSchedule = ParseOperatingSchedule(json.RawMessage(scheduleRaw.String()))
+	}
+	if policy.DefaultOutOfStockPolicy == "" {
+		policy.DefaultOutOfStockPolicy = outOfStockPolicyReject
 	}
 	if policy.PreorderMinLeadDays <= 0 {
 		policy.PreorderMinLeadDays = 3
@@ -198,11 +213,41 @@ func EffectiveMaxQuantity(available int64, policy WarehouseOpsPolicy) int64 {
 	return available
 }
 
-// ComputeOrderableQuantities derives per-SKU checkout caps and line errors when stock cannot satisfy minimums.
+// ComputeOrderableQuantities derives per-SKU checkout caps using warehouse default REJECT policy.
 func ComputeOrderableQuantities(available map[string]int64, policy WarehouseOpsPolicy) (map[string]int64, map[string]string) {
+	perSKU := make(map[string]string, len(available))
+	def := policy.DefaultOutOfStockPolicy
+	if def == "" {
+		def = outOfStockPolicyReject
+	}
+	for sku := range available {
+		perSKU[sku] = def
+	}
+	return ComputeOrderableQuantitiesForPolicy(available, perSKU, policy)
+}
+
+// ComputeOrderableQuantitiesForPolicy caps by stock when REJECT, or line max only when ACCEPT_BACKORDER.
+func ComputeOrderableQuantitiesForPolicy(
+	available map[string]int64,
+	perSKUPolicy map[string]string,
+	policy WarehouseOpsPolicy,
+) (map[string]int64, map[string]string) {
 	orderable := make(map[string]int64, len(available))
 	lineErrs := make(map[string]string)
+	warehouseDefault := policy.DefaultOutOfStockPolicy
+	if warehouseDefault == "" {
+		warehouseDefault = outOfStockPolicyReject
+	}
 	for sku, avail := range available {
+		skuPolicy := resolveOutOfStockPolicy(warehouseDefault, perSKUPolicy[sku])
+		if skuPolicy == outOfStockPolicyAcceptBackorder {
+			cap := uncappedOrderableQuantity
+			if policy.OrderLineMaxQuantity != nil {
+				cap = *policy.OrderLineMaxQuantity
+			}
+			orderable[sku] = cap
+			continue
+		}
 		effective := EffectiveMaxQuantity(avail, policy)
 		if policy.OrderLineMinQuantity != nil && effective < *policy.OrderLineMinQuantity {
 			lineErrs[sku] = fmt.Sprintf("only %d available; minimum quantity is %d", effective, *policy.OrderLineMinQuantity)
@@ -215,6 +260,13 @@ func ComputeOrderableQuantities(available map[string]int64, policy WarehouseOpsP
 		lineErrs = nil
 	}
 	return orderable, lineErrs
+}
+
+func lineMaxOnlyCap(policy WarehouseOpsPolicy) int64 {
+	if policy.OrderLineMaxQuantity != nil {
+		return *policy.OrderLineMaxQuantity
+	}
+	return uncappedOrderableQuantity
 }
 
 func mergeLineErrors(a, b map[string]string) map[string]string {

@@ -235,6 +235,21 @@ cd pegasusX && make parity-contract-full
 
 ---
 
+
+
+## Phase WH-16 — Stock policy grace + order acceptance hours
+
+**Status:** **CLOSED** (2026-06-17) — Policy-aware `orderable_quantities` (REJECT caps by stock, ACCEPT_BACKORDER by line max only); `checkout_policy_token` honors permissive preview snapshot for 15m; `OperatingSchedule.enforce_order_acceptance` gates preview/create; warehouse portal + native ops settings expose enforce toggle and weekday window editor.
+
+| ID | Surface | Notes |
+|----|---------|-------|
+| WH16-01 | Backend | `ComputeOrderableQuantitiesForPolicy`, `IssueCheckoutPolicyToken`, `EvaluateOrderAcceptance` |
+| WH16-02 | Preview/Create | `default_out_of_stock_policy`, `order_acceptance_*`, token on unified checkout |
+| WH16-03 | Admin UI | Portal + Android/iOS `OpsSettings` enforce toggle + friendly schedule |
+| WH16-04 | SSMR | `PX_E2E_CHECKOUT_POLICY_GRACE_OK`, `PX_E2E_ORDER_ACCEPTANCE_CLOSED_OK` |
+
+---
+
 ## Phase WH-12 — Native ops depth + ecosystem parity (P1/P2)
 
 **Status:** **CLOSED** (2026-06-15) — ops settings, per-SKU inventory policy, enriched supply-request create on Android + iOS; nav README + notifications label fix; WAREHOUSE row **Wired** in parity matrix.

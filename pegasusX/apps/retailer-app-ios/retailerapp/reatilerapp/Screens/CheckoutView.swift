@@ -36,6 +36,7 @@ struct CheckoutView: View {
     @State private var showBackorderConfirm = false
     @State private var pendingBackorderPreview: CheckoutPreviewResponse?
     @State private var skipBackorderConfirm = false
+    @State private var checkoutPolicyToken: String?
 
     private let api = APIClient.shared
 
@@ -174,6 +175,7 @@ struct CheckoutView: View {
             oosItems = result.oosItems ?? result.rejectedSkus ?? []
             stockWarnings = result.stockWarnings
             cart.applyPreviewCaps(result)
+            checkoutPolicyToken = result.checkoutPolicyToken
         } catch let previewError as CheckoutPreviewError {
             if case .blocked(_, let items) = previewError {
                 oosItems = items
@@ -193,7 +195,8 @@ struct CheckoutView: View {
             paymentGateway: gateway,
             deliveryMode: deliveryMode,
             requestedDeliveryDate: requestedDate,
-            deliveryPriority: expressPriority ? "EXPRESS" : "STANDARD"
+            deliveryPriority: expressPriority ? "EXPRESS" : "STANDARD",
+            checkoutPolicyToken: checkoutPolicyToken
         )
     }
 
@@ -636,6 +639,12 @@ struct CheckoutView: View {
         }
 
         await fetchPreview()
+        if let preview, preview.code == "order_acceptance_closed" {
+            errorMessage = preview.message ?? "This supplier is not accepting orders at this time."
+            showError = true
+            isSubmitting = false
+            return
+        }
         if let preview, preview.blocked == true {
             oosItems = preview.oosItems ?? preview.rejectedSkus ?? []
             errorMessage = preview.message ?? "Checkout blocked by stock policy"

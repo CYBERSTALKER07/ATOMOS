@@ -21,6 +21,12 @@ import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +49,11 @@ fun OpsSettingsScreen(
     var feeTiers by remember { mutableStateOf(listOf(FeeTierDraft(maxKm = "5", feeMinor = "0"))) }
     var clearFeeRules by remember { mutableStateOf(true) }
     var scheduleJSON by remember { mutableStateOf("{\n  \"is_24h\": true\n}") }
+    var enforceOrderAcceptance by remember { mutableStateOf(false) }
+    var scheduleIs24h by remember { mutableStateOf(true) }
+    var scheduleTimezone by remember { mutableStateOf("UTC") }
+    var weekdayOpen by remember { mutableStateOf("09:00") }
+    var weekdayClose by remember { mutableStateOf("17:00") }
     var loading by remember { mutableStateOf(true) }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -50,6 +61,45 @@ fun OpsSettingsScreen(
     var saveMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+
+    fun applyScheduleFields(element: JsonElement) {
+        val obj = element.jsonObject
+        enforceOrderAcceptance = obj["enforce_order_acceptance"]?.jsonPrimitive?.booleanOrNull ?: false
+        scheduleIs24h = obj["is_24h"]?.jsonPrimitive?.booleanOrNull ?: true
+        scheduleTimezone = obj["timezone"]?.jsonPrimitive?.contentOrNull ?: "UTC"
+        obj["schedules"]?.jsonObject?.get("monday")?.jsonObject?.let { mon ->
+            weekdayOpen = mon["open"]?.jsonPrimitive?.contentOrNull ?: "09:00"
+            weekdayClose = mon["close"]?.jsonPrimitive?.contentOrNull ?: "17:00"
+        }
+    }
+
+    fun buildScheduleForSave(): JsonElement {
+        val base = try {
+            Json.parseToJsonElement(scheduleJSON).jsonObject
+        } catch (_: Exception) {
+            buildJsonObject {}
+        }
+        val weekdayWindow = buildJsonObject {
+            put("open", weekdayOpen)
+            put("close", weekdayClose)
+        }
+        return buildJsonObject {
+            base.forEach { (key, value) ->
+                if (key !in setOf("enforce_order_acceptance", "is_24h", "timezone", "schedules")) {
+                    put(key, value)
+                }
+            }
+            put("enforce_order_acceptance", enforceOrderAcceptance)
+            put("is_24h", scheduleIs24h)
+            put("timezone", scheduleTimezone)
+            put("schedules", buildJsonObject {
+                listOf("monday", "tuesday", "wednesday", "thursday", "friday").forEach { day ->
+                    put(day, weekdayWindow)
+                }
+            })
+        }
+    }
 
     fun load() {
         scope.launch {
@@ -97,6 +147,7 @@ fun OpsSettingsScreen(
                     }
                     body.operatingSchedule?.let {
                         scheduleJSON = Json { prettyPrint = true }.encodeToString(JsonElement.serializer(), it)
+                        applyScheduleFields(it)
                     }
                 } else {
                     error = "Failed (${resp.code()})"
@@ -115,7 +166,7 @@ fun OpsSettingsScreen(
             saveMessage = null
             scheduleError = null
             val schedule: JsonElement = try {
-                Json.parseToJsonElement(scheduleJSON)
+                buildScheduleForSave()
             } catch (_: Exception) {
                 scheduleError = "Operating schedule must be valid JSON"
                 saving = false
@@ -387,12 +438,52 @@ fun OpsSettingsScreen(
                     }
                 }
 
-                SettingsCard(title = "Operating hours (display only)") {
+                SettingsCard(title = "Order acceptance hours") {
                     Text(
-                        "Shown to retailers for planning. Dispatch and delivery are not blocked outside these hours.",
+                        "When enforcement is on, retailers cannot preview or create orders outside the window.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Enforce order acceptance hours")
+                        Switch(checked = enforceOrderAcceptance, onCheckedChange = { enforceOrderAcceptance = it })
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Open 24 hours")
+                        Switch(checked = scheduleIs24h, onCheckedChange = { scheduleIs24h = it })
+                    }
+                    OutlinedTextField(
+                        value = scheduleTimezone,
+                        onValueChange = { scheduleTimezone = it },
+                        label = { Text("Timezone") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                        OutlinedTextField(
+                            value = weekdayOpen,
+                            onValueChange = { weekdayOpen = it },
+                            label = { Text("Weekday open") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = weekdayClose,
+                            onValueChange = { weekdayClose = it },
+                            label = { Text("Weekday close") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Text("Advanced JSON", style = MaterialTheme.typography.labelMedium)
                     OutlinedTextField(
                         value = scheduleJSON,
                         onValueChange = { scheduleJSON = it },
