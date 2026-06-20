@@ -262,6 +262,9 @@ type OrderLifecycle interface {
 	RejectAIOrder(ctx context.Context, retailerID string, req order.RejectAIOrderRequest) (order.RetailerOrderLifecycleResponse, error)
 	EditPreorder(ctx context.Context, retailerID string, req order.EditPreorderRequest) (order.RetailerOrderLifecycleResponse, error)
 	ConfirmPreorder(ctx context.Context, retailerID string, req order.ConfirmPreorderRequest) (order.RetailerOrderLifecycleResponse, error)
+	AcceptDeliveryProposal(ctx context.Context, retailerID string, req order.AcceptDeliveryProposalRequest) (order.RetailerOrderLifecycleResponse, error)
+	RejectDeliveryProposal(ctx context.Context, retailerID string, req order.RejectDeliveryProposalRequest) (order.RetailerOrderLifecycleResponse, error)
+	RejectPreorder(ctx context.Context, retailerID string, req order.RejectPreorderRequest) (order.RetailerOrderLifecycleResponse, error)
 	ListRetailerAIPredictions(ctx context.Context, retailerID string, limit int) ([]order.RetailerAIPrediction, error)
 }
 

@@ -139,6 +139,9 @@ func deliveryModeLabel(o Order) string {
 }
 
 func preorderBadgeLabel(o Order) string {
+	if o.ConfirmationStatus == ConfirmationStatusPendingWarehouse {
+		return "REVIEW_DELIVERY"
+	}
 	if o.Source == OrderSourceManualPreorder && o.Status == StatusScheduled {
 		return "Pre-order"
 	}

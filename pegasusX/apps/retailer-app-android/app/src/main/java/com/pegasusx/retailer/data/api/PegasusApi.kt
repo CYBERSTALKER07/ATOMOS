@@ -241,6 +241,24 @@ interface PegasusApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): JsonElement
 
+    @POST("/v1/orders/accept-delivery-proposal")
+    suspend fun acceptDeliveryProposal(
+        @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/orders/reject-delivery-proposal")
+    suspend fun rejectDeliveryProposal(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/orders/reject-preorder")
+    suspend fun rejectPreorder(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
     // ── Empathy Engine Settings ──
     // ── Active Fulfillment ──
     @GET("/v1/retailer/active-fulfillment")

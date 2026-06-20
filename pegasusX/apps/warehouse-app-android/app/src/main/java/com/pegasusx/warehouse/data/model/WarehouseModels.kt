@@ -230,8 +230,17 @@ data class WarehousePreorderRow(
     @SerialName("order_id") val orderId: String,
     val status: String = "",
     @SerialName("order_source") val orderSource: String? = null,
+    @SerialName("confirmation_status") val confirmationStatus: String? = null,
     @SerialName("requested_delivery_date") val requestedDeliveryDate: String? = null,
+    @SerialName("proposed_delivery_date") val proposedDeliveryDate: String? = null,
+    @SerialName("delivery_proposal_reason") val deliveryProposalReason: String? = null,
     @SerialName("preorder_badge") val preorderBadge: String? = null,
+)
+
+@Serializable
+data class WarehouseProposeDeliveryRequest(
+    @SerialName("proposed_delivery_date") val proposedDeliveryDate: String,
+    val reason: String = "",
 )
 
 @Serializable

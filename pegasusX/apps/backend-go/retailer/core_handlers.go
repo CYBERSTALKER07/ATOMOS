@@ -828,6 +828,138 @@ func (s *Service) HandleConfirmPreorder(w http.ResponseWriter, r *http.Request) 
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
 }
 
+// HandleAcceptDeliveryProposal applies a warehouse-proposed delivery date.
+func (s *Service) HandleAcceptDeliveryProposal(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	retailerID, err := retailerIDFromRequest(r)
+	if err != nil {
+		writeRetailerIdentityError(w, err)
+		return
+	}
+	if s.orders == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
+		return
+	}
+	body, ok := readLimitedBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+	var req order.AcceptDeliveryProposalRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	resp, err := s.orders.AcceptDeliveryProposal(r.Context(), retailerID, req)
+	if err != nil {
+		writeRetailerOrderLifecycleError(w, err)
+		return
+	}
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+}
+
+// HandleRejectDeliveryProposal cancels an order when the retailer declines a warehouse date proposal.
+func (s *Service) HandleRejectDeliveryProposal(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	retailerID, err := retailerIDFromRequest(r)
+	if err != nil {
+		writeRetailerIdentityError(w, err)
+		return
+	}
+	if s.orders == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
+		return
+	}
+	body, ok := readLimitedBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+	var req order.RejectDeliveryProposalRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	resp, err := s.orders.RejectDeliveryProposal(r.Context(), retailerID, req)
+	if err != nil {
+		writeRetailerOrderLifecycleError(w, err)
+		return
+	}
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+}
+
+// HandleRejectPreorder lets a retailer cancel a draft or scheduled manual pre-order.
+func (s *Service) HandleRejectPreorder(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	retailerID, err := retailerIDFromRequest(r)
+	if err != nil {
+		writeRetailerIdentityError(w, err)
+		return
+	}
+	if s.orders == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
+		return
+	}
+	body, ok := readLimitedBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+	var req order.RejectPreorderRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	resp, err := s.orders.RejectPreorder(r.Context(), retailerID, req)
+	if err != nil {
+		writeRetailerOrderLifecycleError(w, err)
+		return
+	}
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+}
+
 func writeRetailerOrderLifecycleError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, order.ErrOrderNotFound):
@@ -836,6 +968,10 @@ func writeRetailerOrderLifecycleError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 	case errors.Is(err, order.ErrInvalidStatusTransition):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_status_transition"})
+	case errors.Is(err, order.ErrDeliveryProposalRequired):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "delivery_proposal_required"})
+	case errors.Is(err, order.ErrDeliveryProposalPending):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "delivery_proposal_pending"})
 	default:
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}

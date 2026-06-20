@@ -84,4 +84,9 @@ object WarehouseIdempotencyKeys {
         "warehouse-order-reject:$orderId:${stableHash(reason)}"
 
     fun orderOverflow(orderId: String): String = "warehouse-order-overflow:$orderId"
+
+    fun orderProposeDelivery(orderId: String, proposedDate: String, reason: String): String {
+        val hash = stableHash("$proposedDate:$reason")
+        return "warehouse-order-propose-delivery:$orderId:$hash"
+    }
 }

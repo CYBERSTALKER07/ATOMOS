@@ -827,6 +827,18 @@
       "title": "Preorder Updated",
       "body": "Your scheduled order {order_id} has been updated."
     },
+    "preorder_date_proposed": {
+      "title": "Review delivery date",
+      "body": "Warehouse proposed a new delivery date for order {order_id}. Please review."
+    },
+    "preorder_date_accepted": {
+      "title": "Delivery date accepted",
+      "body": "Retailer accepted the proposed delivery date for order {order_id}."
+    },
+    "preorder_date_rejected": {
+      "title": "Delivery proposal declined",
+      "body": "Retailer declined the proposed delivery date. Order {order_id} was cancelled."
+    },
     "retailer_registered": {
       "title": "Welcome to Pegasus",
       "body": "Account {shop_name} registered. You can now place orders."

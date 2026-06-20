@@ -10,40 +10,52 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.WarehouseOrderMutationRequest
-import com.pegasusx.warehouse.data.model.WarehousePreorderEditRequest
 import com.pegasusx.warehouse.data.model.WarehousePreorderRow
+import com.pegasusx.warehouse.data.model.WarehouseProposeDeliveryRequest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PreordersScreen(api: WarehouseApi, onBack: (() -> Unit)? = null) {
+fun PreordersScreen(
+    api: WarehouseApi,
+    realtimeSignals: WarehouseRealtimeSignals,
+    onBack: (() -> Unit)? = null,
+) {
     var rows by remember { mutableStateOf<List<WarehousePreorderRow>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
     var rejectTarget by remember { mutableStateOf<WarehousePreorderRow?>(null) }
-    var editTarget by remember { mutableStateOf<WarehousePreorderRow?>(null) }
+    var proposeTarget by remember { mutableStateOf<WarehousePreorderRow?>(null) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
+    fun load(silent: Boolean = false) {
         scope.launch {
-            loading = true
+            if (!silent) loading = true
             error = null
             try {
                 val resp = api.getPreorders()
-                rows = if (resp.isSuccessful) resp.body()?.items.orEmpty() else emptyList()
-                if (!resp.isSuccessful) error = "Failed (${resp.code()})"
+                rows = if (resp.isSuccessful) resp.body()?.items.orEmpty().ifEmpty { resp.body()?.preorders.orEmpty() } else emptyList()
+                if (!resp.isSuccessful && !silent) error = "Failed (${resp.code()})"
             } catch (e: Exception) {
-                error = e.message
+                if (!silent) error = e.message
             } finally {
-                loading = false
+                if (!silent) loading = false
             }
         }
     }
 
     LaunchedEffect(Unit) { load() }
+    LaunchedEffect(Unit) {
+        realtimeSignals.refreshTick.collect { load(silent = true) }
+    }
 
     rejectTarget?.let { row ->
         var reason by remember(row.orderId) { mutableStateOf("") }
@@ -87,56 +99,72 @@ fun PreordersScreen(api: WarehouseApi, onBack: (() -> Unit)? = null) {
         )
     }
 
-    editTarget?.let { row ->
-        var deliveryDate by remember(row.orderId) { mutableStateOf(row.requestedDeliveryDate?.take(10).orEmpty()) }
+    proposeTarget?.let { row ->
+        val initialMillis = remember(row.orderId) {
+            row.requestedDeliveryDate?.take(10)?.let { date ->
+                runCatching { LocalDate.parse(date).atStartOfDay(ZoneOffset.ofHours(5)).toInstant().toEpochMilli() }
+                    .getOrDefault(System.currentTimeMillis())
+            } ?: System.currentTimeMillis()
+        }
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
         var reason by remember(row.orderId) { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { editTarget = null },
-            title = { Text("Edit delivery date") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = deliveryDate,
-                        onValueChange = { deliveryDate = it },
-                        label = { Text("Delivery date (YYYY-MM-DD)") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+        var showReasonDialog by remember(row.orderId) { mutableStateOf(false) }
+
+        if (showReasonDialog) {
+            AlertDialog(
+                onDismissRequest = { showReasonDialog = false },
+                title = { Text("Reason for date change") },
+                text = {
                     OutlinedTextField(
                         value = reason,
                         onValueChange = { reason = it },
                         label = { Text("Reason") },
                         modifier = Modifier.fillMaxWidth(),
                     )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val iso = "${deliveryDate}T12:00:00+05:00"
-                        scope.launch {
-                            try {
-                                val resp = api.editPreorder(
-                                    row.orderId,
-                                    WarehousePreorderEditRequest(requestedDeliveryDate = iso, reason = reason.trim()),
-                                    WarehouseIdempotencyKeys.orderDelay(row.orderId),
-                                )
-                                if (resp.isSuccessful) {
-                                    actionMessage = "Pre-order updated"
-                                    editTarget = null
-                                    load()
-                                } else {
-                                    actionMessage = "Edit failed (${resp.code()})"
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val selectedMillis = datePickerState.selectedDateMillis ?: return@TextButton
+                            val iso = Instant.ofEpochMilli(selectedMillis)
+                                .atOffset(ZoneOffset.ofHours(5))
+                                .withHour(12).withMinute(0).withSecond(0)
+                                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                            scope.launch {
+                                try {
+                                    val resp = api.proposePreorderDelivery(
+                                        row.orderId,
+                                        WarehouseProposeDeliveryRequest(proposedDeliveryDate = iso, reason = reason.trim()),
+                                        WarehouseIdempotencyKeys.orderProposeDelivery(row.orderId, iso, reason.trim()),
+                                    )
+                                    if (resp.isSuccessful) {
+                                        actionMessage = "Delivery date proposed"
+                                        proposeTarget = null
+                                        load()
+                                    } else {
+                                        actionMessage = "Propose failed (${resp.code()})"
+                                    }
+                                } catch (e: Exception) {
+                                    actionMessage = e.message
                                 }
-                            } catch (e: Exception) {
-                                actionMessage = e.message
                             }
-                        }
-                    },
-                    enabled = deliveryDate.isNotBlank() && reason.isNotBlank(),
-                ) { Text("Save") }
+                        },
+                        enabled = reason.isNotBlank(),
+                    ) { Text("Send proposal") }
+                },
+                dismissButton = { TextButton(onClick = { showReasonDialog = false }) { Text("Back") } },
+            )
+        }
+
+        DatePickerDialog(
+            onDismissRequest = { proposeTarget = null },
+            confirmButton = {
+                TextButton(onClick = { showReasonDialog = true }) { Text("Next") }
             },
-            dismissButton = { TextButton(onClick = { editTarget = null }) { Text("Cancel") } },
-        )
+            dismissButton = { TextButton(onClick = { proposeTarget = null }) { Text("Cancel") } },
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
 
     Scaffold(
@@ -171,8 +199,13 @@ fun PreordersScreen(api: WarehouseApi, onBack: (() -> Unit)? = null) {
                             Text(row.orderId, style = MaterialTheme.typography.titleSmall)
                             Text("Status: ${row.status}")
                             row.requestedDeliveryDate?.let { Text("Delivery: $it") }
+                            row.proposedDeliveryDate?.let { Text("Proposed: $it", color = MaterialTheme.colorScheme.primary) }
+                            row.deliveryProposalReason?.let { Text("Reason: $it", style = MaterialTheme.typography.bodySmall) }
+                            if (row.confirmationStatus == "PENDING_WAREHOUSE" || row.preorderBadge == "REVIEW_DELIVERY") {
+                                AssistChip(onClick = {}, label = { Text("Awaiting retailer review") })
+                            }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                TextButton(onClick = { editTarget = row }) { Text("Edit date") }
+                                TextButton(onClick = { proposeTarget = row }) { Text("Propose date") }
                                 TextButton(onClick = { rejectTarget = row }) { Text("Reject") }
                             }
                         }

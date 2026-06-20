@@ -110,6 +110,9 @@ const (
 	EventPreOrderEdited       = "PRE_ORDER_EDITED"
 	EventPreOrderCancelled    = "PRE_ORDER_CANCELLED"
 	EventPreOrderAutoAccepted = "PRE_ORDER_AUTO_ACCEPTED"
+	EventPreOrderDateProposed = "PRE_ORDER_DATE_PROPOSED"
+	EventPreOrderDateAccepted = "PRE_ORDER_DATE_ACCEPTED"
+	EventPreOrderDateRejected = "PRE_ORDER_DATE_REJECTED"
 )
 
 // AggregateTypes used in OutboxEvents.AggregateType.

@@ -1836,6 +1836,10 @@ export interface RetailerOrderLifecycleResponse {
   order_source: OrderSource;
   confirmation_status: OrderConfirmationStatus;
   requested_delivery_date?: string;
+  deliver_before?: string;
+  preorder_badge?: string;
+  proposed_delivery_date?: string;
+  delivery_proposal_reason?: string;
   auto_confirm_at?: string;
   decision_at?: string;
   decision_by?: string;
@@ -1844,6 +1848,25 @@ export interface RetailerOrderLifecycleResponse {
   version: number;
   updated_at: string;
   created?: boolean;
+}
+
+export interface ProposeDeliveryDateRequest {
+  proposed_delivery_date: string;
+  reason: string;
+}
+
+export interface AcceptDeliveryProposalRequest {
+  order_id: OrderId;
+}
+
+export interface RejectDeliveryProposalRequest {
+  order_id: OrderId;
+  reason?: string;
+}
+
+export interface RejectPreorderRequest {
+  order_id: OrderId;
+  reason?: string;
 }
 
 export interface ConfirmAIOrderRequest {

@@ -448,7 +448,11 @@ fun WarehouseNavigation(
                     )
                 }
                 composable(WarehouseRoutes.PREORDERS) {
-                    PreordersScreen(api = api, onBack = backFor(WarehouseRoutes.PREORDERS))
+                    PreordersScreen(
+                        api = api,
+                        realtimeSignals = realtimeSignals,
+                        onBack = backFor(WarehouseRoutes.PREORDERS),
+                    )
                 }
                 composable(WarehouseRoutes.STOCK_COMMITMENTS) {
                     StockCommitmentsScreen(api = api, onBack = backFor(WarehouseRoutes.STOCK_COMMITMENTS))

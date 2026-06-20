@@ -38,7 +38,7 @@ func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) e
 	return nil
 }
 
-const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, OriginalTotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, DeliverBefore, DeliveryPriority, DeliveryFeeMinor, WarehouseNotes, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, PreorderReminderSentAt, NudgeNotifiedAt, ConfirmationNotifiedAt, CancelLockedAt, CancelLockReason, Version, CreatedAt, UpdatedAt`
+const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, OriginalTotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, DeliverBefore, DeliveryPriority, DeliveryFeeMinor, WarehouseNotes, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, PreorderReminderSentAt, NudgeNotifiedAt, ConfirmationNotifiedAt, CancelLockedAt, CancelLockReason, ProposedDeliveryDate, DeliveryProposalAt, DeliveryProposalBy, DeliveryProposalReason, Version, CreatedAt, UpdatedAt`
 
 // CreateOrder writes the Orders row and any emitted outbox events atomically.
 func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error {
@@ -135,6 +135,10 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 				"ConfirmationNotifiedAt": nullableTime(o.ConfirmationNotifiedAt),
 				"CancelLockedAt":        nullableTime(o.CancelLockedAt),
 				"CancelLockReason":      nullableString(o.CancelLockReason),
+				"ProposedDeliveryDate":  nullableTime(o.ProposedDeliveryDate),
+				"DeliveryProposalAt":    nullableTime(o.DeliveryProposalAt),
+				"DeliveryProposalBy":    nullableString(o.DeliveryProposalBy),
+				"DeliveryProposalReason": nullableString(o.DeliveryProposalReason),
 				"Version":               o.Version,
 				"CreatedAt":             o.CreatedAt.UTC(),
 				"UpdatedAt":             o.UpdatedAt.UTC(),
@@ -244,6 +248,10 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 				"ConfirmationNotifiedAt": nullableTime(o.ConfirmationNotifiedAt),
 				"CancelLockedAt":        nullableTime(o.CancelLockedAt),
 				"CancelLockReason":      nullableString(o.CancelLockReason),
+				"ProposedDeliveryDate":  nullableTime(o.ProposedDeliveryDate),
+				"DeliveryProposalAt":    nullableTime(o.DeliveryProposalAt),
+				"DeliveryProposalBy":    nullableString(o.DeliveryProposalBy),
+				"DeliveryProposalReason": nullableString(o.DeliveryProposalReason),
 				"Version":               o.Version,
 				"UpdatedAt":             o.UpdatedAt,
 			}),
@@ -474,6 +482,10 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		nudgeNotifiedAt        spanner.NullTime
 		confirmationNotifiedAt spanner.NullTime
 		cancelLockedAt         spanner.NullTime
+		proposedDeliveryDate   spanner.NullTime
+		deliveryProposalAt     spanner.NullTime
+		deliveryProposalBy     spanner.NullString
+		deliveryProposalReason spanner.NullString
 		deliveryFeeMinor       int64
 		orderRecord            Order
 	)
@@ -513,6 +525,10 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		&confirmationNotifiedAt,
 		&cancelLockedAt,
 		&cancelLockReason,
+		&proposedDeliveryDate,
+		&deliveryProposalAt,
+		&deliveryProposalBy,
+		&deliveryProposalReason,
 		&orderRecord.Version,
 		&orderRecord.CreatedAt,
 		&orderRecord.UpdatedAt,
@@ -569,6 +585,16 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		t := cancelLockedAt.Time.UTC()
 		orderRecord.CancelLockedAt = &t
 	}
+	if proposedDeliveryDate.Valid {
+		t := proposedDeliveryDate.Time.UTC()
+		orderRecord.ProposedDeliveryDate = &t
+	}
+	if deliveryProposalAt.Valid {
+		t := deliveryProposalAt.Time.UTC()
+		orderRecord.DeliveryProposalAt = &t
+	}
+	orderRecord.DeliveryProposalBy = deliveryProposalBy.StringVal
+	orderRecord.DeliveryProposalReason = deliveryProposalReason.StringVal
 	if orderRecord.OriginalTotalMinor == 0 {
 		orderRecord.OriginalTotalMinor = orderRecord.TotalMinor
 	}

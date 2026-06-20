@@ -97,7 +97,9 @@ class OrdersViewModel @Inject constructor(
                     "SETTLEMENT_REQUIRED", "DELIVERY_SESSION_UPDATED",
                     "GLOBAL_PAYNT_REQUIRED", "GLOBAL_PAYNT_SETTLED", "GLOBAL_PAYNT_FAILED",
                     "GLOBAL_PAYNT_EXPIRED", "ORDER_AMENDED", "ORDER_COMPLETED", "ORDER_REASSIGNED",
-                    "PRE_ORDER_AUTO_ACCEPTED", "PRE_ORDER_CONFIRMED", "PRE_ORDER_EDITED" -> refresh()
+                    "PRE_ORDER_AUTO_ACCEPTED", "PRE_ORDER_CONFIRMED", "PRE_ORDER_EDITED",
+                    "PRE_ORDER_DATE_PROPOSED", "PRE_ORDER_DATE_ACCEPTED", "PRE_ORDER_DATE_REJECTED",
+                    "PRE_ORDER_CANCELLED", "PRE_ORDER_NUDGE", "PRE_ORDER_CONFIRMATION" -> refresh()
                 }
             }
         }

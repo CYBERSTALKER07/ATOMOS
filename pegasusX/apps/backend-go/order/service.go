@@ -80,6 +80,7 @@ const (
 	ConfirmationStatusPending       ConfirmationStatus = "PENDING"
 	ConfirmationStatusRejected      ConfirmationStatus = "REJECTED"
 	ConfirmationStatusAutoConfirmed ConfirmationStatus = "AUTO_CONFIRMED"
+	ConfirmationStatusPendingWarehouse ConfirmationStatus = "PENDING_WAREHOUSE"
 )
 
 var (
@@ -140,6 +141,10 @@ type Order struct {
 	ConfirmationNotifiedAt *time.Time
 	CancelLockedAt        *time.Time
 	CancelLockReason      string
+	ProposedDeliveryDate  *time.Time
+	DeliveryProposalAt    *time.Time
+	DeliveryProposalBy    string
+	DeliveryProposalReason string
 	Version               int64
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
@@ -363,6 +368,29 @@ type ConfirmPreorderRequest struct {
 	OrderID string `json:"order_id"`
 }
 
+// AcceptDeliveryProposalRequest accepts a warehouse-proposed delivery date.
+type AcceptDeliveryProposalRequest struct {
+	OrderID string `json:"order_id"`
+}
+
+// RejectDeliveryProposalRequest rejects a warehouse proposal and cancels the order.
+type RejectDeliveryProposalRequest struct {
+	OrderID string `json:"order_id"`
+	Reason  string `json:"reason,omitempty"`
+}
+
+// RejectPreorderRequest lets a retailer cancel a draft/scheduled pre-order.
+type RejectPreorderRequest struct {
+	OrderID string `json:"order_id"`
+	Reason  string `json:"reason,omitempty"`
+}
+
+// ProposeDeliveryDateRequest is the warehouse body for proposing a new delivery date.
+type ProposeDeliveryDateRequest struct {
+	ProposedDeliveryDate string `json:"proposed_delivery_date"`
+	Reason               string `json:"reason"`
+}
+
 // RetailerOrderLifecycleResponse returns a durable order-side snapshot for AI
 // and preorder actions.
 type RetailerOrderLifecycleResponse struct {
@@ -375,6 +403,8 @@ type RetailerOrderLifecycleResponse struct {
 	DeliveryPriority      string             `json:"delivery_priority,omitempty"`
 	DeliveryMode          string             `json:"delivery_mode,omitempty"`
 	PreorderBadge         string             `json:"preorder_badge,omitempty"`
+	ProposedDeliveryDate  string             `json:"proposed_delivery_date,omitempty"`
+	DeliveryProposalReason string            `json:"delivery_proposal_reason,omitempty"`
 	AutoConfirmAt         string             `json:"auto_confirm_at,omitempty"`
 	TotalMinor            int64              `json:"total_minor"`
 	Currency              string             `json:"currency"`
@@ -778,6 +808,8 @@ func lifecycleResponse(orderRecord Order, version int64, created bool) RetailerO
 		DeliveryPriority:      string(orderRecord.DeliveryPriority),
 		DeliveryMode:          deliveryModeLabel(orderRecord),
 		PreorderBadge:         preorderBadgeLabel(orderRecord),
+		ProposedDeliveryDate:  formatOptionalRFC3339(orderRecord.ProposedDeliveryDate),
+		DeliveryProposalReason: orderRecord.DeliveryProposalReason,
 		AutoConfirmAt:         formatOptionalRFC3339(orderRecord.AutoConfirmAt),
 		TotalMinor:            orderRecord.TotalMinor,
 		Currency:              orderRecord.Currency,

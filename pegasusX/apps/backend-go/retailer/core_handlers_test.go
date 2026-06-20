@@ -114,6 +114,21 @@ func (o *testOrderLifecycle) ConfirmPreorder(_ context.Context, retailerID strin
 	return o.response, o.err
 }
 
+func (o *testOrderLifecycle) AcceptDeliveryProposal(_ context.Context, retailerID string, req order.AcceptDeliveryProposalRequest) (order.RetailerOrderLifecycleResponse, error) {
+	o.retailerID = retailerID
+	return o.response, o.err
+}
+
+func (o *testOrderLifecycle) RejectDeliveryProposal(_ context.Context, retailerID string, req order.RejectDeliveryProposalRequest) (order.RetailerOrderLifecycleResponse, error) {
+	o.retailerID = retailerID
+	return o.response, o.err
+}
+
+func (o *testOrderLifecycle) RejectPreorder(_ context.Context, retailerID string, req order.RejectPreorderRequest) (order.RetailerOrderLifecycleResponse, error) {
+	o.retailerID = retailerID
+	return o.response, o.err
+}
+
 func (o *testOrderLifecycle) ListRetailerAIPredictions(_ context.Context, retailerID string, limit int) ([]order.RetailerAIPrediction, error) {
 	o.retailerID = retailerID
 	return o.predictions, o.err

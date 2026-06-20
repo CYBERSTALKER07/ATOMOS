@@ -193,17 +193,22 @@ func (s *Service) WarehouseEditPreorder(ctx context.Context, ops *auth.Warehouse
 	if PreorderEditLocked(s.now(), current) {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("%w: warehouse preorder edit locked", ErrInvalidStatusTransition)
 	}
-	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems)
-	if err != nil {
-		return RetailerOrderLifecycleResponse{}, err
-	}
 	requestedDeliveryDate, err := parseOptionalRFC3339(req.RequestedDeliveryDate)
 	if err != nil || requestedDeliveryDate == nil {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("requested_delivery_date required")
 	}
+	if current.RequestedDeliveryDate == nil || !current.RequestedDeliveryDate.Equal(requestedDeliveryDate.UTC()) {
+		return s.WarehouseProposeDeliveryDate(ctx, resolvedOps, orderID, ProposeDeliveryDateRequest{
+			ProposedDeliveryDate: req.RequestedDeliveryDate,
+			Reason:               strings.TrimSpace(reason),
+		})
+	}
+	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems)
+	if err != nil {
+		return RetailerOrderLifecycleResponse{}, err
+	}
 	current.LineItems = lineItems
 	current.TotalMinor = total
-	current.RequestedDeliveryDate = requestedDeliveryDate
 	current.WarehouseNotes = strings.TrimSpace(reason)
 	current.UpdatedAt = s.now()
 	actorID := strings.TrimSpace(resolvedOps.Subject)

@@ -94,6 +94,10 @@ export function warehouseOrderOverflowKey(orderId: string): string {
   return `warehouse-order-overflow:${orderId}`;
 }
 
+export function warehouseOrderProposeDeliveryKey(orderId: string, proposedDate: string, reason: string): string {
+  return `warehouse-order-propose-delivery:${orderId}:${stableHash(proposedDate)}:${stableHash(reason)}`;
+}
+
 export function warehouseDispatchLockAcquireKey(
   warehouseId: string,
   entityType: string,
@@ -324,6 +328,18 @@ export function retailerShopClosedResponseKey(orderId: string, response: string)
 
 export function retailerConfirmPreorderKey(orderId: string): string {
   return `retailer-confirm-preorder:${orderId}`;
+}
+
+export function retailerAcceptDeliveryProposalKey(orderId: string): string {
+  return `retailer-accept-delivery-proposal:${orderId}`;
+}
+
+export function retailerRejectDeliveryProposalKey(orderId: string, reason?: string): string {
+  return `retailer-reject-delivery-proposal:${orderId}:${stableHash(reason ?? "")}`;
+}
+
+export function retailerRejectPreorderKey(orderId: string, reason?: string): string {
+  return `retailer-reject-preorder:${orderId}:${stableHash(reason ?? "")}`;
 }
 
 export function retailerConfirmAIKey(orderId: string): string {

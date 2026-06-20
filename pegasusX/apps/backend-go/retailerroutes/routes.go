@@ -91,6 +91,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/retailer/orders/reject-ai", d.Service.HandleRejectAIOrder)
 		rr.Post("/v1/orders/edit-preorder", d.Service.HandleEditPreorder)
 		rr.Post("/v1/orders/confirm-preorder", d.Service.HandleConfirmPreorder)
+		rr.Post("/v1/orders/accept-delivery-proposal", d.Service.HandleAcceptDeliveryProposal)
+		rr.Post("/v1/orders/reject-delivery-proposal", d.Service.HandleRejectDeliveryProposal)
+		rr.Post("/v1/orders/reject-preorder", d.Service.HandleRejectPreorder)
 
 		rr.Get("/v1/retailer/pending-payments", d.Service.HandlePendingPayments)
 		rr.Get("/v1/retailer/active-fulfillment", d.Service.HandleActiveFulfillment)

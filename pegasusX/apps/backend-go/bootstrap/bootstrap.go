@@ -1313,6 +1313,7 @@ func warehouseOpsOrdersQuery(client *spanner.Client) warehouse.WarehouseOpsOrder
 		stmt := spanner.Statement{
 			SQL: `SELECT OrderID, RetailerID, Status, TotalMinor, Currency, UpdatedAt
 			      FROM Orders WHERE WarehouseId = @wid
+			        AND NOT (OrderSource = 'MANUAL_PREORDER' AND Status = 'SCHEDULED')
 			      ORDER BY UpdatedAt DESC LIMIT @lim`,
 			Params: map[string]interface{}{"wid": warehouseID, "lim": int64(limit)},
 		}

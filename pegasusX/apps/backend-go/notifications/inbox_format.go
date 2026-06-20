@@ -140,6 +140,36 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 		if json.Unmarshal(payload, &e) == nil && e.RetailerID != "" {
 			return FormatRetailerPriceOverride(e.ProductID, e.PriceMinor, "UZS", strings.EqualFold(e.Action, "CREATED"))
 		}
+	case events.EventPreOrderDateProposed:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormattedNotification{
+				Title:    "Review delivery date",
+				Body:     fmt.Sprintf("Warehouse proposed a new delivery date for order %s. Please review.", e.OrderID),
+				DeepLink: "/orders/" + e.OrderID + "?review=1",
+				Priority: "high",
+			}
+		}
+	case events.EventPreOrderDateAccepted:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormattedNotification{
+				Title:    "Delivery date accepted",
+				Body:     fmt.Sprintf("Retailer accepted the proposed delivery date for order %s.", e.OrderID),
+				DeepLink: "/orders/" + e.OrderID,
+				Priority: "normal",
+			}
+		}
+	case events.EventPreOrderDateRejected:
+		var e events.OrderEvent
+		if json.Unmarshal(payload, &e) == nil && e.OrderID != "" {
+			return FormattedNotification{
+				Title:    "Delivery proposal declined",
+				Body:     fmt.Sprintf("Retailer declined the proposed delivery date. Order %s was cancelled.", e.OrderID),
+				DeepLink: "/orders/" + e.OrderID,
+				Priority: "high",
+			}
+		}
 	}
 
 	var generic struct {

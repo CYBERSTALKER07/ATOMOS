@@ -413,6 +413,8 @@ data class Order(
     @SerialName("confirmation_status") val confirmationStatus: String? = null,
     @SerialName("delivery_priority") val deliveryPriority: String? = null,
     @SerialName("preorder_badge") val preorderBadge: String? = null,
+    @SerialName("proposed_delivery_date") val proposedDeliveryDate: String? = null,
+    @SerialName("delivery_proposal_reason") val deliveryProposalReason: String? = null,
     @SerialName("version") val version: Long = 0,
 ) {
     val displayTotal: String get() = formatRetailerAmount(totalAmount, currency)
@@ -422,6 +424,8 @@ data class Order(
     val needsPreorderAction: Boolean get() =
         orderSource == "MANUAL_PREORDER" && status == OrderStatus.SCHEDULED &&
             (confirmationStatus.isNullOrBlank() || confirmationStatus == "DRAFT")
+    val needsDeliveryProposalReview: Boolean get() =
+        confirmationStatus == "PENDING_WAREHOUSE" || preorderBadge == "REVIEW_DELIVERY"
 }
 
 fun formatRetailerAmount(amount: Long, currency: String): String {

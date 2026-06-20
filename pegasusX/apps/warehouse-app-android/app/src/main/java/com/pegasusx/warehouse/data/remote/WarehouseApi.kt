@@ -213,6 +213,13 @@ interface WarehouseApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<WarehouseOrderMutationResponse>
 
+    @POST("v1/warehouse/ops/preorders/{id}/propose-delivery")
+    suspend fun proposePreorderDelivery(
+        @Path("id") orderId: String,
+        @Body body: com.pegasusx.warehouse.data.model.WarehouseProposeDeliveryRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<WarehouseOrderMutationResponse>
+
     @GET("v1/warehouse/ops/stock-commitments")
     suspend fun getStockCommitments(): Response<com.pegasusx.warehouse.data.model.StockCommitmentsResponse>
 

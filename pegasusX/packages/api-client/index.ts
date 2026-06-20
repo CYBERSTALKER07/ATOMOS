@@ -2,6 +2,10 @@ import type {
   ConfirmAIOrderRequest,
   ConfirmPreorderRequest,
   EditPreorderRequest,
+  AcceptDeliveryProposalRequest,
+  RejectDeliveryProposalRequest,
+  RejectPreorderRequest,
+  ProposeDeliveryDateRequest,
   PaymentChargebackRequest,
   PaymentChargebackResponse,
   PaymentChargebackReversalRequest,
@@ -197,6 +201,10 @@ export {
   retailerRequestCancelKey,
   retailerShopClosedResponseKey,
   retailerConfirmPreorderKey,
+  retailerAcceptDeliveryProposalKey,
+  retailerRejectDeliveryProposalKey,
+  retailerRejectPreorderKey,
+  warehouseOrderProposeDeliveryKey,
   retailerConfirmAIKey,
   adminOrderAssignKey,
   adminOrderStatusPatchKey,
@@ -856,6 +864,49 @@ export class ApiClient {
       body: request,
       idempotencyKey,
     });
+  }
+
+  async acceptDeliveryProposal(
+    request: AcceptDeliveryProposalRequest,
+    idempotencyKey: string,
+  ): Promise<RetailerOrderLifecycleResponse> {
+    return this.request<RetailerOrderLifecycleResponse>("/v1/orders/accept-delivery-proposal", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async rejectDeliveryProposal(
+    request: RejectDeliveryProposalRequest,
+    idempotencyKey: string,
+  ): Promise<RetailerOrderLifecycleResponse> {
+    return this.request<RetailerOrderLifecycleResponse>("/v1/orders/reject-delivery-proposal", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async rejectRetailerPreorder(
+    request: RejectPreorderRequest,
+    idempotencyKey: string,
+  ): Promise<RetailerOrderLifecycleResponse> {
+    return this.request<RetailerOrderLifecycleResponse>("/v1/orders/reject-preorder", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async postWarehouseProposeDelivery(
+    orderId: string,
+    request: ProposeDeliveryDateRequest,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<RetailerOrderLifecycleResponse> {
+    return this.request<RetailerOrderLifecycleResponse>(
+      appendQuery(`/v1/warehouse/ops/preorders/${orderId}/propose-delivery`, query as Record<string, unknown>),
+      "POST",
+      { body: request, idempotencyKey },
+    );
   }
 
   async getWarehouseDemandForecast(query: { warehouse_id?: string; start_date?: string; days?: number } = {}): Promise<WarehouseDemandForecastResponse> {

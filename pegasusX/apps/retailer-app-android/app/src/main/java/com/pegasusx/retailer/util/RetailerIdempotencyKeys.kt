@@ -18,5 +18,23 @@ object RetailerIdempotencyKeys {
 
     fun confirmAI(orderId: String): String = "retailer-confirm-ai:$orderId"
 
+    fun acceptDeliveryProposal(orderId: String): String = "retailer-accept-delivery-proposal:$orderId"
+
+    fun rejectDeliveryProposal(orderId: String, reason: String = ""): String =
+        "retailer-reject-delivery-proposal:$orderId:${stableHash(reason)}"
+
+    fun rejectPreorder(orderId: String, reason: String = ""): String =
+        "retailer-reject-preorder:$orderId:${stableHash(reason)}"
+
     fun cancel(orderId: String): String = "retailer-cancel:$orderId"
+
+    /** FNV-1a 32-bit — matches api-client `stableHash`. */
+    private fun stableHash(input: String): String {
+        var hash = 2166136261L
+        for (c in input) {
+            hash = hash xor c.code.toLong()
+            hash = (hash * 16777619L) and 0xFFFFFFFFL
+        }
+        return hash.toULong().toString(36)
+    }
 }
