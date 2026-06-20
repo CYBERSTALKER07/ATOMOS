@@ -344,6 +344,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
 
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const [hasSession, setHasSession] = useState(false);
 
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -351,6 +352,10 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
   const liveIndicator = liveIndicatorCopy(wsState);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  useEffect(() => {
+    setHasSession(Boolean(readTokenFromCookie()));
+  }, []);
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -563,7 +568,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
                 <div className="desk-profile-info hidden lg:flex">
                   <span className="desk-profile-name">Warehouse</span>
                   <span className="desk-profile-role">
-                    {typeof document !== "undefined" && Boolean(readTokenFromCookie()) ? "Administrator" : "Guest"}
+                    {hasSession ? "Administrator" : "Guest"}
                   </span>
                 </div>
               </button>

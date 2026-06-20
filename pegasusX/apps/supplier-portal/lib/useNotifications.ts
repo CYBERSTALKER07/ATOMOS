@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { reconnectDelayMs } from '@pegasusx/api-client';
-import { readTokenFromCookie, supplierFetch } from './auth';
+import { readTokenFromCookie, resolveSupplierToken, supplierFetch } from './auth';
 import { runSupplierSessionReconcile } from './session-reconcile';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
@@ -248,8 +248,17 @@ export function useNotifications() {
   useEffect(() => {
     disposedRef.current = false;
     const ac = new AbortController();
-    fetchInbox(ac.signal);
-    connectWS();
+    let cancelled = false;
+
+    void (async () => {
+      const token = await resolveSupplierToken();
+      if (cancelled || !token) {
+        setState((s) => ({ ...s, loading: false }));
+        return;
+      }
+      void fetchInbox(ac.signal);
+      connectWS();
+    })();
 
     const reconnectIfNeeded = () => {
       if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
@@ -276,6 +285,7 @@ export function useNotifications() {
     window.addEventListener('pageshow', handleWake);
     document.addEventListener('visibilitychange', handleVisible);
     return () => {
+      cancelled = true;
       disposedRef.current = true;
       ac.abort();
       window.removeEventListener('online', handleWake);

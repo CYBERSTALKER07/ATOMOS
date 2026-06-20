@@ -105,7 +105,7 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
   return crumbs;
 }
 
-const BARE_ROUTES = ["/auth/", "/setup/billing"];
+const BARE_ROUTES = ["/auth/", "/setup/"];
 
 function SplashScreen({ onComplete }: { onComplete: () => void }) {
   useEffect(() => {
@@ -332,13 +332,15 @@ const DrawerContent = memo(function DrawerContent({
 export default function SupplierShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isBare = BARE_ROUTES.some(r => pathname === r || pathname.startsWith(r));
+  if (isBare) return <>{children}</>;
+  return <SupplierAppChrome>{children}</SupplierAppChrome>;
+}
+
+function SupplierAppChrome({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
 
   const [splashDone, setSplashDone] = useState(false);
   const dismissSplash = useCallback(() => setSplashDone(true), []);
-
-  useEffect(() => {
-    if (isBare) setSplashDone(true);
-  }, [isBare]);
 
   const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -350,12 +352,17 @@ export default function SupplierShell({ children }: { children: React.ReactNode 
 
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const [hasSession, setHasSession] = useState(false);
 
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const { items: notifItems, unreadCount, markRead, markAllRead } = useNotifications();
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  useEffect(() => {
+    setHasSession(Boolean(readTokenFromCookie()));
+  }, []);
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -420,8 +427,6 @@ export default function SupplierShell({ children }: { children: React.ReactNode 
         )
     : []
   , [searchQuery]);
-
-  if (isBare) return <>{children}</>;
 
   return (
     <>
@@ -560,7 +565,7 @@ export default function SupplierShell({ children }: { children: React.ReactNode 
                 <div className="desk-profile-info hidden lg:flex">
                   <span className="desk-profile-name">Supplier</span>
                   <span className="desk-profile-role">
-                    {typeof document !== "undefined" && Boolean(readTokenFromCookie()) ? "Administrator" : "Guest"}
+                    {hasSession ? "Administrator" : "Guest"}
                   </span>
                 </div>
               </button>

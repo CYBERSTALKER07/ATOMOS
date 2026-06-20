@@ -47,23 +47,20 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   const { resolved, setMode } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isDark = resolved === 'dark';
-  const [splashDone, setSplashDone] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('auth-splash-shown') === '1';
-    }
-    return false;
-  });
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    if (!splashDone) {
-      const timer = setTimeout(() => {
-        setSplashDone(true);
-        sessionStorage.setItem('auth-splash-shown', '1');
-      }, 240);
-      return () => clearTimeout(timer);
+    if (sessionStorage.getItem('auth-splash-shown') === '1') {
+      setSplashDone(true);
+      return;
     }
-  }, [splashDone]);
+    const timer = setTimeout(() => {
+      setSplashDone(true);
+      sessionStorage.setItem('auth-splash-shown', '1');
+    }, 240);
+    return () => clearTimeout(timer);
+  }, []);
 
   const toggleTheme = useCallback(() => {
     setMode(isDark ? 'light' : 'dark');

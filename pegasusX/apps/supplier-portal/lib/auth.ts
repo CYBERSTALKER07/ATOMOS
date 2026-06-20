@@ -19,11 +19,21 @@ function tauriBackendBaseUrl(): string {
   return "http://localhost:8180";
 }
 
+
+function usesApiProxy(base: string): boolean {
+  return base === "/api" || base.endsWith("/api");
+}
+
 export function supplierApiBaseUrl(): string {
-  if (typeof window !== "undefined" && isTauri()) {
-    return tauriBackendBaseUrl();
-  }
   if (typeof window !== "undefined") {
+    if (isTauri()) {
+      const { hostname, port, origin } = window.location;
+      // Tauri dev loads from Next.js (:3000). Proxy /api → :8180 avoids WKWebView direct fetch issues.
+      if ((hostname === "localhost" || hostname === "127.0.0.1") && port === "3000") {
+        return `${origin}/api`;
+      }
+      return tauriBackendBaseUrl();
+    }
     return "/api";
   }
   return "http://localhost:8180";
@@ -122,7 +132,7 @@ async function tryRefreshToken(): Promise<string | null> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refresh }),
-      credentials: base === "/api" ? "include" : undefined,
+      credentials: usesApiProxy(base) ? "include" : undefined,
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { token?: string; refresh_token?: string };
@@ -152,7 +162,7 @@ export async function supplierFetch(path: string, init?: RequestInit): Promise<R
     res = await fetch(url, {
       ...init,
       headers,
-      credentials: base === "/api" ? "include" : init?.credentials,
+      credentials: usesApiProxy(base) ? "include" : init?.credentials,
       signal: controller.signal,
     });
   } catch (err) {
@@ -166,6 +176,9 @@ export async function supplierFetch(path: string, init?: RequestInit): Promise<R
   }
 
   if (res.status === 401) {
+    if (!token) {
+      return res;
+    }
     if (!refreshInFlight) {
       refreshInFlight = tryRefreshToken().finally(() => {
         refreshInFlight = null;
@@ -180,12 +193,19 @@ export async function supplierFetch(path: string, init?: RequestInit): Promise<R
       return fetch(url, {
         ...init,
         headers: retryHeaders,
-        credentials: base === "/api" ? "include" : init?.credentials,
+        credentials: usesApiProxy(base) ? "include" : init?.credentials,
       });
     }
     clearSession();
     if (typeof window !== "undefined") {
-      window.location.href = "/auth/login";
+      const path = window.location.pathname;
+      const onPublic =
+        path.startsWith("/auth/") ||
+        path.startsWith("/setup/") ||
+        path === "/";
+      if (!onPublic) {
+        window.location.href = "/auth/login";
+      }
     }
     throw new Error("Session expired");
   }
