@@ -1,58 +1,100 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PortalField, PortalInput, PortalSelect, FormAlert } from "@/components/portal";
-import { persistSession, supplierFetch } from "@/lib/auth";
 import {
-  COUNTRIES,
+  AuthRegisterShell,
+  AuthRegisterIdentityStep,
+  AuthRegisterVerificationStep,
+  AuthRegisterProfileStep,
+} from "@pegasusx/ui-kit/auth";
+import { dialCodeForCountry } from "@pegasusx/ui-kit/auth";
+import { FormAlert } from "@pegasusx/ui-kit/portal";
+import { persistSession, supplierFetch } from "@/lib/auth";
+import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from "@/lib/firebase";
+import {
   INITIAL_STATE,
   STEP_LABELS,
   STEP_ORDER,
-  type StepId,
   type WizardState,
   validateIdentity,
   validateVerification,
   validateProfile,
 } from "./wizard-state";
 
-function composeAddress(parts: Array<string>): string {
-  return parts.map((part) => part.trim()).filter(Boolean).join(", ");
-}
-
-// 3-step Supplier onboarding wizard.
-// HARD PRODUCT INVARIANT: never move business/location/payment setup back into this form. 
-// That complex setup lives at /setup/billing post-registration.
-
 export default function RegisterPage() {
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [stepBusy, setStepBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const stepIndex = STEP_ORDER.indexOf(state.step);
   const dialCode = useMemo(
-    () => COUNTRIES.find((c) => c.code === state.identity.countryCode)?.dialCode ?? "",
+    () => dialCodeForCountry(state.identity.countryCode),
     [state.identity.countryCode],
   );
 
   function validateCurrent(): Record<string, string> {
     switch (state.step) {
-      case "identity":    return validateIdentity(state.identity);
-      case "verification":return validateVerification(state.verification);
-      case "profile":     return validateProfile(state.profile);
+      case "identity":
+        return validateIdentity(state.identity);
+      case "verification":
+        return validateVerification(state.verification);
+      case "profile":
+        return validateProfile(state.profile);
     }
   }
 
-  function next() {
+  async function next() {
     const e = validateCurrent();
     setErrors(e);
     if (Object.keys(e).length > 0) return;
+
+    if (state.step === "identity") {
+      setStepBusy(true);
+      setSubmitError(null);
+      try {
+        await sendPhoneOtp(`${dialCode}${state.identity.phoneLocal}`);
+        setState((s) => ({
+          ...s,
+          step: "verification",
+          verification: { otpCode: "", idToken: "" },
+        }));
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : "Failed to send verification code");
+      } finally {
+        setStepBusy(false);
+      }
+      return;
+    }
+
+    if (state.step === "verification") {
+      setStepBusy(true);
+      setSubmitError(null);
+      try {
+        const idToken = await verifyPhoneOtp(state.verification.otpCode);
+        setState((s) => ({
+          ...s,
+          step: "profile",
+          verification: { ...s.verification, idToken },
+        }));
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : "Invalid verification code");
+      } finally {
+        setStepBusy(false);
+      }
+      return;
+    }
+
     const ni = Math.min(stepIndex + 1, STEP_ORDER.length - 1);
     setState((s) => ({ ...s, step: STEP_ORDER[ni] }));
   }
 
   function back() {
     const pi = Math.max(stepIndex - 1, 0);
+    if (state.step === "verification") {
+      resetPhoneOtpFlow();
+    }
     setState((s) => ({ ...s, step: STEP_ORDER[pi] }));
   }
 
@@ -72,7 +114,7 @@ export default function RegisterPage() {
           country: state.identity.countryCode,
           phone,
         },
-        id_token: state.verification.otpCode, // Usually we pass the firebase token here. Passing OTP as fallback for scaffold.
+        id_token: state.verification.idToken,
       };
       const res = await supplierFetch("/v1/auth/supplier/register", {
         method: "POST",
@@ -98,194 +140,87 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="auth-card">
-      <header className="mb-6">
-        <h1 className="md-typescale-headline-large" style={{ margin: 0 }}>
-          Set up your supplier account
-        </h1>
-        <p className="desk-page-subtitle">
-          Step {stepIndex + 1} of {STEP_ORDER.length} — {STEP_LABELS[state.step]}
-        </p>
-        <Stepper currentIndex={stepIndex} />
-      </header>
-
-      <section className="md-card p-6">
-        {state.step === "identity"     && <IdentityStepView state={state} setState={setState} errors={errors} dialCode={dialCode} />}
-        {state.step === "verification" && <VerificationStepView state={state} setState={setState} errors={errors} />}
-        {state.step === "profile"      && <ProfileStepView state={state} setState={setState} errors={errors} />}
-      </section>
-
-      {submitError && <FormAlert variant="error">{submitError}</FormAlert>}
-
-      <footer className="mt-6 flex items-center justify-between gap-4">
-        <button type="button" className="portal-btn portal-btn--ghost" onClick={back} disabled={stepIndex === 0 || submitting}>
-          Back
-        </button>
-        {state.step !== "profile" ? (
-          <button type="button" className="portal-btn portal-btn--primary" onClick={next} disabled={submitting}>
-            Continue
-          </button>
-        ) : (
-          <button type="button" className="portal-btn portal-btn--primary" onClick={submit} disabled={submitting}>
-            {submitting ? "Creating…" : "Create supplier"}
-          </button>
-        )}
-      </footer>
-    </div>
-  );
-}
-
-function Stepper({ currentIndex }: { currentIndex: number }) {
-  return (
-    <ol className="setup-step-list !mt-0 !mb-0" aria-label="Onboarding progress">
-      {STEP_ORDER.map((id, index) => {
-        const done = index < currentIndex;
-        const active = index === currentIndex;
-        const stateClass = done ? "setup-step-item--done" : active ? "setup-step-item--active" : "";
-        return (
-          <li key={id} className={`setup-step-item ${stateClass}`} aria-current={active ? "step" : undefined}>
-            <span className="setup-step-badge" aria-hidden>
-              {done ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M5 12l5 5L20 7" />
-                </svg>
-              ) : (
-                index + 1
-              )}
-            </span>
-            <div className="setup-step-copy">
-              <span className="setup-step-label">{STEP_LABELS[id]}</span>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-// ── Step views ───────────────────────────────────────────────────────────
-
-type ViewProps = {
-  state: WizardState;
-  setState: React.Dispatch<React.SetStateAction<WizardState>>;
-  errors: Record<string, string>;
-};
-
-function IdentityStepView({ state, setState, errors, dialCode }: ViewProps & { dialCode: string }) {
-  return (
-    <div className="grid gap-4">
-      <div className="grid grid-cols-[160px,1fr] gap-3">
-        <Field id="countryCode" label="Country" error={errors.countryCode}>
-          <select
-            id="countryCode"
-            className="md-input-outlined"
-            value={state.identity.countryCode}
-            onChange={(e) => setState((s) => ({ ...s, identity: { ...s.identity, countryCode: e.target.value } }))}
+    <AuthRegisterShell
+      title="Set up your supplier account"
+      subtitle={`Step ${stepIndex + 1} of ${STEP_ORDER.length} — ${STEP_LABELS[state.step]}`}
+      stepOrder={STEP_ORDER}
+      stepLabels={STEP_LABELS}
+      currentIndex={stepIndex}
+      error={submitError ? <FormAlert variant="error">{submitError}</FormAlert> : null}
+      footer={
+        <>
+          <button
+            type="button"
+            className="portal-btn portal-btn--ghost"
+            onClick={back}
+            disabled={stepIndex === 0 || submitting || stepBusy}
           >
-            {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.code}>{c.name}</option>
-            ))}
-          </select>
-        </Field>
-        <Field id="phoneLocal" label="Phone" error={errors.phoneLocal} hint={`Will be sent as ${dialCode}${state.identity.phoneLocal || "…"}`}>
-          <div className="flex">
-            <span
-              className="inline-flex items-center px-3 border border-r-0 rounded-l text-sm"
-              style={{
-                borderColor: "var(--color-md-outline)",
-                background: "var(--color-md-surface-container-high)",
-              }}
+            Back
+          </button>
+          {state.step !== "profile" ? (
+            <button
+              type="button"
+              className="portal-btn portal-btn--primary"
+              onClick={next}
+              disabled={submitting || stepBusy}
             >
-              {dialCode}
-            </span>
-            <input
-              id="phoneLocal"
-              inputMode="numeric"
-              className="md-input-outlined"
-              style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
-              value={state.identity.phoneLocal}
-              aria-invalid={!!errors.phoneLocal}
-              onChange={(e) => setState((s) => ({ ...s, identity: { ...s.identity, phoneLocal: e.target.value.replace(/\D/g, "") } }))}
-            />
-          </div>
-        </Field>
-      </div>
-      <div id="recaptcha-container"></div>
-    </div>
-  );
-}
-
-function VerificationStepView({ state, setState, errors }: ViewProps) {
-  return (
-    <div className="grid gap-4">
-      <Field id="otpCode" label="Verification Code" error={errors.otpCode} hint="Enter the 6-digit code sent via SMS.">
-        <input
-          id="otpCode"
-          inputMode="numeric"
-          className="md-input-outlined tracking-widest text-lg font-mono text-center"
-          value={state.verification.otpCode}
-          maxLength={6}
-          aria-invalid={!!errors.otpCode}
-          onChange={(e) => setState((s) => ({ ...s, verification: { ...s.verification, otpCode: e.target.value.replace(/\D/g, "") } }))}
+              {stepBusy ? "Please wait…" : "Continue"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="portal-btn portal-btn--primary"
+              onClick={submit}
+              disabled={submitting}
+            >
+              {submitting ? "Creating…" : "Create supplier"}
+            </button>
+          )}
+        </>
+      }
+    >
+      {state.step === "identity" && (
+        <AuthRegisterIdentityStep
+          identity={state.identity}
+          setIdentity={(value) =>
+            setState((s) => ({
+              ...s,
+              identity: typeof value === "function" ? value(s.identity) : value,
+            }))
+          }
+          errors={errors}
+          dialCode={dialCode}
         />
-      </Field>
-    </div>
-  );
-}
-
-function ProfileStepView({ state, setState, errors }: ViewProps) {
-  return (
-    <div className="grid gap-4">
-      <Field id="legalName" label="Legal company name" error={errors.legalName}>
-        <input
-          id="legalName"
-          className="md-input-outlined"
-          value={state.profile.legalName}
-          aria-invalid={!!errors.legalName}
-          onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, legalName: e.target.value } }))}
+      )}
+      {state.step === "verification" && (
+        <AuthRegisterVerificationStep
+          verification={state.verification}
+          setVerification={(value) =>
+            setState((s) => ({
+              ...s,
+              verification: typeof value === "function" ? value(s.verification) : value,
+            }))
+          }
+          errors={errors}
         />
-      </Field>
-      <Field id="contactName" label="Primary contact name" error={errors.contactName}>
-        <input
-          id="contactName"
-          className="md-input-outlined"
-          value={state.profile.contactName}
-          aria-invalid={!!errors.contactName}
-          onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, contactName: e.target.value } }))}
+      )}
+      {state.step === "profile" && (
+        <AuthRegisterProfileStep
+          profile={state.profile}
+          setProfile={(value) =>
+            setState((s) => ({
+              ...s,
+              profile: typeof value === "function" ? value(s.profile) : value,
+            }))
+          }
+          errors={errors}
         />
-      </Field>
-      <Field id="email" label="Work email" error={errors.email}>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          className="md-input-outlined"
-          value={state.profile.email}
-          aria-invalid={!!errors.email}
-          onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, email: e.target.value } }))}
-        />
-      </Field>
-    </div>
+      )}
+    </AuthRegisterShell>
   );
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────
-
-function Field({ id, label, error, hint, children }: { id: string; label: string; error?: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <PortalField id={id} label={label} error={error} hint={hint}>
-      {children}
-    </PortalField>
-  );
-}
-
-function parseIntOrZero(v: string): number {
-  const n = parseInt(v, 10);
-  return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
 function cryptoRandomId(): string {
-  // Browser-safe random key for the Idempotency-Key header.
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }

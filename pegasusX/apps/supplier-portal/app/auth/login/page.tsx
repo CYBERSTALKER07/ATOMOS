@@ -1,12 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
+import { AuthLoginCard } from "@pegasusx/ui-kit/auth";
+import { dialCodeForCountry } from "@pegasusx/ui-kit/auth";
 import { createSupplierApi } from "@/lib/api";
 import { persistSession } from "@/lib/auth";
-import { PortalField, PortalInput, PortalSelect, FormAlert } from "@/components/portal";
-import { COUNTRIES } from "../register/wizard-state";
 
 type LoginStep = "phone" | "otp";
 
@@ -16,14 +15,10 @@ export default function SupplierLoginPage() {
   const [countryCode, setCountryCode] = useState("UZ");
   const [phoneLocal, setPhoneLocal] = useState("");
   const [otpCode, setOtpCode] = useState("");
-
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const dialCode = useMemo(
-    () => COUNTRIES.find((c) => c.code === countryCode)?.dialCode ?? "",
-    [countryCode],
-  );
+  const dialCode = useMemo(() => dialCodeForCountry(countryCode), [countryCode]);
 
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
@@ -65,96 +60,28 @@ export default function SupplierLoginPage() {
   }
 
   return (
-    <div className="auth-card space-y-5">
-      <div>
-        <h1 className="md-typescale-headline-medium" style={{ margin: 0 }}>
-          Supplier sign in
-        </h1>
-        <p className="desk-page-subtitle">
-          {step === "phone" ? "Enter your registered phone number." : `Enter the 6-digit code sent to ${dialCode}${phoneLocal}`}
-        </p>
-      </div>
-
-      {error ? <FormAlert variant="error">{error}</FormAlert> : null}
-
-      {step === "phone" ? (
-        <form onSubmit={handleSendOtp} className="space-y-4">
-          <div className="grid grid-cols-[120px,1fr] gap-3">
-            <PortalField id="countryCode" label="Country">
-              <PortalSelect
-                id="countryCode"
-                value={countryCode}
-                onChange={(e) => setCountryCode(e.target.value)}
-              >
-                {COUNTRIES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.name}
-                  </option>
-                ))}
-              </PortalSelect>
-            </PortalField>
-            <PortalField id="phoneLocal" label="Phone" hint={`Will be sent as ${dialCode}${phoneLocal || "…"}`}>
-              <div className="flex">
-                <span
-                  className="inline-flex items-center px-3 border border-r-0 rounded-l text-sm portal-input"
-                  style={{
-                    width: "auto",
-                    minHeight: 44,
-                    borderTopRightRadius: 0,
-                    borderBottomRightRadius: 0,
-                    background: "var(--desk-surface-subtle)",
-                  }}
-                >
-                  {dialCode}
-                </span>
-                <PortalInput
-                  id="phoneLocal"
-                  type="tel"
-                  inputMode="numeric"
-                  style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
-                  value={phoneLocal}
-                  onChange={(e) => setPhoneLocal(e.target.value.replace(/\D/g, ""))}
-                  required
-                />
-              </div>
-            </PortalField>
-          </div>
-          <div id="recaptcha-container" />
-          <button type="submit" className="portal-btn portal-btn--primary w-full" disabled={loading}>
-            Continue
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={handleVerifyOtp} className="space-y-4">
-          <PortalField id="otpCode" label="Verification code">
-            <PortalInput
-              id="otpCode"
-              type="text"
-              inputMode="numeric"
-              className="tracking-widest text-lg font-mono text-center"
-              maxLength={6}
-              value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-              required
-            />
-          </PortalField>
-          <div className="flex gap-3">
-            <button type="button" className="portal-btn portal-btn--ghost w-full" onClick={() => setStep("phone")} disabled={loading}>
-              Back
-            </button>
-            <button type="submit" className="portal-btn portal-btn--primary w-full" disabled={loading}>
-              {loading ? "Signing in…" : "Sign in"}
-            </button>
-          </div>
-        </form>
-      )}
-
-      <p className="md-typescale-body-small text-center" style={{ color: "var(--desk-text-secondary)" }}>
-        New supplier?{" "}
-        <Link href="/auth/register" className="underline">
-          Register
-        </Link>
-      </p>
-    </div>
+    <AuthLoginCard
+      title="Supplier sign in"
+      subtitle={
+        step === "phone"
+          ? "Enter your registered phone number."
+          : `Enter the 6-digit code sent to ${dialCode}${phoneLocal}`
+      }
+      step={step}
+      countryCode={countryCode}
+      phoneLocal={phoneLocal}
+      otpCode={otpCode}
+      error={error}
+      loading={loading}
+      registerHref="/auth/register"
+      registerPrompt="New supplier?"
+      registerLabel="Register"
+      onCountryChange={setCountryCode}
+      onPhoneChange={setPhoneLocal}
+      onOtpChange={setOtpCode}
+      onSendOtp={handleSendOtp}
+      onVerifyOtp={handleVerifyOtp}
+      onBack={() => setStep("phone")}
+    />
   );
 }

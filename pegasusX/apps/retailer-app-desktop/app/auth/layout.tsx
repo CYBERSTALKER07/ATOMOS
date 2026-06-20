@@ -98,7 +98,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         <p className="auth-brand-footer relative z-10">
-          pegasusX retailer &copy; 2026
+          pegasusX &copy; 2026
         </p>
       </div>
 

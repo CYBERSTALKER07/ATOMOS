@@ -38,7 +38,8 @@ export function middleware(request: NextRequest) {
 
   if (pathname.startsWith('/setup')) {
     if (!hasValidToken) {
-      return NextResponse.redirect(new URL('/auth/login', request.url));
+      const authPath = token ? '/auth/login' : '/auth/register';
+      return NextResponse.redirect(new URL(authPath, request.url));
     }
     if (isConfigured) {
       return NextResponse.redirect(new URL('/', request.url));
@@ -47,7 +48,8 @@ export function middleware(request: NextRequest) {
   }
 
   if (!hasValidToken) {
-    const res = NextResponse.redirect(new URL('/auth/login', request.url));
+    const authPath = token ? '/auth/login' : '/auth/register';
+    const res = NextResponse.redirect(new URL(authPath, request.url));
     if (token && isTokenExpired(token)) {
       res.cookies.delete('pegasus_warehouse_jwt');
     }

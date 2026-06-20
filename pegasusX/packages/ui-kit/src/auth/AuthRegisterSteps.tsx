@@ -11,7 +11,7 @@ export type AuthIdentityStep = {
 
 export type AuthVerificationStep = {
   otpCode: string;
-  idToken?: string;
+  idToken: string;
 };
 
 export type AuthProfileStep = {

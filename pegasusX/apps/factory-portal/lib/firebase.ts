@@ -19,23 +19,31 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth: Auth = getAuth(app);
 
+function shouldUseAuthEmulator(): boolean {
+  if (process.env.NEXT_PUBLIC_USE_FIREBASE_AUTH_EMULATOR === "1") return true;
+  if (process.env.NEXT_PUBLIC_USE_FIREBASE_AUTH_EMULATOR === "0") return false;
+  return process.env.NODE_ENV === "development";
+}
+
+function resolveAuthEmulatorHost(): string {
+  const configured = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST?.trim();
+  if (configured) return configured;
+  if (typeof window !== "undefined") return window.location.origin;
+  return "http://127.0.0.1:9099";
+}
+
 if (
   typeof window !== "undefined" &&
-  process.env.NODE_ENV === "development" &&
+  shouldUseAuthEmulator() &&
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   !(auth as any)._emulatorConnected
 ) {
-  const emulatorHost =
-    process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST ||
-    "http://localhost:9099";
-  connectAuthEmulator(auth, emulatorHost, { disableWarnings: true });
+  connectAuthEmulator(auth, resolveAuthEmulatorHost(), { disableWarnings: true });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (auth as any)._emulatorConnected = true;
 }
 
-export async function exchangeCustomToken(
-  customToken: string
-): Promise<string> {
+export async function exchangeCustomToken(customToken: string): Promise<string> {
   if (!customToken) return "";
   try {
     const cred = await signInWithCustomToken(auth, customToken);
@@ -66,7 +74,6 @@ export async function firebaseSignOut(): Promise<void> {
 
 let phoneConfirmation: ConfirmationResult | null = null;
 
-/** Minimal verifier for Firebase Auth Emulator (no real reCAPTCHA in local dev). */
 class EmulatorRecaptchaVerifier {
   type = "recaptcha" as const;
 

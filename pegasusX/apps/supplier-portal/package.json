@@ -23,7 +23,7 @@
     "@pegasusx/ui-kit": "workspace:*",
     "@pegasusx/validation": "workspace:*",
     "@tauri-apps/api": "^2.11.0",
-    "framer-motion": "^12.38.0",
+    "firebase": "^12.12.0",
     "lucide-react": "^0.511.0",
     "maplibre-gl": "^5.19.0",
     "next": "^15.0.0",

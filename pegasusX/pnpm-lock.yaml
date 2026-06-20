@@ -11,10 +11,10 @@ importers:
   apps/factory-portal:
     dependencies:
       '@heroui/react':
-        specifier: ^3.0.2
+        specifier: ^3.1.0
         version: 3.1.0(@react-spectrum/provider@3.11.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss@4.3.0)
       '@heroui/styles':
-        specifier: ^3.0.2
+        specifier: ^3.1.0
         version: 3.1.0(tailwind-merge@3.4.0)(tailwindcss@4.3.0)
       '@pegasusx/api-client':
         specifier: workspace:*
@@ -166,10 +166,10 @@ importers:
   apps/retailer-app-desktop:
     dependencies:
       '@heroui/react':
-        specifier: ^3.0.2
+        specifier: ^3.1.0
         version: 3.1.0(@react-spectrum/provider@3.11.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss@4.3.0)
       '@heroui/styles':
-        specifier: ^3.0.2
+        specifier: ^3.1.0
         version: 3.1.0(tailwind-merge@3.4.0)(tailwindcss@4.3.0)
       '@pegasusx/api-client':
         specifier: workspace:*
@@ -195,6 +195,9 @@ importers:
       '@tauri-apps/plugin-fs':
         specifier: ^2.5.0
         version: 2.5.1
+      firebase:
+        specifier: ^12.12.0
+        version: 12.14.0
       framer-motion:
         specifier: ^12.40.0
         version: 12.40.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -304,9 +307,9 @@ importers:
       '@tauri-apps/api':
         specifier: ^2.11.0
         version: 2.11.0
-      framer-motion:
-        specifier: ^12.38.0
-        version: 12.40.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      firebase:
+        specifier: ^12.12.0
+        version: 12.14.0
       lucide-react:
         specifier: ^0.511.0
         version: 0.511.0(react@19.0.0)

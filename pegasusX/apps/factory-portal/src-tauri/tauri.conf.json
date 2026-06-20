@@ -30,7 +30,7 @@
     ],
     "security": {
       "dangerousDisableAssetCspModification": false,
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' http://localhost:8180 https://factory.void.pegasus.uz wss://localhost:8180 ws://localhost:8180"
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' http://localhost:8180 http://127.0.0.1:8180 http://localhost:9099 http://127.0.0.1:9099 https://factory.void.pegasus.uz wss://localhost:8180 ws://localhost:8180"
     }
   },
   "bundle": {
