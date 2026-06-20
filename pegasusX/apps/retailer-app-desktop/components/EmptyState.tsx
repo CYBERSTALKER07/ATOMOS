@@ -223,7 +223,7 @@ export default function EmptyState({
           <button
             type="button"
             onClick={onAction}
-            className="desk-btn-primary active-press"
+            className="portal-btn portal-btn--primary active-press"
           >
             {action}
           </button>

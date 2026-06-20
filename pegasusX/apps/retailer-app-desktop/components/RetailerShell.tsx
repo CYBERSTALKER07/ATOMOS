@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState, useMemo, useCallback, memo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   PanelLeftClose,
   PanelLeft,
@@ -26,6 +26,7 @@ import { useWebSocket } from "../lib/ws";
 import { useRetailerNotifications } from "../lib/notifications";
 import { clearStoredToken } from "../lib/bridge";
 import { useTheme, type ThemeMode } from "./ThemeProvider";
+import Icon from "./Icon";
 
 /* ────────── Navigation Config ────────── */
 
@@ -80,22 +81,21 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
 
 const ThemeToggle = memo(function ThemeToggle() {
   const { mode, cycle } = useTheme();
-  const iconByMode: Record<ThemeMode, React.ElementType> = {
-    system: Activity,
-    light: Store,
-    dark: Container,
+  const iconName: Record<ThemeMode, string> = {
+    system: "autoMode",
+    light: "lightMode",
+    dark: "darkMode",
   };
-  const IconComponent = iconByMode[mode];
 
   return (
     <button
+      type="button"
       onClick={cycle}
-      className="desk-icon-btn active-press"
+      className="portal-btn portal-btn--ghost desk-icon-btn"
       title={`Theme: ${mode}`}
       aria-label={`Theme: ${mode}`}
-      type="button"
     >
-      <IconComponent size={18} />
+      <Icon name={iconName[mode]} size={18} />
     </button>
   );
 });
@@ -242,21 +242,14 @@ const DrawerContent = memo(function DrawerContent({
                     key={item.href}
                     href={item.href}
                     prefetch={false}
-                    className={`desk-sidebar-item active-press ${active ? "desk-sidebar-item--accent" : ""}`}
+                    data-active={active ? "true" : undefined}
+                    className={`desk-sidebar-link desk-sidebar-item active-press ${active ? "desk-sidebar-link--active" : ""}`}
                     title={isRail ? item.label : undefined}
                     aria-label={item.label}
                     style={{
                       justifyContent: isRail ? "center" : "flex-start",
                       padding: isRail ? "0" : "0 12px",
                       height: 40,
-                      background: active
-                        ? "var(--desk-accent-soft)"
-                        : "transparent",
-                      borderRadius: "var(--radius-md)",
-                      color: active
-                        ? "var(--desk-accent)"
-                        : "var(--desk-text-secondary)",
-                      fontWeight: active ? 600 : 400,
                     }}
                   >
                     <ItemIcon
@@ -301,7 +294,7 @@ const DrawerContent = memo(function DrawerContent({
           {!isRail && (
             <button
               onClick={onLogout}
-              className="desk-sidebar-item active-press flex-1"
+              className="portal-btn portal-btn--ghost desk-sidebar-item active-press flex-1"
               title="Sign Out"
               aria-label="Sign Out"
               type="button"
@@ -370,6 +363,7 @@ export default function RetailerShell({
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [identity, setIdentity] = useState<RetailerIdentity>(DEFAULT_IDENTITY);
+  const reduceMotion = useReducedMotion();
 
   const handleLogout = useCallback(async () => {
     document.cookie = "pegasus_retailer_jwt=; Max-Age=0; path=/";
@@ -418,10 +412,10 @@ export default function RetailerShell({
     >
       {/* ── Desktop Sidebar ── */}
       <motion.div
-        layout
+        layout={!reduceMotion}
         initial={false}
         animate={{ width: collapsed ? 72 : 264 }}
-        transition={{ type: "spring", stiffness: 400, damping: 40 }}
+        transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 40 }}
         className="hidden md:flex flex-col shrink-0 overflow-hidden z-10"
         style={{
           borderRight: "1px solid var(--desk-border)",

@@ -18,7 +18,8 @@ import {
   Loader2,
   ChevronRight,
 } from "lucide-react";
-import { Button, Chip } from "@heroui/react";
+import { Chip } from "@heroui/react";
+import { PageChrome } from "@/components/PageChrome";
 import { motion, AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
@@ -331,28 +332,27 @@ export default function InsightsPage() {
       className="min-h-full p-6 md:p-8"
       style={{ background: "var(--desk-canvas)" }}
     >
-      <header className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
-            Intelligence Hub
-          </h1>
-          <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
-            Predictive demand signals and network analytics.
-          </p>
-        </div>
-        <Button
-          variant="secondary"
-          isDisabled={isRefreshing}
-          onPress={refreshAll}
-          className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
-        >
-          <RefreshCw
-            size={16}
-            className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
-          />
-          {isRefreshing ? "Syncing" : "Sync Signals"}
-        </Button>
-      </header>
+      <PageChrome
+        icon="insights"
+        title="Intelligence Hub"
+        description="Predictive demand signals and network analytics."
+        loading={loading}
+        skeletonVariant="table"
+        actions={
+          <button
+            type="button"
+            disabled={isRefreshing}
+            onClick={refreshAll}
+            className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-bold"
+          >
+            <RefreshCw
+              size={16}
+              className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            {isRefreshing ? "Syncing" : "Sync Signals"}
+          </button>
+        }
+      >
 
       {syncBanner && (
         <motion.div
@@ -650,10 +650,11 @@ export default function InsightsPage() {
                   </p>
                 </div>
               </div>
-              <Button
+              <button
+                type="button"
                 onClick={() => void createOrder()}
-                isDisabled={submitting}
-                className="bg-[var(--desk-accent)] text-white font-bold h-11 px-8 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all"
+                disabled={submitting}
+                className="portal-btn portal-btn--primary font-bold h-11 px-8 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all"
               >
                 {submitting ? (
                   <>
@@ -663,7 +664,7 @@ export default function InsightsPage() {
                 ) : (
                   "Execute Procurement"
                 )}
-              </Button>
+              </button>
             </motion.div>
           )}
         </div>
@@ -763,6 +764,7 @@ export default function InsightsPage() {
           </div>
         </aside>
       </div>
+      </PageChrome>
     </div>
   );
 }

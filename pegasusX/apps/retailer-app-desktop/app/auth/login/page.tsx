@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { getStoredToken, isTauri, storeToken } from "../../../lib/bridge";
 import { readToken } from "../../../lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@heroui/react";
 import {
   ShieldCheck,
   Phone,
@@ -135,7 +134,7 @@ export default function RetailerLoginPage() {
       if (data.user)
         localStorage.setItem("retailer_profile", JSON.stringify(data.user));
 
-      router.replace(data.is_configured ? "/dashboard" : "/setup");
+      router.replace(data.is_configured ? "/dashboard" : "/setup/tax");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "An error occurred";
       if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
@@ -160,26 +159,20 @@ export default function RetailerLoginPage() {
     otpCode.trim().length === 6;
 
   return (
-    <div className="min-h-dvh w-full flex items-center justify-center p-6 bg-[var(--desk-canvas)]">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-[32px] shadow-2xl overflow-hidden"
-      >
-        <div className="p-10">
-          <div className="flex flex-col items-center text-center mb-10">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--desk-accent)] flex items-center justify-center text-white shadow-xl mb-6 rotate-3 hover:rotate-0 transition-transform cursor-default">
-              <ShieldCheck size={32} />
-            </div>
-            <h1 className="md-typescale-display-small font-bold text-[var(--desk-text-primary)] tracking-tight">
-              Retailer Hub
-            </h1>
-            <p className="mt-2 md-typescale-body-large text-[var(--desk-text-secondary)]">
-              Secure network portal entry
-            </p>
-          </div>
+    <>
+      <div className="flex flex-col items-center text-center mb-10">
+        <div className="w-16 h-16 rounded-2xl bg-[var(--desk-accent)] flex items-center justify-center text-white shadow-xl mb-6 rotate-3 hover:rotate-0 transition-transform cursor-default">
+          <ShieldCheck size={32} />
+        </div>
+        <h1 className="md-typescale-display-small font-bold text-[var(--desk-text-primary)] tracking-tight">
+          Retailer Hub
+        </h1>
+        <p className="mt-2 md-typescale-body-large text-[var(--desk-text-secondary)]">
+          Secure network portal entry
+        </p>
+      </div>
 
-          <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait">
             {step === "phone" ? (
               <motion.form 
                 key="phone-form"
@@ -251,10 +244,10 @@ export default function RetailerLoginPage() {
 
                 <div id="recaptcha-container"></div>
 
-                <Button
+                <button
                   type="submit"
-                  isDisabled={!canSubmitPhone}
-                  className="w-full h-14 bg-[var(--desk-text-primary)] text-white font-bold rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30"
+                  disabled={!canSubmitPhone}
+                  className="portal-btn portal-btn--primary w-full h-14 font-bold rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30"
                 >
                   {loading || restoringSession ? (
                     <Loader2 size={20} className="animate-spin" />
@@ -263,7 +256,7 @@ export default function RetailerLoginPage() {
                       Initialize Connection <ChevronRight size={20} />
                     </>
                   )}
-                </Button>
+                </button>
 
                 <p className="md-typescale-body-small text-center" style={{ color: "var(--desk-text-secondary)" }}>
                   New retailer?{" "}
@@ -317,34 +310,25 @@ export default function RetailerLoginPage() {
                 </AnimatePresence>
 
                 <div className="flex gap-3">
-                  <Button
+                  <button
                     type="button"
-                    onPress={() => setStep("phone")}
-                    isDisabled={loading}
-                    className="flex-1 h-14 bg-[var(--desk-surface-subtle)] text-[var(--desk-text-primary)] font-bold rounded-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30"
+                    onClick={() => setStep("phone")}
+                    disabled={loading}
+                    className="portal-btn portal-btn--ghost flex-1 h-14 font-bold rounded-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30"
                   >
                     Back
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     type="submit"
-                    isDisabled={!canSubmitOtp}
-                    className="flex-1 h-14 bg-[var(--desk-text-primary)] text-white font-bold rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30"
+                    disabled={!canSubmitOtp}
+                    className="portal-btn portal-btn--primary flex-1 h-14 font-bold rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30"
                   >
                     {loading ? <Loader2 size={20} className="animate-spin" /> : "Verify & Connect"}
-                  </Button>
+                  </button>
                 </div>
               </motion.form>
             )}
           </AnimatePresence>
-
-        </div>
-
-        <div className="px-10 py-6 bg-[var(--desk-surface-subtle)] border-t border-[var(--desk-border)] text-center">
-          <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
-            Pegasus Logistics Core v2.0.0
-          </p>
-        </div>
-      </motion.div>
-    </div>
+    </>
   );
 }

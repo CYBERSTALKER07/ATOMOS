@@ -340,7 +340,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           max_quantity: meta.max_quantity ?? existing.max_quantity,
         };
         const nextQty = clampCartQuantity(
-          { ...mergedMeta, product_id: product.id },
+          { ...mergedMeta, product_id: product.id } as StockAwareProduct & { product_id: string },
           existing.quantity + cappedQty,
           previewOrderableQuantities,
           previewStockPolicyReject,

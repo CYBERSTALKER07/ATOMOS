@@ -12,7 +12,6 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@heroui/react";
 import { useCart } from "../lib/cart";
 import { orderableCapsFromPreview } from "../lib/stock-policy";
 import { apiFetch } from "../lib/auth";
@@ -594,13 +593,14 @@ export default function CheckoutModal({
                     <p className="text-xs font-semibold text-red-600">{cardSetupError}</p>
                   )}
                   {!pendingCardToken ? (
-                    <Button
-                      onPress={() => void handleInitiateCard()}
-                      isDisabled={addingCard}
-                      className="w-full h-11 bg-[var(--desk-accent)] text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2"
+                    <button
+                      type="button"
+                      onClick={() => void handleInitiateCard()}
+                      disabled={addingCard}
+                      className="portal-btn portal-btn--primary w-full h-11 rounded-xl font-bold flex items-center justify-center gap-2"
                     >
                       {addingCard ? <Loader2 size={18} className="animate-spin" /> : "Start card setup"}
-                    </Button>
+                    </button>
                   ) : (
                     <div className="space-y-3">
                       <input
@@ -612,22 +612,24 @@ export default function CheckoutModal({
                         className="w-full px-4 py-3 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] text-sm"
                       />
                       <div className="flex gap-3">
-                        <Button
-                          onPress={() => {
+                        <button
+                          type="button"
+                          onClick={() => {
                             setPendingCardToken(null);
                             setCardOtpCode("");
                           }}
-                          className="flex-1 h-11 rounded-xl border border-[var(--desk-border)] font-bold"
+                          className="portal-btn portal-btn--ghost flex-1 h-11 rounded-xl font-bold"
                         >
                           Cancel
-                        </Button>
-                        <Button
-                          onPress={() => void handleConfirmCard()}
-                          isDisabled={addingCard || !cardOtpCode.trim()}
-                          className="flex-1 h-11 bg-[var(--desk-accent)] text-white font-bold rounded-xl"
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleConfirmCard()}
+                          disabled={addingCard || !cardOtpCode.trim()}
+                          className="portal-btn portal-btn--primary flex-1 h-11 rounded-xl font-bold"
                         >
                           {addingCard ? <Loader2 size={18} className="animate-spin" /> : "Confirm card"}
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -684,10 +686,11 @@ export default function CheckoutModal({
                   End-to-end encrypted
                 </span>
               </div>
-              <Button
-                onPress={handleCheckout}
-                isDisabled={loading || items.length === 0 || (method === "global_pay" && !hasCardConfigured)}
-                className="h-12 px-8 bg-[var(--desk-text-primary)] text-[var(--desk-surface)] font-bold rounded-xl shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              <button
+                type="button"
+                onClick={handleCheckout}
+                disabled={loading || items.length === 0 || (method === "global_pay" && !hasCardConfigured)}
+                className="portal-btn portal-btn--primary h-12 px-8 font-bold rounded-xl shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
 
                 {loading ? (
@@ -697,7 +700,7 @@ export default function CheckoutModal({
                     Confirm Execution <ChevronRight size={18} />
                   </>
                 )}
-              </Button>
+              </button>
             </div>
           </motion.div>
         </motion.div>

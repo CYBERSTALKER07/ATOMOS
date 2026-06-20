@@ -26,7 +26,8 @@ import {
   Clock,
   Users,
 } from "lucide-react";
-import { Button, Chip, Skeleton } from "@heroui/react";
+import { Chip, Skeleton } from "@heroui/react";
+import { PageChrome } from "@/components/PageChrome";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
@@ -596,30 +597,27 @@ export default function SettingsPage() {
       className="min-h-full p-6 md:p-8"
       style={{ background: "var(--desk-canvas)" }}
     >
-      <header className="mb-8 max-w-5xl mx-auto flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
-            System Configuration
-          </h1>
-          <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
-            Account identity, notification parameters, and AI-driven logic
-            controls.
-          </p>
-        </div>
-        <Button
-          variant="secondary"
-          isDisabled={isSyncing}
-          onPress={refreshAll}
-          className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
-        >
-          <RefreshCw
-            size={16}
-            className={`mr-2 ${isSyncing ? "animate-spin" : ""}`}
-          />
-          {isSyncing ? "Syncing" : "Sync"}
-        </Button>
-      </header>
-
+      <PageChrome
+        icon="settings"
+        title="System Configuration"
+        description="Account identity, notification parameters, and AI-driven logic controls."
+        loading={loading}
+        skeletonVariant="form"
+        actions={
+          <button
+            type="button"
+            disabled={isSyncing}
+            onClick={refreshAll}
+            className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-bold"
+          >
+            <RefreshCw
+              size={16}
+              className={`mr-2 ${isSyncing ? "animate-spin" : ""}`}
+            />
+            {isSyncing ? "Syncing" : "Sync"}
+          </button>
+        }
+      >
       <div className="max-w-5xl mx-auto mb-6 space-y-3">
         {syncBanner && (
           <div
@@ -772,18 +770,18 @@ export default function SettingsPage() {
                     )}
                   </div>
                   {profileEditing && (
-                    <Button
-                      variant="primary"
-                      onPress={saveProfile}
-                      isDisabled={savingProfile}
-                      className="w-full bg-[var(--desk-text-primary)] text-white font-bold h-11 rounded-xl shadow-lg transition-all active:scale-95"
+                    <button
+                      type="button"
+                      onClick={saveProfile}
+                      disabled={savingProfile}
+                      className="portal-btn portal-btn--primary w-full font-bold h-11 rounded-xl shadow-lg transition-all active:scale-95"
                     >
                       {savingProfile ? (
                         <Loader2 size={18} className="animate-spin" />
                       ) : (
                         "Verify & Save Changes"
                       )}
-                    </Button>
+                    </button>
                   )}
                 </div>
               </section>
@@ -989,6 +987,7 @@ export default function SettingsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      </PageChrome>
     </div>
   );
 }

@@ -171,7 +171,7 @@ export default function ShopClosedModal() {
                   type="button"
                   disabled={submitting}
                   onClick={() => void respond(option)}
-                  className="md-btn md-btn-filled h-11 rounded-xl font-bold disabled:opacity-60"
+                  className="portal-btn portal-btn--primary h-11 rounded-xl font-bold disabled:opacity-60"
                 >
                   {submitting ? (
                     <span className="inline-flex items-center gap-2">

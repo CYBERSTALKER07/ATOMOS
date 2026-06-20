@@ -18,7 +18,8 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
-import { Button, Chip } from "@heroui/react";
+import { Chip } from "@heroui/react";
+import { PageChrome } from "@/components/PageChrome";
 import { motion, AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
@@ -548,24 +549,22 @@ export default function OrdersPage() {
       className="min-h-full p-6 md:p-8"
       style={{ background: "var(--desk-canvas)" }}
     >
-      <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
-            Logistics Tracking
-          </h1>
-          <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
-            Monitor inbound nodes and verify delivery manifests.
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          onPress={() => router.push("/catalog")}
-          className="h-11 px-6 rounded-xl font-bold transition-all shadow-[var(--shadow-sm)]"
-          style={{ background: "var(--desk-accent)", color: "white" }}
-        >
-          <PackageOpen size={18} className="mr-2" /> New Order
-        </Button>
-      </header>
+      <PageChrome
+        icon="orders"
+        title="Logistics Tracking"
+        description="Monitor inbound nodes and verify delivery manifests."
+        loading={loading}
+        skeletonVariant="table"
+        actions={
+          <button
+            type="button"
+            onClick={() => router.push("/catalog")}
+            className="portal-btn portal-btn--primary h-11 px-6 rounded-xl font-bold shadow-[var(--shadow-sm)]"
+          >
+            <PackageOpen size={18} className="mr-2" /> New Order
+          </button>
+        }
+      >
 
       <BentoGrid className="mb-8">
         <BentoCard interactive={false}>
@@ -659,16 +658,15 @@ export default function OrdersPage() {
           </button>
         ))}
         <div className="flex-1" />
-        <Button
-          variant="tertiary"
-          size="sm"
-          isIconOnly
-          isDisabled={isOrdersRefreshing}
-          onPress={refreshAll}
-          className="text-[var(--desk-text-tertiary)]"
+        <button
+          type="button"
+          disabled={isOrdersRefreshing}
+          onClick={refreshAll}
+          className="portal-btn portal-btn--ghost desk-icon-btn text-[var(--desk-text-tertiary)]"
+          aria-label="Refresh orders"
         >
           <RefreshCw size={16} className={isOrdersRefreshing ? "animate-spin" : ""} />
-        </Button>
+        </button>
       </div>
 
       {syncBanner && (
@@ -763,7 +761,7 @@ export default function OrdersPage() {
                       </p>
                       {(order.preorder_badge === "REVIEW_DELIVERY" ||
                         order.confirmation_status === "PENDING_WAREHOUSE") && (
-                        <Chip size="sm" color="warning" variant="flat" className="mt-1">
+                        <Chip size="sm" color="warning" variant="soft" className="mt-1">
                           Review Delivery
                         </Chip>
                       )}
@@ -808,13 +806,13 @@ export default function OrdersPage() {
                     Order Details
                   </h2>
                 </div>
-                <Button
-                  isIconOnly
-                  variant="tertiary"
-                  className="text-[var(--desk-text-tertiary)]"
+                <button
+                  type="button"
+                  className="portal-btn portal-btn--ghost desk-icon-btn text-[var(--desk-text-tertiary)]"
+                  aria-label="More options"
                 >
                   <MoreVertical size={20} />
-                </Button>
+                </button>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-10">
@@ -846,27 +844,26 @@ export default function OrdersPage() {
 
               {showAiActions && (
                 <div className="mb-10 flex flex-wrap gap-3">
-                  <Button
-                    variant="secondary"
-                    isDisabled={aiActionPending}
-                    onPress={() => void handleRejectAiOrder(detail.order_id)}
-                    className="h-11 px-5 rounded-xl font-bold"
+                  <button
+                    type="button"
+                    disabled={aiActionPending}
+                    onClick={() => void handleRejectAiOrder(detail.order_id)}
+                    className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-bold"
                   >
                     Reject Suggestion
-                  </Button>
-                  <Button
-                    variant="primary"
-                    isDisabled={aiActionPending}
-                    onPress={() => void handleConfirmAiOrder(detail.order_id)}
-                    className="h-11 px-5 rounded-xl font-bold"
-                    style={{ background: "var(--desk-accent)", color: "white" }}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={aiActionPending}
+                    onClick={() => void handleConfirmAiOrder(detail.order_id)}
+                    className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-bold"
                   >
                     {aiActionPending ? (
                       <Loader2 size={16} className="animate-spin" />
                     ) : (
                       "Confirm Suggestion"
                     )}
-                  </Button>
+                  </button>
                 </div>
               )}
 
@@ -889,66 +886,64 @@ export default function OrdersPage() {
                     </p>
                   )}
                   <div className="flex flex-wrap gap-3">
-                    <Button
-                      variant="secondary"
-                      isDisabled={preorderActionPending}
-                      onPress={() => detail && void handleRejectDeliveryProposal(detail.order_id)}
-                      className="h-11 px-5 rounded-xl font-bold"
+                    <button
+                      type="button"
+                      disabled={preorderActionPending}
+                      onClick={() => detail && void handleRejectDeliveryProposal(detail.order_id)}
+                      className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-bold"
                     >
                       Reject Proposal
-                    </Button>
-                    <Button
-                      variant="primary"
-                      isDisabled={preorderActionPending}
-                      onPress={() => detail && void handleAcceptDeliveryProposal(detail.order_id)}
-                      className="h-11 px-5 rounded-xl font-bold"
-                      style={{ background: "var(--desk-accent)", color: "white" }}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={preorderActionPending}
+                      onClick={() => detail && void handleAcceptDeliveryProposal(detail.order_id)}
+                      className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-bold"
                     >
                       {preorderActionPending ? (
                         <Loader2 size={16} className="animate-spin" />
                       ) : (
                         "Accept Date"
                       )}
-                    </Button>
+                    </button>
                   </div>
                 </div>
               )}
 
               {showPreorderActions && (
                 <div className="mb-10 flex flex-wrap gap-3">
-                  <Button
-                    variant="secondary"
-                    isDisabled={preorderActionPending}
-                    onPress={() => detail && void handleEditPreorder(detail)}
-                    className="h-11 px-5 rounded-xl font-bold"
+                  <button
+                    type="button"
+                    disabled={preorderActionPending}
+                    onClick={() => detail && void handleEditPreorder(detail)}
+                    className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-bold"
                   >
                     Edit Preorder
-                  </Button>
-                  <Button
-                    variant="primary"
-                    isDisabled={preorderActionPending}
-                    onPress={() =>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={preorderActionPending}
+                    onClick={() =>
                       detail && void handleConfirmPreorder(detail.order_id)
                     }
-                    className="h-11 px-5 rounded-xl font-bold"
-                    style={{ background: "var(--desk-accent)", color: "white" }}
+                    className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-bold"
                   >
                     {preorderActionPending ? (
                       <Loader2 size={16} className="animate-spin" />
                     ) : (
                       "Confirm Preorder"
                     )}
-                  </Button>
+                  </button>
                 </div>
               )}
 
               {showCancelAction && (
                 <div className="mb-10">
-                  <Button
-                    variant="secondary"
-                    isDisabled={cancelling}
-                    onPress={() => void handleCancelOrder(detail.order_id, detail.state)}
-                    className="h-11 px-5 rounded-xl font-bold text-red-700 border border-red-200"
+                  <button
+                    type="button"
+                    disabled={cancelling}
+                    onClick={() => void handleCancelOrder(detail.order_id, detail.state)}
+                    className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-bold text-red-700 border border-red-200"
                   >
                     {cancelling ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -963,7 +958,7 @@ export default function OrdersPage() {
                         Cancel order
                       </>
                     )}
-                  </Button>
+                  </button>
                 </div>
               )}
 
@@ -1019,6 +1014,7 @@ export default function OrdersPage() {
         </div>
         </PageSection>
       </div>
+      </PageChrome>
     </div>
   );
 }

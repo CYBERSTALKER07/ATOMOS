@@ -96,10 +96,10 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
 
   return (
     <div className="space-y-2">
-      <label className="text-xs font-medium text-[var(--desk-text-tertiary)]">{label}</label>
+      <label className="portal-label">{label}</label>
       <div className="relative">
         <input
-          className="w-full h-12 px-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] border border-transparent focus:border-[var(--desk-accent)] transition-all md-typescale-body-medium font-bold"
+          className="portal-input w-full"
           placeholder="Start typing street address…"
           value={query}
           onChange={(e) => onInputChange(e.target.value)}
@@ -127,7 +127,7 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          className="rounded-md border border-[var(--desk-border)] px-3 py-1.5 text-xs font-medium"
+          className="portal-btn portal-btn--ghost text-xs"
           onClick={useMyLocation}
           disabled={locating}
         >

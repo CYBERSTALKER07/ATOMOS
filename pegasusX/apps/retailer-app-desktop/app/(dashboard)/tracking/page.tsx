@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { Button } from "@heroui/react";
+import { PageChrome } from "@/components/PageChrome";
 import {
   Truck,
   Package,
@@ -314,28 +314,27 @@ export default function TrackingPage() {
       className="min-h-full p-6 md:p-8 flex flex-col gap-6"
       style={{ background: "var(--desk-canvas)" }}
     >
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
-            Telemetry Control
-          </h1>
-          <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
-            Live fleet orchestration and inbound logistics monitoring.
-          </p>
-        </div>
-        <Button
-          variant="secondary"
-          onPress={refreshAll}
-          isDisabled={isRefreshing}
-          className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
-        >
-          <RefreshCw
-            size={16}
-            className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
-          />
-          {isRefreshing ? "Syncing" : "Sync GPS"}
-        </Button>
-      </header>
+      <PageChrome
+        icon="tracking"
+        title="Telemetry Control"
+        description="Live fleet orchestration and inbound logistics monitoring."
+        loading={loading && orders.length === 0}
+        skeletonVariant="table"
+        actions={
+          <button
+            type="button"
+            onClick={refreshAll}
+            disabled={isRefreshing}
+            className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-bold"
+          >
+            <RefreshCw
+              size={16}
+              className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            {isRefreshing ? "Syncing" : "Sync GPS"}
+          </button>
+        }
+      >
 
       {syncBanner && (
         <motion.div
@@ -657,6 +656,7 @@ export default function TrackingPage() {
         </AnimatePresence>
       </div>
       </PageSection>
+      </PageChrome>
     </div>
   );
 }

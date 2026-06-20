@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@heroui/react";
 import { ShieldCheck, Phone, KeyRound, Loader2, ChevronRight, AlertTriangle, User, Mail, MapPin } from "lucide-react";
 import Link from "next/link";
 import { storeToken } from "../../../lib/bridge";
@@ -115,7 +114,7 @@ export default function RetailerRegisterPage() {
       if (data.user)
         localStorage.setItem("retailer_profile", JSON.stringify(data.user));
 
-      router.replace(data.is_configured ? "/dashboard" : "/setup");
+      router.replace(data.is_configured ? "/dashboard" : "/setup/tax");
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -124,26 +123,21 @@ export default function RetailerRegisterPage() {
   }
 
   return (
-    <div className="min-h-dvh w-full flex items-center justify-center p-6 bg-[var(--desk-canvas)]">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-[32px] shadow-2xl overflow-hidden flex flex-col"
-      >
-        <div className="p-10 flex-1">
-          <div className="flex flex-col items-center text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--desk-accent)] flex items-center justify-center text-white shadow-xl mb-6 rotate-3 hover:rotate-0 transition-transform cursor-default">
-              <ShieldCheck size={32} />
-            </div>
-            <h1 className="md-typescale-display-small font-bold text-[var(--desk-text-primary)] tracking-tight">
-              Join Pegasus
-            </h1>
-            <p className="mt-2 md-typescale-body-large text-[var(--desk-text-secondary)]">
-              {STEP_LABELS[state.step]}
-            </p>
+    <div className="flex flex-col">
+      <div className="mb-8">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--desk-accent)] flex items-center justify-center text-white shadow-xl mb-6 rotate-3 hover:rotate-0 transition-transform cursor-default">
+            <ShieldCheck size={32} />
           </div>
+          <h1 className="md-typescale-display-small font-bold text-[var(--desk-text-primary)] tracking-tight">
+            Join Pegasus
+          </h1>
+          <p className="mt-2 md-typescale-body-large text-[var(--desk-text-secondary)]">
+            {STEP_LABELS[state.step]}
+          </p>
+        </div>
 
-          <div className="mb-8 flex gap-2 justify-center">
+        <div className="mt-8 flex gap-2 justify-center">
             {STEP_ORDER.map((stepId, idx) => (
               <div 
                 key={stepId} 
@@ -153,8 +147,9 @@ export default function RetailerRegisterPage() {
               />
             ))}
           </div>
+        </div>
 
-          <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait">
             <motion.div
               key={state.step}
               initial={{ opacity: 0, x: 20 }}
@@ -334,55 +329,53 @@ export default function RetailerRegisterPage() {
                 </div>
               )}
             </motion.div>
-          </AnimatePresence>
+        </AnimatePresence>
 
-          <AnimatePresence>
-            {submitError && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="mt-6 p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-xs font-bold text-center flex items-center justify-center gap-2"
-              >
-                <AlertTriangle size={14} />
-                {submitError}
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <AnimatePresence>
+          {submitError && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="mt-6 p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-xs font-bold text-center flex items-center justify-center gap-2"
+            >
+              <AlertTriangle size={14} />
+              {submitError}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        </div>
-        
-        <div className="p-6 bg-[var(--desk-surface-subtle)] border-t border-[var(--desk-border)] flex gap-3">
+        <div className="mt-6 flex gap-3">
           {stepIndex > 0 && (
-            <Button
+            <button
               type="button"
-              onPress={back}
-              isDisabled={submitting}
-              className="flex-1 h-14 bg-[var(--desk-canvas)] text-[var(--desk-text-primary)] font-bold rounded-2xl border border-[var(--desk-border)] transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30"
+              onClick={back}
+              disabled={submitting}
+              className="portal-btn portal-btn--ghost flex-1 h-14 font-bold rounded-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30"
             >
               Back
-            </Button>
+            </button>
           )}
           {stepIndex < STEP_ORDER.length - 1 ? (
-            <Button
+            <button
               type="button"
-              onPress={next}
-              className="flex-[2] h-14 bg-[var(--desk-text-primary)] text-white font-bold rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
+              onClick={next}
+              className="portal-btn portal-btn--primary flex-[2] h-14 font-bold rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
             >
               Continue <ChevronRight size={20} />
-            </Button>
+            </button>
           ) : (
-            <Button
+            <button
               type="button"
-              onPress={() => submit()}
-              isDisabled={submitting}
-              className="flex-[2] h-14 bg-[var(--desk-text-primary)] text-white font-bold rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-30"
+              onClick={() => submit()}
+              disabled={submitting}
+              className="portal-btn portal-btn--primary flex-[2] h-14 font-bold rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-30"
             >
               {submitting ? <Loader2 size={20} className="animate-spin" /> : "Create Account"}
-            </Button>
+            </button>
           )}
         </div>
         {stepIndex === 0 && (
-          <div className="pb-6 bg-[var(--desk-surface-subtle)] text-center">
+          <div className="mt-4 text-center">
             <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
               Already a retailer?{" "}
               <Link href="/auth/login" className="font-bold underline hover:text-[var(--desk-text-primary)]">
@@ -391,7 +384,6 @@ export default function RetailerRegisterPage() {
             </p>
           </div>
         )}
-      </motion.div>
     </div>
   );
 }

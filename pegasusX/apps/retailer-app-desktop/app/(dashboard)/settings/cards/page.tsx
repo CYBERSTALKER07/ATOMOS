@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, CreditCard, Loader2, Plus } from "lucide-react";
+import { PageChrome } from "@/components/PageChrome";
 import { apiFetch } from "../../../../lib/auth";
 import { deactivateCard, setDefaultCard } from "../../../../lib/api";
 
@@ -164,27 +165,28 @@ function SavedCardsPageContent() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3">
+    <PageChrome
+      icon="settings"
+      title="Saved Cards"
+      description={
+        isDeliveryPaymentReturn
+          ? `Add a card, then return to complete delivery payment for order #${orderId.slice(-8) || "pending"}.`
+          : "Manage tokenized payment methods for checkout and delivery."
+      }
+      loading={loading}
+      skeletonVariant="form"
+      actions={
         <button
           type="button"
           onClick={() => router.push(isDeliveryPaymentReturn ? returnPath : "/settings")}
-          className="w-10 h-10 rounded-full border border-[var(--desk-border)] flex items-center justify-center"
+          className="portal-btn portal-btn--ghost desk-icon-btn"
+          aria-label="Back"
         >
           <ArrowLeft size={18} />
         </button>
-        <div>
-          <h1 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
-            Saved Cards
-          </h1>
-          {isDeliveryPaymentReturn && (
-            <p className="text-xs text-[var(--desk-text-tertiary)] mt-1">
-              Add a card, then return to complete delivery payment for order #
-              {orderId.slice(-8) || "pending"}.
-            </p>
-          )}
-        </div>
-      </div>
+      }
+    >
+    <div className="max-w-2xl mx-auto space-y-6">
 
       {isDeliveryPaymentReturn && (
         <div className="rounded-2xl border border-[var(--desk-accent)]/30 bg-[var(--desk-accent-soft)] p-4 flex items-center justify-between gap-4">
@@ -304,5 +306,6 @@ function SavedCardsPageContent() {
         </div>
       )}
     </div>
+    </PageChrome>
   );
 }

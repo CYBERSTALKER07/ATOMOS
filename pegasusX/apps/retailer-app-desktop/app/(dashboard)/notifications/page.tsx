@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle, Bell, CheckCheck, RefreshCw, WifiOff } from "lucide-react";
-import { Button } from "@heroui/react";
+import { AlertTriangle, CheckCheck, RefreshCw, WifiOff } from "lucide-react";
+import { PageChrome } from "@/components/PageChrome";
 import EmptyState from "../../../components/EmptyState";
 import { ListRowSkeleton } from "../../../components/Skeleton";
 import { useRetailerNotifications } from "../../../lib/notifications";
@@ -166,41 +166,35 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-full p-6 md:p-8">
-      <header className="mb-8 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
+      <PageChrome
+        icon="notifications"
+        title="Notifications"
+        description={headerSubtitle}
+        loading={loading && items.length === 0}
+        skeletonVariant="table"
+        actions={
           <div className="flex items-center gap-2">
-            <Bell size={18} style={{ color: "var(--desk-accent)" }} />
-            <h1 className="md-typescale-headline-large">Notifications</h1>
+            <button
+              type="button"
+              onClick={() => void handleRefresh()}
+              disabled={isRefreshing}
+              aria-label="Refresh"
+              className="portal-btn portal-btn--ghost desk-icon-btn"
+            >
+              <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+            </button>
+            <button
+              type="button"
+              disabled={unreadCount === 0}
+              onClick={() => void handleMarkAllRead()}
+              className="portal-btn portal-btn--primary flex items-center gap-2"
+            >
+              <CheckCheck size={16} />
+              Mark All Read
+            </button>
           </div>
-          <p
-            className="md-typescale-body-medium mt-1"
-            style={{ color: "var(--desk-text-secondary)" }}
-          >
-            {headerSubtitle}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            onPress={() => void handleRefresh()}
-            isIconOnly
-            isDisabled={isRefreshing}
-            aria-label="Refresh"
-          >
-            <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
-          </Button>
-          <Button
-            variant="primary"
-            isDisabled={unreadCount === 0}
-            onPress={() => void handleMarkAllRead()}
-            className="flex items-center gap-2"
-          >
-            <CheckCheck size={16} />
-            Mark All Read
-          </Button>
-        </div>
-      </header>
+        }
+      >
 
       {syncBanner && (
         <motion.div
@@ -303,6 +297,7 @@ export default function NotificationsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      </PageChrome>
     </div>
   );
 }

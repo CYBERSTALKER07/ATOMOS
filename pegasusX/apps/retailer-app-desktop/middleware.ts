@@ -41,7 +41,7 @@ export function middleware(request: NextRequest) {
   if (pathname === '/' || pathname.startsWith('/auth')) {
     if (hasValidToken) {
       if (!isConfigured) {
-        return NextResponse.redirect(new URL('/setup', request.url));
+        return NextResponse.redirect(new URL('/setup/tax', request.url));
       }
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
@@ -72,25 +72,12 @@ export function middleware(request: NextRequest) {
 
   // Enforce configuration
   if (!isConfigured) {
-    return NextResponse.redirect(new URL('/setup', request.url));
+    return NextResponse.redirect(new URL('/setup/tax', request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    '/',
-    '/auth/:path*',
-    '/dashboard/:path*',
-    '/catalog/:path*',
-    '/orders/:path*',
-    '/tracking/:path*',
-    '/procurement/:path*',
-    '/notifications/:path*',
-    '/insights/:path*',
-    '/settings/:path*',
-    '/dock/:path*',
-    '/setup/:path*',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

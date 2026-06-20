@@ -17,7 +17,8 @@ import {
   Trash2,
   RefreshCw,
 } from "lucide-react";
-import { Button, Chip } from "@heroui/react";
+import { Chip } from "@heroui/react";
+import { PageChrome } from "@/components/PageChrome";
 import { motion, AnimatePresence } from "framer-motion";
 import EmptyState from "../../../components/EmptyState";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
@@ -256,39 +257,36 @@ export default function ProcurementPage() {
       className="min-h-full p-6 md:p-8"
       style={{ background: "var(--desk-canvas)" }}
     >
-      <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
-            Vendor Operations
-          </h1>
-          <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
-            Lifecycle management for connected supply nodes and trade
-            settlements.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="secondary"
-            isDisabled={isRefreshing}
-            onPress={refreshAll}
-            className="h-11 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
-          >
-            <RefreshCw
-              size={16}
-              className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
-            />
-            {isRefreshing ? "Syncing" : "Sync"}
-          </Button>
-          <Button
-            variant="primary"
-            onPress={() => setShowAddModal(true)}
-            className="h-11 px-6 rounded-xl font-bold transition-all shadow-[var(--shadow-sm)]"
-            style={{ background: "var(--desk-accent)", color: "white" }}
-          >
-            <Plus size={18} className="mr-2" /> Connect Vendor
-          </Button>
-        </div>
-      </header>
+      <PageChrome
+        icon="procurement"
+        title="Vendor Operations"
+        description="Lifecycle management for connected supply nodes and trade settlements."
+        loading={loadingSuppliers}
+        skeletonVariant="table"
+        actions={
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={isRefreshing}
+              onClick={refreshAll}
+              className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-bold"
+            >
+              <RefreshCw
+                size={16}
+                className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+              />
+              {isRefreshing ? "Syncing" : "Sync"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddModal(true)}
+              className="portal-btn portal-btn--primary h-11 px-6 rounded-xl font-bold shadow-[var(--shadow-sm)]"
+            >
+              <Plus size={18} className="mr-2" /> Connect Vendor
+            </button>
+          </div>
+        }
+      >
 
       {syncBanner && (
         <motion.div
@@ -626,12 +624,11 @@ export default function ProcurementPage() {
                             </p>
                           </div>
                         </div>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onPress={() => addSupplier(s.id)}
-                          isDisabled={addingId === s.id}
-                          className="bg-[var(--desk-text-primary)] text-white font-bold rounded-lg h-9 px-4"
+                        <button
+                          type="button"
+                          onClick={() => addSupplier(s.id)}
+                          disabled={addingId === s.id}
+                          className="portal-btn portal-btn--primary rounded-lg h-9 px-4 font-bold"
                         >
                           {addingId === s.id ? (
                             <>
@@ -641,7 +638,7 @@ export default function ProcurementPage() {
                           ) : (
                             "Connect"
                           )}
-                        </Button>
+                        </button>
                       </div>
                     ))
                   )}
@@ -651,6 +648,7 @@ export default function ProcurementPage() {
           </div>
         )}
       </AnimatePresence>
+      </PageChrome>
     </div>
   );
 }

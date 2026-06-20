@@ -15,7 +15,7 @@ import {
   AlertTriangle,
   WifiOff,
 } from "lucide-react";
-import { Button } from "@heroui/react";
+import { PageChrome } from "@/components/PageChrome";
 import { motion, AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
@@ -304,39 +304,37 @@ export default function CatalogPage() {
       className="min-h-full p-6 md:p-8"
       style={{ background: "var(--desk-canvas)" }}
     >
-      <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
-            Product Catalog
-          </h1>
-          <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
-            Explore approved suppliers and stage procurement orders.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="secondary"
-            isDisabled={isRefreshing}
-            onPress={refreshAll}
-            className="h-11 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
-          >
-            <RefreshCw
-              size={16}
-              className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
-            />
-            {isRefreshing ? "Syncing" : "Sync"}
-          </Button>
-          <Button
-            variant="primary"
-            onPress={() => setIsCartOpen(true)}
-            className="h-11 px-6 rounded-xl font-bold transition-all active:scale-95 shadow-[var(--shadow-sm)]"
-            style={{ background: "var(--desk-accent)", color: "white" }}
-          >
-            <ShoppingCart size={18} className="mr-2" />
-            Cart ({cartQuantity})
-          </Button>
-        </div>
-      </header>
+      <PageChrome
+        icon="catalog"
+        title="Product Catalog"
+        description="Explore approved suppliers and stage procurement orders."
+        loading={loadingProducts}
+        skeletonVariant="catalog"
+        actions={
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={isRefreshing}
+              onClick={refreshAll}
+              className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-bold"
+            >
+              <RefreshCw
+                size={16}
+                className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+              />
+              {isRefreshing ? "Syncing" : "Sync"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsCartOpen(true)}
+              className="portal-btn portal-btn--primary h-11 px-6 rounded-xl font-bold shadow-[var(--shadow-sm)]"
+            >
+              <ShoppingCart size={18} className="mr-2" />
+              Cart ({cartQuantity})
+            </button>
+          </div>
+        }
+      >
 
       {syncBanner && (
         <motion.div
@@ -711,22 +709,17 @@ export default function CatalogPage() {
                             </span>
                           )}
                         </div>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          className="rounded-lg h-9 px-4 font-bold shadow-[var(--shadow-sm)] transition-all active:scale-95"
-                          style={{
-                            background: "var(--desk-text-primary)",
-                            color: "white",
-                          }}
+                        <button
+                          type="button"
+                          className="portal-btn portal-btn--primary rounded-lg h-9 px-4 font-bold shadow-[var(--shadow-sm)] transition-all active:scale-95"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (!blocked) addToCart(product);
                           }}
-                          isDisabled={blocked}
+                          disabled={blocked}
                         >
                           Add to Cart
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   </motion.article>
@@ -756,6 +749,7 @@ export default function CatalogPage() {
         isOpen={!!selectedProduct}
         onClose={() => setSelectedProduct(null)}
       />
+      </PageChrome>
     </div>
   );
 }

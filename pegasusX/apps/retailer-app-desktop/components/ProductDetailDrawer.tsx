@@ -10,7 +10,7 @@ import {
   Info,
   ChevronRight,
 } from "lucide-react";
-import { Button, Chip } from "@heroui/react";
+import { Chip } from "@heroui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../lib/cart";
 import { isCatalogBlocked } from "../lib/stock-policy";
@@ -191,15 +191,16 @@ export default function ProductDetailDrawer({
                 )}
               </div>
 
-              <Button
-                onPress={() => {
+              <button
+                type="button"
+                onClick={() => {
                   if (!blocked) {
                     addToCart(product);
                     onClose();
                   }
                 }}
-                isDisabled={blocked}
-                className="w-full h-14 bg-[var(--desk-text-primary)] text-white font-bold rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                disabled={blocked}
+                className="portal-btn portal-btn--primary w-full h-14 font-bold rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
               >
                 <ShoppingCart size={20} />
                 {blocked
@@ -208,7 +209,7 @@ export default function ProductDetailDrawer({
                     ? "Add Backorder"
                     : "Stage Node for Procurement"}
                 <ChevronRight size={20} />
-              </Button>
+              </button>
             </div>
           </motion.div>
         </div>

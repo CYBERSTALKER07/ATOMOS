@@ -15,13 +15,12 @@ import {
   AlertTriangle,
   WifiOff,
 } from "lucide-react";
-import { Button } from "@heroui/react";
-import { motion, AnimatePresence } from "framer-motion";
+import { PageChrome } from "@/components/PageChrome";
+import { motion } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import EmptyState from "../../../components/EmptyState";
 import { PageSection } from "../../../components/PageSection";
-import { PageSkeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
 import { useOptionalWebSocket } from "../../../lib/ws";
@@ -166,64 +165,40 @@ export default function DashboardPage() {
       className="min-h-full p-6 md:p-8"
       style={{ background: "var(--desk-canvas)" }}
     >
-      <AnimatePresence mode="popLayout">
-        {loading ? (
-          <motion.div
-            key="loading"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <PageSkeleton variant="dashboard" />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="content"
-            layout
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
-                  Operations Hub
-                </h1>
-                <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
-                  Active deliveries, restock signals, and fleet telemetry.
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="secondary"
-                  isDisabled={isRefreshing}
-                  onPress={refreshAll}
-                  className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
-                >
-                  <RefreshCw
-                    size={16}
-                    className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
-                  />
-                  {isRefreshing ? "Syncing" : "Sync"}
-                </Button>
-                <Link href="/orders">
-                  <Button
-                    variant="secondary"
-                    className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
-                  >
-                    Review Orders
-                  </Button>
-                </Link>
-                <Link href="/catalog">
-                  <Button
-                    variant="primary"
-                    className="h-10 px-5 rounded-xl font-bold shadow-[var(--shadow-sm)]"
-                    style={{ background: "var(--desk-accent)", color: "white" }}
-                  >
-                    Open Catalog
-                  </Button>
-                </Link>
-              </div>
-            </header>
+      <PageChrome
+        icon="dashboard"
+        title="Operations Hub"
+        description="Active deliveries, restock signals, and fleet telemetry."
+        loading={loading}
+        skeletonVariant="dashboard"
+        actions={
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={isRefreshing}
+              onClick={refreshAll}
+              className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-bold"
+            >
+              <RefreshCw
+                size={16}
+                className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+              />
+              {isRefreshing ? "Syncing" : "Sync"}
+            </button>
+            <Link href="/orders">
+              <button type="button" className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-bold">
+                Review Orders
+              </button>
+            </Link>
+            <Link href="/catalog">
+              <button type="button" className="portal-btn portal-btn--primary h-10 px-5 rounded-xl font-bold shadow-[var(--shadow-sm)]">
+                Open Catalog
+              </button>
+            </Link>
+          </div>
+        }
+      >
+          <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
 
             {syncBanner && (
               <motion.div
@@ -435,8 +410,7 @@ export default function DashboardPage() {
               </PageSection>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
+      </PageChrome>
     </div>
   );
 }

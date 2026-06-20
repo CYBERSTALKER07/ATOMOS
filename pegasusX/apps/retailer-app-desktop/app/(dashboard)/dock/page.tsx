@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Chip } from "@heroui/react";
+import { PageChrome } from "@/components/PageChrome";
 import {
   Truck,
   Package,
@@ -395,14 +396,13 @@ export default function DockPage() {
         ) : null}
       </AnimatePresence>
 
-      <header className="mb-8">
-        <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
-          Dock Control
-        </h1>
-        <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
-          Real-time arrival queue and proximity-locked secure verification.
-        </p>
-      </header>
+      <PageChrome
+        icon="dock"
+        title="Dock Control"
+        description="Real-time arrival queue and proximity-locked secure verification."
+        loading={loading}
+        skeletonVariant="table"
+      >
 
       {syncStatus && (
         <motion.div
@@ -665,6 +665,7 @@ export default function DockPage() {
           )}
         </AnimatePresence>
       </div>
+      </PageChrome>
     </div>
   );
 }

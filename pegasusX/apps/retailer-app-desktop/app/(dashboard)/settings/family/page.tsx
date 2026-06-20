@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Plus, Trash2, Users } from "lucide-react";
 import { motion } from "framer-motion";
+import { PageChrome } from "@/components/PageChrome";
 import { apiFetch } from "../../../../lib/auth";
 
 type FamilyMember = {
@@ -86,24 +87,24 @@ export default function FamilyMembersPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3">
+    <PageChrome
+      icon="settings"
+      title="Family Members"
+      description="Manage staff and family who can place orders on this account."
+      loading={loading}
+      skeletonVariant="form"
+      actions={
         <button
           type="button"
           onClick={() => router.push("/settings")}
-          className="w-10 h-10 rounded-full border border-[var(--desk-border)] flex items-center justify-center"
+          className="portal-btn portal-btn--ghost desk-icon-btn"
+          aria-label="Back to settings"
         >
           <ArrowLeft size={18} />
         </button>
-        <div>
-          <h1 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
-            Family Members
-          </h1>
-          <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
-            Manage staff and family who can place orders on this account.
-          </p>
-        </div>
-      </div>
+      }
+    >
+    <div className="max-w-2xl mx-auto space-y-6">
 
       <div className="rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] p-4 space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -124,7 +125,7 @@ export default function FamilyMembersPage() {
           type="button"
           disabled={saving || !name.trim()}
           onClick={() => void addMember()}
-          className="md-btn md-btn-filled h-11 px-5 rounded-xl font-bold inline-flex items-center gap-2 disabled:opacity-60"
+          className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-bold inline-flex items-center gap-2 disabled:opacity-60"
         >
           {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
           Add Member
@@ -175,5 +176,6 @@ export default function FamilyMembersPage() {
         </div>
       )}
     </div>
+    </PageChrome>
   );
 }

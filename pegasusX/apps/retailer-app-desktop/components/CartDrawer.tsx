@@ -11,7 +11,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@heroui/react";
 import { useCart } from "../lib/cart";
 import { effectiveCartMaxQuantity } from "../lib/stock-policy";
 
@@ -181,15 +180,16 @@ export default function CartDrawer({
                 </div>
               </div>
 
-              <Button
-                isDisabled={items.length === 0}
-                onPress={() => onCheckout()}
-                className="w-full h-14 rounded-2xl flex items-center justify-center gap-3 bg-[var(--desk-text-primary)] text-white font-bold shadow-xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+              <button
+                type="button"
+                disabled={items.length === 0}
+                onClick={() => onCheckout()}
+                className="portal-btn portal-btn--primary w-full h-14 rounded-2xl flex items-center justify-center gap-3 font-bold shadow-xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
               >
                 <CreditCard size={20} />
                 Execute Procurement
                 <ChevronRight size={20} />
-              </Button>
+              </button>
             </div>
           </motion.div>
         </div>
