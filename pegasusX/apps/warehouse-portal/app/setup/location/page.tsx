@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Icon from "@/components/Icon";
 import { FormAlert, PortalField, PortalInput } from "@/components/portal";
-import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
+import { LocationPicker, resolveLocationValue, type LocationValue } from "@/components/LocationPicker";
+import { hasValidCoordinates } from "@/lib/geocode";
 import {
   apiFetch,
   decodeJwtPayload,
@@ -67,26 +68,45 @@ export default function WarehouseLocationSetupPage() {
       return;
     }
     if (!location.address.trim()) {
-      setSubmitError("Select an address or share your location.");
+      setSubmitError("Select an address from the suggestions or share your location.");
       return;
     }
-    const lat = Number.parseFloat(location.lat);
-    const lng = Number.parseFloat(location.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
-      setSubmitError("Valid coordinates are required. Use address search or share location.");
-      return;
+    if (!hasValidCoordinates(location.lat, location.lng)) {
+      // submit handler will try forward geocode before failing
+    } else {
+      const lat = Number.parseFloat(location.lat);
+      const lng = Number.parseFloat(location.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        setSubmitError("Valid coordinates are required. Use address search or share location.");
+        return;
+      }
     }
 
     setSubmitting(true);
     try {
+      let resolvedLocation = location;
+      if (!hasValidCoordinates(location.lat, location.lng)) {
+        const resolved = await resolveLocationValue(location);
+        if (!resolved) {
+          setSubmitError("Select an address from the suggestions or share your location.");
+          return;
+        }
+        resolvedLocation = resolved;
+        setLocation(resolved);
+      }
+
+      const { address, lat, lng, place_id } = resolvedLocation;
+      const latN = Number.parseFloat(lat);
+      const lngN = Number.parseFloat(lng);
+
       if (hasAssignedWarehouse) {
         const res = await apiFetch("/v1/warehouse/ops/location", {
           method: "PATCH",
           body: JSON.stringify({
-            address: location.address.trim(),
-            place_id: location.place_id,
-            lat,
-            lng,
+            address: address.trim(),
+            place_id,
+            lat: latN,
+            lng: lngN,
           }),
         });
         if (!res.ok) {
@@ -102,10 +122,10 @@ export default function WarehouseLocationSetupPage() {
           method: "POST",
           body: JSON.stringify({
             name: warehouseName.trim(),
-            address: location.address.trim(),
-            place_id: location.place_id,
-            lat,
-            lng,
+            address: address.trim(),
+            place_id,
+            lat: latN,
+            lng: lngN,
           }),
         });
         if (!res.ok) {
