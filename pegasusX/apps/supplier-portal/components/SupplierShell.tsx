@@ -108,15 +108,17 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
 const BARE_ROUTES = ["/auth/", "/setup/billing"];
 
 function SplashScreen({ onComplete }: { onComplete: () => void }) {
+  useEffect(() => {
+    const id = window.setTimeout(onComplete, 900);
+    return () => clearTimeout(id);
+  }, [onComplete]);
+
   return (
     <motion.div
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      onAnimationComplete={(definition) => {
-        if (definition === 'exit') onComplete();
-      }}
       className="fixed inset-0 z-[9999] flex items-center justify-center"
       style={{ background: 'var(--desk-canvas)' }}
     >
@@ -423,7 +425,11 @@ export default function SupplierShell({ children }: { children: React.ReactNode 
 
   return (
     <>
-      {!splashDone && <SplashScreen onComplete={dismissSplash} />}
+      <AnimatePresence>
+        {!splashDone && (
+          <SplashScreen key="supplier-splash" onComplete={dismissSplash} />
+        )}
+      </AnimatePresence>
 
       <motion.aside
         animate={{ width: collapsed ? 72 : 264 }}

@@ -2611,8 +2611,13 @@ body {
 /* Detect Tauri: the Tauri 2.0 runtime injects __TAURI_INTERNALS__.
    We set [data-tauri] on <html> from ThemeProvider after mount. */
 
+[data-tauri] html,
 [data-tauri] body {
-    /* Extra top padding for native titlebar overlay (macOS traffic lights) */
+    background: var(--desk-canvas, var(--background));
+}
+
+[data-tauri] body {
+    /* titleBarStyle: Overlay — inset for macOS traffic lights */
     padding-top: env(titlebar-area-height, 28px);
 }
 

@@ -21,12 +21,16 @@
         "minHeight": 700,
         "center": true,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "transparent": false,
+        "decorations": true,
+        "titleBarStyle": "Overlay"
       }
     ],
     "security": {
       "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' http://localhost:8180 http://127.0.0.1:8180 http://10.0.2.2:8180 ws://localhost:8180 ws://127.0.0.1:8180 ws://10.0.2.2:8180 wss://localhost:8180"
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,

@@ -39,6 +39,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (stored === "light" || stored === "dark" || stored === "system") {
       setModeState(stored);
     }
+    document.documentElement.setAttribute("data-hydrated", "");
+    if (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__) {
+      document.documentElement.setAttribute("data-tauri", "");
+    }
   }, []);
 
   useEffect(() => {
