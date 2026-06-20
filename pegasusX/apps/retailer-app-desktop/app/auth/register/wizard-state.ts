@@ -1,46 +1,28 @@
-// Shared step-form types for the retailer registration wizard.
+// Shared step-form types for desktop portal registration wizards.
 
 export type StepId = "identity" | "verification" | "profile";
 
-export interface Country {
-  code: string;       // ISO-3166 alpha-2
-  name: string;
-  dialCode: string;   // e.g. "+998"
-  currency: string;   // ISO-4217
-}
+export {
+  AUTH_COUNTRIES as COUNTRIES,
+  dialCodeForCountry,
+} from "@pegasusx/ui-kit/auth";
 
-export const COUNTRIES: Country[] = [
-  { code: "UZ", name: "Uzbekistan",    dialCode: "+998", currency: "UZS" },
-  { code: "KZ", name: "Kazakhstan",    dialCode: "+7",   currency: "KZT" },
-  { code: "KG", name: "Kyrgyzstan",    dialCode: "+996", currency: "KGS" },
-  { code: "TJ", name: "Tajikistan",    dialCode: "+992", currency: "TJS" },
-  { code: "TM", name: "Turkmenistan",  dialCode: "+993", currency: "TMT" },
-  { code: "AE", name: "United Arab Emirates", dialCode: "+971", currency: "AED" },
-  { code: "TR", name: "Türkiye",       dialCode: "+90",  currency: "TRY" },
-  { code: "RU", name: "Russia",        dialCode: "+7",   currency: "RUB" },
-  { code: "US", name: "United States", dialCode: "+1",   currency: "USD" },
-  { code: "GB", name: "United Kingdom",dialCode: "+44",  currency: "GBP" },
-];
+export type { AuthCountry as Country } from "@pegasusx/ui-kit/auth";
 
 export interface IdentityStep {
-  countryCode: string;     // ISO-3166 alpha-2
-  phoneLocal: string;      // local portion only — UI shows the dial code separately
+  countryCode: string;
+  phoneLocal: string;
 }
 
 export interface VerificationStep {
   otpCode: string;
+  idToken: string;
 }
 
 export interface ProfileStep {
   legalName: string;
   contactName: string;
   email: string;
-  deliveryAddress: string;
-  placeId: string;
-  latitude: string;
-  longitude: string;
-  receivingWindowOpen: string;
-  receivingWindowClose: string;
 }
 
 export interface WizardState {
@@ -58,17 +40,12 @@ export const INITIAL_STATE: WizardState = {
   },
   verification: {
     otpCode: "",
+    idToken: "",
   },
   profile: {
     legalName: "",
     contactName: "",
     email: "",
-    deliveryAddress: "",
-    placeId: "",
-    latitude: "41.2995",
-    longitude: "69.2401",
-    receivingWindowOpen: "09:00",
-    receivingWindowClose: "18:00",
   },
 };
 
@@ -77,15 +54,8 @@ export const STEP_ORDER: StepId[] = ["identity", "verification", "profile"];
 export const STEP_LABELS: Record<StepId, string> = {
   identity: "Phone Verification",
   verification: "Confirm Code",
-  profile: "Store Profile",
+  profile: "Basic Profile",
 };
-
-import {
-  normalizeReceivingWindow,
-  validateReceivingWindowField,
-} from "../../../lib/receiving-window";
-
-export { normalizeReceivingWindow, validateReceivingWindowField };
 
 export function validateIdentity(s: IdentityStep): Record<string, string> {
   const e: Record<string, string> = {};
@@ -105,15 +75,5 @@ export function validateProfile(s: ProfileStep): Record<string, string> {
   if (s.legalName.trim().length < 2) e.legalName = "Legal name is required";
   if (s.contactName.trim().length < 2) e.contactName = "Contact name is required";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email)) e.email = "Valid email is required";
-  if (s.deliveryAddress.trim().length < 5) e.deliveryAddress = "Store address is required";
-  const lat = Number.parseFloat(s.latitude.trim());
-  const lng = Number.parseFloat(s.longitude.trim());
-  if (!Number.isFinite(lat) || lat < -90 || lat > 90) e.deliveryAddress = "Select a valid address";
-  if (!Number.isFinite(lng) || lng < -180 || lng > 180) e.deliveryAddress = "Select a valid address";
-  if (lat === 0 && lng === 0) e.deliveryAddress = "Store address is required";
-  const openError = validateReceivingWindowField(s.receivingWindowOpen);
-  if (openError) e.receivingWindowOpen = openError;
-  const closeError = validateReceivingWindowField(s.receivingWindowClose);
-  if (closeError) e.receivingWindowClose = closeError;
   return e;
 }
