@@ -214,9 +214,12 @@ private fun AdjustDialog(
     onAdjusted: () -> Unit,
 ) {
     var qty by remember { mutableStateOf(item.quantity.toString()) }
+    var reason by remember { mutableStateOf("") }
+    var showConfirm by remember { mutableStateOf(false) }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val skuLabel = item.sku.ifBlank { item.skuId.ifBlank { item.productId } }
 
     WarehouseReconnectRecoveryEffect(
         realtimeSignals = realtimeSignals,
@@ -228,34 +231,72 @@ private fun AdjustDialog(
         }
     }
 
+    fun submitAdjust() {
+        val q = qty.toIntOrNull() ?: return
+        submitting = true
+        error = null
+        scope.launch {
+            try {
+                val trimmedReason = reason.trim().ifBlank { null }
+                val resp = api.adjustInventory(
+                    InventoryAdjustRequest(productId = item.productId, quantity = q, reason = trimmedReason),
+                    WarehouseIdempotencyKeys.adjustInventory(item.productId, q),
+                )
+                if (resp.isSuccessful) onAdjusted()
+                else error = "Failed (${resp.code()})"
+            } catch (e: Exception) {
+                error = e.message ?: "Error"
+            } finally {
+                submitting = false
+            }
+        }
+    }
+
+    if (showConfirm) {
+        val newQty = qty.toIntOrNull() ?: item.quantity
+        AlertDialog(
+            onDismissRequest = { if (!submitting) showConfirm = false },
+            title = { Text("Confirm inventory change") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                    Text("Change $skuLabel from ${item.quantity} to $newQty? This affects retailer availability immediately.")
+                    OutlinedTextField(
+                        value = reason,
+                        onValueChange = { reason = it },
+                        label = { Text("Reason (optional)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (error != null) {
+                        Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { submitAdjust() }, enabled = !submitting) {
+                    Text(if (submitting) "Saving…" else "Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirm = false }, enabled = !submitting) { Text("Back") }
+            },
+        )
+        return
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Adjust ${item.productName}") },
         text = {
             Column {
                 OutlinedTextField(value = qty, onValueChange = { qty = it }, label = { Text("New Quantity") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                if (error != null) { Spacer(Modifier.height(PegasusSpacing.sm)); Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = {
             Button(
-                onClick = {
-                    val q = qty.toIntOrNull() ?: return@Button
-                    submitting = true; error = null
-                    scope.launch {
-                        try {
-                            val resp = api.adjustInventory(
-                                InventoryAdjustRequest(productId = item.productId, quantity = q),
-                                WarehouseIdempotencyKeys.adjustInventory(item.productId, q),
-                            )
-                            if (resp.isSuccessful) onAdjusted()
-                            else error = "Failed (${resp.code()})"
-                        } catch (e: Exception) { error = e.message ?: "Error" }
-                        finally { submitting = false }
-                    }
-                },
-                enabled = !submitting && qty.toIntOrNull() != null,
-            ) { Text("Save") }
+                onClick = { showConfirm = true },
+                enabled = qty.toIntOrNull() != null && qty.toIntOrNull() != item.quantity,
+            ) { Text("Review") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )

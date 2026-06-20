@@ -849,7 +849,7 @@ func isWarehouseTransferTransitionAllowed(from, to string) bool {
 
 func (r *SpannerRepository) GetAutoDispatch(ctx context.Context, warehouseID string) (bool, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT AutoDispatchEnabled FROM Warehouses WHERE WarehouseId = @wid`,
+		SQL:    `SELECT AutoDispatchEnabled FROM Warehouses WHERE WarehouseId = @wid`,
 		Params: map[string]any{"wid": warehouseID},
 	}
 	iter := r.client.Single().Query(ctx, stmt)
@@ -880,7 +880,7 @@ func (r *SpannerRepository) ListAutoDispatchWarehouses(ctx context.Context) ([]A
 		        AND IsActive = TRUE`,
 	}
 	iter := r.client.Single().
-		WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).
+		WithTimestampBound(spanner.ExactStaleness(15*time.Second)).
 		Query(ctx, stmt)
 	defer iter.Stop()
 
@@ -905,9 +905,9 @@ func (r *SpannerRepository) UpdateAutoDispatch(ctx context.Context, warehouseID 
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		muts := []*spanner.Mutation{
 			spanner.UpdateMap("Warehouses", map[string]any{
-				"WarehouseId": warehouseID,
+				"WarehouseId":         warehouseID,
 				"AutoDispatchEnabled": enabled,
-				"UpdatedAt": spanner.CommitTimestamp,
+				"UpdatedAt":           spanner.CommitTimestamp,
 			}),
 		}
 		if emit != nil {

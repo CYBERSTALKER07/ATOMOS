@@ -577,6 +577,11 @@ struct FleetMapView: View {
                         Text(mission.amount.formattedAmount)
                             .font(.system(size: 13, weight: .bold, design: .monospaced))
                             .foregroundStyle(LabTheme.fgSecondary)
+                        if let feeLabel = order?.deliveryFeeLabel {
+                            Text(feeLabel)
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundStyle(LabTheme.warning)
+                        }
                     }
                 }
                 Spacer()

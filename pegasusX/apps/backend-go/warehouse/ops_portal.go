@@ -284,17 +284,17 @@ func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			items = append(items, map[string]any{
-				"product_id":         sku,
-				"sku_id":             row.SKU,
-				"product_name":       row.ProductName,
-				"quantity":           qty,
-				"quantity_on_hand":   row.QuantityOnHand,
-				"reorder_threshold":  threshold,
+				"product_id":          sku,
+				"sku_id":              row.SKU,
+				"product_name":        row.ProductName,
+				"quantity":            qty,
+				"quantity_on_hand":    row.QuantityOnHand,
+				"reorder_threshold":   threshold,
 				"out_of_stock_policy": row.OutOfStockPolicy,
-				"effective_policy":   row.EffectivePolicy,
-				"accepts_backorder":  row.EffectivePolicy == OutOfStockPolicyAcceptBackorder,
-				"is_low_stock":       isLow,
-				"last_updated":       row.UpdatedAt,
+				"effective_policy":    row.EffectivePolicy,
+				"accepts_backorder":   row.EffectivePolicy == OutOfStockPolicyAcceptBackorder,
+				"is_low_stock":        isLow,
+				"last_updated":        row.UpdatedAt,
 			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"inventory": items, "items": items})
@@ -626,11 +626,11 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 	}
 
 	response := map[string]any{
-		"preview_ready":              true,
-		"undispatched_orders":        undispatched,
-		"available_drivers":          available,
-		"unavailable_drivers":        unavailable,
-		"window_constrained_count":   windowConstrained,
+		"preview_ready":               true,
+		"undispatched_orders":         undispatched,
+		"available_drivers":           available,
+		"unavailable_drivers":         unavailable,
+		"window_constrained_count":    windowConstrained,
 		"fleet_effective_capacity_vu": fleetEffectiveCapacityVU(solveDrivers, fleetCtx),
 	}
 	if len(previewBody.OrderIDs) > 0 {
@@ -649,16 +649,16 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 }
 
 type DispatchExecuteResult struct {
-	Status           string                      `json:"status"`
-	SupplierID       string                      `json:"supplier_id"`
-	WarehouseID      string                      `json:"warehouse_id,omitempty"`
-	ManifestsCreated int                         `json:"manifests_created"`
-	OrdersAssigned   int                         `json:"orders_assigned"`
-	OptimizerSource  string                      `json:"optimizer_source,omitempty"`
-	Warnings         []string                    `json:"warnings,omitempty"`
-	CapacityWarnings []DispatchCapacityWarning   `json:"capacity_warnings,omitempty"`
-	Manifests        []DispatchExecuteRoute      `json:"manifests"`
-	Orphans          []string                    `json:"orphan_order_ids,omitempty"`
+	Status           string                    `json:"status"`
+	SupplierID       string                    `json:"supplier_id"`
+	WarehouseID      string                    `json:"warehouse_id,omitempty"`
+	ManifestsCreated int                       `json:"manifests_created"`
+	OrdersAssigned   int                       `json:"orders_assigned"`
+	OptimizerSource  string                    `json:"optimizer_source,omitempty"`
+	Warnings         []string                  `json:"warnings,omitempty"`
+	CapacityWarnings []DispatchCapacityWarning `json:"capacity_warnings,omitempty"`
+	Manifests        []DispatchExecuteRoute    `json:"manifests"`
+	Orphans          []string                  `json:"orphan_order_ids,omitempty"`
 }
 
 type DispatchCapacityWarning struct {
@@ -714,12 +714,12 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	sid := s.resolveDispatchSupplierID(r.Context(), whID)
 
 	var req struct {
-		Mode          string                 `json:"mode"`
-		Routes        []DispatchExecuteRoute `json:"routes"`
-		OrderIDs      []string               `json:"order_ids"`
-		ForceCapacity bool                   `json:"force_capacity"`
-		AcceptPartial bool                   `json:"accept_partial"`
-		PlanFingerprint string               `json:"plan_fingerprint"`
+		Mode            string                 `json:"mode"`
+		Routes          []DispatchExecuteRoute `json:"routes"`
+		OrderIDs        []string               `json:"order_ids"`
+		ForceCapacity   bool                   `json:"force_capacity"`
+		AcceptPartial   bool                   `json:"accept_partial"`
+		PlanFingerprint string                 `json:"plan_fingerprint"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -1585,7 +1585,6 @@ func (s *Service) HandleOpsTreasury(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
 func (s *Service) HandleSupplyRequestByID(w http.ResponseWriter, r *http.Request) {
 	warehouseID := warehouseIDFromRequest(r)
 	id := strings.TrimPrefix(r.URL.Path, "/v1/warehouse/supply-requests/")
@@ -1648,30 +1647,30 @@ func supplyRequestIOSPayload(req SupplyRequest) map[string]any {
 	items := make([]map[string]any, 0, len(req.Items))
 	for _, item := range req.Items {
 		items = append(items, map[string]any{
-			"item_id":             item.ItemID,
-			"product_id":          item.ProductID,
-			"requested_quantity":  item.RequestedQuantity,
-			"recommended_qty":     item.RecommendedQty,
-			"unit_volume_vu":      item.UnitVolumeVU,
+			"item_id":            item.ItemID,
+			"product_id":         item.ProductID,
+			"requested_quantity": item.RequestedQuantity,
+			"recommended_qty":    item.RecommendedQty,
+			"unit_volume_vu":     item.UnitVolumeVU,
 		})
 	}
 	payload := map[string]any{
-		"request_id":              req.RequestID,
-		"warehouse_id":            req.WarehouseID,
-		"factory_id":              factoryID,
-		"supplier_id":             req.SupplierID,
-		"state":                   state,
-		"priority":                priority,
-		"notes":                   req.Notes,
-		"region_id":               req.RegionID,
-		"total_volume_vu":         totalVU,
-		"projected_units":         req.ProjectedUnits,
-		"item_count":              len(req.Items),
-		"items":                   items,
-		"transfer_order_id":       strings.TrimSpace(req.LinkedTransferID),
-		"created_by":              req.RequestedBy,
-		"created_at":              req.CreatedAt,
-		"updated_at":              req.UpdatedAt,
+		"request_id":        req.RequestID,
+		"warehouse_id":      req.WarehouseID,
+		"factory_id":        factoryID,
+		"supplier_id":       req.SupplierID,
+		"state":             state,
+		"priority":          priority,
+		"notes":             req.Notes,
+		"region_id":         req.RegionID,
+		"total_volume_vu":   totalVU,
+		"projected_units":   req.ProjectedUnits,
+		"item_count":        len(req.Items),
+		"items":             items,
+		"transfer_order_id": strings.TrimSpace(req.LinkedTransferID),
+		"created_by":        req.RequestedBy,
+		"created_at":        req.CreatedAt,
+		"updated_at":        req.UpdatedAt,
 	}
 	if strings.TrimSpace(req.RequestedDeliveryDate) != "" {
 		payload["requested_delivery_date"] = req.RequestedDeliveryDate

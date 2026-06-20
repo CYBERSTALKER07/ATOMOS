@@ -28,6 +28,14 @@ struct CheckoutView: View {
     @State private var oosItems: [String] = []
     @State private var stockWarnings: [StockWarning] = []
     @State private var showSupplierClosedWarning = false
+    @State private var preview: CheckoutPreviewResponse?
+    @State private var previewLoading = false
+    @State private var deliveryMode = "STANDARD"
+    @State private var deliveryDate = ""
+    @State private var expressPriority = false
+    @State private var showBackorderConfirm = false
+    @State private var pendingBackorderPreview: CheckoutPreviewResponse?
+    @State private var skipBackorderConfirm = false
 
     private let api = APIClient.shared
 
@@ -100,7 +108,93 @@ struct CheckoutView: View {
             } message: {
                 Text("This supplier is off-shift or outside business hours. Your order will be placed, but processing will not begin until they are back online.")
             }
+            .confirmationDialog(
+                "Partial backorder",
+                isPresented: $showBackorderConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Proceed") {
+                    skipBackorderConfirm = true
+                    Task { await submitOrder() }
+                }
+                Button("Cancel", role: .cancel) {
+                    pendingBackorderPreview = nil
+                }
+            } message: {
+                Text("Some items will be backordered. Delivery may be delayed. Proceed?")
+            }
+            .task {
+                await fetchPreview()
+            }
+            .onChange(of: cart.totalItems) { _, _ in
+                Task { await fetchPreview() }
+            }
         }
+    }
+
+    private var scheduledMinDate: String {
+        let lead = Int(preview?.preorderMinLeadDays ?? 3)
+        return Calendar.current.date(byAdding: .day, value: max(1, lead), to: Date())
+            .map { ISO8601DateFormatter().string(from: $0).prefix(10) }
+            .map(String.init) ?? ""
+    }
+
+    private var scheduledMaxDate: String? {
+        guard let maxLead = preview?.preorderMaxLeadDays, maxLead > 0 else { return nil }
+        return Calendar.current.date(byAdding: .day, value: Int(maxLead), to: Date())
+            .map { ISO8601DateFormatter().string(from: $0).prefix(10) }
+            .map(String.init)
+    }
+
+    private func skuFor(_ item: CartItem) -> String {
+        item.variant.id.isEmpty ? item.product.id : item.variant.id
+    }
+
+    private func isOos(_ item: CartItem) -> Bool {
+        let sku = skuFor(item)
+        if oosItems.contains(sku) { return true }
+        if let shortfall = preview?.shortfall?[sku], shortfall > 0 { return true }
+        return false
+    }
+
+    private func fetchPreview() async {
+        guard !cart.isEmpty else {
+            preview = nil
+            oosItems = []
+            stockWarnings = []
+            return
+        }
+        previewLoading = true
+        defer { previewLoading = false }
+        let rid = AuthManager.shared.currentUser?.id ?? ""
+        let payload = buildPayload(retailerId: rid, gateway: gatewayCode(for: selectedPaymentId))
+        do {
+            let result = try await RetailerCheckoutService.fetchPreview(api: api, payload: payload)
+            preview = result
+            oosItems = result.oosItems ?? result.rejectedSkus ?? []
+            stockWarnings = result.stockWarnings
+            cart.applyPreviewCaps(result)
+        } catch let previewError as CheckoutPreviewError {
+            if case .blocked(_, let items) = previewError {
+                oosItems = items
+            }
+        } catch {
+            // Keep last preview state when refresh fails transiently.
+        }
+    }
+
+    private func buildPayload(retailerId: String, gateway: String) -> UnifiedCheckoutPayload {
+        let requestedDate: String? = {
+            guard deliveryMode == "SCHEDULED", !deliveryDate.isEmpty else { return nil }
+            return "\(deliveryDate)T12:00:00+05:00"
+        }()
+        return cart.buildCheckoutPayload(
+            retailerId: retailerId,
+            paymentGateway: gateway,
+            deliveryMode: deliveryMode,
+            requestedDeliveryDate: requestedDate,
+            deliveryPriority: expressPriority ? "EXPRESS" : "STANDARD"
+        )
     }
 
     // MARK: - Checkout Content
@@ -109,12 +203,21 @@ struct CheckoutView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: AppTheme.spacingLG) {
+                    if previewLoading {
+                        HStack(spacing: AppTheme.spacingSM) {
+                            ProgressView()
+                            Text("Refreshing stock availability…")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                    }
                     if !stockWarnings.isEmpty {
                         stockWarningsSection
                     }
                     if !oosItems.isEmpty {
                         oosItemsSection
                     }
+                    deliverySection.slideIn(delay: 0)
                     cartItemsSection.slideIn(delay: 0)
                     paymentSection.slideIn(delay: 0.05)
                     summarySection.slideIn(delay: 0.1)
@@ -163,6 +266,56 @@ struct CheckoutView: View {
             }
             .padding(AppTheme.spacingLG)
         }
+    }
+
+    private var deliverySection: some View {
+        LabCardWithHeader(title: "Delivery", icon: "truck.box.fill") {
+            VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
+                HStack(spacing: AppTheme.spacingSM) {
+                    deliveryModeButton("Standard", mode: "STANDARD", subtitle: "ASAP")
+                    deliveryModeButton("Scheduled", mode: "SCHEDULED", subtitle: "T+\(preview?.preorderMinLeadDays ?? 3)")
+                }
+                if deliveryMode == "SCHEDULED" {
+                    TextField("YYYY-MM-DD", text: $deliveryDate)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.caption, design: .monospaced))
+                    Text("Choose \(scheduledMinDate)\(scheduledMaxDate.map { " to \($0)" } ?? " or later")")
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+                Toggle("Express priority (+fee)", isOn: $expressPriority)
+                    .font(.system(.caption, design: .rounded))
+                if let fee = preview?.deliveryFeeMinor, fee > 0 {
+                    Text("Delivery fee: \(Int(fee).formatted()) UZS\(preview?.deliveryDistanceKm.map { " · \(String(format: "%.1f", $0)) km" } ?? "")")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
+            .padding(AppTheme.spacingLG)
+        }
+    }
+
+    private func deliveryModeButton(_ title: String, mode: String, subtitle: String) -> some View {
+        Button {
+            deliveryMode = mode
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                Text(subtitle)
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(AppTheme.spacingMD)
+            .background(deliveryMode == mode ? AppTheme.accentSoft.opacity(0.45) : AppTheme.surfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.radiusSM))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.radiusSM)
+                    .stroke(deliveryMode == mode ? AppTheme.accent : AppTheme.separator.opacity(0.4), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Cart Items
@@ -214,10 +367,20 @@ struct CheckoutView: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.product.name)
-                    .font(.system(.subheadline, design: .rounded, weight: .medium))
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .lineLimit(1)
+                HStack(spacing: AppTheme.spacingSM) {
+                    Text(item.product.name)
+                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .lineLimit(1)
+                    if isOos(item) {
+                        Text("OOS")
+                            .font(.system(.caption2, design: .rounded, weight: .bold))
+                            .foregroundStyle(AppTheme.destructive)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(AppTheme.destructive.opacity(0.12))
+                            .clipShape(.capsule)
+                    }
+                }
                 Text(item.variant.size)
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
@@ -230,6 +393,7 @@ struct CheckoutView: View {
                     get: { item.quantity },
                     set: { cart.updateQuantity(itemId: item.id, quantity: $0) }
                 ),
+                maximum: cart.maxQuantity(for: item, preview: preview),
                 compact: true
             )
 
@@ -332,8 +496,8 @@ struct CheckoutView: View {
                 }
             }
             .padding(AppTheme.spacingLG)
-            .opacity(cart.isEmpty || isSubmitting ? 0.5 : 1.0)
-            .disabled(cart.isEmpty || isSubmitting)
+            .opacity(cart.isEmpty || isSubmitting || previewLoading ? 0.5 : 1.0)
+            .disabled(cart.isEmpty || isSubmitting || previewLoading)
         }
         .background(.ultraThinMaterial)
     }
@@ -470,26 +634,56 @@ struct CheckoutView: View {
                 return
             }
         }
+
+        await fetchPreview()
+        if let preview, preview.blocked == true {
+            oosItems = preview.oosItems ?? preview.rejectedSkus ?? []
+            errorMessage = preview.message ?? "Checkout blocked by stock policy"
+            showError = true
+            isSubmitting = false
+            return
+        }
+        if !skipBackorderConfirm, let preview, !preview.stockWarnings.isEmpty {
+            pendingBackorderPreview = preview
+            stockWarnings = preview.stockWarnings
+            showBackorderConfirm = true
+            isSubmitting = false
+            return
+        }
+        skipBackorderConfirm = false
         
-        stockWarnings = []
-        oosItems = []
+        stockWarnings = preview?.stockWarnings ?? []
+        oosItems = preview?.oosItems ?? preview?.rejectedSkus ?? []
         
-        let payload = cart.buildCheckoutPayload(retailerId: rid, paymentGateway: finalGateway)
+        let payload = buildPayload(retailerId: rid, gateway: finalGateway)
         let idempotencyKey = checkoutIdempotencyKey(payload: payload, gateway: finalGateway)
         do {
-            let response = try await RetailerCheckoutService.completeCheckout(
-                api: api,
-                payload: payload,
-                gateway: finalGateway,
-                idempotencyKey: idempotencyKey
+            let response: CheckoutResponse = try await api.post(
+                path: "/v1/checkout/unified",
+                body: payload,
+                headers: ["Idempotency-Key": idempotencyKey]
             )
             stockWarnings = response.stockWarnings ?? []
             cart.clear()
             Haptics.success()
             withAnimation(AnimationConstants.fluid) { showSuccess = true }
+        } catch let previewError as CheckoutPreviewError {
+            switch previewError {
+            case .blocked(let message, let items):
+                oosItems = items
+                errorMessage = message
+            case .backorderConfirmationRequired(let previewData):
+                stockWarnings = previewData.stockWarnings
+                showBackorderConfirm = true
+            }
+            Haptics.error()
+            showError = previewError.errorDescription != nil && !showBackorderConfirm
+            if showBackorderConfirm {
+                errorMessage = ""
+            }
+            await fetchPreview()
         } catch let apiError as APIError {
             if case .serverError(let statusCode, let message) = apiError, statusCode == 409 {
-                // Parse structured OOS response from body string
                 if let jsonData = message.data(using: .utf8),
                    let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
                     let code = json["code"] as? String ?? ""
@@ -497,6 +691,8 @@ struct CheckoutView: View {
                         oosItems = items
                     }
                     switch code {
+                    case "inventory_exhausted":
+                        errorMessage = "Stock changed while checking out. Review your cart and try again."
                     case "ALL_ITEMS_OUT_OF_STOCK":
                         errorMessage = "All items are out of stock. Please update your cart."
                     case "PARTIAL_OUT_OF_STOCK_REJECTED":
@@ -509,6 +705,7 @@ struct CheckoutView: View {
                 }
                 Haptics.error()
                 showError = true
+                await fetchPreview()
             } else {
                 // Queue for offline retry
                 if let data = try? JSONEncoder().encode(payload) {

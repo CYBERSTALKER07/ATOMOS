@@ -42,6 +42,8 @@ data class Order(
     @SerialName("driver_id") val driverId: String? = null,
     val state: OrderState,
     @SerialName("total_amount") val totalAmount: Long,
+    @SerialName("delivery_fee_minor") val deliveryFeeMinor: Long = 0,
+    @SerialName("delivery_distance_km") val deliveryDistanceKm: Double? = null,
     @SerialName("delivery_address") val deliveryAddress: String,
     val latitude: Double? = null,
     val longitude: Double? = null,

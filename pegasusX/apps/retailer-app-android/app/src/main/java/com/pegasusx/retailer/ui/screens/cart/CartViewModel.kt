@@ -55,6 +55,19 @@ data class CartUiState(
     val supplierIsActive: Boolean = true,
     val oosItems: List<String> = emptyList(),
     val stockWarnings: List<StockWarning> = emptyList(),
+    val previewMaxQuantities: Map<String, Int> = emptyMap(),
+    val previewShortfall: Map<String, Long> = emptyMap(),
+    val previewLoading: Boolean = false,
+    val deliveryMode: String = "STANDARD",
+    val deliveryDate: String? = null,
+    val expressPriority: Boolean = false,
+    val preorderMinLeadDays: Long = 3,
+    val preorderMaxLeadDays: Long = 0,
+    val deliveryFeeMinor: Long = 0,
+    val deliveryDistanceKm: Double = 0.0,
+    val orderLineMinQuantity: Long? = null,
+    val orderLineMaxQuantity: Long? = null,
+    val pendingBackorderConfirm: Boolean = false,
     val paymentOptions: List<CheckoutPaymentOption> = emptyList(),
     val isRefreshing: Boolean = false,
     val syncError: String? = null,
@@ -75,6 +88,8 @@ data class CartUiState(
     val displayTotal: String get() = "%,.0f".format(total)
     val firstProductName: String get() = items.firstOrNull()?.product?.name ?: "Order"
     val selectedPaymentLabel: String get() = checkoutPaymentLabel(selectedPaymentGateway, paymentOptions)
+    val displayDeliveryFee: String
+        get() = if (deliveryFeeMinor > 0) "%,.0f".format(deliveryFeeMinor.toDouble()) else "Free"
     val syncMessage: String?
         get() = when (loadIssue) {
             CartLoadIssue.RESTRICTED -> "Cart sync access is restricted for this account"
@@ -393,7 +408,7 @@ init {
             state.copy(items = state.items.map { item ->
                 if (item.id != itemId) item
                 else {
-                    val cap = item.product.cartMaxQuantity
+                    val cap = effectiveMaxQuantity(item, state)
                     val next = if (cap != null) minOf(quantity, cap) else quantity
                     item.copy(quantity = next)
                 }
@@ -401,6 +416,38 @@ init {
         }
         scheduleCartSyncPush()
         scheduleQuoteRefresh()
+    }
+
+    private fun skuIdFor(item: CartItem): String {
+        return if (item.variant.id.isNotBlank()) item.variant.id else item.product.id
+    }
+
+    private fun effectiveMaxQuantity(item: CartItem, state: CartUiState): Int? {
+        val sku = skuIdFor(item)
+        if (!item.product.acceptsBackorder) {
+            state.previewMaxQuantities[sku]?.let { return it }
+        }
+        return item.product.cartMaxQuantity?.let { cap ->
+            if (item.product.acceptsBackorder) {
+                state.orderLineMaxQuantity?.toInt()?.let { minOf(cap, it) } ?: cap
+            } else {
+                cap
+            }
+        } ?: state.orderLineMaxQuantity?.toInt()
+    }
+
+    private fun applyPreviewCaps(preview: com.pegasusx.retailer.data.model.CheckoutPreviewResponse) {
+        _uiState.update { state ->
+            val maxMap = preview.maxQuantities.mapValues { it.value.toInt() }
+            state.copy(
+                items = state.items.map { item ->
+                    if (item.product.acceptsBackorder) return@map item
+                    val sku = skuIdFor(item)
+                    val cap = maxMap[sku] ?: return@map item
+                    if (item.quantity > cap) item.copy(quantity = cap) else item
+                },
+            )
+        }
     }
 
     fun removeItem(itemId: String) {
@@ -483,6 +530,101 @@ init {
     fun showCheckout() {
         _uiState.update { it.copy(showCheckout = true, checkoutPhase = CheckoutPhase.REVIEW) }
         scheduleQuoteRefresh()
+        refreshCheckoutPreview()
+    }
+
+    fun setDeliveryMode(mode: String) {
+        _uiState.update { it.copy(deliveryMode = mode.uppercase()) }
+    }
+
+    fun setDeliveryDate(date: String?) {
+        _uiState.update { it.copy(deliveryDate = date?.takeIf { it.isNotBlank() }) }
+    }
+
+    fun setExpressPriority(enabled: Boolean) {
+        _uiState.update { it.copy(expressPriority = enabled) }
+    }
+
+    fun dismissBackorderConfirm() {
+        _uiState.update { it.copy(pendingBackorderConfirm = false) }
+    }
+
+    fun confirmBackorderCheckout() {
+        _uiState.update { it.copy(pendingBackorderConfirm = false) }
+        processPayment(skipBackorderConfirm = true)
+    }
+
+    private fun refreshCheckoutPreview() = viewModelScope.launch {
+        val state = _uiState.value
+        if (state.items.isEmpty()) {
+            _uiState.update {
+                it.copy(
+                    previewMaxQuantities = emptyMap(),
+                    previewShortfall = emptyMap(),
+                    oosItems = emptyList(),
+                    stockWarnings = emptyList(),
+                    previewLoading = false,
+                )
+            }
+            return@launch
+        }
+        _uiState.update { it.copy(previewLoading = true) }
+        try {
+            val retailerId = tokenManager.getUserId().orEmpty()
+            val request = buildCheckoutRequest(state, retailerId, state.selectedPaymentGateway)
+            val preview = api.checkoutPreview(request)
+            applyPreviewCaps(preview)
+            _uiState.update {
+                it.copy(
+                    previewMaxQuantities = preview.maxQuantities.mapValues { entry -> entry.value.toInt() },
+                    previewShortfall = preview.shortfall,
+                    oosItems = preview.oosItems.ifEmpty { preview.rejectedSkus },
+                    stockWarnings = preview.stockWarnings,
+                    preorderMinLeadDays = preview.preorderMinLeadDays.takeIf { days -> days > 0 } ?: 3,
+                    preorderMaxLeadDays = preview.preorderMaxLeadDays,
+                    deliveryFeeMinor = preview.deliveryFeeMinor,
+                    deliveryDistanceKm = preview.deliveryDistanceKm,
+                    orderLineMinQuantity = preview.orderLineMinQuantity,
+                    orderLineMaxQuantity = preview.orderLineMaxQuantity,
+                    previewLoading = false,
+                )
+            }
+        } catch (e: Exception) {
+            _uiState.update {
+                it.copy(
+                    previewLoading = false,
+                    checkoutError = resolveCheckoutErrorMessage(e, "Could not refresh stock preview"),
+                )
+            }
+        }
+    }
+
+    private fun buildCheckoutRequest(
+        state: CartUiState,
+        retailerId: String,
+        gateway: String,
+    ): UnifiedCheckoutRequest {
+        val lineItems = state.items.map { cartItem ->
+            CheckoutLineItem(
+                skuId = cartItem.variant.id.ifBlank { cartItem.product.id },
+                quantity = cartItem.quantity,
+                unitPrice = cartItem.variant.price.toLong(),
+            )
+        }
+        val requestedDeliveryDate = state.deliveryDate?.let { date ->
+            java.time.LocalDate.parse(date)
+                .atTime(12, 0)
+                .atOffset(java.time.ZoneOffset.ofHours(5))
+                .format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+        }
+        return UnifiedCheckoutRequest(
+            retailerId = retailerId,
+            paymentGateway = gateway,
+            items = lineItems,
+            deliveryMode = state.deliveryMode,
+            requestedDeliveryDate = if (state.deliveryMode == "SCHEDULED") requestedDeliveryDate else null,
+            deliveryPriority = if (state.expressPriority) "EXPRESS" else "STANDARD",
+        )
     }
 
     fun setSupplierIsActive(value: Boolean) {
@@ -499,20 +641,13 @@ init {
         _uiState.update { it.copy(selectedPaymentGateway = gw) }
     }
 
-    fun processPayment() {
+    fun processPayment(skipBackorderConfirm: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(checkoutPhase = CheckoutPhase.PROCESSING, checkoutError = null, stockWarnings = emptyList()) }
+            _uiState.update { it.copy(checkoutPhase = CheckoutPhase.PROCESSING, checkoutError = null) }
             var checkoutRequest: UnifiedCheckoutRequest? = null
             try {
                 val state = _uiState.value
                 val retailerId = tokenManager.getUserId() ?: ""
-                val lineItems = state.items.map { cartItem ->
-                    CheckoutLineItem(
-                        skuId = cartItem.variant.id,
-                        quantity = cartItem.quantity,
-                        unitPrice = cartItem.variant.price.toLong(),
-                    )
-                }
                 var finalGateway = state.selectedPaymentGateway
                 if (finalGateway != "GLOBAL_PAY" && finalGateway != "ADYEN" && finalGateway != "CASH") {
                     try {
@@ -529,22 +664,35 @@ init {
                     }
                 }
 
-                val request = UnifiedCheckoutRequest(
-                    retailerId = retailerId,
-                    paymentGateway = finalGateway,
-                    items = lineItems,
-                )
-                checkoutRequest = request
-                val preview = api.checkoutPreview(request)
+                val preview = api.checkoutPreview(buildCheckoutRequest(state, retailerId, finalGateway))
+                applyPreviewCaps(preview)
+                val refreshedState = _uiState.value
                 if (preview.blocked) {
                     _uiState.update {
                         it.copy(
                             checkoutPhase = CheckoutPhase.REVIEW,
                             checkoutError = preview.message ?: "Checkout blocked by stock policy",
+                            oosItems = preview.oosItems.ifEmpty { preview.rejectedSkus },
+                            stockWarnings = preview.stockWarnings,
+                            previewMaxQuantities = preview.maxQuantities.mapValues { entry -> entry.value.toInt() },
+                            previewShortfall = preview.shortfall,
                         )
                     }
                     return@launch
                 }
+                if (preview.stockWarnings.isNotEmpty() && !skipBackorderConfirm) {
+                    _uiState.update {
+                        it.copy(
+                            checkoutPhase = CheckoutPhase.REVIEW,
+                            stockWarnings = preview.stockWarnings,
+                            pendingBackorderConfirm = true,
+                        )
+                    }
+                    return@launch
+                }
+
+                val request = buildCheckoutRequest(refreshedState, retailerId, finalGateway)
+                checkoutRequest = request
                 val response = api.unifiedCheckout(request, checkoutIdempotencyKey(request))
                 val firstOrderId = response.supplierOrders.firstOrNull()?.orderId
                 _uiState.update {
@@ -578,6 +726,7 @@ init {
                             flaggedOos = oosArr.mapNotNull { it.toString().trim('"').takeIf { s -> s.isNotEmpty() } }
                         }
                         msg = when (code) {
+                            "inventory_exhausted" -> "Stock changed while checking out. Review your cart and try again."
                             "ALL_ITEMS_OUT_OF_STOCK" -> "All items are out of stock. Please update your cart."
                             "PARTIAL_OUT_OF_STOCK_REJECTED" -> "Some items are out of stock and cannot be backordered. Please update your cart."
                             else -> body ?: "Some items are out of stock"
@@ -585,6 +734,7 @@ init {
                     } catch (_: Exception) {
                         msg = body ?: "Item out of stock — pull to refresh"
                     }
+                    refreshCheckoutPreview()
                 } else {
                     msg = body ?: "Checkout failed (${e.code()})"
                 }
@@ -620,6 +770,10 @@ init {
 
     fun clearPaymentUrl() {
         _uiState.update { it.copy(paymentUrlToOpen = null) }
+    }
+
+    fun effectiveMaxQuantityFor(item: CartItem): Int? {
+        return effectiveMaxQuantity(item, _uiState.value)
     }
 
     private fun checkoutIdempotencyKey(request: UnifiedCheckoutRequest): String {

@@ -953,6 +953,13 @@ private fun RecentActivitySection(completedOrders: List<Order>) {
                                 fontWeight = FontWeight.Medium,
                                 color = lab.fgSecondary
                             )
+                            if (order.deliveryFeeMinor > 0) {
+                                Text(
+                                    text = "+ ${order.deliveryFeeMinor.formattedAmount()} delivery fee",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = lab.warning,
+                                )
+                            }
                         }
 
                         Text(

@@ -121,16 +121,19 @@ func (s *Service) HandleGetProduct(w http.ResponseWriter, r *http.Request) {
 // HandleCreateProduct serves POST /v1/catalog/products.
 func (s *Service) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		SupplierID    string `json:"supplier_id"`
-		CategoryID    string `json:"category_id"`
-		Name          string `json:"name"`
-		Description   string `json:"description"`
-		ImageURL      string `json:"image_url"`
-		PriceMinor    int64  `json:"price_minor"`
-		Currency      string `json:"currency"`
+		SupplierID    string  `json:"supplier_id"`
+		CategoryID    string  `json:"category_id"`
+		Name          string  `json:"name"`
+		Description   string  `json:"description"`
+		ImageURL      string  `json:"image_url"`
+		PriceMinor    int64   `json:"price_minor"`
+		Currency      string  `json:"currency"`
 		StockQuantity int64   `json:"stock_quantity"`
 		Unit          string  `json:"unit"`
 		UnitVolumeVU  float64 `json:"unit_volume_vu"`
+		SaleUnit      string  `json:"sale_unit"`
+		UnitsPerPack  *int64  `json:"units_per_pack"`
+		UnitsPerCase  *int64  `json:"units_per_case"`
 		Barcode       string  `json:"barcode"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -161,6 +164,8 @@ func (s *Service) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
 		StockQuantity: req.StockQuantity,
 		Unit:          unit,
 		UnitVolumeVU:  req.UnitVolumeVU,
+		SaleUnit:      req.SaleUnit,
+		UnitsPerPack:  coalesceUnitsPerPack(req.UnitsPerPack, req.UnitsPerCase),
 		Barcode:       strings.TrimSpace(req.Barcode),
 		IsActive:      true,
 	}
@@ -180,17 +185,20 @@ func (s *Service) HandleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Name          string `json:"name"`
-		Description   string `json:"description"`
-		ImageURL      string `json:"image_url"`
-		PriceMinor    int64  `json:"price_minor"`
-		Currency      string `json:"currency"`
+		Name          string   `json:"name"`
+		Description   string   `json:"description"`
+		ImageURL      string   `json:"image_url"`
+		PriceMinor    int64    `json:"price_minor"`
+		Currency      string   `json:"currency"`
 		StockQuantity int64    `json:"stock_quantity"`
 		Unit          string   `json:"unit"`
 		UnitVolumeVU  *float64 `json:"unit_volume_vu"`
+		SaleUnit      *string  `json:"sale_unit"`
+		UnitsPerPack  *int64   `json:"units_per_pack"`
+		UnitsPerCase  *int64   `json:"units_per_case"`
 		Barcode       *string  `json:"barcode"`
 		IsActive      *bool    `json:"is_active"`
-		Version       int64  `json:"version"`
+		Version       int64    `json:"version"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -227,6 +235,12 @@ func (s *Service) HandleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.UnitVolumeVU != nil {
 		existing.UnitVolumeVU = *req.UnitVolumeVU
+	}
+	if req.SaleUnit != nil {
+		existing.SaleUnit = *req.SaleUnit
+	}
+	if req.UnitsPerPack != nil || req.UnitsPerCase != nil {
+		existing.UnitsPerPack = coalesceUnitsPerPack(req.UnitsPerPack, req.UnitsPerCase)
 	}
 	if req.Barcode != nil {
 		existing.Barcode = strings.TrimSpace(*req.Barcode)
@@ -349,6 +363,13 @@ func (s *Service) HandleGetUploadTicket(w http.ResponseWriter, r *http.Request) 
 		"upload_url": uploadURL,
 		"image_url":  imageURL,
 	})
+}
+
+func coalesceUnitsPerPack(primary, legacy *int64) *int64 {
+	if primary != nil {
+		return primary
+	}
+	return legacy
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

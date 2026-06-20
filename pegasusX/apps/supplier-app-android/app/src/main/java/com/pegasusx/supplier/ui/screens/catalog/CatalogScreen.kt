@@ -77,6 +77,8 @@ fun CatalogScreen(
     var currency by remember { mutableStateOf("UZS") }
     val draftVU = remember { mutableStateMapOf<String, String>() }
     val draftBarcode = remember { mutableStateMapOf<String, String>() }
+    val draftUnitsPerCase = remember { mutableStateMapOf<String, String>() }
+    val draftSaleUnit = remember { mutableStateMapOf<String, String>() }
     var savingId by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
@@ -84,11 +86,14 @@ fun CatalogScreen(
     var createPrice by remember { mutableStateOf("") }
     var createVu by remember { mutableStateOf("1") }
     var createBarcode by remember { mutableStateOf("") }
+    var createSaleUnit by remember { mutableStateOf("UNIT") }
+    var createUnitsPerCase by remember { mutableStateOf("") }
     var createCategoryId by remember { mutableStateOf("") }
     var createImageUri by remember { mutableStateOf<Uri?>(null) }
     var createImageLabel by remember { mutableStateOf<String?>(null) }
     var createError by remember { mutableStateOf<String?>(null) }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
+    var saleUnitMenuExpanded by remember { mutableStateOf(false) }
     var imageEditTargetId by remember { mutableStateOf<String?>(null) }
     var imageSavingId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -157,6 +162,8 @@ fun CatalogScreen(
                     products = resp.body().orEmpty()
                     draftVU.clear()
                     draftBarcode.clear()
+                    draftUnitsPerCase.clear()
+                    draftSaleUnit.clear()
                 } else if (!silent) {
                     error = "Failed (${resp.code()})"
                     products = emptyList()
@@ -199,6 +206,19 @@ fun CatalogScreen(
             error = "Unit VU must be a positive number."
             return
         }
+        val saleUnit = draftSaleUnit[product.productId] ?: product.saleUnit
+        val unitsPerCaseRaw = draftUnitsPerCase[product.productId]
+            ?: product.unitsPerCase?.toString().orEmpty()
+        val unitsPerCase = if (saleUnit == "CASE") {
+            val parsedUnits = unitsPerCaseRaw.toLongOrNull()
+            if (parsedUnits == null || parsedUnits <= 0L) {
+                error = "Units per case must be a positive integer when selling by case."
+                return
+            }
+            parsedUnits
+        } else {
+            null
+        }
         scope.launch {
             savingId = product.productId
             error = null
@@ -219,6 +239,8 @@ fun CatalogScreen(
                         currency = product.currency,
                         unit = product.unit,
                         unitVolumeVu = parsed,
+                        unitsPerCase = unitsPerCase,
+                        saleUnit = saleUnit,
                         barcode = barcode,
                         isActive = product.isActive,
                         version = product.version,
@@ -234,6 +256,8 @@ fun CatalogScreen(
                 }
                 draftVU.remove(product.productId)
                 draftBarcode.remove(product.productId)
+                draftUnitsPerCase.remove(product.productId)
+                draftSaleUnit.remove(product.productId)
             } catch (e: Exception) {
                 error = e.message
             } finally {
@@ -264,6 +288,16 @@ fun CatalogScreen(
                 return
             }
         }
+        val unitsPerCase = if (createSaleUnit == "CASE") {
+            val parsedUnits = createUnitsPerCase.toLongOrNull()
+            if (parsedUnits == null || parsedUnits <= 0L) {
+                createError = "Units per case must be a positive integer when selling by case."
+                return
+            }
+            parsedUnits
+        } else {
+            null
+        }
         scope.launch {
             creating = true
             createError = null
@@ -281,6 +315,8 @@ fun CatalogScreen(
                         priceMinor = priceMinor,
                         currency = currency,
                         unitVolumeVu = unitVolume,
+                        unitsPerCase = unitsPerCase,
+                        saleUnit = createSaleUnit,
                         imageUrl = imageUrl,
                         barcode = barcode,
                     ),
@@ -294,6 +330,8 @@ fun CatalogScreen(
                 createPrice = ""
                 createVu = "1"
                 createBarcode = ""
+                createSaleUnit = "UNIT"
+                createUnitsPerCase = ""
                 createImageUri = null
                 createImageLabel = null
                 load()
@@ -349,9 +387,14 @@ fun CatalogScreen(
                         val vuValue = draftVU[product.productId] ?: product.unitVolumeVu.toString()
                         val barcodeValue = draftBarcode[product.productId]
                             ?: product.barcode.orEmpty()
+                        val saleUnit = draftSaleUnit[product.productId] ?: product.saleUnit
+                        val unitsPerCaseValue = draftUnitsPerCase[product.productId]
+                            ?: product.unitsPerCase?.toString().orEmpty()
                         val vuDirty = vuValue != product.unitVolumeVu.toString()
                         val barcodeDirty = barcodeValue != product.barcode.orEmpty()
-                        val dirty = vuDirty || barcodeDirty
+                        val saleUnitDirty = saleUnit != product.saleUnit
+                        val unitsPerCaseDirty = unitsPerCaseValue != product.unitsPerCase?.toString().orEmpty()
+                        val dirty = vuDirty || barcodeDirty || saleUnitDirty || unitsPerCaseDirty
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(
                                 modifier = Modifier.padding(PegasusSpacing.lg),
@@ -364,6 +407,11 @@ fun CatalogScreen(
                                 Text(
                                     "${fmt.format(product.priceMinor)} ${product.currency} · ${product.unit}",
                                     style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    "Sale: ${saleUnit.lowercase()}${if (saleUnit == "CASE" && unitsPerCaseValue.isNotBlank()) " ($unitsPerCaseValue/case)" else ""}",
+                                    style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
                                     color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 if (!product.imageUrl.isNullOrBlank()) {
@@ -393,6 +441,46 @@ fun CatalogScreen(
                                     onValueChange = { draftBarcode[product.productId] = it },
                                     enabled = savingId != product.productId,
                                 )
+                                var rowSaleUnitExpanded by remember(product.productId) { mutableStateOf(false) }
+                                ExposedDropdownMenuBox(
+                                    expanded = rowSaleUnitExpanded,
+                                    onExpandedChange = { rowSaleUnitExpanded = it },
+                                ) {
+                                    OutlinedTextField(
+                                        value = if (saleUnit == "CASE") "Case" else "Unit",
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Sale unit") },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rowSaleUnitExpanded) },
+                                        modifier = Modifier
+                                            .menuAnchor()
+                                            .fillMaxWidth(),
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = rowSaleUnitExpanded,
+                                        onDismissRequest = { rowSaleUnitExpanded = false },
+                                    ) {
+                                        listOf("UNIT" to "Unit", "CASE" to "Case").forEach { (value, label) ->
+                                            DropdownMenuItem(
+                                                text = { Text(label) },
+                                                onClick = {
+                                                    draftSaleUnit[product.productId] = value
+                                                    rowSaleUnitExpanded = false
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                                if (saleUnit == "CASE") {
+                                    OutlinedTextField(
+                                        value = unitsPerCaseValue,
+                                        onValueChange = { draftUnitsPerCase[product.productId] = it },
+                                        label = { Text("Units per case") },
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -479,6 +567,45 @@ fun CatalogScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    ExposedDropdownMenuBox(
+                        expanded = saleUnitMenuExpanded,
+                        onExpandedChange = { saleUnitMenuExpanded = it },
+                    ) {
+                        OutlinedTextField(
+                            value = if (createSaleUnit == "CASE") "Case" else "Unit",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Sale unit") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = saleUnitMenuExpanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth(),
+                        )
+                        ExposedDropdownMenu(
+                            expanded = saleUnitMenuExpanded,
+                            onDismissRequest = { saleUnitMenuExpanded = false },
+                        ) {
+                            listOf("UNIT" to "Unit", "CASE" to "Case").forEach { (value, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        createSaleUnit = value
+                                        saleUnitMenuExpanded = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    if (createSaleUnit == "CASE") {
+                        OutlinedTextField(
+                            value = createUnitsPerCase,
+                            onValueChange = { createUnitsPerCase = it },
+                            label = { Text("Units per case") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                     CatalogBarcodeField(
                         value = createBarcode,
                         onValueChange = { createBarcode = it },

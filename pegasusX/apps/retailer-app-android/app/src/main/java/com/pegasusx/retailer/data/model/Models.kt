@@ -740,8 +740,22 @@ data class StockWarning(
 data class CheckoutPreviewResponse(
     val ok: Boolean = false,
     val blocked: Boolean = false,
+    val code: String? = null,
     val message: String? = null,
+    @SerialName("rejected_skus") val rejectedSkus: List<String> = emptyList(),
+    @SerialName("oos_items") val oosItems: List<String> = emptyList(),
+    val shortfall: Map<String, Long> = emptyMap(),
     @SerialName("stock_warnings") val stockWarnings: List<StockWarning> = emptyList(),
+    @SerialName("max_quantities") val maxQuantities: Map<String, Long> = emptyMap(),
+    @SerialName("line_errors") val lineErrors: Map<String, String> = emptyMap(),
+    @SerialName("backordered_item_count") val backorderedItemCount: Int = 0,
+    @SerialName("show_stock_counts") val showStockCounts: Boolean = false,
+    @SerialName("preorder_min_lead_days") val preorderMinLeadDays: Long? = null,
+    @SerialName("preorder_max_lead_days") val preorderMaxLeadDays: Long? = null,
+    @SerialName("order_line_min_quantity") val orderLineMinQuantity: Long? = null,
+    @SerialName("order_line_max_quantity") val orderLineMaxQuantity: Long? = null,
+    @SerialName("delivery_fee_minor") val deliveryFeeMinor: Long = 0,
+    @SerialName("delivery_distance_km") val deliveryDistanceKm: Double? = null,
 )
 
 @Serializable

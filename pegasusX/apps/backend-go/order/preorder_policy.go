@@ -25,9 +25,15 @@ const (
 type DeliveryPriority string
 
 // ClassifyDelivery decides order source/status from mode and requested dates (Tashkent calendar days).
-func ClassifyDelivery(now time.Time, mode string, requestedDelivery *time.Time, deliverBefore *time.Time) (OrderSource, Status, ConfirmationStatus, *time.Time, *time.Time, error) {
+func ClassifyDelivery(now time.Time, mode string, requestedDelivery *time.Time, deliverBefore *time.Time, minLeadDays, maxLeadDays int64) (OrderSource, Status, ConfirmationStatus, *time.Time, *time.Time, error) {
 	mode = normalizeDeliveryMode(mode)
 	today := proximity.TashkentTodayStart(now)
+	if minLeadDays <= 0 {
+		minLeadDays = PreorderMinScheduledLeadDays
+	}
+	if maxLeadDays <= 0 {
+		maxLeadDays = PreorderMaxScheduledLeadDays
+	}
 
 	switch mode {
 	case DeliveryModeScheduled:
@@ -36,11 +42,11 @@ func ClassifyDelivery(now time.Time, mode string, requestedDelivery *time.Time, 
 		}
 		deliveryDay := proximity.TashkentTodayStart(*requestedDelivery)
 		leadDays := calendarDaysBetween(today, deliveryDay)
-		if leadDays < PreorderMinScheduledLeadDays {
-			return "", "", "", nil, nil, fmt.Errorf("scheduled pre-order requires delivery at least %d calendar days ahead (got %d)", PreorderMinScheduledLeadDays, leadDays)
+		if leadDays < int(minLeadDays) {
+			return "", "", "", nil, nil, fmt.Errorf("scheduled pre-order requires delivery at least %d calendar days ahead (got %d)", minLeadDays, leadDays)
 		}
-		if leadDays > PreorderMaxScheduledLeadDays {
-			return "", "", "", nil, nil, fmt.Errorf("scheduled pre-order cannot exceed %d calendar days ahead", PreorderMaxScheduledLeadDays)
+		if leadDays > int(maxLeadDays) {
+			return "", "", "", nil, nil, fmt.Errorf("scheduled pre-order cannot exceed %d calendar days ahead", maxLeadDays)
 		}
 		return OrderSourceManualPreorder, StatusScheduled, ConfirmationStatusDraft, requestedDelivery, nil, nil
 

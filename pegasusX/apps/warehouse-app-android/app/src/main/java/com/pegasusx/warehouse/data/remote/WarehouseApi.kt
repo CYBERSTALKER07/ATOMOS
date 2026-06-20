@@ -199,6 +199,20 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/preorders")
     suspend fun getPreorders(): Response<com.pegasusx.warehouse.data.model.WarehousePreordersResponse>
 
+    @POST("v1/warehouse/ops/preorders/{id}/reject")
+    suspend fun rejectPreorder(
+        @Path("id") orderId: String,
+        @Body body: WarehouseOrderMutationRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<WarehouseOrderMutationResponse>
+
+    @POST("v1/warehouse/ops/preorders/{id}/edit")
+    suspend fun editPreorder(
+        @Path("id") orderId: String,
+        @Body body: WarehousePreorderEditRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<WarehouseOrderMutationResponse>
+
     @GET("v1/warehouse/ops/stock-commitments")
     suspend fun getStockCommitments(): Response<com.pegasusx.warehouse.data.model.StockCommitmentsResponse>
 

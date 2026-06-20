@@ -11,6 +11,8 @@ import { normalizeEanBarcode } from "@pegasusx/validation";
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
+type SaleUnit = "UNIT" | "CASE";
+
 type CatalogProduct = {
   product_id: string;
   name: string;
@@ -19,6 +21,8 @@ type CatalogProduct = {
   currency: string;
   unit: string;
   unit_volume_vu: number;
+  units_per_case?: number;
+  sale_unit?: SaleUnit;
   barcode?: string;
   image_url?: string;
   is_active: boolean;
@@ -36,6 +40,8 @@ type CreateProductForm = {
   description: string;
   price_minor: string;
   unit_volume_vu: string;
+  units_per_case: string;
+  sale_unit: SaleUnit;
   barcode: string;
 };
 
@@ -45,6 +51,8 @@ const EMPTY_CREATE_FORM: CreateProductForm = {
   description: "",
   price_minor: "",
   unit_volume_vu: "1",
+  units_per_case: "",
+  sale_unit: "UNIT",
   barcode: "",
 };
 
@@ -57,6 +65,8 @@ export default function CatalogPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [draftVU, setDraftVU] = useState<Record<string, string>>({});
   const [draftBarcode, setDraftBarcode] = useState<Record<string, string>>({});
+  const [draftUnitsPerCase, setDraftUnitsPerCase] = useState<Record<string, string>>({});
+  const [draftSaleUnit, setDraftSaleUnit] = useState<Record<string, SaleUnit>>({});
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createForm, setCreateForm] = useState<CreateProductForm>(EMPTY_CREATE_FORM);
@@ -89,6 +99,8 @@ export default function CatalogPage() {
       setCategories(Array.isArray(cats) ? cats : []);
       setDraftVU({});
       setDraftBarcode({});
+      setDraftUnitsPerCase({});
+      setDraftSaleUnit({});
       setCreateForm(current => ({
         ...current,
         category_id: current.category_id || cats[0]?.category_id || "",
@@ -185,9 +197,27 @@ export default function CatalogPage() {
       normalizedBarcode = result.code;
     }
 
+    const saleUnit = draftSaleUnit[product.product_id] ?? product.sale_unit ?? "UNIT";
+    const unitsPerCaseRaw = draftUnitsPerCase[product.product_id] ?? (
+      product.units_per_case != null ? String(product.units_per_case) : ""
+    );
+    let unitsPerCase: number | undefined;
+    if (saleUnit === "CASE") {
+      const parsed = Number.parseInt(unitsPerCaseRaw, 10);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        setError("Units per case must be a positive integer when selling by case.");
+        return;
+      }
+      unitsPerCase = parsed;
+    }
+
     const vuDirty = rawVu !== String(product.unit_volume_vu ?? 1);
     const barcodeDirty = trimmedBarcode !== (product.barcode ?? "").trim();
-    if (!vuDirty && !barcodeDirty) return;
+    const saleUnitDirty = saleUnit !== (product.sale_unit ?? "UNIT");
+    const unitsPerCaseDirty = unitsPerCaseRaw !== (
+      product.units_per_case != null ? String(product.units_per_case) : ""
+    );
+    if (!vuDirty && !barcodeDirty && !saleUnitDirty && !unitsPerCaseDirty) return;
 
     setSavingId(product.product_id);
     setError(null);
@@ -202,6 +232,8 @@ export default function CatalogPage() {
           unit: product.unit,
           unit_volume_vu: parsedVu,
           barcode: normalizedBarcode ?? "",
+          sale_unit: saleUnit,
+          ...(unitsPerCase != null ? { units_per_case: unitsPerCase } : {}),
           is_active: product.is_active,
           version: product.version,
         }),
@@ -215,6 +247,16 @@ export default function CatalogPage() {
         return next;
       });
       setDraftBarcode(prev => {
+        const next = { ...prev };
+        delete next[product.product_id];
+        return next;
+      });
+      setDraftUnitsPerCase(prev => {
+        const next = { ...prev };
+        delete next[product.product_id];
+        return next;
+      });
+      setDraftSaleUnit(prev => {
         const next = { ...prev };
         delete next[product.product_id];
         return next;
@@ -257,6 +299,15 @@ export default function CatalogPage() {
       }
       normalizedBarcode = result.code;
     }
+    let unitsPerCase: number | undefined;
+    if (createForm.sale_unit === "CASE") {
+      const parsed = Number.parseInt(createForm.units_per_case, 10);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        setCreateError("Units per case must be a positive integer when selling by case.");
+        return;
+      }
+      unitsPerCase = parsed;
+    }
     setCreating(true);
     setCreateError(null);
     try {
@@ -276,6 +327,8 @@ export default function CatalogPage() {
           unit_volume_vu: unitVolume,
           stock_quantity: 0,
           unit: "UNIT",
+          sale_unit: createForm.sale_unit,
+          ...(unitsPerCase != null ? { units_per_case: unitsPerCase } : {}),
           ...(normalizedBarcode ? { barcode: normalizedBarcode } : {}),
           ...(imageUrl ? { image_url: imageUrl } : {}),
         }),
@@ -367,6 +420,39 @@ export default function CatalogPage() {
               style={{ background: "var(--field-background)", borderColor: "var(--field-border)" }}
             />
           </label>
+          <label className="flex flex-col gap-1 md-typescale-body-medium">
+            Sale unit
+            <select
+              value={createForm.sale_unit}
+              onChange={event =>
+                setCreateForm(prev => ({
+                  ...prev,
+                  sale_unit: event.target.value as SaleUnit,
+                }))
+              }
+              className="px-3 py-2 rounded border"
+              style={{ background: "var(--field-background)", borderColor: "var(--field-border)" }}
+            >
+              <option value="UNIT">Unit</option>
+              <option value="CASE">Case</option>
+            </select>
+          </label>
+          {createForm.sale_unit === "CASE" && (
+            <label className="flex flex-col gap-1 md-typescale-body-medium">
+              Units per case
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={createForm.units_per_case}
+                onChange={event =>
+                  setCreateForm(prev => ({ ...prev, units_per_case: event.target.value }))
+                }
+                className="px-3 py-2 rounded border font-mono"
+                style={{ background: "var(--field-background)", borderColor: "var(--field-border)" }}
+              />
+            </label>
+          )}
           <label className="flex flex-col gap-1 md-typescale-body-medium md:col-span-2">
             Product image (optional)
             <input
@@ -474,6 +560,8 @@ export default function CatalogPage() {
               <th className="px-4 py-3 md-typescale-label-large">Barcode</th>
               <th className="px-4 py-3 md-typescale-label-large text-right">Price (minor)</th>
               <th className="px-4 py-3 md-typescale-label-large text-right">Unit VU</th>
+              <th className="px-4 py-3 md-typescale-label-large">Sale unit</th>
+              <th className="px-4 py-3 md-typescale-label-large text-right">Units/case</th>
               <th className="px-4 py-3 md-typescale-label-large text-right">Actions</th>
             </tr>
           </thead>
@@ -481,9 +569,17 @@ export default function CatalogPage() {
             {pagination.pageItems.map(product => {
               const vuValue = draftVU[product.product_id] ?? String(product.unit_volume_vu ?? 1);
               const barcodeValue = draftBarcode[product.product_id] ?? product.barcode ?? "";
+              const saleUnit = draftSaleUnit[product.product_id] ?? product.sale_unit ?? "UNIT";
+              const unitsPerCaseValue = draftUnitsPerCase[product.product_id] ?? (
+                product.units_per_case != null ? String(product.units_per_case) : ""
+              );
               const vuDirty = vuValue !== String(product.unit_volume_vu ?? 1);
               const barcodeDirty = barcodeValue.trim() !== (product.barcode ?? "").trim();
-              const dirty = vuDirty || barcodeDirty;
+              const saleUnitDirty = saleUnit !== (product.sale_unit ?? "UNIT");
+              const unitsPerCaseDirty = unitsPerCaseValue !== (
+                product.units_per_case != null ? String(product.units_per_case) : ""
+              );
+              const dirty = vuDirty || barcodeDirty || saleUnitDirty || unitsPerCaseDirty;
               return (
                 <tr key={product.product_id} className="border-b border-[var(--color-md-outline-variant)]">
                   <td className="px-4 py-3">
@@ -552,6 +648,50 @@ export default function CatalogPage() {
                         color: "var(--field-foreground)",
                       }}
                     />
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={saleUnit}
+                      onChange={event =>
+                        setDraftSaleUnit(prev => ({
+                          ...prev,
+                          [product.product_id]: event.target.value as SaleUnit,
+                        }))
+                      }
+                      className="px-2 py-1 rounded border text-sm"
+                      style={{
+                        background: "var(--field-background)",
+                        borderColor: "var(--field-border)",
+                        color: "var(--field-foreground)",
+                      }}
+                    >
+                      <option value="UNIT">Unit</option>
+                      <option value="CASE">Case</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {saleUnit === "CASE" ? (
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={unitsPerCaseValue}
+                        onChange={event =>
+                          setDraftUnitsPerCase(prev => ({
+                            ...prev,
+                            [product.product_id]: event.target.value,
+                          }))
+                        }
+                        className="w-20 px-2 py-1 rounded border text-right font-mono text-sm"
+                        style={{
+                          background: "var(--field-background)",
+                          borderColor: "var(--field-border)",
+                          color: "var(--field-foreground)",
+                        }}
+                      />
+                    ) : (
+                      <span className="text-xs text-[var(--color-md-outline)]">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button

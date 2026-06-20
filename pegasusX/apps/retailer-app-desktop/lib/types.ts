@@ -224,10 +224,18 @@ export interface CheckoutPreviewResponse {
   message?: string;
   rejected_skus?: string[];
   oos_items?: string[];
+  shortfall?: Record<string, number>;
   stock_warnings?: StockWarning[];
   max_quantities?: Record<string, number>;
+  line_errors?: Record<string, string>;
   backordered_item_count?: number;
   show_stock_counts?: boolean;
+  preorder_min_lead_days?: number;
+  preorder_max_lead_days?: number;
+  order_line_min_quantity?: number;
+  order_line_max_quantity?: number;
+  delivery_fee_minor?: number;
+  delivery_distance_km?: number;
 }
 
 export interface UnifiedCheckoutResponse {

@@ -32,19 +32,19 @@ func (s *Service) HandleOpsSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleGetOpsSettings(w http.ResponseWriter, r *http.Request, warehouseID string) {
-	row, err := s.spannerClient.Single().ReadRow(r.Context(), "Warehouses", spanner.Key{warehouseID},
-		[]string{"WarehouseId", "Name", "RegionId", "DefaultOutOfStockPolicy", "ShowStockCountsToRetailers", "OperatingSchedule", "IsOnShift"})
+	policy, err := LoadOpsPolicy(r.Context(), s.spannerClient, warehouseID)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "warehouse_not_found"})
 		return
 	}
-	var id, name string
-	var regionID spanner.NullString
-	var policy spanner.NullString
-	var showCounts bool
+	row, err := s.spannerClient.Single().ReadRow(r.Context(), "Warehouses", spanner.Key{warehouseID},
+		[]string{"OperatingSchedule"})
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "warehouse_not_found"})
+		return
+	}
 	var schedule spanner.NullJSON
-	var isOnShift bool
-	if err := row.Columns(&id, &name, &regionID, &policy, &showCounts, &schedule, &isOnShift); err != nil {
+	if err := row.Columns(&schedule); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "decode_warehouse_failed"})
 		return
 	}
@@ -53,18 +53,7 @@ func (s *Service) handleGetOpsSettings(w http.ResponseWriter, r *http.Request, w
 		_ = json.Unmarshal([]byte(schedule.String()), &sched)
 	}
 	expressEnabled, expressStockFloor := readExpressOps(sched)
-	writeJSON(w, http.StatusOK, map[string]any{
-		"warehouse_id":                  id,
-		"name":                          name,
-		"region_id":                     regionID.StringVal,
-		"default_out_of_stock_policy":   ResolveOutOfStockPolicy(policy.StringVal, ""),
-		"show_stock_counts_to_retailers": showCounts,
-		"operating_schedule":            sched,
-		"is_on_shift":                   isOnShift,
-		"ops_always_available":          true,
-		"express_enabled":               expressEnabled,
-		"express_stock_floor":           expressStockFloor,
-	})
+	writeJSON(w, http.StatusOK, opsPolicyToJSONMap(policy, sched, expressEnabled, expressStockFloor))
 }
 
 func (s *Service) handlePatchOpsSettings(w http.ResponseWriter, r *http.Request, warehouseID string) {
@@ -84,13 +73,21 @@ func (s *Service) handlePatchOpsSettings(w http.ResponseWriter, r *http.Request,
 	}()
 
 	var req struct {
-		DefaultOutOfStockPolicy      *string          `json:"default_out_of_stock_policy"`
+		DefaultOutOfStockPolicy    *string          `json:"default_out_of_stock_policy"`
 		ShowStockCountsToRetailers *bool            `json:"show_stock_counts_to_retailers"`
 		OperatingSchedule          *json.RawMessage `json:"operating_schedule"`
 		RegionID                   *string          `json:"region_id"`
 		IsOnShift                  *bool            `json:"is_on_shift"`
 		ExpressEnabled             *bool            `json:"express_enabled"`
 		ExpressStockFloor          *int64           `json:"express_stock_floor"`
+		PreorderMinLeadDays        *int64           `json:"preorder_min_lead_days"`
+		PreorderMaxLeadDays        *int64           `json:"preorder_max_lead_days"`
+		OrderLineMinQuantity       *int64           `json:"order_line_min_quantity"`
+		OrderLineMaxQuantity       *int64           `json:"order_line_max_quantity"`
+		ClearOrderLineMinQuantity  *bool            `json:"clear_order_line_min_quantity"`
+		ClearOrderLineMaxQuantity  *bool            `json:"clear_order_line_max_quantity"`
+		DeliveryFeeRules         *json.RawMessage `json:"delivery_fee_rules"`
+		ClearDeliveryFeeRules      *bool            `json:"clear_delivery_fee_rules"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -120,6 +117,63 @@ func (s *Service) handlePatchOpsSettings(w http.ResponseWriter, r *http.Request,
 	}
 	if req.IsOnShift != nil {
 		update["IsOnShift"] = *req.IsOnShift
+	}
+	if req.PreorderMinLeadDays != nil || req.PreorderMaxLeadDays != nil {
+		current, err := LoadOpsPolicy(r.Context(), s.spannerClient, warehouseID)
+		if err != nil {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "warehouse_not_found"})
+			return
+		}
+		minLead := current.PreorderMinLeadDays
+		maxLead := current.PreorderMaxLeadDays
+		if req.PreorderMinLeadDays != nil {
+			minLead = *req.PreorderMinLeadDays
+		}
+		if req.PreorderMaxLeadDays != nil {
+			maxLead = *req.PreorderMaxLeadDays
+		}
+		minLead, maxLead, err = normalizePreorderLeadDays(minLead, maxLead)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		update["PreorderMinLeadDays"] = minLead
+		update["PreorderMaxLeadDays"] = maxLead
+	}
+	if req.ClearOrderLineMinQuantity != nil && *req.ClearOrderLineMinQuantity {
+		update["OrderLineMinQuantity"] = nil
+	} else if req.OrderLineMinQuantity != nil {
+		update["OrderLineMinQuantity"] = *req.OrderLineMinQuantity
+	}
+	if req.ClearOrderLineMaxQuantity != nil && *req.ClearOrderLineMaxQuantity {
+		update["OrderLineMaxQuantity"] = nil
+	} else if req.OrderLineMaxQuantity != nil {
+		update["OrderLineMaxQuantity"] = *req.OrderLineMaxQuantity
+	}
+	if minQty, ok := update["OrderLineMinQuantity"]; ok && minQty != nil {
+		maxQty := update["OrderLineMaxQuantity"]
+		var minPtr, maxPtr *int64
+		if v, ok := minQty.(int64); ok {
+			minPtr = &v
+		}
+		if v, ok := maxQty.(int64); ok {
+			maxPtr = &v
+		}
+		if err := validateOrderLineLimits(minPtr, maxPtr); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+	}
+	if req.ClearDeliveryFeeRules != nil && *req.ClearDeliveryFeeRules {
+		update["DeliveryFeeRules"] = nil
+	} else if req.DeliveryFeeRules != nil {
+		rules, err := ParseDeliveryFeeRulesJSON(*req.DeliveryFeeRules)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		update["DeliveryFeeRules"] = spanner.NullJSON{Value: *req.DeliveryFeeRules, Valid: true}
+		_ = rules
 	}
 	if req.ExpressEnabled != nil || req.ExpressStockFloor != nil {
 		schedJSON := loadOperatingScheduleJSON(r.Context(), s.spannerClient, warehouseID)

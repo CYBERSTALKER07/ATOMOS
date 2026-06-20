@@ -16,9 +16,9 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
-	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -46,11 +46,13 @@ type DriverOrderView struct {
 	RetailerID      string                `json:"retailer_id"`
 	RetailerName    string                `json:"retailer_name"`
 	Status          string                `json:"state"`
-	TotalMinor      int64                 `json:"total_amount"`
-	DeliveryAddress string                `json:"delivery_address,omitempty"`
-	Lat             float64               `json:"latitude"`
-	Lng             float64               `json:"longitude"`
-	PaymentGateway  string                `json:"payment_gateway"`
+	TotalMinor         int64                 `json:"total_amount"`
+	DeliveryFeeMinor   int64                 `json:"delivery_fee_minor,omitempty"`
+	DeliveryDistanceKm float64               `json:"delivery_distance_km,omitempty"`
+	DeliveryAddress    string                `json:"delivery_address,omitempty"`
+	Lat                float64               `json:"latitude"`
+	Lng                float64               `json:"longitude"`
+	PaymentGateway     string                `json:"payment_gateway"`
 	RouteID         string                `json:"route_id,omitempty"`
 	SequenceIndex   int64                 `json:"sequence_index,omitempty"`
 	Items           []DriverOrderLineView `json:"items,omitempty"`
@@ -82,19 +84,19 @@ type ManifestDeliveryTokenLookup func(ctx context.Context, orderIDs []string) ma
 
 // Service keeps additive in-memory driver state for scaffold routes.
 type Service struct {
-	repo         Repository
-	cache        *cache.Cache
-	notifSvc     DriverNotificationReader
-	orderList    DriverOrderQuery
-	orderGet     DriverOrderGetQuery
-	supplierHub  *ws.Hub
-	driverHub    *ws.Hub
-	log          *slog.Logger
-	manifestGate     ManifestGateLookup
-	manifest         ManifestLookup
-	manifestTokens   ManifestDeliveryTokenLookup
-	pendingQuery PendingCollectionsLookup
-	earnings     EarningsLookup
+	repo           Repository
+	cache          *cache.Cache
+	notifSvc       DriverNotificationReader
+	orderList      DriverOrderQuery
+	orderGet       DriverOrderGetQuery
+	supplierHub    *ws.Hub
+	driverHub      *ws.Hub
+	log            *slog.Logger
+	manifestGate   ManifestGateLookup
+	manifest       ManifestLookup
+	manifestTokens ManifestDeliveryTokenLookup
+	pendingQuery   PendingCollectionsLookup
+	earnings       EarningsLookup
 	depart         DepartFn
 	returnComplete ReturnCompleteFn
 	routeGeometry  RouteGeometryLookup
@@ -120,33 +122,33 @@ type Service struct {
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
-	Repo         Repository
-	Cache        *cache.Cache
-	NotifSvc     DriverNotificationReader
-	OrderList    DriverOrderQuery
-	OrderGet     DriverOrderGetQuery
-	SupplierHub  *ws.Hub
-	DriverHub    *ws.Hub
-	Log          *slog.Logger
-	ManifestGate       ManifestGateLookup
-	Manifest           ManifestLookup
-	ManifestTokens     ManifestDeliveryTokenLookup
-	PendingQuery PendingCollectionsLookup
-	Earnings     EarningsLookup
-	Depart          DepartFn
-	ReturnComplete  ReturnCompleteFn
-	RouteGeometry   RouteGeometryLookup
-	ProfileLookup   DriverProfileLookup
-	AvailabilityReader AvailabilityReader
-	DispatchPlanInvalidate func(ctx context.Context, warehouseID string)
+	Repo                         Repository
+	Cache                        *cache.Cache
+	NotifSvc                     DriverNotificationReader
+	OrderList                    DriverOrderQuery
+	OrderGet                     DriverOrderGetQuery
+	SupplierHub                  *ws.Hub
+	DriverHub                    *ws.Hub
+	Log                          *slog.Logger
+	ManifestGate                 ManifestGateLookup
+	Manifest                     ManifestLookup
+	ManifestTokens               ManifestDeliveryTokenLookup
+	PendingQuery                 PendingCollectionsLookup
+	Earnings                     EarningsLookup
+	Depart                       DepartFn
+	ReturnComplete               ReturnCompleteFn
+	RouteGeometry                RouteGeometryLookup
+	ProfileLookup                DriverProfileLookup
+	AvailabilityReader           AvailabilityReader
+	DispatchPlanInvalidate       func(ctx context.Context, warehouseID string)
 	FleetAvailabilityBroadcaster FleetAvailabilityBroadcaster
-	SupplierID   string
-	Currency     string
-	JWTSecret    string
-	JWTIssuer    string
-	Now          func() time.Time
-	FirebaseVerifier auth.FirebaseVerifier
-	Idem             idempotency.Store
+	SupplierID                   string
+	Currency                     string
+	JWTSecret                    string
+	JWTIssuer                    string
+	Now                          func() time.Time
+	FirebaseVerifier             auth.FirebaseVerifier
+	Idem                         idempotency.Store
 }
 
 // ManifestGateResult is the read-model response for driver ghost-stop checks.
@@ -265,10 +267,10 @@ func NewService(c ServiceConfig) *Service {
 		manifestTokens:     c.ManifestTokens,
 		pendingQuery:       c.PendingQuery,
 		earnings:           c.Earnings,
-		depart:          c.Depart,
-		returnComplete:  c.ReturnComplete,
-		routeGeometry:   c.RouteGeometry,
-		profileLookup:   c.ProfileLookup,
+		depart:             c.Depart,
+		returnComplete:     c.ReturnComplete,
+		routeGeometry:      c.RouteGeometry,
+		profileLookup:      c.ProfileLookup,
 		availReader:        c.AvailabilityReader,
 		planInvalidate:     c.DispatchPlanInvalidate,
 		fleetBroadcast:     c.FleetAvailabilityBroadcaster,

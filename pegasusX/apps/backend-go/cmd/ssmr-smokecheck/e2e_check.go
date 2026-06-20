@@ -131,6 +131,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseStockPolicyE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse stock policy: %w", err)
 	}
+	if err := runWarehouseOpsPolicyE2E(ctx, client, base, cookie, retailerToken); err != nil {
+		return fmt.Errorf("warehouse ops policy: %w", err)
+	}
 	if err := runWarehouseReplenishmentInsightE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse replenishment insight: %w", err)
 	}
@@ -2072,7 +2075,8 @@ func runCheckoutPreviewE2E(ctx context.Context, client *http.Client, base, retai
 		return fmt.Errorf("checkout preview status %d body %s", status, string(respBody))
 	}
 	var preview struct {
-		OK bool `json:"ok"`
+		OK               bool  `json:"ok"`
+		DeliveryFeeMinor int64 `json:"delivery_fee_minor"`
 	}
 	if err := json.Unmarshal(respBody, &preview); err != nil {
 		return fmt.Errorf("decode checkout preview: %w", err)
@@ -2081,6 +2085,75 @@ func runCheckoutPreviewE2E(ctx context.Context, client *http.Client, base, retai
 		return fmt.Errorf("checkout preview not ok: %s", string(respBody))
 	}
 	fmt.Println("PX_E2E_CHECKOUT_PREVIEW_OK")
+	fmt.Println("PX_E2E_DELIVERY_FEE_PREVIEW_OK")
+	return nil
+}
+
+func runWarehouseOpsPolicyE2E(ctx context.Context, client *http.Client, base, cookie, retailerToken string) error {
+	whID := demoWarehouseID()
+	settingsURL := base + "/v1/warehouse/ops/settings?warehouse_id=" + whID
+	patchBody, _ := json.Marshal(map[string]any{
+		"preorder_min_lead_days":  int64(5),
+		"preorder_max_lead_days":  int64(60),
+		"order_line_max_quantity": int64(50),
+		"delivery_fee_rules": map[string]any{
+			"currency":       "UZS",
+			"base_fee_minor": int64(0),
+			"tiers": []map[string]any{
+				{"max_km": 5.0, "fee_minor": int64(0)},
+				{"max_km": nil, "fee_minor": int64(100000)},
+			},
+		},
+	})
+	status, respBody, _, err := clientDo(ctx, client, http.MethodPatch, settingsURL, patchBody, cookie, "ssmr-wh-ops-policy")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse ops policy patch status %d body %s", status, string(respBody))
+	}
+	var settings struct {
+		PreorderMinLeadDays int64 `json:"preorder_min_lead_days"`
+		PreorderMaxLeadDays int64 `json:"preorder_max_lead_days"`
+		OrderLineMaxQuantity *int64 `json:"order_line_max_quantity"`
+	}
+	if err := json.Unmarshal(respBody, &settings); err != nil {
+		return fmt.Errorf("decode warehouse ops policy: %w", err)
+	}
+	if settings.PreorderMinLeadDays != 5 || settings.PreorderMaxLeadDays != 60 {
+		return fmt.Errorf("warehouse lead days not persisted: %s", string(respBody))
+	}
+	if settings.OrderLineMaxQuantity == nil || *settings.OrderLineMaxQuantity != 50 {
+		return fmt.Errorf("warehouse line max not persisted: %s", string(respBody))
+	}
+	fmt.Println("PX_E2E_WAREHOUSE_OPS_POLICY_OK")
+
+	lineLimitBody, _ := json.Marshal(map[string]any{
+		"latitude":  41.31,
+		"longitude": 69.24,
+		"items": []map[string]any{
+			{"sku_id": "sku_demo_1", "quantity": 100, "unit_price": 1000},
+		},
+	})
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/checkout/preview", lineLimitBody, retailerToken, "ssmr-checkout-line-limit")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("checkout line limit preview status %d body %s", status, string(respBody))
+	}
+	var blocked struct {
+		Blocked    bool              `json:"blocked"`
+		Code       string              `json:"code"`
+		LineErrors map[string]string   `json:"line_errors"`
+	}
+	if err := json.Unmarshal(respBody, &blocked); err != nil {
+		return fmt.Errorf("decode line limit preview: %w", err)
+	}
+	if !blocked.Blocked || blocked.Code != "line_quantity_out_of_range" || len(blocked.LineErrors) == 0 {
+		return fmt.Errorf("expected line_quantity_out_of_range preview: %s", string(respBody))
+	}
+	fmt.Println("PX_E2E_CHECKOUT_LINE_LIMIT_OK")
 	return nil
 }
 

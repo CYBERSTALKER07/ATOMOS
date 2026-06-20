@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -77,6 +78,17 @@ fun CheckoutSheet(
     paymentOptions: List<CheckoutPaymentOption>,
     stockWarnings: List<com.pegasusx.retailer.data.model.StockWarning> = emptyList(),
     oosItems: List<String> = emptyList(),
+    previewLoading: Boolean = false,
+    deliveryMode: String = "STANDARD",
+    deliveryDate: String? = null,
+    preorderMinLeadDays: Long = 3,
+    preorderMaxLeadDays: Long = 0,
+    deliveryFeeLabel: String = "Free",
+    deliveryDistanceKm: Double = 0.0,
+    expressPriority: Boolean = false,
+    onDeliveryModeChange: (String) -> Unit = {},
+    onDeliveryDateChange: (String?) -> Unit = {},
+    onExpressPriorityChange: (Boolean) -> Unit = {},
     onBuy: () -> Unit,
     onSelectPayment: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -112,6 +124,37 @@ fun CheckoutSheet(
             }
 
             Spacer(modifier = Modifier.height(20.dp))
+
+            if (previewLoading) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Text(
+                        "Refreshing stock availability…",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            DeliveryIntentSection(
+                deliveryMode = deliveryMode,
+                deliveryDate = deliveryDate,
+                preorderMinLeadDays = preorderMinLeadDays,
+                preorderMaxLeadDays = preorderMaxLeadDays,
+                deliveryFeeLabel = deliveryFeeLabel,
+                deliveryDistanceKm = deliveryDistanceKm,
+                expressPriority = expressPriority,
+                onDeliveryModeChange = onDeliveryModeChange,
+                onDeliveryDateChange = onDeliveryDateChange,
+                onExpressPriorityChange = onExpressPriorityChange,
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             if (stockWarnings.isNotEmpty()) {
                 Surface(
@@ -187,6 +230,107 @@ fun CheckoutSheet(
                     CheckoutPhase.PROCESSING -> ProcessingContent()
                     CheckoutPhase.COMPLETE -> CompleteContent()
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeliveryIntentSection(
+    deliveryMode: String,
+    deliveryDate: String?,
+    preorderMinLeadDays: Long,
+    preorderMaxLeadDays: Long,
+    deliveryFeeLabel: String,
+    deliveryDistanceKm: Double,
+    expressPriority: Boolean,
+    onDeliveryModeChange: (String) -> Unit,
+    onDeliveryDateChange: (String?) -> Unit,
+    onExpressPriorityChange: (Boolean) -> Unit,
+) {
+    val minDate = java.time.LocalDate.now().plusDays(preorderMinLeadDays.coerceAtLeast(1))
+    val maxDate = if (preorderMaxLeadDays > 0) java.time.LocalDate.now().plusDays(preorderMaxLeadDays) else null
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = SoftSquircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Delivery", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DeliveryModeChip(
+                    label = "Standard",
+                    selected = deliveryMode != "SCHEDULED",
+                    onClick = { onDeliveryModeChange("STANDARD") },
+                    modifier = Modifier.weight(1f),
+                )
+                DeliveryModeChip(
+                    label = "Scheduled",
+                    subtitle = "T+${preorderMinLeadDays}${if (preorderMaxLeadDays > 0) "–T+$preorderMaxLeadDays" else "+"}",
+                    selected = deliveryMode == "SCHEDULED",
+                    onClick = { onDeliveryModeChange("SCHEDULED") },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (deliveryMode == "SCHEDULED") {
+                androidx.compose.material3.OutlinedTextField(
+                    value = deliveryDate.orEmpty(),
+                    onValueChange = { onDeliveryDateChange(it.ifBlank { null }) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Delivery date") },
+                    placeholder = { Text(minDate.toString()) },
+                    singleLine = true,
+                )
+                Text(
+                    "Choose between $minDate${maxDate?.let { " and $it" } ?: " or later"}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onExpressPriorityChange(!expressPriority) },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                androidx.compose.material3.Checkbox(
+                    checked = expressPriority,
+                    onCheckedChange = onExpressPriorityChange,
+                )
+                Text("Express priority (+fee)", style = MaterialTheme.typography.bodySmall)
+            }
+            Text(
+                "Delivery fee: $deliveryFeeLabel${if (deliveryDistanceKm > 0) " · ${"%.1f".format(deliveryDistanceKm)} km" else ""}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun DeliveryModeChip(
+    label: String,
+    subtitle: String? = null,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            subtitle?.let {
+                Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
             }
         }
     }

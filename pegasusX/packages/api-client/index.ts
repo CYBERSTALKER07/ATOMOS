@@ -113,6 +113,9 @@ import type {
   WarehouseFleetVehicleListResponse,
   WarehouseOpsDashboardResponse,
   WarehouseOpsFinancialsResponse,
+  WarehouseOpsSettings,
+  WarehouseOpsSettingsPatchRequest,
+  CheckoutPreviewResponse,
   WarehouseOrderMutationRequest,
   WarehouseOrderMutationResponse,
   WarehouseOrdersResponse,
@@ -869,6 +872,26 @@ export class ApiClient {
 
   async getWarehouseInventory(query: { warehouse_id?: string } = {}): Promise<WarehouseInventoryResponse> {
     return this.request<WarehouseInventoryResponse>(appendQuery("/v1/warehouse/ops/inventory", query as Record<string, unknown>), "GET");
+  }
+
+  async getWarehouseOpsSettings(query: { warehouse_id?: string } = {}): Promise<WarehouseOpsSettings> {
+    return this.request<WarehouseOpsSettings>(appendQuery("/v1/warehouse/ops/settings", query as Record<string, unknown>), "GET");
+  }
+
+  async patchWarehouseOpsSettings(
+    request: WarehouseOpsSettingsPatchRequest,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<WarehouseOpsSettings> {
+    return this.request<WarehouseOpsSettings>(
+      appendQuery("/v1/warehouse/ops/settings", query as Record<string, unknown>),
+      "PATCH",
+      { body: request, idempotencyKey },
+    );
+  }
+
+  async postCheckoutPreview(body: Record<string, unknown>): Promise<CheckoutPreviewResponse> {
+    return this.request<CheckoutPreviewResponse>("/v1/checkout/preview", "POST", { body });
   }
 
   async getWarehouseOrders(query: { warehouse_id?: string; state?: string } = {}): Promise<WarehouseOrdersResponse> {

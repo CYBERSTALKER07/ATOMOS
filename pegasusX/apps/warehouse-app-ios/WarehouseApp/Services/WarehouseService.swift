@@ -126,15 +126,30 @@ enum WarehouseService {
         try await api.get("v1/warehouse/ops/stock-commitments")
     }
 
-    static func patchOpsSettings(policy: String, operatingSchedule: [String: AnyCodable]) async throws {
+    static func patchOpsSettings(_ body: WarehouseOpsSettingsPatchRequest) async throws {
         try await api.patchVoid(
             "v1/warehouse/ops/settings",
-            body: WarehouseOpsSettingsPatchRequest(
-                defaultOutOfStockPolicy: policy,
-                operatingSchedule: operatingSchedule
-            ),
+            body: body,
             idempotencyKey: WarehouseIdempotency.opsSettings()
         )
+    }
+
+    static func patchOpsSettings(policy: String, operatingSchedule: [String: AnyCodable]) async throws {
+        try await patchOpsSettings(WarehouseOpsSettingsPatchRequest(
+            defaultOutOfStockPolicy: policy,
+            showStockCountsToRetailers: nil,
+            operatingSchedule: operatingSchedule,
+            preorderMinLeadDays: nil,
+            preorderMaxLeadDays: nil,
+            orderLineMinQuantity: nil,
+            orderLineMaxQuantity: nil,
+            clearOrderLineMinQuantity: nil,
+            clearOrderLineMaxQuantity: nil,
+            expressEnabled: nil,
+            expressStockFloor: nil,
+            deliveryFeeRules: nil,
+            clearDeliveryFeeRules: nil
+        ))
     }
 
     // MARK: - Products

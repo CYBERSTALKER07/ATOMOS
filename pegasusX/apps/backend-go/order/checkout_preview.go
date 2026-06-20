@@ -14,17 +14,24 @@ import (
 
 // CheckoutPreviewResponse is POST /v1/checkout/preview (dry-run inventory planning).
 type CheckoutPreviewResponse struct {
-	OK                 bool             `json:"ok"`
-	Blocked            bool             `json:"blocked,omitempty"`
-	Code               string           `json:"code,omitempty"`
-	Message            string           `json:"message,omitempty"`
-	RejectedSKUs       []string         `json:"rejected_skus,omitempty"`
-	OOSItems           []string         `json:"oos_items,omitempty"`
-	Shortfall          map[string]int64 `json:"shortfall,omitempty"`
-	StockWarnings      []StockWarning   `json:"stock_warnings,omitempty"`
-	MaxQuantities      map[string]int64 `json:"max_quantities,omitempty"`
-	BackorderItemCount int              `json:"backordered_item_count,omitempty"`
-	ShowStockCounts    bool             `json:"show_stock_counts,omitempty"`
+	OK                    bool             `json:"ok"`
+	Blocked               bool             `json:"blocked,omitempty"`
+	Code                  string           `json:"code,omitempty"`
+	Message               string           `json:"message,omitempty"`
+	RejectedSKUs          []string         `json:"rejected_skus,omitempty"`
+	OOSItems              []string         `json:"oos_items,omitempty"`
+	Shortfall             map[string]int64 `json:"shortfall,omitempty"`
+	StockWarnings         []StockWarning   `json:"stock_warnings,omitempty"`
+	MaxQuantities         map[string]int64 `json:"max_quantities,omitempty"`
+	LineErrors            map[string]string `json:"line_errors,omitempty"`
+	BackorderItemCount    int              `json:"backordered_item_count,omitempty"`
+	ShowStockCounts       bool             `json:"show_stock_counts,omitempty"`
+	PreorderMinLeadDays   int64            `json:"preorder_min_lead_days,omitempty"`
+	PreorderMaxLeadDays   int64            `json:"preorder_max_lead_days,omitempty"`
+	OrderLineMinQuantity  *int64           `json:"order_line_min_quantity,omitempty"`
+	OrderLineMaxQuantity  *int64           `json:"order_line_max_quantity,omitempty"`
+	DeliveryFeeMinor      int64            `json:"delivery_fee_minor,omitempty"`
+	DeliveryDistanceKm    float64          `json:"delivery_distance_km,omitempty"`
 }
 
 // HandleCheckoutPreview serves POST /v1/checkout/preview.
@@ -105,8 +112,41 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 	}
 
 	resp := CheckoutPreviewResponse{OK: true, MaxQuantities: map[string]int64{}}
-	if s.spannerClient != nil {
+	whPolicy, policyErr := LoadWarehouseOpsPolicy(ctx, s.spannerClient, warehouseID)
+	if policyErr == nil {
+		resp.ShowStockCounts = whPolicy.ShowStockCountsToRetailers
+		resp.PreorderMinLeadDays = whPolicy.PreorderMinLeadDays
+		resp.PreorderMaxLeadDays = whPolicy.PreorderMaxLeadDays
+		resp.OrderLineMinQuantity = whPolicy.OrderLineMinQuantity
+		resp.OrderLineMaxQuantity = whPolicy.OrderLineMaxQuantity
+		feeMinor, distKm := ComputeOrderDeliveryFee(whPolicy, lat, lng)
+		resp.DeliveryFeeMinor = feeMinor
+		resp.DeliveryDistanceKm = distKm
+		lineErrs := ValidateLineQuantities(lineItems, whPolicy)
+		if packErrs := validatePackMultiples(ctx, s.spannerClient, lineItems); len(packErrs) > 0 {
+			lineErrs = mergeLineErrors(lineErrs, packErrs)
+		}
+		if len(lineErrs) > 0 {
+			return CheckoutPreviewResponse{
+				OK:                   false,
+				Blocked:              true,
+				Code:                 ErrLineQuantityOutOfRange.Error(),
+				Message:              "line quantity policy violated",
+				LineErrors:           lineErrs,
+				MaxQuantities:        resp.MaxQuantities,
+				ShowStockCounts:      resp.ShowStockCounts,
+				PreorderMinLeadDays:  resp.PreorderMinLeadDays,
+				PreorderMaxLeadDays:  resp.PreorderMaxLeadDays,
+				OrderLineMinQuantity: resp.OrderLineMinQuantity,
+				OrderLineMaxQuantity: resp.OrderLineMaxQuantity,
+				DeliveryFeeMinor:     resp.DeliveryFeeMinor,
+				DeliveryDistanceKm:   resp.DeliveryDistanceKm,
+			}, nil
+		}
+	} else if s.spannerClient != nil {
 		resp.ShowStockCounts = loadWarehouseShowStockCounts(ctx, s.spannerClient, warehouseID)
+	}
+	if s.spannerClient != nil {
 		if maxQty, err := loadAvailableQuantities(ctx, s.spannerClient, s.supplierID, warehouseID, lineItems); err == nil {
 			resp.MaxQuantities = maxQty
 		}
@@ -115,15 +155,21 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 			var ice *InventoryCheckoutError
 			if errors.As(err, &ice) {
 				return CheckoutPreviewResponse{
-					OK:              false,
-					Blocked:         true,
-					Code:            ice.Code,
-					Message:         ice.Message,
-					RejectedSKUs:    ice.RejectedSKUs,
-					OOSItems:        ice.OOSItems,
-					Shortfall:       ice.Shortfall,
-					MaxQuantities:   resp.MaxQuantities,
-					ShowStockCounts: resp.ShowStockCounts,
+					OK:                   false,
+					Blocked:              true,
+					Code:                 ice.Code,
+					Message:              ice.Message,
+					RejectedSKUs:         ice.RejectedSKUs,
+					OOSItems:             ice.OOSItems,
+					Shortfall:            ice.Shortfall,
+					MaxQuantities:        resp.MaxQuantities,
+					ShowStockCounts:      resp.ShowStockCounts,
+					PreorderMinLeadDays:  resp.PreorderMinLeadDays,
+					PreorderMaxLeadDays:  resp.PreorderMaxLeadDays,
+					OrderLineMinQuantity: resp.OrderLineMinQuantity,
+					OrderLineMaxQuantity: resp.OrderLineMaxQuantity,
+					DeliveryFeeMinor:     resp.DeliveryFeeMinor,
+					DeliveryDistanceKm:   resp.DeliveryDistanceKm,
 				}, nil
 			}
 			return CheckoutPreviewResponse{}, err

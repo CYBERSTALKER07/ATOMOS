@@ -826,10 +826,6 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, fmt.Errorf("parse deliver_before: %w", err)
 	}
 	now := s.now()
-	source, status, confirmation, committedDate, latestDelivery, classifyErr := ClassifyDelivery(now, req.DeliveryMode, requestedDeliveryDate, deliverBefore)
-	if classifyErr != nil {
-		return CreateResponse{}, classifyErr
-	}
 	priority := normalizeDeliveryPriority(req.DeliveryPriority)
 
 	if s.warehouse == nil {
@@ -845,6 +841,30 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, fmt.Errorf("%w: no_eligible_warehouse", ErrZoneMiss)
 	}
 
+	var whPolicy WarehouseOpsPolicy
+	var deliveryFeeMinor int64
+	if s.spannerClient != nil {
+		whPolicy, err = LoadWarehouseOpsPolicy(ctx, s.spannerClient, warehouseID)
+		if err != nil {
+			return CreateResponse{}, fmt.Errorf("load warehouse policy: %w", err)
+		}
+		if lineErrs := ValidateLineQuantities(lineItems, whPolicy); len(lineErrs) > 0 {
+			return CreateResponse{}, fmt.Errorf("%w: %v", ErrLineQuantityOutOfRange, lineErrs)
+		}
+		if packErrs := validatePackMultiples(ctx, s.spannerClient, lineItems); len(packErrs) > 0 {
+			return CreateResponse{}, fmt.Errorf("%w: %v", ErrLineQuantityOutOfRange, packErrs)
+		}
+		deliveryFeeMinor, _ = ComputeOrderDeliveryFee(whPolicy, req.Lat, req.Lng)
+	}
+
+	source, status, confirmation, committedDate, latestDelivery, classifyErr := ClassifyDelivery(
+		now, req.DeliveryMode, requestedDeliveryDate, deliverBefore,
+		whPolicy.PreorderMinLeadDays, whPolicy.PreorderMaxLeadDays,
+	)
+	if classifyErr != nil {
+		return CreateResponse{}, classifyErr
+	}
+
 	var invPlan InventoryPlan
 	if s.spannerClient != nil {
 		invPlan, err = PlanInventoryCheckout(ctx, s.spannerClient, s.supplierID, warehouseID, lineItems)
@@ -856,8 +876,10 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		for _, li := range lineItems {
 			total += li.Quantity * li.UnitPrice
 		}
+		total += deliveryFeeMinor
 	} else {
 		invPlan.Fulfillable = lineItems
+		total += deliveryFeeMinor
 	}
 
 	if len(lineItems) == 0 && len(invPlan.Backorder) == 0 {
@@ -909,6 +931,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		RequestedDeliveryDate: committedDate,
 		DeliverBefore:         latestDelivery,
 		DeliveryPriority:      priority,
+		DeliveryFeeMinor:      deliveryFeeMinor,
 		Version:               1,
 		CreatedAt:             now,
 		UpdatedAt:             now,

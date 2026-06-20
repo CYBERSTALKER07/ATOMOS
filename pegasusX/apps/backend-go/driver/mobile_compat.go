@@ -19,7 +19,7 @@ func demoFleetOrders(driverID string) []map[string]any {
 	return []map[string]any{
 		{
 			"id": "ord_factory_1", "retailer_id": "ret_demo", "retailer_name": "Demo Retailer",
-			"state": "IN_TRANSIT", "total_amount": int64(24000),
+			"state": "IN_TRANSIT", "total_amount": int64(24000), "delivery_fee_minor": int64(100000),
 			"delivery_address": "Tashkent, Chilonzor",
 			"latitude":         41.285, "longitude": 69.203,
 			"qr_token": "demo-token-ord-1", "payment_gateway": "CASH",

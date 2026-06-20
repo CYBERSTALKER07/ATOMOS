@@ -1055,7 +1055,7 @@ func driverOrderListQuery(client *spanner.Client) driver.DriverOrderQuery {
 	return func(ctx context.Context, driverID string) ([]driver.DriverOrderView, error) {
 		stmt := spanner.Statement{
 			SQL: `SELECT o.OrderId, o.RetailerId, COALESCE(r.Name, o.RetailerId), o.Status,
-			             o.TotalMinor, o.Lat, o.Lng, COALESCE(o.RouteId, ''),
+			             o.TotalMinor, o.DeliveryFeeMinor, o.Lat, o.Lng, COALESCE(o.RouteId, ''),
 			             o.LineItemsJson, o.CreatedAt, o.UpdatedAt,
 			             COALESCE(mo.SequenceIndex, 0)
 			      FROM Orders o
@@ -1081,7 +1081,7 @@ func driverOrderListQuery(client *spanner.Client) driver.DriverOrderQuery {
 			var lineItems []byte
 			var createdAt, updatedAt time.Time
 			if err := row.Columns(
-				&o.OrderID, &o.RetailerID, &o.RetailerName, &o.Status, &o.TotalMinor,
+				&o.OrderID, &o.RetailerID, &o.RetailerName, &o.Status, &o.TotalMinor, &o.DeliveryFeeMinor,
 				&lat, &lng, &o.RouteID, &lineItems, &createdAt, &updatedAt, &o.SequenceIndex,
 			); err != nil {
 				return nil, fmt.Errorf("driver order scan: %w", err)
@@ -1151,7 +1151,7 @@ func driverOrderGetQuery(client *spanner.Client) driver.DriverOrderGetQuery {
 	return func(ctx context.Context, orderID string) (driver.DriverOrderView, bool, error) {
 		stmt := spanner.Statement{
 			SQL: `SELECT o.OrderId, o.RetailerId, COALESCE(r.Name, o.RetailerId), o.Status,
-			             o.TotalMinor, o.Lat, o.Lng, COALESCE(o.RouteId, ''),
+			             o.TotalMinor, o.DeliveryFeeMinor, o.Lat, o.Lng, COALESCE(o.RouteId, ''),
 			             o.LineItemsJson, o.CreatedAt, o.UpdatedAt,
 			             COALESCE(mo.SequenceIndex, 0)
 			      FROM Orders o
@@ -1174,7 +1174,7 @@ func driverOrderGetQuery(client *spanner.Client) driver.DriverOrderGetQuery {
 		var lineItems []byte
 		var createdAt, updatedAt time.Time
 		if err := row.Columns(
-			&o.OrderID, &o.RetailerID, &o.RetailerName, &o.Status, &o.TotalMinor,
+			&o.OrderID, &o.RetailerID, &o.RetailerName, &o.Status, &o.TotalMinor, &o.DeliveryFeeMinor,
 			&lat, &lng, &o.RouteID, &lineItems, &createdAt, &updatedAt, &o.SequenceIndex,
 		); err != nil {
 			return driver.DriverOrderView{}, false, fmt.Errorf("driver order get scan: %w", err)

@@ -60,6 +60,7 @@ export default function CheckoutModal({
   const [degradedBanner, setDegradedBanner] = useState<{ gateway: string; reason: string } | null>(null);
   const [oosItems, setOosItems] = useState<string[]>([]);
   const [stockWarnings, setStockWarnings] = useState<StockWarning[]>([]);
+  const [deliveryFeeMinor, setDeliveryFeeMinor] = useState(0);
   const [deliveryMode, setDeliveryMode] = useState<"STANDARD" | "SCHEDULED">("STANDARD");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [expressPriority, setExpressPriority] = useState(false);
@@ -242,7 +243,11 @@ export default function CheckoutModal({
         throw new Error(previewErr?.error || "Checkout preview failed");
       }
       const preview = (await previewRes.json()) as CheckoutPreviewResponse;
+      setDeliveryFeeMinor(preview.delivery_fee_minor ?? 0);
       if (preview.blocked) {
+        if (preview.line_errors && Object.keys(preview.line_errors).length > 0) {
+          throw new Error(Object.values(preview.line_errors).join("; "));
+        }
         setOosItems(preview.rejected_skus || preview.oos_items || []);
         throw new Error(
           preview.message || "Some items cannot be ordered with current stock policy.",
@@ -419,8 +424,13 @@ export default function CheckoutModal({
                     Total Authorization
                   </span>
                   <div className="md-typescale-display-small font-bold text-[var(--desk-text-primary)]">
-                    UZS {total.toLocaleString()}
+                    UZS {(total + deliveryFeeMinor).toLocaleString()}
                   </div>
+                  {deliveryFeeMinor > 0 && (
+                    <p className="text-xs text-[var(--desk-text-tertiary)] mt-1">
+                      Includes {deliveryFeeMinor.toLocaleString()} UZS delivery fee
+                    </p>
+                  )}
                 </div>
                 <Ticket
                   size={32}

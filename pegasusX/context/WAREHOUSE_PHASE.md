@@ -195,6 +195,20 @@ cd pegasusX && make parity-contract-full
 
 ---
 
+## Phase WH-13 — Warehouse ops policy E2E (lead days, line limits, delivery fees)
+
+**Status:** **CLOSED** (2026-06-17) — Spanner policy columns, `GET/PATCH /v1/warehouse/ops/settings`, checkout preview/create enforcement, retailer clamp + fee totals, driver `delivery_fee_minor` on fleet orders, supplier `sale_unit`/`units_per_pack`, SSMR markers `PX_E2E_WAREHOUSE_OPS_POLICY_OK`, `PX_E2E_CHECKOUT_LINE_LIMIT_OK`, `PX_E2E_DELIVERY_FEE_PREVIEW_OK`.
+
+| ID | Surface | Notes |
+|----|---------|-------|
+| WH13-01 | Backend | `WarehouseOpsPolicy` loaders, line min/max, haversine fee tiers, pack multiples Phase B |
+| WH13-02 | Retailer row | Desktop/Android/iOS preview fields + delivery fee in checkout total |
+| WH13-03 | Driver row | Fleet order DTO + fee badge (cash collection awareness) |
+| WH13-04 | Supplier catalog | `sale_unit`, `units_per_pack` persisted + portal already sends `units_per_case` |
+| WH13-05 | Warehouse clients | Ops settings models synced; pre-order edit/reject on Android preorders hub |
+
+---
+
 ## Phase WH-12 — Native ops depth + ecosystem parity (P1/P2)
 
 **Status:** **CLOSED** (2026-06-15) — ops settings, per-SKU inventory policy, enriched supply-request create on Android + iOS; nav README + notifications label fix; WAREHOUSE row **Wired** in parity matrix.

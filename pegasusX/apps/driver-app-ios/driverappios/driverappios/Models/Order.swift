@@ -87,6 +87,8 @@ struct Order: Codable, Identifiable, Hashable {
     let retailerName: String
     let state: OrderState
     let totalAmount: Int
+    let deliveryFeeMinor: Int?
+    let deliveryDistanceKm: Double?
     let deliveryAddress: String
     let latitude: Double
     let longitude: Double
@@ -107,6 +109,8 @@ struct Order: Codable, Identifiable, Hashable {
         case retailerName = "retailer_name"
         case state
         case totalAmount = "total_amount"
+        case deliveryFeeMinor = "delivery_fee_minor"
+        case deliveryDistanceKm = "delivery_distance_km"
         case deliveryAddress = "delivery_address"
         case latitude
         case longitude
@@ -124,6 +128,11 @@ struct Order: Codable, Identifiable, Hashable {
 
     /// Formatted amount in
     var displayTotal: String { totalAmount.formattedAmount }
+
+    var deliveryFeeLabel: String? {
+        guard let fee = deliveryFeeMinor, fee > 0 else { return nil }
+        return "+\(fee.formattedAmount) delivery fee"
+    }
 }
 
 // MARK: - Delivery Submit

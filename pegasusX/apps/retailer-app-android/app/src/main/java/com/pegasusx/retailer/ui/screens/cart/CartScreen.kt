@@ -156,7 +156,17 @@ fun CartScreen(
                 }
 
                 itemsIndexed(uiState.items, key = { _, item -> item.id }) { _, item ->
-                    CartItemCard(item = item, onUpdateQuantity = viewModel::updateQuantity, onRemove = viewModel::removeItem)
+                    CartItemCard(
+                        item = item,
+                        isOos = uiState.oosItems.contains(
+                            if (item.variant.id.isNotBlank()) item.variant.id else item.product.id,
+                        ) || (uiState.previewShortfall[
+                            if (item.variant.id.isNotBlank()) item.variant.id else item.product.id
+                        ] ?: 0L) > 0L,
+                        maxQuantity = viewModel.effectiveMaxQuantityFor(item),
+                        onUpdateQuantity = viewModel::updateQuantity,
+                        onRemove = viewModel::removeItem,
+                    )
                 }
 
                 item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -189,9 +199,42 @@ fun CartScreen(
                 paymentOptions = uiState.paymentOptions.ifEmpty { DefaultCheckoutPaymentOptions },
                 stockWarnings = uiState.stockWarnings,
                 oosItems = uiState.oosItems,
+                previewLoading = uiState.previewLoading,
+                deliveryMode = uiState.deliveryMode,
+                deliveryDate = uiState.deliveryDate,
+                preorderMinLeadDays = uiState.preorderMinLeadDays,
+                preorderMaxLeadDays = uiState.preorderMaxLeadDays,
+                deliveryFeeLabel = uiState.displayDeliveryFee,
+                deliveryDistanceKm = uiState.deliveryDistanceKm,
+                expressPriority = uiState.expressPriority,
+                onDeliveryModeChange = viewModel::setDeliveryMode,
+                onDeliveryDateChange = viewModel::setDeliveryDate,
+                onExpressPriorityChange = viewModel::setExpressPriority,
                 onBuy = viewModel::processPayment,
                 onSelectPayment = viewModel::setSelectedPaymentGateway,
                 onDismiss = viewModel::dismissCheckout,
+            )
+        }
+
+        if (uiState.pendingBackorderConfirm) {
+            AlertDialog(
+                onDismissRequest = viewModel::dismissBackorderConfirm,
+                title = { Text("Partial backorder") },
+                text = {
+                    Text(
+                        "Some items will be backordered (${uiState.stockWarnings.size} line(s)). Delivery may be delayed. Proceed?",
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = viewModel::confirmBackorderCheckout) {
+                        Text("Proceed")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = viewModel::dismissBackorderConfirm) {
+                        Text("Cancel")
+                    }
+                },
             )
         }
 
@@ -271,6 +314,8 @@ private fun CartSyncBanner(
 @Composable
 private fun CartItemCard(
     item: CartItem,
+    isOos: Boolean,
+    maxQuantity: Int?,
     onUpdateQuantity: (String, Int) -> Unit,
     onRemove: (String) -> Unit,
 ) {
@@ -294,7 +339,19 @@ private fun CartItemCard(
 
             // Info
             Column(modifier = Modifier.weight(1f)) {
-                Text(item.product.name, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(item.product.name, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    if (isOos) {
+                        Text(
+                            "OOS",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp),
+                            color = StatusRed,
+                            modifier = Modifier
+                                .background(StatusRed.copy(alpha = 0.12f), PillShape)
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TagPill(item.variant.size)
@@ -319,6 +376,7 @@ private fun CartItemCard(
                 Spacer(modifier = Modifier.height(6.dp))
                 QuantityStepper(
                     quantity = item.quantity,
+                    atCap = maxQuantity != null && item.quantity >= maxQuantity,
                     onDecrement = { onUpdateQuantity(item.id, item.quantity - 1) },
                     onIncrement = { onUpdateQuantity(item.id, item.quantity + 1) },
                 )
@@ -328,7 +386,12 @@ private fun CartItemCard(
 }
 
 @Composable
-private fun QuantityStepper(quantity: Int, onDecrement: () -> Unit, onIncrement: () -> Unit) {
+private fun QuantityStepper(
+    quantity: Int,
+    atCap: Boolean = false,
+    onDecrement: () -> Unit,
+    onIncrement: () -> Unit,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onDecrement, modifier = Modifier.size(28.dp)) {
             Icon(
@@ -344,8 +407,8 @@ private fun QuantityStepper(quantity: Int, onDecrement: () -> Unit, onIncrement:
             modifier = Modifier.width(24.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
-        IconButton(onClick = onIncrement, modifier = Modifier.size(28.dp)) {
-            Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+        IconButton(onClick = onIncrement, enabled = !atCap, modifier = Modifier.size(28.dp)) {
+            Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (atCap) 0.25f else 0.6f))
         }
     }
 }

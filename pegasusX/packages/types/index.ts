@@ -139,10 +139,29 @@ export interface CheckoutPreviewResponse {
   message?: string;
   rejected_skus?: string[];
   oos_items?: string[];
+  shortfall?: Record<string, number>;
   stock_warnings?: StockWarning[];
   max_quantities?: Record<string, number>;
+  line_errors?: Record<string, string>;
   backordered_item_count?: number;
   show_stock_counts?: boolean;
+  preorder_min_lead_days?: number;
+  preorder_max_lead_days?: number;
+  order_line_min_quantity?: number;
+  order_line_max_quantity?: number;
+  delivery_fee_minor?: number;
+  delivery_distance_km?: number;
+}
+
+export interface DeliveryFeeTier {
+  max_km?: number | null;
+  fee_minor: number;
+}
+
+export interface DeliveryFeeRules {
+  currency: string;
+  base_fee_minor: number;
+  tiers: DeliveryFeeTier[];
 }
 
 export interface WarehouseOpsSettings {
@@ -150,9 +169,33 @@ export interface WarehouseOpsSettings {
   name: string;
   region_id?: string;
   default_out_of_stock_policy: OutOfStockPolicy;
+  show_stock_counts_to_retailers?: boolean;
   operating_schedule?: Record<string, unknown>;
   is_on_shift: boolean;
   ops_always_available: boolean;
+  express_enabled?: boolean;
+  express_stock_floor?: number;
+  preorder_min_lead_days?: number;
+  preorder_max_lead_days?: number;
+  order_line_min_quantity?: number | null;
+  order_line_max_quantity?: number | null;
+  delivery_fee_rules?: DeliveryFeeRules | null;
+}
+
+export interface WarehouseOpsSettingsPatchRequest {
+  default_out_of_stock_policy?: OutOfStockPolicy;
+  show_stock_counts_to_retailers?: boolean;
+  operating_schedule?: Record<string, unknown>;
+  express_enabled?: boolean;
+  express_stock_floor?: number;
+  preorder_min_lead_days?: number;
+  preorder_max_lead_days?: number;
+  order_line_min_quantity?: number | null;
+  order_line_max_quantity?: number | null;
+  clear_order_line_min_quantity?: boolean;
+  clear_order_line_max_quantity?: boolean;
+  delivery_fee_rules?: DeliveryFeeRules | null;
+  clear_delivery_fee_rules?: boolean;
 }
 
 export interface WarehouseInventoryPolicyPatchRequest {
@@ -2458,6 +2501,8 @@ export interface CatalogProduct {
   stock_quantity: number;
   unit: string;
   unit_volume_vu?: number;
+  sale_unit?: string;
+  units_per_pack?: number | null;
   is_active: boolean;
   version: number;
   created_at?: string;

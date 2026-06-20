@@ -409,6 +409,10 @@ export function warehouseDispatchSettingsKey(warehouseId: string, autoDispatchEn
   return `warehouse-dispatch-settings:${warehouseId}:${autoDispatchEnabled}`;
 }
 
+export function warehouseOpsSettingsKey(warehouseId: string, revision: string): string {
+  return `warehouse-ops-settings:${warehouseId}:${revision}`;
+}
+
 export function factoryManifestStartLoadingKey(manifestId: string): string {
   return `factory-start-loading:${manifestId}`;
 }

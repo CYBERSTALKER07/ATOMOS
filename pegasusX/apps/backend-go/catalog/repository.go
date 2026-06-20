@@ -23,6 +23,8 @@ type Product struct {
 	StockQuantity int64     `json:"stock_quantity" spanner:"StockQuantity"`
 	Unit          string    `json:"unit" spanner:"Unit"`
 	UnitVolumeVU  float64   `json:"unit_volume_vu" spanner:"UnitVolumeVU"`
+	SaleUnit      string    `json:"sale_unit" spanner:"SaleUnit"`
+	UnitsPerPack  *int64    `json:"units_per_pack,omitempty" spanner:"UnitsPerPack"`
 	Barcode       string    `json:"barcode,omitempty" spanner:"Barcode"`
 	IsActive      bool      `json:"is_active" spanner:"IsActive"`
 	Version       int64     `json:"version" spanner:"Version"`
@@ -74,7 +76,29 @@ func NewSpannerRepository(client *spanner.Client) *SpannerRepository {
 	return &SpannerRepository{client: client}
 }
 
-// ListCategories returns all categories for a supplier, ordered by SortOrder.
+const productSelectColumns = `ProductId, SupplierId, CategoryId, Name, Description, ImageURL, PriceMinor, Currency, StockQuantity, Unit, UnitVolumeVU, SaleUnit, UnitsPerPack, IsActive, Version, CreatedAt, UpdatedAt`
+
+func scanProductRow(row *spanner.Row) (Product, error) {
+	var p Product
+	var desc, imageURL spanner.NullString
+	var unitsPerPack spanner.NullInt64
+	if err := row.Columns(&p.ProductID, &p.SupplierID, &p.CategoryID, &p.Name, &desc, &imageURL,
+		&p.PriceMinor, &p.Currency, &p.StockQuantity, &p.Unit, &p.UnitVolumeVU, &p.SaleUnit, &unitsPerPack,
+		&p.IsActive, &p.Version, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		return Product{}, fmt.Errorf("scan product row: %w", err)
+	}
+	p.Description = desc.StringVal
+	p.ImageURL = imageURL.StringVal
+	if p.SaleUnit == "" {
+		p.SaleUnit = "UNIT"
+	}
+	if unitsPerPack.Valid {
+		v := unitsPerPack.Int64
+		p.UnitsPerPack = &v
+	}
+	return p, nil
+}
+
 func (r *SpannerRepository) ListCategories(ctx context.Context, supplierID string) ([]Category, error) {
 	stmt := spanner.Statement{
 		SQL:    "SELECT CategoryId, SupplierId, Name, ParentCategoryId, IconKey, SortOrder, CreatedAt, UpdatedAt FROM ProductCategories WHERE SupplierId = @sid ORDER BY SortOrder",
@@ -145,7 +169,7 @@ func (r *SpannerRepository) CreateCategory(ctx context.Context, cat Category) er
 
 // ListProducts returns products for a supplier, optionally filtered by category and active status.
 func (r *SpannerRepository) ListProducts(ctx context.Context, supplierID, categoryID string, activeOnly bool) ([]Product, error) {
-	sql := "SELECT ProductId, SupplierId, CategoryId, Name, Description, ImageURL, PriceMinor, Currency, StockQuantity, Unit, UnitVolumeVU, IsActive, Version, CreatedAt, UpdatedAt FROM Products WHERE SupplierId = @sid"
+	sql := "SELECT " + productSelectColumns + " FROM Products WHERE SupplierId = @sid"
 	params := map[string]any{"sid": supplierID}
 	if categoryID != "" {
 		sql += " AND CategoryId = @cid"
@@ -169,15 +193,10 @@ func (r *SpannerRepository) ListProducts(ctx context.Context, supplierID, catego
 		if err != nil {
 			return nil, fmt.Errorf("list products for supplier %s: %w", supplierID, err)
 		}
-		var p Product
-		var desc, imageURL spanner.NullString
-		if err := row.Columns(&p.ProductID, &p.SupplierID, &p.CategoryID, &p.Name, &desc, &imageURL,
-			&p.PriceMinor, &p.Currency, &p.StockQuantity, &p.Unit, &p.UnitVolumeVU, &p.IsActive, &p.Version,
-			&p.CreatedAt, &p.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("scan product row: %w", err)
+		p, err := scanProductRow(row)
+		if err != nil {
+			return nil, err
 		}
-		p.Description = desc.StringVal
-		p.ImageURL = imageURL.StringVal
 		products = append(products, p)
 	}
 	return products, nil
@@ -194,7 +213,7 @@ func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, catego
 	if offset < 0 {
 		offset = 0
 	}
-	sql := "SELECT ProductId, SupplierId, CategoryId, Name, Description, ImageURL, PriceMinor, Currency, StockQuantity, Unit, UnitVolumeVU, IsActive, Version, CreatedAt, UpdatedAt FROM Products WHERE IsActive = TRUE"
+	sql := "SELECT " + productSelectColumns + " FROM Products WHERE IsActive = TRUE"
 	params := map[string]any{"lim": limit, "off": offset}
 	if categoryID != "" {
 		sql += " AND CategoryId = @cid"
@@ -203,7 +222,7 @@ func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, catego
 	sql += " ORDER BY UpdatedAt DESC LIMIT @lim OFFSET @off"
 
 	stmt := spanner.Statement{SQL: sql, Params: params}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var products []Product
@@ -215,15 +234,10 @@ func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, catego
 		if err != nil {
 			return nil, fmt.Errorf("list discoverable products: %w", err)
 		}
-		var p Product
-		var desc, imageURL spanner.NullString
-		if err := row.Columns(&p.ProductID, &p.SupplierID, &p.CategoryID, &p.Name, &desc, &imageURL,
-			&p.PriceMinor, &p.Currency, &p.StockQuantity, &p.Unit, &p.UnitVolumeVU, &p.IsActive, &p.Version,
-			&p.CreatedAt, &p.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("scan discoverable product row: %w", err)
+		p, err := scanProductRow(row)
+		if err != nil {
+			return nil, err
 		}
-		p.Description = desc.StringVal
-		p.ImageURL = imageURL.StringVal
 		products = append(products, p)
 	}
 	return products, nil
@@ -232,20 +246,14 @@ func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, catego
 // GetProduct reads a single product by PK.
 func (r *SpannerRepository) GetProduct(ctx context.Context, productID string) (*Product, error) {
 	row, err := r.client.Single().ReadRow(ctx, "Products", spanner.Key{productID},
-		[]string{"ProductId", "SupplierId", "CategoryId", "Name", "Description", "ImageURL",
-			"PriceMinor", "Currency", "StockQuantity", "Unit", "UnitVolumeVU", "IsActive", "Version", "CreatedAt", "UpdatedAt"})
+		strings.Split(productSelectColumns, ", "))
 	if err != nil {
 		return nil, fmt.Errorf("get product %s: %w", productID, err)
 	}
-	var p Product
-	var desc, imageURL spanner.NullString
-	if err := row.Columns(&p.ProductID, &p.SupplierID, &p.CategoryID, &p.Name, &desc, &imageURL,
-		&p.PriceMinor, &p.Currency, &p.StockQuantity, &p.Unit, &p.UnitVolumeVU, &p.IsActive, &p.Version,
-		&p.CreatedAt, &p.UpdatedAt); err != nil {
-		return nil, fmt.Errorf("scan product %s: %w", productID, err)
+	p, err := scanProductRow(row)
+	if err != nil {
+		return nil, err
 	}
-	p.Description = desc.StringVal
-	p.ImageURL = imageURL.StringVal
 	return &p, nil
 }
 
@@ -264,6 +272,8 @@ func (r *SpannerRepository) CreateProduct(ctx context.Context, p Product) error 
 			"StockQuantity": p.StockQuantity,
 			"Unit":          p.Unit,
 			"UnitVolumeVU":  normalizeUnitVolumeVU(p.UnitVolumeVU),
+			"SaleUnit":      normalizeSaleUnit(p.SaleUnit),
+			"UnitsPerPack":  nullableInt64(p.UnitsPerPack),
 			"Barcode":       spanner.NullString{StringVal: p.Barcode, Valid: strings.TrimSpace(p.Barcode) != ""},
 			"IsActive":      p.IsActive,
 			"Version":       int64(1),
@@ -302,6 +312,8 @@ func (r *SpannerRepository) UpdateProduct(ctx context.Context, p Product) error 
 			"StockQuantity": p.StockQuantity,
 			"Unit":          p.Unit,
 			"UnitVolumeVU":  normalizeUnitVolumeVU(p.UnitVolumeVU),
+			"SaleUnit":      normalizeSaleUnit(p.SaleUnit),
+			"UnitsPerPack":  nullableInt64(p.UnitsPerPack),
 			"Barcode":       spanner.NullString{StringVal: p.Barcode, Valid: strings.TrimSpace(p.Barcode) != ""},
 			"IsActive":      p.IsActive,
 			"Version":       currentVersion + 1,
@@ -392,4 +404,20 @@ func normalizeUnitVolumeVU(v float64) float64 {
 		return 1.0
 	}
 	return v
+}
+
+func normalizeSaleUnit(unit string) string {
+	switch strings.ToUpper(strings.TrimSpace(unit)) {
+	case "CASE", "BLOCK":
+		return strings.ToUpper(strings.TrimSpace(unit))
+	default:
+		return "UNIT"
+	}
+}
+
+func nullableInt64(v *int64) any {
+	if v == nil {
+		return nil
+	}
+	return *v
 }

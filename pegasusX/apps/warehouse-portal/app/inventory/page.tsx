@@ -19,6 +19,7 @@ interface InventoryItem {
   quantity: number;
   reorder_threshold: number;
   sku: string;
+  sku_id?: string;
   out_of_stock_policy?: string;
   effective_policy?: string;
   accepts_backorder?: boolean;
@@ -32,6 +33,10 @@ export default function InventoryPage() {
   const [lowOnly, setLowOnly] = useState(false);
   const [adjusting, setAdjusting] = useState<string | null>(null);
   const [adjustVal, setAdjustVal] = useState('');
+  const [confirmItem, setConfirmItem] = useState<InventoryItem | null>(null);
+  const [confirmQty, setConfirmQty] = useState<number | null>(null);
+  const [adjustReason, setAdjustReason] = useState('');
+  const [adjustSubmitting, setAdjustSubmitting] = useState(false);
   const [socketStatus, setSocketStatus] = useState<WarehouseSocketStatus>('connecting');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pulsedProductIds, setPulsedProductIds] = useState<string[]>([]);
@@ -159,24 +164,55 @@ export default function InventoryPage() {
     } catch { /* handled */ }
   }
 
-  async function handleAdjust(productId: string) {
+  function openAdjustConfirm(item: InventoryItem) {
     const qty = parseInt(adjustVal, 10);
-    if (isNaN(qty)) return;
+    if (Number.isNaN(qty)) return;
+    setConfirmItem(item);
+    setConfirmQty(qty);
+    setAdjustReason('');
+  }
+
+  function closeAdjustFlow() {
+    setAdjusting(null);
+    setAdjustVal('');
+    setConfirmItem(null);
+    setConfirmQty(null);
+    setAdjustReason('');
+    setAdjustSubmitting(false);
+  }
+
+  async function handleAdjustConfirm() {
+    if (!confirmItem || confirmQty == null) return;
     const warehouseId = warehouseHomeNodeId() || 'warehouse';
+    setAdjustSubmitting(true);
     try {
+      const body: { product_id: string; quantity: number; reason?: string } = {
+        product_id: confirmItem.product_id,
+        quantity: confirmQty,
+      };
+      const trimmedReason = adjustReason.trim();
+      if (trimmedReason) body.reason = trimmedReason;
+
       const res = await apiFetch('/v1/warehouse/ops/inventory', {
         method: 'PATCH',
-        body: JSON.stringify({ product_id: productId, quantity: qty }),
+        body: JSON.stringify(body),
         headers: {
-          'Idempotency-Key': warehouseAdjustInventoryKey(warehouseId, productId, qty),
+          'Idempotency-Key': warehouseAdjustInventoryKey(warehouseId, confirmItem.product_id, confirmQty),
         },
       });
       if (res.ok) {
-        setAdjusting(null);
-        setAdjustVal('');
+        toast('Inventory updated', 'success');
+        closeAdjustFlow();
         void load();
+      } else {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        toast(data.error || 'Update failed', 'error');
       }
-    } catch { /* handled */ }
+    } catch {
+      toast('Update failed', 'error');
+    } finally {
+      setAdjustSubmitting(false);
+    }
   }
 
   return (
@@ -305,15 +341,16 @@ export default function InventoryPage() {
                             <motion.button 
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
-                              onClick={() => handleAdjust(item.product_id)} 
-                              className="px-2 py-1 text-xs button--primary rounded active-press"
+                              onClick={() => openAdjustConfirm(item)}
+                              disabled={Number.isNaN(parseInt(adjustVal, 10))}
+                              className="px-2 py-1 text-xs button--primary rounded active-press disabled:opacity-50"
                             >
-                              Set
+                              Review
                             </motion.button>
                             <motion.button 
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
-                              onClick={() => setAdjusting(null)} 
+                              onClick={() => closeAdjustFlow()} 
                               className="px-2 py-1 text-xs button--secondary rounded active-press"
                             >
                               X
@@ -337,6 +374,50 @@ export default function InventoryPage() {
           </motion.div>
         )}
         </div>
+
+        {confirmItem && confirmQty != null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div
+              className="w-full max-w-md rounded-xl border p-5 space-y-4 shadow-lg"
+              style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+            >
+              <h3 className="text-sm font-semibold">Confirm inventory change</h3>
+              <p className="text-sm text-[var(--muted)]">
+                Change {confirmItem.sku || confirmItem.sku_id || confirmItem.product_id} from {confirmItem.quantity} to {confirmQty}?
+                This affects retailer availability immediately.
+              </p>
+              <label className="block text-sm space-y-1">
+                <span className="text-xs text-[var(--muted)]">Reason (optional)</span>
+                <input
+                  type="text"
+                  value={adjustReason}
+                  onChange={(e) => setAdjustReason(e.target.value)}
+                  placeholder="e.g. cycle count, damaged goods"
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)' }}
+                />
+              </label>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={adjustSubmitting}
+                  onClick={() => closeAdjustFlow()}
+                  className="px-3 py-1.5 rounded-lg text-sm button--secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={adjustSubmitting}
+                  onClick={() => void handleAdjustConfirm()}
+                  className="px-3 py-1.5 rounded-lg text-sm button--primary disabled:opacity-50"
+                >
+                  {adjustSubmitting ? 'Saving…' : 'Confirm change'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </PageChrome>
     </PageTransition>
   );

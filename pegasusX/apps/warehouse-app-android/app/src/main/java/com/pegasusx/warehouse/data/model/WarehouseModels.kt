@@ -179,20 +179,50 @@ data class InventoryPolicyPatchRequest(
 )
 
 @Serializable
+data class DeliveryFeeTier(
+    @SerialName("max_km") val maxKm: Double? = null,
+    @SerialName("fee_minor") val feeMinor: Long = 0,
+)
+
+@Serializable
+data class DeliveryFeeRules(
+    val currency: String = "UZS",
+    @SerialName("base_fee_minor") val baseFeeMinor: Long = 0,
+    val tiers: List<DeliveryFeeTier> = emptyList(),
+)
+
+@Serializable
 data class WarehouseOpsSettingsResponse(
     @SerialName("warehouse_id") val warehouseId: String = "",
     val name: String = "",
     @SerialName("default_out_of_stock_policy") val defaultOutOfStockPolicy: String = "REJECT",
+    @SerialName("show_stock_counts_to_retailers") val showStockCountsToRetailers: Boolean = false,
     @SerialName("operating_schedule") val operatingSchedule: kotlinx.serialization.json.JsonElement? = null,
     @SerialName("ops_always_available") val opsAlwaysAvailable: Boolean = true,
+    @SerialName("express_enabled") val expressEnabled: Boolean = false,
+    @SerialName("express_stock_floor") val expressStockFloor: Long = 0,
+    @SerialName("preorder_min_lead_days") val preorderMinLeadDays: Long = 3,
+    @SerialName("preorder_max_lead_days") val preorderMaxLeadDays: Long = 90,
+    @SerialName("order_line_min_quantity") val orderLineMinQuantity: Long? = null,
+    @SerialName("order_line_max_quantity") val orderLineMaxQuantity: Long? = null,
+    @SerialName("delivery_fee_rules") val deliveryFeeRules: DeliveryFeeRules? = null,
 )
 
 @Serializable
 data class WarehouseOpsSettingsPatchRequest(
     @SerialName("default_out_of_stock_policy") val defaultOutOfStockPolicy: String,
+    @SerialName("show_stock_counts_to_retailers") val showStockCountsToRetailers: Boolean? = null,
     @SerialName("operating_schedule") val operatingSchedule: kotlinx.serialization.json.JsonElement,
     @SerialName("express_enabled") val expressEnabled: Boolean? = null,
     @SerialName("express_stock_floor") val expressStockFloor: Long? = null,
+    @SerialName("preorder_min_lead_days") val preorderMinLeadDays: Long? = null,
+    @SerialName("preorder_max_lead_days") val preorderMaxLeadDays: Long? = null,
+    @SerialName("order_line_min_quantity") val orderLineMinQuantity: Long? = null,
+    @SerialName("order_line_max_quantity") val orderLineMaxQuantity: Long? = null,
+    @SerialName("clear_order_line_min_quantity") val clearOrderLineMinQuantity: Boolean? = null,
+    @SerialName("clear_order_line_max_quantity") val clearOrderLineMaxQuantity: Boolean? = null,
+    @SerialName("delivery_fee_rules") val deliveryFeeRules: DeliveryFeeRules? = null,
+    @SerialName("clear_delivery_fee_rules") val clearDeliveryFeeRules: Boolean? = null,
 )
 
 @Serializable
@@ -202,6 +232,12 @@ data class WarehousePreorderRow(
     @SerialName("order_source") val orderSource: String? = null,
     @SerialName("requested_delivery_date") val requestedDeliveryDate: String? = null,
     @SerialName("preorder_badge") val preorderBadge: String? = null,
+)
+
+@Serializable
+data class WarehousePreorderEditRequest(
+    @SerialName("requested_delivery_date") val requestedDeliveryDate: String? = null,
+    val reason: String = "",
 )
 
 @Serializable

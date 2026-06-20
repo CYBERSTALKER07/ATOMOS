@@ -6,6 +6,8 @@ struct CatalogView: View {
     @State private var products: [CatalogProduct] = []
     @State private var draftVU: [String: String] = [:]
     @State private var draftBarcode: [String: String] = [:]
+    @State private var draftUnitsPerCase: [String: String] = [:]
+    @State private var draftSaleUnit: [String: String] = [:]
     @State private var loading = true
     @State private var error: String?
     @State private var savingId: String?
@@ -87,11 +89,27 @@ struct CatalogView: View {
             get: { draftBarcode[product.productId] ?? product.barcode ?? "" },
             set: { draftBarcode[product.productId] = $0 }
         )
+        let saleUnitBinding = Binding(
+            get: { draftSaleUnit[product.productId] ?? product.saleUnit ?? "UNIT" },
+            set: { draftSaleUnit[product.productId] = $0 }
+        )
+        let unitsPerCaseBinding = Binding(
+            get: {
+                draftUnitsPerCase[product.productId]
+                    ?? (product.unitsPerCase.map(String.init) ?? "")
+            },
+            set: { draftUnitsPerCase[product.productId] = $0 }
+        )
         let currentVU = draftVU[product.productId] ?? String(product.unitVolumeVu)
         let currentBarcode = draftBarcode[product.productId] ?? product.barcode ?? ""
+        let currentSaleUnit = draftSaleUnit[product.productId] ?? product.saleUnit ?? "UNIT"
+        let currentUnitsPerCase = draftUnitsPerCase[product.productId]
+            ?? (product.unitsPerCase.map(String.init) ?? "")
         let vuDirty = currentVU != String(product.unitVolumeVu)
         let barcodeDirty = currentBarcode != (product.barcode ?? "")
-        let dirty = vuDirty || barcodeDirty
+        let saleUnitDirty = currentSaleUnit != (product.saleUnit ?? "UNIT")
+        let unitsPerCaseDirty = currentUnitsPerCase != (product.unitsPerCase.map(String.init) ?? "")
+        let dirty = vuDirty || barcodeDirty || saleUnitDirty || unitsPerCaseDirty
 
         return VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
             NavigationLink {
@@ -102,6 +120,9 @@ struct CatalogView: View {
             }
             Text("\(product.priceMinor.formatted()) \(product.currency) · \(product.unit)")
                 .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text("Sale: \(currentSaleUnit == "CASE" ? "case" : "unit")\(currentSaleUnit == "CASE" && !currentUnitsPerCase.isEmpty ? " (\(currentUnitsPerCase)/case)" : "")")
+                .font(.caption)
                 .foregroundStyle(.secondary)
             if let imageUrl = product.imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
                 AsyncImage(url: url) { phase in
@@ -125,6 +146,16 @@ struct CatalogView: View {
                 await saveProductImage(product, imageData: data)
             }
             CatalogBarcodeField(value: barcodeBinding, enabled: savingId != product.productId)
+            Picker("Sale unit", selection: saleUnitBinding) {
+                Text("Unit").tag("UNIT")
+                Text("Case").tag("CASE")
+            }
+            .pickerStyle(.segmented)
+            if currentSaleUnit == "CASE" {
+                TextField("Units per case", text: unitsPerCaseBinding)
+                    .keyboardType(.numberPad)
+                    .textFieldStyle(.roundedBorder)
+            }
             HStack {
                 TextField("Unit VU", text: vuBinding)
                     .keyboardType(.decimalPad)
@@ -148,6 +179,8 @@ struct CatalogView: View {
             products = try await SupplierService.catalogProducts()
             draftVU = [:]
             draftBarcode = [:]
+            draftUnitsPerCase = [:]
+            draftSaleUnit = [:]
         } catch {
             if !silent { self.error = error.localizedDescription }
         }
@@ -173,6 +206,19 @@ struct CatalogView: View {
             }
             barcode = normalized
         }
+        let saleUnit = draftSaleUnit[product.productId] ?? product.saleUnit ?? "UNIT"
+        let unitsPerCaseRaw = draftUnitsPerCase[product.productId]
+            ?? (product.unitsPerCase.map(String.init) ?? "")
+        let unitsPerCase: Int64?
+        if saleUnit == "CASE" {
+            guard let parsed = Int64(unitsPerCaseRaw), parsed > 0 else {
+                error = "Units per case must be a positive integer when selling by case."
+                return
+            }
+            unitsPerCase = parsed
+        } else {
+            unitsPerCase = nil
+        }
         savingId = product.productId
         error = nil
         defer { savingId = nil }
@@ -185,6 +231,8 @@ struct CatalogView: View {
                     currency: product.currency,
                     unit: product.unit,
                     unitVolumeVu: parsed,
+                    unitsPerCase: unitsPerCase,
+                    saleUnit: saleUnit,
                     imageUrl: product.imageUrl,
                     barcode: barcode,
                     isActive: product.isActive,
@@ -196,6 +244,8 @@ struct CatalogView: View {
             }
             draftVU.removeValue(forKey: product.productId)
             draftBarcode.removeValue(forKey: product.productId)
+            draftUnitsPerCase.removeValue(forKey: product.productId)
+            draftSaleUnit.removeValue(forKey: product.productId)
         } catch {
             self.error = error.localizedDescription
         }
@@ -268,6 +318,8 @@ private struct CatalogCreateSheet: View {
     @State private var priceMinor = ""
     @State private var unitVu = "1"
     @State private var barcode = ""
+    @State private var saleUnit = "UNIT"
+    @State private var unitsPerCase = ""
     @State private var categories: [CatalogCategory] = []
     @State private var categoryId = ""
     @State private var currency = "UZS"
@@ -292,6 +344,14 @@ private struct CatalogCreateSheet: View {
                         .keyboardType(.numberPad)
                     TextField("Unit VU", text: $unitVu)
                         .keyboardType(.decimalPad)
+                    Picker("Sale unit", selection: $saleUnit) {
+                        Text("Unit").tag("UNIT")
+                        Text("Case").tag("CASE")
+                    }
+                    if saleUnit == "CASE" {
+                        TextField("Units per case", text: $unitsPerCase)
+                            .keyboardType(.numberPad)
+                    }
                     CatalogBarcodeField(value: $barcode, enabled: !creating)
                     PhotosPicker(selection: $photoItem, matching: .images) {
                         Label(imageData == nil ? "Add image" : "Image selected", systemImage: "photo")
@@ -365,6 +425,16 @@ private struct CatalogCreateSheet: View {
             }
             barcodeValue = normalized
         }
+        let unitsPerCaseValue: Int64?
+        if saleUnit == "CASE" {
+            guard let parsed = Int64(unitsPerCase), parsed > 0 else {
+                error = "Units per case must be a positive integer when selling by case."
+                return
+            }
+            unitsPerCaseValue = parsed
+        } else {
+            unitsPerCaseValue = nil
+        }
         creating = true
         error = nil
         defer { creating = false }
@@ -383,6 +453,8 @@ private struct CatalogCreateSheet: View {
                     unitVolumeVu: vu,
                     stockQuantity: 0,
                     unit: "UNIT",
+                    unitsPerCase: unitsPerCaseValue,
+                    saleUnit: saleUnit,
                     imageUrl: imageUrl,
                     barcode: barcodeValue
                 )

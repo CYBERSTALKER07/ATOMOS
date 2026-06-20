@@ -128,6 +128,8 @@ private struct AdjustInventorySheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @State private var qty: String
+    @State private var reason = ""
+    @State private var showConfirm = false
     @State private var submitting = false
     @State private var error: String?
 
@@ -137,28 +139,59 @@ private struct AdjustInventorySheet: View {
         _qty = State(initialValue: "\(item.quantity)")
     }
 
+    private var skuLabel: String {
+        item.skuId.isEmpty ? item.productId : item.skuId
+    }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Product") {
-                    Text(item.productName)
-                }
-                Section("Quantity") {
-                    TextField("New Quantity", text: $qty)
-                        .keyboardType(.numberPad)
-                }
-                if let error {
-                    Text(error).foregroundStyle(.red).font(.caption)
-                }
-            }
-            .navigationTitle("Adjust Inventory")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(submitting || Int(qty) == nil)
+            Group {
+                if showConfirm {
+                    Form {
+                        Section {
+                            if let newQty = Int(qty) {
+                                Text("Change \(skuLabel) from \(item.quantity) to \(newQty)? This affects retailer availability immediately.")
+                                    .font(.subheadline)
+                            }
+                        }
+                        Section("Reason (optional)") {
+                            TextField("e.g. cycle count, damaged goods", text: $reason)
+                        }
+                        if let error {
+                            Text(error).foregroundStyle(.red).font(.caption)
+                        }
+                    }
+                    .navigationTitle("Confirm change")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Back") { showConfirm = false }
+                                .disabled(submitting)
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(submitting ? "Saving…" : "Confirm") { save() }
+                                .disabled(submitting)
+                        }
+                    }
+                } else {
+                    Form {
+                        Section("Product") {
+                            Text(item.productName)
+                        }
+                        Section("Quantity") {
+                            TextField("New Quantity", text: $qty)
+                                .keyboardType(.numberPad)
+                        }
+                    }
+                    .navigationTitle("Adjust Inventory")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { dismiss() }
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Review") { showConfirm = true }
+                                .disabled(Int(qty) == nil || Int(qty) == item.quantity)
+                        }
+                    }
                 }
             }
             .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
@@ -176,7 +209,12 @@ private struct AdjustInventorySheet: View {
         error = nil
         Task {
             do {
-                try await WarehouseService.adjustInventory(productId: item.productId, quantity: q)
+                let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+                try await WarehouseService.adjustInventory(
+                    productId: item.productId,
+                    quantity: q,
+                    reason: trimmedReason.isEmpty ? nil : trimmedReason
+                )
                 dismiss()
                 onAdjusted()
             } catch {

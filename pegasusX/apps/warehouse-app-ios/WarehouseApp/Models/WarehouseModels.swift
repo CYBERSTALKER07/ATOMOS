@@ -409,29 +409,89 @@ struct InventoryPolicyPatchRequest: Encodable {
     }
 }
 
+struct DeliveryFeeTier: Codable, Equatable {
+    let maxKm: Double?
+    let feeMinor: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case maxKm = "max_km"
+        case feeMinor = "fee_minor"
+    }
+}
+
+struct DeliveryFeeRules: Codable, Equatable {
+    let currency: String
+    let baseFeeMinor: Int64
+    let tiers: [DeliveryFeeTier]
+
+    enum CodingKeys: String, CodingKey {
+        case currency
+        case baseFeeMinor = "base_fee_minor"
+        case tiers
+    }
+}
+
 struct WarehouseOpsSettingsResponse: Decodable {
     let warehouseId: String
     let name: String
     let defaultOutOfStockPolicy: String
+    let showStockCountsToRetailers: Bool
     let operatingSchedule: [String: AnyCodable]?
     let opsAlwaysAvailable: Bool
+    let expressEnabled: Bool
+    let expressStockFloor: Int64
+    let preorderMinLeadDays: Int64
+    let preorderMaxLeadDays: Int64
+    let orderLineMinQuantity: Int64?
+    let orderLineMaxQuantity: Int64?
+    let deliveryFeeRules: DeliveryFeeRules?
 
     enum CodingKeys: String, CodingKey {
         case warehouseId = "warehouse_id"
         case name
         case defaultOutOfStockPolicy = "default_out_of_stock_policy"
+        case showStockCountsToRetailers = "show_stock_counts_to_retailers"
         case operatingSchedule = "operating_schedule"
         case opsAlwaysAvailable = "ops_always_available"
+        case expressEnabled = "express_enabled"
+        case expressStockFloor = "express_stock_floor"
+        case preorderMinLeadDays = "preorder_min_lead_days"
+        case preorderMaxLeadDays = "preorder_max_lead_days"
+        case orderLineMinQuantity = "order_line_min_quantity"
+        case orderLineMaxQuantity = "order_line_max_quantity"
+        case deliveryFeeRules = "delivery_fee_rules"
     }
 }
 
 struct WarehouseOpsSettingsPatchRequest: Encodable {
     let defaultOutOfStockPolicy: String
+    let showStockCountsToRetailers: Bool?
     let operatingSchedule: [String: AnyCodable]
+    let preorderMinLeadDays: Int64?
+    let preorderMaxLeadDays: Int64?
+    let orderLineMinQuantity: Int64?
+    let orderLineMaxQuantity: Int64?
+    let clearOrderLineMinQuantity: Bool?
+    let clearOrderLineMaxQuantity: Bool?
+    let expressEnabled: Bool?
+    let expressStockFloor: Int64?
+    let deliveryFeeRules: DeliveryFeeRules?
+    let clearDeliveryFeeRules: Bool?
 
     enum CodingKeys: String, CodingKey {
         case defaultOutOfStockPolicy = "default_out_of_stock_policy"
+        case showStockCountsToRetailers = "show_stock_counts_to_retailers"
         case operatingSchedule = "operating_schedule"
+        case preorderMinLeadDays = "preorder_min_lead_days"
+        case preorderMaxLeadDays = "preorder_max_lead_days"
+        case orderLineMinQuantity = "order_line_min_quantity"
+        case orderLineMaxQuantity = "order_line_max_quantity"
+        case clearOrderLineMinQuantity = "clear_order_line_min_quantity"
+        case clearOrderLineMaxQuantity = "clear_order_line_max_quantity"
+        case expressEnabled = "express_enabled"
+        case expressStockFloor = "express_stock_floor"
+        case deliveryFeeRules = "delivery_fee_rules"
+        case clearDeliveryFeeRules = "clear_delivery_fee_rules"
     }
 }
 

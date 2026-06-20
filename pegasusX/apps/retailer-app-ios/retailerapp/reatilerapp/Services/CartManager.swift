@@ -144,7 +144,15 @@ final class CartManager {
 
     // MARK: - Build Order Payload
 
-    func buildCheckoutPayload(retailerId: String, paymentGateway: String, latitude: Double = 0, longitude: Double = 0) -> UnifiedCheckoutPayload {
+    func buildCheckoutPayload(
+        retailerId: String,
+        paymentGateway: String,
+        latitude: Double = 0,
+        longitude: Double = 0,
+        deliveryMode: String? = nil,
+        requestedDeliveryDate: String? = nil,
+        deliveryPriority: String? = nil
+    ) -> UnifiedCheckoutPayload {
         UnifiedCheckoutPayload(
             retailerId: retailerId,
             paymentGateway: paymentGateway,
@@ -152,12 +160,44 @@ final class CartManager {
             longitude: longitude,
             items: items.map { item in
                 UnifiedCheckoutPayload.Item(
-                    skuId: item.product.id,
+                    skuId: item.variant.id.isEmpty ? item.product.id : item.variant.id,
                     quantity: item.quantity,
                     unitPriceUzs: Int64(item.variant.price)
                 )
-            }
+            },
+            deliveryMode: deliveryMode,
+            requestedDeliveryDate: requestedDeliveryDate,
+            deliveryPriority: deliveryPriority
         )
+    }
+
+    func applyPreviewCaps(_ preview: CheckoutPreviewResponse) {
+        guard let maxQuantities = preview.maxQuantities else { return }
+        for index in items.indices {
+            if items[index].product.acceptsBackorder { continue }
+            let sku = items[index].variant.id.isEmpty ? items[index].product.id : items[index].variant.id
+            guard let cap = maxQuantities[sku] else { continue }
+            if items[index].quantity > Int(cap) {
+                items[index].quantity = Int(cap)
+            }
+        }
+    }
+
+    func maxQuantity(for item: CartItem, preview: CheckoutPreviewResponse?) -> Int {
+        let sku = item.variant.id.isEmpty ? item.product.id : item.variant.id
+        if !item.product.acceptsBackorder, let preview, let cap = preview.maxQuantities?[sku] {
+            return max(1, Int(cap))
+        }
+        if let cartCap = item.product.cartMaxQuantity {
+            if item.product.acceptsBackorder, let lineMax = preview?.orderLineMaxQuantity {
+                return max(1, min(cartCap, Int(lineMax)))
+            }
+            return max(1, cartCap)
+        }
+        if let lineMax = preview?.orderLineMaxQuantity {
+            return max(1, Int(lineMax))
+        }
+        return 99
     }
 }
 
@@ -216,6 +256,9 @@ struct UnifiedCheckoutPayload: Codable {
     let latitude: Double
     let longitude: Double
     let items: [Item]
+    let deliveryMode: String?
+    let requestedDeliveryDate: String?
+    let deliveryPriority: String?
 
     struct Item: Codable {
         let skuId: String
@@ -233,6 +276,9 @@ struct UnifiedCheckoutPayload: Codable {
         case retailerId = "retailer_id"
         case paymentGateway = "payment_gateway"
         case latitude, longitude, items
+        case deliveryMode = "delivery_mode"
+        case requestedDeliveryDate = "requested_delivery_date"
+        case deliveryPriority = "delivery_priority"
     }
 }
 
