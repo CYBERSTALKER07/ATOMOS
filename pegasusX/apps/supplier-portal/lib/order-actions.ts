@@ -1,14 +1,25 @@
 export type OrderActionFlags = {
+  /** Warehouse proposes a new delivery date; retailer accepts or rejects. */
   canDelay: boolean;
   canReject: boolean;
   canOverflow: boolean;
 };
 
+/** States eligible for POST .../propose-delivery (not LOADED/IN_TRANSIT/COMPLETED/CANCELLED). */
 export function orderActionFlags(state: string): OrderActionFlags {
   const s = state.toUpperCase();
+  const terminal = s === 'COMPLETED' || s === 'CANCELLED';
+  const inFlight = s === 'LOADED' || s === 'IN_TRANSIT';
   return {
-    canDelay: s === 'PENDING' || s === 'LOADED',
-    canReject: s === 'PENDING' || s === 'LOADED' || s === 'IN_TRANSIT' || s === 'SCHEDULED' || s === 'AUTO_ACCEPTED',
+    canDelay: !terminal && !inFlight,
+    canReject:
+      s === 'PENDING' ||
+      s === 'LOADED' ||
+      s === 'IN_TRANSIT' ||
+      s === 'SCHEDULED' ||
+      s === 'AUTO_ACCEPTED' ||
+      s === 'DELAYED' ||
+      s === 'ARRIVED',
     canOverflow: s === 'LOADED' || s === 'IN_TRANSIT',
   };
 }

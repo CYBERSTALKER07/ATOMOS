@@ -31,6 +31,9 @@ object SupplierIdempotencyKeys {
     fun vetOrder(orderId: String, decision: String): String =
         "supplier-vet-order:$orderId:${decision.uppercase()}"
 
+    fun warehouseOrderPropose(orderId: String, proposedDate: String, reason: String): String =
+        "warehouse-order-propose-delivery:$orderId:${stableHash("$proposedDate:$reason")}"
+
     fun warehouseOrderDelay(orderId: String): String = "warehouse-order-delay:$orderId"
 
     fun warehouseOrderReject(orderId: String, reason: String): String =

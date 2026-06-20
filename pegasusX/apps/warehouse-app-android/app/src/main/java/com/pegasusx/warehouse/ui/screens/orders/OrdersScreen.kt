@@ -50,7 +50,7 @@ fun OrdersScreen(
     var selectedState by remember { mutableStateOf("ALL") }
     var filterExpanded by remember { mutableStateOf(false) }
     var actingId by remember { mutableStateOf<String?>(null) }
-    var delayTarget by remember { mutableStateOf<String?>(null) }
+    var proposeActiveTarget by remember { mutableStateOf<String?>(null) }
     var rejectTarget by remember { mutableStateOf<String?>(null) }
     var rejectPreorderTarget by remember { mutableStateOf<WarehousePreorderRow?>(null) }
     var proposeTarget by remember { mutableStateOf<WarehousePreorderRow?>(null) }
@@ -108,40 +108,67 @@ fun OrdersScreen(
         realtimeSignals.refreshTick.collect { load(silent = true) }
     }
 
-    delayTarget?.let { orderId ->
-        AlertDialog(
-            onDismissRequest = { delayTarget = null; reasonInput = "" },
-            title = { Text("Delay delivery") },
-            text = {
-                OutlinedTextField(
-                    value = reasonInput,
-                    onValueChange = { reasonInput = it },
-                    label = { Text("Reason (optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        actingId = orderId
-                        scope.launch {
-                            try {
-                                val resp = opsRepository.delayOrder(orderId, reasonInput.trim().ifBlank { null })
-                                actionMessage = if (resp.isSuccessful) "Order delayed" else "Delay failed (${resp.code()})"
-                                delayTarget = null
-                                reasonInput = ""
-                                load(silent = true)
-                            } catch (e: Exception) {
-                                actionMessage = e.message
-                            } finally {
-                                actingId = null
+    proposeActiveTarget?.let { orderId ->
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+        var showReasonDialog by remember(orderId) { mutableStateOf(false) }
+
+        if (showReasonDialog) {
+            AlertDialog(
+                onDismissRequest = { showReasonDialog = false },
+                title = { Text("Reason for new delivery date") },
+                text = {
+                    OutlinedTextField(
+                        value = reasonInput,
+                        onValueChange = { reasonInput = it },
+                        label = { Text("Reason (required)") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val selectedMillis = datePickerState.selectedDateMillis ?: return@TextButton
+                            val iso = Instant.ofEpochMilli(selectedMillis)
+                                .atOffset(ZoneOffset.ofHours(5))
+                                .withHour(12).withMinute(0).withSecond(0)
+                                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                            actingId = orderId
+                            scope.launch {
+                                try {
+                                    val resp = opsRepository.proposeOrderDelivery(
+                                        orderId,
+                                        iso,
+                                        reasonInput.trim(),
+                                    )
+                                    actionMessage = if (resp.isSuccessful) {
+                                        "New delivery date proposed · retailer notified"
+                                    } else {
+                                        "Propose failed (${resp.code()})"
+                                    }
+                                    proposeActiveTarget = null
+                                    reasonInput = ""
+                                    load(silent = true)
+                                } catch (e: Exception) {
+                                    actionMessage = e.message
+                                } finally {
+                                    actingId = null
+                                }
                             }
-                        }
-                    },
-                ) { Text("Delay") }
-            },
-            dismissButton = { TextButton(onClick = { delayTarget = null; reasonInput = "" }) { Text("Cancel") } },
-        )
+                        },
+                        enabled = reasonInput.isNotBlank(),
+                    ) { Text("Notify retailer") }
+                },
+                dismissButton = { TextButton(onClick = { showReasonDialog = false }) { Text("Back") } },
+            )
+        }
+
+        DatePickerDialog(
+            onDismissRequest = { proposeActiveTarget = null },
+            confirmButton = { TextButton(onClick = { showReasonDialog = true }) { Text("Next") } },
+            dismissButton = { TextButton(onClick = { proposeActiveTarget = null }) { Text("Cancel") } },
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
 
     rejectTarget?.let { orderId ->
@@ -164,7 +191,11 @@ fun OrdersScreen(
                         scope.launch {
                             try {
                                 val resp = opsRepository.rejectOrder(orderId, reasonInput.trim())
-                                actionMessage = if (resp.isSuccessful) "Order rejected" else "Reject failed (${resp.code()})"
+                                actionMessage = if (resp.isSuccessful) {
+                                    "Order cancelled · retailer notified"
+                                } else {
+                                    "Reject failed (${resp.code()})"
+                                }
                                 rejectTarget = null
                                 reasonInput = ""
                                 load(silent = true)
@@ -362,7 +393,7 @@ fun OrdersScreen(
                         canDelay = flags.canDelay,
                         canReject = flags.canReject,
                         onOpenDetail = { onOrderClick(order.orderId) },
-                        onDelay = { delayTarget = order.orderId; reasonInput = "" },
+                        onDelay = { proposeActiveTarget = order.orderId; reasonInput = "" },
                         onReject = { rejectTarget = order.orderId; reasonInput = "" },
                     )
                 }

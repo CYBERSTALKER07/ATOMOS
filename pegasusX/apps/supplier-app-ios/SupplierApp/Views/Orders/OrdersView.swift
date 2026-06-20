@@ -158,7 +158,8 @@ struct OrderDetailPanel: View {
     @State private var note = ""
     @State private var warehouseDetail: WarehouseOrderDetail?
     @State private var opsReason = ""
-    @State private var showDelayDialog = false
+    @State private var proposeDate = Date()
+    @State private var showProposeSheet = false
     @State private var showRejectDialog = false
 
     private var canVet: Bool {
@@ -213,25 +214,42 @@ struct OrderDetailPanel: View {
 
             if vm.canWarehouseOps(for: order) {
                 Section("Warehouse admin") {
-                    TextField("Reason", text: $opsReason)
-                    Button("Delay delivery") { showDelayDialog = true }
-                    Button("Reject order", role: .destructive) { showRejectDialog = true }
+                    Button("Delay delivery") { showProposeSheet = true }
+                    Button("Cancel order", role: .destructive) { showRejectDialog = true }
                 }
             }
         }
         .navigationTitle("Order")
         .task { await loadWarehouseDetail() }
-        .alert("Delay delivery", isPresented: $showDelayDialog) {
-            Button("Delay") {
-                Task {
-                    await vm.delayWarehouseOrder(order, reason: opsReason.isEmpty ? nil : opsReason)
-                    opsReason = ""
-                    await loadWarehouseDetail()
+        .sheet(isPresented: $showProposeSheet) {
+            NavigationStack {
+                Form {
+                    DatePicker("New delivery date", selection: $proposeDate, displayedComponents: .date)
+                    TextField("Reason (required)", text: $opsReason, axis: .vertical)
+                }
+                .navigationTitle("Delay delivery")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showProposeSheet = false } }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Notify retailer") {
+                            Task {
+                                await vm.proposeWarehouseOrder(
+                                    order,
+                                    proposedDeliveryDate: isoDeliveryDate(from: proposeDate),
+                                    reason: opsReason,
+                                )
+                                opsReason = ""
+                                showProposeSheet = false
+                                await loadWarehouseDetail()
+                            }
+                        }
+                        .disabled(opsReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
                 }
             }
-            Button("Cancel", role: .cancel) { opsReason = "" }
+            .presentationDetents([.medium])
         }
-        .alert("Reject order", isPresented: $showRejectDialog) {
+        .alert("Cancel order", isPresented: $showRejectDialog) {
             Button("Reject", role: .destructive) {
                 Task {
                     await vm.rejectWarehouseOrder(order, reason: opsReason)
@@ -243,6 +261,18 @@ struct OrderDetailPanel: View {
         } message: {
             Text("Reason is required for reject.")
         }
+    }
+
+    private func isoDeliveryDate(from date: Date) -> String {
+        var components = Calendar.current.dateComponents(in: TimeZone(secondsFromGMT: 5 * 3600)!, from: date)
+        components.hour = 12
+        components.minute = 0
+        components.second = 0
+        let noon = Calendar.current.date(from: components) ?? date
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        formatter.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
+        return formatter.string(from: noon)
     }
 
     private func loadWarehouseDetail() async {

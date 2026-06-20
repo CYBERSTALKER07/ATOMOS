@@ -157,17 +157,18 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun getWarehouseOrder(orderId: String, warehouseId: String): Response<WarehouseOrderDetail> =
         api.getWarehouseOrder(orderId, warehouseId)
 
-    suspend fun delayWarehouseOrder(
+    suspend fun proposeWarehouseOrder(
         orderId: String,
         warehouseId: String,
-        reason: String?,
+        proposedDeliveryDate: String,
+        reason: String,
         idempotencyKey: String,
     ): Response<WarehouseOrderMutationResponse> =
-        api.delayWarehouseOrder(
+        api.proposeWarehouseOrderDelivery(
             orderId,
             warehouseId,
             idempotencyKey,
-            WarehouseOrderMutationRequest(reason = reason),
+            WarehouseProposeDeliveryRequest(proposedDeliveryDate = proposedDeliveryDate, reason = reason),
         )
 
     suspend fun rejectWarehouseOrder(

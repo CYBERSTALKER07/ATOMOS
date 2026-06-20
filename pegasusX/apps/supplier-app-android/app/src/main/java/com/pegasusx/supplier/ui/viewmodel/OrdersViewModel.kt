@@ -116,19 +116,20 @@ class OrdersViewModel @Inject constructor(
         return filter == OrderFilterTab.ACTIVE || filter == OrderFilterTab.SCHEDULED
     }
 
-    fun delayWarehouseOrder(order: SupplierOrder, reason: String?) {
+    fun proposeWarehouseOrder(order: SupplierOrder, proposedDeliveryDate: String, reason: String) {
         val warehouseId = order.warehouseId ?: return
         viewModelScope.launch {
             _state.update { it.copy(vettingId = order.orderId) }
             try {
-                val resp = ops.delayWarehouseOrder(
+                val resp = ops.proposeWarehouseOrder(
                     order.orderId,
                     warehouseId,
+                    proposedDeliveryDate,
                     reason,
-                    SupplierIdempotencyKeys.warehouseOrderDelay(order.orderId),
+                    SupplierIdempotencyKeys.warehouseOrderPropose(order.orderId, proposedDeliveryDate, reason),
                 )
                 if (resp.isSuccessful) load(silent = true) else {
-                    _state.update { it.copy(error = "Delay failed (${resp.code()})") }
+                    _state.update { it.copy(error = "Propose failed (${resp.code()})") }
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message) }

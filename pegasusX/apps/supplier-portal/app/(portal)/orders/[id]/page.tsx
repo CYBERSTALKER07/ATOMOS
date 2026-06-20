@@ -43,6 +43,11 @@ export default function SupplierOrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [reason, setReason] = useState('');
+  const [proposedDate, setProposedDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  function isoDeliveryDate(dateInput: string): string {
+    return `${dateInput.slice(0, 10)}T12:00:00+05:00`;
+  }
 
   const warehouseId = listRow?.warehouse_id;
 
@@ -203,9 +208,21 @@ export default function SupplierOrderDetailPage() {
         {canWarehouseMutate && (flags.canDelay || flags.canReject) ? (
           <div className="md-card p-5 space-y-4">
             <p className="md-typescale-title-small">Warehouse admin actions</p>
+            {flags.canDelay ? (
+              <label className="block text-sm">
+                <span className="text-[var(--color-md-outline)]">New delivery date</span>
+                <input
+                  type="date"
+                  value={proposedDate}
+                  onChange={(e) => setProposedDate(e.target.value)}
+                  className="md-input-outlined w-full px-3 py-2 mt-1"
+                  disabled={acting}
+                />
+              </label>
+            ) : null}
             <textarea
               className="md-input-outlined w-full px-3 py-2 min-h-[80px]"
-              placeholder="Reason (required for reject)"
+              placeholder="Reason (required)"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               disabled={acting}
@@ -215,11 +232,18 @@ export default function SupplierOrderDetailPage() {
                 <button
                   type="button"
                   className="md-btn md-btn-tonal px-4 py-2"
-                  disabled={acting}
+                  disabled={acting || !proposedDate || !reason.trim()}
                   onClick={() =>
                     void runMutation(
-                      'Delayed',
-                      () => supplierWarehouseOps.delayOrder(orderId, warehouseId!, reason.trim() || undefined),
+                      'Delivery date proposed · retailer notified',
+                      () =>
+                        supplierWarehouseOps.proposeOrderDelivery(
+                          orderId,
+                          warehouseId!,
+                          isoDeliveryDate(proposedDate),
+                          reason.trim(),
+                        ),
+                      true,
                     )
                   }
                 >
@@ -233,13 +257,13 @@ export default function SupplierOrderDetailPage() {
                   disabled={acting}
                   onClick={() =>
                     void runMutation(
-                      'Rejected',
+                      'Order cancelled · retailer notified',
                       () => supplierWarehouseOps.rejectOrder(orderId, warehouseId!, reason.trim()),
                       true,
                     )
                   }
                 >
-                  Reject order
+                  Cancel order
                 </button>
               ) : null}
             </div>

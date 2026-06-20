@@ -484,18 +484,19 @@ enum SupplierIdempotency {
         )
     }
 
-    static func delayWarehouseOrder(
+    static func proposeWarehouseOrder(
         orderId: String,
         warehouseId: String,
-        reason: String?,
+        proposedDeliveryDate: String,
+        reason: String,
         idempotencyKey: String
     ) async throws -> WarehouseOrderMutationResponse {
         var components = URLComponents()
         components.queryItems = [URLQueryItem(name: "warehouse_id", value: warehouseId)]
         let query = components.percentEncodedQuery.map { "?\($0)" } ?? ""
         return try await APIClient.shared.post(
-            "v1/warehouse/ops/orders/\(orderId)/delay\(query)",
-            body: WarehouseOrderMutationRequest(reason: reason),
+            "v1/warehouse/ops/orders/\(orderId)/propose-delivery\(query)",
+            body: WarehouseProposeDeliveryRequest(proposedDeliveryDate: proposedDeliveryDate, reason: reason),
             idempotencyKey: idempotencyKey
         )
     }

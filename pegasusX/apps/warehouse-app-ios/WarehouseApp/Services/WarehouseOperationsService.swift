@@ -68,6 +68,22 @@ enum WarehouseOperationsService {
         )
     }
 
+    static func proposeOrderDelivery(
+        orderId: String,
+        proposedDeliveryDate: String,
+        reason: String
+    ) async throws -> WarehouseOrderMutationResponse {
+        try await api.post(
+            "v1/warehouse/ops/orders/\(orderId)/propose-delivery",
+            body: WarehouseProposeDeliveryRequest(proposedDeliveryDate: proposedDeliveryDate, reason: reason),
+            idempotencyKey: WarehouseIdempotency.orderProposeDelivery(
+                orderId: orderId,
+                proposedDate: proposedDeliveryDate,
+                reason: reason
+            )
+        )
+    }
+
     static func proposePreorderDelivery(
         orderId: String,
         proposedDeliveryDate: String,

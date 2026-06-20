@@ -14,7 +14,8 @@ struct OrdersView: View {
     @State private var loading = true
     @State private var error: String?
     @State private var selectedState = "ALL"
-    @State private var delayTarget: String?
+    @State private var proposeTarget: String?
+    @State private var proposeDate = Date()
     @State private var rejectTarget: String?
     @State private var reasonInput = ""
     @State private var statusMessage: String?
@@ -61,7 +62,7 @@ struct OrdersView: View {
                                             amountLabel: "\(order.totalUzs.formatted()) UZS",
                                             canDelay: orderActionFlags(order.state).canDelay,
                                             canReject: orderActionFlags(order.state).canReject,
-                                            onDelay: { delayTarget = order.orderId; reasonInput = "" },
+                                            onDelay: { proposeTarget = order.orderId; proposeDate = Date(); reasonInput = "" },
                                             onReject: { rejectTarget = order.orderId; reasonInput = "" },
                                         )
                                     }
@@ -121,44 +122,44 @@ struct OrdersView: View {
             .task(id: "\(hubTab)-\(selectedState)") { load() }
             .refreshable { load() }
             .onChange(of: hubTab) { load() }
-            .alert("Delay delivery", isPresented: Binding(
-                get: { delayTarget != nil },
-                set: { if !$0 { delayTarget = nil; reasonInput = "" } },
-            )) {
-                TextField("Reason (optional)", text: $reasonInput)
-                Button("Delay") {
-                    guard let orderId = delayTarget else { return }
-                    Task {
-                        do {
-                            _ = try await WarehouseService.delayOrder(
-                                orderId: orderId,
-                                body: WarehouseOrderMutationRequest(reason: reasonInput.isEmpty ? nil : reasonInput),
-                            )
-                            statusMessage = "Order delayed"
-                            delayTarget = nil
-                            reasonInput = ""
-                            load()
-                        } catch {
-                            statusMessage = error.localizedDescription
+            .sheet(item: Binding(
+                get: { proposeTarget.map { ProposeSheetOrder(id: $0) } },
+                set: { proposeTarget = $0?.id },
+            )) { target in
+                NavigationStack {
+                    Form {
+                        DatePicker("New delivery date", selection: $proposeDate, displayedComponents: .date)
+                        TextField("Reason (required)", text: $reasonInput, axis: .vertical)
+                    }
+                    .navigationTitle("Delay delivery")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") {
+                                proposeTarget = nil
+                                reasonInput = ""
+                            }
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Notify retailer") {
+                                Task { await submitPropose(orderId: target.id) }
+                            }
+                            .disabled(reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
                     }
                 }
-                Button("Cancel", role: .cancel) { delayTarget = nil; reasonInput = "" }
+                .presentationDetents([.medium])
             }
-            .alert("Reject order", isPresented: Binding(
+            .alert("Cancel order", isPresented: Binding(
                 get: { rejectTarget != nil },
                 set: { if !$0 { rejectTarget = nil; reasonInput = "" } },
             )) {
                 TextField("Reason (required)", text: $reasonInput)
-                Button("Reject", role: .destructive) {
+                Button("Cancel order", role: .destructive) {
                     guard let orderId = rejectTarget, !reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
                     Task {
                         do {
-                            _ = try await WarehouseService.rejectOrder(
-                                orderId: orderId,
-                                body: WarehouseOrderMutationRequest(reason: reasonInput),
-                            )
-                            statusMessage = "Order rejected"
+                            _ = try await WarehouseOperationsService.rejectOrder(orderId: orderId, reason: reasonInput)
+                            statusMessage = "Order cancelled · retailer notified"
                             rejectTarget = nil
                             reasonInput = ""
                             load()
@@ -187,6 +188,36 @@ struct OrdersView: View {
         }
     }
 
+    private func submitPropose(orderId: String) async {
+        let reason = reasonInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !reason.isEmpty else { return }
+        do {
+            _ = try await WarehouseOperationsService.proposeOrderDelivery(
+                orderId: orderId,
+                proposedDeliveryDate: isoDeliveryDate(from: proposeDate),
+                reason: reason,
+            )
+            statusMessage = "New delivery date proposed · retailer notified"
+            proposeTarget = nil
+            reasonInput = ""
+            load()
+        } catch {
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    private func isoDeliveryDate(from date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        formatter.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
+        var components = Calendar.current.dateComponents(in: TimeZone(secondsFromGMT: 5 * 3600)!, from: date)
+        components.hour = 12
+        components.minute = 0
+        components.second = 0
+        let noon = Calendar.current.date(from: components) ?? date
+        return formatter.string(from: noon)
+    }
+
     private func load() {
         loading = true
         error = nil
@@ -208,6 +239,10 @@ struct OrdersView: View {
     }
 }
 
+private struct ProposeSheetOrder: Identifiable {
+    let id: String
+}
+
 private struct OrderActionFlags {
     let canDelay: Bool
     let canReject: Bool
@@ -215,9 +250,11 @@ private struct OrderActionFlags {
 
 private func orderActionFlags(_ state: String) -> OrderActionFlags {
     let s = state.uppercased()
+    let terminal = s == "COMPLETED" || s == "CANCELLED"
+    let inFlight = s == "LOADED" || s == "IN_TRANSIT"
     return OrderActionFlags(
-        canDelay: s == "PENDING" || s == "LOADED",
-        canReject: ["PENDING", "LOADED", "IN_TRANSIT", "SCHEDULED", "AUTO_ACCEPTED"].contains(s),
+        canDelay: !terminal && !inFlight,
+        canReject: ["PENDING", "LOADED", "IN_TRANSIT", "SCHEDULED", "AUTO_ACCEPTED", "DELAYED", "ARRIVED"].contains(s),
     )
 }
 

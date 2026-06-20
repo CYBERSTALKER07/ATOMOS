@@ -51,7 +51,7 @@ export default function OrdersPage() {
   const [actingId, setActingId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<{
     orderId: string;
-    kind: 'delay' | 'reject' | 'propose' | 'preorder-reject';
+    kind: 'propose' | 'reject' | 'preorder-reject';
   } | null>(null);
   const [reason, setReason] = useState('');
   const [proposedDate, setProposedDate] = useState('');
@@ -154,27 +154,24 @@ export default function OrdersPage() {
     const trimmedReason = reason.trim();
     setActingId(dialog.orderId);
     try {
-      if (dialog.kind === 'delay') {
-        const resp = await warehouseOps.delayOrder(dialog.orderId, trimmedReason || undefined);
-        toast(`Delivery delayed · ${resp.status ?? 'ok'}`, 'success');
-      } else if (dialog.kind === 'reject') {
+      if (dialog.kind === 'reject') {
         if (!trimmedReason) {
           toast('Reason is required', 'error');
           return;
         }
         const resp = await warehouseOps.rejectOrder(dialog.orderId, trimmedReason);
-        toast(`Order rejected · ${resp.status ?? 'ok'}`, 'success');
+        toast(`Order cancelled · retailer notified · ${resp.status ?? 'ok'}`, 'success');
       } else if (dialog.kind === 'propose') {
         if (!proposedDate || !trimmedReason) {
-          toast('Date and reason are required', 'error');
+          toast('New delivery date and reason are required', 'error');
           return;
         }
-        const resp = await warehouseOps.proposePreorderDelivery(
+        const resp = await warehouseOps.proposeOrderDelivery(
           dialog.orderId,
           isoDeliveryDate(proposedDate),
           trimmedReason,
         );
-        toast(`Delivery date proposed · ${resp.status ?? 'ok'}`, 'success');
+        toast(`New delivery date proposed · retailer notified · ${resp.status ?? 'ok'}`, 'success');
       } else if (dialog.kind === 'preorder-reject') {
         if (!trimmedReason) {
           toast('Reason is required', 'error');
@@ -221,29 +218,20 @@ export default function OrdersPage() {
 
   const dialogCopy = useMemo(() => {
     if (!dialog) return null;
-    if (dialog.kind === 'delay') {
-      return {
-        title: 'Delay delivery',
-        description: 'The retailer will be notified that this delivery is delayed.',
-        confirmLabel: 'Delay delivery',
-        destructive: false,
-        reasonRequired: false,
-      };
-    }
     if (dialog.kind === 'reject') {
       return {
-        title: 'Reject order',
-        description: 'This cancels the order at origin and releases inventory.',
-        confirmLabel: 'Reject order',
+        title: 'Cancel order',
+        description: 'Cancels the order and notifies the retailer immediately.',
+        confirmLabel: 'Cancel order',
         destructive: true,
         reasonRequired: true,
       };
     }
     if (dialog.kind === 'propose') {
       return {
-        title: 'Propose delivery date',
-        description: 'The retailer must accept the new delivery date.',
-        confirmLabel: 'Propose date',
+        title: 'Delay delivery',
+        description: 'Choose a new delivery date. The retailer is notified and can accept or reject the change.',
+        confirmLabel: 'Propose new date',
         destructive: false,
         reasonRequired: true,
       };
@@ -361,8 +349,9 @@ export default function OrdersPage() {
                       disabled={actingId === order.order_id}
                       onOpenDetail={() => openDetail(order.order_id)}
                       onDelay={() => {
-                        setDialog({ orderId: order.order_id, kind: 'delay' });
+                        setDialog({ orderId: order.order_id, kind: 'propose' });
                         setReason('');
+                        setProposedDate(new Date().toISOString().slice(0, 10));
                       }}
                       onReject={() => {
                         setDialog({ orderId: order.order_id, kind: 'reject' });
@@ -426,8 +415,10 @@ export default function OrdersPage() {
             >
               <div className="space-y-4">
                 <div>
-                  <h2 className="text-lg font-semibold">Propose delivery date</h2>
-                  <p className="text-sm text-[var(--muted)] mt-1">The retailer must accept the new delivery date.</p>
+                  <h2 className="text-lg font-semibold">Delay delivery</h2>
+                  <p className="text-sm text-[var(--muted)] mt-1">
+                    Choose a new delivery date. The retailer is notified and can accept or reject.
+                  </p>
                 </div>
                 <label className="block text-sm">
                   <span className="text-[var(--muted)]">Proposed date</span>
@@ -465,7 +456,7 @@ export default function OrdersPage() {
                     disabled={actingId === dialog.orderId || !proposedDate || !reason.trim()}
                     onClick={() => void submitDialog()}
                   >
-                    {actingId === dialog.orderId ? 'Working…' : 'Propose date'}
+                    {actingId === dialog.orderId ? 'Working…' : 'Propose new date'}
                   </button>
                 </div>
               </div>

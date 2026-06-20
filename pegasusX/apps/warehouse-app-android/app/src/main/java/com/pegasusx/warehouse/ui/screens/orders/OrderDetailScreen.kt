@@ -16,6 +16,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
@@ -49,9 +52,13 @@ import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.warehouse.util.orderActionFlags
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 private enum class OrderMutationAction {
-    Delay,
+    ProposeDelivery,
     Reject,
     Overflow,
 }
@@ -69,6 +76,8 @@ fun OrderDetailScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var mutating by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<OrderMutationAction?>(null) }
+    var showProposeDatePicker by remember { mutableStateOf(false) }
+    var proposeDateMillis by remember { mutableStateOf<Long?>(null) }
     var reasonInput by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -93,17 +102,26 @@ fun OrderDetailScreen(
         }
     }
 
-    fun runMutation(action: OrderMutationAction, reason: String?) {
+    fun runMutation(action: OrderMutationAction, reason: String?, proposedIso: String? = null) {
         mutating = true
         scope.launch {
             try {
                 val resp = when (action) {
-                    OrderMutationAction.Delay -> opsRepository.delayOrder(orderId, reason)
+                    OrderMutationAction.ProposeDelivery -> opsRepository.proposeOrderDelivery(
+                        orderId,
+                        proposedIso.orEmpty(),
+                        reason.orEmpty(),
+                    )
                     OrderMutationAction.Reject -> opsRepository.rejectOrder(orderId, reason.orEmpty())
                     OrderMutationAction.Overflow -> opsRepository.overflowOrder(orderId, reason)
                 }
                 if (resp.isSuccessful && resp.body() != null) {
-                    snackbarHostState.showSnackbar("Order updated · ${resp.body()!!.status}")
+                    val msg = when (action) {
+                        OrderMutationAction.ProposeDelivery -> "New delivery date proposed · retailer notified"
+                        OrderMutationAction.Reject -> "Order cancelled · retailer notified"
+                        OrderMutationAction.Overflow -> "Order updated · ${resp.body()!!.status}"
+                    }
+                    snackbarHostState.showSnackbar(msg)
                     load()
                 } else {
                     snackbarHostState.showSnackbar("Action failed (${resp.code()})")
@@ -114,22 +132,41 @@ fun OrderDetailScreen(
                 mutating = false
                 pendingAction = null
                 reasonInput = ""
+                showProposeDatePicker = false
+                proposeDateMillis = null
             }
         }
     }
 
     LaunchedEffect(orderId) { load() }
 
+    if (showProposeDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+        DatePickerDialog(
+            onDismissRequest = { if (!mutating) showProposeDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    proposeDateMillis = datePickerState.selectedDateMillis
+                    showProposeDatePicker = false
+                    pendingAction = OrderMutationAction.ProposeDelivery
+                }) { Text("Next") }
+            },
+            dismissButton = { TextButton(onClick = { showProposeDatePicker = false }) { Text("Cancel") } },
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     pendingAction?.let { action ->
-        val requiresReason = action == OrderMutationAction.Reject
+        val requiresReason = action != OrderMutationAction.Overflow
         val title = when (action) {
-            OrderMutationAction.Delay -> "Mark order delayed?"
-            OrderMutationAction.Reject -> "Reject order?"
+            OrderMutationAction.ProposeDelivery -> "Reason for new delivery date"
+            OrderMutationAction.Reject -> "Cancel order?"
             OrderMutationAction.Overflow -> "Return to dispatch pool?"
         }
         val confirmLabel = when (action) {
-            OrderMutationAction.Delay -> "Delay"
-            OrderMutationAction.Reject -> "Reject"
+            OrderMutationAction.ProposeDelivery -> "Notify retailer"
+            OrderMutationAction.Reject -> "Cancel order"
             OrderMutationAction.Overflow -> "Overflow"
         }
         AlertDialog(
@@ -168,7 +205,17 @@ fun OrderDetailScreen(
                             scope.launch { snackbarHostState.showSnackbar("Reason is required") }
                             return@TextButton
                         }
-                        runMutation(action, trimmed.ifBlank { null })
+                        val proposedIso = proposeDateMillis?.let { millis ->
+                            Instant.ofEpochMilli(millis)
+                                .atOffset(ZoneOffset.ofHours(5))
+                                .withHour(12).withMinute(0).withSecond(0)
+                                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                        }
+                        if (action == OrderMutationAction.ProposeDelivery && proposedIso.isNullOrBlank()) {
+                            scope.launch { snackbarHostState.showSnackbar("Select a delivery date") }
+                            return@TextButton
+                        }
+                        runMutation(action, trimmed.ifBlank { null }, proposedIso)
                     },
                     enabled = !mutating && (!requiresReason || reasonInput.trim().isNotEmpty()),
                 ) {
@@ -215,9 +262,10 @@ fun OrderDetailScreen(
             order != null -> {
                 val current = order!!
                 val state = current.state.uppercase(Locale.US)
-                val canDelay = state in setOf("PENDING", "LOADED")
-                val canReject = state in setOf("PENDING", "LOADED", "IN_TRANSIT")
-                val canOverflow = state in setOf("LOADED", "IN_TRANSIT")
+                val flags = orderActionFlags(current.state)
+                val canDelay = flags.canDelay
+                val canReject = flags.canReject
+                val canOverflow = flags.canOverflow
                 val showOps = canDelay || canReject || canOverflow
 
                 LazyColumn(
@@ -253,10 +301,10 @@ fun OrderDetailScreen(
                             ) {
                                 if (canDelay) {
                                     OutlinedButton(
-                                        onClick = { pendingAction = OrderMutationAction.Delay },
+                                        onClick = { showProposeDatePicker = true },
                                         enabled = !mutating,
                                         modifier = Modifier.weight(1f),
-                                    ) { Text("Delay") }
+                                    ) { Text("Delay delivery") }
                                 }
                                 if (canOverflow) {
                                     OutlinedButton(

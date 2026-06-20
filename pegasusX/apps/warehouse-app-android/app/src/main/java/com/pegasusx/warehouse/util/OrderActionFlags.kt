@@ -8,9 +8,13 @@ data class OrderActionFlags(
 
 fun orderActionFlags(state: String): OrderActionFlags {
     val s = state.uppercase()
+    val terminal = s == "COMPLETED" || s == "CANCELLED"
+    val inFlight = s == "LOADED" || s == "IN_TRANSIT"
     return OrderActionFlags(
-        canDelay = s == "PENDING" || s == "LOADED",
-        canReject = s == "PENDING" || s == "LOADED" || s == "IN_TRANSIT" || s == "SCHEDULED" || s == "AUTO_ACCEPTED",
+        canDelay = !terminal && !inFlight,
+        canReject = s in setOf(
+            "PENDING", "LOADED", "IN_TRANSIT", "SCHEDULED", "AUTO_ACCEPTED", "DELAYED", "ARRIVED",
+        ),
         canOverflow = s == "LOADED" || s == "IN_TRANSIT",
     )
 }

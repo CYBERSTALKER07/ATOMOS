@@ -28,6 +28,11 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [reason, setReason] = useState('');
+  const [proposedDate, setProposedDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  function isoDeliveryDate(dateInput: string): string {
+    return `${dateInput.slice(0, 10)}T12:00:00+05:00`;
+  }
 
   const load = useCallback(async () => {
     if (!orderId) return;
@@ -156,10 +161,26 @@ export default function OrderDetailPage() {
             {(flags.canDelay || flags.canReject || flags.canOverflow) && (
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-4">
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--muted)]">Warehouse actions</h2>
+                {flags.canDelay ? (
+                  <label className="block text-sm">
+                    <span className="text-[var(--muted)]">New delivery date</span>
+                    <input
+                      type="date"
+                      value={proposedDate}
+                      onChange={(e) => setProposedDate(e.target.value)}
+                      className="mt-1 w-full px-3 py-2 rounded-lg border text-sm"
+                      style={{
+                        background: 'var(--field-background)',
+                        borderColor: 'var(--field-border)',
+                        color: 'var(--field-foreground)',
+                      }}
+                    />
+                  </label>
+                ) : null}
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder="Reason (required for reject)"
+                  placeholder="Reason (required for delay and cancel)"
                   rows={2}
                   className="w-full px-3 py-2 rounded-lg border text-sm"
                   style={{
@@ -172,9 +193,20 @@ export default function OrderDetailPage() {
                   {flags.canDelay && (
                     <button
                       type="button"
-                      disabled={acting}
+                      disabled={acting || !proposedDate || !reason.trim()}
                       className="button--secondary px-4 py-2 rounded-lg text-sm"
-                      onClick={() => runMutation('Delayed', () => warehouseOps.delayOrder(orderId, reason.trim() || undefined))}
+                      onClick={() =>
+                        runMutation(
+                          'Delivery date proposed · retailer notified',
+                          () =>
+                            warehouseOps.proposeOrderDelivery(
+                              orderId,
+                              isoDeliveryDate(proposedDate),
+                              reason.trim(),
+                            ),
+                          true,
+                        )
+                      }
                     >
                       Delay delivery
                     </button>
@@ -194,9 +226,15 @@ export default function OrderDetailPage() {
                       type="button"
                       disabled={acting}
                       className="button--danger px-4 py-2 rounded-lg text-sm"
-                      onClick={() => runMutation('Rejected', () => warehouseOps.rejectOrder(orderId, reason.trim()), true)}
+                      onClick={() =>
+                        runMutation(
+                          'Order cancelled · retailer notified',
+                          () => warehouseOps.rejectOrder(orderId, reason.trim()),
+                          true,
+                        )
+                      }
                     >
-                      Reject
+                      Cancel order
                     </button>
                   )}
                 </div>

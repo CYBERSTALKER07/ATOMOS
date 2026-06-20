@@ -28,8 +28,15 @@ export const warehouseOps = {
       {},
       warehouseOrderRejectKey(orderId, reason),
     ),
+  proposeOrderDelivery: (orderId: string, proposedDeliveryDate: string, reason: string) =>
+    warehouseApi.postWarehouseOrderProposeDelivery(
+      orderId,
+      { proposed_delivery_date: proposedDeliveryDate, reason },
+      {},
+      warehouseOrderProposeDeliveryKey(orderId, proposedDeliveryDate, reason),
+    ),
   proposePreorderDelivery: (orderId: string, proposedDeliveryDate: string, reason: string) =>
-    warehouseApi.postWarehouseProposeDelivery(
+    warehouseApi.postWarehouseOrderProposeDelivery(
       orderId,
       { proposed_delivery_date: proposedDeliveryDate, reason },
       {},

@@ -95,7 +95,7 @@ struct OrdersQueueView: View {
               OrderRow(
                 order: order,
                 showWarehouseMenu: vm.canWarehouseOps(for: order),
-                onDelay: { Task { await vm.delayWarehouseOrder(order, reason: nil) } },
+                onDelay: nil,
                 onReject: nil,
               )
             }

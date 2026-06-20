@@ -392,12 +392,12 @@ interface SupplierApi {
         @Query("warehouse_id") warehouseId: String?,
     ): Response<WarehouseOrderDetail>
 
-    @POST("v1/warehouse/ops/orders/{orderId}/delay")
-    suspend fun delayWarehouseOrder(
+    @POST("v1/warehouse/ops/orders/{orderId}/propose-delivery")
+    suspend fun proposeWarehouseOrderDelivery(
         @Path("orderId") orderId: String,
         @Query("warehouse_id") warehouseId: String,
         @Header("X-Idempotency-Key") idempotencyKey: String,
-        @Body body: WarehouseOrderMutationRequest,
+        @Body body: WarehouseProposeDeliveryRequest,
     ): Response<WarehouseOrderMutationResponse>
 
     @POST("v1/warehouse/ops/orders/{orderId}/reject")

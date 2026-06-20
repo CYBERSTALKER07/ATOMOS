@@ -48,6 +48,10 @@ function formatTimestamp(value: string) {
   return new Date(timestamp).toLocaleString();
 }
 
+function isoDeliveryDate(dateInput: string): string {
+  return `${dateInput.slice(0, 10)}T12:00:00+05:00`;
+}
+
 function liveStatusLabel(order: SupplierOrder) {
   if (order.live_location_available && order.driver_location) {
     return `Live ${formatTimestamp(order.driver_location.received_at)}`;
@@ -71,9 +75,10 @@ export default function OrdersPage() {
   const [dialog, setDialog] = useState<{
     orderId: string;
     warehouseId?: string;
-    kind: 'delay' | 'reject';
+    kind: 'propose' | 'reject';
   } | null>(null);
   const [reason, setReason] = useState('');
+  const [proposedDate, setProposedDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const loadOrders = useCallback(async (silent = false) => {
     if (!silent) {
@@ -149,15 +154,30 @@ export default function OrdersPage() {
       toast('Reason is required', 'error');
       return;
     }
+    if (dialog.kind === 'propose' && (!proposedDate || !reason.trim())) {
+      toast('New delivery date and reason are required', 'error');
+      return;
+    }
     setActingId(dialog.orderId);
     try {
       const resp =
-        dialog.kind === 'delay'
-          ? await supplierWarehouseOps.delayOrder(dialog.orderId, dialog.warehouseId, reason.trim() || undefined)
+        dialog.kind === 'propose'
+          ? await supplierWarehouseOps.proposeOrderDelivery(
+              dialog.orderId,
+              dialog.warehouseId,
+              isoDeliveryDate(proposedDate),
+              reason.trim(),
+            )
           : await supplierWarehouseOps.rejectOrder(dialog.orderId, dialog.warehouseId, reason.trim());
-      toast(`${dialog.kind === 'delay' ? 'Delayed' : 'Rejected'} · ${resp.status ?? 'ok'}`, 'success');
+      toast(
+        dialog.kind === 'propose'
+          ? `New delivery date proposed · retailer notified · ${resp.status ?? 'ok'}`
+          : `Order cancelled · retailer notified · ${resp.status ?? 'ok'}`,
+        'success',
+      );
       setDialog(null);
       setReason('');
+      setProposedDate(new Date().toISOString().slice(0, 10));
       await loadOrders();
     } catch (err) {
       toast(err instanceof ApiError ? err.message : 'order_mutation_failed', 'error');
@@ -268,8 +288,9 @@ export default function OrdersPage() {
                     onDelay={
                       warehouseOpsEnabled
                         ? () => {
-                            setDialog({ orderId: order.order_id, warehouseId: order.warehouse_id, kind: 'delay' });
+                            setDialog({ orderId: order.order_id, warehouseId: order.warehouse_id, kind: 'propose' });
                             setReason('');
+                            setProposedDate(new Date().toISOString().slice(0, 10));
                           }
                         : undefined
                     }
@@ -310,18 +331,14 @@ export default function OrdersPage() {
       </div>
 
       <OrderActionDialog
-        open={dialog !== null}
-        title={dialog?.kind === 'reject' ? 'Reject order' : 'Delay delivery'}
-        description={
-          dialog?.kind === 'reject'
-            ? 'The retailer will be notified. Reason is required.'
-            : 'Delay this delivery and notify the retailer.'
-        }
-        confirmLabel={dialog?.kind === 'reject' ? 'Reject' : 'Delay'}
-        destructive={dialog?.kind === 'reject'}
+        open={dialog?.kind === 'reject'}
+        title="Cancel order"
+        description="Cancels the order and notifies the retailer immediately. Reason is required."
+        confirmLabel="Cancel order"
+        destructive
         reason={reason}
         onReasonChange={setReason}
-        reasonRequired={dialog?.kind === 'reject'}
+        reasonRequired
         submitting={actingId !== null}
         onClose={() => {
           setDialog(null);
@@ -329,6 +346,57 @@ export default function OrdersPage() {
         }}
         onConfirm={() => void runWarehouseMutation()}
       />
+      {dialog?.kind === 'propose' ? (
+        <dialog
+          open
+          className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 backdrop:bg-black/40 max-w-md w-[calc(100%-2rem)] fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50"
+        >
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Delay delivery</h2>
+              <p className="text-sm text-[var(--muted)] mt-1">
+                Choose a new delivery date. The retailer is notified and can accept or reject.
+              </p>
+            </div>
+            <label className="block text-sm">
+              <span className="text-[var(--muted)]">New delivery date</span>
+              <input
+                type="date"
+                value={proposedDate}
+                onChange={(e) => setProposedDate(e.target.value)}
+                className="mt-1 w-full px-3 py-2 rounded-lg border text-sm md-input-outlined"
+              />
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Reason (required)"
+              rows={3}
+              className="w-full px-3 py-2 rounded-lg border text-sm md-input-outlined"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="md-btn md-btn-outlined px-4 py-2"
+                onClick={() => {
+                  setDialog(null);
+                  setReason('');
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="md-btn md-btn-tonal px-4 py-2 disabled:opacity-50"
+                disabled={actingId !== null || !proposedDate || !reason.trim()}
+                onClick={() => void runWarehouseMutation()}
+              >
+                {actingId ? 'Working…' : 'Propose new date'}
+              </button>
+            </div>
+          </div>
+        </dialog>
+      ) : null}
     </PageChrome>
   );
 }

@@ -63,16 +63,17 @@ final class OrdersViewModel {
         return statusFilter == "ACTIVE" || statusFilter == "SCHEDULED"
     }
 
-    func delayWarehouseOrder(_ order: SupplierOrder, reason: String?) async {
+    func proposeWarehouseOrder(_ order: SupplierOrder, proposedDeliveryDate: String, reason: String) async {
         guard let warehouseId = order.warehouseId, !warehouseId.isEmpty else { return }
         vettingOrderId = order.orderId
         defer { vettingOrderId = nil }
         do {
-            _ = try await SupplierOperationsService.delayWarehouseOrder(
+            _ = try await SupplierOperationsService.proposeWarehouseOrder(
                 orderId: order.orderId,
                 warehouseId: warehouseId,
+                proposedDeliveryDate: proposedDeliveryDate,
                 reason: reason,
-                idempotencyKey: "warehouse-order-delay:\(order.orderId)"
+                idempotencyKey: "warehouse-order-propose-delivery:\(order.orderId):\(reason.hashValue)"
             )
             await load(silent: true)
         } catch {

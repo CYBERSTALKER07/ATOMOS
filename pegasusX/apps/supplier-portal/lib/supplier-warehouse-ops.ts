@@ -1,5 +1,5 @@
 import {
-  warehouseOrderDelayKey,
+  warehouseOrderProposeDeliveryKey,
   warehouseOrderRejectKey,
 } from '@pegasusx/api-client';
 import { createSupplierApi } from '@/lib/api';
@@ -8,12 +8,17 @@ const api = createSupplierApi();
 
 /** Supplier ADMIN warehouse-compat order mutations (scoped by order warehouse_id). */
 export const supplierWarehouseOps = {
-  delayOrder: (orderId: string, warehouseId: string, reason?: string) =>
-    api.postWarehouseOrderDelay(
+  proposeOrderDelivery: (
+    orderId: string,
+    warehouseId: string,
+    proposedDeliveryDate: string,
+    reason: string,
+  ) =>
+    api.postWarehouseOrderProposeDelivery(
       orderId,
-      reason ? { reason } : {},
+      { proposed_delivery_date: proposedDeliveryDate, reason },
       { warehouse_id: warehouseId },
-      warehouseOrderDelayKey(orderId),
+      warehouseOrderProposeDeliveryKey(orderId, proposedDeliveryDate, reason),
     ),
   rejectOrder: (orderId: string, warehouseId: string, reason: string) =>
     api.postWarehouseOrderReject(

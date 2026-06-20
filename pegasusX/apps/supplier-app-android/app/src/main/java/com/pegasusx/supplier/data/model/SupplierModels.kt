@@ -95,6 +95,12 @@ data class WarehouseOrderMutationRequest(val reason: String? = null)
 data class WarehouseOrderMutationResponse(val status: String? = null)
 
 @Serializable
+data class WarehouseProposeDeliveryRequest(
+    @SerialName("proposed_delivery_date") val proposedDeliveryDate: String,
+    val reason: String = "",
+)
+
+@Serializable
 data class FleetDriversResponse(
     @SerialName("supplier_id") val supplierId: String = "",
     val items: List<FleetDriver> = emptyList(),

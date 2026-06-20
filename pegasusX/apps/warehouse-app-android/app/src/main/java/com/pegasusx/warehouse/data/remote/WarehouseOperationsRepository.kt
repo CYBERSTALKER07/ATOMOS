@@ -52,6 +52,17 @@ class WarehouseOperationsRepository @Inject constructor(
             WarehouseIdempotencyKeys.orderDelay(orderId),
         )
 
+    suspend fun proposeOrderDelivery(
+        orderId: String,
+        proposedDeliveryDate: String,
+        reason: String,
+    ): Response<WarehouseOrderMutationResponse> =
+        api.proposeOrderDelivery(
+            orderId,
+            WarehouseProposeDeliveryRequest(proposedDeliveryDate = proposedDeliveryDate, reason = reason),
+            WarehouseIdempotencyKeys.orderProposeDelivery(orderId, proposedDeliveryDate, reason),
+        )
+
     suspend fun rejectOrder(
         orderId: String,
         reason: String,

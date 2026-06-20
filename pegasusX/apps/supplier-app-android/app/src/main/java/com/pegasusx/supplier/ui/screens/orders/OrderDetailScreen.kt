@@ -69,42 +69,62 @@ fun OrderDetailScreen(
     LaunchedEffect(orderId) { load() }
 
     if (delayDialog) {
-        AlertDialog(
-            onDismissRequest = { delayDialog = false; reason = "" },
-            title = { Text("Delay delivery") },
-            text = {
-                OutlinedTextField(
-                    value = reason,
-                    onValueChange = { reason = it },
-                    label = { Text("Reason (optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val wh = warehouseId ?: return@TextButton
-                        acting = true
-                        scope.launch {
-                            try {
-                                ops.delayWarehouseOrder(
-                                    orderId,
-                                    wh,
-                                    reason.trim().ifBlank { null },
-                                    SupplierIdempotencyKeys.warehouseOrderDelay(orderId),
-                                )
-                                delayDialog = false
-                                reason = ""
-                                load()
-                            } finally {
-                                acting = false
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+        var showReasonStep by remember { mutableStateOf(false) }
+        if (showReasonStep) {
+            AlertDialog(
+                onDismissRequest = { showReasonStep = false },
+                title = { Text("Reason for new delivery date") },
+                text = {
+                    OutlinedTextField(
+                        value = reason,
+                        onValueChange = { reason = it },
+                        label = { Text("Reason (required)") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val wh = warehouseId ?: return@TextButton
+                            val millis = datePickerState.selectedDateMillis ?: return@TextButton
+                            val iso = java.time.Instant.ofEpochMilli(millis)
+                                .atOffset(java.time.ZoneOffset.ofHours(5))
+                                .withHour(12).withMinute(0).withSecond(0)
+                                .format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                            acting = true
+                            scope.launch {
+                                try {
+                                    ops.proposeWarehouseOrder(
+                                        orderId,
+                                        wh,
+                                        iso,
+                                        reason.trim(),
+                                        SupplierIdempotencyKeys.warehouseOrderPropose(orderId, iso, reason.trim()),
+                                    )
+                                    delayDialog = false
+                                    showReasonStep = false
+                                    reason = ""
+                                    load()
+                                } finally {
+                                    acting = false
+                                }
                             }
-                        }
-                    },
-                ) { Text("Delay") }
-            },
-            dismissButton = { TextButton(onClick = { delayDialog = false; reason = "" }) { Text("Cancel") } },
-        )
+                        },
+                        enabled = reason.isNotBlank(),
+                    ) { Text("Notify retailer") }
+                },
+                dismissButton = { TextButton(onClick = { showReasonStep = false }) { Text("Back") } },
+            )
+        } else {
+            DatePickerDialog(
+                onDismissRequest = { delayDialog = false },
+                confirmButton = { TextButton(onClick = { showReasonStep = true }) { Text("Next") } },
+                dismissButton = { TextButton(onClick = { delayDialog = false }) { Text("Cancel") } },
+            ) {
+                DatePicker(state = datePickerState)
+            }
+        }
     }
 
     if (rejectDialog) {

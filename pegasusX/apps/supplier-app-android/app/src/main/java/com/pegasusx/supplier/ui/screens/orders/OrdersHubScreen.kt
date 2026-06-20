@@ -97,7 +97,7 @@ fun OrdersHubScreen(
                 onVet = { order, decision -> viewModel.vetOrder(order, decision) },
                 onOrderClick = onOrderClick,
                 canWarehouseOps = viewModel::canWarehouseOps,
-                onDelay = { order, reason -> viewModel.delayWarehouseOrder(order, reason) },
+                onDelay = { order, proposedDate, reason -> viewModel.proposeWarehouseOrder(order, proposedDate, reason) },
                 onReject = { order, reason -> viewModel.rejectWarehouseOrder(order, reason) },
             )
             OrdersHubSurface.Dispatch -> DispatchPreviewScreen(
@@ -119,7 +119,7 @@ private fun OrdersQueueContent(
     onVet: (SupplierOrder, String) -> Unit,
     onOrderClick: (SupplierOrder) -> Unit,
     canWarehouseOps: (SupplierOrder) -> Boolean,
-    onDelay: (SupplierOrder, String?) -> Unit,
+    onDelay: (SupplierOrder, String, String) -> Unit,
     onReject: (SupplierOrder, String) -> Unit,
 ) {
     when {
@@ -182,26 +182,47 @@ private fun OrdersQueueContent(
                     )
                 }
                 if (delayDialog) {
-                    AlertDialog(
-                        onDismissRequest = { delayDialog = false; reason = "" },
-                        title = { Text("Delay delivery") },
-                        text = {
-                            OutlinedTextField(
-                                value = reason,
-                                onValueChange = { reason = it },
-                                label = { Text("Reason (optional)") },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                onDelay(order, reason.trim().ifBlank { null })
-                                delayDialog = false
-                                reason = ""
-                            }) { Text("Delay") }
-                        },
-                        dismissButton = { TextButton(onClick = { delayDialog = false; reason = "" }) { Text("Cancel") } },
-                    )
+                    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+                    var showReasonStep by remember(order.orderId) { mutableStateOf(false) }
+                    if (showReasonStep) {
+                        AlertDialog(
+                            onDismissRequest = { showReasonStep = false },
+                            title = { Text("Reason for new delivery date") },
+                            text = {
+                                OutlinedTextField(
+                                    value = reason,
+                                    onValueChange = { reason = it },
+                                    label = { Text("Reason (required)") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        val millis = datePickerState.selectedDateMillis ?: return@TextButton
+                                        val iso = java.time.Instant.ofEpochMilli(millis)
+                                            .atOffset(java.time.ZoneOffset.ofHours(5))
+                                            .withHour(12).withMinute(0).withSecond(0)
+                                            .format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                                        onDelay(order, iso, reason.trim())
+                                        delayDialog = false
+                                        showReasonStep = false
+                                        reason = ""
+                                    },
+                                    enabled = reason.isNotBlank(),
+                                ) { Text("Notify retailer") }
+                            },
+                            dismissButton = { TextButton(onClick = { showReasonStep = false }) { Text("Back") } },
+                        )
+                    } else {
+                        DatePickerDialog(
+                            onDismissRequest = { delayDialog = false },
+                            confirmButton = { TextButton(onClick = { showReasonStep = true }) { Text("Next") } },
+                            dismissButton = { TextButton(onClick = { delayDialog = false }) { Text("Cancel") } },
+                        ) {
+                            DatePicker(state = datePickerState)
+                        }
+                    }
                 }
 
                 Row(
