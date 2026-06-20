@@ -1,3 +1,8 @@
+import {
+  resetEmulatorPhoneOtpFlow,
+  sendPhoneOtpViaEmulator,
+  verifyPhoneOtpViaEmulator,
+} from "@pegasusx/ui-kit/auth";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,
@@ -87,11 +92,18 @@ class EmulatorRecaptchaVerifier {
 export async function sendPhoneOtp(phone: string): Promise<void> {
   const trimmed = phone.trim();
   if (!trimmed) throw new Error("Phone number required");
+  if (shouldUseAuthEmulator()) {
+    await sendPhoneOtpViaEmulator(trimmed);
+    return;
+  }
   const verifier = new EmulatorRecaptchaVerifier();
   phoneConfirmation = await signInWithPhoneNumber(auth, trimmed, verifier as never);
 }
 
 export async function verifyPhoneOtp(code: string): Promise<string> {
+  if (shouldUseAuthEmulator()) {
+    return verifyPhoneOtpViaEmulator(code);
+  }
   if (!phoneConfirmation) {
     throw new Error("No verification in progress; request a code first");
   }
@@ -101,6 +113,7 @@ export async function verifyPhoneOtp(code: string): Promise<string> {
 }
 
 export function resetPhoneOtpFlow(): void {
+  resetEmulatorPhoneOtpFlow();
   phoneConfirmation = null;
 }
 

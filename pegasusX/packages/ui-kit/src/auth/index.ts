@@ -9,3 +9,8 @@ export {
 export type { AuthIdentityStep, AuthVerificationStep, AuthProfileStep } from "./AuthRegisterSteps";
 export { AuthLoginCard, AuthLoginRegisterFooter } from "./AuthLoginCard";
 export type { AuthLoginStep } from "./AuthLoginCard";
+export {
+  sendPhoneOtpViaEmulator,
+  verifyPhoneOtpViaEmulator,
+  resetEmulatorPhoneOtpFlow,
+} from "./firebase-emulator-phone";
