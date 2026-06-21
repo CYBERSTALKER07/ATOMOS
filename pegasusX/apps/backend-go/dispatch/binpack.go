@@ -2,7 +2,6 @@ package dispatch
 
 import (
 	"fmt"
-	"math"
 	"sort"
 )
 
@@ -47,12 +46,13 @@ func ComputeOrderVolume(quantities []int, volumes []float64) float64 {
 	return sum
 }
 
-// BinPack runs the 4-rule Smart Fit protocol over a pre-fetched set of
-// orders and fleet. Pure computation — no I/O.
+// BinPack runs the Smart Fit protocol over a pre-fetched set of orders and fleet.
+// Pure computation — no I/O. Each order is atomic: it is assigned whole to one
+// truck or left as an orphan; partial loads and cross-truck splits are not used.
 //
 //	Rule 1 — Consolidation: fit into existing same-cell route.
 //	Rule 2 — Multi-Stop:    greedy first-fit into same-cell group at 95% cap.
-//	Rule 3 — The Split:     orders exceeding max fleet cap get chunked.
+//	Rule 3 — Oversized:     orders exceeding max fleet cap become orphans.
 //	Rule 4 — Override:      IgnoreCapacity bypasses volume check.
 func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup func(lat, lng float64) string) *AssignmentResult {
 	result := &AssignmentResult{
@@ -87,30 +87,11 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 		}
 
 		if o.VolumeVU > maxFleetCap && maxFleetCap > 0 {
-			numChunks := int(math.Ceil(o.VolumeVU / maxFleetCap))
-			split := SplitOrder{
-				OriginalOrderID: o.OrderID,
-				TotalVolumeVU:   o.VolumeVU,
-				Reason:          "EXCEEDS_MAX_FLEET_CAPACITY",
-				Chunks:          make([]OrderChunk, numChunks),
-			}
-			remaining := o.VolumeVU
-			for ci := 0; ci < numChunks; ci++ {
-				chunkVol := math.Min(remaining, maxFleetCap)
-				split.Chunks[ci] = OrderChunk{ChunkIndex: ci, VolumeVU: chunkVol}
-				remaining -= chunkVol
-			}
-			result.Splits = append(result.Splits, split)
+			geo := o.ToGeo()
+			result.Orphans = append(result.Orphans, geo)
 			result.Warnings = append(result.Warnings,
-				fmt.Sprintf("ORDER %s: %.1f VU exceeds max fleet capacity %.1f VU — split into %d chunks",
-					o.OrderID, o.VolumeVU, maxFleetCap, numChunks))
-
-			for ci, chunk := range split.Chunks {
-				sub := o
-				sub.OrderID = fmt.Sprintf("%s-CHUNK-%d", o.OrderID, ci)
-				sub.VolumeVU = chunk.VolumeVU
-				normal = append(normal, sub)
-			}
+				fmt.Sprintf("ORDER %s: %.1f VU exceeds max fleet capacity %.1f VU — left undispatched (atomic order)",
+					o.OrderID, o.VolumeVU, maxFleetCap))
 			continue
 		}
 
@@ -197,15 +178,16 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 			}
 
 			if match.Overflow {
-				geo.CapacityOverflow = true
 				result.Warnings = append(result.Warnings,
-					fmt.Sprintf("ORDER %s: %.1f VU overflows best truck %s (%.1f effective VU)",
-						o.OrderID, o.VolumeVU, match.Driver.VehicleClass, match.Driver.MaxVolumeVU*TetrisBuffer))
+					fmt.Sprintf("ORDER %s: %.1f VU exceeds any single truck — left undispatched (atomic order)",
+						o.OrderID, o.VolumeVU))
+				result.Orphans = append(result.Orphans, geo)
+				continue
 			}
 
 			if ri, exists := driverRouteMap[match.Driver.DriverID]; exists {
 				remaining := result.Routes[ri].MaxVolume - result.Routes[ri].LoadedVolume
-				if remaining >= o.VolumeVU || o.IgnoreCapacity {
+				if remaining >= o.VolumeVU {
 					geo.Assigned = true
 					result.Routes[ri].Orders = append(result.Routes[ri].Orders, geo)
 					result.Routes[ri].LoadedVolume += o.VolumeVU

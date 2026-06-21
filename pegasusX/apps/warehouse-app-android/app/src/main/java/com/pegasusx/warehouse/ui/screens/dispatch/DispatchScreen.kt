@@ -98,6 +98,7 @@ fun DispatchScreen(
     var showCapacityDialog by remember { mutableStateOf(false) }
     var capacityDialogAutoMode by remember { mutableStateOf(false) }
     var showSmartConfirm by remember { mutableStateOf(false) }
+    var dispatchMode by remember { mutableStateOf("smart") }
     var proposeTarget by remember { mutableStateOf<String?>(null) }
     var rejectTarget by remember { mutableStateOf<String?>(null) }
     var opsReasonInput by remember { mutableStateOf("") }
@@ -495,7 +496,7 @@ fun DispatchScreen(
                                 loadVehicles()
                                 load()
                             }
-                            "DISPATCH_LOCK_CHANGE", "DISPATCH_COMMITTED" -> {
+                            "DISPATCH_LOCK_CHANGE", "DISPATCH_COMMITTED", "DISPATCH_PLAN_UPDATED" -> {
                                 reloadDispatchLocks()
                                 load()
                             }
@@ -746,6 +747,24 @@ fun DispatchScreen(
                                         .padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.md),
                                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                                 ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                                    ) {
+                                        FilterChip(
+                                            selected = dispatchMode == "smart",
+                                            onClick = { dispatchMode = "smart" },
+                                            label = { Text("Smart fleet") },
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        FilterChip(
+                                            selected = dispatchMode == "manual",
+                                            onClick = { dispatchMode = "manual" },
+                                            label = { Text("Manual truck") },
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                    if (dispatchMode == "manual") {
                                     Box {
                                         OutlinedButton(
                                             onClick = { driverMenuExpanded = true },
@@ -786,6 +805,8 @@ fun DispatchScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
+                                    }
+                                    if (dispatchMode == "manual") {
                                     Button(
                                         onClick = { runManualDispatch(false) },
                                         enabled = !executing && selectedDriverId.isNotBlank() && selectedOrderIds.isNotEmpty(),
@@ -793,12 +814,14 @@ fun DispatchScreen(
                                     ) {
                                         Text(if (executing) "Dispatching…" else "Manual (${selectedOrderIds.size})")
                                     }
+                                    } else {
                                     OutlinedButton(
                                         onClick = { showSmartConfirm = true },
                                         enabled = !executing && preview!!.undispatchedOrders.isNotEmpty() && preview!!.availableDrivers.isNotEmpty(),
                                         modifier = Modifier.fillMaxWidth(),
                                     ) {
                                         Text("Smart Dispatch")
+                                    }
                                     }
                                     if (preview!!.fleetEffectiveCapacityVu > 0) {
                                         Text(

@@ -2,6 +2,19 @@ import SwiftUI
 
 private let dispatchTetrisBuffer = 0.95
 
+private enum DispatchAssignmentMode: String, CaseIterable, Identifiable {
+    case smart
+    case manual
+
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .smart: "Smart fleet"
+        case .manual: "Manual truck"
+        }
+    }
+}
+
 struct DispatchView: View {
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
     @Environment(\.scenePhase) private var scenePhase
@@ -29,6 +42,7 @@ struct DispatchView: View {
     @State private var showCapacityDialog = false
     @State private var capacityDialogAutoMode = false
     @State private var showSmartConfirm = false
+    @State private var dispatchMode: DispatchAssignmentMode = .smart
     @State private var capacityWarnings: [DispatchCapacityWarning] = []
     @State private var proposeTarget: String?
     @State private var rejectRoute: DispatchOrderDetailRoute?
@@ -368,6 +382,13 @@ struct DispatchView: View {
                 }
             } else {
                 Section {
+                    Picker("Dispatch mode", selection: $dispatchMode) {
+                        ForEach(DispatchAssignmentMode.allCases) { mode in
+                            Text(mode.label).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    if dispatchMode == .manual {
                     Picker("Truck / driver", selection: $selectedDriverId) {
                         Text("Select truck / driver").tag("")
                         ForEach(preview.availableDrivers) { driver in
@@ -387,14 +408,19 @@ struct DispatchView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(executing || selectedDriverId.isEmpty || selectedOrderIds.isEmpty)
+                    } else {
+                    Text("Trucks are assigned automatically across the fleet.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                     Button {
                         showSmartConfirm = true
                     } label: {
                         Text("Smart Dispatch")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
                     .disabled(executing || preview.undispatchedOrders.isEmpty || preview.availableDrivers.isEmpty)
+                    }
                     if preview.fleetEffectiveCapacityVu > 0 {
                         Text("Fleet \(preview.fleetEffectiveCapacityVu, specifier: "%.1f") VU effective")
                             .font(.subheadline)
@@ -642,7 +668,7 @@ struct DispatchView: View {
                     await reloadFleetVehicles()
                     await reloadDispatchPreview()
                 }
-            case "DISPATCH_LOCK_CHANGE", "DISPATCH_COMMITTED":
+            case "DISPATCH_LOCK_CHANGE", "DISPATCH_COMMITTED", "DISPATCH_PLAN_UPDATED":
                 Task {
                     await reloadDispatchLocks()
                     await reloadDispatchPreview()

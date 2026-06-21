@@ -95,6 +95,8 @@ func main() {
 	if app.WarehouseService != nil {
 		go warehouse.StartAutoDispatchWorker(ctx, app.WarehouseService, warehouse.AutoDispatchWorkerConfig{})
 		slog.Info("warehouse auto-dispatch worker started")
+		go warehouse.StartDispatchPlanWarmer(ctx, app.WarehouseService, warehouse.DispatchPlanWarmerConfig{})
+		slog.Info("dispatch plan warmer started")
 	}
 	if app.ReplenishmentEngine != nil && os.Getenv("REPLENISHMENT_CRON_DISABLED") != "1" {
 		app.ReplenishmentEngine.StartCron(ctx)

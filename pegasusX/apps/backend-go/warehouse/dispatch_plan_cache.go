@@ -48,9 +48,10 @@ func (s *Service) invalidateDispatchPlanCache(ctx context.Context, warehouseID s
 	s.cache.Invalidate(ctx, dispatchPlanCacheKey(warehouseID))
 }
 
-// InvalidateDispatchPlanCache busts the cached smart-dispatch preview for a warehouse.
+// InvalidateDispatchPlanCache busts the cached smart-dispatch preview and schedules a background re-warm.
 func (s *Service) InvalidateDispatchPlanCache(ctx context.Context, warehouseID string) {
 	s.invalidateDispatchPlanCache(ctx, warehouseID)
+	s.requestDispatchPlanWarm(ctx, warehouseID)
 }
 
 func computeDispatchPlanFingerprint(orders []dispatch.DispatchableOrder, fleetCtx fleetDispatchContext, orderFilter []string) string {
@@ -124,21 +125,28 @@ func (s *Service) solveDispatchPreview(
 	if len(orders) == 0 || len(solveDrivers) == 0 {
 		return out, ""
 	}
-	fingerprint := computeDispatchPlanFingerprint(orders, fleetCtx, orderFilter)
+
+	fullFingerprint := computeDispatchPlanFingerprint(orders, fleetCtx, nil)
+	subsetFingerprint := computeDispatchPlanFingerprint(orders, fleetCtx, orderFilter)
+	useSubset := len(orderFilter) > 0
+
+	if useSubset {
+		if cached, ok := s.readDispatchPlanCache(ctx, warehouseID, fullFingerprint); ok {
+			filtered := filterProposedRoutesByOrderIDs(cached.ProposedRoutes, orderFilter)
+			return s.planMetaFromCacheEntry(cached, filtered, subsetFingerprint), subsetFingerprint
+		}
+	}
+
+	fingerprint := subsetFingerprint
+	if !useSubset {
+		fingerprint = fullFingerprint
+	}
 	if cached, ok := s.readDispatchPlanCache(ctx, warehouseID, fingerprint); ok {
-		if len(cached.ProposedRoutes) > 0 {
-			out["proposed_routes"] = cached.ProposedRoutes
+		routes := cached.ProposedRoutes
+		if useSubset {
+			routes = filterProposedRoutesByOrderIDs(cached.ProposedRoutes, orderFilter)
 		}
-		if cached.OptimizerSource != "" {
-			out["optimizer_source"] = cached.OptimizerSource
-		}
-		if len(cached.OptimizerWarnings) > 0 {
-			out["optimizer_warnings"] = cached.OptimizerWarnings
-		}
-		out["plan_fingerprint"] = cached.Fingerprint
-		out["plan_computed_at"] = cached.ComputedAt.UTC().Format(time.RFC3339Nano)
-		out["plan_stale"] = false
-		return out, fingerprint
+		return s.planMetaFromCacheEntry(cached, routes, fingerprint), fingerprint
 	}
 
 	driverInputs := buildFleetDriverInputs(solveDrivers, fleetCtx, warehouseID)
@@ -153,15 +161,17 @@ func (s *Service) solveDispatchPreview(
 	sid := strings.TrimSpace(s.supplierID)
 	job := plan.BuildSolveJob(ctx, sid, warehouseID, depot, orders, fleet)
 	solve := plan.RunSolvePreview(ctx, s.optimizerClient, s.planCounters, job)
-	if len(solve.ProposedRoutes) > 0 {
+
+	proposedRoutes := solve.ProposedRoutes
+	if len(proposedRoutes) > 0 {
 		routingAttach := s.routeGeometryBuilder
 		if routingAttach != nil {
 			routing.AttachRouteGeometryToProposedRoutes(ctx, routingAttach, routing.LatLng{
 				Lat: depot.Lat,
 				Lng: depot.Lng,
-			}, solve.ProposedRoutes)
+			}, proposedRoutes)
 		}
-		out["proposed_routes"] = solve.ProposedRoutes
+		out["proposed_routes"] = proposedRoutes
 	}
 	if solve.OptimizerSource != "" {
 		out["optimizer_source"] = solve.OptimizerSource
@@ -170,16 +180,41 @@ func (s *Service) solveDispatchPreview(
 		out["optimizer_warnings"] = solve.OptimizerWarnings
 	}
 	computedAt := s.now().UTC()
-	out["plan_fingerprint"] = fingerprint
-	out["plan_computed_at"] = computedAt.Format(time.RFC3339Nano)
-	out["plan_stale"] = false
-
+	cacheFingerprint := fullFingerprint
 	s.writeDispatchPlanCache(ctx, warehouseID, dispatchPlanCacheEntry{
-		Fingerprint:       fingerprint,
-		ProposedRoutes:    solve.ProposedRoutes,
+		Fingerprint:       cacheFingerprint,
+		ProposedRoutes:    proposedRoutes,
 		OptimizerSource:   solve.OptimizerSource,
 		OptimizerWarnings: solve.OptimizerWarnings,
 		ComputedAt:        computedAt,
 	})
+
+	responseRoutes := proposedRoutes
+	if useSubset {
+		responseRoutes = filterProposedRoutesByOrderIDs(proposedRoutes, orderFilter)
+	}
+	if len(responseRoutes) > 0 {
+		out["proposed_routes"] = responseRoutes
+	}
+	out["plan_fingerprint"] = fingerprint
+	out["plan_computed_at"] = computedAt.Format(time.RFC3339Nano)
+	out["plan_stale"] = false
 	return out, fingerprint
+}
+
+func (s *Service) planMetaFromCacheEntry(entry *dispatchPlanCacheEntry, routes []map[string]any, fingerprint string) map[string]any {
+	out := map[string]any{}
+	if len(routes) > 0 {
+		out["proposed_routes"] = routes
+	}
+	if entry.OptimizerSource != "" {
+		out["optimizer_source"] = entry.OptimizerSource
+	}
+	if len(entry.OptimizerWarnings) > 0 {
+		out["optimizer_warnings"] = entry.OptimizerWarnings
+	}
+	out["plan_fingerprint"] = fingerprint
+	out["plan_computed_at"] = entry.ComputedAt.UTC().Format(time.RFC3339Nano)
+	out["plan_stale"] = false
+	return out
 }

@@ -231,6 +231,7 @@ type Service struct {
 	jwtSecret     string
 	handoff       *handoff.Engine
 	gatewayPolicy GatewayPolicyReader
+	dispatchPlanWarm func(ctx context.Context, warehouseID string)
 }
 
 // ServiceConfig is the constructor input.
@@ -2646,13 +2647,22 @@ func assignmentResponse(orderRecord Order, eventType string, version int64, noCh
 }
 
 func (s *Service) afterOrderMutation(ctx context.Context, orderRecord Order) {
-	if s.cache == nil {
-		return
+	if s.cache != nil {
+		s.cache.Invalidate(ctx,
+			retailerOrdersKey(orderRecord.RetailerID),
+			supplierOrdersKey(orderRecord.SupplierID),
+		)
 	}
-	s.cache.Invalidate(ctx,
-		retailerOrdersKey(orderRecord.RetailerID),
-		supplierOrdersKey(orderRecord.SupplierID),
-	)
+	if s.dispatchPlanWarm != nil {
+		if wh := strings.TrimSpace(orderRecord.WarehouseID); wh != "" {
+			s.dispatchPlanWarm(ctx, wh)
+		}
+	}
+}
+
+// SetDispatchPlanWarm schedules background smart-dispatch preview recompute for a warehouse.
+func (s *Service) SetDispatchPlanWarm(fn func(ctx context.Context, warehouseID string)) {
+	s.dispatchPlanWarm = fn
 }
 
 func (s *Service) emitSettlementRequired(ctx context.Context, txn outbox.TxnBuffer, orderRecord Order) error {

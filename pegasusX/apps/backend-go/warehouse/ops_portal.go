@@ -537,9 +537,8 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 			Offset:      offset,
 		})
 		if err == nil {
-			dispatchRows = rows
-			dispatchRows = filterDispatchRowsByOrderIDs(dispatchRows, previewBody.OrderIDs)
-			preview := dispatch.BuildPreview(dispatchRows)
+			allDispatchRows := rows
+			preview := dispatch.BuildPreview(allDispatchRows)
 			undispatched = make([]map[string]any, 0, len(preview.UndispatchedOrders))
 			for _, row := range preview.UndispatchedOrders {
 				totalMinor, _ := row["total_minor"].(int64)
@@ -557,6 +556,7 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 				})
 			}
 			windowConstrained = preview.WindowConstrained
+			dispatchRows = allDispatchRows
 		}
 	} else if s.opsOrders != nil {
 		rows, err := s.opsOrders(r.Context(), whID, 200)
@@ -612,7 +612,7 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	}
-	dispatchRows = filterDispatchRowsByOrderIDs(dispatchRows, previewBody.OrderIDs)
+	selectedRows := filterDispatchRowsByOrderIDs(dispatchRows, previewBody.OrderIDs)
 	for _, d := range solveDrivers {
 		entry := driverPreviewEntry(d, fleetCtx)
 		truckStatus, isUnavailable, reason := warehouseDriverAvailability(d, fleetCtx)
@@ -634,7 +634,7 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 		"fleet_effective_capacity_vu": fleetEffectiveCapacityVU(solveDrivers, fleetCtx),
 	}
 	if len(previewBody.OrderIDs) > 0 {
-		response["selected_orders_volume_vu"] = sumOrderVolumeVU(dispatchRows)
+		response["selected_orders_volume_vu"] = sumOrderVolumeVU(selectedRows)
 	}
 	if len(dispatchRows) > 0 && len(solveDrivers) > 0 {
 		planMeta, _ := s.solveDispatchPreview(r.Context(), whID, dispatchRows, fleetCtx, solveDrivers, previewBody.OrderIDs)

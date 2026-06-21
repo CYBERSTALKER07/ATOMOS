@@ -47,6 +47,7 @@ const FLEET_AVAILABILITY_EVENTS = new Set([
 ]);
 
 type CapacityPromptMode = 'manual' | 'auto';
+type DispatchMode = 'manual' | 'smart';
 
 function formatUnavailableReason(reason?: string, note?: string) {
   if (!reason) {
@@ -97,6 +98,7 @@ export default function DispatchPage() {
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [capacityPrompt, setCapacityPrompt] = useState<WarehouseDispatchCapacityWarning[] | null>(null);
   const [capacityPromptMode, setCapacityPromptMode] = useState<CapacityPromptMode>('manual');
+  const [dispatchMode, setDispatchMode] = useState<DispatchMode>('smart');
   const [showSmartConfirm, setShowSmartConfirm] = useState(false);
   const [warehouseId, setWarehouseId] = useState(() => warehouseHomeNodeId() || 'warehouse');
   const [vehicles, setVehicles] = useState<WarehouseFleetVehicle[]>([]);
@@ -305,7 +307,7 @@ export default function DispatchPage() {
   }, [orders, selectedOrderIds.size, selectedVolumeVU]);
 
   const allSelected = orders.length > 0 && selectedOrderIds.size === orders.length;
-  const canSmartDispatch = !restricted && orders.length > 0 && drivers.length > 0;
+  const canSmartDispatch = dispatchMode === 'smart' && !restricted && orders.length > 0 && drivers.length > 0;
   const smartStopCount = proposedRoutes.reduce(
     (sum, route) => sum + (route.stop_count ?? route.order_ids?.length ?? route.stops?.length ?? 0),
     0,
@@ -498,7 +500,7 @@ export default function DispatchPage() {
   }, [loadAll, orders, planFingerprint, selectedOrderList, warehouseId]);
 
   const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
-  const canDispatch = Boolean(selectedDriverId) && selectedOrderIds.size > 0 && !restricted;
+  const canDispatch = dispatchMode === 'manual' && Boolean(selectedDriverId) && selectedOrderIds.size > 0 && !restricted;
   const suggestedUnselectIds = useMemo(
     () => new Set((capacityPrompt ?? []).flatMap(w => w.suggested_unselect_order_ids ?? [])),
     [capacityPrompt],
@@ -515,14 +517,30 @@ export default function DispatchPage() {
         error={restricted ? 'You do not have permission to view dispatch for this scope.' : loadError}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex rounded-lg border p-0.5" style={{ borderColor: 'var(--field-border)', background: 'var(--field-background)' }}>
+              <button
+                type="button"
+                onClick={() => setDispatchMode('smart')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${dispatchMode === 'smart' ? 'button--primary' : 'button--ghost'}`}
+              >
+                Smart fleet
+              </button>
+              <button
+                type="button"
+                onClick={() => setDispatchMode('manual')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${dispatchMode === 'manual' ? 'button--primary' : 'button--ghost'}`}
+              >
+                Manual truck
+              </button>
+            </div>
             <select
               value={selectedDriverId}
-              disabled={restricted || drivers.length === 0}
+              disabled={restricted || drivers.length === 0 || dispatchMode === 'smart'}
               onChange={event => setSelectedDriverId(event.target.value)}
-              className="px-3 py-1.5 rounded-lg border text-sm min-w-48"
+              className="px-3 py-1.5 rounded-lg border text-sm min-w-48 disabled:opacity-50"
               style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
             >
-              <option value="">Select truck / driver</option>
+              <option value="">{dispatchMode === 'smart' ? 'Fleet auto-assign' : 'Select truck / driver'}</option>
               {drivers.map(driver => (
                 <option key={driver.driver_id} value={driver.driver_id}>
                   {(driver.vehicle_label || driver.name)}
@@ -532,24 +550,27 @@ export default function DispatchPage() {
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              disabled={executing || !canDispatch}
-              onClick={() => runManualDispatch(false)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--primary disabled:opacity-50"
-            >
-              <Icon name="dispatch" size={16} />
-              {executing ? 'Dispatching…' : `Manual (${selectedOrderIds.size})`}
-            </button>
-            <button
-              type="button"
-              disabled={executing || !canSmartDispatch}
-              onClick={() => setShowSmartConfirm(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary disabled:opacity-50"
-            >
-              <Icon name="dispatch" size={16} />
-              Smart Dispatch
-            </button>
+            {dispatchMode === 'manual' ? (
+              <button
+                type="button"
+                disabled={executing || !canDispatch}
+                onClick={() => runManualDispatch(false)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--primary disabled:opacity-50"
+              >
+                <Icon name="dispatch" size={16} />
+                {executing ? 'Dispatching…' : `Manual (${selectedOrderIds.size})`}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={executing || !canSmartDispatch}
+                onClick={() => setShowSmartConfirm(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary disabled:opacity-50"
+              >
+                <Icon name="dispatch" size={16} />
+                Smart Dispatch
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -563,7 +584,7 @@ export default function DispatchPage() {
           </div>
         }
       >
-        {selectedDriver && (
+        {dispatchMode === 'manual' && selectedDriver && (
           <div className="mb-4 rounded-xl border border-(--border) p-3 text-sm" style={{ background: 'var(--background)' }}>
             <span className="font-medium">{selectedDriver.name}</span>
             <span className="text-(--muted)"> — selected </span>

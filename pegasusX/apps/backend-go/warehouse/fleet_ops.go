@@ -203,6 +203,6 @@ func (s *Service) patchOpsVehicleSpanner(ctx context.Context, params opsVehicleP
 		"timestamp":          params.UpdatedAt.Format(time.RFC3339Nano),
 	})
 	s.broadcastWarehouseEvent(ctx, params.WarehouseID, wire)
-	s.invalidateDispatchPlanCache(ctx, params.WarehouseID)
+	s.InvalidateDispatchPlanCache(ctx, params.WarehouseID)
 	return nil
 }
