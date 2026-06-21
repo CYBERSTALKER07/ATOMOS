@@ -547,61 +547,68 @@
     min-height: 100dvh;
 }
 
-[data-app="warehouse"] .wh-auth-shell {
-    width: 100%;
+[data-app="warehouse"] .app-root:has(.wh-auth-shell),
+[data-app="warehouse"] .app-root:has(.setup-shell) {
+    height: 100dvh;
     min-height: 100dvh;
     max-height: 100dvh;
     overflow: hidden;
-    background: var(--wh-ink);
 }
 
-/* Brand rail — always dark (warehouse identity) */
+[data-app="warehouse"] .wh-auth-shell {
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    background: #000000;
+    color: #ffffff;
+}
+
+/* Brand rail — always black */
 [data-app="warehouse"] .wh-auth-brand {
-    background: var(--wh-ink);
-    color: #f0f4f8;
+    background: #000000;
+    color: #ffffff;
 }
 
-/* Form panel — follows theme */
+/* Form panel — strict black / white by theme */
 [data-app="warehouse"] .wh-auth-shell.auth-light .wh-auth-form {
-    background: var(--wh-surface);
-    color: var(--wh-ink);
+    background: #ffffff;
+    color: #000000;
 }
 
 [data-app="warehouse"] .wh-auth-shell.auth-dark .wh-auth-form {
-    background: var(--wh-canvas);
-    color: var(--wh-ink);
+    background: #000000;
+    color: #ffffff;
 }
 
-[data-app="warehouse"] .wh-auth-shell.auth-light .wh-auth-form .auth-card .md-card {
-    background: var(--wh-surface);
-    border-color: var(--wh-border);
-    box-shadow: 0 1px 3px rgba(26, 35, 50, 0.06);
-}
-
+[data-app="warehouse"] .wh-auth-shell.auth-light .wh-auth-form .auth-card .md-card,
 [data-app="warehouse"] .wh-auth-shell.auth-dark .wh-auth-form .auth-card .md-card {
-    background: var(--wh-surface);
-    border-color: var(--wh-border);
+    background: transparent;
+    border: 1px solid color-mix(in oklch, currentColor 18%, transparent);
     box-shadow: none;
 }
 
 [data-app="warehouse"] .wh-auth-shell.auth-dark .auth-theme-toggle {
-    background: rgba(255, 255, 255, 0.08);
-    color: #f0f4f8;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #000000;
+    color: #ffffff;
+    border: 1px solid #ffffff;
 }
 
 [data-app="warehouse"] .wh-auth-shell.auth-dark .auth-theme-toggle:hover {
-    background: rgba(255, 255, 255, 0.14);
+    background: #ffffff;
+    color: #000000;
 }
 
 [data-app="warehouse"] .wh-auth-shell.auth-light .auth-theme-toggle {
-    background: var(--wh-surface-raised);
-    color: var(--wh-ink);
-    border: 1px solid var(--wh-border);
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #000000;
 }
 
 [data-app="warehouse"] .wh-auth-shell.auth-light .auth-theme-toggle:hover {
-    background: var(--wh-canvas);
+    background: #000000;
+    color: #ffffff;
 }
 
 [data-app="warehouse"] .wh-auth-brand {
@@ -622,10 +629,10 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    opacity: 0.07;
+    opacity: 0.06;
     background-image:
-        linear-gradient(var(--wh-accent) 1px, transparent 1px),
-        linear-gradient(90deg, var(--wh-accent) 1px, transparent 1px);
+        linear-gradient(#ffffff 1px, transparent 1px),
+        linear-gradient(90deg, #ffffff 1px, transparent 1px);
     background-size: 28px 28px;
 }
 
@@ -654,9 +661,10 @@
     align-items: center;
     justify-content: center;
     border-radius: 22px;
-    background: var(--wh-accent);
-    color: var(--wh-accent-on);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
+    background: #ffffff;
+    color: #000000;
+    box-shadow: none;
+    border: 1px solid #ffffff;
 }
 
 [data-app="warehouse"] .wh-auth-brand-eyebrow {
@@ -664,7 +672,8 @@
     font: 600 0.75rem/1 var(--font-mono);
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.55);
+    color: #ffffff;
+    opacity: 0.55;
 }
 
 [data-app="warehouse"] .wh-auth-brand-title {
@@ -680,7 +689,8 @@
     max-width: 20rem;
     font-size: 1rem;
     line-height: 1.55;
-    color: rgba(255, 255, 255, 0.72);
+    color: #ffffff;
+    opacity: 0.72;
 }
 
 [data-app="warehouse"] .wh-auth-brand-footer {
@@ -700,6 +710,13 @@
     width: auto;
     max-width: none;
     min-width: 0;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+[data-app="warehouse"] .wh-auth-brand {
+    min-height: 100%;
 }
 
 @media (max-width: 1023px) {
@@ -725,7 +742,8 @@
     font: 600 0.75rem/1 var(--font-mono);
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--wh-ink-muted);
+    color: currentColor;
+    opacity: 0.55;
 }
 
 [data-app="warehouse"] .wh-auth-form-scroll {
@@ -753,17 +771,137 @@
 }
 
 [data-app="warehouse"] .wh-auth-shell .auth-card .md-card {
-    border-color: var(--wh-border);
-    background: var(--wh-surface);
-    box-shadow: 0 1px 3px rgba(26, 35, 50, 0.06);
+    border-color: color-mix(in oklch, currentColor 18%, transparent);
+    background: transparent;
+    box-shadow: none;
 }
 
 [data-app="warehouse"] .auth-splash {
-    background: var(--wh-ink);
-    color: var(--wh-accent-on);
+    background: #000000;
+    color: #ffffff;
 }
 
 [data-app="warehouse"] .auth-light .auth-splash {
-    background: var(--wh-ink);
+    background: #000000;
     color: #ffffff;
+}
+
+[data-app="warehouse"] .wh-auth-shell .desk-page-subtitle {
+    color: currentColor;
+    opacity: 0.6;
+}
+
+[data-app="warehouse"] .wh-auth-shell .setup-progress-fill {
+    background: currentColor;
+}
+
+[data-app="warehouse"] .wh-auth-shell.auth-dark .setup-progress-fill {
+    background: #ffffff;
+}
+
+[data-app="warehouse"] .wh-auth-shell .setup-progress-bar {
+    background: color-mix(in oklch, currentColor 15%, transparent);
+}
+
+/* Auth wizard — monochrome controls */
+[data-app="warehouse"] .wh-auth-shell .setup-step-item--active {
+    background: color-mix(in oklch, currentColor 8%, transparent);
+    border-color: currentColor;
+}
+
+[data-app="warehouse"] .wh-auth-shell .setup-step-item--active .setup-step-badge,
+[data-app="warehouse"] .wh-auth-shell .setup-step-item--done .setup-step-badge {
+    background: currentColor;
+    border-color: currentColor;
+    color: #ffffff;
+    box-shadow: none;
+}
+
+[data-app="warehouse"] .wh-auth-shell.auth-dark .setup-step-item--active .setup-step-badge,
+[data-app="warehouse"] .wh-auth-shell.auth-dark .setup-step-item--done .setup-step-badge {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: #000000;
+}
+
+[data-app="warehouse"] .wh-auth-shell .setup-step-badge {
+    border-color: color-mix(in oklch, currentColor 35%, transparent);
+    color: currentColor;
+}
+
+[data-app="warehouse"] .wh-auth-shell .portal-btn--primary {
+    background: #000000;
+    color: #ffffff;
+    border: 1px solid #000000;
+}
+
+[data-app="warehouse"] .wh-auth-shell .portal-btn--primary:hover {
+    background: #ffffff;
+    color: #000000;
+}
+
+[data-app="warehouse"] .wh-auth-shell.auth-dark .portal-btn--primary {
+    background: #ffffff;
+    color: #000000;
+    border-color: #ffffff;
+}
+
+[data-app="warehouse"] .wh-auth-shell.auth-dark .portal-btn--primary:hover {
+    background: #000000;
+    color: #ffffff;
+}
+
+[data-app="warehouse"] .wh-auth-shell .portal-btn--secondary,
+[data-app="warehouse"] .wh-auth-shell .desk-btn-secondary {
+    background: transparent;
+    color: currentColor;
+    border: 1px solid color-mix(in oklch, currentColor 35%, transparent);
+}
+
+[data-app="warehouse"] .wh-auth-shell .md-input-outlined {
+    background: transparent;
+    border-color: color-mix(in oklch, currentColor 35%, transparent);
+    color: inherit;
+}
+
+[data-app="warehouse"] .wh-auth-shell .md-input-outlined:focus {
+    border-color: currentColor;
+    box-shadow: 0 0 0 1px currentColor;
+}
+
+/* Tauri — pin auth/setup to viewport (no top/bottom gaps) */
+[data-tauri]:has(.wh-auth-shell) body,
+[data-tauri]:has(.setup-shell) body {
+    padding: 0;
+    overflow: hidden;
+    background: #000000;
+}
+
+[data-tauri] .wh-auth-shell,
+[data-tauri] .setup-shell {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+}
+
+[data-tauri] .wh-auth-shell .wh-auth-brand,
+[data-tauri] .wh-auth-shell .wh-auth-form,
+[data-tauri] .setup-shell .setup-rail,
+[data-tauri] .setup-shell .setup-main {
+    height: 100%;
+    min-height: 100%;
+    padding-top: env(titlebar-area-height, 28px);
+    box-sizing: border-box;
+}
+
+html[data-app="warehouse"] .wh-auth-shell.auth-light .auth-form-panel.wh-auth-form {
+    background: #ffffff;
+}
+
+html[data-app="warehouse"] .wh-auth-shell.auth-dark .auth-form-panel.wh-auth-form {
+    background: #000000;
 }

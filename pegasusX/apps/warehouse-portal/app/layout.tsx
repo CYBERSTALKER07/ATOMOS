@@ -42,7 +42,8 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){try{var m=localStorage.getItem('pegasus-warehouse-theme-mode');
           var d=m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);
-          var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';}catch(e){}})();
+          var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';
+          if(window.__TAURI_INTERNALS__)r.setAttribute('data-tauri','');}catch(e){}})();
         `}} />
       </head>
       <body

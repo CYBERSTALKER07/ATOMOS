@@ -2636,17 +2636,27 @@ body {
     padding-top: env(titlebar-area-height, 28px);
 }
 
+/* Auth + setup full-bleed shells manage their own titlebar inset (warehouse-desktop.css) */
+[data-tauri]:has(.wh-auth-shell) body,
+[data-tauri]:has(.setup-shell) body {
+    padding-top: 0;
+}
+
 /* Bare routes fill the titlebar inset with their own panel backgrounds */
 [data-tauri] body:has(.wh-auth-shell),
 [data-tauri] body:has(.setup-shell) {
-    padding-top: 0;
-    background: var(--wh-ink, var(--desk-canvas));
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    background: #000000;
 }
 
-[data-tauri] .wh-auth-shell,
-[data-tauri] .setup-shell {
+[data-tauri] .app-root:has(.wh-auth-shell),
+[data-tauri] .app-root:has(.setup-shell) {
+    height: 100dvh;
     min-height: 100dvh;
-    max-height: none;
+    max-height: 100dvh;
+    overflow: hidden;
 }
 
 [data-tauri] .wh-auth-brand,

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
@@ -53,7 +53,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => resolveMode(getStoredMode()));
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const stored = getStoredMode();
+    const effective = resolveMode(stored);
+    setModeState(stored);
+    setResolved(effective);
+    applyTheme(effective);
     setMounted(true);
     document.documentElement.setAttribute('data-hydrated', '');
 
@@ -82,7 +87,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [mode, mounted]);
 
   const setMode = useCallback((m: ThemeMode) => {
+    const effective = resolveMode(m);
     setModeState(m);
+    setResolved(effective);
+    applyTheme(effective);
     localStorage.setItem(STORAGE_KEY, m);
   }, []);
 
