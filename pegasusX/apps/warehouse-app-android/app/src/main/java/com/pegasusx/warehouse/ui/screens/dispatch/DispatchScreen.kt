@@ -34,7 +34,7 @@ import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.components.DispatchPreviewMapLibre
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
 import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
-import com.pegasusx.warehouse.ui.components.OrderOpsCard
+import com.pegasusx.warehouse.ui.components.OrderDetailOpenMode
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 import com.pegasusx.warehouse.ui.components.WarehouseStateKind
 import com.pegasusx.warehouse.ui.components.WarehouseStatePane
@@ -51,7 +51,12 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.ui.components.OrderOpsCard
 import java.text.NumberFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private const val DISPATCH_TETRIS_BUFFER = 0.95
@@ -93,6 +98,10 @@ fun DispatchScreen(
     var showCapacityDialog by remember { mutableStateOf(false) }
     var capacityDialogAutoMode by remember { mutableStateOf(false) }
     var showSmartConfirm by remember { mutableStateOf(false) }
+    var proposeTarget by remember { mutableStateOf<String?>(null) }
+    var rejectTarget by remember { mutableStateOf<String?>(null) }
+    var opsReasonInput by remember { mutableStateOf("") }
+    var opsActingId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }
     val realtimeClient = remember(context) { WarehouseRealtimeClient(context) }
@@ -497,6 +506,113 @@ fun DispatchScreen(
         }
     }
 
+    proposeTarget?.let { orderId ->
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+        var showReasonDialog by remember(orderId) { mutableStateOf(false) }
+
+        if (showReasonDialog) {
+            AlertDialog(
+                onDismissRequest = { showReasonDialog = false },
+                title = { Text("Reason for new delivery date") },
+                text = {
+                    OutlinedTextField(
+                        value = opsReasonInput,
+                        onValueChange = { opsReasonInput = it },
+                        label = { Text("Reason (required)") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val selectedMillis = datePickerState.selectedDateMillis ?: return@TextButton
+                            val iso = Instant.ofEpochMilli(selectedMillis)
+                                .atOffset(ZoneOffset.ofHours(5))
+                                .withHour(12).withMinute(0).withSecond(0)
+                                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                            opsActingId = orderId
+                            scope.launch {
+                                try {
+                                    val resp = opsRepository.proposeOrderDelivery(orderId, iso, opsReasonInput.trim())
+                                    actionMessage = DispatchActionMessage(
+                                        title = if (resp.isSuccessful) "Date proposed" else "Propose failed",
+                                        message = if (resp.isSuccessful) {
+                                            "Retailer notified — they can accept or reject."
+                                        } else {
+                                            "HTTP ${resp.code()}"
+                                        },
+                                    )
+                                    proposeTarget = null
+                                    opsReasonInput = ""
+                                    load()
+                                } catch (e: Exception) {
+                                    actionMessage = DispatchActionMessage("Propose failed", e.message ?: "Error")
+                                } finally {
+                                    opsActingId = null
+                                }
+                            }
+                        },
+                        enabled = opsReasonInput.isNotBlank(),
+                    ) { Text("Send proposal") }
+                },
+                dismissButton = { TextButton(onClick = { showReasonDialog = false }) { Text("Back") } },
+            )
+        }
+
+        DatePickerDialog(
+            onDismissRequest = { proposeTarget = null },
+            confirmButton = { TextButton(onClick = { showReasonDialog = true }) { Text("Next") } },
+            dismissButton = { TextButton(onClick = { proposeTarget = null }) { Text("Cancel") } },
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    rejectTarget?.let { orderId ->
+        AlertDialog(
+            onDismissRequest = { rejectTarget = null; opsReasonInput = "" },
+            title = { Text("Cancel order") },
+            text = {
+                OutlinedTextField(
+                    value = opsReasonInput,
+                    onValueChange = { opsReasonInput = it },
+                    label = { Text("Reason (required)") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (opsReasonInput.isBlank()) return@TextButton
+                        opsActingId = orderId
+                        scope.launch {
+                            try {
+                                val resp = opsRepository.rejectOrder(orderId, opsReasonInput.trim())
+                                actionMessage = DispatchActionMessage(
+                                    title = if (resp.isSuccessful) "Order cancelled" else "Cancel failed",
+                                    message = if (resp.isSuccessful) {
+                                        "Retailer notified."
+                                    } else {
+                                        "HTTP ${resp.code()}"
+                                    },
+                                )
+                                rejectTarget = null
+                                opsReasonInput = ""
+                                load()
+                            } catch (e: Exception) {
+                                actionMessage = DispatchActionMessage("Cancel failed", e.message ?: "Error")
+                            } finally {
+                                opsActingId = null
+                            }
+                        }
+                    },
+                    enabled = opsReasonInput.isNotBlank(),
+                ) { Text("Cancel order") }
+            },
+            dismissButton = { TextButton(onClick = { rejectTarget = null; opsReasonInput = "" }) { Text("Back") } },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -689,11 +805,13 @@ fun DispatchScreen(
                                         state = "PENDING",
                                         amountLabel = fmt.format(o.totalUzs) + " UZS · ${"%.1f".format(o.volumeVu)} VU",
                                         showOpsMenu = true,
-                                        canDelay = false,
-                                        canReject = false,
+                                        detailOpenMode = OrderDetailOpenMode.Double,
+                                        canDelay = true,
+                                        canReject = true,
+                                        enabled = opsActingId != o.orderId,
                                         onOpenDetail = { onOrderClick(o.orderId) },
-                                        onDelay = null,
-                                        onReject = null,
+                                        onDelay = { proposeTarget = o.orderId; opsReasonInput = "" },
+                                        onReject = { rejectTarget = o.orderId; opsReasonInput = "" },
                                         leadingContent = {
                                             Checkbox(
                                                 checked = selectedOrderIds.contains(o.orderId),

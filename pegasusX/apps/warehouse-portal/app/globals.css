@@ -4,7 +4,7 @@
 @import "@pegasusx/ui-kit/styles/auth-layout.css";
 @import "@pegasusx/ui-kit/styles/portal-ui.css";
 @import "@pegasusx/ui-kit/styles/setup-onboarding.css";
-@import "@pegasusx/ui-kit/styles/monochrome-desktop.css";
+@import "../styles/warehouse-desktop.css";
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* Pre-hydration Splash Screen                                                */

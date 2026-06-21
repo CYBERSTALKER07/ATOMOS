@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, EB_Garamond } from "next/font/google";
+import { Plus_Jakarta_Sans, EB_Garamond, IBM_Plex_Mono } from "next/font/google";
 import Providers from "@/components/Providers";
 import "./globals.css";
 
@@ -15,6 +15,12 @@ const fontGaramond = EB_Garamond({
   weight: ["400", "500"],
 });
 
+const fontPlexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
+
 export const metadata: Metadata = {
   title: "Warehouse Portal - pegasusX",
   description: "Single-tenant logistics control plane.",
@@ -26,7 +32,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${fontJakarta.variable} ${fontGaramond.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      data-app="warehouse"
+      className={`${fontJakarta.variable} ${fontGaramond.variable} ${fontPlexMono.variable}`}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){try{var m=localStorage.getItem('pegasus-warehouse-theme-mode');
@@ -35,7 +46,7 @@ export default function RootLayout({
         `}} />
       </head>
       <body
-        className={`${fontJakarta.variable} ${fontGaramond.variable} font-sans flex h-screen overflow-hidden bg-background text-foreground`}
+        className={`${fontJakarta.variable} ${fontGaramond.variable} ${fontPlexMono.variable} font-sans flex h-screen overflow-hidden bg-background text-foreground`}
       >
         <div id="app-splash" aria-hidden="true">
           <div

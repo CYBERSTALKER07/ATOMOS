@@ -304,7 +304,7 @@ fun OrderDetailScreen(
                                         onClick = { showProposeDatePicker = true },
                                         enabled = !mutating,
                                         modifier = Modifier.weight(1f),
-                                    ) { Text("Delay delivery") }
+                                    ) { Text("Propose new date") }
                                 }
                                 if (canOverflow) {
                                     OutlinedButton(

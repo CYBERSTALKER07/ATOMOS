@@ -15,7 +15,7 @@ import PageTransition from '@/components/PageTransition';
 import EmptyState from '@/components/EmptyState';
 import { ListToolbar } from '@/components/ListToolbar';
 import { PageChrome } from '@/components/PageChrome';
-import { OrderActionDialog, OrderOpsCard } from '@/components/orders';
+import { OrderActionDialog, OrderOpsCard, OrderProposeDateDialog } from '@/components/orders';
 import { useToast } from '@/components/Toast';
 import { motion } from 'framer-motion';
 
@@ -227,22 +227,16 @@ export default function OrdersPage() {
         reasonRequired: true,
       };
     }
-    if (dialog.kind === 'propose') {
+    if (dialog.kind === 'preorder-reject') {
       return {
-        title: 'Delay delivery',
-        description: 'Choose a new delivery date. The retailer is notified and can accept or reject the change.',
-        confirmLabel: 'Propose new date',
-        destructive: false,
+        title: 'Reject pre-order',
+        description: 'This cancels the scheduled pre-order.',
+        confirmLabel: 'Reject pre-order',
+        destructive: true,
         reasonRequired: true,
       };
     }
-    return {
-      title: 'Reject pre-order',
-      description: 'This cancels the scheduled pre-order.',
-      confirmLabel: 'Reject pre-order',
-      destructive: true,
-      reasonRequired: true,
-    };
+    return null;
   }, [dialog]);
 
   const activePageItems = tab === 'active' ? (pageItems as OrderRow[]) : [];
@@ -253,7 +247,7 @@ export default function OrdersPage() {
       <PageChrome
         icon="orders"
         title="Orders"
-        description="Active fulfillment queue and scheduled pre-orders. Double-click a card for full detail."
+        description="Active fulfillment queue and scheduled pre-orders. Click a card to open detail."
         actions={
           <div className="flex gap-2 items-center flex-wrap">
             {tab === 'active' ? (
@@ -290,17 +284,21 @@ export default function OrdersPage() {
           </div>
         }
       >
-        <div className="flex gap-2 mb-4">
+        <div className="wh-tab-bar mb-5" role="tablist" aria-label="Order views">
           <button
             type="button"
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'active' ? 'portal-btn portal-btn--primary' : 'button--secondary'}`}
+            role="tab"
+            aria-selected={tab === 'active'}
+            className={`wh-tab${tab === 'active' ? ' wh-tab--active' : ''}`}
             onClick={() => setTab('active')}
           >
             Active orders
           </button>
           <button
             type="button"
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'preorders' ? 'portal-btn portal-btn--primary' : 'button--secondary'}`}
+            role="tab"
+            aria-selected={tab === 'preorders'}
+            className={`wh-tab${tab === 'preorders' ? ' wh-tab--active' : ''}`}
             onClick={() => setTab('preorders')}
           >
             Pre-orders
@@ -335,7 +333,7 @@ export default function OrdersPage() {
               onNext={next}
               onExport={exportCsv}
             />
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="wh-ops-grid mt-4">
               {tab === 'active'
                 ? activePageItems.map((order, index) => (
                     <OrderOpsCard
@@ -347,8 +345,9 @@ export default function OrdersPage() {
                       meta={order.created_at ? new Date(order.created_at).toLocaleString() : undefined}
                       index={index}
                       disabled={actingId === order.order_id}
+                      detailOpenMode="single"
                       onOpenDetail={() => openDetail(order.order_id)}
-                      onDelay={() => {
+                      onProposeDate={() => {
                         setDialog({ orderId: order.order_id, kind: 'propose' });
                         setReason('');
                         setProposedDate(new Date().toISOString().slice(0, 10));
@@ -372,8 +371,9 @@ export default function OrdersPage() {
                       badge={showsReviewBadge(row) ? 'Review delivery' : row.preorder_badge}
                       index={index}
                       disabled={actingId === row.order_id}
+                      detailOpenMode="single"
                       onOpenDetail={() => openDetail(row.order_id)}
-                      onDelay={() => {
+                      onProposeDate={() => {
                         setDialog({ orderId: row.order_id, kind: 'propose' });
                         setReason('');
                         setProposedDate((row.requested_delivery_date ?? '').slice(0, 10) || new Date().toISOString().slice(0, 10));
@@ -382,9 +382,9 @@ export default function OrdersPage() {
                         setDialog({ orderId: row.order_id, kind: 'preorder-reject' });
                         setReason('');
                       }}
-                      delayLabel="Propose delivery"
+                      proposeDateLabel="Propose date"
                       rejectLabel="Reject pre-order"
-                      canDelayOverride
+                      canProposeDateOverride
                       canRejectOverride
                     />
                   ))}
@@ -408,60 +408,16 @@ export default function OrdersPage() {
             onConfirm={() => void submitDialog()}
             onClose={closeDialog}
           />
-          {dialog.kind === 'propose' ? (
-            <dialog
-              open
-              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 backdrop:bg-black/40 max-w-md w-[calc(100%-2rem)] fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50"
-            >
-              <div className="space-y-4">
-                <div>
-                  <h2 className="text-lg font-semibold">Delay delivery</h2>
-                  <p className="text-sm text-[var(--muted)] mt-1">
-                    Choose a new delivery date. The retailer is notified and can accept or reject.
-                  </p>
-                </div>
-                <label className="block text-sm">
-                  <span className="text-[var(--muted)]">Proposed date</span>
-                  <input
-                    type="date"
-                    value={proposedDate}
-                    onChange={(e) => setProposedDate(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 rounded-lg border text-sm"
-                    style={{
-                      background: 'var(--field-background)',
-                      borderColor: 'var(--field-border)',
-                      color: 'var(--field-foreground)',
-                    }}
-                  />
-                </label>
-                <textarea
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Reason (required)"
-                  rows={3}
-                  className="w-full px-3 py-2 rounded-lg border text-sm"
-                  style={{
-                    background: 'var(--field-background)',
-                    borderColor: 'var(--field-border)',
-                    color: 'var(--field-foreground)',
-                  }}
-                />
-                <div className="flex justify-end gap-2">
-                  <button type="button" className="button--secondary px-4 py-2 rounded-lg text-sm" onClick={closeDialog}>
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="portal-btn portal-btn--primary px-4 py-2 rounded-lg text-sm disabled:opacity-50"
-                    disabled={actingId === dialog.orderId || !proposedDate || !reason.trim()}
-                    onClick={() => void submitDialog()}
-                  >
-                    {actingId === dialog.orderId ? 'Working…' : 'Propose new date'}
-                  </button>
-                </div>
-              </div>
-            </dialog>
-          ) : null}
+          <OrderProposeDateDialog
+            open={dialog.kind === 'propose'}
+            proposedDate={proposedDate}
+            onProposedDateChange={setProposedDate}
+            reason={reason}
+            onReasonChange={setReason}
+            submitting={actingId === dialog.orderId}
+            onConfirm={() => void submitDialog()}
+            onClose={closeDialog}
+          />
         </>
       ) : null}
     </PageTransition>

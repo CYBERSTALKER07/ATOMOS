@@ -12,36 +12,51 @@
 
 ---
 
-## Global Rules
+## Visual identity
 
-### Color Palette
+**Subject:** Single-tenant warehouse node control plane — shift-long scanning of orders, dispatch, stock, and fleet.
 
-| Role | Token | Usage |
-|------|-------|-------|
-| Canvas | `--desk-canvas` | App background |
-| Surface | `--desk-surface` | Cards, panels |
-| Accent | `--desk-accent` | Primary actions, active nav |
-| Text primary | `--desk-text-primary` | Headings, body |
-| Danger | `--desk-danger` | Errors, alerts |
+**Signature:** Concrete canvas grid on the main work area + 3px left **bay stripe** on operational panels (color encodes domain: ops, inventory, fleet, finance).
 
-**Style:** Flat SaaS, desk accent orange, 150–200ms transitions, 44px touch targets, visible focus rings.
+**Aesthetic risk (justified):** Floor-grid background reads as warehouse concrete without decorative glass or generic SaaS gradients.
+
+### Color palette
+
+| Role | Token | Light | Usage |
+|------|-------|-------|-------|
+| Canvas | `--wh-canvas` | `#E8EDF2` | Main work area (grid overlay) |
+| Surface | `--wh-surface` | `#FFFFFF` | Cards, sidebar, topbar |
+| Ink | `--wh-ink` | `#1A2332` | Headings, primary text |
+| Accent | `--wh-accent` | `#EA6C00` | Primary actions, active nav, live emphasis |
+| Danger | `--wh-danger` | `#DC2626` | Reject, alerts |
+
+Zone bay stripes: `--wh-zone-ops` (accent), `--wh-zone-inventory` (slate blue), `--wh-zone-fleet` (steel), `--wh-zone-finance` (green-grey).
 
 ### Typography
 
-- **Heading / Body:** Plus Jakarta Sans (`--font-sans`)
-- **Accent:** EB Garamond (`--font-garamond`) — marketing/auth only
-- **Mood:** professional, operational, dense-but-readable
+| Role | Face | Usage |
+|------|------|-------|
+| UI / headings | Plus Jakarta Sans (`--font-sans`) | Nav, titles, body |
+| Ops data | IBM Plex Mono (`--font-plex-mono`) | Order IDs, amounts, page counts |
+| Marketing / auth only | EB Garamond (`--font-garamond`) | Auth brand panel |
+
+### Layout
+
+- `WarehouseShell` — sidebar + sticky topbar + scrollable main canvas
+- `desk-page` — max-width 1600px, padding 28px (32px at ≥1440px)
+- `wh-kpi-grid` — dashboard metrics
+- `wh-ops-grid` — order / ops card grids
+- `wh-tab-bar` — segmented tabs (Active | Pre-orders)
 
 ### Primitives
 
 Import from `@pegasusx/ui-kit/portal` via `@/components/portal` wrappers:
 
 - `PageChrome` — page title, icon slot, loading/error/empty
-- `PortalField` / `PortalInput` / `PortalSelect` — forms
-- `PortalSection` — grouped settings blocks
-- `DataList` / `DataListRow` — thin list rows
-- `HubCard` — cross-link hubs (treasury → payment-config)
-- `portal-btn` / `portal-btn--primary` — actions (prefer over HeroUI Button)
+- `PageSection` — bay-striped section with `bay` prop
+- `KpiStatCard` / `KpiStatGrid` — dashboard metrics with mono values
+- `ListToolbar` — pagination + export
+- `portal-btn` / `portal-btn--primary` — actions
 
 ### CSS stack
 
@@ -50,14 +65,17 @@ Import from `@pegasusx/ui-kit/portal` via `@/components/portal` wrappers:
 @import "@pegasusx/ui-kit/styles/auth-layout.css";
 @import "@pegasusx/ui-kit/styles/portal-ui.css";
 @import "@pegasusx/ui-kit/styles/setup-onboarding.css";
+@import "../styles/warehouse-desktop.css";
 ```
+
+Root: `<html data-app="warehouse">` scopes all warehouse tokens.
 
 ### Shell
 
 - `WarehouseShell` wraps authenticated routes; bare routes: `/auth/*`, `/setup/*`
 - Root `#app-splash` dismissed via `data-hydrated` on `<html>`
 - Sidebar active route: `desk-sidebar-link--active` + `data-active="true"`
-- Theme toggle: `portal-btn portal-btn--ghost` (no HeroUI Button in shell)
+- Theme toggle: `portal-btn portal-btn--ghost`
 
 ### HeroUI
 
@@ -71,14 +89,14 @@ Import from `@pegasusx/ui-kit/portal` via `@/components/portal` wrappers:
 
 | Viewport | Light | Dark | Notes |
 |----------|-------|------|-------|
-| 375px | ✓ | ✓ | Mobile nav drawer, auth split stacks |
+| 375px | ✓ | ✓ | Mobile nav drawer |
 | 768px | ✓ | ✓ | Setup mobile progress bar |
 | 1024px | ✓ | ✓ | Setup rail visible |
-| 1440px | ✓ | ✓ | Full sidebar + bento dashboard |
+| 1440px | ✓ | ✓ | Full sidebar + 4-col KPI grid |
 
 **Tauri:** verify `[data-tauri]` titlebar padding in `globals.css`.
 
-**Checks:** Toast on settings save, middleware covers `/settings`, `/preorders`, `/stock-commitments`, no hydration splash loop, setup bare route without shell chrome.
+**Checks:** Toast on settings save, visible focus rings, reduced-motion respected, bay stripes on sections/cards.
 
 ---
 
@@ -86,7 +104,7 @@ Import from `@pegasusx/ui-kit/portal` via `@/components/portal` wrappers:
 
 ### Buttons
 
-Use `.portal-btn`, `.portal-btn--primary`, `.portal-btn--outline`, `.portal-btn--ghost` from `portal-ui.css`.
+Use `.portal-btn`, `.portal-btn--primary`, `.portal-btn--outline`, `.portal-btn--ghost`.
 
 ### Tables
 
@@ -94,4 +112,4 @@ Wrap in `.desk-table-wrap`; table uses `.desk-table`.
 
 ### Maps
 
-`FleetLiveMapPanel` / `DispatchPreviewMap` inside `PortalSection`.
+`FleetLiveMapPanel` inside `PageSection` with `bay="fleet"`.

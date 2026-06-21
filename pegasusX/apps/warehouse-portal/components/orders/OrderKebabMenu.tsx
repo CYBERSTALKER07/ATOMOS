@@ -5,23 +5,23 @@ import Icon from '@/components/Icon';
 
 type OrderKebabMenuProps = {
   onViewDetails: () => void;
-  onDelay?: () => void;
+  onProposeDate?: () => void;
   onReject?: () => void;
-  canDelay?: boolean;
+  canProposeDate?: boolean;
   canReject?: boolean;
-  delayLabel?: string;
+  proposeDateLabel?: string;
   rejectLabel?: string;
   disabled?: boolean;
 };
 
 export function OrderKebabMenu({
   onViewDetails,
-  onDelay,
+  onProposeDate,
   onReject,
-  canDelay = false,
+  canProposeDate = false,
   canReject = false,
-  delayLabel = 'Delay delivery',
-  rejectLabel = 'Reject order',
+  proposeDateLabel = 'Propose new date',
+  rejectLabel = 'Cancel order',
   disabled = false,
 }: OrderKebabMenuProps) {
   const [open, setOpen] = useState(false);
@@ -42,7 +42,7 @@ export function OrderKebabMenu({
         type="button"
         aria-label="Order actions"
         disabled={disabled}
-        className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-[var(--default)] transition-colors disabled:opacity-40"
+        className="desk-icon-btn"
         onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
@@ -53,13 +53,14 @@ export function OrderKebabMenu({
       </button>
       {open ? (
         <div
-          className="absolute right-0 top-full z-20 mt-1 min-w-44 rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1 shadow-lg"
+          className="md-menu"
+          style={{ right: 0, top: '100%', marginTop: 4, minWidth: 200 }}
           role="menu"
         >
           <button
             type="button"
             role="menuitem"
-            className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--default)]"
+            className="md-menu-item"
             onClick={(e) => {
               e.stopPropagation();
               setOpen(false);
@@ -68,22 +69,22 @@ export function OrderKebabMenu({
           >
             View details
           </button>
-          {onDelay ? (
+          {onProposeDate ? (
             <button
               type="button"
               role="menuitem"
-              disabled={!canDelay}
-              title={!canDelay ? 'Delay is only available for pending or loaded orders' : undefined}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--default)] disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ color: canDelay ? 'var(--warning)' : undefined }}
+              disabled={!canProposeDate}
+              title={!canProposeDate ? 'Propose date is not available for this order state' : undefined}
+              className="md-menu-item disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ color: canProposeDate ? 'var(--warning)' : undefined }}
               onClick={(e) => {
                 e.stopPropagation();
-                if (!canDelay) return;
+                if (!canProposeDate) return;
                 setOpen(false);
-                onDelay();
+                onProposeDate();
               }}
             >
-              {delayLabel}
+              {proposeDateLabel}
             </button>
           ) : null}
           {onReject ? (
@@ -91,8 +92,8 @@ export function OrderKebabMenu({
               type="button"
               role="menuitem"
               disabled={!canReject}
-              title={!canReject ? 'Reject is not available for this state' : undefined}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--default)] disabled:opacity-40 disabled:cursor-not-allowed"
+              title={!canReject ? 'Cancel is not available for this order state' : undefined}
+              className="md-menu-item disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ color: canReject ? 'var(--danger)' : undefined }}
               onClick={(e) => {
                 e.stopPropagation();

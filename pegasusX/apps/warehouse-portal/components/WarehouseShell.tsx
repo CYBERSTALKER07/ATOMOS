@@ -162,9 +162,9 @@ const DrawerContent = memo(function DrawerContent({
                 P
               </div>
               <div className="min-w-0 flex-1">
-                <p className="desk-sidebar-section-label" style={{ padding: 0, margin: 0 }}>pegasusX</p>
+                <p className="desk-sidebar-section-label" style={{ padding: 0, margin: 0 }}>Node ops</p>
                 <h1 style={{ font: 'var(--type-title)', color: 'var(--desk-text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
-                  Warehouse Hub
+                  Warehouse
                 </h1>
               </div>
               {!isMobile && (
@@ -259,7 +259,7 @@ const DrawerContent = memo(function DrawerContent({
           >
             <div className="flex items-center gap-2">
               <span className="desk-live-dot" />
-              <span style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-secondary)' }}>Single-tenant · System ready</span>
+              <span style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-secondary)' }}>Single-tenant · Live sync</span>
             </div>
           </motion.div>
         )}

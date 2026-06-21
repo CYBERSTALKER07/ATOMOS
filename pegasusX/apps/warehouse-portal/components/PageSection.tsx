@@ -8,22 +8,30 @@ type PageSectionProps = {
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  bay?: "ops" | "inventory" | "fleet" | "finance";
 };
 
-export function PageSection({ title, description, actions, children, className = "" }: PageSectionProps) {
+const BAY_CLASS: Record<NonNullable<PageSectionProps["bay"]>, string> = {
+  ops: "wh-bay--ops",
+  inventory: "wh-bay--inventory",
+  fleet: "wh-bay--fleet",
+  finance: "wh-bay--finance",
+};
+
+export function PageSection({
+  title,
+  description,
+  actions,
+  children,
+  className = "",
+  bay = "ops",
+}: PageSectionProps) {
   return (
-    <section className={`desk-card overflow-hidden ${className}`.trim()}>
-      <div
-        className="bento-card-header flex flex-wrap items-start justify-between gap-3 px-5 py-4"
-        style={{ borderBottom: "1px solid var(--desk-border)", background: "var(--desk-surface-raised)" }}
-      >
+    <section className={`wh-bay-panel mt-6 ${BAY_CLASS[bay]} ${className}`.trim()}>
+      <div className="wh-section-head">
         <div className="min-w-0">
-          <h2 className="bento-card-title">{title}</h2>
-          {description ? (
-            <p className="md-typescale-body-small mt-1" style={{ color: "var(--desk-text-secondary)" }}>
-              {description}
-            </p>
-          ) : null}
+          <h2 className="wh-section-title">{title}</h2>
+          {description ? <p className="wh-section-desc">{description}</p> : null}
         </div>
         {actions ? <div className="desk-toolbar shrink-0">{actions}</div> : null}
       </div>

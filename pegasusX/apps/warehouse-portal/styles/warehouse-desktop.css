@@ -1,0 +1,539 @@
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* pegasusX Warehouse Portal — desktop ops identity                           */
+/* Subject: node control plane for shift-long scanning.                         */
+/* Signature: concrete canvas grid + left bay stripe on operational panels.     */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-app="warehouse"] {
+    /* Palette — cool floor grey, slate ink, safety-tape orange */
+    --wh-canvas: #e8edf2;
+    --wh-surface: #ffffff;
+    --wh-surface-raised: #f6f8fa;
+    --wh-ink: #1a2332;
+    --wh-ink-muted: #4f5d70;
+    --wh-ink-faint: #7a8799;
+    --wh-accent: #ea6c00;
+    --wh-accent-strong: #c25700;
+    --wh-accent-soft: #fff4e8;
+    --wh-accent-on: #ffffff;
+    --wh-accent-rgb: 234, 108, 0;
+    --wh-border: #d5dde6;
+    --wh-border-strong: #b8c4d0;
+    --wh-success: #0f766e;
+    --wh-success-soft: #ecfdf8;
+    --wh-warning: #b45309;
+    --wh-warning-soft: #fffbeb;
+    --wh-danger: #dc2626;
+    --wh-danger-soft: #fef2f2;
+    --wh-info: #2563eb;
+    --wh-info-soft: #eff6ff;
+
+    /* Zone bay stripes — encode section domain, not decoration */
+    --wh-zone-ops: var(--wh-accent);
+    --wh-zone-inventory: #4a6fa5;
+    --wh-zone-fleet: #5c6b7a;
+    --wh-zone-finance: #3d7a5f;
+
+    /* Map to canonical desk tokens */
+    --desk-canvas: var(--wh-canvas);
+    --desk-surface: var(--wh-surface);
+    --desk-surface-subtle: var(--wh-surface-raised);
+    --desk-surface-sunken: #eef2f6;
+    --desk-surface-raised: var(--wh-surface-raised);
+    --desk-border: var(--wh-border);
+    --desk-border-strong: var(--wh-border-strong);
+    --desk-text-primary: var(--wh-ink);
+    --desk-text-secondary: var(--wh-ink-muted);
+    --desk-text-tertiary: var(--wh-ink-faint);
+    --desk-accent: var(--wh-accent);
+    --desk-accent-strong: var(--wh-accent-strong);
+    --desk-accent-soft: var(--wh-accent-soft);
+    --desk-accent-on: var(--wh-accent-on);
+    --desk-accent-rgb: var(--wh-accent-rgb);
+    --desk-success: var(--wh-success);
+    --desk-success-soft: var(--wh-success-soft);
+    --desk-warning: var(--wh-warning);
+    --desk-warning-soft: var(--wh-warning-soft);
+    --desk-danger: var(--wh-danger);
+    --desk-danger-soft: var(--wh-danger-soft);
+    --desk-info: var(--wh-info);
+    --desk-info-soft: var(--wh-info-soft);
+    --desk-focus-ring: var(--wh-accent);
+    --desk-page-padding: 28px;
+    --desk-topbar-height: 60px;
+
+    --background: var(--wh-canvas);
+    --foreground: var(--wh-ink);
+    --surface: var(--wh-surface);
+    --muted: var(--wh-ink-muted);
+    --border: var(--wh-border);
+    --accent: var(--wh-accent);
+    --accent-foreground: var(--wh-accent-on);
+    --primary: var(--wh-accent);
+    --default: var(--wh-surface-raised);
+
+    --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+}
+
+[data-app="warehouse"].dark,
+[data-app="warehouse"] .dark {
+    --wh-canvas: #0c1017;
+    --wh-surface: #141a24;
+    --wh-surface-raised: #1a2230;
+    --wh-ink: #eef2f7;
+    --wh-ink-muted: #9aa8ba;
+    --wh-ink-faint: #6b7a8f;
+    --wh-accent: #f0882a;
+    --wh-accent-strong: #ffb366;
+    --wh-accent-soft: #2a1c0d;
+    --wh-accent-on: #1a1208;
+    --wh-accent-rgb: 240, 136, 42;
+    --wh-border: #2a3444;
+    --wh-border-strong: #3d4d62;
+    --wh-success: #2dd4bf;
+    --wh-success-soft: #0f2926;
+    --wh-warning: #fbbf24;
+    --wh-warning-soft: #2a2208;
+    --wh-danger: #f87171;
+    --wh-danger-soft: #2a1212;
+    --wh-info: #60a5fa;
+    --wh-info-soft: #0f1a2e;
+}
+
+/* ── Concrete canvas grid (signature) ───────────────────────────────────── */
+[data-app="warehouse"] main {
+    background-color: var(--wh-canvas);
+    background-image:
+        linear-gradient(var(--wh-border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--wh-border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    background-position: -1px -1px;
+}
+
+[data-app="warehouse"].dark main,
+[data-app="warehouse"] .dark main {
+    background-image:
+        linear-gradient(color-mix(in oklch, var(--wh-border) 55%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in oklch, var(--wh-border) 55%, transparent) 1px, transparent 1px);
+}
+
+/* ── Page chrome typography ─────────────────────────────────────────────── */
+[data-app="warehouse"] .desk-page {
+    max-width: 1600px;
+    margin-inline: auto;
+}
+
+[data-app="warehouse"] .desk-page-header {
+    margin-bottom: var(--space-6);
+}
+
+[data-app="warehouse"] .desk-page-title {
+    font: 600 26px/1.2 var(--font-sans);
+    letter-spacing: -0.03em;
+    color: var(--wh-ink);
+    margin: 0;
+}
+
+[data-app="warehouse"] .desk-page-subtitle {
+    font: 400 15px/1.5 var(--font-sans);
+    color: var(--wh-ink-muted);
+    margin: 6px 0 0;
+    max-width: 56ch;
+}
+
+[data-app="warehouse"] .desk-page-header-icon {
+    border-radius: 12px;
+    background: var(--wh-accent-soft);
+    color: var(--wh-accent-strong);
+    border-color: color-mix(in oklch, var(--wh-accent) 22%, transparent);
+}
+
+/* ── Bay stripe panels ──────────────────────────────────────────────────── */
+[data-app="warehouse"] .wh-bay-panel {
+    position: relative;
+    border: 1px solid var(--wh-border);
+    border-radius: var(--radius-lg);
+    background: var(--wh-surface);
+    overflow: hidden;
+}
+
+[data-app="warehouse"] .wh-bay-panel::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--wh-bay-color, var(--wh-zone-ops));
+}
+
+[data-app="warehouse"] .wh-bay--ops {
+    --wh-bay-color: var(--wh-zone-ops);
+}
+[data-app="warehouse"] .wh-bay--inventory {
+    --wh-bay-color: var(--wh-zone-inventory);
+}
+[data-app="warehouse"] .wh-bay--fleet {
+    --wh-bay-color: var(--wh-zone-fleet);
+}
+[data-app="warehouse"] .wh-bay--finance {
+    --wh-bay-color: var(--wh-zone-finance);
+}
+
+[data-app="warehouse"] .desk-card,
+[data-app="warehouse"] .wh-bay-panel {
+    box-shadow: 0 1px 0 color-mix(in oklch, var(--wh-ink) 4%, transparent);
+}
+
+/* ── KPI cards ──────────────────────────────────────────────────────────── */
+[data-app="warehouse"] .wh-kpi-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    min-height: 132px;
+    text-decoration: none;
+    color: inherit;
+    transition:
+        border-color 180ms ease,
+        background-color 180ms ease;
+}
+
+[data-app="warehouse"] .wh-kpi-card:hover {
+    border-color: color-mix(in oklch, var(--wh-accent) 40%, var(--wh-border));
+    background: color-mix(in oklch, var(--wh-accent-soft) 40%, var(--wh-surface));
+}
+
+[data-app="warehouse"] .wh-kpi-card:focus-visible {
+    outline: 2px solid var(--wh-accent);
+    outline-offset: 2px;
+}
+
+[data-app="warehouse"] .wh-kpi-label {
+    font: 600 11px/1 var(--font-sans);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--wh-ink-faint);
+}
+
+[data-app="warehouse"] .wh-kpi-value {
+    font: 600 28px/1.1 var(--font-mono);
+    letter-spacing: -0.02em;
+    color: var(--wh-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+[data-app="warehouse"] .wh-kpi-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wh-surface-raised);
+    color: var(--wh-ink-muted);
+    border: 1px solid var(--wh-border);
+}
+
+[data-app="warehouse"] .wh-kpi-card:hover .wh-kpi-icon {
+    color: var(--wh-accent);
+    border-color: color-mix(in oklch, var(--wh-accent) 30%, var(--wh-border));
+}
+
+[data-app="warehouse"] .wh-kpi-flag {
+    font: 600 10px/1 var(--font-sans);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--wh-border);
+}
+
+[data-app="warehouse"] .wh-kpi-flag--alert {
+    color: var(--wh-danger);
+    border-color: color-mix(in oklch, var(--wh-danger) 35%, var(--wh-border));
+    background: var(--wh-danger-soft);
+}
+
+[data-app="warehouse"] .wh-kpi-flag--ok {
+    color: var(--wh-success);
+    border-color: color-mix(in oklch, var(--wh-success) 35%, var(--wh-border));
+    background: var(--wh-success-soft);
+}
+
+/* ── Ops order cards ────────────────────────────────────────────────────── */
+[data-app="warehouse"] .wh-ops-card {
+    padding: var(--space-4);
+    cursor: pointer;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+[data-app="warehouse"] .wh-ops-card:hover {
+    border-color: color-mix(in oklch, var(--wh-accent) 35%, var(--wh-border));
+    box-shadow: 0 4px 16px color-mix(in oklch, var(--wh-ink) 6%, transparent);
+}
+
+[data-app="warehouse"] .wh-ops-card-id {
+    font: 500 12px/1.4 var(--font-mono);
+    color: var(--wh-ink-faint);
+}
+
+[data-app="warehouse"] .wh-ops-card-amount {
+    font: 600 14px/1 var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Section headers inside bays ────────────────────────────────────────── */
+[data-app="warehouse"] .wh-section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--wh-border);
+    background: var(--wh-surface-raised);
+}
+
+[data-app="warehouse"] .wh-section-title {
+    font: 600 13px/1.2 var(--font-sans);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--wh-ink-muted);
+    margin: 0;
+}
+
+[data-app="warehouse"] .wh-section-desc {
+    font: 400 13px/1.45 var(--font-sans);
+    color: var(--wh-ink-faint);
+    margin: 4px 0 0;
+}
+
+/* ── Tab bar ────────────────────────────────────────────────────────────── */
+[data-app="warehouse"] .wh-tab-bar {
+    display: flex;
+    gap: var(--space-1);
+    padding: 4px;
+    border-radius: var(--radius-md);
+    background: var(--wh-surface-raised);
+    border: 1px solid var(--wh-border);
+    width: fit-content;
+}
+
+[data-app="warehouse"] .wh-tab {
+    min-height: 36px;
+    padding: 0 var(--space-4);
+    border: none;
+    border-radius: calc(var(--radius-md) - 2px);
+    background: transparent;
+    font: 600 13px/1 var(--font-sans);
+    color: var(--wh-ink-muted);
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease;
+}
+
+[data-app="warehouse"] .wh-tab:hover {
+    color: var(--wh-ink);
+}
+
+[data-app="warehouse"] .wh-tab[aria-selected="true"],
+[data-app="warehouse"] .wh-tab--active {
+    background: var(--wh-surface);
+    color: var(--wh-ink);
+    box-shadow: 0 1px 2px color-mix(in oklch, var(--wh-ink) 8%, transparent);
+}
+
+/* ── Shell refinements ──────────────────────────────────────────────────── */
+[data-app="warehouse"] [data-shell-sidebar] {
+    background: var(--wh-surface) !important;
+    border-right-color: var(--wh-border) !important;
+}
+
+[data-app="warehouse"] .desk-logo-mark {
+    background: var(--wh-accent) !important;
+    color: var(--wh-accent-on) !important;
+    font: 700 15px/1 var(--font-sans);
+    letter-spacing: -0.04em;
+}
+
+[data-app="warehouse"] .desk-topbar {
+    background: color-mix(in oklch, var(--wh-surface) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom-color: var(--wh-border);
+}
+
+[data-app="warehouse"] .desk-sidebar-link--active,
+[data-app="warehouse"] .desk-sidebar-link[data-active="true"] {
+    background: var(--wh-accent-soft) !important;
+    color: var(--wh-accent-strong) !important;
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--wh-accent) 18%, transparent);
+}
+
+[data-app="warehouse"] .desk-sidebar-link--active .desk-sidebar-item-icon,
+[data-app="warehouse"] .desk-sidebar-link[data-active="true"] .desk-sidebar-item-icon {
+    color: var(--wh-accent) !important;
+}
+
+[data-app="warehouse"] .desk-live-dot {
+    background: var(--wh-success);
+}
+
+[data-app="warehouse"] .desk-breadcrumb a {
+    color: var(--wh-ink-muted);
+    text-decoration: none;
+    font: 500 13px/1 var(--font-sans);
+}
+
+[data-app="warehouse"] .desk-breadcrumb a:hover {
+    color: var(--wh-accent);
+}
+
+[data-app="warehouse"] .desk-breadcrumb-current {
+    font: 600 13px/1 var(--font-sans);
+    color: var(--wh-ink);
+}
+
+/* ── Semantic status chips (restore color for ops scanning) ─────────────── */
+[data-app="warehouse"] [data-slot="base"][data-color="success"] {
+    background: var(--wh-success-soft) !important;
+    color: var(--wh-success) !important;
+    border: 1px solid color-mix(in oklch, var(--wh-success) 30%, var(--wh-border)) !important;
+}
+
+[data-app="warehouse"] [data-slot="base"][data-color="warning"] {
+    background: var(--wh-warning-soft) !important;
+    color: var(--wh-warning) !important;
+    border: 1px solid color-mix(in oklch, var(--wh-warning) 30%, var(--wh-border)) !important;
+}
+
+[data-app="warehouse"] [data-slot="base"][data-color="danger"] {
+    background: var(--wh-danger-soft) !important;
+    color: var(--wh-danger) !important;
+    border: 1px solid color-mix(in oklch, var(--wh-danger) 30%, var(--wh-border)) !important;
+}
+
+[data-app="warehouse"] [data-slot="base"][data-color="accent"] {
+    background: var(--wh-accent-soft) !important;
+    color: var(--wh-accent-strong) !important;
+    border: 1px solid color-mix(in oklch, var(--wh-accent) 28%, var(--wh-border)) !important;
+}
+
+/* ── List toolbar ───────────────────────────────────────────────────────── */
+[data-app="warehouse"] .wh-list-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--wh-border);
+    margin-top: var(--space-4);
+}
+
+[data-app="warehouse"] .wh-list-toolbar-meta {
+    font: 500 13px/1.4 var(--font-sans);
+    color: var(--wh-ink-muted);
+}
+
+[data-app="warehouse"] .wh-list-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+[data-app="warehouse"] .wh-page-indicator {
+    font: 500 13px/1 var(--font-mono);
+    color: var(--wh-ink-muted);
+    padding: 0 var(--space-2);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Empty / error states ───────────────────────────────────────────────── */
+[data-app="warehouse"] .wh-empty-panel {
+    padding: var(--space-10) var(--space-6);
+    text-align: center;
+    border: 1px dashed var(--wh-border-strong);
+    border-radius: var(--radius-lg);
+    background: color-mix(in oklch, var(--wh-surface) 80%, transparent);
+}
+
+/* ── Grids ──────────────────────────────────────────────────────────────── */
+[data-app="warehouse"] .wh-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--space-4);
+}
+
+[data-app="warehouse"] .wh-ops-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-4);
+}
+
+/* Order detail — bento on desktop */
+[data-app="warehouse"] .wh-order-bento {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "summary"
+        "ops"
+        "lines";
+}
+
+[data-app="warehouse"] .wh-order-bento-summary {
+    grid-area: summary;
+}
+
+[data-app="warehouse"] .wh-order-bento-ops {
+    grid-area: ops;
+}
+
+[data-app="warehouse"] .wh-order-bento-lines {
+    grid-area: lines;
+}
+
+@media (min-width: 1024px) {
+    [data-app="warehouse"] .wh-order-bento {
+        grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+        grid-template-areas:
+            "summary ops"
+            "lines lines";
+        align-items: start;
+    }
+
+    [data-app="warehouse"] .wh-order-bento-ops {
+        position: sticky;
+        top: calc(var(--desk-topbar-height) + var(--space-4));
+    }
+}
+
+@media (min-width: 1440px) {
+    [data-app="warehouse"] {
+        --desk-page-padding: 32px;
+    }
+
+    [data-app="warehouse"] .wh-kpi-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    [data-app="warehouse"] {
+        --desk-page-padding: 16px;
+    }
+
+    [data-app="warehouse"] .wh-kpi-grid,
+    [data-app="warehouse"] .wh-ops-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-app="warehouse"] .wh-kpi-card,
+    [data-app="warehouse"] .wh-ops-card,
+    [data-app="warehouse"] .wh-tab {
+        transition: none;
+    }
+}

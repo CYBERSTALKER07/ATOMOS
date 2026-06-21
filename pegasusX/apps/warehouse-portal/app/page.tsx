@@ -5,12 +5,12 @@ import { ApiError } from '@pegasusx/api-client';
 import { warehouseApi } from '@/lib/warehouse-api';
 import Icon from '@/components/Icon';
 import EmptyState from '@/components/EmptyState';
-import Link from 'next/link';
 import { motion } from 'framer-motion';
 import PageTransition from '@/components/PageTransition';
 import FleetLiveMapPanel from '@/components/FleetLiveMapPanel';
 import { PageSection } from '@/components/PageSection';
 import { PageChrome } from '@/components/PageChrome';
+import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
 
 interface DashboardData {
   active_orders: number;
@@ -151,16 +151,23 @@ export default function WarehouseDashboard() {
   const fmt = (n: number) => new Intl.NumberFormat('en-US').format(n);
   const fmtCurrency = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'UZS', maximumFractionDigits: 0 }).format(n);
 
-  const kpis: { label: string; value: string; icon: string; href: string; danger?: boolean; highlight?: boolean }[] = [
-    { label: 'Active Orders', value: fmt(d.active_orders), icon: 'orders', href: '/orders' },
-    { label: 'Completed Today', value: fmt(d.completed_today), icon: 'check', href: '/orders', highlight: d.completed_today > 0 },
-    { label: 'Pending Dispatch', value: fmt(d.pending_dispatch), icon: 'dispatch', href: '/dispatch', danger: d.pending_dispatch > 5 },
-    { label: 'Today Revenue', value: fmtCurrency(d.today_revenue), icon: 'treasury', href: '/treasury' },
-    { label: 'Drivers (On Route)', value: `${d.on_route_drivers} / ${d.total_drivers}`, icon: 'fleet', href: '/drivers' },
-    { label: 'Idle Drivers', value: fmt(d.idle_drivers), icon: 'fleet', href: '/drivers' },
-    { label: 'Vehicles', value: fmt(d.total_vehicles), icon: 'fleet', href: '/vehicles' },
-    { label: 'Low Stock Items', value: fmt(d.low_stock_count), icon: 'warning', href: '/inventory', danger: d.low_stock_count > 0 },
-    { label: 'Total Staff', value: fmt(d.total_staff), icon: 'staff', href: '/staff' },
+  const kpis: {
+    label: string;
+    value: string;
+    icon: string;
+    href: string;
+    bay: 'ops' | 'inventory' | 'fleet' | 'finance';
+    flag?: 'alert' | 'ok';
+  }[] = [
+    { label: 'Active orders', value: fmt(d.active_orders), icon: 'orders', href: '/orders', bay: 'ops' },
+    { label: 'Completed today', value: fmt(d.completed_today), icon: 'check', href: '/orders', bay: 'ops', flag: d.completed_today > 0 ? 'ok' : undefined },
+    { label: 'Pending dispatch', value: fmt(d.pending_dispatch), icon: 'dispatch', href: '/dispatch', bay: 'ops', flag: d.pending_dispatch > 5 ? 'alert' : undefined },
+    { label: 'Today revenue', value: fmtCurrency(d.today_revenue), icon: 'treasury', href: '/treasury', bay: 'finance' },
+    { label: 'Drivers on route', value: `${d.on_route_drivers} / ${d.total_drivers}`, icon: 'fleet', href: '/drivers', bay: 'fleet' },
+    { label: 'Idle drivers', value: fmt(d.idle_drivers), icon: 'fleet', href: '/drivers', bay: 'fleet' },
+    { label: 'Vehicles', value: fmt(d.total_vehicles), icon: 'fleet', href: '/vehicles', bay: 'fleet' },
+    { label: 'Low stock items', value: fmt(d.low_stock_count), icon: 'warning', href: '/inventory', bay: 'inventory', flag: d.low_stock_count > 0 ? 'alert' : undefined },
+    { label: 'Total staff', value: fmt(d.total_staff), icon: 'staff', href: '/staff', bay: 'ops' },
   ];
 
   return (
@@ -183,66 +190,51 @@ export default function WarehouseDashboard() {
           </motion.button>
         }
       >
-      <motion.div
-        initial="hidden"
-        animate="show"
-        variants={{
-          hidden: { opacity: 0 },
-          show: { opacity: 1, transition: { staggerChildren: 0.05 } }
-        }}
-        className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-      >
-        {kpis.map(kpi => (
-          <Link key={kpi.label} href={kpi.href}>
-            <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 10 },
-                show: { opacity: 1, y: 0 }
-              }}
-              whileHover={{ y: -4, scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="rounded-2xl border border-[var(--border)] p-5 flex flex-col gap-3 transition-all hover:border-[var(--primary)] hover:shadow-xl hover:shadow-[var(--primary)]/10 h-full bg-[var(--surface)] relative overflow-hidden group"
-            >
-              <div className="absolute top-0 left-0 w-1 h-full bg-[var(--primary)] opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="flex items-center justify-between">
-                <div className="p-2 rounded-lg bg-[var(--default)] text-[var(--muted)] group-hover:text-[var(--primary)] transition-colors">
-                  <Icon name={kpi.icon} size={20} />
-                </div>
-                {kpi.danger && (
-                  <span className="status-chip status-chip--critical text-[10px] font-bold tracking-tighter">ALERT</span>
-                )}
-                {kpi.highlight && (
-                  <span className="status-chip status-chip--ready text-[10px] font-bold tracking-tighter">DONE</span>
-                )}
-              </div>
-              <div>
-                <div className="text-2xl font-bold tracking-tight font-mono">{kpi.value}</div>
-                <div className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] mt-1">{kpi.label}</div>
-              </div>
-            </motion.div>
-          </Link>
+      <KpiStatGrid columns={4}>
+        {kpis.map((kpi) => (
+          <KpiStatCard
+            key={kpi.label}
+            label={kpi.label}
+            value={kpi.value}
+            icon={kpi.icon}
+            href={kpi.href}
+            bay={kpi.bay}
+            flag={kpi.flag}
+          />
         ))}
-      </motion.div>
+      </KpiStatGrid>
 
       <PageSection
         title="Live fleet map"
         description="Active sealed routes and driver positions for this node."
+        bay="fleet"
         className="overflow-hidden"
       >
         <FleetLiveMapPanel className="h-[360px] w-full -mx-5 -mb-5" />
       </PageSection>
 
       {d.fleet_status.length > 0 && (
-        <PageSection title="Fleet status tracking" description="Manifest and driver state breakdown for this node.">
+        <PageSection
+          title="Fleet status"
+          description="Manifest and driver state breakdown for this node."
+          bay="fleet"
+        >
           <div className="flex flex-wrap gap-3">
             {d.fleet_status.map(({ status, count }) => (
-              <motion.span
+              <span
                 key={status}
-                whileHover={{ scale: 1.05 }}
-                className="px-4 py-2 rounded-xl text-xs font-bold border border-[var(--border)] bg-[var(--default)] transition-colors hover:border-[var(--primary)]"
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg"
+                style={{
+                  border: '1px solid var(--wh-border)',
+                  background: 'var(--wh-surface-raised)',
+                  color: 'var(--wh-ink-muted)',
+                }}
               >
-                {status.replace(/_/g, ' ')}: <span className="text-[var(--primary)] ml-1">{count}</span>
-              </motion.span>
+                {status.replace(/_/g, ' ')}
+                <span className="wh-ops-card-amount" style={{ color: 'var(--wh-accent)' }}>
+                  {count}
+                </span>
+              </span>
             ))}
           </div>
         </PageSection>

@@ -27,7 +27,9 @@ import { PageChrome } from '@/components/PageChrome';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
 import { PageSection } from '@/components/PageSection';
 import EmptyState from '@/components/EmptyState';
-import { OrderKebabMenu } from '@/components/orders';
+import { OrderActionDialog, OrderOpsCard, OrderProposeDateDialog } from '@/components/orders';
+import { useToast } from '@/components/Toast';
+import { warehouseOps } from '@/lib/warehouse-ops';
 
 const TETRIS_BUFFER = 0.95;
 
@@ -68,8 +70,14 @@ function routeVolumeVU(route: WarehouseDispatchProposedRoute) {
   return route.volume_vu ?? route.loaded_volume ?? 0;
 }
 
+function isoDeliveryDate(dateInput: string): string {
+  const dateOnly = dateInput.slice(0, 10);
+  return `${dateOnly}T12:00:00+05:00`;
+}
+
 export default function DispatchPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [orders, setOrders] = useState<WarehouseDispatchOrder[]>([]);
   const [drivers, setDrivers] = useState<WarehouseDispatchDriver[]>([]);
   const [unavailableDrivers, setUnavailableDrivers] = useState<WarehouseUnavailableDispatchDriver[]>([]);
@@ -96,8 +104,51 @@ export default function DispatchPage() {
   const [vehicleNotes, setVehicleNotes] = useState<Record<string, string>>({});
   const [mutatingVehicleId, setMutatingVehicleId] = useState('');
   const [fleetAlert, setFleetAlert] = useState<string | null>(null);
+  const [opsDialog, setOpsDialog] = useState<{ orderId: string; kind: 'propose' | 'reject' } | null>(null);
+  const [opsReason, setOpsReason] = useState('');
+  const [opsProposedDate, setOpsProposedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [opsActingId, setOpsActingId] = useState<string | null>(null);
 
   const selectedOrderList = useMemo(() => [...selectedOrderIds].sort(), [selectedOrderIds]);
+
+  const closeOpsDialog = () => {
+    setOpsDialog(null);
+    setOpsReason('');
+    setOpsProposedDate(new Date().toISOString().slice(0, 10));
+  };
+
+  async function submitOpsDialog() {
+    if (!opsDialog) return;
+    const trimmed = opsReason.trim();
+    setOpsActingId(opsDialog.orderId);
+    try {
+      if (opsDialog.kind === 'reject') {
+        if (!trimmed) {
+          toast('Reason is required', 'error');
+          return;
+        }
+        const resp = await warehouseOps.rejectOrder(opsDialog.orderId, trimmed);
+        toast(`Order cancelled · retailer notified · ${resp.status ?? 'ok'}`, 'success');
+      } else {
+        if (!opsProposedDate || !trimmed) {
+          toast('Proposed date and reason are required', 'error');
+          return;
+        }
+        const resp = await warehouseOps.proposeOrderDelivery(
+          opsDialog.orderId,
+          isoDeliveryDate(opsProposedDate),
+          trimmed,
+        );
+        toast(`New delivery date proposed · retailer notified · ${resp.status ?? 'ok'}`, 'success');
+      }
+      closeOpsDialog();
+      await load();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : 'Action failed', 'error');
+    } finally {
+      setOpsActingId(null);
+    }
+  }
 
   const load = useCallback(async (orderFilter?: string[]) => {
     const scopedWarehouseId = warehouseHomeNodeId();
@@ -656,6 +707,7 @@ export default function DispatchPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md-animate-in mt-6">
           <PageSection
             title={`Undispatched orders (${orders.length})`}
+            description="Select for dispatch. Double-click a card for order detail."
             actions={
               orders.length > 0 ? (
                 <label className="flex items-center gap-2 text-xs text-(--muted) cursor-pointer">
@@ -668,34 +720,37 @@ export default function DispatchPage() {
             {orders.length === 0 ? (
               <EmptyState variant="no-data" headline="All orders dispatched" body="No pending orders need assignment right now." />
             ) : (
-              <div className="space-y-2 max-h-80 overflow-y-auto -mx-5 px-5">
-                {orders.map(order => (
-                  <div
-                    key={order.order_id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-(--border)"
-                    onDoubleClick={() => router.push(`/orders/${order.order_id}?from=dispatch`)}
-                  >
-                    <label className="flex items-center gap-3 flex-1 cursor-pointer min-w-0">
+              <div className="space-y-3 max-h-[28rem] overflow-y-auto -mx-5 px-5">
+                {orders.map((order, index) => (
+                  <div key={order.order_id} className="flex items-start gap-2">
+                    <label className="flex items-center pt-4 shrink-0 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={selectedOrderIds.has(order.order_id)}
                         onChange={() => toggleOrder(order.order_id)}
-                        onClick={(e) => e.stopPropagation()}
                       />
-                      <div className="flex-1 flex items-center justify-between gap-3 min-w-0">
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium truncate">{order.retailer_name || 'Unknown'}</div>
-                          <div className="text-xs text-(--muted) font-mono">{order.order_id.slice(0, 8)}...</div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-sm font-mono">{fmt(order.total_uzs)} UZS</div>
-                          <div className="text-xs text-(--muted)">{formatVU(order.volume_vu ?? 0)} VU</div>
-                        </div>
-                      </div>
                     </label>
-                    <OrderKebabMenu
-                      onViewDetails={() => router.push(`/orders/${order.order_id}?from=dispatch`)}
-                    />
+                    <div className="flex-1 min-w-0">
+                      <OrderOpsCard
+                        orderId={order.order_id}
+                        retailerName={order.retailer_name || 'Unknown'}
+                        state="PENDING"
+                        amountLabel={`${fmt(order.total_uzs)} UZS · ${formatVU(order.volume_vu ?? 0)} VU`}
+                        index={index}
+                        disabled={opsActingId === order.order_id}
+                        detailOpenMode="double"
+                        onOpenDetail={() => router.push(`/orders/${order.order_id}?from=dispatch`)}
+                        onProposeDate={() => {
+                          setOpsDialog({ orderId: order.order_id, kind: 'propose' });
+                          setOpsReason('');
+                          setOpsProposedDate(new Date().toISOString().slice(0, 10));
+                        }}
+                        onReject={() => {
+                          setOpsDialog({ orderId: order.order_id, kind: 'reject' });
+                          setOpsReason('');
+                        }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -886,6 +941,34 @@ export default function DispatchPage() {
           </div>
         )}
       </PageChrome>
+
+      {opsDialog ? (
+        <>
+          <OrderActionDialog
+            open={opsDialog.kind === 'reject'}
+            title="Cancel order"
+            description="Cancels the order and notifies the retailer immediately."
+            confirmLabel="Cancel order"
+            destructive
+            reason={opsReason}
+            onReasonChange={setOpsReason}
+            reasonRequired
+            submitting={opsActingId === opsDialog.orderId}
+            onConfirm={() => void submitOpsDialog()}
+            onClose={closeOpsDialog}
+          />
+          <OrderProposeDateDialog
+            open={opsDialog.kind === 'propose'}
+            proposedDate={opsProposedDate}
+            onProposedDateChange={setOpsProposedDate}
+            reason={opsReason}
+            onReasonChange={setOpsReason}
+            submitting={opsActingId === opsDialog.orderId}
+            onConfirm={() => void submitOpsDialog()}
+            onClose={closeOpsDialog}
+          />
+        </>
+      ) : null}
     </PageTransition>
   );
 }

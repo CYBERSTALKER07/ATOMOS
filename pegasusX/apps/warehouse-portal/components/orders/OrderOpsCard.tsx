@@ -5,6 +5,8 @@ import { OrderKebabMenu } from './OrderKebabMenu';
 import { OrderStateChip } from './OrderStateChip';
 import { orderActionFlags } from '@/lib/order-actions';
 
+export type OrderDetailOpenMode = 'single' | 'double';
+
 export type OrderOpsCardProps = {
   orderId: string;
   retailerName: string;
@@ -14,13 +16,15 @@ export type OrderOpsCardProps = {
   badge?: string;
   index?: number;
   disabled?: boolean;
+  detailOpenMode?: OrderDetailOpenMode;
   onOpenDetail: () => void;
-  onDelay?: () => void;
+  onProposeDate?: () => void;
   onReject?: () => void;
   showOpsMenu?: boolean;
-  delayLabel?: string;
+  showQuickActions?: boolean;
+  proposeDateLabel?: string;
   rejectLabel?: string;
-  canDelayOverride?: boolean;
+  canProposeDateOverride?: boolean;
   canRejectOverride?: boolean;
 };
 
@@ -33,30 +37,42 @@ export function OrderOpsCard({
   badge,
   index = 0,
   disabled = false,
+  detailOpenMode = 'single',
   onOpenDetail,
-  onDelay,
+  onProposeDate,
   onReject,
   showOpsMenu = true,
-  delayLabel,
-  rejectLabel,
-  canDelayOverride,
+  showQuickActions = true,
+  proposeDateLabel = 'Propose date',
+  rejectLabel = 'Cancel order',
+  canProposeDateOverride,
   canRejectOverride,
 }: OrderOpsCardProps) {
   const flags = orderActionFlags(state);
-  const canDelay = canDelayOverride ?? flags.canDelay;
+  const canProposeDate = canProposeDateOverride ?? flags.canDelay;
   const canReject = canRejectOverride ?? flags.canReject;
+  const hasQuickActions = showQuickActions && (onProposeDate || onReject);
+
+  function handleCardClick() {
+    if (detailOpenMode === 'single') onOpenDetail();
+  }
+
+  function handleCardDoubleClick(e: React.MouseEvent) {
+    if (detailOpenMode === 'double') {
+      e.preventDefault();
+      onOpenDetail();
+    }
+  }
 
   return (
     <motion.article
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03 }}
-      className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 hover:border-[var(--primary)]/30 transition-colors cursor-pointer"
-      onDoubleClick={(e) => {
-        e.preventDefault();
-        onOpenDetail();
-      }}
-      onClick={() => onOpenDetail()}
+      className="wh-bay-panel wh-bay--ops wh-ops-card"
+      onClick={handleCardClick}
+      onDoubleClick={handleCardDoubleClick}
+      title={detailOpenMode === 'double' ? 'Double-click to open order detail' : 'Click to open order detail'}
     >
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
@@ -69,27 +85,58 @@ export function OrderOpsCard({
               </span>
             ) : null}
           </div>
-          <p className="text-xs font-mono text-[var(--muted)] mt-1 truncate">{orderId}</p>
+          <p className="wh-ops-card-id mt-1 truncate">{orderId}</p>
           {meta ? <p className="text-xs text-[var(--muted)] mt-1">{meta}</p> : null}
         </div>
         <div className="flex items-start gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
           <div className="text-right mr-1">
-            <p className="text-sm font-mono tabular-nums">{amountLabel}</p>
+            <p className="wh-ops-card-amount">{amountLabel}</p>
           </div>
           {showOpsMenu ? (
             <OrderKebabMenu
               disabled={disabled}
-              canDelay={canDelay}
+              canProposeDate={canProposeDate}
               canReject={canReject}
               onViewDetails={onOpenDetail}
-              onDelay={onDelay}
+              onProposeDate={onProposeDate}
               onReject={onReject}
-              delayLabel={delayLabel}
+              proposeDateLabel={proposeDateLabel}
               rejectLabel={rejectLabel}
             />
           ) : null}
         </div>
       </div>
+
+      {hasQuickActions ? (
+        <div
+          className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[var(--border)]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {onProposeDate ? (
+            <button
+              type="button"
+              className="portal-btn portal-btn--outline text-xs min-h-[36px] px-3"
+              disabled={disabled || !canProposeDate}
+              title={!canProposeDate ? 'Not available for this order state' : undefined}
+              onClick={() => canProposeDate && onProposeDate()}
+            >
+              {proposeDateLabel}
+            </button>
+          ) : null}
+          {onReject ? (
+            <button
+              type="button"
+              className="portal-btn portal-btn--outline text-xs min-h-[36px] px-3"
+              disabled={disabled || !canReject}
+              style={{ color: canReject ? 'var(--danger)' : undefined }}
+              title={!canReject ? 'Not available for this order state' : undefined}
+              onClick={() => canReject && onReject()}
+            >
+              {rejectLabel}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </motion.article>
   );
 }

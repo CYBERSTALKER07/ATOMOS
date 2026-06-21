@@ -30,6 +30,11 @@ struct DispatchView: View {
     @State private var capacityDialogAutoMode = false
     @State private var showSmartConfirm = false
     @State private var capacityWarnings: [DispatchCapacityWarning] = []
+    @State private var proposeTarget: String?
+    @State private var rejectRoute: DispatchOrderDetailRoute?
+    @State private var opsReasonInput = ""
+    @State private var proposeDate = Date()
+    @State private var detailRoute: DispatchOrderDetailRoute?
 
     private var capacitySuggestedUnselect: [String] {
         Array(Set(capacityWarnings.flatMap(\.suggestedUnselectOrderIds)))
@@ -73,8 +78,8 @@ struct DispatchView: View {
         }
         .background(LabTheme.background)
         .navigationTitle("Dispatch")
-        .navigationDestination(for: String.self) { orderId in
-            OrderDetailView(orderId: orderId)
+        .navigationDestination(item: $detailRoute) { route in
+            OrderDetailView(orderId: route.id)
         }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -202,6 +207,60 @@ struct DispatchView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("This freezes auto-dispatch changes until the lock is released.")
+            }
+            .sheet(item: Binding(
+                get: { proposeTarget.map { DispatchOrderDetailRoute(id: $0) } },
+                set: { proposeTarget = $0?.id },
+            )) { target in
+                NavigationStack {
+                    Form {
+                        DatePicker("Proposed delivery date", selection: $proposeDate, displayedComponents: .date)
+                        Section {
+                            TextField("Reason", text: $opsReasonInput, axis: .vertical)
+                                .lineLimit(3...5)
+                        } footer: {
+                            Text("The retailer is notified and can accept or reject the new date.")
+                        }
+                    }
+                    .navigationTitle("Propose new date")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { proposeTarget = nil }
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Send") { Task { await submitDispatchPropose(orderId: target.id) } }
+                                .disabled(opsReasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
+                    }
+                }
+                .presentationDetents([.medium])
+            }
+            .sheet(item: $rejectRoute) { target in
+                NavigationStack {
+                    Form {
+                        Section {
+                            TextField("Reason", text: $opsReasonInput, axis: .vertical)
+                                .lineLimit(3...5)
+                        } footer: {
+                            Text("Cancels the order and notifies the retailer.")
+                        }
+                    }
+                    .navigationTitle("Cancel order")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Back") { rejectRoute = nil }
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Cancel order", role: .destructive) {
+                                Task { await submitDispatchReject(orderId: target.id) }
+                            }
+                            .disabled(opsReasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
+                    }
+                }
+                .presentationDetents([.medium])
             }
     }
 
@@ -357,15 +416,34 @@ struct DispatchView: View {
                             }
                             .buttonStyle(.plain)
 
-                            NavigationLink(value: order.orderId) {
-                                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                                    Text(order.retailerName.isEmpty ? String(order.orderId.prefix(8)) : order.retailerName)
-                                        .font(.headline)
-                                    Text("\(order.totalUzs.formatted()) UZS · \(order.volumeVu, specifier: "%.1f") VU")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                Text(order.retailerName.isEmpty ? String(order.orderId.prefix(8)) : order.retailerName)
+                                    .font(.headline)
+                                Text("\(order.totalUzs.formatted()) UZS · \(order.volumeVu, specifier: "%.1f") VU")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                HStack(spacing: LabTheme.spacingSM) {
+                                    Button("Propose date") {
+                                        proposeTarget = order.orderId
+                                        proposeDate = Date()
+                                        opsReasonInput = ""
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                    Button("Cancel", role: .destructive) {
+                                        rejectRoute = DispatchOrderDetailRoute(id: order.orderId)
+                                        opsReasonInput = ""
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
                                 }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .onTapGesture(count: 2) {
+                                detailRoute = DispatchOrderDetailRoute(id: order.orderId)
+                            }
+                            .accessibilityHint("Double-tap to open order detail")
                         }
                     }
                 }
@@ -837,6 +915,63 @@ struct DispatchView: View {
         }
         return error.localizedDescription
     }
+
+    private func submitDispatchPropose(orderId: String) async {
+        let reason = opsReasonInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !reason.isEmpty else { return }
+        do {
+            _ = try await WarehouseOperationsService.proposeOrderDelivery(
+                orderId: orderId,
+                proposedDeliveryDate: dispatchIsoDeliveryDate(from: proposeDate),
+                reason: reason
+            )
+            actionAlert = DispatchActionAlert(title: "Date proposed", message: "Retailer notified — they can accept or reject.")
+            proposeTarget = nil
+            opsReasonInput = ""
+            load(silent: true)
+        } catch {
+            actionAlert = DispatchActionAlert(title: "Propose failed", message: describe(error))
+        }
+    }
+
+    private func submitDispatchReject(orderId: String) async {
+        let reason = opsReasonInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !reason.isEmpty else {
+            actionAlert = DispatchActionAlert(title: "Reason required", message: "Enter a cancellation reason before confirming.")
+            return
+        }
+        do {
+            _ = try await WarehouseOperationsService.rejectOrder(orderId: orderId, reason: reason)
+            actionAlert = DispatchActionAlert(title: "Order cancelled", message: "Retailer notified.")
+            rejectRoute = nil
+            opsReasonInput = ""
+            load(silent: true)
+        } catch {
+            actionAlert = DispatchActionAlert(title: "Cancel failed", message: describe(error))
+        }
+    }
+}
+
+private struct DispatchOrderDetailRoute: Identifiable, Hashable {
+    let id: String
+}
+
+private func dispatchIsoDeliveryDate(from date: Date) -> String {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(secondsFromGMT: 5 * 3600) ?? .current
+    let components = calendar.dateComponents([.year, .month, .day], from: date)
+    var merged = DateComponents()
+    merged.year = components.year
+    merged.month = components.month
+    merged.day = components.day
+    merged.hour = 12
+    merged.minute = 0
+    merged.second = 0
+    merged.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
+    let normalized = calendar.date(from: merged) ?? date
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return formatter.string(from: normalized)
 }
 
 private struct DispatchActionAlert: Identifiable {

@@ -22,28 +22,33 @@ export function ListToolbar({
   exportDisabled = false,
 }: ListToolbarProps) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-[var(--muted)]">{totalLabel}</p>
-      <div className="flex items-center gap-2">
+    <div className="wh-list-toolbar">
+      <p className="wh-list-toolbar-meta">{totalLabel}</p>
+      <div className="wh-list-toolbar-actions">
         {onExport ? (
           <button
             type="button"
-            className="px-3 py-1.5 rounded-lg text-sm button--secondary"
+            className="portal-btn portal-btn--outline"
             disabled={exportDisabled}
             onClick={onExport}
           >
             {exportLabel}
           </button>
         ) : null}
-        <button type="button" className="px-3 py-1.5 rounded-lg text-sm button--secondary" disabled={page <= 0} onClick={onPrev}>
+        <button
+          type="button"
+          className="portal-btn portal-btn--outline"
+          disabled={page <= 0}
+          onClick={onPrev}
+        >
           Previous
         </button>
-        <span className="text-sm px-2">
-          Page {page + 1} / {pageCount}
+        <span className="wh-page-indicator">
+          {page + 1} / {pageCount}
         </span>
         <button
           type="button"
-          className="px-3 py-1.5 rounded-lg text-sm button--secondary"
+          className="portal-btn portal-btn--outline"
           disabled={page >= pageCount - 1}
           onClick={onNext}
         >

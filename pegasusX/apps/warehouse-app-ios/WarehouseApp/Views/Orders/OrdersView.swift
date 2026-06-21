@@ -131,7 +131,7 @@ struct OrdersView: View {
                         DatePicker("New delivery date", selection: $proposeDate, displayedComponents: .date)
                         TextField("Reason (required)", text: $reasonInput, axis: .vertical)
                     }
-                    .navigationTitle("Delay delivery")
+                    .navigationTitle("Propose new delivery date")
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
                             Button("Cancel") {
@@ -266,7 +266,7 @@ private struct OrderOpsCardView: View {
     var badge: String?
     var canDelay: Bool
     var canReject: Bool
-    var delayLabel: String = "Delay delivery"
+    var delayLabel: String = "Propose date"
     var onDelay: (() -> Void)?
     var onReject: (() -> Void)?
 
