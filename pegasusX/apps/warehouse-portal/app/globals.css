@@ -2,6 +2,7 @@
 @import "@heroui/styles";
 @import "@pegasusx/ui-kit/styles/desktop-foundation.css";
 @import "@pegasusx/ui-kit/styles/auth-layout.css";
+@import "@pegasusx/ui-kit/styles/auth-desktop.css";
 @import "@pegasusx/ui-kit/styles/portal-ui.css";
 @import "@pegasusx/ui-kit/styles/setup-onboarding.css";
 @import "../styles/warehouse-desktop.css";
@@ -2636,36 +2637,7 @@ body {
     padding-top: env(titlebar-area-height, 28px);
 }
 
-/* Auth + setup full-bleed shells manage their own titlebar inset (warehouse-desktop.css) */
-[data-tauri]:has(.wh-auth-shell) body,
-[data-tauri]:has(.setup-shell) body {
-    padding-top: 0;
-}
-
-/* Bare routes fill the titlebar inset with their own panel backgrounds */
-[data-tauri] body:has(.wh-auth-shell),
-[data-tauri] body:has(.setup-shell) {
-    padding: 0;
-    margin: 0;
-    overflow: hidden;
-    background: #000000;
-}
-
-[data-tauri] .app-root:has(.wh-auth-shell),
-[data-tauri] .app-root:has(.setup-shell) {
-    height: 100dvh;
-    min-height: 100dvh;
-    max-height: 100dvh;
-    overflow: hidden;
-}
-
-[data-tauri] .wh-auth-brand,
-[data-tauri] .wh-auth-form,
-[data-tauri] .setup-rail,
-[data-tauri] .setup-main {
-    padding-top: env(titlebar-area-height, 28px);
-    box-sizing: border-box;
-}
+/* Auth + setup full-bleed: see @pegasusx/ui-kit/styles/auth-desktop.css */
 
 /* Sidebar: keep default background in desktop mode (vibrancy disabled) */
 /* When vibrancy is re-enabled with transparent:true, uncomment below:

@@ -34,13 +34,14 @@ export default function RootLayout({
             __html: `
           (function(){try{var m=localStorage.getItem('pegasus-retailer-theme-mode');
           var d=m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);
-          var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';}catch(e){}})();
+          var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';
+          if(window.__TAURI_INTERNALS__)r.setAttribute('data-tauri','');}catch(e){}})();
         `,
           }}
         />
       </head>
       <body
-        className={`${fontJakarta.variable} ${fontGaramond.variable} font-sans antialiased flex h-screen min-h-screen overflow-hidden text-[var(--desk-text-primary)]`}
+        className={`${fontJakarta.variable} ${fontGaramond.variable} font-sans min-h-screen antialiased text-[var(--desk-text-primary)]`}
         style={{ background: "var(--desk-canvas)" }}
       >
         <LocaleBootstrap />

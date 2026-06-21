@@ -42,7 +42,7 @@ function ThemeToggle({
 
 function BrandMark({ size = 96 }: { size?: number }) {
   return (
-    <div className="wh-auth-mark" style={{ width: size, height: size }} aria-hidden>
+    <div className="px-auth-mark" style={{ width: size, height: size }} aria-hidden>
       <svg width={size * 0.45} height={size * 0.45} viewBox="0 0 24 24" fill="currentColor">
         <path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z" />
       </svg>
@@ -74,38 +74,38 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   }, [isDark, setMode]);
 
   return (
-    <div className={`auth-shell wh-auth-shell ${isDark ? 'auth-dark' : 'auth-light'}`}>
+    <div className={`auth-shell px-auth-shell ${isDark ? 'auth-dark' : 'auth-light'}`}>
       {!splashDone && (
         <div className={`auth-splash ${mounted ? 'auth-splash-exit' : ''}`}>
           <BrandMark size={96} />
         </div>
       )}
 
-      <aside className="auth-brand-panel wh-auth-brand" aria-label="pegasusX Warehouse">
-        <div className={`auth-brand-content wh-auth-brand-content ${mounted ? 'auth-brand-enter' : ''}`}>
+      <aside className="auth-brand-panel px-auth-brand" aria-label="pegasusX Warehouse">
+        <div className={`auth-brand-content px-auth-brand-content ${mounted ? 'auth-brand-enter' : ''}`}>
           <BrandMark size={88} />
-          <div className="wh-auth-brand-copy">
-            <p className="wh-auth-brand-eyebrow">pegasusX</p>
-            <h1 className="wh-auth-brand-title">Warehouse node</h1>
-            <p className="wh-auth-brand-sub">
+          <div className="px-auth-brand-copy">
+            <p className="px-auth-brand-eyebrow">pegasusX</p>
+            <h1 className="px-auth-brand-title">Warehouse node</h1>
+            <p className="px-auth-brand-sub">
               Dispatch, inventory, and fleet control for your depot — one account, one node.
             </p>
           </div>
         </div>
-        <p className="auth-brand-footer wh-auth-brand-footer">pegasusX &copy; 2026</p>
+        <p className="auth-brand-footer px-auth-brand-footer">pegasusX &copy; 2026</p>
       </aside>
 
-      <div className="auth-form-panel wh-auth-form">
-        <div className="wh-auth-form-top">
-          <p className="wh-auth-form-kicker lg:hidden">pegasusX Warehouse</p>
+      <div className="auth-form-panel px-auth-form">
+        <div className="px-auth-form-top">
+          <p className="px-auth-form-kicker lg:hidden">pegasusX Warehouse</p>
           <ThemeToggle
             isDark={isDark}
             onToggle={toggleTheme}
             ariaLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           />
         </div>
-        <div className="wh-auth-form-scroll">
-          <div className={`auth-form-inner wh-auth-form-inner ${mounted ? 'auth-form-enter' : ''}`}>
+        <div className="px-auth-form-scroll">
+          <div className={`auth-form-inner px-auth-form-inner ${mounted ? 'auth-form-enter' : ''}`}>
             {children}
           </div>
         </div>

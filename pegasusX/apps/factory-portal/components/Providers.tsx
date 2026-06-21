@@ -11,15 +11,17 @@ import { ThemeProvider } from "./ThemeProvider";
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
-      <AuthGuard>
-        <FactoryShell>
-          <ToastProvider>
-            <Suspense fallback={<PageSkeleton />}>
-              {children}
-            </Suspense>
-          </ToastProvider>
-        </FactoryShell>
-      </AuthGuard>
+      <div className="app-root min-h-screen w-full">
+        <AuthGuard>
+          <FactoryShell>
+            <ToastProvider>
+              <Suspense fallback={<PageSkeleton />}>
+                {children}
+              </Suspense>
+            </ToastProvider>
+          </FactoryShell>
+        </AuthGuard>
+      </div>
     </ThemeProvider>
   );
 }

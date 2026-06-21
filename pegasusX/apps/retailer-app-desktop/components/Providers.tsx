@@ -7,7 +7,9 @@ import { ThemeProvider } from "./ThemeProvider";
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
-      <PageTransition>{children}</PageTransition>
+      <div className="app-root min-h-screen w-full">
+        <PageTransition>{children}</PageTransition>
+      </div>
     </ThemeProvider>
   );
 }

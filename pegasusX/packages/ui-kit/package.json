@@ -14,6 +14,10 @@
       "style": "./styles/auth-layout.css",
       "default": "./styles/auth-layout.css"
     },
+    "./styles/auth-desktop.css": {
+      "style": "./styles/auth-desktop.css",
+      "default": "./styles/auth-desktop.css"
+    },
     "./styles/portal-ui.css": {
       "style": "./styles/portal-ui.css",
       "default": "./styles/portal-ui.css"

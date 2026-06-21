@@ -32,11 +32,12 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){try{var m=localStorage.getItem('pegasus-factory-theme-mode');
           var d=m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);
-          var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';}catch(e){}})();
+          var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';
+          if(window.__TAURI_INTERNALS__)r.setAttribute('data-tauri','');}catch(e){}})();
         `}} />
       </head>
       <body
-        className={`${fontJakarta.variable} ${fontGaramond.variable} font-sans flex h-screen overflow-hidden bg-background text-foreground`}
+        className={`${fontJakarta.variable} ${fontGaramond.variable} font-sans min-h-screen bg-background text-foreground`}
       >
         <LocaleBootstrap />
         <div id="app-splash" aria-hidden="true">

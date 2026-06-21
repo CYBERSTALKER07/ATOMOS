@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
@@ -28,6 +28,16 @@ function getSystemPreference(): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
+function getStoredMode(): ThemeMode {
+  if (typeof window === 'undefined') return 'system';
+  const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
+  return stored && CYCLE_ORDER.includes(stored) ? stored : 'system';
+}
+
+function resolveMode(mode: ThemeMode): 'light' | 'dark' {
+  return mode === 'system' ? getSystemPreference() : mode;
+}
+
 function applyTheme(resolved: 'light' | 'dark') {
   const root = document.documentElement;
   root.classList.toggle('dark', resolved === 'dark');
@@ -39,28 +49,34 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [resolved, setResolved] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-    if (stored && CYCLE_ORDER.includes(stored)) {
-      setModeState(stored);
-    }
+  useLayoutEffect(() => {
+    const stored = getStoredMode();
+    const effective = resolveMode(stored);
+    setModeState(stored);
+    setResolved(effective);
+    applyTheme(effective);
     setMounted(true);
+    document.documentElement.setAttribute('data-hydrated', '');
+
+    if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__) {
+      document.documentElement.setAttribute('data-tauri', '');
+    }
   }, []);
 
   useEffect(() => {
     if (!mounted) return;
 
-    const resolve = () => {
-      const nextResolved = mode === 'system' ? getSystemPreference() : mode;
-      setResolved(nextResolved);
-      applyTheme(nextResolved);
-    };
-
-    resolve();
+    const effective = resolveMode(mode);
+    setResolved(effective);
+    applyTheme(effective);
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleThemeChange = () => {
-      if (mode === 'system') resolve();
+      if (mode === 'system') {
+        const next = resolveMode('system');
+        setResolved(next);
+        applyTheme(next);
+      }
     };
 
     mediaQuery.addEventListener('change', handleThemeChange);
@@ -68,7 +84,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [mode, mounted]);
 
   const setMode = useCallback((nextMode: ThemeMode) => {
+    const effective = resolveMode(nextMode);
     setModeState(nextMode);
+    setResolved(effective);
+    applyTheme(effective);
     localStorage.setItem(STORAGE_KEY, nextMode);
   }, []);
 

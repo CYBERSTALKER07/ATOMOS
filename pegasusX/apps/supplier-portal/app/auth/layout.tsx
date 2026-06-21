@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTheme } from '@/components/ThemeProvider';
 
-// ─── Theme toggle icon (sun/moon) ──────────────────────────────────────────
 function ThemeToggle({
   isDark,
   onToggle,
@@ -15,6 +14,7 @@ function ThemeToggle({
 }) {
   return (
     <button
+      type="button"
       onClick={onToggle}
       className="auth-theme-toggle"
       aria-label={ariaLabel}
@@ -40,18 +40,9 @@ function ThemeToggle({
   );
 }
 
-function BrandLogo({ size = 96 }: { size?: number }) {
+function BrandMark({ size = 96 }: { size?: number }) {
   return (
-    <div
-      className="flex items-center justify-center rounded-2xl"
-      style={{
-        width: size,
-        height: size,
-        background: 'var(--desk-ink, #000000)',
-        color: 'var(--desk-on-ink, #ffffff)',
-      }}
-      aria-hidden
-    >
+    <div className="px-auth-mark" style={{ width: size, height: size }} aria-hidden>
       <svg width={size * 0.45} height={size * 0.45} viewBox="0 0 24 24" fill="currentColor">
         <path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z" />
       </svg>
@@ -83,45 +74,39 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   }, [isDark, setMode]);
 
   return (
-    <div className={`auth-shell ${isDark ? 'auth-dark' : 'auth-light'}`}>
-      {/* ── Splash Screen ── */}
+    <div className={`auth-shell px-auth-shell ${isDark ? 'auth-dark' : 'auth-light'}`}>
       {!splashDone && (
         <div className={`auth-splash ${mounted ? 'auth-splash-exit' : ''}`}>
-          <BrandLogo size={96} />
+          <BrandMark size={96} />
         </div>
       )}
 
-      {/* ── Left: Branding Panel ── */}
-      <div className="auth-brand-panel">
-        <div className={`auth-brand-content relative z-10 ${mounted ? 'auth-brand-enter' : ''}`}>
-          <div className="auth-brand-logo">
-            <BrandLogo size={160} />
+      <aside className="auth-brand-panel px-auth-brand" aria-label="pegasusX Supplier">
+        <div className={`auth-brand-content px-auth-brand-content ${mounted ? 'auth-brand-enter' : ''}`}>
+          <BrandMark size={88} />
+          <div className="px-auth-brand-copy">
+            <p className="px-auth-brand-eyebrow">pegasusX</p>
+            <h1 className="px-auth-brand-title">Supplier node</h1>
+            <p className="px-auth-brand-sub">
+              Inbound logistics and fulfillment for your supplier depot — one account, one node.
+            </p>
           </div>
         </div>
+        <p className="auth-brand-footer px-auth-brand-footer">pegasusX &copy; 2026</p>
+      </aside>
 
-        <p className="auth-brand-footer relative z-10">
-          pegasusX &copy; 2026
-        </p>
-      </div>
-
-      {/* ── Right: Form Panel ── */}
-      <div className="auth-form-panel">
-        <div className="flex items-center justify-end pt-4 pr-6 px-6 shrink-0 relative z-10">
+      <div className="auth-form-panel px-auth-form">
+        <div className="px-auth-form-top">
+          <p className="px-auth-form-kicker lg:hidden">pegasusX Supplier</p>
           <ThemeToggle
             isDark={isDark}
             onToggle={toggleTheme}
-            ariaLabel={
-              isDark
-                ? 'Switch to light mode'
-                : 'Switch to dark mode'
-            }
+            ariaLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           />
         </div>
-        <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="flex flex-col items-center py-8 px-6 relative z-10">
-            <div className={`auth-form-inner w-full ${mounted ? 'auth-form-enter' : ''}`}>
-              {children}
-            </div>
+        <div className="px-auth-form-scroll">
+          <div className={`auth-form-inner px-auth-form-inner ${mounted ? 'auth-form-enter' : ''}`}>
+            {children}
           </div>
         </div>
       </div>

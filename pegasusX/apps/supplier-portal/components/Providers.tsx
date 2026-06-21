@@ -7,7 +7,9 @@ import { ThemeProvider } from "./ThemeProvider";
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
-      <SupplierShell>{children}</SupplierShell>
+      <div className="app-root min-h-screen w-full">
+        <SupplierShell>{children}</SupplierShell>
+      </div>
     </ThemeProvider>
   );
 }
