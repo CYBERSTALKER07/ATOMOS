@@ -48,10 +48,6 @@ fun OrderDetailScreen(
                         val scheduled = ops.getOrders(status = "SCHEDULED", limit = 100)
                         listOrder = scheduled.body()?.orders?.find { it.orderId == orderId }
                     }
-                    if (listOrder == null) {
-                        val review = ops.getOrders(status = "AWAITING_REVIEW", limit = 100)
-                        listOrder = review.body()?.orders?.find { it.orderId == orderId }
-                    }
                 }
                 val warehouseId = listOrder?.warehouseId
                 if (!warehouseId.isNullOrBlank()) {

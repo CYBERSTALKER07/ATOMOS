@@ -12,7 +12,6 @@ final class OrdersViewModel {
 
     let filters: [(id: String, label: String)] = [
         ("ACTIVE", "Active"),
-        ("AWAITING_REVIEW", "Review"),
         ("SCHEDULED", "Scheduled"),
         ("COMPLETED", "Completed"),
         ("CANCELLED", "Cancelled"),
@@ -24,9 +23,7 @@ final class OrdersViewModel {
         defer { loading = false }
         do {
             let response: SupplierOrdersResponse
-            if statusFilter == "AWAITING_REVIEW" {
-                response = try await SupplierService.orders(status: statusFilter, limit: 500)
-            } else if statusFilter == "SCHEDULED" {
+            if statusFilter == "SCHEDULED" {
                 response = try await SupplierService.orders(status: "SCHEDULED", limit: 500)
             } else {
                 response = try await SupplierService.orders(filter: statusFilter, limit: 500)
@@ -35,26 +32,6 @@ final class OrdersViewModel {
             if selection == nil { selection = orders.first }
         } catch {
             if !silent { self.error = error.localizedDescription }
-        }
-    }
-
-    func vet(order: SupplierOrder, decision: String, note: String = "") async {
-        vettingOrderId = order.orderId
-        defer { vettingOrderId = nil }
-        do {
-            let body: [String: String] = [
-                "order_id": order.orderId,
-                "retailer_id": order.retailerId,
-                "decision": decision,
-                "note": note,
-            ]
-            try await SupplierOperationsService.vetOrder(
-                body: body,
-                idempotencyKey: "supplier-vet:\(order.orderId):\(decision)"
-            )
-            await load(silent: true)
-        } catch {
-            self.error = error.localizedDescription
         }
     }
 

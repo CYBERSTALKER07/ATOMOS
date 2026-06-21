@@ -40,7 +40,6 @@ fun OrdersHubScreen(
 ) {
     var surface by remember { mutableStateOf(OrdersHubSurface.Queue) }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val showVetActions = state.filter == OrderFilterTab.REVIEW
 
     Scaffold(
         topBar = {
@@ -92,9 +91,7 @@ fun OrdersHubScreen(
             OrdersHubSurface.Queue -> OrdersQueueContent(
                 modifier = Modifier.padding(padding),
                 state = state,
-                showVetActions = showVetActions,
                 onRetry = { viewModel.load() },
-                onVet = { order, decision -> viewModel.vetOrder(order, decision) },
                 onOrderClick = onOrderClick,
                 canWarehouseOps = viewModel::canWarehouseOps,
                 onDelay = { order, proposedDate, reason -> viewModel.proposeWarehouseOrder(order, proposedDate, reason) },
@@ -114,9 +111,7 @@ fun OrdersHubScreen(
 private fun OrdersQueueContent(
     modifier: Modifier = Modifier,
     state: com.pegasusx.supplier.ui.viewmodel.OrdersUiState,
-    showVetActions: Boolean,
     onRetry: () -> Unit,
-    onVet: (SupplierOrder, String) -> Unit,
     onOrderClick: (SupplierOrder) -> Unit,
     canWarehouseOps: (SupplierOrder) -> Boolean,
     onDelay: (SupplierOrder, String, String) -> Unit,
@@ -149,7 +144,6 @@ private fun OrdersQueueContent(
         ) {
             items(state.orders, key = { it.orderId }) { order ->
                 val amount = formatMinorAmount(order.totalMinor, order.currency)
-                val vetting = state.vettingId == order.orderId
                 var menuExpanded by remember(order.orderId) { mutableStateOf(false) }
                 var rejectDialog by remember(order.orderId) { mutableStateOf(false) }
                 var delayDialog by remember(order.orderId) { mutableStateOf(false) }
@@ -262,23 +256,6 @@ private fun OrdersQueueContent(
                                 )
                             }
                         }
-                    }
-                }
-                if (showVetActions && order.status.equals("AWAITING_REVIEW", ignoreCase = true)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                    ) {
-                        OutlinedButton(
-                            onClick = { onVet(order, "REJECTED") },
-                            enabled = !vetting,
-                            modifier = Modifier.weight(1f),
-                        ) { Text("Reject") }
-                        Button(
-                            onClick = { onVet(order, "APPROVED") },
-                            enabled = !vetting,
-                            modifier = Modifier.weight(1f),
-                        ) { Text("Approve") }
                     }
                 }
             }

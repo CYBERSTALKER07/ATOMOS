@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ApiError, supplierVetOrderKey } from '@pegasusx/api-client';
+import { ApiError } from '@pegasusx/api-client';
 import type { SupplierOrder } from '@pegasusx/types';
 import { createSupplierApi } from '@/lib/api';
 import { canAdminOrderOps } from '@/lib/admin-scope';
@@ -18,13 +18,12 @@ import { useToast } from '@/components/Toast';
 import { PageChrome } from '@/components/PageChrome';
 import EmptyState from '@/components/EmptyState';
 
-type OrderFilter = 'ACTIVE' | 'REVIEW' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+type OrderFilter = 'ACTIVE' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
 
 const supplierApi = createSupplierApi();
 const PAGE_SIZE = 25;
 const filterLabels: Record<OrderFilter, string> = {
   ACTIVE: 'Active Orders',
-  REVIEW: 'Awaiting Review',
   SCHEDULED: 'Scheduled pre-orders',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
@@ -87,11 +86,9 @@ export default function OrdersPage() {
     }
     try {
       const query =
-        filter === 'REVIEW'
-          ? { limit: PAGE_SIZE, offset: page * PAGE_SIZE, status: 'AWAITING_REVIEW' }
-          : filter === 'SCHEDULED'
-            ? { limit: PAGE_SIZE, offset: page * PAGE_SIZE, status: 'SCHEDULED' }
-            : { limit: PAGE_SIZE, offset: page * PAGE_SIZE, filter };
+        filter === 'SCHEDULED'
+          ? { limit: PAGE_SIZE, offset: page * PAGE_SIZE, status: 'SCHEDULED' }
+          : { limit: PAGE_SIZE, offset: page * PAGE_SIZE, filter };
       const response = await supplierApi.getSupplierOrders(query);
       setOrders(response.orders);
       setTotal(response.total ?? response.orders.length);
@@ -128,22 +125,6 @@ export default function OrdersPage() {
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
-
-  const vetOrder = async (orderId: string, decision: 'APPROVED' | 'REJECTED') => {
-    setActingId(orderId);
-    try {
-      await supplierApi.vetSupplierOrder(
-        { order_id: orderId, decision },
-        supplierVetOrderKey(orderId, decision),
-      );
-      toast(`Order ${decision.toLowerCase()}`, 'success');
-      await loadOrders();
-    } catch (err) {
-      toast(err instanceof ApiError ? err.message : 'vet_failed', 'error');
-    } finally {
-      setActingId(null);
-    }
-  };
 
   const runWarehouseMutation = async () => {
     if (!dialog?.warehouseId) {
@@ -190,11 +171,9 @@ export default function OrdersPage() {
     setExporting(true);
     try {
       const query =
-        filter === 'REVIEW'
-          ? { limit: 300, offset: 0, status: 'AWAITING_REVIEW' }
-          : filter === 'SCHEDULED'
-            ? { limit: 300, offset: 0, status: 'SCHEDULED' }
-            : { limit: 300, offset: 0, filter };
+        filter === 'SCHEDULED'
+          ? { limit: 300, offset: 0, status: 'SCHEDULED' }
+          : { limit: 300, offset: 0, filter };
       const response = await supplierApi.getSupplierOrders(query);
       downloadCsv(
         `supplier-orders-${filter.toLowerCase()}.csv`,
@@ -226,7 +205,7 @@ export default function OrdersPage() {
       description="Durable supplier-scoped orders with assignment and live driver snapshots."
       actions={
         <div className="flex flex-wrap gap-2">
-          {(['ACTIVE', 'REVIEW', 'SCHEDULED', 'COMPLETED', 'CANCELLED'] as OrderFilter[]).map((nextFilter) => (
+          {(['ACTIVE', 'SCHEDULED', 'COMPLETED', 'CANCELLED'] as OrderFilter[]).map((nextFilter) => (
             <button
               key={nextFilter}
               type="button"
@@ -282,7 +261,7 @@ export default function OrdersPage() {
                     badge={filter === 'SCHEDULED' ? 'Pre-order' : undefined}
                     disabled={actingId === order.order_id}
                     onOpenDetail={() => router.push(`/orders/${order.order_id}` as '/orders')}
-                    showOpsMenu={filter !== 'REVIEW'}
+                    showOpsMenu
                     canDelayOverride={warehouseOpsEnabled && flags.canDelay}
                     canRejectOverride={warehouseOpsEnabled && flags.canReject}
                     onDelay={
@@ -303,26 +282,6 @@ export default function OrdersPage() {
                         : undefined
                     }
                   />
-                  {filter === 'REVIEW' ? (
-                    <div className="flex gap-2 px-1">
-                      <button
-                        type="button"
-                        className="md-btn md-btn-tonal md-typescale-label-medium flex-1 px-3 py-1.5"
-                        disabled={actingId === order.order_id}
-                        onClick={() => void vetOrder(order.order_id, 'APPROVED')}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        className="md-btn md-btn-outlined md-typescale-label-medium flex-1 px-3 py-1.5"
-                        disabled={actingId === order.order_id}
-                        onClick={() => void vetOrder(order.order_id, 'REJECTED')}
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  ) : null}
                 </div>
               );
             })}

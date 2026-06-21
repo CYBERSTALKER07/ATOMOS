@@ -1135,7 +1135,13 @@ func (s *Service) ConfirmAIOrder(ctx context.Context, retailerID string, req Con
 	if current.RetailerID != strings.TrimSpace(retailerID) {
 		return RetailerOrderLifecycleResponse{}, ErrOrderForbidden
 	}
-	if current.Source != OrderSourceAIPreorder || current.ConfirmationStatus != ConfirmationStatusPending {
+	if current.Source != OrderSourceAIPreorder {
+		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
+	}
+	if current.ConfirmationStatus == ConfirmationStatusConfirmed || current.ConfirmationStatus == ConfirmationStatusAutoConfirmed {
+		return lifecycleResponse(current, current.Version, false), nil
+	}
+	if current.ConfirmationStatus != ConfirmationStatusPending {
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
 	if len(req.LineItems) > 0 {
@@ -1294,7 +1300,13 @@ func (s *Service) ConfirmPreorder(ctx context.Context, retailerID string, req Co
 	if current.RetailerID != strings.TrimSpace(retailerID) {
 		return RetailerOrderLifecycleResponse{}, ErrOrderForbidden
 	}
-	if current.Source != OrderSourceManualPreorder || current.Status != StatusScheduled || current.ConfirmationStatus != ConfirmationStatusDraft {
+	if current.Source != OrderSourceManualPreorder || current.Status != StatusScheduled {
+		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
+	}
+	if current.ConfirmationStatus == ConfirmationStatusConfirmed || current.ConfirmationStatus == ConfirmationStatusAutoConfirmed {
+		return lifecycleResponse(current, current.Version, false), nil
+	}
+	if current.ConfirmationStatus != ConfirmationStatusDraft && current.ConfirmationStatus != ConfirmationStatusPending {
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
 	decisionAt := s.now()

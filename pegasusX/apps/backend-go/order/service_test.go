@@ -784,7 +784,7 @@ func TestServiceCompleteOrderFinalizesWithoutCoordinatesFails(t *testing.T) {
 	}
 }
 
-func TestServiceCreateManualPreorderSetsDraftMetadata(t *testing.T) {
+func TestServiceCreateManualPreorderSetsConfirmedMetadata(t *testing.T) {
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	repo := &testRepo{}
 	resolver := &testWarehouseResolver{warehouseID: "wh-1"}
@@ -805,10 +805,10 @@ func TestServiceCreateManualPreorderSetsDraftMetadata(t *testing.T) {
 	if resp.Source != OrderSourceManualPreorder {
 		t.Fatalf("source=%s want %s", resp.Source, OrderSourceManualPreorder)
 	}
-	if resp.ConfirmationStatus != ConfirmationStatusDraft {
-		t.Fatalf("confirmation_status=%s want %s", resp.ConfirmationStatus, ConfirmationStatusDraft)
+	if resp.ConfirmationStatus != ConfirmationStatusConfirmed {
+		t.Fatalf("confirmation_status=%s want %s", resp.ConfirmationStatus, ConfirmationStatusConfirmed)
 	}
-	if repo.created.Source != OrderSourceManualPreorder || repo.created.ConfirmationStatus != ConfirmationStatusDraft {
+	if repo.created.Source != OrderSourceManualPreorder || repo.created.ConfirmationStatus != ConfirmationStatusConfirmed {
 		t.Fatalf("created order metadata = %+v", repo.created)
 	}
 	if repo.created.RequestedDeliveryDate == nil || repo.created.RequestedDeliveryDate.Format(time.RFC3339Nano) != requested {

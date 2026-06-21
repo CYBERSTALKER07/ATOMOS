@@ -13,10 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
 
-enum class OrderFilterTab { ACTIVE, REVIEW, SCHEDULED, COMPLETED, CANCELLED }
+enum class OrderFilterTab { ACTIVE, SCHEDULED, COMPLETED, CANCELLED }
 
 data class OrdersUiState(
     val filter: OrderFilterTab = OrderFilterTab.ACTIVE,
@@ -59,7 +57,6 @@ class OrdersViewModel @Inject constructor(
             try {
                 val filter = _state.value.filter
                 val resp = when (filter) {
-                    OrderFilterTab.REVIEW -> ops.getOrders(status = "AWAITING_REVIEW", limit = 500)
                     OrderFilterTab.SCHEDULED -> ops.getOrders(status = "SCHEDULED", limit = 500)
                     else -> ops.getOrders(filter = filter.name, limit = 500)
                 }
@@ -80,31 +77,6 @@ class OrdersViewModel @Inject constructor(
                 } else {
                     _state.update { it.copy(loading = false) }
                 }
-            }
-        }
-    }
-
-    fun vetOrder(order: SupplierOrder, decision: String) {
-        viewModelScope.launch {
-            _state.update { it.copy(vettingId = order.orderId) }
-            try {
-                val body = buildJsonObject {
-                    put("order_id", JsonPrimitive(order.orderId))
-                    put("retailer_id", JsonPrimitive(order.retailerId))
-                    put("decision", JsonPrimitive(decision))
-                    order.note?.takeIf { it.isNotBlank() }?.let { put("note", JsonPrimitive(it)) }
-                    if (order.totalMinor > 0) put("total_minor", JsonPrimitive(order.totalMinor))
-                    if (order.currency.isNotBlank()) put("currency", JsonPrimitive(order.currency))
-                }
-                val key = SupplierIdempotencyKeys.vetOrder(order.orderId, decision)
-                val resp = ops.vetOrder(body, key)
-                if (resp.isSuccessful) load(silent = true) else {
-                    _state.update { it.copy(error = "Vet failed (${resp.code()})") }
-                }
-            } catch (e: Exception) {
-                _state.update { it.copy(error = e.message) }
-            } finally {
-                _state.update { it.copy(vettingId = null) }
             }
         }
     }

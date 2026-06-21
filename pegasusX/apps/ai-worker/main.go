@@ -547,7 +547,7 @@ func buildRetailerAIPreorderMutation(ctx context.Context, txn *spanner.ReadWrite
 		return nil, false, fmt.Errorf("query existing ai preorder for order %s: %w", data.OrderID, err)
 	}
 
-	requestedDelivery, autoConfirmAt := deriveRetailerAIPreorderSchedule(data, createdAt)
+	requestedDelivery, _ := deriveRetailerAIPreorderSchedule(data, createdAt)
 	lineItemsRaw, err := json.Marshal(data.LineItems)
 	if err != nil {
 		return nil, false, fmt.Errorf("marshal ai preorder line items: %w", err)
@@ -560,7 +560,7 @@ func buildRetailerAIPreorderMutation(ctx context.Context, txn *spanner.ReadWrite
 		"WarehouseId":           data.WarehouseID,
 		"Status":                string(order.StatusPending),
 		"OrderSource":           string(order.OrderSourceAIPreorder),
-		"ConfirmationStatus":    string(order.ConfirmationStatusPending),
+		"ConfirmationStatus":    string(order.ConfirmationStatusConfirmed),
 		"LineItemsJson":         lineItemsRaw,
 		"TotalMinor":            data.TotalMinor,
 		"Currency":              data.Currency,
@@ -568,7 +568,7 @@ func buildRetailerAIPreorderMutation(ctx context.Context, txn *spanner.ReadWrite
 		"Lat":                   data.Lat,
 		"Lng":                   data.Lng,
 		"RequestedDeliveryDate": requestedDelivery,
-		"AutoConfirmAt":         autoConfirmAt,
+		"AutoConfirmAt":         nil,
 		"DerivedFromOrderId":    data.OrderID,
 		"Version":               int64(1),
 		"CreatedAt":             createdAt,
@@ -582,7 +582,7 @@ func buildRetailerAIPreorderMutation(ctx context.Context, txn *spanner.ReadWrite
 		"warehouse_id":            data.WarehouseID,
 		"status":                  string(order.StatusPending),
 		"order_source":            string(order.OrderSourceAIPreorder),
-		"confirmation_status":     string(order.ConfirmationStatusPending),
+		"confirmation_status":     string(order.ConfirmationStatusConfirmed),
 		"total_minor":             data.TotalMinor,
 		"currency":                data.Currency,
 		"h3_cell":                 data.H3Cell,

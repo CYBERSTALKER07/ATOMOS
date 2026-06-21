@@ -18,7 +18,7 @@ var clearedPaymentSessionStatuses = []string{
 
 const dispatchableEligibilitySQL = `
 	          AND o.Status = 'PENDING'
-	          AND o.ConfirmationStatus = 'CONFIRMED'
+	          AND o.ConfirmationStatus IN ('CONFIRMED', 'AUTO_CONFIRMED')
 	          AND (o.DriverId IS NULL OR o.DriverId = '')
 	          AND (
 	            EXISTS (

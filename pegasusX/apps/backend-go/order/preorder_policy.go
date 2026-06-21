@@ -48,7 +48,7 @@ func ClassifyDelivery(now time.Time, mode string, requestedDelivery *time.Time, 
 		if leadDays > int(maxLeadDays) {
 			return "", "", "", nil, nil, fmt.Errorf("scheduled pre-order cannot exceed %d calendar days ahead", maxLeadDays)
 		}
-		return OrderSourceManualPreorder, StatusScheduled, ConfirmationStatusDraft, requestedDelivery, nil, nil
+		return OrderSourceManualPreorder, StatusScheduled, ConfirmationStatusConfirmed, requestedDelivery, nil, nil
 
 	default: // STANDARD
 		var latest *time.Time

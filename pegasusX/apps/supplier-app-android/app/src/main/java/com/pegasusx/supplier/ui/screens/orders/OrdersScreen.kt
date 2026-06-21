@@ -26,7 +26,6 @@ fun OrdersScreen(
     viewModel: OrdersViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val showVetActions = state.filter == OrderFilterTab.REVIEW || state.filter == OrderFilterTab.ACTIVE
 
     Scaffold(
         topBar = {
@@ -74,7 +73,6 @@ fun OrdersScreen(
                 ) {
                     items(state.orders, key = { it.orderId }) { order ->
                         val amount = formatMinorAmount(order.totalMinor, order.currency)
-                        val vetting = state.vettingId == order.orderId
                         SupplierOpsListCard(
                             headline = order.orderId.take(12),
                             supporting = buildString {
@@ -85,23 +83,6 @@ fun OrdersScreen(
                             },
                             status = order.status.ifBlank { order.decision },
                         )
-                        if (showVetActions && order.status.equals("AWAITING_REVIEW", ignoreCase = true)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-                            ) {
-                                OutlinedButton(
-                                    onClick = { viewModel.vetOrder(order, "REJECTED") },
-                                    enabled = !vetting,
-                                    modifier = Modifier.weight(1f),
-                                ) { Text("Reject") }
-                                Button(
-                                    onClick = { viewModel.vetOrder(order, "APPROVED") },
-                                    enabled = !vetting,
-                                    modifier = Modifier.weight(1f),
-                                ) { Text("Approve") }
-                            }
-                        }
                     }
                 }
             }

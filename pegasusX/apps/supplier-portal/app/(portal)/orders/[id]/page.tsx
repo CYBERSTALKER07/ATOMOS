@@ -61,10 +61,6 @@ export default function SupplierOrderDetailPage() {
         const scheduled = await supplierApi.getSupplierOrders({ limit: 50, offset: 0, status: 'SCHEDULED' });
         row = scheduled.orders.find((o) => o.order_id === orderId) ?? row;
       }
-      if (!row) {
-        const review = await supplierApi.getSupplierOrders({ limit: 50, offset: 0, status: 'AWAITING_REVIEW' });
-        row = review.orders.find((o) => o.order_id === orderId) ?? row;
-      }
       setListRow(row);
 
       if (row?.warehouse_id && showAdminOps) {

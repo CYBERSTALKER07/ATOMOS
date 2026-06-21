@@ -155,16 +155,11 @@ struct OrderRow: View {
 struct OrderDetailPanel: View {
     let order: SupplierOrder
     @Bindable var vm: OrdersViewModel
-    @State private var note = ""
     @State private var warehouseDetail: WarehouseOrderDetail?
     @State private var opsReason = ""
     @State private var proposeDate = Date()
     @State private var showProposeSheet = false
     @State private var showRejectDialog = false
-
-    private var canVet: Bool {
-        ["PENDING", "AWAITING_REVIEW"].contains(order.status.uppercased())
-    }
 
     var body: some View {
         List {
@@ -190,24 +185,6 @@ struct OrderDetailPanel: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                    }
-                }
-            }
-
-            if canVet {
-                Section("Vet decision") {
-                    TextField("Note (optional)", text: $note)
-                    HStack {
-                        Button("Approve") {
-                            Task { await vm.vet(order: order, decision: "APPROVED", note: note) }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(vm.vettingOrderId == order.orderId)
-
-                        Button("Reject", role: .destructive) {
-                            Task { await vm.vet(order: order, decision: "REJECTED", note: note) }
-                        }
-                        .disabled(vm.vettingOrderId == order.orderId)
                     }
                 }
             }

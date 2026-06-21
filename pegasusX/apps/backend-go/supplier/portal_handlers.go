@@ -1014,6 +1014,7 @@ func supplierOrderLocationFromTelemetry(location telemetry.DriverLocation) *Supp
 }
 
 // HandleVetOrder applies APPROVED/REJECTED decisions for supplier queue items.
+// HandleVetOrder is deprecated — orders auto-confirm at create; kept for SSMR inventory tests.
 func (s *Service) HandleVetOrder(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
