@@ -40,6 +40,23 @@ jobs:
       - name: Validate ai-worker K8s manifests
         run: make validate-ai-worker-k8s
 
+  backend-spanner:
+    runs-on: ubuntu-latest
+    services:
+      spanner-emulator:
+        image: gcr.io/cloud-spanner-emulator/emulator:latest
+        ports:
+          - 9010:9010
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Spanner emulator integration tests
+        env:
+          SPANNER_EMULATOR_HOST: localhost:9010
+        run: bash scripts/ci_spanner_integration.sh
+
   ai-worker:
     runs-on: ubuntu-latest
     steps:
