@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pegasusx
+
+resources:
+  - ../namespace.yaml
+  - ../serviceaccount.yaml
+  - ../backend-go/configmap.yaml
+  - ../backend-go/deployment.yaml
+  - ../backend-go/service.yaml
+  - ../backend-go/pdb.yaml
+  - ../backend-go/hpa.yaml
+  - ../backend-go/migrate-job.yaml
+  - ../backend-go-worker/deployment.yaml
+  - ../backend-go-worker/service.yaml
+  - ../ingress/backendconfig.yaml
+  - ../ingress/ingress.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: pegasusx
+      pegasusx.io/environment: production

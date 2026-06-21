@@ -8,3 +8,5 @@ Canonical decisions for PegasusX backend and platform. Update when product or in
 | [002](002-atomic-order-dispatch.md) | Atomic whole-order dispatch | Accepted |
 | [003](003-modular-monolith.md) | Modular monolith until selective splits | Accepted |
 | [004](004-event-triple-lock.md) | Event triple-lock (Go, schema, types) | Accepted |
+| [005](005-kafka-domain-dual-write.md) | Kafka domain topic dual-write | Accepted |
+| [006](006-kafka-consumer-cutover.md) | Kafka consumer domain cutover | Accepted |

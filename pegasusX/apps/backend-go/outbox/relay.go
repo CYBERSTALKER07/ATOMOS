@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"math/rand"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 )
 
 // RelayConfig tunes the relay loop. Defaults match the doctrine: 250ms tick,
@@ -147,21 +149,30 @@ func (r *Relay) drainOnce(ctx context.Context) {
 // publishWithRetry applies bounded retry with exponential backoff + jitter.
 // Returns nil on success, last error on exhaustion. Honours ctx cancellation.
 func (r *Relay) publishWithRetry(ctx context.Context, e Event) error {
+	topics := events.RelayPublishTopics(e.TopicName, e.Payload)
 	var lastErr error
 	for attempt := 1; attempt <= r.cfg.MaxPublishTries; attempt++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		err := r.publisher.Publish(ctx, e.TopicName, granularRoutingKey(e), e.Payload)
-		if err == nil {
+		attemptErr := error(nil)
+		for _, topic := range topics {
+			err := r.publisher.Publish(ctx, topic, granularRoutingKey(e), e.Payload)
+			if err != nil {
+				attemptErr = err
+				break
+			}
+		}
+		if attemptErr == nil {
 			return nil
 		}
-		lastErr = err
+		lastErr = attemptErr
 		r.log.Warn("outbox publish attempt failed",
 			"event_id", e.EventID,
+			"topics", topics,
 			"attempt", attempt,
 			"max_attempts", r.cfg.MaxPublishTries,
-			"err", err,
+			"err", attemptErr,
 		)
 		if attempt == r.cfg.MaxPublishTries {
 			break

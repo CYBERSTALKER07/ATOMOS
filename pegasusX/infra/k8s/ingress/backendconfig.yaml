@@ -1,0 +1,24 @@
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: pegasusx-api-backendconfig
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  timeoutSec: 120
+  connectionDraining:
+    drainingTimeoutSec: 30
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: pegasusx-ws-backendconfig
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  timeoutSec: 3600
+  sessionAffinity:
+    affinityType: GENERATED_COOKIE
+    affinityCookieTtlSec: 3600
+  connectionDraining:
+    drainingTimeoutSec: 60

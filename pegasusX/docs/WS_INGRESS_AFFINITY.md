@@ -88,5 +88,7 @@ Split when connection count > ~5k per region:
 ## References
 
 - `apps/backend-go/ws/`
+- `infra/k8s/ingress/backendconfig.yaml` — GKE BackendConfig (REST 120s, WS 3600s + cookie affinity)
+- `infra/k8s/ingress/ingress.yaml` — GCE Ingress for `api.pegasusx.app`
 - `infra/k8s/backend-go/configmap.yaml` — `WS_ALLOWED_ORIGINS`
 - ADR-003 — API vs worker split (WS stays on API pods today)

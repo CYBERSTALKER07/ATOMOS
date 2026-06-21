@@ -13,6 +13,11 @@ data:
   KAFKA_BROKERS: "kafka.pegasusx.svc.cluster.local:9092"
   KAFKA_TOPIC_MAIN: "pegasusx-main"
   KAFKA_TOPIC_FREEZE_LOCKS: "pegasusx-freeze-locks"
+  # Domain topics (dual-write when KAFKA_TOPIC_DUAL_WRITE=true on relay)
+  KAFKA_TOPIC_ORDERS: "pegasusx-orders"
+  KAFKA_TOPIC_DISPATCH: "pegasusx-dispatch"
+  KAFKA_TOPIC_REALTIME: "pegasusx-realtime"
+  KAFKA_TOPIC_WEBHOOKS: "pegasusx-webhooks"
   SPANNER_PROJECT: "pegasusx-prod"
   SPANNER_INSTANCE: "pegasusx-instance"
   SPANNER_DATABASE: "pegasusx-db"

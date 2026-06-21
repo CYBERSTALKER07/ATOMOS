@@ -25,6 +25,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driver"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
@@ -918,14 +919,14 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			orderEventConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
 				GroupID:   "void-order-mutator",
-				Topic:     cfg.KafkaTopicMain,
+				Topic:     events.OrderConsumerTopic(),
 				Handler:   order.NewEventConsumer(orderSvc, log).HandleEvent,
 				DLQWriter: dlqWriter,
 			})
 			warehouseEventConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
 				GroupID:   "void-warehouse-mutator",
-				Topic:     cfg.KafkaTopicMain,
+				Topic:     events.DispatchConsumerTopic(),
 				Handler:   warehouse.NewEventConsumer(warehouseSvc, log).HandleEvent,
 				DLQWriter: dlqWriter,
 			})
@@ -943,7 +944,14 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 					log.Warn("notification dlq writer close failed", "err", err)
 				}
 			})
-			log.Info("notification consumer enabled", "topic", cfg.KafkaTopicMain, "dlq_topic", cfg.KafkaTopicMainDLQ)
+			log.Info("notification consumer enabled",
+				"topic", cfg.KafkaTopicMain,
+				"order_topic", events.OrderConsumerTopic(),
+				"dispatch_topic", events.DispatchConsumerTopic(),
+				"dlq_topic", cfg.KafkaTopicMainDLQ,
+				"consume_domain", events.ConsumeDomainTopics(),
+				"dual_write", events.DualWriteDomainTopics(),
+			)
 		}
 	}
 

@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pegasusx-staging
+
+resources:
+  - ../prod
+
+configMapGenerator:
+  - name: backend-go-config
+    behavior: merge
+    literals:
+      - PEGASUSX_ENV=staging
+      - KAFKA_TOPIC_DUAL_WRITE=true
+      - KAFKA_TOPIC_CONSUME_DOMAIN=true
+
+labels:
+  - pairs:
+      pegasusx.io/environment: staging

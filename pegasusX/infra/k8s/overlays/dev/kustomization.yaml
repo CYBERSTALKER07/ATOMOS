@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pegasusx-dev
+
+resources:
+  - ../prod
+
+patches:
+  - target:
+      kind: Deployment
+      name: backend-go
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target:
+      kind: Deployment
+      name: backend-go-worker
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: backend-go
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 3
+
+configMapGenerator:
+  - name: backend-go-config
+    behavior: merge
+    literals:
+      - PEGASUSX_ENV=development
+      - LOG_LEVEL=debug
+      - KAFKA_TOPIC_DUAL_WRITE=true
+
+labels:
+  - pairs:
+      pegasusx.io/environment: development
