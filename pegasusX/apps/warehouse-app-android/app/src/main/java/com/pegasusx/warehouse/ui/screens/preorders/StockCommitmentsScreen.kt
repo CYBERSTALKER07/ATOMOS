@@ -55,7 +55,8 @@ fun StockCommitmentsScreen(api: WarehouseApi, onBack: (() -> Unit)? = null) {
                     ElevatedCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp)) {
                             Text(row.name ?: row.skuId, style = MaterialTheme.typography.titleSmall)
-                            Text("On hand ${row.onHand} · ASAP ${row.reservedAsap} · Scheduled ${row.reservedScheduled}")
+                            Text("Available ${row.availableQty} · ASAP ${row.reservedAsap} · Scheduled ${row.reservedScheduled}")
+                            Text("On hand ${row.onHand}", style = MaterialTheme.typography.bodySmall)
                             if (row.deficitQty > 0) Text("Short ${row.deficitQty}", color = MaterialTheme.colorScheme.error)
                         }
                     }

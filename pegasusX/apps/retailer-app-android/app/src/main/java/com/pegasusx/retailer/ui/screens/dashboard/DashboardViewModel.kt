@@ -132,65 +132,15 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun requestPreorder(forecast: DemandForecast) {
-        viewModelScope.launch {
-            try {
-                api.aiPreorder(
-                    mapOf(
-                        "product_id" to forecast.productId,
-                        "quantity" to forecast.predictedQuantity,
-                    ),
-                )
-                refresh()
-            } catch (e: Exception) {
-                val issue = resolveLoadIssue(e)
-                _uiState.update {
-                    it.copy(
-                        error = resolveErrorMessage(e, issue),
-                        loadIssue = issue,
-                    )
-                }
-            }
-        }
+        _uiState.update { it.copy(error = "AI pre-orders are not available in this app") }
     }
 
     fun confirmAiOrder(orderId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(orderActionPending = true, error = null) }
-            try {
-                api.confirmAiOrder(
-                    body = mapOf("order_id" to orderId),
-                    idempotencyKey = "retailer-confirm-ai:$orderId",
-                )
-                refresh()
-            } catch (e: Exception) {
-                val issue = resolveLoadIssue(e)
-                _uiState.update {
-                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
-                }
-            } finally {
-                _uiState.update { it.copy(orderActionPending = false) }
-            }
-        }
+        _uiState.update { it.copy(error = "AI orders are not available") }
     }
 
     fun rejectAiOrder(orderId: String, reason: String = "Retailer rejected") {
-        viewModelScope.launch {
-            _uiState.update { it.copy(orderActionPending = true, error = null) }
-            try {
-                api.rejectAiOrder(
-                    body = mapOf("order_id" to orderId, "reason" to reason),
-                    idempotencyKey = "retailer-reject-ai:$orderId",
-                )
-                refresh()
-            } catch (e: Exception) {
-                val issue = resolveLoadIssue(e)
-                _uiState.update {
-                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
-                }
-            } finally {
-                _uiState.update { it.copy(orderActionPending = false) }
-            }
-        }
+        _uiState.update { it.copy(error = "AI orders are not available") }
     }
 
     fun confirmPreorder(orderId: String) {

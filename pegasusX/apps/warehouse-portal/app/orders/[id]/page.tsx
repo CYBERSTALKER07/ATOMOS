@@ -6,6 +6,7 @@ import Link from 'next/link';
 import type { WarehouseOrderDetail } from '@pegasusx/types';
 import { ApiError } from '@pegasusx/api-client';
 import Icon from '@/components/Icon';
+import { OrderTimelinePanel } from '@/components/OrderTimelinePanel';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { OrderStateChip } from '@/components/orders';
@@ -226,6 +227,16 @@ export default function OrderDetailPage() {
                 </div>
               </aside>
             ) : null}
+
+            <section className="wh-bay-panel wh-bay--inventory">
+              <div className="wh-section-head">
+                <div>
+                  <h2 className="wh-section-title">Status history</h2>
+                  <p className="wh-section-desc">Delays, promotions, and lifecycle changes.</p>
+                </div>
+              </div>
+              <OrderTimelinePanel orderId={orderId} />
+            </section>
 
             {(order.line_items?.length ?? 0) > 0 ? (
               <section className="wh-bay-panel wh-bay--inventory wh-order-bento-lines">

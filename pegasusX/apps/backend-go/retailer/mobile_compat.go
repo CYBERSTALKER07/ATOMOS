@@ -84,7 +84,10 @@ func (s *Service) HandleAIPreorder(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusGone, map[string]string{
+		"error":   "ai_preorder_removed",
+		"message": "AI pre-orders are not available in PegasusX retailer apps",
+	})
 }
 
 // HandleCorrectPrediction serves PATCH /v1/ai/predictions/correct.

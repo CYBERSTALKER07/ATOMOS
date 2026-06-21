@@ -238,8 +238,9 @@ struct StockCommitmentsView: View {
                 List(rows) { row in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(row.name ?? row.skuId).font(.headline)
-                        Text("On hand \(row.onHand) · ASAP \(row.reservedAsap) · Scheduled \(row.reservedScheduled)")
+                        Text("Available \(row.availableQty) · ASAP \(row.reservedAsap) · Scheduled \(row.reservedScheduled)")
                             .font(.caption)
+                        Text("On hand \(row.onHand)").font(.caption2)
                         if row.deficitQty > 0 {
                             Text("Short \(row.deficitQty)").font(.caption).foregroundStyle(.red)
                         }

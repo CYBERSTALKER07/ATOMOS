@@ -115,27 +115,11 @@ final class OrdersViewModel {
     }
 
     func confirmAiOrder(_ orderId: String) async {
-        guard !orderActionPending else { return }
-        orderActionPending = true
-        defer { orderActionPending = false }
-        do {
-            try await api.confirmAiOrder(orderId: orderId)
-            await loadData()
-        } catch {
-            loadError = "Failed to confirm AI order"
-        }
+        loadError = "AI orders are not available"
     }
 
     func rejectAiOrder(_ orderId: String) async {
-        guard !orderActionPending else { return }
-        orderActionPending = true
-        defer { orderActionPending = false }
-        do {
-            try await api.rejectAiOrder(orderId: orderId, reason: "Retailer rejected")
-            await loadData()
-        } catch {
-            loadError = "Failed to reject AI order"
-        }
+        loadError = "AI orders are not available"
     }
 
     func confirmPreorder(_ orderId: String) async {

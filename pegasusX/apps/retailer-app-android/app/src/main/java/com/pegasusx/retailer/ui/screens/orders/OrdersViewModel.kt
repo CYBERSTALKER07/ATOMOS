@@ -182,22 +182,8 @@ class OrdersViewModel @Inject constructor(
     }
 
     fun requestPreorder(forecast: DemandForecast) {
-        viewModelScope.launch {
-            try {
-                api.aiPreorder(
-                    mapOf(
-                        "product_id" to forecast.productId,
-                        "quantity" to forecast.predictedQuantity,
-                    ),
-                )
-                refresh()
-            } catch (e: Exception) {
-                val issue = resolveLoadIssue(e)
-                _uiState.update {
-                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
-                }
-            }
-        }
+        // AI pre-orders removed from PegasusX retailer apps.
+        _uiState.update { it.copy(error = "AI pre-orders are not available in this app") }
     }
 
     fun correctPrediction(predictionId: String, amount: Long) {
@@ -237,43 +223,11 @@ class OrdersViewModel @Inject constructor(
     }
 
     fun confirmAiOrder(orderId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(orderActionPending = true, error = null) }
-            try {
-                api.confirmAiOrder(
-                    body = mapOf("order_id" to orderId),
-                    idempotencyKey = RetailerIdempotencyKeys.confirmAI(orderId),
-                )
-                refresh()
-            } catch (e: Exception) {
-                val issue = resolveLoadIssue(e)
-                _uiState.update {
-                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
-                }
-            } finally {
-                _uiState.update { it.copy(orderActionPending = false) }
-            }
-        }
+        _uiState.update { it.copy(error = "AI orders are not available") }
     }
 
     fun rejectAiOrder(orderId: String, reason: String = "Retailer rejected") {
-        viewModelScope.launch {
-            _uiState.update { it.copy(orderActionPending = true, error = null) }
-            try {
-                api.rejectAiOrder(
-                    body = mapOf("order_id" to orderId, "reason" to reason),
-                    idempotencyKey = "retailer-reject-ai:$orderId",
-                )
-                refresh()
-            } catch (e: Exception) {
-                val issue = resolveLoadIssue(e)
-                _uiState.update {
-                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
-                }
-            } finally {
-                _uiState.update { it.copy(orderActionPending = false) }
-            }
-        }
+        _uiState.update { it.copy(error = "AI orders are not available") }
     }
 
     fun confirmPreorder(orderId: String) {

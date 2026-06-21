@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import type { SupplierOrder, WarehouseOrderDetail } from '@pegasusx/types';
 import { ApiError } from '@pegasusx/api-client';
 import Icon from '@/components/Icon';
+import { OrderTimelinePanel } from '@/components/OrderTimelinePanel';
 import { PageChrome } from '@/components/PageChrome';
 import { OrderStateChip } from '@/components/orders';
 import { useToast } from '@/components/Toast';
@@ -171,6 +172,11 @@ export default function SupplierOrderDetailPage() {
               Driver {listRow.driver_id} · Route {listRow.route_id || 'pending'}
             </p>
           ) : null}
+        </div>
+
+        <div className="md-card p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-md-outline)] mb-3">Status history</h2>
+          <OrderTimelinePanel orderId={orderId} />
         </div>
 
         {(detail?.line_items?.length ?? 0) > 0 ? (

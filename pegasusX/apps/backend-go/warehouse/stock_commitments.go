@@ -31,6 +31,7 @@ type StockCommitmentSKU struct {
 	Name              string                 `json:"name"`
 	ImageURL          string                 `json:"image_url,omitempty"`
 	OnHand            int64                  `json:"on_hand"`
+	AvailableQty      int64                  `json:"available_qty"`
 	ReservedASAP      int64                  `json:"reserved_asap"`
 	ReservedScheduled int64                  `json:"reserved_scheduled"`
 	DeficitQty        int64                  `json:"deficit_qty"`
@@ -160,6 +161,10 @@ func (s *Service) buildStockCommitments(ctx context.Context, warehouseID, skuFil
 	for sku, a := range bySKU {
 		qoh := onHand[sku]
 		reserved := a.asap + a.scheduled
+		available := qoh - reserved
+		if available < 0 {
+			available = 0
+		}
 		deficit := int64(0)
 		if reserved > qoh {
 			deficit = reserved - qoh
@@ -167,6 +172,7 @@ func (s *Service) buildStockCommitments(ctx context.Context, warehouseID, skuFil
 		row := StockCommitmentSKU{
 			SKUID:             sku,
 			OnHand:            qoh,
+			AvailableQty:      available,
 			ReservedASAP:      a.asap,
 			ReservedScheduled: a.scheduled,
 			DeficitQty:        deficit,

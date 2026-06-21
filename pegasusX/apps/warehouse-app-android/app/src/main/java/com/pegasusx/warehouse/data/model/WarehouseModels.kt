@@ -262,6 +262,7 @@ data class StockCommitmentRow(
     val name: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("on_hand") val onHand: Long = 0,
+    @SerialName("available_qty") val availableQty: Long = 0,
     @SerialName("reserved_asap") val reservedAsap: Long = 0,
     @SerialName("reserved_scheduled") val reservedScheduled: Long = 0,
     @SerialName("deficit_qty") val deficitQty: Long = 0,

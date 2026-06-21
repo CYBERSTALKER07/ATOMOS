@@ -77,6 +77,15 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 		return out, fmt.Errorf("fleet dispatch context: %w", err)
 	}
 
+	if fp := strings.TrimSpace(req.PlanFingerprint); fp != "" && strings.ToUpper(req.Mode) != "MANUAL" {
+		currentFP := computeDispatchPlanFingerprint(rows, fleetCtx, req.OrderIDs)
+		if currentFP != fp {
+			out.Status = "plan_stale"
+			out.Warnings = append(out.Warnings, "plan_fingerprint_mismatch")
+			return out, nil
+		}
+	}
+
 	var driverInputs []dispatch.FleetDriverInput
 	vehicleByDriver := make(map[string]string)
 	for _, input := range buildFleetDriverInputs(solveDrivers, fleetCtx, whID) {

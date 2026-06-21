@@ -1517,6 +1517,8 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 		return UpdateStatusResponse{}, fmt.Errorf("update order status %s: %w", orderID, err)
 	}
 
+	s.recordStatusTransitionFromOrder(current, prevStatus, strings.TrimSpace(req.Reason), string(claims.Role), actorID, "", nil)
+
 	if nextStatus == StatusCancelled && prevStatus != StatusCancelled {
 		if err := s.releaseOrderReservations(ctx, &current); err != nil {
 			s.log.Warn("release inventory reservation on cancel failed", "order_id", orderID, "err", err)

@@ -1,36 +1,25 @@
+'use client';
+
+import { DISPATCH_REFRESH_EVENTS, ORDER_STATUS_REFRESH_EVENTS, parseWsEventType } from '@pegasusx/ws-refresh-contract';
+
 /** Warehouse hub events that should refresh the live fleet map surface. */
 export const WAREHOUSE_FLEET_LIVE_REFRESH_EVENTS = new Set([
   'MANIFEST_SEALED',
   'MANIFEST_DISPATCHED',
   'MANIFEST_COMPLETED',
-  'DISPATCH_COMMITTED',
   'DRIVER_LOCATION_UPDATED',
-  'ORDER_ASSIGNED',
   'DRIVER_AVAILABILITY_CHANGED',
   'VEHICLE_AVAILABILITY_CHANGED',
+  ...DISPATCH_REFRESH_EVENTS,
 ]);
 
 /** Dispatch board + lock surfaces. */
-export const WAREHOUSE_DISPATCH_REFRESH_EVENTS = new Set([
-  'DISPATCH_COMMITTED',
-  'DISPATCH_LOCK_CHANGE',
-  'MANIFEST_CREATED',
-  'MANIFEST_SEALED',
-  'MANIFEST_DISPATCHED',
-  'ORDER_ASSIGNED',
-  'ORDER_STATUS_CHANGED',
-  'DRIVER_AVAILABILITY_CHANGED',
-  'VEHICLE_AVAILABILITY_CHANGED',
-]);
+export const WAREHOUSE_DISPATCH_REFRESH_EVENTS = DISPATCH_REFRESH_EVENTS;
 
 /** Orders + pre-orders queue surfaces. */
 export const WAREHOUSE_ORDERS_REFRESH_EVENTS = new Set([
   'ORDER_CREATED',
-  'ORDER_STATUS_CHANGED',
-  'ORDER_ASSIGNED',
-  'ORDER_REASSIGNED',
-  'ORDER_AMENDED',
-  'ORDER_FINALIZED',
+  ...ORDER_STATUS_REFRESH_EVENTS,
   'PRE_ORDER_NOTIFIED',
   'PRE_ORDER_NUDGE',
   'PRE_ORDER_CONFIRMATION',
@@ -44,13 +33,5 @@ export const WAREHOUSE_ORDERS_REFRESH_EVENTS = new Set([
 ]);
 
 export function parseWarehouseWsEventType(raw: unknown): string | null {
-  if (typeof raw !== 'string' || raw.trim() === '') {
-    return null;
-  }
-  try {
-    const parsed = JSON.parse(raw) as { type?: string };
-    return typeof parsed.type === 'string' ? parsed.type : null;
-  } catch {
-    return null;
-  }
+  return parseWsEventType(raw);
 }

@@ -462,6 +462,12 @@ export default function DispatchPage() {
       if (result.warehouse_id) {
         setWarehouseId(result.warehouse_id);
       }
+      if (result.status === 'plan_stale') {
+        setExecuteError('Dispatch plan is stale — refresh preview and try again.');
+        setLoading(true);
+        await loadAll();
+        return;
+      }
       if (result.status === 'capacity_exceeded' && (result.capacity_warnings?.length || result.orphan_order_ids?.length)) {
         setCapacityPromptMode('auto');
         setCapacityPrompt(result.capacity_warnings ?? []);

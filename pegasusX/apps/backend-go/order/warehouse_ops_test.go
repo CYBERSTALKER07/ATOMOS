@@ -21,7 +21,7 @@ func TestWarehouseMarkDelayed_InvalidState(t *testing.T) {
 	}
 	svc := NewService(ServiceConfig{Repo: repo, SupplierID: "sup_1"})
 	ops := &auth.WarehouseOps{WarehouseID: "wh_1", SupplierID: "sup_1"}
-	err := svc.WarehouseMarkDelayed(context.Background(), ops, "ord_1", "OPS_HOLD")
+	err := svc.WarehouseMarkDelayed(context.Background(), ops, "ord_1", "OPS_HOLD", nil)
 	if err == nil {
 		t.Fatal("expected invalid transition error")
 	}
@@ -45,7 +45,7 @@ func TestWarehouseMarkDelayed_SupplierAdminResolvesFromOrder(t *testing.T) {
 		Role:       auth.RoleAdmin,
 		SupplierID: "sup_1",
 	})
-	if err := svc.WarehouseMarkDelayed(ctx, nil, "ord_admin", "SSMR_DELAY"); err != nil {
+	if err := svc.WarehouseMarkDelayed(ctx, nil, "ord_admin", "SSMR_DELAY", map[string]any{"proposed_delivery_date": "2026-07-01"}); err != nil {
 		t.Fatalf("supplier admin delay: %v", err)
 	}
 	if repo.captured.Status != StatusDelayed {

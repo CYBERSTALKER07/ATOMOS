@@ -559,6 +559,7 @@ struct StockCommitmentRow: Decodable, Identifiable {
     let name: String?
     let imageUrl: String?
     let onHand: Int64
+    let availableQty: Int64
     let reservedAsap: Int64
     let reservedScheduled: Int64
     let deficitQty: Int64
@@ -568,6 +569,7 @@ struct StockCommitmentRow: Decodable, Identifiable {
         case name
         case imageUrl = "image_url"
         case onHand = "on_hand"
+        case availableQty = "available_qty"
         case reservedAsap = "reserved_asap"
         case reservedScheduled = "reserved_scheduled"
         case deficitQty = "deficit_qty"

@@ -235,6 +235,7 @@ func (s *Service) promotePreorderToPending(ctx context.Context, o Order, now tim
 		return err
 	}
 	s.afterOrderMutation(ctx, o)
+	s.recordStatusTransitionFromOrder(o, prev, "PREORDER_PROMOTED", "SYSTEM", "system:midnight_guard", "PROMOTE", nil)
 	return nil
 }
 

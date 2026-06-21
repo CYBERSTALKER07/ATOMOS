@@ -1996,6 +1996,24 @@ export interface WarehouseOrderDetail {
   line_items?: WarehouseOrderLineItem[];
 }
 
+export interface OrderTimelineEntry {
+  transition_id: string;
+  order_id: OrderId;
+  previous_status?: string;
+  new_status: string;
+  reason?: string;
+  actor_role?: string;
+  actor_id?: string;
+  event_kind?: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface OrderTimelineResponse {
+  order_id: OrderId;
+  items: OrderTimelineEntry[];
+}
+
 export interface WarehousePreordersResponse {
   preorders: RetailerOrderLifecycleResponse[];
   items?: RetailerOrderLifecycleResponse[];

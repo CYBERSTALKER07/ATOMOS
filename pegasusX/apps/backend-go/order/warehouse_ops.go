@@ -18,11 +18,12 @@ import (
 )
 
 type warehouseOrderMutationRequest struct {
-	Reason string `json:"reason"`
+	Reason               string `json:"reason"`
+	ProposedDeliveryDate string `json:"proposed_delivery_date,omitempty"`
 }
 
 // WarehouseMarkDelayed transitions PENDING/LOADED → DELAYED for warehouse ops.
-func (s *Service) WarehouseMarkDelayed(ctx context.Context, ops *auth.WarehouseOps, orderID, reason string) error {
+func (s *Service) WarehouseMarkDelayed(ctx context.Context, ops *auth.WarehouseOps, orderID, reason string, delayMeta map[string]any) error {
 	orderID = strings.TrimSpace(orderID)
 	if orderID == "" {
 		return errors.New("order_id required")
@@ -41,7 +42,7 @@ func (s *Service) WarehouseMarkDelayed(ctx context.Context, ops *auth.WarehouseO
 		default:
 			return "", fmt.Errorf("%w: %s cannot be delayed", ErrInvalidStatusTransition, current.Status)
 		}
-	}, false)
+	}, false, delayMeta)
 }
 
 // WarehouseRejectOrder hard-cancels an order scoped to the warehouse (origin rejection).
@@ -64,7 +65,7 @@ func (s *Service) WarehouseRejectOrder(ctx context.Context, ops *auth.WarehouseO
 		default:
 			return "", fmt.Errorf("%w: %s cannot be rejected", ErrInvalidStatusTransition, current.Status)
 		}
-	}, true)
+	}, true, nil)
 }
 
 // WarehousePayloadOverflow returns a loaded order to the dispatch pool (soft recovery).
@@ -87,7 +88,7 @@ func (s *Service) WarehousePayloadOverflow(ctx context.Context, ops *auth.Wareho
 		default:
 			return "", fmt.Errorf("%w: %s cannot overflow", ErrInvalidStatusTransition, current.Status)
 		}
-	}, true)
+	}, true, nil)
 }
 
 func (s *Service) warehouseTransition(
@@ -97,6 +98,7 @@ func (s *Service) warehouseTransition(
 	reason string,
 	pickNext func(*Order) (Status, error),
 	clearAssignment bool,
+	transitionMeta map[string]any,
 ) error {
 	current, ok, err := s.repo.GetOrder(ctx, orderID)
 	if err != nil {
@@ -161,6 +163,7 @@ func (s *Service) warehouseTransition(
 	}
 
 	s.afterOrderMutation(ctx, current)
+	s.recordStatusTransitionFromOrder(current, prevStatus, reason, string(auth.RoleWarehouse), actorID, "", transitionMeta)
 	if s.cache != nil {
 		s.cache.Invalidate(ctx, retailerOrdersKey(current.RetailerID), supplierOrdersKey(current.SupplierID))
 	}
@@ -391,7 +394,7 @@ func (s *Service) HandleWarehouseMarkDelayed(w http.ResponseWriter, r *http.Requ
 	var body warehouseOrderMutationRequest
 	_ = json.Unmarshal(bodyBytes, &body)
 
-	if err := s.WarehouseMarkDelayed(r.Context(), ops, orderID, body.Reason); err != nil {
+	if err := s.WarehouseMarkDelayed(r.Context(), ops, orderID, body.Reason, parseDelayMetadataFromRequest(body.ProposedDeliveryDate)); err != nil {
 		mapWarehouseOrderMutationError(w, r, orderID, err)
 		return
 	}

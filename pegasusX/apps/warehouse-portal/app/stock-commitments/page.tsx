@@ -11,6 +11,7 @@ interface StockRow {
   name?: string;
   image_url?: string;
   on_hand: number;
+  available_qty: number;
   reserved_asap: number;
   reserved_scheduled: number;
   deficit_qty: number;
@@ -55,8 +56,9 @@ export default function StockCommitmentsPage() {
                 ) : null}
                 <h3 className="font-semibold">{row.name || row.sku_id}</h3>
                 <p className="text-xs text-[var(--desk-text-tertiary)] mt-1">
-                  On hand {row.on_hand} · ASAP {row.reserved_asap} · Scheduled {row.reserved_scheduled}
+                  Available {row.available_qty ?? Math.max(0, row.on_hand - row.reserved_asap - row.reserved_scheduled)} · ASAP {row.reserved_asap} · Scheduled {row.reserved_scheduled}
                 </p>
+                <p className="text-xs text-[var(--desk-text-tertiary)]">On hand {row.on_hand}</p>
                 {row.deficit_qty > 0 ? (
                   <span className="inline-block mt-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
                     Short {row.deficit_qty}

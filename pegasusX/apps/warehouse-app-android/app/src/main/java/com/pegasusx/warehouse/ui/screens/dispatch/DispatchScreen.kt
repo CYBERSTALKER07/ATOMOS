@@ -338,6 +338,13 @@ fun DispatchScreen(
                 if (response.isSuccessful && response.body() != null) {
                     val result = response.body()!!
                     when (result.status) {
+                        "plan_stale" -> {
+                            actionMessage = DispatchActionMessage(
+                                title = "Plan stale",
+                                message = "Refresh preview and try smart dispatch again.",
+                            )
+                            load()
+                        }
                         "capacity_exceeded" -> {
                             capacityWarnings = result.capacityWarnings
                             capacityDialogAutoMode = false
@@ -390,6 +397,13 @@ fun DispatchScreen(
                 if (response.isSuccessful && response.body() != null) {
                     val result = response.body()!!
                     when (result.status) {
+                        "plan_stale" -> {
+                            actionMessage = DispatchActionMessage(
+                                title = "Plan stale",
+                                message = "Refresh preview and try smart dispatch again.",
+                            )
+                            load()
+                        }
                         "capacity_exceeded" -> {
                             capacityWarnings = result.capacityWarnings
                             capacityDialogAutoMode = true

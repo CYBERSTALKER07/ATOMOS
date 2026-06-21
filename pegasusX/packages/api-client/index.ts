@@ -121,6 +121,7 @@ import type {
   WarehouseOpsSettingsPatchRequest,
   CheckoutPreviewResponse,
   WarehouseOrderDetail,
+  OrderTimelineResponse,
   WarehouseOrderMutationRequest,
   WarehouseOrderMutationResponse,
   WarehouseOrdersResponse,
@@ -957,6 +958,10 @@ export class ApiClient {
       appendQuery(`/v1/warehouse/ops/orders/${orderId}`, query as Record<string, unknown>),
       "GET",
     );
+  }
+
+  async getOrderTimeline(orderId: string): Promise<OrderTimelineResponse> {
+    return this.request<OrderTimelineResponse>(`/v1/order/${orderId}/timeline`, "GET");
   }
 
   async getWarehousePreorders(query: { limit?: number; offset?: number; warehouse_id?: string } = {}): Promise<WarehousePreordersResponse> {
