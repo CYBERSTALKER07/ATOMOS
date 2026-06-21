@@ -46,7 +46,7 @@ export default function RootLayout({
         `}} />
       </head>
       <body
-        className={`${fontJakarta.variable} ${fontGaramond.variable} ${fontPlexMono.variable} font-sans flex h-screen overflow-hidden bg-background text-foreground`}
+        className={`${fontJakarta.variable} ${fontGaramond.variable} ${fontPlexMono.variable} font-sans min-h-screen bg-background text-foreground`}
       >
         <div id="app-splash" aria-hidden="true">
           <div

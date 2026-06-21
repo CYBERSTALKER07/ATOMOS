@@ -537,3 +537,194 @@
         transition: none;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Auth — full-bleed split panel (warehouse identity)                          */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-app="warehouse"] .app-root {
+    width: 100%;
+    min-height: 100dvh;
+}
+
+[data-app="warehouse"] .wh-auth-shell {
+    width: 100%;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    background: var(--wh-canvas);
+}
+
+[data-app="warehouse"] .wh-auth-shell.auth-light .wh-auth-brand,
+[data-app="warehouse"] .wh-auth-shell.auth-dark .wh-auth-brand {
+    background: var(--wh-ink);
+    color: #f0f4f8;
+}
+
+[data-app="warehouse"] .wh-auth-shell.auth-light .wh-auth-form,
+[data-app="warehouse"] .wh-auth-shell.auth-dark .wh-auth-form {
+    background: var(--wh-surface);
+    color: var(--wh-ink);
+}
+
+[data-app="warehouse"] .wh-auth-brand {
+    position: relative;
+    display: none;
+    flex: 0 0 44%;
+    width: 44%;
+    max-width: 44%;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: stretch;
+    padding: clamp(2rem, 5vw, 4rem) clamp(2rem, 6vw, 4.5rem);
+    overflow: hidden;
+}
+
+[data-app="warehouse"] .wh-auth-brand::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.07;
+    background-image:
+        linear-gradient(var(--wh-accent) 1px, transparent 1px),
+        linear-gradient(90deg, var(--wh-accent) 1px, transparent 1px);
+    background-size: 28px 28px;
+}
+
+@media (min-width: 1024px) {
+    [data-app="warehouse"] .wh-auth-brand {
+        display: flex;
+    }
+}
+
+[data-app="warehouse"] .wh-auth-brand-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: var(--space-6);
+    max-width: 22rem;
+    margin: 0;
+    text-align: left;
+}
+
+[data-app="warehouse"] .wh-auth-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 22px;
+    background: var(--wh-accent);
+    color: var(--wh-accent-on);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
+}
+
+[data-app="warehouse"] .wh-auth-brand-eyebrow {
+    margin: 0;
+    font: 600 0.75rem/1 var(--font-mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+[data-app="warehouse"] .wh-auth-brand-title {
+    margin: 0.4rem 0 0;
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+}
+
+[data-app="warehouse"] .wh-auth-brand-sub {
+    margin: 0.75rem 0 0;
+    max-width: 20rem;
+    font-size: 1rem;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+[data-app="warehouse"] .wh-auth-brand-footer {
+    position: relative;
+    z-index: 1;
+    left: auto;
+    bottom: auto;
+    margin: 0;
+    opacity: 0.45;
+    font: 500 0.625rem/1 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+[data-app="warehouse"] .wh-auth-form {
+    flex: 1;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+}
+
+@media (max-width: 1023px) {
+    [data-app="warehouse"] .wh-auth-form {
+        flex: 1 1 100%;
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
+[data-app="warehouse"] .wh-auth-form-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    padding: var(--space-4) var(--space-6);
+}
+
+[data-app="warehouse"] .wh-auth-form-kicker {
+    margin: 0;
+    font: 600 0.75rem/1 var(--font-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--wh-ink-muted);
+}
+
+[data-app="warehouse"] .wh-auth-form-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4) clamp(1.5rem, 5vw, 4rem) var(--space-10);
+}
+
+[data-app="warehouse"] .wh-auth-form-inner {
+    width: 100%;
+    max-width: 28rem;
+    margin: 0 auto;
+}
+
+[data-app="warehouse"] .wh-auth-shell .auth-card {
+    border: none;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+[data-app="warehouse"] .wh-auth-shell .auth-card .md-card {
+    border-color: var(--wh-border);
+    background: var(--wh-surface);
+    box-shadow: 0 1px 3px rgba(26, 35, 50, 0.06);
+}
+
+[data-app="warehouse"] .auth-splash {
+    background: var(--wh-ink);
+    color: var(--wh-accent-on);
+}
+
+[data-app="warehouse"] .auth-light .auth-splash {
+    background: var(--wh-ink);
+    color: #ffffff;
+}
