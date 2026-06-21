@@ -49,8 +49,9 @@ function applyTheme(resolved: 'light' | 'dark') {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>(() => getStoredMode());
-  const [resolved, setResolved] = useState<'light' | 'dark'>(() => resolveMode(getStoredMode()));
+  // Stable SSR defaults — localStorage is read in useLayoutEffect only.
+  const [mode, setModeState] = useState<ThemeMode>('system');
+  const [resolved, setResolved] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
 
   useLayoutEffect(() => {
