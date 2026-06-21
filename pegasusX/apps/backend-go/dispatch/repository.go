@@ -65,9 +65,6 @@ func (r *Repository) FetchDispatchable(ctx context.Context, params FetchParams) 
 	          AND COALESCE(o.Lat, r.Lat, 0) != 0
 	          AND COALESCE(o.Lng, r.Lng, 0) != 0` + dispatchableEligibilitySQL
 
-	queryParams["clearedEntryTypes"] = clearedPaymentEntryTypes
-	queryParams["clearedSessionStatuses"] = clearedPaymentSessionStatuses
-
 	if warehouseID := strings.TrimSpace(params.WarehouseID); warehouseID != "" {
 		sql += " AND o.WarehouseId = @warehouseId"
 		queryParams["warehouseId"] = warehouseID

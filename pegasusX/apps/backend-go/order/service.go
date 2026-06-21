@@ -31,6 +31,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"github.com/pegasusx/pegasusx/packages/handoff"
 )
@@ -57,7 +58,7 @@ const (
 	StatusScheduled              Status = "SCHEDULED"
 	StatusAutoAccepted           Status = "AUTO_ACCEPTED"
 
-	deliveryGeofenceMeters = 500.0
+	deliveryGeofenceMeters = proximity.DeliveryApproachRadiusM
 )
 
 // OrderSource captures how an order entered the system.

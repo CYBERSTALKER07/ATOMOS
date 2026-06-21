@@ -210,7 +210,7 @@ final class APIClient: @unchecked Sendable {
         return try await post("v1/delivery/update-order-during-delivery", body: body)
     }
 
-    /// Mark arrived — driver enters 100m geofence (IN_TRANSIT → ARRIVED)
+    /// Mark arrived — driver enters 500m geofence (IN_TRANSIT → ARRIVED)
     func markArrived(orderId: String) async throws {
         struct Resp: Decodable { let status: String; let orderId: String }
         let body = ["order_id": orderId]

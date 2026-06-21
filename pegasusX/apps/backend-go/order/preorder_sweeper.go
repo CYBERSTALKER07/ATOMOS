@@ -171,7 +171,8 @@ func (s *Service) sweepPreorderAutoAccept(ctx context.Context, now time.Time) er
 
 func (s *Service) sweepPreorderPromote(ctx context.Context, now time.Time) error {
 	today := proximity.TashkentTodayStart(now)
-	cutoff := today.AddDate(0, 0, 4)
+	// Prefetch pre-orders due within the next calendar day (T-1 promotion window).
+	cutoff := today.AddDate(0, 0, 1)
 	stmt := spanner.Statement{
 		SQL: `SELECT ` + orderSelectColumns + ` FROM Orders
 		      WHERE Status IN ('SCHEDULED', 'AUTO_ACCEPTED')
@@ -194,6 +195,14 @@ func (s *Service) sweepPreorderPromote(ctx context.Context, now time.Time) error
 		if err != nil {
 			continue
 		}
+		if o.RequestedDeliveryDate == nil {
+			continue
+		}
+		lead := PreorderLeadDays(now, o.RequestedDeliveryDate)
+		// Promote at T-1 (day before delivery) or on delivery day if a tick was missed.
+		if lead > 1 {
+			continue
+		}
 		if err := s.promotePreorderToPending(ctx, o, now); err != nil {
 			s.log.Warn("preorder promote failed", "order_id", o.OrderID, "err", err)
 		}
@@ -208,7 +217,7 @@ func (s *Service) promotePreorderToPending(ctx context.Context, o Order, now tim
 	prev := o.Status
 	o.Status = StatusPending
 	o.UpdatedAt = now
-	return s.repo.UpdateOrder(ctx, o, nil, func(txn outbox.TxnBuffer) error {
+	err := s.repo.UpdateOrder(ctx, o, nil, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, o.OrderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:          events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: now.Format(time.RFC3339Nano)},
 			OrderID:            o.OrderID,
@@ -222,6 +231,11 @@ func (s *Service) promotePreorderToPending(ctx context.Context, o Order, now tim
 			ConfirmationStatus: string(o.ConfirmationStatus),
 		})
 	})
+	if err != nil {
+		return err
+	}
+	s.afterOrderMutation(ctx, o)
+	return nil
 }
 
 func (s *Service) patchPreorderNotify(ctx context.Context, o Order, now time.Time, eventType string, patch func(*Order)) error {

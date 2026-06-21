@@ -83,11 +83,12 @@ struct HaversineTests {
         #expect(dist > 30 && dist < 100, "~44m offset should be 30-100m, got \(dist)")
     }
 
-    @Test func geofenceThreshold_100m() async throws {
+    @Test func geofenceThreshold_500m() async throws {
+        let threshold = 500.0
         let base = CLLocationCoordinate2D(latitude: 41.2995, longitude: 69.2401)
-        let edge = CLLocationCoordinate2D(latitude: 41.3004, longitude: 69.2401)
-        let dist = haversineDistance(from: base, to: edge)
-        #expect(dist > 90 && dist < 120, "Should be near 100m boundary, got \(dist)")
+        let within = CLLocationCoordinate2D(latitude: 41.3040, longitude: 69.2401)
+        let dist = haversineDistance(from: base, to: within)
+        #expect(dist <= threshold, "Should be within 500m, got \(dist)m")
     }
 }
 

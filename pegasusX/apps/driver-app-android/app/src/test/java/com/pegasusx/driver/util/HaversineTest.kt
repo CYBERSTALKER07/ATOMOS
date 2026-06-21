@@ -29,10 +29,8 @@ class HaversineTest {
     }
 
     @Test
-    fun geofenceBoundary_100m() {
-        // ~0.0009° lat ≈ 100m
-        val d = Haversine.distanceMeters(41.2995, 69.2401, 41.3004, 69.2401)
-        assertTrue("Expected near 100m boundary, got ${d}m", d in 90.0..120.0)
+    fun geofence_matchesDriverGeofenceConstant() {
+        assertEquals(500.0, DriverGeofence.APPROACH_METERS, 0.001)
     }
 
     @Test

@@ -1280,7 +1280,7 @@ func (s *Service) attachLiveLocations(ctx context.Context, orders []TrackingOrde
 			if driverLng == 0 && lookup.location.Longitude != 0 {
 				driverLng = lookup.location.Longitude
 			}
-			if proximity.HaversineDistance(driverLat, driverLng, orders[i].DeliveryLat, orders[i].DeliveryLng) < 0.100 {
+			if proximity.WithinDeliveryApproach(proximity.HaversineDistance(driverLat, driverLng, orders[i].DeliveryLat, orders[i].DeliveryLng)) {
 				orders[i].IsApproaching = true
 			}
 		}

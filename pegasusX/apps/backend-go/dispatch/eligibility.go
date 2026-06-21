@@ -1,36 +1,8 @@
 package dispatch
 
-// Cleared ledger entry types that satisfy dispatch payment gate.
-var clearedPaymentEntryTypes = []string{
-	"WEBHOOK_PAID",
-	"CASH_COLLECTED",
-	"SETTLEMENT_CREDIT",
-}
-
-// Cleared payment-session statuses that satisfy dispatch payment gate.
-var clearedPaymentSessionStatuses = []string{
-	"PAID",
-	"CAPTURED",
-	"SETTLED",
-	"SUCCESS",
-	"AUTHORIZED",
-}
-
+// dispatchableEligibilitySQL selects orders ready for warehouse dispatch.
+// Payment is collected at delivery (offload), not as a pre-dispatch gate.
 const dispatchableEligibilitySQL = `
 	          AND o.Status = 'PENDING'
 	          AND o.ConfirmationStatus IN ('CONFIRMED', 'AUTO_CONFIRMED')
-	          AND (o.DriverId IS NULL OR o.DriverId = '')
-	          AND (
-	            EXISTS (
-	              SELECT 1
-	              FROM PaymentLedgerEntries ple
-	              WHERE ple.OrderId = o.OrderId
-	                AND ple.EntryType IN UNNEST(@clearedEntryTypes)
-	            )
-	            OR EXISTS (
-	              SELECT 1
-	              FROM PaymentSessions ps
-	              WHERE ps.OrderId = o.OrderId
-	                AND ps.Status IN UNNEST(@clearedSessionStatuses)
-	            )
-	          )`
+	          AND (o.DriverId IS NULL OR o.DriverId = '')`

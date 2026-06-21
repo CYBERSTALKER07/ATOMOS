@@ -31,8 +31,9 @@ import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.TelemetrySocket
 import com.pegasusx.driver.data.telemetry.LocationTrail
 import com.pegasusx.driver.data.remote.TokenHolder
-import com.pegasusx.driver.util.Haversine
+import com.pegasusx.driver.util.DriverGeofence
 import com.pegasusx.driver.util.DriverIdempotencyKeys
+import com.pegasusx.driver.util.Haversine
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -208,7 +209,7 @@ class TelemetryService : Service() {
                     val destLat = order.latitude ?: continue
                     val destLng = order.longitude ?: continue
                     val dist = Haversine.distanceMeters(lat, lng, destLat, destLng)
-                    if (dist <= 100.0) {
+                    if (dist <= DriverGeofence.APPROACH_METERS) {
                         arrivedIds.add(order.id)
                         try {
                             api.markArrived(
