@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend-go
+  labels:
+    app: backend-go
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: backend-go

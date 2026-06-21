@@ -23,6 +23,10 @@ jobs:
           cd apps/backend-go
           go build ./...
           go vet ./...
+      - name: Unit tests (short)
+        run: |
+          cd apps/backend-go
+          go test ./... -short -count=1
       - name: Parity contract (narrow)
         run: make parity-contract
       - name: Parity contract (full)

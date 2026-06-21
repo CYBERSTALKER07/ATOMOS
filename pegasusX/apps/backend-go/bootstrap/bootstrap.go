@@ -55,7 +55,9 @@ import (
 
 // Config carries the runtime parameters. Loaded from environment by LoadConfig.
 type Config struct {
-	HTTPPort string
+	HTTPPort       string
+	WorkerHTTPPort string
+	RunMode        string
 
 	SpannerEmulatorHost string
 	SpannerProject      string
@@ -173,6 +175,8 @@ type App struct {
 func LoadConfig() (*Config, error) {
 	cfg := &Config{
 		HTTPPort:                        envOr("HTTP_PORT", "8080"),
+		WorkerHTTPPort:                  envOr("WORKER_HTTP_PORT", "8081"),
+		RunMode:                         envOr("PEGASUSX_RUN_MODE", RunModeAll),
 		SpannerEmulatorHost:             envOr("SPANNER_EMULATOR_HOST", "localhost:9010"),
 		SpannerProject:                  envOr("SPANNER_PROJECT", "pegasusx-local"),
 		SpannerInstance:                 envOr("SPANNER_INSTANCE", "pegasusx-instance"),

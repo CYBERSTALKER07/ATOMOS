@@ -27,7 +27,6 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
-	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	"github.com/pegasusx/pegasusx/apps/backend-go/orderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payloaderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
@@ -38,7 +37,6 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
-	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouseroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/webhookroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -72,51 +70,23 @@ func main() {
 		os.Exit(1)
 	}
 	defer app.Close()
-	if app.OutboxRelay != nil {
-		go app.OutboxRelay.Start(ctx)
-		slog.Info("outbox relay started")
+
+	runMode := bootstrap.NormalizeRunMode(cfg.RunMode)
+	slog.Info("pegasusX runtime profile", "run_mode", runMode)
+
+	if cfg.RunsWorkers() {
+		startBackgroundWorkers(ctx, app)
 	}
-	if app.Cache != nil {
-		go app.Cache.StartInvalidationSubscriber(ctx)
-		slog.Info("cache invalidation subscriber started")
-	}
-	if app.NotificationConsumer != nil {
-		go app.NotificationConsumer.Start(ctx)
-		slog.Info("notification consumer started")
-	}
-	if app.OrderEventConsumer != nil {
-		go app.OrderEventConsumer.Start(ctx)
-		slog.Info("order event consumer started")
-	}
-	if app.WarehouseEventConsumer != nil {
-		go app.WarehouseEventConsumer.Start(ctx)
-		slog.Info("warehouse event consumer started")
-	}
-	if app.WarehouseService != nil {
-		go warehouse.StartAutoDispatchWorker(ctx, app.WarehouseService, warehouse.AutoDispatchWorkerConfig{})
-		slog.Info("warehouse auto-dispatch worker started")
-		go warehouse.StartDispatchPlanWarmer(ctx, app.WarehouseService, warehouse.DispatchPlanWarmerConfig{})
-		slog.Info("dispatch plan warmer started")
-	}
-	if app.ReplenishmentEngine != nil && os.Getenv("REPLENISHMENT_CRON_DISABLED") != "1" {
-		app.ReplenishmentEngine.StartCron(ctx)
-		slog.Info("replenishment engine cron started")
+	if cfg.RunsAPI() {
+		startHubRelaySubscribers(ctx, hubList(app))
 	}
 
-	// Phase 1/2 Integration: Kafka Analytics Stream Processor
-	streamProcessor := kafka.NewAnalyticsStreamProcessor()
-	dummyStream := make(chan []byte) // In a fully wired production environment, this receives from a dedicated Kafka topic
-	go streamProcessor.Start(ctx, dummyStream)
-	slog.Info("kafka stream processor started")
-	startHubRelaySubscribers(ctx, []*ws.Hub{
-		app.RetailerHub,
-		app.SupplierHub,
-		app.DriverHub,
-		app.PayloadHub,
-		app.WarehouseHub,
-		app.FactoryHub,
-		app.TelemetryHub,
-	})
+	if !cfg.RunsAPI() {
+		_ = startWorkerHealthServer(ctx, cfg, app)
+		<-ctx.Done()
+		slog.Info("shutdown signal received")
+		return
+	}
 
 	r := chi.NewRouter()
 	r.Use(bootstrap.TraceMiddleware)
@@ -318,14 +288,4 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("http shutdown failed", "err", err)
 	}
-}
-
-func startHubRelaySubscribers(ctx context.Context, hubs []*ws.Hub) {
-	for _, hub := range hubs {
-		if hub == nil {
-			continue
-		}
-		go hub.StartRelaySubscriber(ctx)
-	}
-	slog.Info("ws relay subscribers started", "hub_count", len(hubs))
 }

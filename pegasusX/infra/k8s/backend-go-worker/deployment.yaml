@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-go-worker
+  labels:
+    app: backend-go-worker
+    app.kubernetes.io/name: backend-go-worker
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend-go-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: backend-go-worker
+        app.kubernetes.io/name: backend-go-worker
+        app.kubernetes.io/part-of: pegasusx
+    spec:
+      serviceAccountName: backend-go
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: backend-go-worker
+          image: PEGASUSX_BACKEND_GO_IMAGE_PLACEHOLDER
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: health
+              containerPort: 8081
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: backend-go-config
+          env:
+            - name: PEGASUSX_RUN_MODE
+              value: worker
+            - name: WORKER_HTTP_PORT
+              value: "8081"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: jwt-secret
+            - name: GLOBAL_PAY_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: global-pay-webhook-secret
+            - name: ADYEN_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: adyen-webhook-secret
+            - name: STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: stripe-webhook-secret
+            - name: PAYME_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: payme-webhook-secret
+            - name: CLICK_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: click-webhook-secret
+            - name: GLOBAL_PAY_SERVICE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: global-pay-service-id
+            - name: GLOBAL_PAY_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: global-pay-username
+            - name: GLOBAL_PAY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: global-pay-password
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: internal-api-key
+            - name: FIREBASE_CREDENTIALS_PATH
+              value: /var/secrets/firebase/service-account.json
+          volumeMounts:
+            - name: firebase-credentials
+              mountPath: /var/secrets/firebase
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 300m
+              memory: 384Mi
+            limits:
+              cpu: "1500m"
+              memory: 768Mi
+      volumes:
+        - name: firebase-credentials
+          secret:
+            secretName: backend-go-firebase
+            optional: true

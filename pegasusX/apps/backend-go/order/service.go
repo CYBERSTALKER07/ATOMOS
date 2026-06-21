@@ -1468,7 +1468,7 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 		}
 	}
 
-	if err := validateStatusTransition(current.Status, nextStatus); err != nil {
+	if err := ValidateStatusTransition(current.Status, nextStatus); err != nil {
 		return UpdateStatusResponse{}, err
 	}
 
@@ -1871,7 +1871,7 @@ func (s *Service) transitionDriverOrder(ctx context.Context, claims auth.Claims,
 			NoChange:       true,
 		}, nil
 	}
-	if err := validateStatusTransition(current.Status, req.NextStatus); err != nil {
+	if err := ValidateStatusTransition(current.Status, req.NextStatus); err != nil {
 		return driverTransitionResult{}, err
 	}
 	if req.Precheck != nil {
@@ -2939,47 +2939,6 @@ func distanceMeters(latA, lngA, latB, lngB float64) float64 {
 	return earthRadiusMeters * circle
 }
 
-func validateStatusTransition(current Status, next Status) error {
-	if current == next {
-		return nil
-	}
-
-	allowed := false
-	switch current {
-	case StatusPending:
-		allowed = next == StatusLoaded || next == StatusCancelled || next == StatusDelayed
-	case StatusLoaded:
-		allowed = next == StatusInTransit || next == StatusCancelled || next == StatusCancelRequested || next == StatusDelayed || next == StatusPending
-	case StatusDelayed:
-		allowed = next == StatusPending
-	case StatusInTransit:
-		allowed = next == StatusArrived || next == StatusCancelled || next == StatusCancelRequested || next == StatusPending
-	case StatusArrived:
-		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusCompleted || next == StatusDeliveredOnCredit || next == StatusCancelRequested
-	case StatusArrivedShopClosed:
-		allowed = next == StatusAwaitingPayment || next == StatusDeliveredOnCredit
-	case StatusDeliveredOnCredit:
-		allowed = next == StatusCompleted
-	case StatusAwaitingPayment:
-		allowed = next == StatusCompleted || next == StatusPendingCashCollection
-	case StatusPendingCashCollection:
-		allowed = next == StatusCompleted
-	case StatusCompleted:
-		allowed = false
-	case StatusCancelled:
-		allowed = next == StatusReconciliationRequired
-	case StatusReconciliationRequired:
-		allowed = next == StatusCompleted || next == StatusCancelled
-	default:
-		allowed = false
-	}
-
-	if !allowed {
-		return fmt.Errorf("%w: %s -> %s", ErrInvalidStatusTransition, current, next)
-	}
-
-	return nil
-}
 
 // AmendItemRequest is one line adjustment from the driver offload review surface.
 type AmendItemRequest struct {
