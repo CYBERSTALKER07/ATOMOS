@@ -97,7 +97,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       <div className="auth-form-panel wh-auth-form">
         <div className="wh-auth-form-top">
-          <p className="wh-auth-form-kicker md:hidden">pegasusX Warehouse</p>
+          <p className="wh-auth-form-kicker lg:hidden">pegasusX Warehouse</p>
           <ThemeToggle
             isDark={isDark}
             onToggle={toggleTheme}

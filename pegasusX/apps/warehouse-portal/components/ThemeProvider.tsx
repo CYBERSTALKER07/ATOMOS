@@ -28,6 +28,16 @@ function getSystemPreference(): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
+function getStoredMode(): ThemeMode {
+  if (typeof window === 'undefined') return 'system';
+  const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
+  return stored && CYCLE_ORDER.includes(stored) ? stored : 'system';
+}
+
+function resolveMode(mode: ThemeMode): 'light' | 'dark' {
+  return mode === 'system' ? getSystemPreference() : mode;
+}
+
 function applyTheme(resolved: 'light' | 'dark') {
   const root = document.documentElement;
   if (resolved === 'dark') {
@@ -39,16 +49,11 @@ function applyTheme(resolved: 'light' | 'dark') {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>('system');
-  const [resolved, setResolved] = useState<'light' | 'dark'>('light');
+  const [mode, setModeState] = useState<ThemeMode>(() => getStoredMode());
+  const [resolved, setResolved] = useState<'light' | 'dark'>(() => resolveMode(getStoredMode()));
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-    if (stored && CYCLE_ORDER.includes(stored)) {
-      setModeState(stored);
-      localStorage.setItem(STORAGE_KEY, stored);
-    }
     setMounted(true);
     document.documentElement.setAttribute('data-hydrated', '');
 
@@ -60,16 +65,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!mounted) return;
 
-    const resolve = () => {
-      const effective = mode === 'system' ? getSystemPreference() : mode;
-      setResolved(effective);
-      applyTheme(effective);
-    };
-
-    resolve();
+    const effective = resolveMode(mode);
+    setResolved(effective);
+    applyTheme(effective);
 
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => { if (mode === 'system') resolve(); };
+    const handler = () => {
+      if (mode === 'system') {
+        const next = resolveMode('system');
+        setResolved(next);
+        applyTheme(next);
+      }
+    };
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
   }, [mode, mounted]);

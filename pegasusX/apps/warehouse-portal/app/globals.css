@@ -2636,6 +2636,27 @@ body {
     padding-top: env(titlebar-area-height, 28px);
 }
 
+/* Bare routes fill the titlebar inset with their own panel backgrounds */
+[data-tauri] body:has(.wh-auth-shell),
+[data-tauri] body:has(.setup-shell) {
+    padding-top: 0;
+    background: var(--wh-ink, var(--desk-canvas));
+}
+
+[data-tauri] .wh-auth-shell,
+[data-tauri] .setup-shell {
+    min-height: 100dvh;
+    max-height: none;
+}
+
+[data-tauri] .wh-auth-brand,
+[data-tauri] .wh-auth-form,
+[data-tauri] .setup-rail,
+[data-tauri] .setup-main {
+    padding-top: env(titlebar-area-height, 28px);
+    box-sizing: border-box;
+}
+
 /* Sidebar: keep default background in desktop mode (vibrancy disabled) */
 /* When vibrancy is re-enabled with transparent:true, uncomment below:
 [data-tauri] aside,

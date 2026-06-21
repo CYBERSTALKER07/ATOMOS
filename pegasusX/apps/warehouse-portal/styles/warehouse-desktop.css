@@ -552,19 +552,56 @@
     min-height: 100dvh;
     max-height: 100dvh;
     overflow: hidden;
-    background: var(--wh-canvas);
+    background: var(--wh-ink);
 }
 
-[data-app="warehouse"] .wh-auth-shell.auth-light .wh-auth-brand,
-[data-app="warehouse"] .wh-auth-shell.auth-dark .wh-auth-brand {
+/* Brand rail — always dark (warehouse identity) */
+[data-app="warehouse"] .wh-auth-brand {
     background: var(--wh-ink);
     color: #f0f4f8;
 }
 
-[data-app="warehouse"] .wh-auth-shell.auth-light .wh-auth-form,
-[data-app="warehouse"] .wh-auth-shell.auth-dark .wh-auth-form {
+/* Form panel — follows theme */
+[data-app="warehouse"] .wh-auth-shell.auth-light .wh-auth-form {
     background: var(--wh-surface);
     color: var(--wh-ink);
+}
+
+[data-app="warehouse"] .wh-auth-shell.auth-dark .wh-auth-form {
+    background: var(--wh-canvas);
+    color: var(--wh-ink);
+}
+
+[data-app="warehouse"] .wh-auth-shell.auth-light .wh-auth-form .auth-card .md-card {
+    background: var(--wh-surface);
+    border-color: var(--wh-border);
+    box-shadow: 0 1px 3px rgba(26, 35, 50, 0.06);
+}
+
+[data-app="warehouse"] .wh-auth-shell.auth-dark .wh-auth-form .auth-card .md-card {
+    background: var(--wh-surface);
+    border-color: var(--wh-border);
+    box-shadow: none;
+}
+
+[data-app="warehouse"] .wh-auth-shell.auth-dark .auth-theme-toggle {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f0f4f8;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+[data-app="warehouse"] .wh-auth-shell.auth-dark .auth-theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+[data-app="warehouse"] .wh-auth-shell.auth-light .auth-theme-toggle {
+    background: var(--wh-surface-raised);
+    color: var(--wh-ink);
+    border: 1px solid var(--wh-border);
+}
+
+[data-app="warehouse"] .wh-auth-shell.auth-light .auth-theme-toggle:hover {
+    background: var(--wh-canvas);
 }
 
 [data-app="warehouse"] .wh-auth-brand {
@@ -676,13 +713,15 @@
 [data-app="warehouse"] .wh-auth-form-top {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     flex-shrink: 0;
     padding: var(--space-4) var(--space-6);
+    gap: var(--space-4);
 }
 
 [data-app="warehouse"] .wh-auth-form-kicker {
     margin: 0;
+    margin-right: auto;
     font: 600 0.75rem/1 var(--font-mono);
     letter-spacing: 0.12em;
     text-transform: uppercase;
