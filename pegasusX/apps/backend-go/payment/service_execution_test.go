@@ -16,89 +16,37 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
-func TestHandleCheckout_AirwallexPolicyViolation(t *testing.T) {
+func TestHandleCheckout_PreDeliveryDisabled(t *testing.T) {
 	t.Parallel()
 
 	repo := &paymentRepoStub{}
 	svc := newPaymentServiceForExecutionTest(repo)
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/checkout/b2b", strings.NewReader(`{"order_id":"o-1","retailer_id":"r-1","gateway":"AIRWALLEX","amount_minor":1000}`))
-	res := httptest.NewRecorder()
-
-	svc.HandleB2BCheckout(res, req)
-	if res.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("status = %d, want %d", res.Code, http.StatusUnprocessableEntity)
+	tests := []struct {
+		name string
+		path string
+		call func(http.ResponseWriter, *http.Request)
+	}{
+		{"b2b", "/v1/checkout/b2b", svc.HandleB2BCheckout},
+		{"unified_order_id", "/v1/checkout/unified", svc.HandleUnifiedCheckout},
 	}
-	if repo.createCalls != 0 {
-		t.Fatalf("createCalls = %d, want 0", repo.createCalls)
-	}
-
-	var payload map[string]any
-	if err := json.Unmarshal(res.Body.Bytes(), &payload); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	if payload["code"] != "card_tokenization_gateway_unsupported" {
-		t.Fatalf("code = %v, want card_tokenization_gateway_unsupported", payload["code"])
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, tc.path, strings.NewReader(`{"order_id":"o-1","retailer_id":"r-1","gateway":"ADYEN","amount_minor":1000}`))
+			res := httptest.NewRecorder()
+			tc.call(res, req)
+			if res.Code != http.StatusGone {
+				t.Fatalf("status = %d, want %d body=%s", res.Code, http.StatusGone, res.Body.String())
+			}
+			if repo.createCalls != 0 {
+				t.Fatalf("createCalls = %d, want 0", repo.createCalls)
+			}
+		})
 	}
 }
 
-func TestHandleCheckout_UsesExecutionRouterResult(t *testing.T) {
-	t.Parallel()
-
-	repo := &paymentRepoStub{}
-	svc := newPaymentServiceForExecutionTest(repo)
-
-	req := httptest.NewRequest(http.MethodPost, "/v1/checkout/unified", strings.NewReader(`{"order_id":"o-2","retailer_id":"r-2","gateway":"ADYEN","amount_minor":2300}`))
-	res := httptest.NewRecorder()
-
-	svc.HandleUnifiedCheckout(res, req)
-	if res.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", res.Code, http.StatusOK)
-	}
-	if repo.createCalls != 1 {
-		t.Fatalf("createCalls = %d, want 1", repo.createCalls)
-	}
-	if repo.createWithAttemptCalls != 1 {
-		t.Fatalf("createWithAttemptCalls = %d, want 1", repo.createWithAttemptCalls)
-	}
-	if repo.attemptCalls != 1 {
-		t.Fatalf("attemptCalls = %d, want 1", repo.attemptCalls)
-	}
-	if repo.created.Gateway != "ADYEN" {
-		t.Fatalf("persisted gateway = %s, want ADYEN", repo.created.Gateway)
-	}
-	if repo.created.Mode != "UNIFIED" {
-		t.Fatalf("persisted mode = %s, want UNIFIED", repo.created.Mode)
-	}
-	if repo.lastAttempt.ExecutionAction != string(ExecutionActionCheckoutInit) {
-		t.Fatalf("attempt execution_action = %s, want %s", repo.lastAttempt.ExecutionAction, ExecutionActionCheckoutInit)
-	}
-	if repo.lastAttempt.ExecutionMode != string(ExecutionModeHostedRedirect) {
-		t.Fatalf("attempt execution_mode = %s, want %s", repo.lastAttempt.ExecutionMode, ExecutionModeHostedRedirect)
-	}
-
-	var payload CheckoutResponse
-	if err := json.Unmarshal(res.Body.Bytes(), &payload); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	if payload.ResolvedGateway != "ADYEN" {
-		t.Fatalf("resolved gateway = %s, want ADYEN", payload.ResolvedGateway)
-	}
-	if !strings.Contains(payload.PaymentURL, "/v1/payment/redirect/adyen/") {
-		t.Fatalf("payment_url = %s, expected adyen redirect", payload.PaymentURL)
-	}
-	if payload.PolicySource != "SUPPLIER_DEFAULT" {
-		t.Fatalf("policy_source = %s, want SUPPLIER_DEFAULT", payload.PolicySource)
-	}
-	if payload.AttemptID == "" {
-		t.Fatal("attempt_id should be present")
-	}
-	if payload.ExecutionAction != string(ExecutionActionCheckoutInit) {
-		t.Fatalf("execution_action = %s, want %s", payload.ExecutionAction, ExecutionActionCheckoutInit)
-	}
-	if payload.ExecutionMode != string(ExecutionModeHostedRedirect) {
-		t.Fatalf("execution_mode = %s, want %s", payload.ExecutionMode, ExecutionModeHostedRedirect)
-	}
+func TestHandleCheckout_AirwallexPolicyViolation(t *testing.T) {
+	t.Skip("pre-delivery B2B checkout removed; pay at delivery only")
 }
 
 func TestHandleChargeback_UnknownGatewayPolicyViolation(t *testing.T) {

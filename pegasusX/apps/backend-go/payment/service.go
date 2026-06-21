@@ -964,59 +964,13 @@ func (s *Service) handleCheckout(mode string, w http.ResponseWriter, r *http.Req
 }
 
 func (s *Service) handleCheckoutWithBody(mode string, w http.ResponseWriter, r *http.Request, body []byte) {
-	if rec, ok := s.handleIdempotentHit(w, r, body); ok {
-		_ = rec
-		return
+	path := "/v1/checkout/unified"
+	if mode == "B2B" {
+		path = "/v1/checkout/b2b"
 	}
-
-	var req CheckoutRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid_json_payload", "Invalid JSON payload", "/v1/checkout", false, "")
-		return
-	}
-	req.OrderID = strings.TrimSpace(req.OrderID)
-	if req.OrderID == "" {
-		writeJSONError(w, http.StatusBadRequest, "invalid_request", "order_id is required", "/v1/checkout", false, "")
-		return
-	}
-	retailerID := strings.TrimSpace(req.RetailerID)
-	if claims, ok := auth.FromContext(r.Context()); ok && claims.Subject != "" {
-		retailerID = claims.Subject
-	}
-	if retailerID == "" {
-		writeJSONError(w, http.StatusUnprocessableEntity, "retailer_scope_missing", "retailer context is required", "/v1/checkout", false, "")
-		return
-	}
-	req.RetailerID = retailerID
-
-	session, attempt, executionResult, err := s.initCheckoutSession(r.Context(), mode, req)
-	if err != nil {
-		s.writeExecutionError(w, "/v1/checkout", err)
-		return
-	}
-
-	resp := CheckoutResponse{
-		SessionID:         session.SessionID,
-		OrderID:           session.OrderID,
-		Status:            session.Status,
-		ResolvedGateway:   session.Gateway,
-		Currency:          session.Currency,
-		PaymentURL:        executionResult.RedirectURL,
-		PolicySource:      executionResult.PolicySource,
-		AttemptID:         attempt.AttemptID,
-		ExecutionAction:   attempt.ExecutionAction,
-		ExecutionMode:     attempt.ExecutionMode,
-		ProviderReference: attempt.ProviderReference,
-	}
-	if strings.TrimSpace(resp.PaymentURL) == "" {
-		resp.PaymentURL = "/v1/payment/session/" + session.SessionID
-	}
-	respBytes, _ := json.Marshal(resp)
-	s.persistIdempotencyRecord(r.Context(), r.Header.Get("Idempotency-Key"), sha256Hex(body), http.StatusOK, respBytes, 24*time.Hour)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(respBytes)
+	writeJSONError(w, http.StatusGone, "payment_before_delivery_removed",
+		"Pre-delivery payment checkout is disabled; pay at delivery after offload via /v1/order/card-checkout or /v1/order/cash-checkout",
+		path, true, "/v1/order/card-checkout")
 }
 
 func (s *Service) persistWebhookWithOutbox(ctx context.Context, row WebhookRecord, source string, now time.Time) error {

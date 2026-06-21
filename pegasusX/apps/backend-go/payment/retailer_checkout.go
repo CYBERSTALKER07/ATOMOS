@@ -241,6 +241,8 @@ func (s *Service) writeOrderCheckoutError(w http.ResponseWriter, endpoint string
 		writeJSONError(w, http.StatusForbidden, "forbidden", "forbidden", endpoint, false, "")
 	case errors.Is(err, order.ErrBackorderPaymentDeferred):
 		writeJSONError(w, http.StatusUnprocessableEntity, "backorder_payment_deferred", "backorder payment is deferred until fulfillment", endpoint, false, "")
+	case errors.Is(err, order.ErrPaymentBeforeDelivery):
+		writeJSONError(w, http.StatusUnprocessableEntity, "payment_before_delivery_not_allowed", "payment is collected at delivery after offload", endpoint, false, "")
 	default:
 		writeJSONError(w, http.StatusInternalServerError, "order_lookup_failed", err.Error(), endpoint, false, "")
 	}

@@ -35,6 +35,13 @@ const (
 )
 
 // Service stores additive in-memory payload operations state.
+//
+// Production note: Spanner (SupplierTruckManifests + manifest.Store) is the source of
+// truth after warehouse dispatch execute. The in-memory overlay below accelerates
+// payload-terminal dev/SSMR flows when Spanner is partial. For production hardening:
+//   - Persist every seal/reassign/exception through manifest.Store only
+//   - Remove dual-write paths once payload terminal reads Spanner exclusively
+//   - Keep this overlay behind PAYLOAD_DEV_OVERLAY=true for Docker simulation only
 type Service struct {
 	repo        Repository
 	cache       *cache.Cache

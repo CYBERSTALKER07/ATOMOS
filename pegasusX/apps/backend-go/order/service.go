@@ -94,6 +94,7 @@ var (
 	ErrAssignmentRequired        = errors.New("assignment_required")
 	ErrInventoryExhausted        = errors.New("inventory_exhausted")
 	ErrBackorderPaymentDeferred  = errors.New("backorder_payment_deferred")
+	ErrPaymentBeforeDelivery     = errors.New("payment_before_delivery_not_allowed")
 )
 
 // LineItem is one line on an order.

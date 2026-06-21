@@ -211,7 +211,8 @@ func main() {
 	defer spannerClient.Close()
 
 	orderRepo := order.NewSpannerRepository(spannerClient)
-	orderSvc := order.NewService(order.ServiceConfig{
+	_ = orderRepo // retained for future import worker hooks; AI order synthesis disabled
+	_ = order.NewService(order.ServiceConfig{
 		Repo:     orderRepo,
 		Currency: cfg.SeedSupplierCurrency,
 		Log:      logger,
@@ -337,18 +338,8 @@ func main() {
 	})
 
 	g.Go(func() error {
-		ticker := time.NewTicker(time.Minute)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-gCtx.Done():
-				return nil
-			case <-ticker.C:
-				if err := orderSvc.AutoConfirmDueOrders(gCtx, 50); err != nil {
-					slog.Error("auto confirm sweep failed", "err", err)
-				}
-			}
-		}
+		<-gCtx.Done()
+		return nil
 	})
 
 	<-ctx.Done()
@@ -379,7 +370,9 @@ func processMessage(ctx context.Context, msg kafka.Message, spannerClient *spann
 
 	switch env.Type {
 	case events.EventOrderCreated:
-		return handleOrderCreated(ctx, logger, msg.Value, spannerClient, frozen)
+		// AI preorder/recommendation synthesis removed from PegasusX; optimizer-only worker.
+		logger.Debug("order_created ignored (ai synthesis disabled)")
+		return nil
 	default:
 		logger.Debug("unhandled event type")
 	}

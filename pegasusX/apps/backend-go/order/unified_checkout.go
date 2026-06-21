@@ -92,12 +92,26 @@ func (s *Service) CheckoutOrderContext(ctx context.Context, orderID, retailerID 
 	if o.Status == StatusBackordered {
 		return CheckoutOrderContext{}, ErrBackorderPaymentDeferred
 	}
+	if !OrderPayableAtDelivery(o.Status) {
+		return CheckoutOrderContext{}, ErrPaymentBeforeDelivery
+	}
 	return CheckoutOrderContext{
 		TotalMinor:  o.TotalMinor,
 		Currency:    o.Currency,
 		SupplierID:  o.SupplierID,
 		WarehouseID: o.WarehouseID,
 	}, nil
+}
+
+// OrderPayableAtDelivery reports whether retailer card/cash checkout is allowed.
+// Payment is collected after offload (ARRIVED) or while awaiting settlement.
+func OrderPayableAtDelivery(status Status) bool {
+	switch status {
+	case StatusArrived, StatusAwaitingPayment:
+		return true
+	default:
+		return false
+	}
 }
 
 // HandleUnifiedCheckout serves POST /v1/checkout/unified for cart payloads.
