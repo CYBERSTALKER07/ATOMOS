@@ -283,6 +283,9 @@ fun OrderDetailSheetContent(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                OrderStatusHistorySection(orderId = order.id)
+                Spacer(modifier = Modifier.height(24.dp))
+
                 // ── QR Code Card (Only visible after dispatch) ──
                 if (order.status.hasDeliveryToken) {
                     Box(

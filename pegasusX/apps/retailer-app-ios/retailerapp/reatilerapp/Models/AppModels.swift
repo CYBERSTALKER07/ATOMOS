@@ -242,3 +242,40 @@ struct RetailerSupplierResponse: Codable, Identifiable {
         case isActive = "is_active"
     }
 }
+
+struct OrderTimelineEntry: Codable, Identifiable {
+    var id: String { transitionId }
+    let transitionId: String
+    let orderId: String
+    let previousStatus: String?
+    let newStatus: String
+    let reason: String?
+    let actorRole: String?
+    let actorId: String?
+    let eventKind: String?
+    let metadata: [String: String]?
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case transitionId = "transition_id"
+        case orderId = "order_id"
+        case previousStatus = "previous_status"
+        case newStatus = "new_status"
+        case reason
+        case actorRole = "actor_role"
+        case actorId = "actor_id"
+        case eventKind = "event_kind"
+        case metadata
+        case createdAt = "created_at"
+    }
+}
+
+struct OrderTimelineResponse: Codable {
+    let orderId: String
+    let items: [OrderTimelineEntry]
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case items
+    }
+}

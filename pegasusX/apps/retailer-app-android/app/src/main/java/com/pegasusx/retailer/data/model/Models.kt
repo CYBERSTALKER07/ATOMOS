@@ -931,3 +931,22 @@ data class PendingPaymentsResponse(
     @SerialName("pending_payments") val pendingPayments: List<PendingPaymentSession> = emptyList(),
     @SerialName("count") val count: Int = 0,
 )
+
+@Serializable
+data class OrderTimelineEntry(
+    @SerialName("transition_id") val transitionId: String,
+    @SerialName("order_id") val orderId: String,
+    @SerialName("previous_status") val previousStatus: String? = null,
+    @SerialName("new_status") val newStatus: String,
+    val reason: String? = null,
+    @SerialName("actor_role") val actorRole: String? = null,
+    @SerialName("actor_id") val actorId: String? = null,
+    @SerialName("event_kind") val eventKind: String? = null,
+    @SerialName("created_at") val createdAt: String,
+)
+
+@Serializable
+data class OrderTimelineResponse(
+    @SerialName("order_id") val orderId: String,
+    val items: List<OrderTimelineEntry> = emptyList(),
+)

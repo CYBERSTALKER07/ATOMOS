@@ -374,6 +374,9 @@ importers:
       '@pegasusx/ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
+      '@pegasusx/ws-refresh-contract':
+        specifier: workspace:*
+        version: link:../../packages/ws-refresh-contract
       '@tauri-apps/api':
         specifier: ^2.11.0
         version: 2.11.0
@@ -482,6 +485,8 @@ importers:
       zod:
         specifier: ^3.23.0
         version: 3.25.76
+
+  packages/ws-refresh-contract: {}
 
 packages:
 

@@ -10,3 +10,4 @@ packages:
   - "packages/i18n"
   - "packages/motion-tokens"
   - "packages/ui-kit"
+  - "packages/ws-refresh-contract"

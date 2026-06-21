@@ -433,6 +433,9 @@ struct OrderDetailSheet: View {
                         .slideIn(delay: 0.2)
                     }
 
+                    OrderStatusHistorySection(orderId: order.id)
+                        .slideIn(delay: 0.18)
+
                     // Cancel action — permitted for cancellable states
                     if order.status.canCancel {
                         Button { showCancelConfirm = true } label: {
@@ -602,6 +605,88 @@ struct QROverlay: View {
         .onAppear {
             withAnimation(AnimationConstants.fluid) { appeared = true }
         }
+    }
+}
+
+// MARK: - Order status history (GET /v1/order/{id}/timeline)
+
+struct OrderStatusHistorySection: View {
+    let orderId: String
+
+    @State private var items: [OrderTimelineEntry] = []
+    @State private var loading = true
+    private let api = APIClient.shared
+
+    var body: some View {
+        LabCardWithHeader(title: "Status history", subtitle: nil, icon: "clock.arrow.circlepath") {
+            Group {
+                if loading {
+                    Text("Loading…")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(AppTheme.textTertiary)
+                } else if items.isEmpty {
+                    Text("No status history yet.")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(AppTheme.textTertiary)
+                } else {
+                    VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
+                        ForEach(items) { entry in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(statusLabel(entry))
+                                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                Text(subtitle(for: entry))
+                                    .font(.system(.caption, design: .rounded))
+                                    .foregroundStyle(AppTheme.textTertiary)
+                            }
+                            if entry.id != items.last?.id {
+                                Rectangle()
+                                    .fill(AppTheme.separator.opacity(0.3))
+                                    .frame(height: AppTheme.separatorHeight)
+                            }
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .task(id: orderId) {
+            loading = true
+            defer { loading = false }
+            do {
+                let response = try await api.getOrderTimeline(orderId: orderId)
+                items = response.items
+            } catch {
+                items = []
+            }
+        }
+    }
+
+    private func statusLabel(_ entry: OrderTimelineEntry) -> String {
+        if let previous = entry.previousStatus, !previous.isEmpty {
+            return "\(previous) → \(entry.newStatus)"
+        }
+        return entry.newStatus
+    }
+
+    private func subtitle(for entry: OrderTimelineEntry) -> String {
+        var parts: [String] = [formatWhen(entry.createdAt)]
+        if let reason = entry.reason, !reason.isEmpty {
+            parts.append(reason)
+        }
+        if entry.eventKind == "DELAY" {
+            parts.append("Delayed")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func formatWhen(_ iso: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: iso) ?? ISO8601DateFormatter().date(from: iso) {
+            return date.formatted(date: .abbreviated, time: .shortened)
+        }
+        return iso
     }
 }
 

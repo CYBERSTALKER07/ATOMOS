@@ -482,6 +482,10 @@ final class APIClient {
     func getActiveFulfillments() async throws -> ActiveFulfillmentsResponse {
         try await get(path: "/v1/retailer/active-fulfillment")
     }
+
+    func getOrderTimeline(orderId: String) async throws -> OrderTimelineResponse {
+        try await get(path: "/v1/order/\(orderId)/timeline")
+    }
 }
 
 // MARK: - API Error

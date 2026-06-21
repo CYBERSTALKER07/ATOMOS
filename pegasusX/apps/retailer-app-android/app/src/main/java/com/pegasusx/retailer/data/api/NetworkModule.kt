@@ -6,6 +6,7 @@ import com.pegasusx.retailer.data.model.ProblemDetail
 import com.pegasusx.retailer.data.model.ProblemDetailException
 import dagger.Module
 import dagger.Provides
+import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
@@ -170,4 +171,10 @@ private class ProblemDetailInterceptor(private val json: Json) : okhttp3.Interce
         }
         throw ProblemDetailException(problem)
     }
+}
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface PegasusApiEntryPoint {
+    fun pegasusApi(): PegasusApi
 }

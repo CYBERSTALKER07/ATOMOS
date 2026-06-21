@@ -29,6 +29,7 @@ import { PageSection } from "../../../components/PageSection";
 import { ListRowSkeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
+import { OrderTimelinePanel } from "../../../components/OrderTimelinePanel";
 import { confirmAiOrder, rejectAiOrder, confirmPreorder, editPreorder, acceptDeliveryProposal, rejectDeliveryProposal } from "../../../lib/api";
 import {
   retailerCancelKey,
@@ -967,6 +968,13 @@ export default function OrdersPage() {
                   {actionError}
                 </div>
               )}
+
+              <div className="mb-10">
+                <h3 className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-4">
+                  Status history
+                </h3>
+                <OrderTimelinePanel orderId={detail.order_id} />
+              </div>
 
               <div className="mb-10">
                 <h3 className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-6">

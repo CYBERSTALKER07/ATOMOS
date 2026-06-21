@@ -16,6 +16,7 @@ import com.pegasusx.retailer.data.model.CashCheckoutResponse
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.LoginRequest
 import com.pegasusx.retailer.data.model.Order
+import com.pegasusx.retailer.data.model.OrderTimelineResponse
 import com.pegasusx.retailer.data.model.PendingPaymentsResponse
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.data.model.ProductCategory
@@ -305,6 +306,9 @@ interface PegasusApi {
         @Path("id") skuId: String,
         @Body body: UpdateSettingsRequest,
     ): ApiResponse
+
+    @GET("/v1/order/{orderId}/timeline")
+    suspend fun getOrderTimeline(@Path("orderId") orderId: String): OrderTimelineResponse
 
     // ── Delivery Tracking ──
     @GET("/v1/retailer/tracking")

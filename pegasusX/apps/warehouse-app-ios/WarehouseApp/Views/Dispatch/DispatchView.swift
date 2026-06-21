@@ -759,6 +759,12 @@ struct DispatchView: View {
                 idempotencyKey: idempotencyKey
             )
             switch result.status {
+            case "plan_stale":
+                actionAlert = DispatchActionAlert(
+                    title: "Plan stale",
+                    message: "Refresh preview and try smart dispatch again."
+                )
+                await reloadDispatchPreview()
             case "capacity_exceeded":
                 capacityWarnings = result.capacityWarnings
                 capacityDialogAutoMode = false
@@ -808,6 +814,12 @@ struct DispatchView: View {
                 idempotencyKey: idempotencyKey
             )
             switch result.status {
+            case "plan_stale":
+                actionAlert = DispatchActionAlert(
+                    title: "Plan stale",
+                    message: "Refresh preview and try smart dispatch again."
+                )
+                await reloadDispatchPreview()
             case "capacity_exceeded":
                 capacityWarnings = result.capacityWarnings
                 capacityDialogAutoMode = true
