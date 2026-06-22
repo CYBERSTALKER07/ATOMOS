@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight qa-gate validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev
+.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight qa-gate validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev
 
 help:
 	@echo "pegasusX make targets"
@@ -18,6 +18,7 @@ help:
 	@echo "  gap-hunter-gate        PX12-C event producer/consumer shape gate"
 	@echo "  gen-contracts-gate     verify contracts/events.schema.json matches gen-contracts"
 	@echo "  px12-preflight         PX12 automated QA gates (contract + gap-hunter + launch-readiness)"
+	@echo "  p0-preflight           P0 launch gates (prod profile + k8s + SSMR; see docs/P0_LAUNCH_CHECKLIST.md)"
 	@echo "  qa-gate                compile + unit tests (fails if integration tests would be skipped)"
 	@echo "  validate-ai-worker-k8s validate ai-worker Kubernetes manifests"
 	@echo "  validate-backend-k8s  validate backend-go Kubernetes manifests"
@@ -81,6 +82,12 @@ gen-contracts-gate:
 
 px12-preflight:
 	bash scripts/qa/px12_preflight.sh
+
+p0-preflight:
+	bash scripts/p0_launch_preflight.sh
+
+validate-production-profile:
+	bash scripts/validate_production_profile.sh
 
 qa-gate: backend-build
 	@echo "==> qa-gate: unit tests (PARITY_REQUIRE_SPANNER=1 — integration tests must not skip)"

@@ -21,14 +21,15 @@ This run book is the release-owner checklist for the currently implemented pegas
 
 ## Preflight Sequence
 
-0. Production env contract: `PEGASUSX_ENV=production`, `REQUIRE_INFRA_ADAPTERS=true`, non-`dev-*` webhook secrets, `GLOBAL_PAY_USERNAME`/`PASSWORD`/`SERVICE_ID` when `GLOBAL_PAY_ENV=production`, and portal demo seed flags unset (`FACTORY_PORTAL_SEED`, `PAYLOAD_PORTAL_SEED`, `WAREHOUSE_PORTAL_SEED`). See `docs/CLOUD_CREDENTIALS_CHECKLIST.md` for the full API inventory.
-1. Run `make test-ssmr-infra` from the `pegasusX` root.
-2. Run `make validate-ai-worker-k8s` from the `pegasusX` root.
-3. Run `make validate-launch-readiness` from the `pegasusX` root.
-4. Optional before staging cutover: `make load-cert-ssmr` (smoke profile) or `LOAD_PROFILE=cert make load-cert` on a warmed cluster.
-5. Review `docs/PAYMENT_EXCEPTION_SOP.md`, `docs/FINANCE_SUPPORT_WORKFLOW.md`, and `docs/DISPUTE_CLASSIFICATION_VOCABULARY.md` with finance support.
-6. Review `docs/DRIVER_SUPPORT_PLAYBOOK.md`, `docs/LIVE_TRACKING_EXPECTATIONS.md`, and `docs/DELIVERY_ESCALATION_POLICY.md` with delivery support.
-7. Review `docs/AI_WORKER_LAUNCH_RUNBOOK.md` with the worker operator.
+0. **P0 automated bundle:** `make p0-preflight` (or `P0_SKIP_SSMR=1` when Docker SSMR is unavailable). See [`P0_LAUNCH_CHECKLIST.md`](./P0_LAUNCH_CHECKLIST.md).
+1. Production env contract: `PEGASUSX_ENV=production`, `REQUIRE_INFRA_ADAPTERS=true`, non-`dev-*` webhook secrets, `GLOBAL_PAY_USERNAME`/`PASSWORD`/`SERVICE_ID` when `GLOBAL_PAY_ENV=production`, and portal demo seed flags unset (`FACTORY_PORTAL_SEED`, `PAYLOAD_PORTAL_SEED`, `WAREHOUSE_PORTAL_SEED`). See `docs/CLOUD_CREDENTIALS_CHECKLIST.md` for the full API inventory.
+2. Run `make test-ssmr-infra` from the `pegasusX` root.
+3. Run `make validate-ai-worker-k8s` from the `pegasusX` root.
+4. Run `make validate-launch-readiness` from the `pegasusX` root.
+5. Optional before staging cutover: `make load-cert-ssmr` (smoke profile) or `LOAD_PROFILE=cert make load-cert` on a warmed cluster.
+6. Review `docs/PAYMENT_EXCEPTION_SOP.md`, `docs/FINANCE_SUPPORT_WORKFLOW.md`, and `docs/DISPUTE_CLASSIFICATION_VOCABULARY.md` with finance support.
+7. Review `docs/DRIVER_SUPPORT_PLAYBOOK.md`, `docs/LIVE_TRACKING_EXPECTATIONS.md`, and `docs/DELIVERY_ESCALATION_POLICY.md` with delivery support.
+8. Review `docs/AI_WORKER_LAUNCH_RUNBOOK.md` with the worker operator.
 
 ## Launch Decision
 
