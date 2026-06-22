@@ -62,10 +62,13 @@ log_step() {
 	printf '==> %s\n' "$1"
 }
 
+CURRENT_STEP="init"
+
 cleanup() {
 	local exit_code=$?
 	trap - EXIT INT TERM
 	if (( exit_code != 0 )); then
+		echo "Smoke-check failed at step: ${CURRENT_STEP} (exit ${exit_code})" >&2
 		echo "Smoke-check failed; dumping compose status and recent logs" >&2
 		"${COMPOSE[@]}" ps >&2 || true
 		"${COMPOSE[@]}" logs --tail 40 spanner-emulator redis zookeeper kafka kafka-init backend-setup backend-go ai-worker >&2 || true
@@ -152,12 +155,15 @@ assert_redis() {
 }
 
 log_step "Tearing down any prior SSMR stack (including Kafka/Zookeeper volumes)"
+CURRENT_STEP="compose-down"
 "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
 
 log_step "Starting isolated SSMR compose stack"
+CURRENT_STEP="compose-up"
 "${COMPOSE[@]}" up -d
 
 log_step "Waiting for Spanner emulator, Redis, Zookeeper, and Kafka"
+CURRENT_STEP="wait-infra"
 wait_for_tcp "Spanner emulator" "$SPANNER_HOST" "$SPANNER_PORT" 60 2
 wait_for_tcp "Redis" "$REDIS_HOST" "$REDIS_PORT" 30 2
 wait_for_tcp "Zookeeper" "localhost" "22181" 30 2
@@ -181,38 +187,48 @@ while (( kafka_attempt < 40 )); do
 done
 
 log_step "Creating isolated Kafka topics"
+CURRENT_STEP="kafka-init"
 "${COMPOSE[@]}" run --rm kafka-init
 
 log_step "Running idempotent bootstrap against isolated Spanner"
+CURRENT_STEP="backend-setup"
 "${COMPOSE[@]}" run --rm backend-setup
 
 log_step "Asserting seeded supplier row and Retailers schema via direct Spanner probe"
+CURRENT_STEP="smokecheck-spanner"
 run_go_smokecheck spanner
 
 log_step "Pinging isolated Redis"
+CURRENT_STEP="redis-ping"
 assert_redis
 
 log_step "Ensuring backend and ai-worker are running"
+CURRENT_STEP="compose-backend"
 "${COMPOSE[@]}" up -d backend-go ai-worker
 
 log_step "Waiting for backend health"
+CURRENT_STEP="backend-health"
 wait_for_http "backend health" "$HEALTH_URL" 90 2
 # Warm up go run backend after volume-mount compile before e2e traffic.
 wait_for_http "backend health (warmup)" "$HEALTH_URL" 10 3
 
 log_step "Asserting Redis-backed delivery perimeter key and positive membership path"
+CURRENT_STEP="smokecheck-spatial"
 run_go_smokecheck spatial
 
 log_step "Asserting isolated Kafka topics and round-trip message flow"
+CURRENT_STEP="smokecheck-kafka"
 run_go_smokecheck kafka
 
 log_step "Running end-to-end supplier→retailer→order→tracking flow"
+CURRENT_STEP="smokecheck-e2e"
 mkdir -p "$REPO_ROOT/.ssmr/import-uploads"
 export SSMR_IMPORT_LOCAL_ROOT="$REPO_ROOT/.ssmr/import-uploads"
 E2E_LOG="$GO_TMP_ROOT/ssmr-e2e.log"
 run_go_smokecheck e2e 2>&1 | tee "$E2E_LOG"
 
 log_step "Asserting full-ecosystem PX_E2E marker coverage (configuration + lifecycle + realtime)"
+CURRENT_STEP="ecosystem-marker-gate"
 bash "$REPO_ROOT/scripts/parity/ssmr_ecosystem_marker_gate.sh" "$E2E_LOG"
 
 log_step "SSMR smoke-check completed successfully"

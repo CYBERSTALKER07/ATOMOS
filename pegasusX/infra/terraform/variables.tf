@@ -57,6 +57,12 @@ variable "redis_instance_name" {
   default     = ""
 }
 
+variable "spanner_processing_units_cap" {
+  description = "Target Spanner PU cap for year-1 pilot. Enforced in GCP console / COST_GOVERNANCE_RUNBOOK until Spanner TF supports hard caps."
+  type        = number
+  default     = 100
+}
+
 variable "redis_memory_size_gb" {
   description = "Memorystore Redis memory size in GB."
   type        = number

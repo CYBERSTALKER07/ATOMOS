@@ -65,12 +65,16 @@ func (c *Cache) GetOrLoad(ctx context.Context, key string, ttl time.Duration, lo
 		return loader(ctx)
 	}
 	if data, found, err := c.backend.Get(ctx, key); err == nil && found {
+		RecordHit(key)
 		return data, nil
 	}
+	RecordMiss(key)
 	val, err, _ := c.group.Do(key, func() (any, error) {
 		if data, found, err := c.backend.Get(ctx, key); err == nil && found {
+			RecordHit(key)
 			return data, nil
 		}
+		RecordMiss(key)
 		data, err := loader(ctx)
 		if err != nil {
 			return nil, err

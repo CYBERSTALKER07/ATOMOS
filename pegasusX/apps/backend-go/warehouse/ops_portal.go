@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -216,7 +217,7 @@ func (s *Service) handleOpsDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.repo != nil && whID != "" {
-		inventoryList, _ := s.repo.GetInventoryList(r.Context(), whID)
+		inventoryList, _ := s.repo.GetInventoryList(r.Context(), whID, InventoryListOptions{})
 		for _, row := range inventoryList {
 			if row.Quantity < 20 {
 				lowStock++
@@ -260,7 +261,14 @@ func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		lowOnly := strings.EqualFold(r.URL.Query().Get("low_stock"), "true")
-		inventoryList, err := s.repo.GetInventoryList(r.Context(), whID)
+		fresh := strings.EqualFold(r.URL.Query().Get("fresh"), "1") || strings.EqualFold(r.URL.Query().Get("fresh"), "true")
+		limit := parseInventoryQueryInt(r.URL.Query().Get("limit"), 0, 500)
+		offset := parseInventoryQueryInt(r.URL.Query().Get("offset"), 0, 100000)
+		inventoryList, err := s.repo.GetInventoryList(r.Context(), whID, InventoryListOptions{
+			Fresh:  fresh,
+			Limit:  limit,
+			Offset: offset,
+		})
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_fetch_inventory"})
 			return
@@ -290,7 +298,13 @@ func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
 				"last_updated":        row.UpdatedAt,
 			})
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"inventory": items, "items": items})
+		writeJSON(w, http.StatusOK, map[string]any{
+			"inventory": items,
+			"items":     items,
+			"limit":     limit,
+			"offset":    offset,
+			"total":     len(items),
+		})
 	case http.MethodPatch:
 		body, ok := readMutationBody(w, r, 64*1024)
 		if !ok {
@@ -918,4 +932,19 @@ func (s *Service) loadWarehouseTreasuryOverview(ctx context.Context, warehouseID
 		"total_paid":        totalPaid,
 		"total_outstanding": totalOutstanding,
 	}
+}
+
+func parseInventoryQueryInt(raw string, fallback, max int) int {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return fallback
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil || v < 0 {
+		return fallback
+	}
+	if max > 0 && v > max {
+		return max
+	}
+	return v
 }

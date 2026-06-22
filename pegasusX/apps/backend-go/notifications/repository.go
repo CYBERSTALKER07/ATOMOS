@@ -100,7 +100,7 @@ func (r *SpannerRepository) ListByRecipient(ctx context.Context, recipientID str
 			"off": int64(offset),
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var notifs []Notification
@@ -188,7 +188,7 @@ func (r *SpannerRepository) UnreadCount(ctx context.Context, recipientID string)
 		SQL:    "SELECT COUNT(*) FROM Notifications WHERE RecipientId = @rid AND IsRead = FALSE",
 		Params: map[string]any{"rid": recipientID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err != nil {

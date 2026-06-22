@@ -1,0 +1,53 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pegasusx
+
+resources:
+  - ../prod
+  - ../../optimizer-core/configmap.yaml
+  - ../../optimizer-core/deployment.yaml
+  - ../../optimizer-core/service.yaml
+  - ../../ai-worker/configmap.yaml
+  - ../../ai-worker/deployment.yaml
+  - ../../ai-worker/service.yaml
+
+patches:
+  - target:
+      kind: Deployment
+      name: backend-go
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+  - target:
+      kind: Deployment
+      name: backend-go-worker
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: backend-go
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 2
+      - op: replace
+        path: /spec/maxReplicas
+        value: 4
+
+configMapGenerator:
+  - name: backend-go-config
+    behavior: merge
+    literals:
+      - KAFKA_TOPIC_DUAL_WRITE=false
+      - KAFKA_TOPIC_CONSUME_DOMAIN=false
+      - WAREHOUSE_DISPATCH_PLAN_TTL_SEC=60
+      - REDIS_POOL_SIZE=20
+
+labels:
+  - pairs:
+      pegasusx.io/environment: pilot
+      pegasusx.io/cost-tier: year1

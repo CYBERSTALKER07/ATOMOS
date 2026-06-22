@@ -33,5 +33,10 @@ api_deploy = YAML.load_file('infra/k8s/backend-go/deployment.yaml')
 replicas = api_deploy.dig('spec', 'replicas')
 assert(replicas.to_i >= 2, 'API Deployment should run at least 2 replicas for prod')
 
+pilot_overlay = File.read('infra/k8s/overlays/pilot/kustomization.yaml')
+assert(!pilot_overlay.include?('KAFKA_TOPIC_DUAL_WRITE=true'), 'pilot overlay must not enable KAFKA_TOPIC_DUAL_WRITE')
+assert(pilot_overlay.include?('KAFKA_TOPIC_DUAL_WRITE=false'), 'pilot overlay must set KAFKA_TOPIC_DUAL_WRITE=false')
+assert(pilot_overlay.include?('KAFKA_TOPIC_CONSUME_DOMAIN=false'), 'pilot overlay must set KAFKA_TOPIC_CONSUME_DOMAIN=false')
+
 puts 'production-profile-ok'
 RUBY

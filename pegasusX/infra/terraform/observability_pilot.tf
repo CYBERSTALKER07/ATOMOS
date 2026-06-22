@@ -238,6 +238,52 @@ resource "google_monitoring_dashboard" "pilot_launch" {
               }]
             }
           }
+        },
+        {
+          xPos   = 0
+          yPos   = 8
+          width  = 6
+          height = 4
+          widget = {
+            title = "Optimizer fallback_phase1 rate"
+            xyChart = {
+              dataSets = [{
+                plotType = "LINE"
+                timeSeriesQuery = {
+                  timeSeriesFilter = {
+                    filter = "metric.type=\"prometheus.googleapis.com/void_optimizer_source_total/counter\" resource.type=\"prometheus_target\" metric.labels.source=\"fallback_phase1\""
+                    aggregation = {
+                      alignmentPeriod  = "60s"
+                      perSeriesAligner = "ALIGN_RATE"
+                    }
+                  }
+                }
+              }]
+            }
+          }
+        },
+        {
+          xPos   = 6
+          yPos   = 8
+          width  = 6
+          height = 4
+          widget = {
+            title = "Redis geocode cache hits (rate)"
+            xyChart = {
+              dataSets = [{
+                plotType = "LINE"
+                timeSeriesQuery = {
+                  timeSeriesFilter = {
+                    filter = "metric.type=\"prometheus.googleapis.com/void_redis_cache_hit_total/counter\" resource.type=\"prometheus_target\" metric.labels.prefix=\"geo\""
+                    aggregation = {
+                      alignmentPeriod  = "60s"
+                      perSeriesAligner = "ALIGN_RATE"
+                    }
+                  }
+                }
+              }]
+            }
+          }
         }
       ]
     }

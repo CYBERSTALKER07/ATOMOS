@@ -126,8 +126,9 @@ export function useDashboardData() {
       if (signal.aborted) return;
       await refresh(signal);
     },
-    30_000,
+    60_000,
     [refresh],
+    { pauseWhenHidden: true },
   );
 
   const empty: DashboardData = {

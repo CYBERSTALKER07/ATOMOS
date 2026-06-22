@@ -40,6 +40,7 @@ export function useWarehouseFleetLiveMap(pollMs = 15_000) {
     },
     pollMs,
     [pollMs, refresh],
+    { hiddenIntervalMs: 60_000 },
   );
 
   useEffect(() => {

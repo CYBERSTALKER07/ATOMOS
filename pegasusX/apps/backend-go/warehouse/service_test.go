@@ -538,7 +538,7 @@ func (r *warehouseRepoSpy) Apply(ctx context.Context, mutate func() error, emit 
 	return nil
 }
 
-func (r *warehouseRepoSpy) GetInventoryList(ctx context.Context, warehouseID string) (map[string]InventoryRow, error) {
+func (r *warehouseRepoSpy) GetInventoryList(ctx context.Context, warehouseID string, opts InventoryListOptions) (map[string]InventoryRow, error) {
 	return nil, nil
 }
 func (r *warehouseRepoSpy) UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error {

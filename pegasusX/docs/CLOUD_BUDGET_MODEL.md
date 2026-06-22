@@ -1,6 +1,8 @@
 # pegasusX Cloud Budget Model (Full-GCP-Minimal)
 
-Canonical cost reference for the **full-GCP-minimal** deployment choice: real managed Spanner, Memorystore Redis, Kafka, and GKE with minimal replicas, trial/free-tier quotas where applicable, and strict monitoring. Target steady-state **&lt;$1,500/mo** initially.
+Canonical cost reference for the **full-GCP-minimal** deployment choice: real managed Spanner, Memorystore Redis, Kafka, and GKE with minimal replicas, trial/free-tier quotas where applicable, and strict monitoring. Target steady-state **$1,500–1,700/mo** for year-1 pilot (1 warehouse, thousands of retailers).
+
+Ops runbook: [COST_GOVERNANCE_RUNBOOK.md](./COST_GOVERNANCE_RUNBOOK.md).
 
 See also: [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md) § infra.
 
@@ -9,7 +11,7 @@ See also: [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARI
 | Service | Minimal footprint | Est. monthly | Notes |
 |---|---|---:|---|
 | Cloud Spanner | 1× regional instance, 100 PU processing | $650–900 | Scale PU only after SLO breach; stale reads on dashboards |
-| GKE Autopilot | 2 backend pods + 1 ai-worker | $180–280 | HPA max 4; no sticky sessions |
+| GKE Autopilot | 2 backend pods + 1 ai-worker | $180–280 | HPA max **4** (pilot overlay); no sticky sessions |
 | Memorystore Redis | Basic 1 GB | $35–55 | Pub/Sub invalidation + rate limits |
 | Confluent / managed Kafka | 1 cluster, 3 partitions TopicMain | $120–200 | Trial credits may cover first month |
 | Cloud Run (portals) | min-instances=0, max=2 | $20–60 | Supplier + warehouse + factory portals |
@@ -38,27 +40,28 @@ See also: [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARI
 ## Terraform wiring
 
 ```hcl
-# infra/terraform/variables.tf
-monthly_budget_usd   = 1500
+# infra/terraform/budget.tf
+monthly_budget_usd   = 1700
 billing_account_id   = "XXXXXX-XXXXXX-XXXXXX"  # optional; enables budget resource
 budget_alert_emails  = ["ops@example.com"]
+spanner_processing_units_cap = 100  # enforce in console until TF supports hard cap
 ```
 
 Apply with `terraform apply` in `pegasusX/infra/terraform/` after `billing_account_id` is set.
 
 ## Growth scale (year 1: 1 warehouse, thousands of retailers)
 
-Pilot envelope (`monthly_budget_usd = 1500`) assumes **1 warehouse**, **50–150 retailers**, and minimal Kafka throughput. When scaling toward **~5k retailers** (even with a single warehouse for the first 12 months), expect:
+Pilot envelope (`monthly_budget_usd = 1700`) assumes **1 warehouse**, thousands of retailers (inactive retailers are cheap), and moderate order volume. When scaling order volume:
 
 | Driver | Pilot | Growth (1 WH, 5k retailers) |
 |---|---|---|
 | Spanner PU | 100 PU cap | **120–200 PU** after SLO breach — largest cost swing |
-| GKE backend | 2 pods | **2–4 pods** (HPA on dispatch preview p95) |
+| GKE backend | 2 pods (pilot overlay) | **2–4 pods** (HPA on dispatch preview p95) |
 | optimizer-core | 1 pod, 1 vCPU | **1–2 pods** — OR-Tools CPU, no GPU |
 | Confluent Basic | ~$120–200/mo | unchanged at this throughput |
 | Maps Geocoding | within $200 credit | cache in Redis; rate-limit geocode endpoints |
 
-**Revised steady-state:** **$1,800–2,500/mo** unless Spanner autoscale is capped. After 2 weeks of staging metrics, either raise `monthly_budget_usd` to **2000** with alerts at 80%/100%, or keep **1500** and enforce Spanner PU max + stale reads on dashboards.
+**Revised steady-state:** **$1,400–1,700/mo** at year-1 pilot load with Redis geocode cache + stale reads. Raise `monthly_budget_usd` only after 2 weeks of staging metrics breach 80% consistently.
 
 ```hcl
 # growth staging example (after metrics review)

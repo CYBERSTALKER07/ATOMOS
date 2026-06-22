@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
 
 export type UsePollingOptions = {
-  /** When true, polling pauses while tab is hidden (default true). */
+  /** When true, polling pauses while tab is hidden unless hiddenIntervalMs is set (default true). */
   pauseWhenHidden?: boolean;
+  /** Slower poll interval while tab is hidden (e.g. 60_000 for fleet maps). */
+  hiddenIntervalMs?: number;
   /** Run immediately on mount (default true). */
   immediate?: boolean;
 };
@@ -15,6 +17,9 @@ export type UsePollingOptions = {
  * - Honors `backpressure` CustomEvent for server-driven throttle
  * - Does not poll when tab is hidden or offline
  *
+ * - Hidden tabs: use `hiddenIntervalMs` (e.g. 60_000) for fleet maps; otherwise pauses when hidden
+ * - Dashboard surfaces: prefer 60_000ms minimum; fleet live maps 15_000ms visible
+ *
  * Pair with local state: `loading: isLoading && !data` so background ticks
  * do not flash empty shells.
  */
@@ -24,7 +29,7 @@ export function usePolling(
   deps: unknown[] = [],
   options: UsePollingOptions = {},
 ) {
-  const { pauseWhenHidden = true, immediate = true } = options;
+  const { pauseWhenHidden = true, hiddenIntervalMs, immediate = true } = options;
   const fnRef = useRef(fn);
   fnRef.current = fn;
 
@@ -34,11 +39,22 @@ export function usePolling(
   const isFetchingRef = useRef(false);
   const lastFetchedRef = useRef<number>(0);
 
+  const effectiveInterval = useCallback(() => {
+    if (
+      hiddenIntervalMs &&
+      typeof document !== "undefined" &&
+      document.visibilityState !== "visible"
+    ) {
+      return hiddenIntervalMs;
+    }
+    return intervalMs;
+  }, [hiddenIntervalMs, intervalMs]);
+
   const doFetch = useCallback(async () => {
     if (isFetchingRef.current) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(doFetch, currentIntervalRef.current);
+      timerRef.current = setTimeout(doFetch, effectiveInterval());
       return;
     }
 
@@ -60,11 +76,12 @@ export function usePolling(
     } finally {
       isFetchingRef.current = false;
       const visible = typeof document === "undefined" || document.visibilityState === "visible";
-      if (visible && !controller.signal.aborted) {
+      if ((visible || hiddenIntervalMs) && !controller.signal.aborted) {
+        currentIntervalRef.current = effectiveInterval();
         timerRef.current = setTimeout(doFetch, currentIntervalRef.current);
       }
     }
-  }, []);
+  }, [effectiveInterval, hiddenIntervalMs]);
 
   useEffect(() => {
     currentIntervalRef.current = intervalMs;
@@ -73,19 +90,28 @@ export function usePolling(
     }
 
     const scheduleIfVisible = () => {
-      if (!pauseWhenHidden && typeof document !== "undefined" && document.visibilityState !== "visible") {
+      if (
+        pauseWhenHidden &&
+        !hiddenIntervalMs &&
+        typeof document !== "undefined" &&
+        document.visibilityState !== "visible"
+      ) {
         return;
       }
       if (typeof navigator !== "undefined" && !navigator.onLine) return;
-      currentIntervalRef.current = intervalMs;
+      currentIntervalRef.current = effectiveInterval();
       if (timerRef.current) clearTimeout(timerRef.current);
       void doFetch();
     };
 
     const onVisibilityChange = () => {
-      if (!pauseWhenHidden) return;
+      if (!pauseWhenHidden && !hiddenIntervalMs) return;
       if (document.visibilityState === "visible") {
         scheduleIfVisible();
+      } else if (hiddenIntervalMs) {
+        currentIntervalRef.current = hiddenIntervalMs;
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(doFetch, hiddenIntervalMs);
       } else if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
@@ -124,7 +150,7 @@ export function usePolling(
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [intervalMs, immediate, pauseWhenHidden, doFetch, ...deps]);
+  }, [intervalMs, hiddenIntervalMs, immediate, pauseWhenHidden, effectiveInterval, doFetch, ...deps]);
 
   return {
     refetch: () => {

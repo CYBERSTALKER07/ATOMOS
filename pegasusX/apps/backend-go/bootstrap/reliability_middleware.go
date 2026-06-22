@@ -27,6 +27,7 @@ const (
 	reliabilityClassAuth        reliabilityClass = "auth"
 	reliabilityClassWebhook     reliabilityClass = "webhook"
 	reliabilityClassTelemetry   reliabilityClass = "telemetry"
+	reliabilityClassGeocode     reliabilityClass = "geocode"
 )
 
 func (c reliabilityClass) isCritical() bool {
@@ -47,6 +48,7 @@ type ReliabilityConfig struct {
 	RateLimitAuthMax      int
 	RateLimitWebhookMax   int
 	RateLimitTelemetryMax int
+	RateLimitGeocodeMax   int
 
 	CircuitFailureThreshold int
 	CircuitOpenDuration     time.Duration
@@ -76,6 +78,9 @@ func (c *ReliabilityConfig) applyDefaults() {
 	}
 	if c.RateLimitTelemetryMax <= 0 {
 		c.RateLimitTelemetryMax = 120
+	}
+	if c.RateLimitGeocodeMax <= 0 {
+		c.RateLimitGeocodeMax = 60
 	}
 	if c.CircuitFailureThreshold <= 0 {
 		c.CircuitFailureThreshold = 5
@@ -109,6 +114,9 @@ func ReliabilityConfigFromEnv() ReliabilityConfig {
 	}
 	if v := envInt("RELIABILITY_RATE_LIMIT_TELEMETRY_MAX", 0); v > 0 {
 		cfg.RateLimitTelemetryMax = v
+	}
+	if v := envInt("RELIABILITY_RATE_LIMIT_GEOCODE_MAX", 0); v > 0 {
+		cfg.RateLimitGeocodeMax = v
 	}
 	if v := envInt("RELIABILITY_PRIORITY_MAX_IN_FLIGHT", 0); v > 0 {
 		cfg.PriorityMaxInFlight = v
@@ -189,6 +197,16 @@ func (m *ReliabilityMiddleware) Middleware(next http.Handler) http.Handler {
 			actor := reliabilityActorKey(r)
 			maxRequests := m.limitForClass(class)
 			allowed, remaining, retryAfter := m.limiter.Allow(actor+":"+string(class), maxRequests, m.cfg.RateLimitWindow, now)
+			if class == reliabilityClassGeocode {
+				ipKey := reliabilityClientIPKey(r)
+				ipAllowed, _, ipRetry := m.limiter.Allow("ip:"+ipKey+":geocode", maxRequests, m.cfg.RateLimitWindow, now)
+				if !ipAllowed {
+					allowed = false
+					if ipRetry > retryAfter {
+						retryAfter = ipRetry
+					}
+				}
+			}
 			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(maxRequests))
 			w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(remaining))
 			w.Header().Set("X-RateLimit-Reset", strconv.Itoa(int(m.cfg.RateLimitWindow.Seconds())))
@@ -233,6 +251,8 @@ func (m *ReliabilityMiddleware) limitForClass(class reliabilityClass) int {
 		return m.cfg.RateLimitWebhookMax
 	case reliabilityClassTelemetry:
 		return m.cfg.RateLimitTelemetryMax
+	case reliabilityClassGeocode:
+		return m.cfg.RateLimitGeocodeMax
 	default:
 		return m.cfg.RateLimitDefaultMax
 	}
@@ -264,6 +284,8 @@ func classifyReliabilityPath(path string) reliabilityClass {
 		return reliabilityClassAuth
 	case strings.HasPrefix(lower, "/ws/telemetry") || strings.HasPrefix(lower, "/v1/telemetry/"):
 		return reliabilityClassTelemetry
+	case strings.HasPrefix(lower, "/v1/platform/geocode/"):
+		return reliabilityClassGeocode
 	default:
 		return reliabilityClassOperational
 	}
@@ -291,6 +313,26 @@ func reliabilityActorKey(r *http.Request) string {
 	}
 	if strings.TrimSpace(r.RemoteAddr) != "" {
 		return "ip:" + strings.TrimSpace(r.RemoteAddr)
+	}
+	return "anonymous"
+}
+
+func reliabilityClientIPKey(r *http.Request) string {
+	if r == nil {
+		return "anonymous"
+	}
+	if xff := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xff != "" {
+		parts := strings.Split(xff, ",")
+		ip := strings.TrimSpace(parts[0])
+		if ip != "" {
+			return ip
+		}
+	}
+	if host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr)); err == nil && host != "" {
+		return host
+	}
+	if strings.TrimSpace(r.RemoteAddr) != "" {
+		return strings.TrimSpace(r.RemoteAddr)
 	}
 	return "anonymous"
 }

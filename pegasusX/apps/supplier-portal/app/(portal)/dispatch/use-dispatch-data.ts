@@ -67,8 +67,9 @@ export function useDispatchData() {
       if (signal.aborted) return;
       await refresh(signal);
     },
-    30_000,
+    60_000,
     [refresh],
+    { pauseWhenHidden: true },
   );
 
   useSupplierWsRefresh(

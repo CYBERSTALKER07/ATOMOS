@@ -10,23 +10,34 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 )
 
-const nominatimURL = "https://nominatim.openstreetmap.org"
-const nominatimUA = "PegasusX/1.0 (logistics platform)"
+const (
+	nominatimURL = "https://nominatim.openstreetmap.org"
+	nominatimUA  = "PegasusX/1.0 (logistics platform)"
+
+	ttlAutocomplete = 24 * time.Hour
+	ttlForward      = 7 * 24 * time.Hour
+	ttlReverse      = 7 * 24 * time.Hour
+	ttlPlace        = 7 * 24 * time.Hour
+)
 
 // Service resolves addresses via Google Maps when configured, otherwise Nominatim.
 type Service struct {
 	googleAPIKey string
 	httpClient   *http.Client
+	cache        *cache.Cache
 }
 
-// NewService constructs a geolocation resolver.
-func NewService(googleAPIKey string) *Service {
+// NewService constructs a geolocation resolver. Pass cache for Redis-backed geocode caching.
+func NewService(googleAPIKey string, c *cache.Cache) *Service {
 	key := strings.TrimSpace(googleAPIKey)
 	return &Service{
 		googleAPIKey: key,
 		httpClient:   &http.Client{Timeout: 8 * time.Second},
+		cache:        c,
 	}
 }
 
@@ -47,10 +58,19 @@ type AutocompletePrediction struct {
 
 // ReverseGeocode resolves coordinates to a display address.
 func (s *Service) ReverseGeocode(ctx context.Context, lat, lng float64) (ResolvedLocation, error) {
-	if s != nil && s.googleAPIKey != "" {
-		return s.reverseGoogle(ctx, lat, lng)
+	lat = roundCoord(lat)
+	lng = roundCoord(lng)
+	key := reverseCacheKey(lat, lng)
+	var out ResolvedLocation
+	if err := s.loadJSON(ctx, key, ttlReverse, func(ctx context.Context) (any, error) {
+		if s != nil && s.googleAPIKey != "" {
+			return s.reverseGoogle(ctx, lat, lng)
+		}
+		return s.reverseNominatim(ctx, lat, lng)
+	}, &out); err != nil {
+		return ResolvedLocation{}, err
 	}
-	return s.reverseNominatim(ctx, lat, lng)
+	return out, nil
 }
 
 // ForwardGeocode resolves a free-text address to coordinates.
@@ -59,10 +79,17 @@ func (s *Service) ForwardGeocode(ctx context.Context, address string) (ResolvedL
 	if address == "" {
 		return ResolvedLocation{}, fmt.Errorf("address_required")
 	}
-	if s != nil && s.googleAPIKey != "" {
-		return s.forwardGoogle(ctx, address)
+	key := forwardCacheKey(address)
+	var out ResolvedLocation
+	if err := s.loadJSON(ctx, key, ttlForward, func(ctx context.Context) (any, error) {
+		if s != nil && s.googleAPIKey != "" {
+			return s.forwardGoogle(ctx, address)
+		}
+		return s.forwardNominatim(ctx, address)
+	}, &out); err != nil {
+		return ResolvedLocation{}, err
 	}
-	return s.forwardNominatim(ctx, address)
+	return out, nil
 }
 
 // Autocomplete returns address suggestions for partial user input.
@@ -71,8 +98,62 @@ func (s *Service) Autocomplete(ctx context.Context, input string) ([]Autocomplet
 	if input == "" {
 		return nil, nil
 	}
+	key := autocompleteCacheKey(input)
+	var out []AutocompletePrediction
+	if err := s.loadJSON(ctx, key, ttlAutocomplete, func(ctx context.Context) (any, error) {
+		return s.autocompleteUncached(ctx, input)
+	}, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ResolvePlaceID loads coordinates for a Google place_id.
+func (s *Service) ResolvePlaceID(ctx context.Context, placeID string) (ResolvedLocation, error) {
+	placeID = strings.TrimSpace(placeID)
+	if placeID == "" {
+		return ResolvedLocation{}, fmt.Errorf("place_id_required")
+	}
 	if s == nil || s.googleAPIKey == "" {
-		// Best-effort single forward geocode as a suggestion when Places is unavailable.
+		return ResolvedLocation{}, fmt.Errorf("google_maps_not_configured")
+	}
+	key := placeCacheKey(placeID)
+	var out ResolvedLocation
+	if err := s.loadJSON(ctx, key, ttlPlace, func(ctx context.Context) (any, error) {
+		return s.resolvePlaceIDUncached(ctx, placeID)
+	}, &out); err != nil {
+		return ResolvedLocation{}, err
+	}
+	return out, nil
+}
+
+func (s *Service) loadJSON(ctx context.Context, key string, ttl time.Duration, loader func(context.Context) (any, error), dest any) error {
+	if s == nil || s.cache == nil {
+		v, err := loader(ctx)
+		if err != nil {
+			return err
+		}
+		b, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+		return json.Unmarshal(b, dest)
+	}
+	raw, err := s.cache.GetOrLoad(ctx, key, ttl, func(ctx context.Context) ([]byte, error) {
+		v, err := loader(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return json.Marshal(v)
+	})
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(raw, dest)
+}
+
+func (s *Service) autocompleteUncached(ctx context.Context, input string) ([]AutocompletePrediction, error) {
+	if s == nil || s.googleAPIKey == "" {
 		loc, err := s.ForwardGeocode(ctx, input)
 		if err != nil {
 			return nil, nil
@@ -120,15 +201,7 @@ func (s *Service) Autocomplete(ctx context.Context, input string) ([]Autocomplet
 	return out, nil
 }
 
-// ResolvePlaceID loads coordinates for a Google place_id.
-func (s *Service) ResolvePlaceID(ctx context.Context, placeID string) (ResolvedLocation, error) {
-	placeID = strings.TrimSpace(placeID)
-	if placeID == "" {
-		return ResolvedLocation{}, fmt.Errorf("place_id_required")
-	}
-	if s == nil || s.googleAPIKey == "" {
-		return ResolvedLocation{}, fmt.Errorf("google_maps_not_configured")
-	}
+func (s *Service) resolvePlaceIDUncached(ctx context.Context, placeID string) (ResolvedLocation, error) {
 	endpoint := "https://maps.googleapis.com/maps/api/place/details/json"
 	q := url.Values{}
 	q.Set("place_id", placeID)
@@ -190,7 +263,7 @@ func (s *Service) reverseGoogle(ctx context.Context, lat, lng float64) (Resolved
 		Status  string `json:"status"`
 		Results []struct {
 			FormattedAddress string `json:"formatted_address"`
-			PlaceID        string `json:"place_id"`
+			PlaceID          string `json:"place_id"`
 		} `json:"results"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
@@ -227,8 +300,8 @@ func (s *Service) forwardGoogle(ctx context.Context, address string) (ResolvedLo
 		Status  string `json:"status"`
 		Results []struct {
 			FormattedAddress string `json:"formatted_address"`
-			PlaceID        string `json:"place_id"`
-			Geometry       struct {
+			PlaceID          string `json:"place_id"`
+			Geometry         struct {
 				Location struct {
 					Lat float64 `json:"lat"`
 					Lng float64 `json:"lng"`

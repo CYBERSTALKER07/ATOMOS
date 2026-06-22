@@ -33,11 +33,15 @@ run_gate "gap-hunter-gate" make gap-hunter-gate
 run_gate "gen-contracts-gate" make gen-contracts-gate
 run_gate "validate-backend-k8s" make validate-backend-k8s
 run_gate "validate-ai-worker-k8s" make validate-ai-worker-k8s
+run_gate "geocode cache unit test" bash -c 'cd apps/backend-go && go test ./geolocation -run TestForwardGeocodeCacheHitMiss -count=1'
+run_gate "geocode cache autocomplete test" bash -c 'cd apps/backend-go && go test ./geolocation -run TestAutocompleteCacheRoundTrip -count=1'
+run_gate "spanner stale-read gate" bash scripts/validate_spanner_stale_reads.sh
 
 if command -v kubectl >/dev/null 2>&1; then
 	run_gate "kustomize prod overlay" kubectl kustomize infra/k8s/overlays/prod --load-restrictor LoadRestrictionsNone >/dev/null
+	run_gate "kustomize pilot overlay" bash -c 'rendered=$(kubectl kustomize infra/k8s/overlays/pilot --load-restrictor LoadRestrictionsNone) && echo "$rendered" | rg -q "KAFKA_TOPIC_DUAL_WRITE: \"false\"" && echo "$rendered" | rg -q "maxReplicas: 4"'
 else
-	echo "SKIP: kustomize prod overlay (kubectl not installed)" >&2
+	echo "SKIP: kustomize overlays (kubectl not installed)" >&2
 fi
 
 run_gate "test-ssmr-infra" make test-ssmr-infra

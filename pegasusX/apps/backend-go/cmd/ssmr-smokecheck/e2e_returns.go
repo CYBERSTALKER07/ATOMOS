@@ -97,7 +97,7 @@ func smokeBarcode() string {
 }
 
 func warehouseInventoryQty(ctx context.Context, client *http.Client, base, cookie, warehouseID, productID string) (int64, error) {
-	invURL := base + "/v1/warehouse/ops/inventory?warehouse_id=" + warehouseID
+	invURL := base + "/v1/warehouse/ops/inventory?warehouse_id=" + warehouseID + "&fresh=1"
 	status, respBody, _, err := clientDo(ctx, client, http.MethodGet, invURL, nil, cookie, "")
 	if err != nil {
 		return 0, err

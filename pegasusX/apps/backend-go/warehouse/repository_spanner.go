@@ -15,6 +15,13 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+// InventoryListOptions controls inventory list reads. Zero value = 15s stale, full scan.
+type InventoryListOptions struct {
+	Fresh  bool
+	Limit  int
+	Offset int
+}
+
 // Repository is the persistence seam for warehouse operations.
 type Repository interface {
 	ListSupplyRequests(ctx context.Context, warehouseID string, limit int) ([]SupplyRequest, error)
@@ -22,7 +29,7 @@ type Repository interface {
 	UpdateSupplyRequestStatus(ctx context.Context, requestID, status string, emit func(outbox.TxnBuffer) error) error
 	Apply(ctx context.Context, mutate func() error, emit func(outbox.TxnBuffer) error) error
 
-	GetInventoryList(ctx context.Context, warehouseID string) (map[string]InventoryRow, error)
+	GetInventoryList(ctx context.Context, warehouseID string, opts InventoryListOptions) (map[string]InventoryRow, error)
 	UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error
 	UpdateInventoryPolicy(ctx context.Context, warehouseID, productID, policy string, reorderThreshold *int64, emit func(outbox.TxnBuffer) error) error
 	GetAutoDispatch(ctx context.Context, warehouseID string) (bool, error)
@@ -525,7 +532,7 @@ func (r *inMemoryRepository) Apply(ctx context.Context, mutate func() error, emi
 	return nil
 }
 
-func (m *inMemoryRepository) GetInventoryList(ctx context.Context, warehouseID string) (map[string]InventoryRow, error) {
+func (m *inMemoryRepository) GetInventoryList(ctx context.Context, warehouseID string, opts InventoryListOptions) (map[string]InventoryRow, error) {
 	return nil, nil
 }
 func (m *inMemoryRepository) UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error {
@@ -560,17 +567,26 @@ func (m *inMemoryRepository) ListAutoDispatchWarehouses(_ context.Context) ([]Au
 	return []AutoDispatchWarehouse{}, nil
 }
 
-func (r *SpannerRepository) GetInventoryList(ctx context.Context, warehouseID string) (map[string]InventoryRow, error) {
-	stmt := spanner.Statement{
-		SQL: `SELECT si.ProductId, si.QuantityOnHand, si.QuantityReserved, si.UpdatedAt,
-		             COALESCE(si.OutOfStockPolicy, ''), COALESCE(si.ReorderThreshold, 0),
-		             COALESCE(w.DefaultOutOfStockPolicy, 'REJECT')
-		      FROM SupplierInventoryV2 si
-		      INNER JOIN Warehouses w ON si.WarehouseId = w.WarehouseId AND si.SupplierId = w.SupplierId
-		      WHERE si.WarehouseId = @wid`,
-		Params: map[string]any{"wid": warehouseID},
+func (r *SpannerRepository) GetInventoryList(ctx context.Context, warehouseID string, opts InventoryListOptions) (map[string]InventoryRow, error) {
+	sql := `SELECT si.ProductId, si.QuantityOnHand, si.QuantityReserved, si.UpdatedAt,
+	             COALESCE(si.OutOfStockPolicy, ''), COALESCE(si.ReorderThreshold, 0),
+	             COALESCE(w.DefaultOutOfStockPolicy, 'REJECT')
+	      FROM SupplierInventoryV2 si
+	      INNER JOIN Warehouses w ON si.WarehouseId = w.WarehouseId AND si.SupplierId = w.SupplierId
+	      WHERE si.WarehouseId = @wid
+	      ORDER BY si.ProductId`
+	params := map[string]any{"wid": warehouseID}
+	if opts.Limit > 0 {
+		sql += ` LIMIT @limit OFFSET @offset`
+		params["limit"] = opts.Limit
+		params["offset"] = opts.Offset
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	stmt := spanner.Statement{SQL: sql, Params: params}
+	txn := r.client.Single()
+	if !opts.Fresh {
+		txn = txn.WithTimestampBound(spanner.ExactStaleness(15 * time.Second))
+	}
+	iter := txn.Query(ctx, stmt)
 	defer iter.Stop()
 
 	out := make(map[string]InventoryRow)

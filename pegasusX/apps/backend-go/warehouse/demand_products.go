@@ -127,7 +127,7 @@ func (s *Service) productDemandFromScaffold(warehouseID string, forecastDays int
 		})
 	}
 
-	inventoryList, _ := s.repo.GetInventoryList(context.Background(), warehouseID)
+	inventoryList, _ := s.repo.GetInventoryList(context.Background(), warehouseID, InventoryListOptions{})
 	for sku, row := range inventoryList {
 		appendRow(sku, row.ProductName, int64(row.Quantity))
 	}

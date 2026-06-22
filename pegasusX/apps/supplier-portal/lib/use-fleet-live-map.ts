@@ -38,6 +38,7 @@ export function useFleetLiveMap(pollMs = 15_000) {
     },
     pollMs,
     [pollMs, refresh, routes.length],
+    { hiddenIntervalMs: 60_000 },
   );
 
   useSupplierWsRefresh(

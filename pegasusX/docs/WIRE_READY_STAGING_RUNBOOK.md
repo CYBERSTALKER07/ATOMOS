@@ -1,6 +1,6 @@
 # Wire-Ready Staging Runbook
 
-Automated loop before GCP wiring. See the Wire-Ready Loop Plan in repo docs.
+Automated loop before GCP wiring. See [COST_GOVERNANCE_RUNBOOK.md](./COST_GOVERNANCE_RUNBOOK.md) for year-1 pilot caps ($1,700/mo).
 
 ## Local gates (run until green)
 
@@ -54,15 +54,15 @@ Use `infra/k8s/backend-go/migrate-job.yaml` or `go run ./apps/backend-go/cmd/app
 
 ```bash
 cd pegasusX
-# Set image tags + secrets in overlay or render script
+# Staging (dual-write allowed for consumer migration):
 kubectl apply -k infra/k8s/overlays/staging
-# Or prod overlay for pilot:
-kubectl apply -k infra/k8s/overlays/prod
+# Year-1 pilot / production (2–4 API pods, dual-write OFF):
+kubectl apply -k infra/k8s/overlays/pilot
 ```
 
 Deploy **both** `backend-go` (api) and `backend-go-worker` (worker).
 
-Pilot Kafka flags: **OFF** (`KAFKA_TOPIC_DUAL_WRITE`, `KAFKA_TOPIC_CONSUME_DOMAIN`).
+Pilot overlay sets: `KAFKA_TOPIC_DUAL_WRITE=false`, `KAFKA_TOPIC_CONSUME_DOMAIN=false`, `WAREHOUSE_DISPATCH_PLAN_TTL_SEC=60`, HPA max **4**.
 
 ### Staging proof
 

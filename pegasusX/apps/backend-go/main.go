@@ -122,7 +122,7 @@ func main() {
 	}
 
 	infraroutes.RegisterRoutes(r, app.InfraHealth)
-	geocodeSvc := geolocation.NewService(cfg.GoogleMapsAPIKey)
+	geocodeSvc := geolocation.NewService(cfg.GoogleMapsAPIKey, app.Cache)
 	platformroutes.RegisterRoutes(r, platformroutes.Deps{
 		Handler:        app.PlatformHandler,
 		GeocodeHandler: geolocation.NewHandler(geocodeSvc),

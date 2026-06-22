@@ -48,11 +48,22 @@ ORDER BY o.UpdatedAt DESC LIMIT @limit
 FROM SupplierInventoryV2 si
 INNER JOIN Warehouses w ON ...
 WHERE si.WarehouseId = @wid
+ORDER BY si.ProductId
+LIMIT @limit OFFSET @offset  -- when limit > 0
 ```
 
-**Verdict:** Full warehouse scan. OK for &lt; 500 SKUs. At scale: add pagination or materialized low-stock view.
+**Verdict:** Full warehouse scan when `limit=0` (default). OK for &lt; 500 SKUs. Use `?limit=500&offset=N` for pagination at scale.
 
-**Mitigation applied:** 15s stale read on read path.
+**Mitigation applied:** 15s stale read on read path; `?fresh=1` for e2e/strong reads only.
+
+## 3b. Notification inbox (2026-06 audit)
+
+```sql
+-- notifications/repository.go ListForRecipient / UnreadCount
+FROM Notifications WHERE RecipientId = @rid ...
+```
+
+**Verdict:** **Fixed** — `ExactStaleness(15s)` on list + unread count (cost governance audit).
 
 ## 4. Supplier portal order desk
 
@@ -73,7 +84,20 @@ ORDER BY UpdatedAt DESC
 4. **Cap limits:** dispatch preview default 300, max 5000 — do not raise without load cert.
 5. **Monitor** Spanner query insights weekly in GCP console; export top 10 by CPU.
 
-## 6. When to add capacity
+## 6. Stale-read audit (2026-06 cost governance)
+
+CI gate: `bash scripts/validate_spanner_stale_reads.sh` — flags new `.Single().Query` without `WithTimestampBound`. Baseline allowlist: `scripts/spanner_stale_read_allowlist.txt`.
+
+| Classification | Examples | Action |
+|----------------|----------|--------|
+| `stale_ok` | dashboards, lists, previews, inbox | `ExactStaleness(15s)` or `MaxStaleness(15s)` |
+| `must_be_fresh` | checkout, payment, dispatch execute, inventory `?fresh=1` | strong read inside RW txn or `fresh=1` bypass |
+
+**Fixed this audit:** notification inbox list + unread count.
+
+**Backlog (allowlisted):** retailer catalog reads, replenishment insights, factory supply lists — add stale bound when touched.
+
+## 7. When to add capacity
 
 | Signal | Action |
 |--------|--------|

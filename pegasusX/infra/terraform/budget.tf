@@ -1,7 +1,7 @@
 variable "monthly_budget_usd" {
   description = "Monthly GCP spend cap for pegasusX full-GCP-minimal footprint. Alerts fire at 80% and 100%."
   type        = number
-  default     = 1500
+  default     = 1700
 }
 
 variable "billing_account_id" {
