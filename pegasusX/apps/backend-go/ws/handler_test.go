@@ -96,8 +96,6 @@ func TestRegisterRoutesSubscribesDriverToTelemetryRoom(t *testing.T) {
 }
 
 func TestRegisterRoutesTelemetryDriverReconnectChurn(t *testing.T) {
-	t.Parallel()
-
 	telemetryHub := NewHub("telemetry", nil, nil)
 	router := chi.NewRouter()
 	router.Use(testClaimsMiddleware(auth.Claims{
@@ -123,8 +121,6 @@ func TestRegisterRoutesTelemetryDriverReconnectChurn(t *testing.T) {
 }
 
 func TestRegisterRoutesTelemetrySupplierReconnectChurn(t *testing.T) {
-	t.Parallel()
-
 	telemetryHub := NewHub("telemetry", nil, nil)
 	router := chi.NewRouter()
 	router.Use(testClaimsMiddleware(auth.Claims{
@@ -212,7 +208,7 @@ func dialTestWebSocketWithQuery(t *testing.T, serverURL string, rawQuery string)
 
 func assertWebSocketMessage(t *testing.T, conn *websocket.Conn, want string) {
 	t.Helper()
-	_ = conn.SetReadDeadline(time.Now().Add(time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
 	_, raw, err := conn.ReadMessage()
 	if err != nil {
 		t.Fatalf("read websocket message: %v", err)

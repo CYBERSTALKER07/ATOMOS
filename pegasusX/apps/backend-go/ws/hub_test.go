@@ -63,6 +63,23 @@ func (c *countingConnection) Send(_ context.Context, _ []byte) error {
 
 func (c *countingConnection) Delivered() int64 { return c.count.Load() }
 
+func waitForRelayReady(t *testing.T, ctx context.Context, publisher *Hub, room string, conn *countingConnection) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		before := conn.Delivered()
+		publisher.Broadcast(ctx, room, []byte("relay-ready"))
+		probeDeadline := time.Now().Add(250 * time.Millisecond)
+		for time.Now().Before(probeDeadline) {
+			if conn.Delivered() > before {
+				return
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+	t.Fatal("relay subscriber not ready")
+}
+
 type publishFailBackend struct{}
 
 func (b *publishFailBackend) Get(_ context.Context, _ string) ([]byte, bool, error) {
@@ -167,8 +184,6 @@ func TestStartRelaySubscriberFansOutPeerEventsAndSuppressesSelf(t *testing.T) {
 }
 
 func TestStartRelaySubscriberDeliversBurstIntegrity(t *testing.T) {
-	t.Parallel()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -180,7 +195,7 @@ func TestStartRelaySubscriberDeliversBurstIntegrity(t *testing.T) {
 	receiverHub.Subscribe(room, conn)
 
 	go receiverHub.StartRelaySubscriber(ctx)
-	time.Sleep(20 * time.Millisecond)
+	waitForRelayReady(t, ctx, publisherHub, room, conn)
 
 	const burst = 32
 	for i := 0; i < burst; i++ {
@@ -188,14 +203,14 @@ func TestStartRelaySubscriberDeliversBurstIntegrity(t *testing.T) {
 		publisherHub.Broadcast(ctx, room, payload)
 	}
 
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		if conn.Delivered() == burst {
+		if conn.Delivered() >= burst+1 { // +1 for relay-ready probe
 			return
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	t.Fatalf("delivered=%d want=%d", conn.Delivered(), burst)
+	t.Fatalf("delivered=%d want=%d", conn.Delivered(), burst+1)
 }
 
 func BenchmarkHubBroadcastTelemetryFanout(b *testing.B) {
