@@ -547,7 +547,9 @@ func runWarehouseTransferActionsE2E(ctx context.Context, client *http.Client, ba
 }
 
 func runWarehouseDispatchPreview(ctx context.Context, client *http.Client, base, supplierCookie string) error {
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/warehouse/ops/dispatch/preview", []byte(`{}`), supplierCookie, "ssmr-dispatch-preview")
+	whID := demoWarehouseID()
+	previewURL := base + "/v1/warehouse/ops/dispatch/preview?warehouse_id=" + whID
+	status, respBody, _, err := clientPost(ctx, client, previewURL, []byte(`{}`), supplierCookie, "ssmr-dispatch-preview")
 	if err != nil {
 		return err
 	}
@@ -563,6 +565,8 @@ func runWarehouseDispatchPreview(ctx context.Context, client *http.Client, base,
 // runWarehouseOptimizerSourceE2E asserts the OR-Tools sidecar attribution when fleet
 // and at least one dispatchable order are present for preview.
 func runWarehouseOptimizerSourceE2E(ctx context.Context, client *http.Client, base, supplierCookie, orderID string) error {
+	whID := demoWarehouseID()
+	previewURL := base + "/v1/warehouse/ops/dispatch/preview?warehouse_id=" + whID
 	reqBody, _ := json.Marshal(map[string]any{
 		"order_ids": []string{strings.TrimSpace(orderID)},
 	})
@@ -573,7 +577,7 @@ func runWarehouseOptimizerSourceE2E(ctx context.Context, client *http.Client, ba
 	}
 	var respBody []byte
 	for attempt := 0; attempt < 20; attempt++ {
-		status, body, _, err := clientPost(ctx, client, base+"/v1/warehouse/ops/dispatch/preview", reqBody, supplierCookie, fmt.Sprintf("ssmr-dispatch-optimizer-preview:%d", attempt))
+		status, body, _, err := clientPost(ctx, client, previewURL, reqBody, supplierCookie, fmt.Sprintf("ssmr-dispatch-optimizer-preview:%d", attempt))
 		if err != nil {
 			return err
 		}
