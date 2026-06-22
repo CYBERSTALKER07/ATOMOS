@@ -11,8 +11,12 @@ ROUTES_TMP="$(mktemp)"
 PATHS_TMP="$(mktemp)"
 trap 'rm -f "$ROUTES_TMP" "$PATHS_TMP"' EXIT
 
-# Collect registered HTTP paths from *routes packages and supplier import wizard mounts.
-grep -RhE '"/v1/[^"]+"' apps/backend-go/*routes/*.go apps/backend-go/supplier/import_sessions.go 2>/dev/null \
+# Collect registered HTTP paths from *routes packages, geolocation mounts, and import wizard.
+grep -RhE '"/v1/[^"]+"' \
+  apps/backend-go/*routes/*.go \
+  apps/backend-go/geolocation/handlers.go \
+  apps/backend-go/supplier/import_sessions.go \
+  2>/dev/null \
   | grep -v '_test.go' \
   | sed -E 's/.*"(\/v1\/[^"]+)".*/\1/' \
   | sort -u >"$ROUTES_TMP"
@@ -171,6 +175,10 @@ REQUIRED=(
   "/v1/user/device-token"
   "/v1/retailer/suppliers/{supplierID}/add"
   "/v1/retailer/suppliers/{supplierID}/remove"
+  "/v1/platform/geocode/autocomplete"
+  "/v1/platform/geocode/place"
+  "/v1/platform/geocode/reverse"
+  "/v1/platform/geocode/forward"
 )
 for path in "${REQUIRED[@]}"; do
   if ! route_matches "$path"; then

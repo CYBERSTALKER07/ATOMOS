@@ -122,17 +122,18 @@ wait_for_http() {
 run_go_smokecheck() {
 	local check=$1
 	local goflags="${GOFLAGS:-}"
-	mkdir -p "$GO_TMP_ROOT/go-build" "$GO_TMP_ROOT/go-mod"
+	mkdir -p "$GO_TMP_ROOT/go-build"
 	if [[ "$goflags" != *"-buildvcs=false"* ]]; then
 		goflags="${goflags:+$goflags }-buildvcs=false"
 	fi
 	(
-		cd "$REPO_ROOT"
+		cd "$REPO_ROOT/apps/backend-go"
+		# Use the host module cache (populated by go test / go mod download). An isolated
+		# GOMODCACHE here caused false "no required module" failures on cold smoke runs.
 		TMPDIR="$GO_TMP_ROOT" \
 		GOCACHE="$GO_TMP_ROOT/go-build" \
-		GOMODCACHE="$GO_TMP_ROOT/go-mod" \
 		GOFLAGS="$goflags" \
-		go run ./apps/backend-go/cmd/ssmr-smokecheck "$check"
+		go run ./cmd/ssmr-smokecheck "$check"
 	)
 }
 

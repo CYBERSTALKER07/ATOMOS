@@ -142,7 +142,7 @@ func runReturnGateReceiveE2E(
 	if err != nil {
 		return fmt.Errorf("return-gate order create: %w", err)
 	}
-	sessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, orderID, cfg)
+	sessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, orderID, cfg, supplierID)
 	if err != nil {
 		return fmt.Errorf("return-gate checkout: %w", err)
 	}

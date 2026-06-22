@@ -79,11 +79,14 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 		return fmt.Errorf("checkout preview: %w", err)
 	}
 
-	orderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
+	cancelOrderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
 	if err != nil {
 		return fmt.Errorf("order create: %w", err)
 	}
-	if err := runRetailerCancelE2E(ctx, client, base, cfg, supplierID, retailerToken, orderID, retailerID); err != nil {
+	if err := assertRetailerTracking(ctx, client, base, retailerToken, cancelOrderID); err != nil {
+		return fmt.Errorf("retailer tracking: %w", err)
+	}
+	if err := runRetailerCancelE2E(ctx, client, base, cfg, supplierID, retailerToken, cancelOrderID, retailerID); err != nil {
 		return fmt.Errorf("retailer cancel: %w", err)
 	}
 	if err := runRetailerCardInitiateE2E(ctx, client, base, retailerToken); err != nil {
@@ -93,17 +96,11 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 		return fmt.Errorf("retailer client policy: %w", err)
 	}
 
-	if err := assertRetailerTracking(ctx, client, base, retailerToken, orderID); err != nil {
-		return fmt.Errorf("retailer tracking: %w", err)
+	orderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
+	if err != nil {
+		return fmt.Errorf("order create (checkout path): %w", err)
 	}
 
-	sessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, orderID, cfg)
-	if err != nil {
-		return fmt.Errorf("checkout: %w", err)
-	}
-	if err := replayGlobalPayWebhook(ctx, client, base, cfg, sessionID, orderID); err != nil {
-		return fmt.Errorf("global-pay webhook: %w", err)
-	}
 	if err := runWarehouseDispatchPreview(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch preview: %w", err)
 	}
@@ -160,6 +157,13 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("warehouse dispatch execute: %w", err)
 	}
+	sessionID, err := runPayAtDeliveryCheckout(ctx, client, base, retailerToken, orderID, cfg, supplierID)
+	if err != nil {
+		return fmt.Errorf("checkout: %w", err)
+	}
+	if err := replayGlobalPayWebhook(ctx, client, base, cfg, sessionID, orderID); err != nil {
+		return fmt.Errorf("global-pay webhook: %w", err)
+	}
 	if err := runWarehouseFleetLiveMapE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse fleet live map: %w", err)
 	}
@@ -179,15 +183,15 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("shop closed order create: %w", err)
 	}
-	shopClosedSessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, shopClosedOrderID, cfg)
+	if err := runShopClosedE2E(ctx, client, base, cfg, supplierID, retailerToken, shopClosedOrderID, cookie); err != nil {
+		return fmt.Errorf("shop closed e2e: %w", err)
+	}
+	shopClosedSessionID, err := runCardCheckoutAtDelivery(ctx, client, base, retailerToken, shopClosedOrderID, cfg)
 	if err != nil {
 		return fmt.Errorf("shop closed checkout: %w", err)
 	}
 	if err := replayGlobalPayWebhook(ctx, client, base, cfg, shopClosedSessionID, shopClosedOrderID); err != nil {
 		return fmt.Errorf("shop closed webhook: %w", err)
-	}
-	if err := runShopClosedE2E(ctx, client, base, cfg, supplierID, retailerToken, shopClosedOrderID, cookie); err != nil {
-		return fmt.Errorf("shop closed e2e: %w", err)
 	}
 	if err := runWarehouseTransferActionsE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse transfer actions: %w", err)

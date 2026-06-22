@@ -382,20 +382,29 @@ func (r *SpannerRepository) CreateFleetVehicle(ctx context.Context, vehicle Crea
 }
 
 func ensureSupplierUserPhoneAvailable(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID string, phone string) error {
-	row, err := txn.ReadRowUsingIndex(ctx, "SupplierUsers", "Idx_SupplierUsers_ByPhone", spanner.Key{phone}, []string{"SupplierId", "UserId", "IsActive"})
-	if err == nil {
-		var existingSupplierID, userID string
-		var isActive bool
-		if err := row.Columns(&existingSupplierID, &userID, &isActive); err != nil {
-			return fmt.Errorf("scan existing supplier user by phone: %w", err)
-		}
-		if existingSupplierID == supplierID && isActive && userID != "" {
-			return errOrgMemberPhoneExists
-		}
+	stmt := spanner.Statement{
+		SQL: `SELECT UserId, SupplierId, IsActive
+              FROM SupplierUsers@{FORCE_INDEX=Idx_SupplierUsers_ByPhone}
+              WHERE Phone = @phone
+              LIMIT 1`,
+		Params: map[string]any{"phone": phone},
+	}
+	iter := txn.Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err == iterator.Done {
 		return nil
 	}
-	if err != spanner.ErrRowNotFound {
-		return fmt.Errorf("read existing supplier user by phone: %w", err)
+	if err != nil {
+		return fmt.Errorf("query existing supplier user by phone: %w", err)
+	}
+	var userID, existingSupplierID string
+	var isActive bool
+	if err := row.Columns(&userID, &existingSupplierID, &isActive); err != nil {
+		return fmt.Errorf("scan existing supplier user by phone: %w", err)
+	}
+	if existingSupplierID == supplierID && isActive && userID != "" {
+		return errOrgMemberPhoneExists
 	}
 	return nil
 }

@@ -305,11 +305,12 @@ func runRetailerPricingOverrideE2E(
 }
 
 func runCheckoutPreviewE2E(ctx context.Context, client *http.Client, base, retailerToken string) error {
+	sku := envOr("SSMR_SMOKE_SKU", "SSMR-SKU-1")
 	body, _ := json.Marshal(map[string]any{
 		"latitude":  41.31,
 		"longitude": 69.24,
 		"items": []map[string]any{
-			{"sku_id": "sku_demo_1", "quantity": 1, "unit_price": 1000},
+			{"sku_id": sku, "quantity": 1, "unit_price": 1000},
 		},
 	})
 	status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/checkout/preview", body, retailerToken, "ssmr-checkout-preview")
@@ -334,30 +335,8 @@ func runCheckoutPreviewE2E(ctx context.Context, client *http.Client, base, retai
 	return nil
 }
 
-func runUnifiedCheckout(ctx context.Context, client *http.Client, base, retailerToken, orderID string, cfg *bootstrap.Config) (string, error) {
-	body, _ := json.Marshal(map[string]any{
-		"order_id":     orderID,
-		"amount_minor": int64(100000),
-		"currency":     cfg.SeedSupplierCurrency,
-		"gateway":      "GLOBAL_PAY",
-	})
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/checkout/unified", body, retailerToken, "ssmr-checkout-"+orderID)
-	if err != nil {
-		return "", err
-	}
-	if status != http.StatusOK && status != http.StatusCreated {
-		return "", fmt.Errorf("checkout status %d body %s", status, string(respBody))
-	}
-	var resp struct {
-		SessionID string `json:"session_id"`
-	}
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return "", err
-	}
-	if resp.SessionID == "" {
-		return "", fmt.Errorf("checkout missing session_id: %s", string(respBody))
-	}
-	return resp.SessionID, nil
+func runUnifiedCheckout(ctx context.Context, client *http.Client, base, retailerToken, orderID string, cfg *bootstrap.Config, supplierID string) (string, error) {
+	return runPayAtDeliveryCheckout(ctx, client, base, retailerToken, orderID, cfg, supplierID)
 }
 
 func runCheckoutPolicyGraceE2E(

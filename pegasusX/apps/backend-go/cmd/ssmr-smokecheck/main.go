@@ -348,6 +348,8 @@ func expectedTopics(cfg *bootstrap.Config) []string {
 	topics := []string{
 		cfg.KafkaTopicMain,
 		cfg.KafkaTopicMainDLQ,
+		envOr("KAFKA_TOPIC_ORDERS", "pegasusx-orders"),
+		envOr("KAFKA_TOPIC_DISPATCH", "pegasusx-dispatch"),
 		envOr("KAFKA_TOPIC_SPATIAL", "ssmr.events.spatial"),
 		envOr("KAFKA_TOPIC_REALTIME", "ssmr.events.realtime"),
 		envOr("KAFKA_TOPIC_WEBHOOKS", "ssmr.events.webhooks"),

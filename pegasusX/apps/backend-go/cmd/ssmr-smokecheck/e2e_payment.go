@@ -42,6 +42,102 @@ func replayGlobalPayWebhook(ctx context.Context, client *http.Client, base strin
 	return nil
 }
 
+func advanceOrderToArrived(ctx context.Context, client *http.Client, base, orderID, supplierID string, cfg *bootstrap.Config) error {
+	driverID := envOr("SSMR_SMOKE_DRIVER_ID", "ssmr-driver-1")
+	adminToken, err := auth.Issue(auth.Claims{
+		Subject:    "ssmr-supplier-admin",
+		Role:       auth.RoleAdmin,
+		SupplierID: supplierID,
+	}, auth.IssueOptions{
+		Secret: cfg.JWTSecret,
+		Issuer: cfg.JWTIssuer,
+		TTL:    30 * time.Minute,
+	})
+	if err != nil {
+		return fmt.Errorf("issue admin jwt: %w", err)
+	}
+
+	assignBody, _ := json.Marshal(map[string]any{
+		"driver_id": driverID,
+		"route_id":  "route-ssmr-pay-at-delivery",
+	})
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/orders/"+orderID+"/assign", assignBody, adminToken, "ssmr-assign:"+orderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK && status != http.StatusConflict {
+		return fmt.Errorf("assign order status %d body %s", status, string(respBody))
+	}
+
+	for _, next := range []string{"LOADED", "IN_TRANSIT"} {
+		patchBody, _ := json.Marshal(map[string]string{"status": next})
+		status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/order/"+orderID+"/status", patchBody, adminToken, "ssmr-order-status:"+orderID+":"+next)
+		if err != nil {
+			return err
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("order status %s: %d body %s", next, status, string(respBody))
+		}
+	}
+
+	driverToken, err := auth.Issue(auth.Claims{
+		Subject:      driverID,
+		Role:         auth.RoleDriver,
+		SupplierID:   supplierID,
+		HomeNodeType: auth.HomeNodeWarehouse,
+		HomeNodeID:   demoWarehouseID(),
+	}, auth.IssueOptions{
+		Secret: cfg.JWTSecret,
+		Issuer: cfg.JWTIssuer,
+		TTL:    30 * time.Minute,
+	})
+	if err != nil {
+		return fmt.Errorf("issue driver jwt: %w", err)
+	}
+	arriveBody, _ := json.Marshal(map[string]string{"order_id": orderID})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/arrive", arriveBody, driverToken, "ssmr-arrive:"+orderID)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK && status != http.StatusConflict {
+		return fmt.Errorf("delivery arrive status %d body %s", status, string(respBody))
+	}
+	return nil
+}
+
+func runCardCheckoutAtDelivery(ctx context.Context, client *http.Client, base, retailerToken, orderID string, cfg *bootstrap.Config) (string, error) {
+	body, _ := json.Marshal(map[string]any{
+		"order_id":     orderID,
+		"amount_minor": int64(100000),
+		"currency":     cfg.SeedSupplierCurrency,
+		"gateway":      "GLOBAL_PAY",
+	})
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/order/card-checkout", body, retailerToken, "ssmr-card-checkout-"+orderID)
+	if err != nil {
+		return "", err
+	}
+	if status != http.StatusOK && status != http.StatusCreated {
+		return "", fmt.Errorf("card-checkout status %d body %s", status, string(respBody))
+	}
+	var resp struct {
+		SessionID string `json:"session_id"`
+	}
+	if err := json.Unmarshal(respBody, &resp); err != nil {
+		return "", err
+	}
+	if resp.SessionID == "" {
+		return "", fmt.Errorf("card-checkout missing session_id: %s", string(respBody))
+	}
+	return resp.SessionID, nil
+}
+
+func runPayAtDeliveryCheckout(ctx context.Context, client *http.Client, base, retailerToken, orderID string, cfg *bootstrap.Config, supplierID string) (string, error) {
+	if err := advanceOrderToArrived(ctx, client, base, orderID, supplierID, cfg); err != nil {
+		return "", err
+	}
+	return runCardCheckoutAtDelivery(ctx, client, base, retailerToken, orderID, cfg)
+}
+
 func runPaymentSmokeCheck(ctx context.Context, cfg *bootstrap.Config) error {
 	base := strings.TrimRight(envOr("PUBLIC_BASE_URL", "http://localhost:8180"), "/")
 	client := &http.Client{Timeout: 45 * time.Second}
@@ -71,7 +167,7 @@ func runPaymentSmokeCheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("order create: %w", err)
 	}
-	sessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, orderID, cfg)
+	sessionID, err := runPayAtDeliveryCheckout(ctx, client, base, retailerToken, orderID, cfg, supplierID)
 	if err != nil {
 		return fmt.Errorf("checkout: %w", err)
 	}

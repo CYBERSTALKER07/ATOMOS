@@ -39,6 +39,16 @@ jobs:
         run: make validate-backend-k8s
       - name: Validate ai-worker K8s manifests
         run: make validate-ai-worker-k8s
+      - name: Wire-ready gate (prod profile + parity + k8s; no SSMR in CI — see ssmr-infra workflow)
+        run: |
+          bash scripts/validate_production_profile.sh
+          cd apps/backend-go && go test ./... -short -count=1
+          make parity-contract-full
+          make gap-hunter-gate
+          make gen-contracts-gate
+          make validate-backend-k8s
+          make validate-ai-worker-k8s
+          kubectl kustomize infra/k8s/overlays/prod --load-restrictor LoadRestrictionsNone >/dev/null
 
   backend-spanner:
     runs-on: ubuntu-latest

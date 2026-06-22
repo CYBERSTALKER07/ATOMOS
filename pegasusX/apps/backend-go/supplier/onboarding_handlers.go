@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -259,6 +260,7 @@ func (s *Service) handleOrgMembersPost(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, errOrgMemberPhoneExists):
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "supplier_org_member_phone_exists"})
 		default:
+			slog.Error("persist supplier org member failed", "err", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_supplier_org_member_failed"})
 		}
 		return

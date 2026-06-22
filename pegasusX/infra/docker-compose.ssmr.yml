@@ -104,9 +104,7 @@ services:
       - -lc
       - |
         for attempt in 1 2 3 4 5 6 7 8 9 10; do
-          /usr/local/go/bin/go run ./apps/backend-go/cmd/setup && \
-          /usr/local/go/bin/go run ./apps/backend-go/cmd/apply-migration --ddl ./apps/backend-go/schema/migrations/20250622_location_address_fields.ddl && \
-          exit 0
+          bash ./scripts/apply_ssmr_spanner_migrations.sh && exit 0
           echo "spanner bootstrap retry $$attempt"
           sleep 2
         done

@@ -231,7 +231,7 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 	if err != nil {
 		return fmt.Errorf("create: %w", err)
 	}
-	sessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, orderID, cfg)
+	sessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, orderID, cfg, supplierID)
 	if err != nil {
 		return fmt.Errorf("checkout: %w", err)
 	}

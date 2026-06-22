@@ -89,6 +89,13 @@ func runWarehouseOpsPolicyE2E(ctx context.Context, client *http.Client, base, co
 	if status != http.StatusOK {
 		return fmt.Errorf("warehouse ops policy patch status %d body %s", status, string(respBody))
 	}
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, settingsURL, nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse ops policy get status %d body %s", status, string(respBody))
+	}
 	var settings struct {
 		PreorderMinLeadDays  int64  `json:"preorder_min_lead_days"`
 		PreorderMaxLeadDays  int64  `json:"preorder_max_lead_days"`
@@ -109,7 +116,7 @@ func runWarehouseOpsPolicyE2E(ctx context.Context, client *http.Client, base, co
 		"latitude":  41.31,
 		"longitude": 69.24,
 		"items": []map[string]any{
-			{"sku_id": "sku_demo_1", "quantity": 100, "unit_price": 1000},
+			{"sku_id": envOr("SSMR_SMOKE_SKU", "SSMR-SKU-1"), "quantity": 100, "unit_price": 1000},
 		},
 	})
 	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/checkout/preview", lineLimitBody, retailerToken, "ssmr-checkout-line-limit")

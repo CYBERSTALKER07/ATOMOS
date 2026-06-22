@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"math"
@@ -302,6 +303,19 @@ type statusCapturingResponseWriter struct {
 func (w *statusCapturingResponseWriter) WriteHeader(code int) {
 	w.statusCode = code
 	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *statusCapturingResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if h, ok := w.ResponseWriter.(http.Hijacker); ok {
+		return h.Hijack()
+	}
+	return nil, nil, fmt.Errorf("statusCapturingResponseWriter: underlying ResponseWriter does not implement http.Hijacker")
+}
+
+func (w *statusCapturingResponseWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 type priorityGuard struct {

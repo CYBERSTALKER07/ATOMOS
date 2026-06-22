@@ -6,7 +6,8 @@ Use before onboarding real shops, drivers, and retailers. Complements [`LAUNCH_R
 
 ```bash
 cd pegasusX
-make p0-preflight              # full P0 gate (includes SSMR)
+make wire-ready              # full gate before staging wire (includes SSMR)
+make p0-preflight              # subset; use P0_SKIP_SSMR=1 if Docker unavailable
 P0_SKIP_SSMR=1 make p0-preflight   # skip Docker SSMR when infra not up
 PUBLIC_BASE_URL=https://api.staging.example.com make p0-preflight  # + cloud smoke
 ```

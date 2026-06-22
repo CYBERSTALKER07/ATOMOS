@@ -520,7 +520,7 @@ func runShopClosedSmokeCheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("order create: %w", err)
 	}
-	sessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, orderID, cfg)
+	sessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, orderID, cfg, supplierID)
 	if err != nil {
 		return fmt.Errorf("checkout: %w", err)
 	}
