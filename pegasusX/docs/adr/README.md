@@ -10,3 +10,4 @@ Canonical decisions for PegasusX backend and platform. Update when product or in
 | [004](004-event-triple-lock.md) | Event triple-lock (Go, schema, types) | Accepted |
 | [005](005-kafka-domain-dual-write.md) | Kafka domain topic dual-write | Accepted |
 | [006](006-kafka-consumer-cutover.md) | Kafka consumer domain cutover | Accepted |
+| [007](007-dedicated-ws-service.md) | Dedicated WebSocket service (deferred) | Proposed |

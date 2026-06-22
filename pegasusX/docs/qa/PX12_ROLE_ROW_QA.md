@@ -2,7 +2,8 @@
 
 Production v1 capability matrix: [`ROLE_ROW_PARITY_MATRIX.md`](../ROLE_ROW_PARITY_MATRIX.md).  
 Ecosystem master spec: [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](../FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md).  
-Manual test steps: [`PX12_MANUAL_QA_RUNBOOK.md`](./PX12_MANUAL_QA_RUNBOOK.md).
+Manual test steps: [`PX12_MANUAL_QA_RUNBOOK.md`](./PX12_MANUAL_QA_RUNBOOK.md).  
+**Pilot weeks 1–8:** also complete [`P1_PILOT_CHECKLIST.md`](../P1_PILOT_CHECKLIST.md) (real devices + WS multi-pod check).
 
 ---
 

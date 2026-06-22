@@ -133,13 +133,18 @@ def require_platform_evidence() -> None:
         "infra/k8s/serviceaccount.yaml",
         "scripts/p0_launch_preflight.sh",
         "scripts/validate_production_profile.sh",
+        "scripts/p1_pilot_weekly.sh",
         "docs/P0_LAUNCH_CHECKLIST.md",
+        "docs/P1_PILOT_CHECKLIST.md",
+        "docs/SPANNER_HOT_PATH_REVIEW.md",
+        "docs/P2_SCALE_ROADMAP.md",
         "apps/backend-go/Dockerfile",
         "apps/ai-worker/Dockerfile",
         "scripts/docker_build.sh",
         "scripts/render_k8s_manifests.sh",
         "scripts/validate_backend_k8s.sh",
         "infra/terraform/observability.tf",
+        "infra/terraform/observability_pilot.tf",
         "infra/terraform/main.tf",
         "infra/terraform/gke.tf",
         "infra/terraform/variables.tf",
@@ -159,6 +164,15 @@ def require_platform_evidence() -> None:
             "void_ai_worker_ready",
             "void_kafka_consumer_lag_seconds",
             "google_monitoring_dashboard",
+        ],
+    )
+    require_contains(
+        "infra/terraform/observability_pilot.tf",
+        [
+            "void_ws_connections",
+            "void_http_requests_total",
+            "spanner.googleapis.com/instance/cpu/utilization",
+            "pegasusX — Pilot Launch (P1)",
         ],
     )
     require_contains(

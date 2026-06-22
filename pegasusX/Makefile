@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight qa-gate validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev
+.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight p1-pilot-weekly qa-gate validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev
 
 help:
 	@echo "pegasusX make targets"
@@ -19,6 +19,7 @@ help:
 	@echo "  gen-contracts-gate     verify contracts/events.schema.json matches gen-contracts"
 	@echo "  px12-preflight         PX12 automated QA gates (contract + gap-hunter + launch-readiness)"
 	@echo "  p0-preflight           P0 launch gates (prod profile + k8s + SSMR; see docs/P0_LAUNCH_CHECKLIST.md)"
+	@echo "  p1-pilot-weekly        P1 weeks 1–8 weekly gate (see docs/P1_PILOT_CHECKLIST.md)"
 	@echo "  qa-gate                compile + unit tests (fails if integration tests would be skipped)"
 	@echo "  validate-ai-worker-k8s validate ai-worker Kubernetes manifests"
 	@echo "  validate-backend-k8s  validate backend-go Kubernetes manifests"
@@ -85,6 +86,9 @@ px12-preflight:
 
 p0-preflight:
 	bash scripts/p0_launch_preflight.sh
+
+p1-pilot-weekly:
+	bash scripts/p1_pilot_weekly.sh
 
 validate-production-profile:
 	bash scripts/validate_production_profile.sh

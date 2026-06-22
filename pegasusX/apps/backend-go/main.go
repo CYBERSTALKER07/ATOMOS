@@ -36,6 +36,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailerroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouseroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/webhookroutes"
@@ -90,6 +91,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(bootstrap.TraceMiddleware)
+	r.Use(telemetry.HTTPMetricsMiddleware)
 	r.Use(bootstrap.DevCORSMiddleware())
 	r.Use(auth.SessionAuth(cfg.JWTSecret))
 

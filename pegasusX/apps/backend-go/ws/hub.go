@@ -110,6 +110,7 @@ func (h *Hub) Subscribe(room string, conn Connection) func() {
 	h.rooms[room][conn.ID()] = conn
 	h.joinedAt[conn.ID()] = now
 	h.shedRoomLocked(room)
+	h.recordMetricsLocked()
 	roomName := room
 	connID := conn.ID()
 	return func() { h.unsubscribe(roomName, connID) }
@@ -125,6 +126,7 @@ func (h *Hub) unsubscribe(room, connID string) {
 		}
 	}
 	delete(h.joinedAt, connID)
+	h.recordMetricsLocked()
 }
 
 func (h *Hub) connectionCountLocked() int {
@@ -155,6 +157,7 @@ func (h *Hub) shedRoomLocked(room string) {
 			delete(conns, oldestID)
 			delete(h.joinedAt, oldestID)
 			h.shedCount++
+			h.recordShed(1)
 			h.log.Debug("ws shed stale connection",
 				"hub", h.name, "room", room, "conn_id", oldestID, "limit", limit)
 		}
@@ -271,6 +274,7 @@ func (h *Hub) publishCrossPod(ctx context.Context, room string, payload []byte) 
 		h.mu.Lock()
 		h.failureCount++
 		h.mu.Unlock()
+		h.recordPubFailure()
 		h.log.Warn("ws cross-pod publish failed; degraded relay",
 			"hub", h.name, "room", room, "channel", channel, "err", err)
 	}

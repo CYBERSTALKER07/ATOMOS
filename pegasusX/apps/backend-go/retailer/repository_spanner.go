@@ -398,7 +398,7 @@ func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID s
 		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
 		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), COALESCE(DeliveryToken, ''), Status, LineItemsJson,
 		             TotalMinor, Currency, CreatedAt, UpdatedAt, Lat, Lng
-		      FROM Orders
+		      FROM Orders@{FORCE_INDEX=Idx_Orders_ByRetailerCreated}
 		      WHERE RetailerId = @RetailerId
 		        AND Status IN UNNEST(@Statuses)
 		      ORDER BY CreatedAt DESC

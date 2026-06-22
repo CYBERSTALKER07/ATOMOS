@@ -570,7 +570,7 @@ func (r *SpannerRepository) GetInventoryList(ctx context.Context, warehouseID st
 		      WHERE si.WarehouseId = @wid`,
 		Params: map[string]any{"wid": warehouseID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	out := make(map[string]InventoryRow)

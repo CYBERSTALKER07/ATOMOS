@@ -243,7 +243,7 @@ func (r *SpannerRepository) ListOrders(ctx context.Context, supplierID string, l
 		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
 		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), Status, ConfirmationStatus,
 		             TotalMinor, Currency, CreatedAt, UpdatedAt
-		      FROM Orders
+		      FROM Orders@{FORCE_INDEX=Idx_Orders_BySupplierUpdated}
 		      WHERE SupplierId = @supplierId
 		      ORDER BY UpdatedAt DESC
 		      LIMIT @limit
@@ -255,7 +255,7 @@ func (r *SpannerRepository) ListOrders(ctx context.Context, supplierID string, l
 		},
 	}
 
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	orders := make([]SupplierOrder, 0, 8)

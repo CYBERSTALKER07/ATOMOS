@@ -181,6 +181,8 @@ CREATE TABLE Orders (
 CREATE INDEX Idx_Orders_ByRetailerCreated ON Orders(RetailerId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByRetailerConfirmation ON Orders(RetailerId, ConfirmationStatus, RequestedDeliveryDate DESC, UpdatedAt DESC);
 CREATE INDEX Idx_Orders_BySupplierCreated ON Orders(SupplierId, CreatedAt DESC);
+CREATE INDEX Idx_Orders_BySupplierUpdated ON Orders(SupplierId, UpdatedAt DESC);
+CREATE INDEX Idx_Orders_BySupplierStatusUpdated ON Orders(SupplierId, Status, UpdatedAt DESC);
 CREATE INDEX Idx_Orders_ByWarehouseCreated ON Orders(WarehouseId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByWarehouseRequestedDelivery ON Orders(WarehouseId, RequestedDeliveryDate DESC, UpdatedAt DESC);
 CREATE INDEX Idx_Orders_ByConfirmationAutoConfirm ON Orders(ConfirmationStatus, AutoConfirmAt, UpdatedAt DESC);

@@ -57,7 +57,7 @@ func (r *Repository) FetchDispatchable(ctx context.Context, params FetchParams) 
 	               o.LineItemsJson,
 	               COALESCE(NULLIF(o.ReceivingWindowOpen, ''), r.ReceivingWindowOpen, '') AS ReceivingWindowOpen,
 	               COALESCE(NULLIF(o.ReceivingWindowClose, ''), r.ReceivingWindowClose, '') AS ReceivingWindowClose
-	        FROM Orders o
+	        FROM Orders@{FORCE_INDEX=Idx_Orders_BySupplierStatusUpdated} o
 	        JOIN Retailers r ON o.RetailerId = r.RetailerId
 	        WHERE o.SupplierId = @supplierId
 	          AND (o.RouteId IS NULL OR o.RouteId = '')
