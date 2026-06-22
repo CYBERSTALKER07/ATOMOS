@@ -70,7 +70,7 @@ func runSupplierOperationsE2E(ctx context.Context, client *http.Client, base, co
 	}
 
 	broadcastPayload := []byte(`{"title":"SSMR ops","body":"broadcast smoke","role":"ALL"}`)
-	status, body, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/broadcast", broadcastPayload, cookie, "application/json")
+	status, body, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/broadcast", broadcastPayload, cookie, "ssmr-supplier-ops-broadcast")
 	if err != nil {
 		return err
 	}

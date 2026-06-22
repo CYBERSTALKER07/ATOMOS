@@ -489,7 +489,7 @@ func (s *Service) HandleInboundConfirm(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return err
 			}
-			eventID := fmt.Sprintf("evt_return_recv_%s", returnID)
+			eventID := returnID
 			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
 				"EventId":       eventID,
 				"AggregateType": events.AggregateOrder,

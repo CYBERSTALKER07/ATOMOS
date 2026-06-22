@@ -68,7 +68,7 @@ func runCrossRoleSupplierBroadcastWS(ctx context.Context, client *http.Client, b
 		"role":  "ALL",
 	})
 	go func() {
-		_, _, _, _ = clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/broadcast", broadcastPayload, cookie, "application/json")
+		_, _, _, _ = clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/broadcast", broadcastPayload, cookie, "ssmr-ws-broadcast-probe")
 	}()
 	if err := waitForWSMessage(ctx, conn, "SUPPLIER_BROADCAST", probe); err != nil {
 		return fmt.Errorf("supplier broadcast ws: %w", err)

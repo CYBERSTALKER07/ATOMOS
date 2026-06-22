@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -16,8 +17,8 @@ import (
 
 func runReturnGateE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID, cookie, retailerToken, h3Cell string) error {
 	loginBody, _ := json.Marshal(map[string]string{
-		"phone": envOr("PAYLOAD_DEMO_PHONE", "+998901234567"),
-		"pin":   envOr("PAYLOAD_DEMO_PIN", "123456"),
+		"phone": envOr("PAYLOAD_DEMO_PHONE", "+998901110022"),
+		"pin":   envOr("PAYLOAD_DEMO_PIN", "33333333"),
 	})
 	status, respBody, _, err := clientPost(ctx, client, base+"/v1/auth/payloader/login", loginBody, "", "")
 	if err != nil {
@@ -142,45 +143,24 @@ func runReturnGateReceiveE2E(
 	if err != nil {
 		return fmt.Errorf("return-gate order create: %w", err)
 	}
-	sessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, orderID, cfg, supplierID)
-	if err != nil {
-		return fmt.Errorf("return-gate checkout: %w", err)
-	}
-	if err := replayGlobalPayWebhook(ctx, client, base, cfg, sessionID, orderID); err != nil {
-		return fmt.Errorf("return-gate webhook: %w", err)
-	}
 
-	adminToken, err := auth.Issue(auth.Claims{
-		Subject:    "ssmr-return-gate-admin",
-		Role:       auth.RoleAdmin,
-		SupplierID: supplierID,
-	}, auth.IssueOptions{Secret: cfg.JWTSecret, Issuer: cfg.JWTIssuer, TTL: 30 * time.Minute})
+	dispatchHint, err := runWarehouseDispatchExecute(ctx, client, base, cookie, orderID, driverID, vehicleID, "return-gate-dispatch:"+orderID)
 	if err != nil {
-		return fmt.Errorf("issue admin jwt: %w", err)
+		return fmt.Errorf("return-gate dispatch: %w", err)
 	}
-	assignBody, _ := json.Marshal(map[string]any{
-		"driver_id": driverID,
-		"route_id":  "route-return-gate-" + orderID,
-	})
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/orders/"+orderID+"/assign", assignBody, adminToken, "return-gate-assign:"+orderID)
-	if err != nil {
-		return err
+	if dispatchHint == nil || strings.TrimSpace(dispatchHint.ManifestID) == "" {
+		return fmt.Errorf("return-gate dispatch missing manifest for order %s", orderID)
 	}
-	if status != http.StatusOK {
-		return fmt.Errorf("return-gate assign status %d body %s", status, string(respBody))
+	if err := sealPayloaderManifest(ctx, client, base, payloaderToken, dispatchHint.ManifestID, orderID, vehicleID); err != nil {
+		return fmt.Errorf("return-gate seal: %w", err)
 	}
-	for _, next := range []string{"LOADED", "IN_TRANSIT"} {
-		patchBody, _ := json.Marshal(map[string]string{"status": next})
-		status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, base+"/v1/order/"+orderID+"/status", patchBody, adminToken, "return-gate-status:"+orderID+":"+next)
-		if err != nil {
-			return err
-		}
-		if status != http.StatusOK {
-			return fmt.Errorf("return-gate status %s: %d body %s", next, status, string(respBody))
-		}
+	if err := assertDriverDepart(ctx, client, base, cfg, supplierID, driverID); err != nil {
+		return fmt.Errorf("return-gate depart: %w", err)
 	}
 
 	arriveBody, _ := json.Marshal(map[string]string{"order_id": orderID})
+	var status int
+	var respBody []byte
 	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/arrive", arriveBody, driverToken, "")
 	if err != nil {
 		return err
@@ -207,8 +187,51 @@ func runReturnGateReceiveE2E(
 		return fmt.Errorf("return-gate amend status %d body %s", status, string(respBody))
 	}
 
+	qrReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, base+"/v1/order/"+orderID+"/qr-payload", nil)
+	qrReq.Header.Set("Authorization", "Bearer "+retailerToken)
+	qrResp, err := client.Do(qrReq)
+	if err != nil {
+		return fmt.Errorf("return-gate qr payload: %w", err)
+	}
+	defer qrResp.Body.Close()
+	if qrResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(qrResp.Body)
+		return fmt.Errorf("return-gate qr payload status %d: %s", qrResp.StatusCode, string(body))
+	}
+	var qrData struct {
+		Token string `json:"qr_token"`
+	}
+	if err := json.NewDecoder(qrResp.Body).Decode(&qrData); err != nil {
+		return fmt.Errorf("decode return-gate qr payload: %w", err)
+	}
+	if strings.TrimSpace(qrData.Token) == "" {
+		return fmt.Errorf("return-gate qr payload missing qr_token")
+	}
+	scanPayload := []byte(`{"order_id":"` + orderID + `","qr_token":"` + qrData.Token + `"}`)
+	var scanOK bool
+	for attempt := 0; attempt < 5; attempt++ {
+		status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/delivery/scan-qr", scanPayload, driverToken, fmt.Sprintf("return-gate-scan-qr:%s:%d", orderID, attempt))
+		if err != nil {
+			return fmt.Errorf("return-gate scan qr: %w", err)
+		}
+		if status == http.StatusOK {
+			scanOK = true
+			break
+		}
+		body := string(respBody)
+		if (status == http.StatusUnprocessableEntity || status == http.StatusConflict || status == http.StatusInternalServerError) &&
+			strings.Contains(body, "optimistic concurrency conflict") {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+		return fmt.Errorf("return-gate scan qr status %d: %s", status, body)
+	}
+	if !scanOK {
+		return fmt.Errorf("return-gate scan qr failed after retries")
+	}
+
 	bypassPayload := []byte(`{"order_id":"` + orderID + `","reason":"SSMR return gate"}`)
-	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/orders/payment-bypass", bypassPayload, cookie, "application/json")
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/orders/payment-bypass", bypassPayload, cookie, "return-gate-payment-bypass:"+orderID)
 	if err != nil {
 		return err
 	}
@@ -223,7 +246,7 @@ func runReturnGateReceiveE2E(
 	}
 
 	cashPayload := `{"order_id":"` + orderID + `"}`
-	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/delivery/confirm-cash", []byte(cashPayload), retailerToken, "application/json")
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/delivery/confirm-cash", []byte(cashPayload), retailerToken, "return-gate-confirm-cash:"+orderID)
 	if err != nil {
 		return err
 	}
@@ -242,12 +265,6 @@ func runReturnGateReceiveE2E(
 	}
 	if status != http.StatusOK {
 		return fmt.Errorf("return-gate collect cash status %d body %s", status, string(respBody))
-	}
-
-	if err := assertDriverDepart(ctx, client, base, cfg, supplierID, driverID); err != nil {
-		if !strings.Contains(err.Error(), "no_sealed_manifest") {
-			return fmt.Errorf("return-gate depart: %w", err)
-		}
 	}
 
 	if err := ensureSmokeProductBarcode(ctx, cfg, supplierID, sku, barcode); err != nil {

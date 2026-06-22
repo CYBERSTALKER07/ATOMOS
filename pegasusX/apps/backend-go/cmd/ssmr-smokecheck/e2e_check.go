@@ -150,10 +150,14 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("warehouse fleet mgmt: %w", err)
 	}
-	if err := runDispatchCapacityE2E(ctx, client, base, cookie, orderID, fleetDriverID, fleetVehicleID); err != nil {
+	capacityOrderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
+	if err != nil {
+		return fmt.Errorf("dispatch capacity order create: %w", err)
+	}
+	if err := runDispatchCapacityE2E(ctx, client, base, cookie, capacityOrderID, fleetDriverID, fleetVehicleID); err != nil {
 		return fmt.Errorf("dispatch capacity: %w", err)
 	}
-	dispatchHint, err := runWarehouseDispatchExecuteWithWS(ctx, client, base, cookie, orderID, cfg, supplierID)
+	dispatchHint, err := runWarehouseDispatchExecuteWithWS(ctx, client, base, cookie, orderID, cfg, supplierID, fleetDriverID, fleetVehicleID)
 	if err != nil {
 		return fmt.Errorf("warehouse dispatch execute: %w", err)
 	}
@@ -176,7 +180,11 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseDispatchLock(ctx, client, base, cookie, orderID); err != nil {
 		return fmt.Errorf("warehouse dispatch lock: %w", err)
 	}
-	if err := runWarehouseOrderMutationE2E(ctx, client, base, cookie, orderID); err != nil {
+	delayOrderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
+	if err != nil {
+		return fmt.Errorf("warehouse delay order create: %w", err)
+	}
+	if err := runWarehouseOrderMutationE2E(ctx, client, base, cookie, delayOrderID); err != nil {
 		return fmt.Errorf("warehouse order mutation: %w", err)
 	}
 	shopClosedOrderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)

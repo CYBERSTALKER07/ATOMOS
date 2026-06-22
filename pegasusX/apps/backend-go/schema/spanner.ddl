@@ -201,7 +201,7 @@ CREATE TABLE SupplierReturns (
   Reason            STRING(50)  NOT NULL,
   DriverNotes       STRING(MAX),
   Status            STRING(32)  NOT NULL DEFAULT ('PENDING'),
-  ResolvedAt        TIMESTAMP,
+  ResolvedAt        TIMESTAMP OPTIONS (allow_commit_timestamp=true),
   ResolutionNotes   STRING(MAX),
   ManifestId        STRING(36),
   DriverId          STRING(36),
@@ -209,7 +209,7 @@ CREATE TABLE SupplierReturns (
   ExpectedQty       INT64,
   ReceivedQty       INT64       NOT NULL DEFAULT (0),
   PhysicalStatus    STRING(32)  NOT NULL DEFAULT ('PENDING'),
-  ReceivedAt        TIMESTAMP,
+  ReceivedAt        TIMESTAMP OPTIONS (allow_commit_timestamp=true),
   ReceivedBy          STRING(36),
   ReceiveSessionId  STRING(36),
   CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -232,7 +232,7 @@ CREATE TABLE ReturnReceiveSessions (
   OperatorRole  STRING(32)  NOT NULL,
   Status        STRING(32)  NOT NULL DEFAULT ('OPEN'),
   StartedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-  CompletedAt   TIMESTAMP,
+  CompletedAt   TIMESTAMP OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SessionId);
 
 CREATE INDEX Idx_ReturnReceiveSessions_ByWarehouse ON ReturnReceiveSessions(WarehouseId, Status, StartedAt DESC);

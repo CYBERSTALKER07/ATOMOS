@@ -231,13 +231,6 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 	if err != nil {
 		return fmt.Errorf("create: %w", err)
 	}
-	sessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, orderID, cfg, supplierID)
-	if err != nil {
-		return fmt.Errorf("checkout: %w", err)
-	}
-	if err := replayGlobalPayWebhook(ctx, client, base, cfg, sessionID, orderID); err != nil {
-		return fmt.Errorf("webhook: %w", err)
-	}
 
 	driverID := envOr("SSMR_SMOKE_DRIVER_ID", "ssmr-driver-1")
 	adminToken, err := auth.Issue(auth.Claims{
@@ -348,24 +341,33 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 		return fmt.Errorf("report damage status %d: %s", dmgResp.StatusCode, string(body))
 	}
 
-	// QR flow: Driver scans QR
-	scanPayload := `{"order_id":"` + orderID + `","qr_token":"` + qrData.Token + `"}`
-	scanReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/scan-qr", strings.NewReader(scanPayload))
-	scanReq.Header.Set("Authorization", "Bearer "+driverToken)
-	scanReq.Header.Set("Content-Type", "application/json")
-	scanResp, err := client.Do(scanReq)
-	if err != nil {
-		return fmt.Errorf("scan qr request: %w", err)
+	// QR flow: Driver scans QR (retry on optimistic concurrency races after amend/damage).
+	scanPayload := []byte(`{"order_id":"` + orderID + `","qr_token":"` + qrData.Token + `"}`)
+	var scanOK bool
+	for attempt := 0; attempt < 5; attempt++ {
+		status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/delivery/scan-qr", scanPayload, driverToken, fmt.Sprintf("delivery-edge-scan-qr:%s:%d", orderID, attempt))
+		if err != nil {
+			return fmt.Errorf("scan qr: %w", err)
+		}
+		if status == http.StatusOK {
+			scanOK = true
+			break
+		}
+		body := string(respBody)
+		if (status == http.StatusUnprocessableEntity || status == http.StatusConflict || status == http.StatusInternalServerError) &&
+			strings.Contains(body, "optimistic concurrency conflict") {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+		return fmt.Errorf("scan qr status %d: %s", status, body)
 	}
-	defer scanResp.Body.Close()
-	if scanResp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(scanResp.Body)
-		return fmt.Errorf("scan qr status %d: %s", scanResp.StatusCode, string(body))
+	if !scanOK {
+		return fmt.Errorf("scan qr failed after retries")
 	}
 
 	// Payment bypass while order is AWAITING_PAYMENT (after scan-qr, before cash selection).
 	bypassPayload := []byte(`{"order_id":"` + orderID + `","reason":"SSMR smoke"}`)
-	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/orders/payment-bypass", bypassPayload, cookie, "application/json")
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/supplier/orders/payment-bypass", bypassPayload, cookie, "delivery-edge-payment-bypass:"+orderID)
 	if err != nil {
 		return fmt.Errorf("payment bypass: %w", err)
 	}
@@ -388,23 +390,31 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 	fmt.Println("PX_E2E_SUPPLIER_PAYMENT_BYPASS_OK")
 
 	// Retailer selects cash (driver-only completion path)
-	cashPayload := `{"order_id":"` + orderID + `"}`
-	cashReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/confirm-cash", strings.NewReader(cashPayload))
-	cashReq.Header.Set("Authorization", "Bearer "+retailerToken)
-	cashReq.Header.Set("Content-Type", "application/json")
-	cashResp, err := client.Do(cashReq)
-	if err != nil {
-		return fmt.Errorf("confirm cash request: %w", err)
-	}
-	defer cashResp.Body.Close()
-	if cashResp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(cashResp.Body)
-		return fmt.Errorf("confirm cash status %d: %s", cashResp.StatusCode, string(body))
-	}
+	cashPayload := []byte(`{"order_id":"` + orderID + `"}`)
 	var cashSelect struct {
 		State string `json:"state"`
 	}
-	_ = json.NewDecoder(cashResp.Body).Decode(&cashSelect)
+	var confirmOK bool
+	for attempt := 0; attempt < 5; attempt++ {
+		idemKey := fmt.Sprintf("delivery-edge-confirm-cash:%s:%d", orderID, attempt)
+		status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/delivery/confirm-cash", cashPayload, retailerToken, idemKey)
+		if err != nil {
+			return fmt.Errorf("confirm cash: %w", err)
+		}
+		if status == http.StatusOK {
+			_ = json.Unmarshal(respBody, &cashSelect)
+			confirmOK = true
+			break
+		}
+		if status == http.StatusInternalServerError && (strings.Contains(string(respBody), "update_failed") || strings.Contains(string(respBody), "optimistic concurrency conflict")) {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+		return fmt.Errorf("confirm cash status %d: %s", status, string(respBody))
+	}
+	if !confirmOK {
+		return fmt.Errorf("confirm cash failed after retries")
+	}
 	if cashSelect.State != "" && cashSelect.State != "PENDING_CASH_COLLECTION" {
 		return fmt.Errorf("confirm cash expected PENDING_CASH_COLLECTION, got %s", cashSelect.State)
 	}

@@ -443,7 +443,7 @@ func assertDriverDepart(ctx context.Context, client *http.Client, base string, c
 	if err != nil {
 		return fmt.Errorf("issue driver jwt: %w", err)
 	}
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/fleet/driver/depart", nil, token, "ssmr-driver-depart")
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/fleet/driver/depart", nil, token, "ssmr-driver-depart:"+driverID)
 	if err != nil {
 		return err
 	}

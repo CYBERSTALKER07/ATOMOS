@@ -90,6 +90,7 @@ func (s *Service) HandleReturns(w http.ResponseWriter, r *http.Request) {
 	        FROM SupplierReturns sr
 	        JOIN Orders o ON sr.OrderId = o.OrderId
 	        LEFT JOIN Products p ON p.ProductId = sr.SkuId AND p.SupplierId = o.SupplierId
+	        LEFT JOIN Drivers d ON d.DriverId = sr.DriverId
 	        WHERE o.SupplierId = @supplier_id
 	          AND sr.Status = @status`
 	params := map[string]any{

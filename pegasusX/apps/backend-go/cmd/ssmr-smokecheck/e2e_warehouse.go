@@ -560,10 +560,29 @@ func runWarehouseDispatchPreview(ctx context.Context, client *http.Client, base,
 	return nil
 }
 
-func runWarehouseDispatchExecute(ctx context.Context, client *http.Client, base, supplierCookie, orderID string) (*dispatchManifestHint, error) {
+func runWarehouseDispatchExecute(ctx context.Context, client *http.Client, base, supplierCookie, orderID, driverID, vehicleID, idempotencyKey string) (*dispatchManifestHint, error) {
 	whID := demoWarehouseID()
 	url := base + "/v1/warehouse/ops/dispatch/execute?warehouse_id=" + whID
-	status, respBody, _, err := clientPost(ctx, client, url, []byte(`{}`), supplierCookie, "ssmr-dispatch-execute")
+	var reqBody []byte
+	if strings.TrimSpace(orderID) != "" && strings.TrimSpace(driverID) != "" {
+		route := map[string]any{
+			"driver_id":  driverID,
+			"order_ids":  []string{orderID},
+		}
+		if strings.TrimSpace(vehicleID) != "" {
+			route["vehicle_id"] = vehicleID
+		}
+		reqBody, _ = json.Marshal(map[string]any{
+			"mode":   "MANUAL",
+			"routes": []map[string]any{route},
+		})
+	} else {
+		reqBody = []byte(`{}`)
+	}
+	if strings.TrimSpace(idempotencyKey) == "" {
+		idempotencyKey = "ssmr-dispatch-execute"
+	}
+	status, respBody, _, err := clientPost(ctx, client, url, reqBody, supplierCookie, idempotencyKey)
 	if err != nil {
 		return nil, err
 	}
@@ -585,6 +604,9 @@ func runWarehouseDispatchExecute(ctx context.Context, client *http.Client, base,
 	}
 	switch strings.ToLower(strings.TrimSpace(result.Status)) {
 	case "no_op":
+		if strings.TrimSpace(orderID) != "" && strings.TrimSpace(driverID) != "" {
+			return nil, fmt.Errorf("dispatch execute no_op for order %s body %s", orderID, string(respBody))
+		}
 		fmt.Println("PX_E2E_WAREHOUSE_DISPATCH_EXECUTE_OK")
 		return nil, nil
 	case "dispatched":
@@ -718,7 +740,7 @@ func runWarehouseFleetMgmtE2E(ctx context.Context, client *http.Client, base, co
 	return driverResp.DriverID, vehicleResp.VehicleID, nil
 }
 
-func runWarehouseDispatchExecuteWithWS(ctx context.Context, client *http.Client, base, supplierCookie, orderID string, cfg *bootstrap.Config, supplierID string) (*dispatchManifestHint, error) {
+func runWarehouseDispatchExecuteWithWS(ctx context.Context, client *http.Client, base, supplierCookie, orderID string, cfg *bootstrap.Config, supplierID, driverID, vehicleID string) (*dispatchManifestHint, error) {
 	whID := demoWarehouseID()
 	whToken, err := issueRoleJWT(cfg, auth.Claims{
 		Subject:      "ssmr-wh-admin-ws",
@@ -741,7 +763,7 @@ func runWarehouseDispatchExecuteWithWS(ctx context.Context, client *http.Client,
 		wsErrCh <- waitForWSMessage(ctx, conn, "DISPATCH_COMMITTED")
 	}()
 
-	hint, err := runWarehouseDispatchExecute(ctx, client, base, supplierCookie, orderID)
+	hint, err := runWarehouseDispatchExecute(ctx, client, base, supplierCookie, orderID, driverID, vehicleID, "ssmr-dispatch-execute")
 	if err != nil {
 		return nil, err
 	}

@@ -313,3 +313,47 @@ func runPayloadClientPolicyE2E(ctx context.Context, client *http.Client, base st
 	fmt.Println("PX_E2E_PAYLOAD_CLIENT_POLICY_OK")
 	return nil
 }
+
+func sealPayloaderManifest(ctx context.Context, client *http.Client, base, payloaderToken, manifestID, orderID, vehicleID string) error {
+	manifestID = strings.TrimSpace(manifestID)
+	if manifestID == "" {
+		return fmt.Errorf("seal manifest: empty manifest_id")
+	}
+	status, _, _, err := clientPost(ctx, client, base+"/v1/payloader/manifests/"+manifestID+"/start-loading", nil, payloaderToken, "ssmr-start-"+manifestID)
+	if err != nil {
+		return fmt.Errorf("start-loading: %w", err)
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("start-loading status %d", status)
+	}
+	if strings.TrimSpace(orderID) != "" {
+		sealBody, _ := json.Marshal(map[string]any{
+			"order_id":         orderID,
+			"terminal_id":      vehicleID,
+			"manifest_cleared": true,
+		})
+		status, respBody, _, err := clientPost(ctx, client, base+"/v1/payload/seal", sealBody, payloaderToken, "ssmr-seal-"+orderID)
+		if err != nil {
+			return fmt.Errorf("payload seal order: %w", err)
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("payload seal order status %d body %s", status, string(respBody))
+		}
+	}
+	batchBody, _ := json.Marshal(map[string]any{"manifest_ids": []string{manifestID}})
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/payloader/manifests/seal-completed", batchBody, payloaderToken, "ssmr-seal-batch-"+manifestID)
+	if err != nil {
+		return fmt.Errorf("manifest seal-completed: %w", err)
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("manifest seal-completed status %d body %s", status, string(respBody))
+	}
+	var batchResp struct {
+		SealedCount int `json:"sealed_count"`
+	}
+	_ = json.Unmarshal(respBody, &batchResp)
+	if batchResp.SealedCount < 1 {
+		return fmt.Errorf("manifest seal-completed expected sealed_count >= 1 body %s", string(respBody))
+	}
+	return nil
+}
