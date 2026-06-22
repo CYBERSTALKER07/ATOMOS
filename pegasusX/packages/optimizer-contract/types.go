@@ -20,6 +20,11 @@ const (
 	// (Phase 2). Higher-quality routes; bounded by the 2.5 s timeout.
 	SourceVRP SolverSource = "VRP_CLARKE_WRIGHT"
 
+	// SourceORTools is the OR-Tools constraint-solver VRP sidecar
+	// (optimizer-core). Preferred in staging/prod when OPTIMIZER_BASE_URL
+	// points at the Python sidecar.
+	SourceORTools SolverSource = "OR_TOOLS_VRP"
+
 	// SourceFallback is the Phase 1 K-Means clustering + binpack pipeline.
 	// Used when the optimiser times out, returns 5xx, or is unreachable.
 	SourceFallback SolverSource = "KMEANS_BINPACK"

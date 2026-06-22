@@ -45,3 +45,23 @@ budget_alert_emails  = ["ops@example.com"]
 ```
 
 Apply with `terraform apply` in `pegasusX/infra/terraform/` after `billing_account_id` is set.
+
+## Growth scale (year 1: 1 warehouse, thousands of retailers)
+
+Pilot envelope (`monthly_budget_usd = 1500`) assumes **1 warehouse**, **50–150 retailers**, and minimal Kafka throughput. When scaling toward **~5k retailers** (even with a single warehouse for the first 12 months), expect:
+
+| Driver | Pilot | Growth (1 WH, 5k retailers) |
+|---|---|---|
+| Spanner PU | 100 PU cap | **120–200 PU** after SLO breach — largest cost swing |
+| GKE backend | 2 pods | **2–4 pods** (HPA on dispatch preview p95) |
+| optimizer-core | 1 pod, 1 vCPU | **1–2 pods** — OR-Tools CPU, no GPU |
+| Confluent Basic | ~$120–200/mo | unchanged at this throughput |
+| Maps Geocoding | within $200 credit | cache in Redis; rate-limit geocode endpoints |
+
+**Revised steady-state:** **$1,800–2,500/mo** unless Spanner autoscale is capped. After 2 weeks of staging metrics, either raise `monthly_budget_usd` to **2000** with alerts at 80%/100%, or keep **1500** and enforce Spanner PU max + stale reads on dashboards.
+
+```hcl
+# growth staging example (after metrics review)
+monthly_budget_usd = 2000
+# spanner: bump processing_units in console only when CPU > 70% for 10m
+```

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: optimizer-core
+  labels:
+    app: optimizer-core
+    app.kubernetes.io/name: optimizer-core
+spec:
+  type: ClusterIP
+  selector:
+    app: optimizer-core
+  ports:
+    - name: http
+      port: 8082
+      targetPort: http

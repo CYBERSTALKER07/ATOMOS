@@ -120,6 +120,8 @@ services:
         condition: service_completed_successfully
       backend-setup:
         condition: service_completed_successfully
+      optimizer-core:
+        condition: service_started
     working_dir: /workspace/pegasusX
     volumes:
       - ..:/workspace/pegasusX
@@ -133,7 +135,7 @@ services:
       SPANNER_EMULATOR_HOST: spanner-emulator:9010
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:29092
-      OPTIMIZER_BASE_URL: http://ai-worker:8081
+      OPTIMIZER_BASE_URL: http://optimizer-core:8082
       INTERNAL_API_KEY: dev-internal-key
       GLOBAL_PAY_ENV: dev
       REQUIRE_INFRA_ADAPTERS: "true"
@@ -156,6 +158,8 @@ services:
         condition: service_completed_successfully
       backend-setup:
         condition: service_completed_successfully
+      optimizer-core:
+        condition: service_started
     working_dir: /workspace/pegasusX
     volumes:
       - ..:/workspace/pegasusX
@@ -179,9 +183,19 @@ services:
       - /usr/local/go/bin/go run ./apps/ai-worker
     restart: unless-stopped
 
+  optimizer-core:
+    build:
+      context: ../services/optimizer-core
+      dockerfile: Dockerfile
+    environment:
+      INTERNAL_API_KEY: dev-internal-key
+      OPTIMIZER_HTTP_PORT: 8082
+      OPTIMIZER_SOFT_TIMEOUT_SEC: "2"
+    ports:
+      - "8182:8082"
+    restart: unless-stopped
 
-  # Phase 2 hook: add an optimizer-sidecar-rust service here when pegasusX
-  # carries a concrete OR-Tools sidecar implementation.
+  # ai-worker keeps Kafka/import consumers; dispatch VRP is optimizer-core (OR-Tools).
 
 volumes:
   pegasusx-ssmr-go-mod:

@@ -150,6 +150,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("warehouse fleet mgmt: %w", err)
 	}
+	if err := runWarehouseOptimizerSourceE2E(ctx, client, base, cookie, orderID); err != nil {
+		return fmt.Errorf("warehouse optimizer preview: %w", err)
+	}
 	capacityOrderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
 	if err != nil {
 		return fmt.Errorf("dispatch capacity order create: %w", err)

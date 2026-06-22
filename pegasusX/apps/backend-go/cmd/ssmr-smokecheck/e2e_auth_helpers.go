@@ -99,7 +99,7 @@ func demoWarehouseID() string {
 	if id := strings.TrimSpace(os.Getenv("SSMR_SMOKE_WAREHOUSE_ID")); id != "" {
 		return id
 	}
-	return "wh-demo-1"
+	return "ssmr-warehouse-1"
 }
 
 func demoFactoryID() string {

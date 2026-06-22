@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: optimizer-core
+  labels:
+    app: optimizer-core
+    app.kubernetes.io/name: optimizer-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: optimizer-core
+  template:
+    metadata:
+      labels:
+        app: optimizer-core
+        app.kubernetes.io/name: optimizer-core
+    spec:
+      containers:
+        - name: optimizer-core
+          image: pegasusx-optimizer-core:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: optimizer-core-config
+          env:
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: INTERNAL_API_KEY
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 1Gi

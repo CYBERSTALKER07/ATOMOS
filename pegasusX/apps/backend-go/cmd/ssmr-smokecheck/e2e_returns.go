@@ -374,12 +374,20 @@ func runReturnGateReceiveE2E(
 		return fmt.Errorf("return-gate confirm status %d body %s", status, string(respBody))
 	}
 
-	afterQty, err := warehouseInventoryQty(ctx, client, base, cookie, whID, sku)
-	if err != nil {
-		return fmt.Errorf("inventory after: %w", err)
+	wantQty := beforeQty + rejectedQty
+	var afterQty int64
+	for attempt := 0; attempt < 25; attempt++ {
+		afterQty, err = warehouseInventoryQty(ctx, client, base, cookie, whID, sku)
+		if err != nil {
+			return fmt.Errorf("inventory after: %w", err)
+		}
+		if afterQty == wantQty {
+			break
+		}
+		time.Sleep(time.Second)
 	}
-	if afterQty != beforeQty+rejectedQty {
-		return fmt.Errorf("inventory assert failed: before=%d after=%d want=%d", beforeQty, afterQty, beforeQty+rejectedQty)
+	if afterQty != wantQty {
+		return fmt.Errorf("inventory assert failed: before=%d after=%d want=%d", beforeQty, afterQty, wantQty)
 	}
 	return nil
 }

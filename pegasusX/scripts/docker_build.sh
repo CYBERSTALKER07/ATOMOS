@@ -24,15 +24,25 @@ build_ai_worker() {
     .
 }
 
+build_optimizer_core() {
+  docker build \
+    --platform linux/amd64 \
+    -f services/optimizer-core/Dockerfile \
+    -t "pegasusx-optimizer-core:${TAG}" \
+    services/optimizer-core
+}
+
 case "$TARGET" in
   backend|backend-go) build_backend ;;
   ai-worker) build_ai_worker ;;
+  optimizer-core) build_optimizer_core ;;
   all)
     build_backend
     build_ai_worker
+    build_optimizer_core
     ;;
   *)
-    echo "usage: $0 [all|backend|ai-worker]" >&2
+    echo "usage: $0 [all|backend|ai-worker|optimizer-core]" >&2
     exit 1
     ;;
 esac

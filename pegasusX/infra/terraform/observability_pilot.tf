@@ -82,6 +82,44 @@ resource "google_monitoring_alert_policy" "spanner_cpu_high" {
   }
 }
 
+resource "google_monitoring_alert_policy" "optimizer_fallback_rate" {
+  count        = local.observability_enabled ? 1 : 0
+  display_name = "pegasusX — Optimizer fallback_phase1 > 5% (5m)"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "fallback fraction high"
+    condition_monitoring_query_language {
+      query = <<-EOT
+        fetch prometheus_target
+        | {
+            metric 'prometheus.googleapis.com/void_optimizer_source_total/counter'
+            | filter (metric.source = 'fallback_phase1')
+            | align rate(5m)
+            | every 5m
+            | group_by [], [fallback_rate: aggregate(value.counter)]
+          ;
+            metric 'prometheus.googleapis.com/void_optimizer_source_total/counter'
+            | align rate(5m)
+            | every 5m
+            | group_by [], [total_rate: aggregate(value.counter)]
+        }
+        | join
+        | value fallback_rate / total_rate
+        | condition val() > 0.05
+      EOT
+      duration = "300s"
+    }
+  }
+
+  notification_channels = var.alert_notification_channels
+
+  documentation {
+    content   = "Dispatch optimizer fallback_phase1 exceeds 5% for 5 minutes. Check optimizer-core health, OPTIMIZER_BASE_URL, and OR-Tools timeouts."
+    mime_type = "text/markdown"
+  }
+}
+
 resource "google_monitoring_dashboard" "pilot_launch" {
   count = local.observability_enabled ? 1 : 0
 

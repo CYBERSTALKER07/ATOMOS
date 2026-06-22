@@ -560,6 +560,48 @@ func runWarehouseDispatchPreview(ctx context.Context, client *http.Client, base,
 	return nil
 }
 
+// runWarehouseOptimizerSourceE2E asserts the OR-Tools sidecar attribution when fleet
+// and at least one dispatchable order are present for preview.
+func runWarehouseOptimizerSourceE2E(ctx context.Context, client *http.Client, base, supplierCookie, orderID string) error {
+	reqBody, _ := json.Marshal(map[string]any{
+		"order_ids": []string{strings.TrimSpace(orderID)},
+	})
+	var preview struct {
+		UndispatchedOrders []any  `json:"undispatched_orders"`
+		AvailableDrivers   []any  `json:"available_drivers"`
+		OptimizerSource    string `json:"optimizer_source"`
+	}
+	var respBody []byte
+	for attempt := 0; attempt < 20; attempt++ {
+		status, body, _, err := clientPost(ctx, client, base+"/v1/warehouse/ops/dispatch/preview", reqBody, supplierCookie, fmt.Sprintf("ssmr-dispatch-optimizer-preview:%d", attempt))
+		if err != nil {
+			return err
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("optimizer dispatch preview status %d body %s", status, string(body))
+		}
+		respBody = body
+		if err := json.Unmarshal(respBody, &preview); err != nil {
+			return fmt.Errorf("decode optimizer dispatch preview: %w", err)
+		}
+		if len(preview.AvailableDrivers) > 0 && len(preview.UndispatchedOrders) > 0 {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	if len(preview.AvailableDrivers) == 0 {
+		return fmt.Errorf("optimizer dispatch preview missing available drivers body %s", string(respBody))
+	}
+	if len(preview.UndispatchedOrders) == 0 {
+		return fmt.Errorf("optimizer dispatch preview missing undispatched orders for %s body %s", orderID, string(respBody))
+	}
+	if preview.OptimizerSource != "optimizer" {
+		return fmt.Errorf("dispatch preview expected optimizer_source=optimizer got %q body %s", preview.OptimizerSource, string(respBody))
+	}
+	fmt.Println("PX_E2E_OPTIMIZER_SOURCE_OK")
+	return nil
+}
+
 func runWarehouseDispatchExecute(ctx context.Context, client *http.Client, base, supplierCookie, orderID, driverID, vehicleID, idempotencyKey string) (*dispatchManifestHint, error) {
 	whID := demoWarehouseID()
 	url := base + "/v1/warehouse/ops/dispatch/execute?warehouse_id=" + whID

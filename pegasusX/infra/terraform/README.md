@@ -18,7 +18,8 @@ terraform plan \
   -var="project_id=<gcp-project>" \
   -var="tenant_slug=ssmr" \
   -var="region=asia-south1" \
-  -var="kafka_bootstrap_servers=<host1:9092,host2:9092>" \
+  -var="kafka_bootstrap_servers=<pkc-xxx.asia-south1.gcp.confluent.cloud:9092>" \
+  -var="google_maps_api_key=<server-side-geocoding-places-key>" \
   -var="firebase_project_id=<firebase-project-id>" \
   -var="firebase_auth_enabled=true" \
   -var="enable_observability_resources=true" \
@@ -29,6 +30,16 @@ terraform apply
 
 ## Notes
 
+- **Kafka (Confluent Cloud Basic):** provision one cluster in `asia-south1` (or nearest).
+  Create topics matching defaults (`ssmr.events.orders`, `ssmr.events.spatial`,
+  `ssmr.events.realtime`, `ssmr.events.webhooks`, `pegasusx-freeze-locks`) and an
+  API key with produce/consume ACLs. Pass the bootstrap string to
+  `kafka_bootstrap_servers`; Terraform stores it in
+  `pegasusx-<tenant>-kafka-bootstrap-servers` for External Secrets. Local SSMR
+  keeps Docker Kafka in `infra/docker-compose.ssmr.yml` (no Confluent required).
+- **Google Maps:** enable Geocoding API + Places API; restrict the server key to
+  backend egress IPs. Android Maps SDK keys are separate app-restricted keys per
+  `CLOUD_CREDENTIALS_CHECKLIST.md`. Pass `google_maps_api_key` on apply to seed GSM.
 - Kafka is provider-agnostic in this baseline. The module stores bootstrap
   coordinates plus the isolated topic names in Secret Manager so backend-go and
   ai-worker can consume them at deploy time.

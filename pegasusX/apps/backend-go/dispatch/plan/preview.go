@@ -51,14 +51,17 @@ func RunSolvePreview(
 		}
 	}
 	if err != nil {
+		RecordPrometheus(SourceFallbackPhase1)
 		return SolvePreview{
 			OptimizerSource:   SourceFallbackPhase1,
 			OptimizerWarnings: []string{err.Error()},
 		}
 	}
 	if result == nil {
+		RecordPrometheus(SourceFallbackPhase1)
 		return SolvePreview{OptimizerSource: SourceFallbackPhase1}
 	}
+	RecordPrometheus(source)
 	return SolvePreview{
 		ProposedRoutes:    RoutesToWire(result),
 		OptimizerSource:   source,

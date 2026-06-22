@@ -64,10 +64,10 @@
 | Fleet/dispatch basemap | supplier/warehouse portals, supplier/warehouse Android | **MapLibre + Carto** (`basemaps.cartocdn.com`) | Free |
 | Maps on iOS | supplier, warehouse, retailer, driver iOS | **Apple MapKit** | Free (Apple Dev $99/yr) |
 | Driver + retailer Android maps | driver-app-android, retailer-app-android | **Maps SDK for Android** | GCP $200/mo Maps credit |
-| Places API (optional) | retailer location picker | Enable if autocomplete needed | Same credit |
-| Geocoding API (optional) | topology address → lat/lng | Backend only if added | Same credit |
+| Geocoding API | topology address → lat/lng | Backend `GOOGLE_MAPS_API_KEY` via GSM | Same credit |
+| Places API | retailer location autocomplete | Backend `GOOGLE_MAPS_API_KEY` via GSM | Same credit |
 | Route polylines | backend-go | **Self-hosted OSRM** (`ROUTING_OSRM_URL`) | ~$20–40 sidecar |
-| VRP optimization | ai-worker OR-Tools | `OPTIMIZER_BASE_URL` + `INTERNAL_API_KEY` | GKE pod CPU |
+| VRP optimization | optimizer-core OR-Tools sidecar | `OPTIMIZER_BASE_URL` → optimizer-core + `INTERNAL_API_KEY` | GKE pod CPU (~1–2 vCPU) |
 
 **Do not enable:** Maps JavaScript API (portals use MapLibre), Directions API (OSRM handles geometry).
 
@@ -129,6 +129,8 @@ Boss provides API credentials. Wire into Secret Manager + backend env:
 | `PEGASUSX_GLOBAL_PAY_USERNAME` | `GLOBAL_PAY_USERNAME` |
 | `PEGASUSX_GLOBAL_PAY_PASSWORD` | `GLOBAL_PAY_PASSWORD` |
 | `PEGASUSX_INTERNAL_API_KEY` | `INTERNAL_API_KEY` |
+| `pegasusx-<tenant>-google-maps-api-key` | `GOOGLE_MAPS_API_KEY` (Geocoding + Places; restrict Android Maps SDK keys per app) |
+| `pegasusx-<tenant>-kafka-bootstrap-servers` | `KAFKA_BROKERS` (Confluent Cloud Basic bootstrap) |
 | Adyen / Stripe / Payme / Click webhook secrets | as enabled |
 
 ---
@@ -142,6 +144,8 @@ Boss provides API credentials. Wire into Secret Manager + backend env:
 | `region` | Primary region (default `asia-south1`) |
 | `monthly_budget_usd` | `1500` |
 | `billing_account_id` | Enables budget alerts |
+| `kafka_bootstrap_servers` | Confluent Cloud bootstrap (sensitive) |
+| `google_maps_api_key` | Geocoding + Places server-side key (sensitive) |
 | `ai_worker_monitoring_host` | Optional uptime checks |
 
 ## Post-provision commands
