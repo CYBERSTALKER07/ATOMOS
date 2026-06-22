@@ -51,14 +51,15 @@ func runManualPreorderE2E(ctx context.Context, client *http.Client, base, retail
 	if status != http.StatusOK {
 		return fmt.Errorf("confirm preorder status %d body %s", status, string(respBody))
 	}
-	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/warehouse/ops/preorders", nil, cookie, "")
+	whID := demoWarehouseID()
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/warehouse/ops/preorders?warehouse_id="+whID, nil, cookie, "")
 	if err != nil {
 		return err
 	}
 	if status != http.StatusOK || !strings.Contains(string(respBody), created.OrderID) {
 		return fmt.Errorf("warehouse preorders status %d body %s", status, string(respBody))
 	}
-	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/warehouse/ops/stock-commitments", nil, cookie, "")
+	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/warehouse/ops/stock-commitments?warehouse_id="+whID, nil, cookie, "")
 	if err != nil {
 		return err
 	}

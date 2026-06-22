@@ -2,6 +2,8 @@ package order
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
@@ -77,5 +79,39 @@ func TestWarehousePayloadOverflow_ClearsAssignment(t *testing.T) {
 	}
 	if repo.captured.DriverID != "" || repo.captured.ManifestID != "" {
 		t.Fatalf("assignment not cleared: driver=%q manifest=%q", repo.captured.DriverID, repo.captured.ManifestID)
+	}
+}
+
+func TestResolveWarehouseOpsFromRequest_SupplierAdminUsesQueryWarehouse(t *testing.T) {
+	svc := NewService(ServiceConfig{SupplierID: "sup_1"})
+	ctx := auth.WithClaims(context.Background(), auth.Claims{
+		Subject:    "ceo",
+		Role:       auth.RoleAdmin,
+		SupplierID: "sup_1",
+	})
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/v1/warehouse/ops/preorders?warehouse_id=wh_1", nil)
+	ops, err := svc.resolveWarehouseOpsFromRequest(ctx, req)
+	if err != nil {
+		t.Fatalf("resolve ops: %v", err)
+	}
+	if ops.WarehouseID != "wh_1" || ops.SupplierID != "sup_1" {
+		t.Fatalf("ops=%+v", ops)
+	}
+}
+
+func TestListWarehousePreordersForOps_SupplierAdminWithoutWarehouseIDForbidden(t *testing.T) {
+	svc := NewService(ServiceConfig{SupplierID: "sup_1"})
+	ctx := auth.WithClaims(context.Background(), auth.Claims{
+		Subject:    "ceo",
+		Role:       auth.RoleAdmin,
+		SupplierID: "sup_1",
+	})
+	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/v1/warehouse/ops/preorders", nil)
+	ops, err := svc.resolveWarehouseOpsFromRequest(ctx, req)
+	if err == nil {
+		t.Fatal("expected forbidden without warehouse scope")
+	}
+	if ops != nil {
+		t.Fatalf("expected nil ops, got %+v", ops)
 	}
 }

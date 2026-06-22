@@ -260,7 +260,11 @@ func (s *Service) HandleWarehouseListPreorders(w http.ResponseWriter, r *http.Re
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	ops := auth.GetWarehouseOps(r.Context())
+	ops, err := s.resolveWarehouseOpsFromRequest(r.Context(), r)
+	if err != nil {
+		mapWarehouseOrderMutationError(w, r, "", err)
+		return
+	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	if limit <= 0 {
@@ -329,6 +333,37 @@ func assertWarehouseOrderScope(orderRecord Order, ops *auth.WarehouseOps) error 
 		return ErrOrderForbidden
 	}
 	return nil
+}
+
+// resolveWarehouseOpsFromRequest pins warehouse staff to JWT home node. Global supplier
+// ADMIN (supplier portal cookie) may call list routes without WarehouseOps in context;
+// scope is taken from warehouse_id query param or JWT home node.
+func (s *Service) resolveWarehouseOpsFromRequest(ctx context.Context, r *http.Request) (*auth.WarehouseOps, error) {
+	if ops := auth.GetWarehouseOps(ctx); ops != nil && strings.TrimSpace(ops.WarehouseID) != "" {
+		return ops, nil
+	}
+	claims, ok := auth.FromContext(ctx)
+	if !ok || claims.Role != auth.RoleAdmin {
+		return nil, ErrOrderForbidden
+	}
+	warehouseID := strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
+	if warehouseID == "" && claims.HomeNodeType == auth.HomeNodeWarehouse {
+		warehouseID = strings.TrimSpace(claims.HomeNodeID)
+	}
+	if warehouseID == "" {
+		return nil, ErrOrderForbidden
+	}
+	supplierID := strings.TrimSpace(claims.SupplierID)
+	if supplierID == "" {
+		if sid, ok := auth.ResolveSupplierID(ctx); ok {
+			supplierID = sid
+		}
+	}
+	return &auth.WarehouseOps{
+		WarehouseID: warehouseID,
+		SupplierID:  supplierID,
+		Subject:     claims.Subject,
+	}, nil
 }
 
 // resolveWarehouseOps pins warehouse staff to JWT home node. Global supplier ADMIN
