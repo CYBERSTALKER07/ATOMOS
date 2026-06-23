@@ -39,7 +39,7 @@ run_gate "spanner stale-read gate" bash scripts/validate_spanner_stale_reads.sh
 
 if command -v kubectl >/dev/null 2>&1; then
 	run_gate "kustomize prod overlay" kubectl kustomize infra/k8s/overlays/prod --load-restrictor LoadRestrictionsNone >/dev/null
-	run_gate "kustomize pilot overlay" bash -c 'rendered=$(kubectl kustomize infra/k8s/overlays/pilot --load-restrictor LoadRestrictionsNone) && echo "$rendered" | rg -q "KAFKA_TOPIC_DUAL_WRITE: \"false\"" && echo "$rendered" | rg -q "maxReplicas: 4"'
+	run_gate "kustomize pilot overlay" bash -c 'rendered=$(kubectl kustomize infra/k8s/overlays/pilot --load-restrictor LoadRestrictionsNone) && echo "$rendered" | grep -q "KAFKA_TOPIC_DUAL_WRITE: \"false\"" && echo "$rendered" | grep -q "maxReplicas: 4"'
 else
 	echo "SKIP: kustomize overlays (kubectl not installed)" >&2
 fi

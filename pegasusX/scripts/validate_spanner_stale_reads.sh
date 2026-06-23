@@ -20,8 +20,8 @@ while IFS= read -r file; do
 			continue
 		fi
 		VIOLATIONS+=("$rel:$lineno: $content")
-	done < <(rg -n '\.Single\(\)\.Query' "$file" || true)
-done < <(rg -l '\.Single\(\)\.Query' "$BACKEND" --glob '*.go' || true)
+	done < <(grep -n '\.Single()\.Query' "$file" 2>/dev/null || true)
+done < <(find "$BACKEND" -name '*.go' -type f -print)
 
 if ((${#VIOLATIONS[@]} > 0)); then
 	echo "spanner-stale-read-gate-FAIL — add WithTimestampBound or allowlist entry:" >&2
