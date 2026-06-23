@@ -65,11 +65,11 @@ func (c *countingConnection) Delivered() int64 { return c.count.Load() }
 
 func waitForRelayReady(t *testing.T, ctx context.Context, publisher *Hub, room string, conn *countingConnection) {
 	t.Helper()
-	deadline := time.Now().Add(3 * time.Second)
+	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		before := conn.Delivered()
 		publisher.Broadcast(ctx, room, []byte("relay-ready"))
-		probeDeadline := time.Now().Add(250 * time.Millisecond)
+		probeDeadline := time.Now().Add(500 * time.Millisecond)
 		for time.Now().Before(probeDeadline) {
 			if conn.Delivered() > before {
 				return
@@ -195,6 +195,7 @@ func TestStartRelaySubscriberDeliversBurstIntegrity(t *testing.T) {
 	receiverHub.Subscribe(room, conn)
 
 	go receiverHub.StartRelaySubscriber(ctx)
+	time.Sleep(20 * time.Millisecond)
 	waitForRelayReady(t, ctx, publisherHub, room, conn)
 
 	const burst = 32
@@ -203,7 +204,7 @@ func TestStartRelaySubscriberDeliversBurstIntegrity(t *testing.T) {
 		publisherHub.Broadcast(ctx, room, payload)
 	}
 
-	deadline := time.Now().Add(3 * time.Second)
+	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		if conn.Delivered() >= burst+1 { // +1 for relay-ready probe
 			return

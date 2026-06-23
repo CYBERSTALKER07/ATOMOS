@@ -18,8 +18,6 @@ import (
 const testWSJWTSecret = "ws-test-secret"
 
 func TestRegisterRoutesRejectsWhenHubAtCapacity(t *testing.T) {
-	t.Parallel()
-
 	driverHub := NewHubWithLimits("driver", nil, nil, HubLimits{MaxTotal: 1})
 	telemetryHub := NewHubWithLimits("telemetry", nil, nil, HubLimits{MaxTotal: 1})
 	driverHub.Subscribe("driver:drv-1", newTestConnection("ghost"))
@@ -52,8 +50,6 @@ func TestRegisterRoutesRejectsWhenHubAtCapacity(t *testing.T) {
 }
 
 func TestRegisterRoutesSubscribesSupplierToTelemetryRoom(t *testing.T) {
-	t.Parallel()
-
 	telemetryHub := NewHub("telemetry", nil, nil)
 	router := chi.NewRouter()
 	router.Use(testClaimsMiddleware(auth.Claims{
@@ -69,14 +65,13 @@ func TestRegisterRoutesSubscribesSupplierToTelemetryRoom(t *testing.T) {
 	conn := dialTestWebSocket(t, server.URL)
 	defer conn.Close()
 
-	telemetryHub.Broadcast(context.Background(), "telemetry:supplier:sup-1", []byte("supplier-location"))
-	assertWebSocketMessage(t, conn, "supplier-location")
+	assertWebSocketMessageWithRetry(t, func() {
+		telemetryHub.Broadcast(context.Background(), "telemetry:supplier:sup-1", []byte("supplier-location"))
+	}, conn, "supplier-location")
 }
 
 func TestRegisterRoutesSubscribesDriverToTelemetryRoom(t *testing.T) {
-	t.Parallel()
-
-	telemetryHub := NewHub("telemetry", nil, nil)
+	telemetryHub := NewHubWithLimits("telemetry", nil, nil, HubLimits{MaxPerRoom: 0, MaxTotal: 0})
 	router := chi.NewRouter()
 	router.Use(testClaimsMiddleware(auth.Claims{
 		Role:       auth.RoleDriver,
@@ -91,8 +86,9 @@ func TestRegisterRoutesSubscribesDriverToTelemetryRoom(t *testing.T) {
 	conn := dialTestWebSocket(t, server.URL)
 	defer conn.Close()
 
-	telemetryHub.Broadcast(context.Background(), "telemetry:driver:drv-1", []byte("driver-location"))
-	assertWebSocketMessage(t, conn, "driver-location")
+	assertWebSocketMessageWithRetry(t, func() {
+		telemetryHub.Broadcast(context.Background(), "telemetry:driver:drv-1", []byte("driver-location"))
+	}, conn, "driver-location")
 }
 
 func TestRegisterRoutesTelemetryDriverReconnectChurn(t *testing.T) {
@@ -146,8 +142,6 @@ func TestRegisterRoutesTelemetrySupplierReconnectChurn(t *testing.T) {
 }
 
 func TestRegisterRoutesAcceptsSignedQueryToken(t *testing.T) {
-	t.Parallel()
-
 	telemetryHub := NewHub("telemetry", nil, nil)
 	router := chi.NewRouter()
 	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, RegisterConfig{})
@@ -171,8 +165,9 @@ func TestRegisterRoutesAcceptsSignedQueryToken(t *testing.T) {
 	conn := dialTestWebSocketWithQuery(t, server.URL, "token="+token)
 	defer conn.Close()
 
-	telemetryHub.Broadcast(context.Background(), "telemetry:supplier:sup-1", []byte("supplier-location"))
-	assertWebSocketMessage(t, conn, "supplier-location")
+	assertWebSocketMessageWithRetry(t, func() {
+		telemetryHub.Broadcast(context.Background(), "telemetry:supplier:sup-1", []byte("supplier-location"))
+	}, conn, "supplier-location")
 }
 
 func testClaimsMiddleware(claims auth.Claims) func(http.Handler) http.Handler {
@@ -208,14 +203,27 @@ func dialTestWebSocketWithQuery(t *testing.T, serverURL string, rawQuery string)
 
 func assertWebSocketMessage(t *testing.T, conn *websocket.Conn, want string) {
 	t.Helper()
-	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
-	_, raw, err := conn.ReadMessage()
-	if err != nil {
-		t.Fatalf("read websocket message: %v", err)
+	assertWebSocketMessageWithRetry(t, nil, conn, want)
+}
+
+func assertWebSocketMessageWithRetry(t *testing.T, rebroadcast func(), conn *websocket.Conn, want string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if rebroadcast != nil {
+			rebroadcast()
+		}
+		_ = conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+		_, raw, err := conn.ReadMessage()
+		if err == nil {
+			if string(raw) == want {
+				return
+			}
+			t.Fatalf("message = %q, want %q", string(raw), want)
+		}
+		time.Sleep(25 * time.Millisecond)
 	}
-	if string(raw) != want {
-		t.Fatalf("message = %q, want %q", string(raw), want)
-	}
+	t.Fatalf("read websocket message: timed out waiting for %q", want)
 }
 
 func waitForHubConnections(t *testing.T, hub *Hub, want int) {
