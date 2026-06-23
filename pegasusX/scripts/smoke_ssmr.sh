@@ -212,6 +212,23 @@ wait_for_http "backend health" "$HEALTH_URL" 90 2
 # Warm up go run backend after volume-mount compile before e2e traffic.
 wait_for_http "backend health (warmup)" "$HEALTH_URL" 10 3
 
+log_step "Warming optimizer-core (OR-Tools cold start)"
+CURRENT_STEP="optimizer-warmup"
+OPTIMIZER_HEALTH_URL="http://localhost:8182/healthz"
+wait_for_http "optimizer-core health" "$OPTIMIZER_HEALTH_URL" 60 2
+OPTIMIZER_WARMUP_BODY='{"v":"v1","trace_id":"ssmr-warmup","supplier_id":"warmup","home_node_id":"ssmr-warehouse-1","departure_time":"2026-06-17T08:00:00Z","stops":[{"order_id":"o1","retailer_id":"r1","lat":41.31,"lng":69.25,"volume_vu":10.0}],"vehicles":[{"vehicle_id":"v1","driver_id":"d1","max_volume_vu":100.0,"start_lat":41.30,"start_lng":69.24,"avg_speed_kmph":30.0}]}'
+warmup_attempt=0
+while (( warmup_attempt < 8 )); do
+	warmup_attempt=$((warmup_attempt + 1))
+	if curl -fsS -X POST "http://localhost:8182/v1/optimizer/solve" \
+		-H "Content-Type: application/json" \
+		-H "X-Internal-Api-Key: dev-internal-key" \
+		--data "$OPTIMIZER_WARMUP_BODY" >/dev/null 2>&1; then
+		break
+	fi
+	sleep 3
+done
+
 log_step "Asserting Redis-backed delivery perimeter key and positive membership path"
 CURRENT_STEP="smokecheck-spatial"
 run_go_smokecheck spatial

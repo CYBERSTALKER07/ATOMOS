@@ -576,7 +576,8 @@ func runWarehouseOptimizerSourceE2E(ctx context.Context, client *http.Client, ba
 		OptimizerSource    string `json:"optimizer_source"`
 	}
 	var respBody []byte
-	for attempt := 0; attempt < 20; attempt++ {
+	ready := false
+	for attempt := 0; attempt < 30; attempt++ {
 		status, body, _, err := clientPost(ctx, client, previewURL, reqBody, supplierCookie, fmt.Sprintf("ssmr-dispatch-optimizer-preview:%d", attempt))
 		if err != nil {
 			return err
@@ -588,18 +589,19 @@ func runWarehouseOptimizerSourceE2E(ctx context.Context, client *http.Client, ba
 		if err := json.Unmarshal(respBody, &preview); err != nil {
 			return fmt.Errorf("decode optimizer dispatch preview: %w", err)
 		}
-		if len(preview.AvailableDrivers) > 0 && len(preview.UndispatchedOrders) > 0 {
+		if len(preview.AvailableDrivers) > 0 && len(preview.UndispatchedOrders) > 0 && preview.OptimizerSource == "optimizer" {
+			ready = true
 			break
 		}
 		time.Sleep(time.Second)
 	}
-	if len(preview.AvailableDrivers) == 0 {
-		return fmt.Errorf("optimizer dispatch preview missing available drivers body %s", string(respBody))
-	}
-	if len(preview.UndispatchedOrders) == 0 {
-		return fmt.Errorf("optimizer dispatch preview missing undispatched orders for %s body %s", orderID, string(respBody))
-	}
-	if preview.OptimizerSource != "optimizer" {
+	if !ready {
+		if len(preview.AvailableDrivers) == 0 {
+			return fmt.Errorf("optimizer dispatch preview missing available drivers body %s", string(respBody))
+		}
+		if len(preview.UndispatchedOrders) == 0 {
+			return fmt.Errorf("optimizer dispatch preview missing undispatched orders for %s body %s", orderID, string(respBody))
+		}
 		return fmt.Errorf("dispatch preview expected optimizer_source=optimizer got %q body %s", preview.OptimizerSource, string(respBody))
 	}
 	fmt.Println("PX_E2E_OPTIMIZER_SOURCE_OK")
