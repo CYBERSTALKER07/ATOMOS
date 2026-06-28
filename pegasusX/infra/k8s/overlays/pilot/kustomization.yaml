@@ -5,9 +5,6 @@ namespace: pegasusx
 
 resources:
   - ../prod
-  - ../../optimizer-core/configmap.yaml
-  - ../../optimizer-core/deployment.yaml
-  - ../../optimizer-core/service.yaml
   - ../../ai-worker/configmap.yaml
   - ../../ai-worker/deployment.yaml
   - ../../ai-worker/service.yaml

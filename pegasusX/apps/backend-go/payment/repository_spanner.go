@@ -8,6 +8,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -358,7 +359,7 @@ func (r *SpannerRepository) SummarizeLedgerEntries(ctx context.Context, q Settle
 }
 
 func (r *SpannerRepository) writeWithOutbox(ctx context.Context, emit func(outbox.TxnBuffer) error, bases ...*spanner.Mutation) error {
-	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	err := spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		buf := &spannerTxnBuffer{}
 		if emit != nil {
 			if err := emit(buf); err != nil {

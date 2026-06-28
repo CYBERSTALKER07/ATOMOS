@@ -10,6 +10,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
 // SpannerRepository persists order rows in Spanner and writes emitted outbox
@@ -54,7 +55,7 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 		return fmt.Errorf("marshal order line items: %w", err)
 	}
 
-	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	err = spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		if err := snapshotReceivingWindowsInTxn(ctx, txn, o); err != nil {
 			return err
 		}
@@ -170,7 +171,7 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 		return fmt.Errorf("marshal order line items: %w", err)
 	}
 
-	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	err = spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{o.OrderID}, []string{"Version"})
 		if err != nil {
 			return err

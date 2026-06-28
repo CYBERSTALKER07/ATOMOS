@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	h3 "github.com/uber/h3-go/v4"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 )
 
 const (
@@ -116,6 +118,7 @@ func (s *RetailerProximityService) PerimeterReady(ctx context.Context) (bool, er
 }
 
 // IsRetailerInZone checks O(1) zone membership using Redis SISMEMBER.
+// When the direct cell misses, expands k-rings up to proximity.DefaultNeighborK().
 func (s *RetailerProximityService) IsRetailerInZone(ctx context.Context, h3Index string) error {
 	if strings.TrimSpace(h3Index) == "" {
 		return fmt.Errorf("%w: empty h3 index", ErrZoneMiss)
@@ -132,14 +135,40 @@ func (s *RetailerProximityService) IsRetailerInZone(ctx context.Context, h3Index
 		return fmt.Errorf("%w: %w", ErrZoneMiss, ErrPerimeterUnavailable)
 	}
 
-	member, err := s.store.SIsMember(ctx, s.perimeterKey, h3Index)
-	if err != nil {
+	if member, err := s.store.SIsMember(ctx, s.perimeterKey, h3Index); err != nil {
 		return fmt.Errorf("%w: perimeter sismember failed: %v", ErrZoneMiss, err)
+	} else if member {
+		return nil
 	}
-	if !member {
+
+	// Neighbor ring fallback: parse cell and expand GridDisk rings.
+	var center h3.Cell
+	if err := center.UnmarshalText([]byte(h3Index)); err != nil {
 		return fmt.Errorf("%w: h3_index=%s", ErrZoneMiss, h3Index)
 	}
-	return nil
+	for k := 1; k <= proximity.DefaultNeighborK(); k++ {
+		ring, err := h3.GridDisk(center, k)
+		if err != nil {
+			break
+		}
+		for _, cell := range ring {
+			if !cell.IsValid() {
+				continue
+			}
+			if cell.String() == h3Index {
+				continue
+			}
+			member, err := s.store.SIsMember(ctx, s.perimeterKey, cell.String())
+			if err != nil {
+				return fmt.Errorf("%w: perimeter sismember failed: %v", ErrZoneMiss, err)
+			}
+			if member {
+				return nil
+			}
+		}
+	}
+
+	return fmt.Errorf("%w: h3_index=%s", ErrZoneMiss, h3Index)
 }
 
 // PrecomputeDeliveryZoneForCenter builds a circular polygon and stores both the

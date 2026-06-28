@@ -38,6 +38,10 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go warehouse.StartDispatchPlanWarmer(ctx, app.WarehouseService, warehouse.DispatchPlanWarmerConfig{})
 		slog.Info("dispatch plan warmer started")
 	}
+	if app.WebhookInbox != nil && app.PaymentService != nil {
+		go app.WebhookInbox.StartReconciler(ctx, app.PaymentService, 0)
+		slog.Info("webhook inbox reconciler started")
+	}
 	if app.ReplenishmentEngine != nil && os.Getenv("REPLENISHMENT_CRON_DISABLED") != "1" {
 		app.ReplenishmentEngine.StartCron(ctx)
 		slog.Info("replenishment engine cron started")

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -126,7 +127,7 @@ func (s *Service) BackfillScheduledReservations(ctx context.Context, limit int) 
 
 	backfilled := 0
 	for _, c := range pending {
-		_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		err := spannerutils.RunReadWriteTransaction(ctx, s.spannerClient, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			if err := ReserveLineItemsInTxn(ctx, txn, c.supplierID, c.warehouseID, c.lineItems); err != nil {
 				return err
 			}

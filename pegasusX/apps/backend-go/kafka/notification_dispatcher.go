@@ -24,26 +24,44 @@ type DispatcherDeps struct {
 	PayloadHub   *ws.Hub
 	Push         *notifications.PushBridge
 	Inbox        *notifications.Service
+	EventDedup   EventDedupStore
 }
 
 // NotificationDispatcher consumes generic events from Kafka and routes
 // them to downstream systems like WebSocket Hubs or Push Notifications.
 type NotificationDispatcher struct {
-	deps  DispatcherDeps
-	dedup *fanoutDedup
+	deps       DispatcherDeps
+	dedup      *fanoutDedup
+	eventDedup EventDedupStore
 }
 
 // NewNotificationDispatcher creates a new dispatcher instance.
 func NewNotificationDispatcher(deps DispatcherDeps) *NotificationDispatcher {
+	eventDedup := deps.EventDedup
+	if eventDedup == nil {
+		eventDedup = NewInMemoryEventDedup(defaultFanoutDedupTTL)
+	}
 	return &NotificationDispatcher{
-		deps:  deps,
-		dedup: newFanoutDedup(defaultFanoutDedupTTL),
+		deps:       deps,
+		dedup:      newFanoutDedup(defaultFanoutDedupTTL),
+		eventDedup: eventDedup,
 	}
 }
 
 // HandleEvent is the partition-parallel consumer entrypoint.
 func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Message) error {
 	ctx = WithTraceFromMessage(ctx, msg)
+
+	dedupKey := DedupKeyForMessage(msg.Topic, msg.Partition, msg.Offset)
+	if d.eventDedup != nil {
+		ok, err := d.eventDedup.ShouldProcess(ctx, dedupKey)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return nil
+		}
+	}
 
 	envelope, err := ParseEnvelope(msg.Value)
 	if err != nil {

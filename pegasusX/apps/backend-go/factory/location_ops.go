@@ -9,6 +9,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
 type factoryLocationResponse struct {
@@ -80,15 +81,17 @@ func (s *Service) handleFactoryLocationPatch(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	now := time.Now().UTC()
-	_, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{
-		spanner.UpdateMap("Factories", map[string]any{
-			"FactoryId": factoryID,
-			"Address":   strings.TrimSpace(req.Address),
-			"PlaceId":   factoryNullableString(strings.TrimSpace(req.PlaceID)),
-			"Lat":       req.Lat,
-			"Lng":       req.Lng,
-			"UpdatedAt": now,
-		}),
+	err := spannerutils.RunReadWriteTransaction(r.Context(), s.spannerClient, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.UpdateMap("Factories", map[string]any{
+				"FactoryId": factoryID,
+				"Address":   strings.TrimSpace(req.Address),
+				"PlaceId":   factoryNullableString(strings.TrimSpace(req.PlaceID)),
+				"Lat":       req.Lat,
+				"Lng":       req.Lng,
+				"UpdatedAt": now,
+			}),
+		})
 	})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "update_factory_location_failed"})

@@ -49,6 +49,7 @@ type ConsumerDeps struct {
 	Brokers     []string
 	GroupID     string
 	Topic       string
+	Topics      []string
 	Handler     EventHandler
 	DLQWriter   DLQWriter
 	MaxAttempts int

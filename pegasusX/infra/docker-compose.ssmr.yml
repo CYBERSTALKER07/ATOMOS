@@ -135,7 +135,7 @@ services:
       SPANNER_EMULATOR_HOST: spanner-emulator:9010
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:29092
-      OPTIMIZER_BASE_URL: http://optimizer-core:8082
+      OPTIMIZER_BASE_URL: http://ai-worker:8081
       INTERNAL_API_KEY: dev-internal-key
       GLOBAL_PAY_ENV: dev
       REQUIRE_INFRA_ADAPTERS: "true"

@@ -184,6 +184,8 @@ def require_platform_evidence() -> None:
             "ROUTING_OSRM_URL",
             "GLOBAL_PAY_ENV",
             "KAFKA_TOPIC_FREEZE_LOCKS",
+            "OPTIMIZER_BASE_URL",
+            "ai-worker",
             "PEGASUSX_RUN_MODE",
             "REQUIRE_INFRA_ADAPTERS",
         ],

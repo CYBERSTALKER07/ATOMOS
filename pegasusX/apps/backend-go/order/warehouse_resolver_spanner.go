@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"google.golang.org/api/iterator"
 )
 
@@ -42,6 +43,44 @@ func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 		return "", nil
 	}
 
+	neighborCells, _ := proximity.CellsInRadius(retailerLat, retailerLng, 9, proximity.DefaultNeighborK())
+	if len(neighborCells) > 0 {
+		if id, err := r.resolveFromH3Candidates(ctx, supplierID, retailerLat, retailerLng, neighborCells); err != nil {
+			return "", err
+		} else if id != "" {
+			return id, nil
+		}
+	}
+
+	return r.resolveFromFullScan(ctx, supplierID, retailerLat, retailerLng)
+}
+
+func (r *SpannerWarehouseResolver) resolveFromH3Candidates(
+	ctx context.Context,
+	supplierID string,
+	retailerLat, retailerLng float64,
+	neighborCells []string,
+) (string, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT WarehouseId, Lat, Lng, CoverageRadiusKm
+		      FROM Warehouses
+		      WHERE SupplierId = @supplierId
+		        AND IsActive = true
+		        AND COALESCE(IsOnShift, true) = true
+		        AND H3Cell IN UNNEST(@cells)`,
+		Params: map[string]any{
+			"supplierId": supplierID,
+			"cells":      neighborCells,
+		},
+	}
+	return r.scanWarehouseCandidates(ctx, stmt, retailerLat, retailerLng)
+}
+
+func (r *SpannerWarehouseResolver) resolveFromFullScan(
+	ctx context.Context,
+	supplierID string,
+	retailerLat, retailerLng float64,
+) (string, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT WarehouseId, Lat, Lng, CoverageRadiusKm
 		      FROM Warehouses
@@ -50,6 +89,14 @@ func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 		        AND COALESCE(IsOnShift, true) = true`,
 		Params: map[string]any{"supplierId": supplierID},
 	}
+	return r.scanWarehouseCandidates(ctx, stmt, retailerLat, retailerLng)
+}
+
+func (r *SpannerWarehouseResolver) scanWarehouseCandidates(
+	ctx context.Context,
+	stmt spanner.Statement,
+	retailerLat, retailerLng float64,
+) (string, error) {
 	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
@@ -62,7 +109,7 @@ func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 			break
 		}
 		if err != nil {
-			return "", fmt.Errorf("query warehouses for supplier %s: %w", supplierID, err)
+			return "", fmt.Errorf("query warehouses: %w", err)
 		}
 
 		var warehouseID string

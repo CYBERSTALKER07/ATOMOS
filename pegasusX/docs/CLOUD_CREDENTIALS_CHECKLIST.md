@@ -67,7 +67,7 @@
 | Geocoding API | topology address → lat/lng | Backend `GOOGLE_MAPS_API_KEY` via GSM | Same credit |
 | Places API | retailer location autocomplete | Backend `GOOGLE_MAPS_API_KEY` via GSM | Same credit |
 | Route polylines | backend-go | **Self-hosted OSRM** (`ROUTING_OSRM_URL`) | ~$20–40 sidecar |
-| VRP optimization | optimizer-core OR-Tools sidecar | `OPTIMIZER_BASE_URL` → optimizer-core + `INTERNAL_API_KEY` | GKE pod CPU (~1–2 vCPU) |
+| VRP optimization | Go ai-worker (Clarke-Wright) | `OPTIMIZER_BASE_URL` → ai-worker:8081 + `INTERNAL_API_KEY` | GKE pod CPU (~1–2 vCPU) |
 
 **Do not enable:** Maps JavaScript API (portals use MapLibre), Directions API (OSRM handles geometry).
 
@@ -92,6 +92,11 @@ Boss provides API credentials. Wire into Secret Manager + backend env:
 **Outbound hosts:** `checkout-api.globalpay.uz`, `backoffice-api.globalpay.uz` (staging variants for pre-prod).
 
 **Optional gateways (webhook-only today):** `ADYEN_WEBHOOK_SECRET`, `STRIPE_WEBHOOK_SECRET`, `PAYME_WEBHOOK_SECRET`, `CLICK_WEBHOOK_SECRET`. Set `AIRWALLEX_DIRECT_EXECUTION_ENABLED=true` only if Airwallex goes live.
+
+### Redis (Memorystore)
+
+- Idempotency keys, cache, WS pub/sub invalidation channel.
+- Supplier-scoped keys use hash tags `{sup:<supplierId>}:...` for future Redis Cluster slot safety (see `cache/keys.go`).
 
 ### Realtime (self-hosted — no extra SaaS)
 

@@ -12,6 +12,7 @@ This run book is the release-owner checklist for the currently implemented pegas
 
 ## Required Evidence
 
+0. **Live credential validation (staging):** complete [`PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md`](./PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md) sign-off table before production cutover. Run `PUBLIC_BASE_URL=<staging> bash scripts/validate_staging_credentials.sh` for automated env-name + health pre-check.
 1. SSMR proof: `make test-ssmr-infra` exits cleanly and records the Spanner, cache, backend health, spatial, and Kafka round-trip markers.
 2. Kubernetes proof: `make validate-ai-worker-k8s` exits cleanly for the ai-worker config map, deployment, probes, and service contract.
 3. Launch evidence proof: `make validate-launch-readiness` exits with `launch-readiness-ok`.

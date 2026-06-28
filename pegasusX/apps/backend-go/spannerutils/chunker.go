@@ -35,10 +35,9 @@ func RunChunkedTransaction[T any](ctx context.Context, client *spanner.Client, i
 		}
 		chunk := items[i:end]
 
-		_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := RunReadWriteTransaction(ctx, client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			return fn(ctx, txn, chunk)
-		})
-		if err != nil {
+		}); err != nil {
 			// A failure in a later chunk does NOT rollback earlier chunks.
 			// Callers must implement idempotency.
 			return err

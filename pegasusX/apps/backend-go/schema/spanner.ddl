@@ -325,9 +325,11 @@ CREATE TABLE Warehouses (
   OperatingSchedule  JSON,
   CreatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  H3Cell             STRING(15),
 ) PRIMARY KEY (WarehouseId);
 
 CREATE INDEX Idx_Warehouses_BySupplier ON Warehouses(SupplierId);
+CREATE INDEX Idx_Warehouses_ByH3Cell ON Warehouses(SupplierId, H3Cell);
 CREATE INDEX Idx_Warehouses_ByPrimaryFactory ON Warehouses(SupplierId, PrimaryFactoryId);
 CREATE INDEX Idx_Warehouses_ByAutoDispatch ON Warehouses(AutoDispatchEnabled, IsActive, WarehouseId) STORING (SupplierId);
 
@@ -474,6 +476,21 @@ CREATE TABLE PaymentWebhooks (
 
 CREATE INDEX Idx_PaymentWebhooks_ByGatewayTxnReceived ON PaymentWebhooks(Gateway, TransactionId, ReceivedAt DESC);
 CREATE INDEX Idx_PaymentWebhooks_ByOrderReceived ON PaymentWebhooks(OrderId, ReceivedAt DESC);
+
+CREATE TABLE WebhookInbox (
+  WebhookId     STRING(36)    NOT NULL,
+  Gateway       STRING(32)    NOT NULL,
+  RecordJson    JSON          NOT NULL,
+  Source        STRING(128)   NOT NULL,
+  Status        STRING(24)    NOT NULL,
+  Attempts      INT64         NOT NULL,
+  NextRetryAt   TIMESTAMP,
+  LastError     STRING(MAX),
+  CreatedAt     TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt     TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (WebhookId);
+
+CREATE INDEX Idx_WebhookInbox_Pending ON WebhookInbox(Status, NextRetryAt);
 
 CREATE TABLE PaymentLedgerEntries (
   LedgerEntryId     STRING(64)    NOT NULL,

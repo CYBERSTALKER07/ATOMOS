@@ -219,6 +219,8 @@ type Service struct {
 	paymeWebhookSecret     string
 	clickWebhookSecret     string
 
+	webhookInbox *WebhookInboxStore
+
 	log   *slog.Logger
 	now   func() time.Time
 	newID func(prefix string) string
@@ -243,6 +245,7 @@ type ServiceConfig struct {
 	StripeWebhookSecret    string
 	PaymeWebhookSecret     string
 	ClickWebhookSecret     string
+	WebhookInbox           *WebhookInboxStore
 
 	Log   *slog.Logger
 	Now   func() time.Time
@@ -369,6 +372,7 @@ func NewService(c ServiceConfig) *Service {
 		stripeWebhookSecret:    c.StripeWebhookSecret,
 		paymeWebhookSecret:     c.PaymeWebhookSecret,
 		clickWebhookSecret:     c.ClickWebhookSecret,
+		webhookInbox:           c.WebhookInbox,
 		policy:                 c.Policy,
 		log:                    c.Log,
 		now:                    c.Now,
@@ -993,6 +997,11 @@ func (s *Service) persistWebhookWithOutbox(ctx context.Context, row WebhookRecor
 			Source:        source,
 		})
 	}); err != nil {
+		if s.webhookInbox != nil {
+			if qErr := s.webhookInbox.Enqueue(ctx, row, source); qErr == nil {
+				return nil
+			}
+		}
 		return err
 	}
 

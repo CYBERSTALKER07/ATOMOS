@@ -24,8 +24,8 @@ func DualWriteDomainTopics() bool {
 }
 
 // ConsumeDomainTopics switches domain-specific consumers off pegasusx-main.
-// Requires KAFKA_TOPIC_DUAL_WRITE=true in production cutover. Notification
-// dispatcher remains on TopicMain until a multi-topic fan-in consumer lands.
+// Requires KAFKA_TOPIC_DUAL_WRITE=true in production cutover. When enabled,
+// the notification dispatcher fans in TopicMain plus domain topics.
 func ConsumeDomainTopics() bool {
 	return strings.EqualFold(strings.TrimSpace(os.Getenv("KAFKA_TOPIC_CONSUME_DOMAIN")), "true")
 }
@@ -36,6 +36,27 @@ func OrderConsumerTopic() string {
 		return TopicOrders
 	}
 	return TopicMain
+}
+
+// DispatcherConsumerTopics returns Kafka topics for the notification dispatcher.
+func DispatcherConsumerTopics() []string {
+	if !ConsumeDomainTopics() {
+		return []string{TopicMain}
+	}
+	seen := make(map[string]struct{}, 4)
+	out := make([]string, 0, 4)
+	for _, t := range []string{TopicMain, TopicOrders, TopicDispatch, TopicRealtime} {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		if _, ok := seen[t]; ok {
+			continue
+		}
+		seen[t] = struct{}{}
+		out = append(out, t)
+	}
+	return out
 }
 
 // DispatchConsumerTopic returns the Kafka topic for warehouse/dispatch consumers.

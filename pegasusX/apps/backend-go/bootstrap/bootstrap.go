@@ -138,6 +138,7 @@ type App struct {
 	FactoryService         *factory.Service
 	PayloadService         *payload.Service
 	PaymentService         *payment.Service
+	WebhookInbox           *payment.WebhookInboxStore
 	WarehouseService       *warehouse.Service
 	ReturnsService         *returns.Service
 	OrderService           *order.Service
@@ -765,6 +766,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		GlobalPayPassword:               cfg.GlobalPayPassword,
 		PaymentBreaker:                  outboundCircuits.Payment,
 	})
+	var webhookInbox *payment.WebhookInboxStore
+	if spannerClient != nil {
+		webhookInbox = payment.NewWebhookInboxStore(spannerClient)
+	}
 	paymentSvc := payment.NewService(payment.ServiceConfig{
 		Repo:                            paymentRepo,
 		Cache:                           cacheClient,
@@ -781,6 +786,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		StripeWebhookSecret:             cfg.StripeWebhookSecret,
 		PaymeWebhookSecret:              cfg.PaymeWebhookSecret,
 		ClickWebhookSecret:              cfg.ClickWebhookSecret,
+		WebhookInbox:                    webhookInbox,
 		AirwallexDirectExecutionEnabled: cfg.AirwallexDirectExecutionEnabled,
 		Log:                             log,
 		Policy:                          gatewayPolicyReader,
@@ -899,6 +905,12 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				"err", err,
 			)
 		} else {
+			var kafkaEventDedup kafka.EventDedupStore = kafka.NewInMemoryEventDedup(7 * 24 * time.Hour)
+			if redisAdapter != nil {
+				if rc := redisAdapter.Client(); rc != nil {
+					kafkaEventDedup = kafka.NewRedisEventDedup(rc, 7*24*time.Hour)
+				}
+			}
 			dispatcher := kafka.NewNotificationDispatcher(kafka.DispatcherDeps{
 				RetailerHub:  retailerHub,
 				SupplierHub:  supplierHub,
@@ -908,26 +920,30 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				PayloadHub:   payloadHub,
 				Push:         pushBridge,
 				Inbox:        notifSvc,
+				EventDedup:   kafkaEventDedup,
 			})
-			notificationConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
+			dispatcherTopics := events.DispatcherConsumerTopics()
+			notificationConsumer = kafka.NewMultiTopicConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
 				GroupID:   "void-notification-dispatcher",
-				Topic:     cfg.KafkaTopicMain,
+				Topics:    dispatcherTopics,
 				Handler:   dispatcher.HandleEvent,
 				DLQWriter: dlqWriter,
 			})
+			orderHandler := kafka.WithEventDedup(kafkaEventDedup, order.NewEventConsumer(orderSvc, log).HandleEvent)
+			warehouseHandler := kafka.WithEventDedup(kafkaEventDedup, warehouse.NewEventConsumer(warehouseSvc, log).HandleEvent)
 			orderEventConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
 				GroupID:   "void-order-mutator",
 				Topic:     events.OrderConsumerTopic(),
-				Handler:   order.NewEventConsumer(orderSvc, log).HandleEvent,
+				Handler:   orderHandler,
 				DLQWriter: dlqWriter,
 			})
 			warehouseEventConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
 				GroupID:   "void-warehouse-mutator",
 				Topic:     events.DispatchConsumerTopic(),
-				Handler:   warehouse.NewEventConsumer(warehouseSvc, log).HandleEvent,
+				Handler:   warehouseHandler,
 				DLQWriter: dlqWriter,
 			})
 			cleanup = append(cleanup, func() {
@@ -987,6 +1003,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		FactoryService:         factorySvc,
 		PayloadService:         payloadSvc,
 		PaymentService:         paymentSvc,
+		WebhookInbox:           webhookInbox,
 		WarehouseService:       warehouseSvc,
 		ReturnsService:         returnsSvc,
 		OrderService:           orderSvc,

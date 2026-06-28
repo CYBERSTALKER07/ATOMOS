@@ -133,7 +133,7 @@ Rail never fully hides on tablet — collapsed state keeps an 88dp/pt icon colum
 | Order lifecycle | `orderroutes` + outbox | All role hubs | Driver + retailer | All retailer + driver apps |
 | Payment / webhooks | `paymentroutes` + `webhookroutes` | Supplier + retailer | Retailer tokens | Desktop + mobile |
 | Shop-closed | `order/shop_closed.go` | Dispatcher | Yes | Driver wait-state VMs |
-| Negotiation | `order/negotiation.go` | Dispatcher | Yes | **Disabled** — stub UI; contract symbols retained for parity check |
+| Negotiation | `order/negotiation.go` | Dispatcher | Yes | **DEFERRED v2** — `order/negotiation_disabled.go` returns 410; SSMR `PX_E2E_NEGOTIATION_SKIPPED` |
 | Manifest gate | `payloaderroutes` + Spanner manifests | `MANIFEST_*` events | Payload/factory hubs | Payload + factory row |
 | Client version policy | `GET /v1/platform/client-policy` | `SYSTEM_APP_OUTDATED` on WS | N/A | Driver + supplier native |
 | Supplier realtime | `supplier:` WS room | Kafka dispatcher | N/A | Portal + **PX11** native WS |

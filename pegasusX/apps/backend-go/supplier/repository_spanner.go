@@ -12,6 +12,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"google.golang.org/api/iterator"
 )
 
@@ -907,6 +908,7 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 				"Name":             name,
 				"Lat":              nullableFloat(wh.Lat),
 				"Lng":              nullableFloat(wh.Lng),
+				"H3Cell":           warehouseH3CellString(wh.Lat, wh.Lng),
 				"Address":          nullableString(strings.TrimSpace(wh.Address)),
 				"PlaceId":          nullableString(strings.TrimSpace(wh.PlaceID)),
 				"CoverageRadiusKm": coverage,
@@ -1071,4 +1073,15 @@ func normalizeSupplierPaymentAcceptor(acceptor string) string {
 	default:
 		return PaymentAcceptorSupplier
 	}
+}
+
+func warehouseH3CellString(lat, lng float64) any {
+	if lat == 0 && lng == 0 {
+		return nil
+	}
+	cells, err := proximity.CellsInRadius(lat, lng, 9, 0)
+	if err != nil || len(cells) == 0 {
+		return nil
+	}
+	return cells[0]
 }

@@ -71,3 +71,16 @@ func TestDispatchConsumerTopic_cutover(t *testing.T) {
 		t.Fatalf("domain topic = %q want %q", DispatchConsumerTopic(), TopicDispatch)
 	}
 }
+
+func TestDispatcherConsumerTopics_cutover(t *testing.T) {
+	os.Unsetenv("KAFKA_TOPIC_CONSUME_DOMAIN")
+	topics := DispatcherConsumerTopics()
+	if len(topics) != 1 || topics[0] != TopicMain {
+		t.Fatalf("default topics = %v", topics)
+	}
+	t.Setenv("KAFKA_TOPIC_CONSUME_DOMAIN", "true")
+	topics = DispatcherConsumerTopics()
+	if len(topics) < 4 {
+		t.Fatalf("domain fan-in topics = %v", topics)
+	}
+}

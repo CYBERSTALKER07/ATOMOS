@@ -115,7 +115,7 @@ resource "google_monitoring_alert_policy" "optimizer_fallback_rate" {
   notification_channels = var.alert_notification_channels
 
   documentation {
-    content   = "Dispatch optimizer fallback_phase1 exceeds 5% for 5 minutes. Check optimizer-core health, OPTIMIZER_BASE_URL, and OR-Tools timeouts."
+    content   = "Dispatch optimizer fallback_phase1 exceeds 5% for 5 minutes. Check ai-worker health, OPTIMIZER_BASE_URL, and solver timeouts."
     mime_type = "text/markdown"
   }
 }

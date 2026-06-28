@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
 type factorySetupRequest struct {
@@ -112,7 +114,9 @@ func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 		mutations = append(mutations, spanner.UpdateMap("Factories", update))
 	}
 
-	if _, err := s.spannerClient.Apply(r.Context(), mutations); err != nil {
+	if err := spannerutils.RunReadWriteTransaction(r.Context(), s.spannerClient, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(mutations)
+	}); err != nil {
 		s.log.ErrorContext(r.Context(), "failed to complete factory setup", "err", err)
 		web.JSONError(w, "Failed to complete factory setup", http.StatusInternalServerError)
 		return

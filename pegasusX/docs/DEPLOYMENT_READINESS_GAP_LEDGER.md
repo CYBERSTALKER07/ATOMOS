@@ -111,7 +111,7 @@ Retailer Android/iOS/desktop, supplier portal + native, warehouse portal + nativ
 |----|------|
 | P2-01 | Full Pegasus supplier-portal ~59 routes |
 | P2-02 | Rust optimizer sidecar |
-| P2-03 | Payme/Click production SDK depth (GlobalPay scaffold acceptable for v1) |
+| P2-03 | Payme/Click production SDK depth (GlobalPay scaffold acceptable for v1) | **Partial** — webhook handlers + golden fixture tests; sandbox/live keys in [`PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md`](./PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md) |
 | P2-04 | Multi-supplier beyond `MAX_SUPPLIERS` policy |
 
 ## Verification
@@ -141,7 +141,22 @@ make test-ssmr-infra
 | Launch validator enterprise k8s checks | **Closed** — `scripts/validate_launch_readiness.py`, `validate_backend_k8s.sh` |
 | ai-worker freeze-lock consumer | **Pre-existing** — `apps/ai-worker/main.go` consumes `KAFKA_TOPIC_FREEZE_LOCKS` |
 
-**Boss action required (not code):** Terraform apply, Global Pay.UZ production API keys, GCP Maps Android key, Firebase `GoogleService-Info.plist` per app, store signing.
+## P0 — Live credential validation (boss + staging)
+
+Code gates (`make test-ssmr-infra`, `make px12-preflight`) do **not** prove live API credentials. Use [`PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md`](./PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md).
+
+| ID | Item | Owner | Status |
+|----|------|-------|--------|
+| LC-01 | Terraform apply + GSM secrets synced | Platform | **Open** — boss action |
+| LC-02 | Global Pay.UZ staging perform + webhook | Finance | **Open** — see runbook §2 |
+| LC-03 | Payme/Click sandbox webhook round-trip | Finance | **Partial** — handlers + fixture tests; live sandbox optional |
+| LC-04 | Firebase OTP per role row (real device) | Client | **Open** — plist/json per app |
+| LC-05 | Maps geocode + OSRM dispatch geometry | Platform | **Open** — `GOOGLE_MAPS_API_KEY`, OSRM sidecar |
+| LC-06 | Staging sign-off table complete | Release owner | **Open** — blocks `PEGASUSX_ENV=production` |
+
+Automated pre-check: `PUBLIC_BASE_URL=<staging> bash scripts/validate_staging_credentials.sh` → `staging-credentials-ok`.
+
+**Boss action required (not code):** Terraform apply, Global Pay.UZ production API keys, GCP Maps Android key, Firebase `GoogleService-Info.plist` per app, store signing — tracked in runbook sign-off table.
  P1-01 supplier native: iOS `xcodebuild` + Android `:app:compileDebugKotlin` — pass (foojay toolchain plugin removed from pegasusX `settings.gradle.kts` — local JDK; `plugins-artifacts.gradle.org` DNS blocked auto-download).
 
 **QA prep:** `make px12-preflight` + manual runbook [`docs/qa/PX12_MANUAL_QA_RUNBOOK.md`](qa/PX12_MANUAL_QA_RUNBOOK.md); Boss sign-off sheet [`docs/qa/PX12_ROLE_ROW_QA.md`](qa/PX12_ROLE_ROW_QA.md).

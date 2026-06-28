@@ -310,5 +310,8 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	fmt.Println("PX_E2E_PAYLOAD_CLIENT_POLICY_OK")
 	fmt.Println("PX_E2E_REASSIGN_FLOWS_OK")
 	fmt.Println("PX_E2E_DRIVER_ASSIGN_DETECTION_OK")
+	if err := assertDomainTopicDispatchMarker(); err != nil {
+		return err
+	}
 	return nil
 }
