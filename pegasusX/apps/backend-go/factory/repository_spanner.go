@@ -34,6 +34,30 @@ func (b *spannerTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error
 	return nil
 }
 
+func outboxMutations(eventsList []outbox.Event) []*spanner.Mutation {
+	muts := make([]*spanner.Mutation, 0, len(eventsList))
+	for _, e := range eventsList {
+		createdAt := e.CreatedAt.UTC()
+		if createdAt.IsZero() {
+			createdAt = time.Now().UTC()
+		}
+		row := map[string]any{
+			"EventId":       e.EventID,
+			"AggregateType": e.AggregateType,
+			"AggregateId":   e.AggregateID,
+			"TopicName":     e.TopicName,
+			"Payload":       e.Payload,
+			"CreatedAt":     createdAt,
+			"PublishedAt":   nil,
+		}
+		if e.PublishedAt != nil {
+			row["PublishedAt"] = e.PublishedAt.UTC()
+		}
+		muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", row))
+	}
+	return muts
+}
+
 // RunTx executes a function within a Spanner ReadWriteTransaction and flushes the outbox buffer.
 func (r *SpannerRepository) RunTx(ctx context.Context, fn func(ctx context.Context, tx FactoryTx) error, emit func(outbox.TxnBuffer) error) error {
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {

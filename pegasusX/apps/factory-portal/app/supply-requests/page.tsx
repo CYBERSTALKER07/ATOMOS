@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
-import { usePolling } from '@pegasusx/api-client';
+import { usePolling, factorySupplyRequestTransitionKey } from '@pegasusx/api-client';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { downloadCsv } from '@/lib/csv';
 import { usePagination } from '@/lib/use-pagination';
@@ -258,6 +258,9 @@ export default function SupplyRequestsPage() {
       }
       const res = await apiFetch(`/v1/factory/supply-requests/${request.request_id}`, {
         method: 'PATCH',
+        headers: {
+          'Idempotency-Key': factorySupplyRequestTransitionKey(request.request_id, action),
+        },
         body: JSON.stringify(body),
       });
 

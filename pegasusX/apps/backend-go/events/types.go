@@ -58,11 +58,14 @@ type RetailerEvent struct {
 	CountryCode         string   `json:"country_code,omitempty"`
 }
 
-// FactoryEvent handles factory creation.
+// FactoryEvent handles factory creation and operational events.
 type FactoryEvent struct {
 	BaseEvent
 	FactoryID           string   `json:"factory_id"`
 	SupplierID          string   `json:"supplier_id"`
+	Lat                 float64  `json:"lat,omitempty"`
+	Lng                 float64  `json:"lng,omitempty"`
+	H3Cell              string   `json:"h3_cell,omitempty"`
 	LegalName           string   `json:"legal_name,omitempty"`
 	ContactName         string   `json:"contact_name,omitempty"`
 	Email               string   `json:"email,omitempty"`

@@ -80,12 +80,14 @@ interface FactoryApi {
     @POST("v1/factory/supply-requests/{id}/accept")
     suspend fun acceptSupplyRequest(
         @Path("id") id: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: JsonElement = kotlinx.serialization.json.JsonObject(emptyMap()),
     ): Response<JsonElement>
 
     @PATCH("v1/factory/supply-requests/{id}")
     suspend fun transitionSupplyRequest(
         @Path("id") id: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: SupplyRequestTransitionRequest,
     ): Response<SupplyRequestTransitionResponse>
 
@@ -200,5 +202,6 @@ interface FactoryApi {
     @PATCH("v1/factory/ops/location")
     suspend fun patchFactoryLocation(
         @Body body: com.pegasusx.factory.data.model.FactoryLocationPatchRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<com.pegasusx.factory.data.model.FactoryLocationResponse>
 }

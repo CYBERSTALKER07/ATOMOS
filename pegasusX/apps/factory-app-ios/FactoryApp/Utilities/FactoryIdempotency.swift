@@ -86,6 +86,19 @@ enum FactoryIdempotency {
         "factory-transfer-transition:\(transferId):\(targetState.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())"
     }
 
+    static func supplyRequestTransition(requestId: String, action: String) -> String {
+        "factory-supply-transition:\(requestId):\(action.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())"
+    }
+
+    static func supplyRequestAccept(requestId: String) -> String {
+        "factory-supply-accept:\(requestId)"
+    }
+
+    static func opsLocation(lat: Double, lng: Double, placeId: String? = nil) -> String {
+        let fingerprint = stableHash(String(format: "%.6f:%.6f:%@", lat, lng, placeId ?? ""))
+        return "factory-ops-location:\(factoryId()):\(fingerprint)"
+    }
+
     static func forLifecycleAction(_ action: String, manifestId: String) -> String {
         switch action {
         case ManifestLifecycleAction.startLoading.rawValue:

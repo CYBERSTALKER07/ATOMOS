@@ -111,13 +111,18 @@ enum FactoryService {
     }
 
     static func acceptSupplyRequest(id: String, body: [String: String] = [:]) async throws {
-        try await api.postVoid("v1/factory/supply-requests/\(id)/accept", body: body)
+        try await api.postVoid(
+            "v1/factory/supply-requests/\(id)/accept",
+            body: body,
+            idempotencyKey: FactoryIdempotency.supplyRequestAccept(requestId: id)
+        )
     }
 
     static func transitionSupplyRequest(id: String, action: String) async throws -> SupplyRequestTransitionResponse {
         try await api.patch(
             "v1/factory/supply-requests/\(id)",
-            body: SupplyRequestTransitionRequest(action: action, transferOrderId: nil)
+            body: SupplyRequestTransitionRequest(action: action, transferOrderId: nil),
+            idempotencyKey: FactoryIdempotency.supplyRequestTransition(requestId: id, action: action)
         )
     }
 
@@ -222,7 +227,8 @@ enum FactoryService {
     static func patchFactoryLocation(address: String, placeId: String?, lat: Double, lng: Double) async throws -> FactoryLocationResponse {
         try await api.patch(
             "v1/factory/ops/location",
-            body: FactoryLocationPatchRequest(address: address, placeId: placeId, lat: lat, lng: lng)
+            body: FactoryLocationPatchRequest(address: address, placeId: placeId, lat: lat, lng: lng),
+            idempotencyKey: FactoryIdempotency.opsLocation(lat: lat, lng: lng, placeId: placeId)
         )
     }
 }

@@ -32,6 +32,7 @@ import com.pegasusx.factory.ui.components.AddressLocationField
 import com.pegasusx.factory.ui.components.AddressLocationValue
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import com.pegasusx.factory.util.GeocodeLocationSupport
+import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,6 +91,7 @@ fun LocationSetupScreen(
                             lat = resolved.lat,
                             lng = resolved.lng,
                         ),
+                        FactoryIdempotencyKeys.opsLocation(resolved.lat, resolved.lng, resolved.placeId),
                     )
                     if (!resp.isSuccessful) {
                         error = "Setup failed (${resp.code()})"

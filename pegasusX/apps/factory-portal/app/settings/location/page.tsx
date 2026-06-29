@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { factoryOpsLocationKey } from "@pegasusx/api-client";
 import { apiFetch } from "@/lib/auth";
+import { factoryOperatorId } from "@/lib/factory-scope";
 import PageTransition from "@/components/PageTransition";
 import { PageChrome } from "@/components/PageChrome";
 import { PortalSection } from "@/components/portal";
@@ -67,6 +69,14 @@ export default function FactoryLocationSettingsPage() {
       }
       const res = await apiFetch("/v1/factory/ops/location", {
         method: "PATCH",
+        headers: {
+          "Idempotency-Key": factoryOpsLocationKey(
+            factoryOperatorId() || "factory",
+            Number.parseFloat(resolved.lat),
+            Number.parseFloat(resolved.lng),
+            resolved.place_id,
+          ),
+        },
         body: JSON.stringify({
           address: resolved.address.trim(),
           place_id: resolved.place_id,

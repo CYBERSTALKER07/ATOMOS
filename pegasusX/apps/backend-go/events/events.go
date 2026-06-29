@@ -53,6 +53,7 @@ const (
 	EventSupplyTransferApproaching    = "SUPPLY_TRANSFER_APPROACHING"
 
 	EventFactoryCreated            = "FACTORY_CREATED"
+	EventFactoryLocationUpdated    = "FACTORY_LOCATION_UPDATED"
 	EventOrderCreated              = "ORDER_CREATED"
 	EventOrderStatusChanged        = "ORDER_STATUS_CHANGED"
 	EventOrderValidationFailed     = "ORDER_VALIDATION_FAILED"

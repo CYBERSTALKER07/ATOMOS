@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -1852,10 +1851,27 @@ func (s *Service) HandleAcceptSupplyRequest(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var reqBody acceptSupplyRequest
-	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil && err != io.EOF {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+	body, err := readLimitedBody(r, 8*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
+	var reqBody acceptSupplyRequest
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, &reqBody); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
 	}
 
 	nextState := "ACKNOWLEDGED"
@@ -1889,7 +1905,8 @@ func (s *Service) HandleAcceptSupplyRequest(w http.ResponseWriter, r *http.Reque
 			"type": events.EventFactorySupplyRequestUpdate,
 			"data": map[string]any{"request_id": requestID, "state": nextState, "warehouse_id": rec.WarehouseID},
 		})
-		writeJSON(w, http.StatusOK, map[string]any{"state": nextState, "updated_at": nowTS})
+		idemCommitted = true
+		s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{"state": nextState, "updated_at": nowTS})
 		return
 	}
 
@@ -1916,7 +1933,7 @@ func (s *Service) HandleAcceptSupplyRequest(w http.ResponseWriter, r *http.Reque
 	req.UpdatedAt = nowTS
 	s.mu.Unlock()
 
-	err := s.repo.UpdateSupplyRequestState(r.Context(), requestID, nextState, func(txn outbox.TxnBuffer) error {
+	err = s.repo.UpdateSupplyRequestState(r.Context(), requestID, nextState, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, requestID, events.TopicMain, events.WarehouseEvent{
 			BaseEvent:   events.BaseEvent{Type: events.EventSupplyRequestAccepted, Timestamp: nowTS},
 			RequestID:   requestID,
@@ -1930,7 +1947,8 @@ func (s *Service) HandleAcceptSupplyRequest(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error", "detail": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"state": nextState, "updated_at": nowTS})
+	idemCommitted = true
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{"state": nextState, "updated_at": nowTS})
 }
 
 func coalesceReason(reason, fallback string) string {

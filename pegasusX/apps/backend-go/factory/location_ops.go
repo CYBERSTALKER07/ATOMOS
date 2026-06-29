@@ -9,6 +9,9 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
@@ -63,8 +66,24 @@ func (s *Service) handleFactoryLocationPatch(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "factory_id_required"})
 		return
 	}
+
+	body, err := readLimitedBody(r, 8*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req factoryLocationPatch
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -80,36 +99,76 @@ func (s *Service) handleFactoryLocationPatch(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "spanner_unavailable"})
 		return
 	}
-	now := time.Now().UTC()
-	err := spannerutils.RunReadWriteTransaction(r.Context(), s.spannerClient, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{
-			spanner.UpdateMap("Factories", map[string]any{
-				"FactoryId": factoryID,
-				"Address":   strings.TrimSpace(req.Address),
-				"PlaceId":   factoryNullableString(strings.TrimSpace(req.PlaceID)),
-				"Lat":       req.Lat,
-				"Lng":       req.Lng,
-				"UpdatedAt": now,
-			}),
-		})
+
+	address := strings.TrimSpace(req.Address)
+	placeID := strings.TrimSpace(req.PlaceID)
+	h3Cell := proximity.H3CellFromLatLng(req.Lat, req.Lng)
+	supplierID := strings.TrimSpace(s.supplierID)
+
+	update := map[string]any{
+		"FactoryId": factoryID,
+		"Address":   address,
+		"PlaceId":   factoryNullableString(placeID),
+		"Lat":       req.Lat,
+		"Lng":       req.Lng,
+		"UpdatedAt": spanner.CommitTimestamp,
+	}
+	if h3Cell != "" {
+		update["H3Cell"] = h3Cell
+	} else {
+		update["H3Cell"] = nil
+	}
+
+	err = spannerutils.RunReadWriteTransaction(r.Context(), s.spannerClient, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		eventPayload := events.FactoryEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventFactoryLocationUpdated},
+			FactoryID:  factoryID,
+			SupplierID: supplierID,
+			Lat:        req.Lat,
+			Lng:        req.Lng,
+			H3Cell:     h3Cell,
+		}
+		buf := &spannerTxnBuffer{}
+		if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateFactory, factoryID, events.TopicMain, eventPayload); emitErr != nil {
+			return emitErr
+		}
+		mutations := []*spanner.Mutation{spanner.UpdateMap("Factories", update)}
+		mutations = append(mutations, outboxMutations(buf.events)...)
+		return txn.BufferWrite(mutations)
 	})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "update_factory_location_failed"})
 		return
 	}
+
+	s.broadcastFactoryEvent(r.Context(), events.EventFactoryLocationUpdated, map[string]any{
+		"factory_id": factoryID,
+		"lat":        req.Lat,
+		"lng":        req.Lng,
+	})
+
 	loc, err := s.loadFactoryLocation(r.Context(), factoryID)
 	if err != nil {
-		writeJSON(w, http.StatusOK, factoryLocationResponse{
+		now := s.now().UTC()
+		loc = factoryLocationResponse{
 			FactoryID: factoryID,
-			Address:   strings.TrimSpace(req.Address),
-			PlaceID:   strings.TrimSpace(req.PlaceID),
+			Address:   address,
+			PlaceID:   placeID,
 			Lat:       req.Lat,
 			Lng:       req.Lng,
 			UpdatedAt: now.Format(time.RFC3339Nano),
-		})
+		}
+	}
+	respBytes, err := json.Marshal(loc)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "encode_location_response_failed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, loc)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	idemCommitted = true
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }
 
 func (s *Service) scopedFactoryID(r *http.Request) (string, bool) {

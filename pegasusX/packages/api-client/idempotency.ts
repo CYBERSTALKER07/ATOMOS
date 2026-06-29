@@ -537,6 +537,24 @@ export function factoryTransferTransitionKey(transferId: string, targetState: st
   return `factory-transfer-transition:${transferId}:${targetState.trim().toUpperCase()}`;
 }
 
+export function factorySupplyRequestTransitionKey(requestId: string, action: string): string {
+  return `factory-supply-transition:${requestId}:${action.trim().toUpperCase()}`;
+}
+
+export function factorySupplyRequestAcceptKey(requestId: string): string {
+  return `factory-supply-accept:${requestId}`;
+}
+
+export function factoryOpsLocationKey(
+  factoryId: string,
+  lat: number,
+  lng: number,
+  placeId?: string,
+): string {
+  const fingerprint = stableHash(`${lat.toFixed(6)}:${lng.toFixed(6)}:${placeId ?? ''}`);
+  return `factory-ops-location:${factoryId}:${fingerprint}`;
+}
+
 export function warehouseInboundScanKey(warehouseId: string, barcode: string, sessionId: string): string {
   return `warehouse-inbound-scan:${warehouseId}:${stableHash(barcode)}:${sessionId}`;
 }

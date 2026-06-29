@@ -49,6 +49,17 @@ object FactoryIdempotencyKeys {
     fun transferTransition(transferId: String, targetState: String): String =
         "factory-transfer-transition:$transferId:${targetState.trim().uppercase()}"
 
+    fun supplyRequestTransition(requestId: String, action: String): String =
+        "factory-supply-transition:$requestId:${action.trim().uppercase()}"
+
+    fun supplyRequestAccept(requestId: String): String =
+        "factory-supply-accept:$requestId"
+
+    fun opsLocation(lat: Double, lng: Double, placeId: String? = null): String {
+        val fingerprint = stableHash("${"%.6f".format(lat)}:${"%.6f".format(lng)}:${placeId.orEmpty()}")
+        return "factory-ops-location:${factoryId()}:$fingerprint"
+    }
+
     fun forLifecyclePath(manifestId: String, path: String): String = when (path) {
         "start-loading" -> startLoading(manifestId)
         "seal" -> seal(manifestId)

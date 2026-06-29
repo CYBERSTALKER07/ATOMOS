@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Icon from "@/components/Icon";
 import { PortalField, PortalInput, PortalSelect, PortalSection, FormAlert } from "@/components/portal";
+import { factoryOpsLocationKey } from "@pegasusx/api-client";
 import { apiFetch, decodeJwtPayload, persistSession, readTokenFromCookie, refreshFactorySession } from "@/lib/auth";
+import { factoryOperatorId } from "@/lib/factory-scope";
 import { LocationPicker, resolveLocationValue, type LocationValue } from "@/components/LocationPicker";
 import { hasValidCoordinates } from "@/lib/geocode";
 
@@ -102,6 +104,14 @@ export default function FactorySetupPage() {
       if (hasAssignedFactory) {
         const res = await apiFetch("/v1/factory/ops/location", {
           method: "PATCH",
+          headers: {
+            "Idempotency-Key": factoryOpsLocationKey(
+              factoryOperatorId() || "factory",
+              latN,
+              lngN,
+              place_id,
+            ),
+          },
           body: JSON.stringify({
             address: address.trim(),
             place_id,

@@ -1,7 +1,7 @@
 # pegasusX FACTORY_ADMIN Role — Phased Execution Ledger
 
 **Scope:** pegasusX only · **Parent plan:** `VEGETABLE_PLAN.md` §2.3  
-**Last updated:** 2026-06-17 (FA9-03 Firebase OTP).
+**Last updated:** 2026-06-29 (factory supply/location idempotency gap closure).
 
 ## Status model
 
@@ -42,7 +42,7 @@
 |----|---------|--------|---------|-----|--------|
 | FA7-01 | Token refresh | `auth.ts` | `NetworkModule` | `APIClient` | **WIRED** (pre-existing) |
 | FA7-02 | Manifest lifecycle mutations | ✓ | ✓ | ✓ | **WIRED** (pre-existing, SSMR green) |
-| FA7-03 | Supply/transfer transitions | ✓ | ✓ | ✓ | **WIRED** (pre-existing) |
+| FA7-03 | Supply/transfer transitions | ✓ | ✓ | ✓ | **WIRED** — supply PATCH + legacy accept + ops location idempotency (2026-06-29) |
 
 **Exit:** No P0 path drift; factory JWT refresh on all surfaces.
 

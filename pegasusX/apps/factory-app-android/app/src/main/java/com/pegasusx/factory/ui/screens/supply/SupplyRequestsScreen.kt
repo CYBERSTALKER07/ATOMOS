@@ -50,6 +50,7 @@ import com.pegasusx.factory.data.remote.FactoryRealtimeStatus
 import com.pegasusx.factory.data.model.SupplyRequest
 import com.pegasusx.factory.data.model.SupplyRequestTransitionRequest
 import com.pegasusx.factory.data.remote.FactoryApi
+import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasusx.factory.ui.components.FactoryLoadingState
 import com.pegasusx.factory.ui.components.FactoryRuntimeBanner
@@ -153,6 +154,7 @@ fun SupplyRequestsScreen(
             try {
                 val resp = api.transitionSupplyRequest(
                     request.id,
+                    FactoryIdempotencyKeys.supplyRequestTransition(request.id, action),
                     SupplyRequestTransitionRequest(action = action),
                 )
                 if (resp.isSuccessful) {

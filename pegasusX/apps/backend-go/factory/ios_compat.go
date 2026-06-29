@@ -314,6 +314,22 @@ func (s *Service) HandleSupplyRequestTransition(w http.ResponseWriter, r *http.R
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "request_id_required"})
 		return
 	}
+
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req struct {
 		Action          string `json:"action"`
 		TransferOrderID string `json:"transfer_order_id"`
@@ -323,8 +339,9 @@ func (s *Service) HandleSupplyRequestTransition(w http.ResponseWriter, r *http.R
 			ShippedQuantity int64  `json:"shipped_quantity"`
 		} `json:"items"`
 	}
-	if r.Body != nil {
-		_ = json.NewDecoder(r.Body).Decode(&req)
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
 	}
 	action := strings.ToUpper(strings.TrimSpace(req.Action))
 	nextState := map[string]string{
@@ -372,7 +389,8 @@ func (s *Service) HandleSupplyRequestTransition(w http.ResponseWriter, r *http.R
 					"linked_transfer_id": transferID,
 				},
 			})
-			writeJSON(w, http.StatusOK, map[string]any{
+			idemCommitted = true
+			s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 				"request_id":         requestID,
 				"state":              "FULFILLED",
 				"linked_transfer_id": transferID,
@@ -399,7 +417,8 @@ func (s *Service) HandleSupplyRequestTransition(w http.ResponseWriter, r *http.R
 			"type": events.EventFactorySupplyRequestUpdate,
 			"data": map[string]any{"request_id": requestID, "state": nextState, "warehouse_id": rec.WarehouseID},
 		})
-		writeJSON(w, http.StatusOK, map[string]string{
+		idemCommitted = true
+		s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]string{
 			"request_id": requestID,
 			"state":      nextState,
 		})
@@ -424,7 +443,8 @@ func (s *Service) HandleSupplyRequestTransition(w http.ResponseWriter, r *http.R
 	s.supplyRequests[idx].UpdatedAt = nowTS
 	s.mu.Unlock()
 
-	writeJSON(w, http.StatusOK, map[string]string{
+	idemCommitted = true
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]string{
 		"request_id": requestID,
 		"state":      nextState,
 	})
