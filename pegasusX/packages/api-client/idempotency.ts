@@ -558,3 +558,7 @@ export function payloadInboundConfirmKey(returnIds: string[], disposition: strin
   const sorted = [...returnIds].map((id) => id.trim()).filter(Boolean).sort().join(",");
   return `payload-inbound-confirm-${disposition}-${sorted}`;
 }
+
+export function payloadManifestExceptionKey(manifestId: string, orderId: string): string {
+  return `payload-manifest-exception-${manifestId}-${orderId}`;
+}

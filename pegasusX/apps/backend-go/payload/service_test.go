@@ -13,6 +13,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
@@ -63,6 +64,47 @@ func TestHandleManifestException_EscalationSeamParity(t *testing.T) {
 	assertPayloadWSMessageContainsType(t, supplierConn.messages, events.EventManifestDLQEscalation)
 	assertPayloadWSMessageContainsType(t, payloadConn.messages, events.EventManifestOrderException)
 	assertPayloadWSMessageContainsType(t, payloadConn.messages, events.EventManifestDLQEscalation)
+}
+
+func TestHandleManifestException_IdempotencyReplay(t *testing.T) {
+	body := []byte(`{"manifest_id":"mf_payload_1","order_id":"ord_payload_1","reason":"MANUAL"}`)
+	cached := map[string]any{
+		"exception_id": "mex_cached",
+		"manifest_id":  "mf_payload_1",
+		"order_id":     "ord_payload_1",
+		"reason":       "MANUAL",
+		"escalated":    false,
+	}
+	cachedBytes, err := json.Marshal(cached)
+	if err != nil {
+		t.Fatalf("marshal cached: %v", err)
+	}
+
+	store := idempotency.NewInMemoryStore()
+	key := "payload-manifest-exception-mf_payload_1-ord_payload_1"
+	if err := store.Save(context.Background(), key, idempotency.Record{
+		BodyHash:   sha256HexBytes(body),
+		StatusCode: http.StatusOK,
+		Response:   cachedBytes,
+	}, 24*time.Hour); err != nil {
+		t.Fatalf("save replay: %v", err)
+	}
+
+	svc := newPayloadTestService(&payloadRepoSpy{}, &payloadCacheBackendSpy{})
+	svc.idem = store
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payload/manifest-exception", strings.NewReader(string(body)))
+	req.Header.Set("Idempotency-Key", key)
+	rr := httptest.NewRecorder()
+
+	svc.HandleManifestException(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rr.Code, rr.Body.String())
+	}
+	if rr.Body.String() != string(cachedBytes) {
+		t.Fatalf("replay body = %s want %s", rr.Body.String(), string(cachedBytes))
+	}
 }
 
 func TestHandleApplyReassign_SeamParity(t *testing.T) {

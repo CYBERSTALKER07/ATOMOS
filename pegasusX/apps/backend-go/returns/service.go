@@ -10,6 +10,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
@@ -22,6 +23,7 @@ type ServiceConfig struct {
 	SupplierHub  *ws.Hub
 	Log          *slog.Logger
 	Now          func() time.Time
+	Idem         idempotency.Store
 }
 
 // Service handles inbound return scanning and physical disposition.
@@ -33,6 +35,7 @@ type Service struct {
 	supplierHub  *ws.Hub
 	log          *slog.Logger
 	now          func() time.Time
+	idem         idempotency.Store
 
 	mu               sync.Mutex
 	approachDedup    map[string]time.Time
@@ -57,6 +60,7 @@ func NewService(cfg ServiceConfig) *Service {
 		supplierHub:      cfg.SupplierHub,
 		log:              log,
 		now:              now,
+		idem:             cfg.Idem,
 		approachDedup:    make(map[string]time.Time),
 		approachDedupTTL: 5 * time.Minute,
 	}

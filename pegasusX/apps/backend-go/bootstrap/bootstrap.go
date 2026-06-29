@@ -667,6 +667,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		WarehouseHub: warehouseHub,
 		SupplierHub:  supplierHub,
 		Log:          log,
+		Idem:         idemStore,
 	})
 	var driverOrderList driver.DriverOrderQuery
 	var driverOrderGet driver.DriverOrderGetQuery

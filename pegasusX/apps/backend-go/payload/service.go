@@ -899,8 +899,23 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req manifestExceptionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -917,7 +932,7 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 	}
 
 	var exception ManifestException
-	err := s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1041,7 +1056,7 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"exception_id":   exception.ExceptionID,
 		"manifest_id":    exception.ManifestID,
 		"order_id":       exception.OrderID,
@@ -1050,7 +1065,15 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 		"escalated":      exception.Escalated,
 		"reinjected":     true,
 		"new_priority":   10,
-	})
+	}
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "encode_response_failed"})
+		return
+	}
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleManifestExceptions serves GET /v1/payloader/manifest-exceptions.

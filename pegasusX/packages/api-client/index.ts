@@ -250,6 +250,7 @@ export {
   warehouseInboundConfirmKey,
   payloadInboundScanKey,
   payloadInboundConfirmKey,
+  payloadManifestExceptionKey,
 } from "./idempotency";
 export {
   SESSION_RECONCILE_ENDPOINTS,

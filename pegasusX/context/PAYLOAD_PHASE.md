@@ -22,7 +22,7 @@
 | PL0-07 | Manifest seal batch | `POST .../manifests/seal-completed` | wired | wired | wired | **WIRED** |
 | PL0-08 | Exceptions | `POST /v1/payload/manifest-exception` + list | wired | wired | wired | **WIRED** |
 | PL0-09 | Reassign recommend+apply | `POST .../recommend-reassign`, `.../reassign-order` | wired | wired | wired | **WIRED** |
-| PL0-10 | Fleet reassign (UI path) | `POST /v1/fleet/reassign` | Expo re-dispatch modal | wired | wired | **WIRED** |
+| PL0-10 | Fleet reassign (UI path) | `POST /v1/payloader/reassign-order` | Expo re-dispatch modal | wired | wired | **WIRED** |
 | PL0-11 | Driver gate + depart | manifest gate routes | — | — | — | **E2E_SSMR_GREEN** (`PX_E2E_PAYLOAD_DRIVER_GATE_OK`, `PX_E2E_PAYLOAD_DRIVER_DEPART_OK`) |
 | PL0-12 | SSMR umbrella | smokecheck | — | — | — | **E2E_SSMR_GREEN** (`PX_E2E_PAYLOAD_OK`, `PX_E2E_PAYLOAD_SEAL_FLOWS_OK`, `PX_E2E_PAYLOAD_MANIFEST_LIFECYCLE_OK`) |
 
@@ -101,7 +101,7 @@
 | PL5P-07 | Exceptions inbox polish | — (pegasusX PL-2) | badge count on icon, reason/escalated chips, fixed invalid variant | **WIRED** |
 | PL5P-08 | KPI refresh after inject/exception | — | `fetchTruckManifest` after inject + exception | **WIRED** |
 
-**PL-5P audit gaps (intentional / blocked):** Monolithic `App.tsx` retained (pegasus pattern); re-dispatch apply still uses `fleet/reassign` (durable `payloader/reassign-order` in `api.ts` for programmatic use).
+**PL-5P audit gaps (intentional / blocked):** Monolithic `App.tsx` retained (pegasus pattern); batch `POST /v1/fleet/reassign` retained for SSMR batch semantics only (terminal re-dispatch apply uses durable `payloader/reassign-order` on all clients).
 
 **Exit:** Component-level desk tokens, KPI tiles, section chrome, skeleton loaders, and status badges on terminal sidebar + manifest workflow panes. UI-only — no new SSMR.
 
@@ -172,7 +172,7 @@ cd pegasusX/apps/payload-app-android && ./gradlew compileDebugKotlin
 ## Known remaining gaps
 
 - Production Firebase phone OTP requires project config + reCAPTCHA on terminal web/native; use Auth Emulator (`FIREBASE_AUTH_EMULATOR_HOST` / `EXPO_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST`) for local dev.
-- Re-dispatch UI uses `fleet/reassign` on Expo; durable apply path `payloader/reassign-order` wired on API surfaces for programmatic use.
+- Re-dispatch apply on terminal + tablet uses `POST /v1/payloader/reassign-order`; batch `POST /v1/fleet/reassign` retained for SSMR batch reassignment only.
 - Catalog barcode checklist requires `Products.Barcode` seed data in Spanner for lookup hits in dev QA.
 
 ---

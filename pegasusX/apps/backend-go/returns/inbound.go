@@ -251,6 +251,21 @@ func (s *Service) HandleInboundScan(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	if s.spanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "returns_unavailable"})
 		return
@@ -266,7 +281,7 @@ func (s *Service) HandleInboundScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req scanRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -302,7 +317,7 @@ func (s *Service) HandleInboundScan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var resp scanResponse
-	_, err := s.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err = s.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "SupplierReturns", spanner.Key{returnID},
 			[]string{"SkuId", "ExpectedQty", "RejectedQty", "ReceivedQty", "PhysicalStatus", "WarehouseId", "Reason"})
 		if err != nil {
@@ -351,7 +366,8 @@ func (s *Service) HandleInboundScan(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	idemCommitted = true
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, resp)
 }
 
 type confirmLine struct {
@@ -372,6 +388,21 @@ func (s *Service) HandleInboundConfirm(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	if s.spanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "returns_unavailable"})
 		return
@@ -387,7 +418,7 @@ func (s *Service) HandleInboundConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req confirmRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -400,7 +431,7 @@ func (s *Service) HandleInboundConfirm(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	confirmed := make([]string, 0, len(req.Lines))
 
-	_, err := s.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err = s.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		for _, line := range req.Lines {
 			returnID := strings.TrimSpace(line.ReturnID)
 			if returnID == "" {
@@ -522,7 +553,8 @@ func (s *Service) HandleInboundConfirm(w http.ResponseWriter, r *http.Request) {
 	if s.cache != nil {
 		s.cache.Invalidate(ctx, "warehouse:inventory:"+warehouseID)
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	idemCommitted = true
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"status":     "confirmed",
 		"return_ids": confirmed,
 	})
