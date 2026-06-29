@@ -440,6 +440,55 @@ data class SupplierBroadcastResponse(
 )
 
 @Serializable
+data class ExceptionMapCell(
+    @SerialName("h3_cell") val h3Cell: String = "",
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
+    val severity: String = "low",
+    val counts: Map<String, Int> = emptyMap(),
+    @SerialName("sample_order_ids") val sampleOrderIds: List<String> = emptyList(),
+    @SerialName("deep_link") val deepLink: String = "",
+)
+
+@Serializable
+data class ExceptionMapResponse(
+    val cells: List<ExceptionMapCell> = emptyList(),
+    @SerialName("window_hours") val windowHours: Int = 24,
+)
+
+@Serializable
+data class RetailerOverridePreview(
+    @SerialName("retailers_on_sku_count") val retailersOnSkuCount: Int = 0,
+    @SerialName("active_override_count") val activeOverrideCount: Int = 0,
+    @SerialName("catalog_list_price") val catalogListPrice: Long = 0,
+    @SerialName("margin_delta_per_unit") val marginDeltaPerUnit: Long = 0,
+    @SerialName("margin_estimate_label") val marginEstimateLabel: String = "",
+    @SerialName("affected_retailer_ids") val affectedRetailerIds: List<String> = emptyList(),
+)
+
+@Serializable
+data class RetailerOverridePreviewRequest(
+    @SerialName("retailer_id") val retailerId: String? = null,
+    @SerialName("product_id") val productId: String? = null,
+    @SerialName("sku_id") val skuId: String? = null,
+    @SerialName("proposed_price") val proposedPrice: Long,
+)
+
+data class SupplierBroadcastTemplate(
+    val id: String,
+    val title: String,
+    val body: String,
+    val defaultRole: String,
+)
+
+val SUPPLIER_BROADCAST_TEMPLATES = listOf(
+    SupplierBroadcastTemplate("storm_delay", "Delivery delay notice", "Due to weather conditions, deliveries may be delayed on {date}. We will update routes as conditions improve.", "RETAILER"),
+    SupplierBroadcastTemplate("holiday_hours", "Holiday receiving hours", "Our network will operate on reduced hours on {date}. Please confirm your receiving window in the app.", "RETAILER"),
+    SupplierBroadcastTemplate("fee_notice", "Service fee update", "A service fee adjustment takes effect on {date}. Review your latest invoices for details.", "RETAILER"),
+    SupplierBroadcastTemplate("yard_hold", "Yard congestion advisory", "Loading bay congestion reported. Drivers: expect queue delays at warehouse check-in.", "DRIVER"),
+)
+
+@Serializable
 data class PaymentBypassRequest(
     @SerialName("order_id") val orderId: String,
     val reason: String = "",

@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.SupplierFleetLiveRoute
+import com.pegasusx.supplier.data.model.ExceptionMapCell
 import com.pegasusx.supplier.ui.components.FleetLiveMapLibre
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
@@ -29,6 +30,7 @@ fun FleetLiveMapScreen(
     onBack: () -> Unit,
 ) {
     var routes by remember { mutableStateOf<List<SupplierFleetLiveRoute>>(emptyList()) }
+    var exceptionCells by remember { mutableStateOf<List<ExceptionMapCell>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -39,6 +41,8 @@ fun FleetLiveMapScreen(
         try {
             val resp = ops.getFleetLiveMap()
             routes = if (resp.isSuccessful) resp.body()?.routes.orEmpty() else emptyList()
+            val exc = ops.getExceptionMap()
+            exceptionCells = if (exc.isSuccessful) exc.body()?.cells.orEmpty() else emptyList()
             if (!resp.isSuccessful && !silent) error = "Failed (${resp.code()})"
         } catch (e: Exception) {
             if (!silent) error = e.message
@@ -109,6 +113,24 @@ fun FleetLiveMapScreen(
                             .height(320.dp),
                     )
                     Spacer(Modifier.height(PegasusSpacing.sm))
+                }
+                if (exceptionCells.isNotEmpty()) {
+                    item {
+                        Text("Exception weather (24h)", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(PegasusSpacing.xs))
+                    }
+                    items(exceptionCells, key = { it.h3Cell }) { cell ->
+                        ElevatedCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(PegasusSpacing.md)) {
+                                Text("${cell.severity.uppercase()} · total ${cell.counts["total"] ?: 0}")
+                                Text(
+                                    "shop-closed ${cell.counts["shop_closed"] ?: 0} · delayed ${cell.counts["delayed"] ?: 0}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
+                    }
+                    item { Spacer(Modifier.height(PegasusSpacing.sm)) }
                 }
                 items(routes, key = { it.manifestId }) { route ->
                     FleetLiveRouteCard(route)

@@ -126,6 +126,10 @@ enum FactoryService {
         )
     }
 
+    static func supplyFulfillOptions(id: String) async throws -> SupplyFulfillOptions {
+        try await api.get("v1/factory/supply-requests/\(id)/fulfill-options")
+    }
+
     // MARK: - Payload Override / Manifests
     static func loadingManifests() async throws -> ManifestListResponse {
         try await api.get("v1/factory/manifests", query: ["state": "LOADING"])

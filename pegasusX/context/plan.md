@@ -65,6 +65,7 @@ Last updated: 2026-06-14 (synced with Vegetable Plan creation)
 27. `COOL-W1` Pulse UI, handoff inbox cells, explain banners — web portals + factory; Android/iOS driver/payload pulse strips, native handoff inbox, manifest-gate/seal explain — `implemented` (2026-06-29).
 28. `COOL-W1-polish` Handoff `primary_link` native navigation (driver + payload Android/iOS), batch seal per-row explain (backend + payload row), factory portal explain banners — `implemented` (2026-06-29).
 29. `COOL-W2` Warehouse Spanner manifests, dispatch replay, tomorrow board, yard radar, exception triage — `implemented` (2026-06-29).
+30. `COOL-W3` Supplier exception weather map, broadcast templates, override preview; factory lane board + fulfill helper — `implemented` (2026-06-29).
 
 ## PX-9 Enterprise Hardening (P0 slice — 2026-06-04)
 

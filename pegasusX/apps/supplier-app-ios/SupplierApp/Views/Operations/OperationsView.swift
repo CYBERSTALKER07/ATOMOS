@@ -18,6 +18,7 @@ struct OperationsView: View {
     @State private var replenishing = false
     @State private var bypassing = false
     @State private var statusMessage: String?
+    @State private var templateDate = ""
 
     var body: some View {
         NavigationStack {
@@ -84,6 +85,18 @@ struct OperationsView: View {
                 SupplierSectionHeader(title: "Operator broadcast")
             }
             Section {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: SupplierTheme.spacingSM) {
+                        ForEach(supplierBroadcastTemplates) { template in
+                            Button(template.title) {
+                                applyTemplate(template)
+                            }
+                            .buttonStyle(.bordered)
+                            .font(.caption)
+                        }
+                    }
+                }
+                TextField("Closure / effective date (optional)", text: $templateDate)
                 TextField("Title", text: $title)
                 TextField("Message", text: $bodyText, axis: .vertical)
                     .lineLimit(3...6)
@@ -151,6 +164,17 @@ struct OperationsView: View {
             if !silent || empathy == nil {
                 self.error = error.localizedDescription
             }
+        }
+    }
+
+    private func applyTemplate(_ template: SupplierBroadcastTemplate) {
+        title = template.title
+        broadcastRole = template.defaultRole
+        let date = templateDate.trimmingCharacters(in: .whitespacesAndNewlines)
+        if template.body.contains("{date}") {
+            bodyText = template.body.replacingOccurrences(of: "{date}", with: date.isEmpty ? "the selected date" : date)
+        } else {
+            bodyText = template.body
         }
     }
 

@@ -491,6 +491,22 @@ enum SupplierOperationsService {
             idempotencyKey: idempotencyKey
         )
     }
+
+    static func exceptionMap(windowHours: Int = 24) async throws -> ExceptionMapResponse {
+        try await APIClient.shared.get(
+            "v1/supplier/ops/exception-map",
+            query: ["window_hours": String(windowHours)]
+        )
+    }
+
+    static func previewRetailerPriceOverride(
+        _ request: RetailerOverridePreviewRequest
+    ) async throws -> RetailerOverridePreview {
+        try await APIClient.shared.post(
+            "v1/supplier/pricing/retailer-overrides/preview",
+            body: request
+        )
+    }
 }
 
 /// Deterministic idempotency keys — aligned with @pegasusx/api-client idempotency.ts

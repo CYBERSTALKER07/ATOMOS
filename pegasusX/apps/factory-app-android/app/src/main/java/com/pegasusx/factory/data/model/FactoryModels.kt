@@ -123,6 +123,17 @@ data class SupplyRequestTransitionResponse(
     val state: String,
 )
 
+@Serializable
+data class SupplyFulfillOptions(
+    @SerialName("transfer_mode") val transferMode: String = "TRUCK",
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("warehouse_name") val warehouseName: String = "",
+    @SerialName("co_located") val coLocated: Boolean = false,
+    @SerialName("outcome_internal") val outcomeInternal: String = "",
+    @SerialName("outcome_truck") val outcomeTruck: String = "",
+    @SerialName("linked_driver_eta") val linkedDriverEta: String? = null,
+)
+
 // ── Manifests ──
 @Serializable
 data class Manifest(

@@ -1,6 +1,7 @@
 package com.pegasusx.supplier.ui.screens.operations
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -11,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.pegasusx.supplier.data.model.PaymentBypassRequest
+import com.pegasusx.supplier.data.model.SUPPLIER_BROADCAST_TEMPLATES
 import com.pegasusx.supplier.data.model.SupplierBroadcastRequest
 import com.pegasusx.supplier.data.model.SupplierEmpathyAdoption
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
@@ -40,6 +42,7 @@ fun OperationsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
     var broadcasting by remember { mutableStateOf(false) }
     var replenishing by remember { mutableStateOf(false) }
     var bypassing by remember { mutableStateOf(false) }
+    var templateDate by remember { mutableStateOf("") }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -190,6 +193,29 @@ fun OperationsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             }
 
             SupplierSectionTitle("Operator broadcast")
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                SUPPLIER_BROADCAST_TEMPLATES.forEach { template ->
+                    FilterChip(
+                        selected = false,
+                        onClick = {
+                            val dateLabel = templateDate.trim().ifBlank { "the selected date" }
+                            title = template.title
+                            body = template.body.replace("{date}", dateLabel)
+                            if (broadcastRoles.contains(template.defaultRole)) {
+                                broadcastRole = template.defaultRole
+                            }
+                        },
+                        label = { Text(template.title, maxLines = 1) },
+                    )
+                }
+            }
+            OutlinedTextField(
+                value = templateDate,
+                onValueChange = { templateDate = it },
+                label = { Text("Template date (optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },

@@ -217,6 +217,26 @@ struct SupplyRequestTransitionResponse: Decodable {
     }
 }
 
+struct SupplyFulfillOptions: Decodable {
+    let transferMode: String
+    let warehouseId: String
+    let warehouseName: String
+    let coLocated: Bool
+    let outcomeInternal: String
+    let outcomeTruck: String
+    let linkedDriverETA: String?
+
+    enum CodingKeys: String, CodingKey {
+        case transferMode = "transfer_mode"
+        case warehouseId = "warehouse_id"
+        case warehouseName = "warehouse_name"
+        case coLocated = "co_located"
+        case outcomeInternal = "outcome_internal"
+        case outcomeTruck = "outcome_truck"
+        case linkedDriverETA = "linked_driver_eta"
+    }
+}
+
 // MARK: - Manifests / Override
 struct Manifest: Decodable, Identifiable {
     let id: String

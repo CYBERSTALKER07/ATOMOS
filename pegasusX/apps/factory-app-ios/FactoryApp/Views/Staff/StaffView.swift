@@ -148,6 +148,8 @@ struct SupplyRequestsView: View {
     @State private var loading = true
     @State private var error: String?
     @State private var selectedFilter = "ALL"
+    @State private var viewMode = "TABLE"
+    @State private var fulfillModal: (SupplyRequest, SupplyFulfillOptions)?
     @State private var transitioningID: String?
     @State private var refreshing = false
     @State private var staleMessage: String?
@@ -244,18 +246,29 @@ struct SupplyRequestsView: View {
                                 runtimeTone: runtimeTone
                             )
                             SupplyFilterRow(selectedFilter: $selectedFilter)
+                            SupplyViewModeRow(viewMode: $viewMode)
 
+                            if viewMode == "BOARD" {
+                                SupplyBoard(
+                                    requests: filteredRequests,
+                                    transitioningID: transitioningID,
+                                    onAction: { request, action in
+                                        Task { await handleAction(request: request, action: action) }
+                                    }
+                                )
+                            } else {
                             LazyVStack(spacing: LabTheme.spacingSM) {
                                 ForEach(Array(filteredRequests.enumerated()), id: \.element.id) { index, request in
                                     SupplyRequestCard(
                                         request: request,
                                         transitioning: transitioningID == request.id,
                                         onAction: { action in
-                                            Task { await transition(request: request, action: action) }
+                                            Task { await handleAction(request: request, action: action) }
                                         }
                                     )
                                     .staggeredAppear(index: index)
                                 }
+                            }
                             }
                         }
                         .padding()
@@ -302,7 +315,63 @@ struct SupplyRequestsView: View {
             .onDisappear {
                 realtimeClient.disconnect()
             }
+            .sheet(item: Binding(
+                get: { fulfillModal.map { FulfillModalItem(request: $0.0, options: $0.1) } },
+                set: { item in fulfillModal = item.map { ($0.request, $0.options) } }
+            )) { item in
+                NavigationStack {
+                    Form {
+                        Section("Fulfill decision") {
+                            Text("\(item.options.warehouseName) · \(item.options.transferMode)")
+                            Text(item.options.outcomeInternal)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            Text(item.options.outcomeTruck)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            if let eta = item.options.linkedDriverETA {
+                                Text("Driver ETA: \(eta)")
+                                    .font(.footnote)
+                            }
+                        }
+                    }
+                    .navigationTitle("Confirm fulfill")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { fulfillModal = nil }
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Confirm") {
+                                let request = item.request
+                                fulfillModal = nil
+                                Task { await runTransition(request: request, action: "FULFILL") }
+                            }
+                        }
+                    }
+                }
+                .presentationDetents([.medium])
+            }
         }
+    }
+
+    private struct FulfillModalItem: Identifiable {
+        let request: SupplyRequest
+        let options: SupplyFulfillOptions
+        var id: String { request.id }
+    }
+
+    @MainActor
+    private func handleAction(request: SupplyRequest, action: String) async {
+        if action == "FULFILL" {
+            do {
+                let options = try await FactoryService.supplyFulfillOptions(id: request.id)
+                fulfillModal = (request, options)
+            } catch {
+                self.error = error.localizedDescription
+            }
+            return
+        }
+        await runTransition(request: request, action: action)
     }
 
     @MainActor
@@ -333,7 +402,7 @@ struct SupplyRequestsView: View {
     }
 
     @MainActor
-    private func transition(request: SupplyRequest, action: String) async {
+    private func runTransition(request: SupplyRequest, action: String) async {
         transitioningID = request.id
 
         do {
@@ -386,6 +455,69 @@ private struct SupplyFilterRow: View {
                             .overlay(Capsule().stroke(.quaternary))
                     }
                     .buttonStyle(PressableButtonStyle())
+                }
+            }
+        }
+    }
+}
+
+private struct SupplyViewModeRow: View {
+    @Binding var viewMode: String
+
+    var body: some View {
+        HStack(spacing: LabTheme.spacingSM) {
+            modeButton("TABLE", label: "Table")
+            modeButton("BOARD", label: "Board")
+        }
+    }
+
+    private func modeButton(_ mode: String, label: String) -> some View {
+        Button {
+            viewMode = mode
+        } label: {
+            Text(label)
+                .font(.footnote.bold())
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(viewMode == mode ? LabTheme.label : Color.clear, in: Capsule())
+                .foregroundStyle(viewMode == mode ? Color(.systemBackground) : LabTheme.label)
+                .overlay(Capsule().stroke(.quaternary))
+        }
+        .buttonStyle(PressableButtonStyle())
+    }
+}
+
+private struct SupplyBoard: View {
+    let requests: [SupplyRequest]
+    let transitioningID: String?
+    let onAction: (SupplyRequest, String) -> Void
+
+    private let lanes = ["SUBMITTED", "ACKNOWLEDGED", "IN_PRODUCTION", "READY"]
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: LabTheme.spacingSM) {
+                ForEach(lanes, id: \.self) { lane in
+                    VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
+                        Text(lane.replacingOccurrences(of: "_", with: " "))
+                            .font(.footnote.bold())
+                        ForEach(requests.filter { $0.state == lane }) { request in
+                            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                Text(requestLabel(request))
+                                    .font(.subheadline.bold())
+                                Text(request.priority.isEmpty ? "NORMAL" : request.priority)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                ForEach(requestActions(for: request.state), id: \.action) { action in
+                                    SupplyActionButton(action: action, transitioning: transitioningID == request.id) {
+                                        onAction(request, action.action)
+                                    }
+                                }
+                            }
+                            .frame(width: 220, alignment: .leading)
+                            .labCard()
+                        }
+                    }
                 }
             }
         }

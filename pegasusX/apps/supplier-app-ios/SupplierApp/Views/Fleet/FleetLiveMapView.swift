@@ -4,6 +4,7 @@ import SwiftUI
 struct FleetLiveMapView: View {
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var routes: [SupplierFleetLiveRoute] = []
+    @State private var exceptionCells: [ExceptionMapCell] = []
     @State private var loading = true
     @State private var error: String?
     @State private var cameraPosition: MapCameraPosition = .region(
@@ -26,6 +27,7 @@ struct FleetLiveMapView: View {
                     message: "Sealed manifests with route geometry will appear here during dispatch."
                 )
             } else {
+                VStack(spacing: 0) {
                 TimelineView(.animation) { timeline in
                     let drivers = animator.snapshot(now: timeline.date)
                     Map(position: $cameraPosition) {
@@ -36,6 +38,14 @@ struct FleetLiveMapView: View {
                                 }
                                 MapPolyline(coordinates: coordinates)
                                     .stroke(routeColor(index), lineWidth: 4)
+                            }
+                        }
+                        ForEach(exceptionCells) { cell in
+                            Annotation("Exception", coordinate: CLLocationCoordinate2D(latitude: cell.lat, longitude: cell.lng)) {
+                                Circle()
+                                    .fill(exceptionColor(cell.severity))
+                                    .frame(width: 12, height: 12)
+                                    .overlay(Circle().stroke(.white, lineWidth: 1))
                             }
                         }
                         ForEach(drivers) { driver in
@@ -53,6 +63,20 @@ struct FleetLiveMapView: View {
                         }
                     }
                     .mapStyle(.standard(elevation: .realistic))
+                    .frame(maxHeight: exceptionCells.isEmpty ? .infinity : 320)
+                }
+                if !exceptionCells.isEmpty {
+                    List(exceptionCells) { cell in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Cell \(cell.h3Cell.prefix(12))… · \(cell.severity)")
+                                .font(.subheadline.bold())
+                            Text("Total \(cell.counts["total", default: 0]) · shop closed \(cell.counts["shop_closed", default: 0])")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
                 }
             }
         }
@@ -76,6 +100,14 @@ struct FleetLiveMapView: View {
         return routeColor(index)
     }
 
+    private func exceptionColor(_ severity: String) -> Color {
+        switch severity.lowercased() {
+        case "high": return .red
+        case "medium": return .orange
+        default: return .yellow
+        }
+    }
+
     @MainActor
     private func load(silent: Bool = false) async {
         if !silent { loading = true }
@@ -85,6 +117,9 @@ struct FleetLiveMapView: View {
             let response = try await SupplierOperationsService.fleetLiveMap()
             routes = response.routes
             animator.updateTargets(routes)
+            if let map = try? await SupplierOperationsService.exceptionMap() {
+                exceptionCells = map.cells
+            }
             fitCamera()
         } catch {
             if !silent { self.error = error.localizedDescription }

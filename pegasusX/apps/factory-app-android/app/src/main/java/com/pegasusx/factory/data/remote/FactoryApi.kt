@@ -91,6 +91,9 @@ interface FactoryApi {
         @Body body: SupplyRequestTransitionRequest,
     ): Response<SupplyRequestTransitionResponse>
 
+    @GET("v1/factory/supply-requests/{id}/fulfill-options")
+    suspend fun getSupplyFulfillOptions(@Path("id") id: String): Response<SupplyFulfillOptions>
+
     // ── Payload Override / Manifests ──
     @GET("v1/factory/manifests")
     suspend fun getManifests(

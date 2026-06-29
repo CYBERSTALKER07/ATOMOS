@@ -254,6 +254,18 @@ Cross-role edge cases from [`REAL_WORLD_CASE_MATRIX.md`](../REAL_WORLD_CASE_MATR
 
 ---
 
+## COOL-W3 — Supplier + Factory delight (manual)
+
+| Step | Role | Action | Pass criteria |
+|------|------|--------|---------------|
+| W3-1 | Supplier portal | Fleet → Exception weather tab | H3 cells render; drill-down links to exceptions |
+| W3-2 | Supplier portal | Operations → broadcast template chip | Title/body prefilled; WS broadcast succeeds |
+| W3-3 | Supplier portal | Pricing → retailer overrides → create form | Impact preview shows SKU counts + margin delta |
+| W3-4 | Factory portal | Supply requests → Board view | Lanes SUBMITTED→READY show cards |
+| W3-5 | Factory portal | READY → Fulfill | Modal shows INTERNAL vs TRUCK outcomes before confirm |
+
+---
+
 ## Failure logging
 
 For any FAIL, capture:

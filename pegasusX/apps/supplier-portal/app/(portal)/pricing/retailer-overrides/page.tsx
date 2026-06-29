@@ -8,7 +8,7 @@ import {
   supplierRetailerPriceOverrideDeleteKey,
 } from "@pegasusx/api-client";
 import { supplierFetch } from "@/lib/auth";
-import type { CreateRetailerPriceOverrideRequest, RetailerPriceOverride } from "@pegasusx/types";
+import type { CreateRetailerPriceOverrideRequest, RetailerOverridePreview, RetailerPriceOverride } from "@pegasusx/types";
 import { PageChrome } from '@/components/PageChrome';
 
 const api = createSupplierApi();
@@ -47,6 +47,8 @@ export default function RetailerOverridesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<OverrideForm>(EMPTY_FORM);
+  const [preview, setPreview] = useState<RetailerOverridePreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [filterRetailer, setFilterRetailer] = useState("");
   const [filterProduct, setFilterProduct] = useState("");
 
@@ -84,6 +86,29 @@ export default function RetailerOverridesPage() {
   useEffect(() => {
     void loadProducts();
   }, [loadProducts]);
+
+  useEffect(() => {
+    const retailerId = form.retailer_id.trim();
+    const productId = form.product_id.trim();
+    const price = Number.parseInt(form.price, 10);
+    if (!productId || !Number.isFinite(price) || price <= 0) {
+      setPreview(null);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setPreviewLoading(true);
+      void api
+        .previewRetailerPriceOverride({
+          retailer_id: retailerId || undefined,
+          product_id: productId,
+          proposed_price: price,
+        })
+        .then(setPreview)
+        .catch(() => setPreview(null))
+        .finally(() => setPreviewLoading(false));
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [form.retailer_id, form.product_id, form.price]);
 
   const productNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -280,6 +305,19 @@ export default function RetailerOverridesPage() {
               />
             </Field>
           </div>
+          {previewLoading ? (
+            <p className="text-sm opacity-60">Calculating impact preview…</p>
+          ) : preview ? (
+            <div className="rounded-lg border p-4 space-y-2" style={{ borderColor: "var(--color-md-outline-variant)" }}>
+              <p className="md-typescale-label-large font-semibold">Impact preview</p>
+              <p className="text-sm">Retailers on SKU: {preview.retailers_on_sku_count}</p>
+              <p className="text-sm">Active overrides: {preview.active_override_count}</p>
+              <p className="text-sm">Catalog list price: {formatPrice(preview.catalog_list_price)}</p>
+              <p className="text-sm">
+                Margin delta / unit: {formatPrice(preview.margin_delta_per_unit)} ({preview.margin_estimate_label})
+              </p>
+            </div>
+          ) : null}
           <div className="flex flex-wrap gap-3">
             <button
               type="submit"

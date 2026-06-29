@@ -352,6 +352,16 @@ interface SupplierApi {
         @Body body: SupplierBroadcastRequest,
     ): Response<SupplierBroadcastResponse>
 
+    @GET("v1/supplier/ops/exception-map")
+    suspend fun getExceptionMap(
+        @Query("window_hours") windowHours: Int = 24,
+    ): Response<ExceptionMapResponse>
+
+    @POST("v1/supplier/pricing/retailer-overrides/preview")
+    suspend fun previewRetailerPriceOverride(
+        @Body body: RetailerOverridePreviewRequest,
+    ): Response<RetailerOverridePreview>
+
     @GET("v1/supplier/ws-session")
     suspend fun getWsSession(): Response<SupplierWsSessionResponse>
 

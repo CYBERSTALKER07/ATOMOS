@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ApiError, supplierBroadcastKey, supplierPaymentBypassKey } from "@pegasusx/api-client";
+import { SUPPLIER_BROADCAST_TEMPLATES } from "@pegasusx/types";
 import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
 import { PageSection } from "@/components/PageSection";
 import { createSupplierApi } from "@/lib/api";
@@ -26,6 +27,7 @@ export default function OperationsPage() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [broadcastRole, setBroadcastRole] = useState<(typeof broadcastRoles)[number]>("ALL");
+  const [templateDate, setTemplateDate] = useState("");
   const [orderId, setOrderId] = useState("");
   const [bypassReason, setBypassReason] = useState("");
   const [bypassToken, setBypassToken] = useState<string | null>(null);
@@ -141,6 +143,42 @@ export default function OperationsPage() {
       ) : null}
 
       <PageSection title="Operator broadcast" description="Fan out a message to supplier WS rooms by role.">
+        <div className="flex flex-wrap gap-2 mb-4">
+          {SUPPLIER_BROADCAST_TEMPLATES.map((template) => (
+            <button
+              key={template.id}
+              type="button"
+              className="md-btn md-btn-tonal text-xs px-3 py-1.5"
+              onClick={() => {
+                setTitle(template.title);
+                setBody(
+                  template.body.replace(
+                    "{date}",
+                    templateDate.trim() || "the selected date",
+                  ),
+                );
+                setBroadcastRole(
+                  broadcastRoles.includes(template.default_role as (typeof broadcastRoles)[number])
+                    ? (template.default_role as (typeof broadcastRoles)[number])
+                    : "ALL",
+                );
+              }}
+            >
+              {template.title}
+            </button>
+          ))}
+        </div>
+        <label className="block space-y-1 mb-3 max-w-xs">
+          <span className="md-typescale-label-medium" style={{ color: "var(--desk-text-secondary)" }}>
+            Template date (optional)
+          </span>
+          <input
+            type="date"
+            className="md-input-outlined w-full"
+            value={templateDate}
+            onChange={(e) => setTemplateDate(e.target.value)}
+          />
+        </label>
         <div className="space-y-3">
           <label className="block space-y-1">
             <span className="md-typescale-label-medium" style={{ color: "var(--desk-text-secondary)" }}>

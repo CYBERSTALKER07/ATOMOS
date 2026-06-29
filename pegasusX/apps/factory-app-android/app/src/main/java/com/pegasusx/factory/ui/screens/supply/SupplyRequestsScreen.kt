@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -24,7 +25,8 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -33,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +51,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.pegasusx.factory.data.remote.FactoryRealtimeStatus
 import com.pegasusx.factory.data.model.SupplyRequest
+import com.pegasusx.factory.data.model.SupplyFulfillOptions
 import com.pegasusx.factory.data.model.SupplyRequestTransitionRequest
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.util.FactoryIdempotencyKeys
@@ -72,6 +76,7 @@ private data class RequestActionSpec(
 )
 
 private val requestFilters = listOf("ALL", "SUBMITTED", "ACKNOWLEDGED", "IN_PRODUCTION", "READY", "FULFILLED", "CANCELLED")
+private val boardLanes = listOf("SUBMITTED", "ACKNOWLEDGED", "IN_PRODUCTION", "READY")
 
 private fun actionsForState(state: String): List<RequestActionSpec> = when (state) {
     "SUBMITTED" -> listOf(
@@ -101,6 +106,8 @@ fun SupplyRequestsScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var filter by remember { mutableStateOf("ALL") }
+    var viewMode by remember { mutableStateOf("TABLE") }
+    var fulfillModal by remember { mutableStateOf<Pair<SupplyRequest, SupplyFulfillOptions>?>(null) }
     var transitioningId by remember { mutableStateOf<String?>(null) }
     var refreshing by remember { mutableStateOf(false) }
     var staleMessage by remember { mutableStateOf<String?>(null) }
@@ -148,7 +155,7 @@ fun SupplyRequestsScreen(
         }
     }
 
-    fun transition(request: SupplyRequest, action: String) {
+    fun runTransition(request: SupplyRequest, action: String) {
         transitioningId = request.id
         scope.launch {
             try {
@@ -169,6 +176,26 @@ fun SupplyRequestsScreen(
                 transitioningId = null
             }
         }
+    }
+
+    fun onAction(request: SupplyRequest, action: String) {
+        if (action == "FULFILL") {
+            scope.launch {
+                try {
+                    val resp = api.getSupplyFulfillOptions(request.id)
+                    val options = if (resp.isSuccessful) resp.body() else null
+                    if (options != null) {
+                        fulfillModal = request to options
+                    } else {
+                        snackbarHostState.showSnackbar("Could not load fulfill options")
+                    }
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar(e.message ?: "Could not load fulfill options")
+                }
+            }
+            return
+        }
+        runTransition(request, action)
     }
 
     LaunchedEffect(Unit) {
@@ -221,6 +248,51 @@ fun SupplyRequestsScreen(
         realtimeStatus == FactoryRealtimeStatus.RECONNECTING || realtimeStatus == FactoryRealtimeStatus.CONNECTING -> FactoryRuntimeTone.Refreshing
         refreshing -> FactoryRuntimeTone.Refreshing
         else -> FactoryRuntimeTone.Live
+    }
+
+    fulfillModal?.let { (request, options) ->
+        ModalBottomSheet(onDismissRequest = { fulfillModal = null }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+            ) {
+                Text("Confirm fulfill", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Warehouse: ${options.warehouseName} · Mode: ${options.transferMode}" +
+                        if (options.coLocated) " · Co-located site" else "",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                ) {
+                    Column(Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                        Text("INTERNAL: ${options.outcomeInternal}", style = MaterialTheme.typography.bodySmall)
+                        Text("TRUCK: ${options.outcomeTruck}", style = MaterialTheme.typography.bodySmall)
+                        options.linkedDriverEta?.let {
+                            Text("Linked transfer updated: $it", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                    OutlinedButton(
+                        onClick = { fulfillModal = null },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Cancel") }
+                    FilledTonalButton(
+                        onClick = {
+                            fulfillModal = null
+                            runTransition(request, "FULFILL")
+                        },
+                        enabled = transitioningId == null,
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Confirm fulfill") }
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -288,12 +360,28 @@ fun SupplyRequestsScreen(
                         runtimeTone = runtimeTone,
                     )
                 }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                        FilterChip(selected = viewMode == "TABLE", onClick = { viewMode = "TABLE" }, label = { Text("Table") })
+                        FilterChip(selected = viewMode == "BOARD", onClick = { viewMode = "BOARD" }, label = { Text("Board") })
+                    }
+                }
+                if (viewMode == "BOARD") {
+                    item {
+                        SupplyBoard(
+                            requests = filteredRequests,
+                            transitioningId = transitioningId,
+                            onAction = { request, action -> onAction(request, action) },
+                        )
+                    }
+                } else {
                 items(filteredRequests, key = { it.id }) { request ->
                     SupplyRequestCard(
                         request = request,
                         transitioning = transitioningId == request.id,
-                        onAction = { action -> transition(request, action) },
+                        onAction = { action -> onAction(request, action) },
                     )
+                }
                 }
             }
         }
@@ -455,6 +543,45 @@ private fun SupplyRequestCard(
                                 modifier = buttonModifier,
                             ) {
                                 Text(if (transitioning) "Working…" else action.label)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SupplyBoard(
+    requests: List<SupplyRequest>,
+    transitioningId: String?,
+    onAction: (SupplyRequest, String) -> Unit,
+) {
+    val lanes = boardLanes
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+    ) {
+        lanes.forEach { lane ->
+            Column(
+                modifier = Modifier.width(220.dp),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+            ) {
+                Text(lane.replace('_', ' '), style = MaterialTheme.typography.labelLarge)
+                requests.filter { it.state == lane }.forEach { request ->
+                    ElevatedCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                            Text(request.warehouseId.take(8), style = MaterialTheme.typography.titleSmall)
+                            Text(request.priority, style = MaterialTheme.typography.bodySmall)
+                            actionsForState(request.state).forEach { spec ->
+                                FilledTonalButton(
+                                    onClick = { onAction(request, spec.action) },
+                                    enabled = transitioningId != request.id,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) { Text(spec.label) }
                             }
                         }
                     }

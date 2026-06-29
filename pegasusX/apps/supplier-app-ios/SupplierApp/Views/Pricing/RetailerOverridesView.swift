@@ -9,6 +9,8 @@ struct RetailerOverridesView: View {
     @State private var productId = ""
     @State private var price = ""
     @State private var creating = false
+    @State private var preview: RetailerOverridePreview?
+    @State private var previewLoading = false
 
     var body: some View {
         Group {
@@ -64,6 +66,18 @@ struct RetailerOverridesView: View {
                 TextField("Product ID", text: $productId)
                 TextField("Price (minor units)", text: $price)
                     .keyboardType(.numberPad)
+                if previewLoading {
+                    Text("Calculating impact preview…")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } else if let preview {
+                    Section("Impact preview") {
+                        LabeledContent("Retailers on SKU", value: "\(preview.retailersOnSkuCount)")
+                        LabeledContent("Active overrides", value: "\(preview.activeOverrideCount)")
+                        LabeledContent("Catalog list price", value: "\(preview.catalogListPrice)")
+                        LabeledContent("Margin delta / unit", value: "\(preview.marginDeltaPerUnit) (\(preview.marginEstimateLabel))")
+                    }
+                }
             }
             .navigationTitle("New override")
             .toolbar {
@@ -75,7 +89,43 @@ struct RetailerOverridesView: View {
                         .disabled(creating || retailerId.isEmpty || productId.isEmpty || price.isEmpty)
                 }
             }
+            .task(id: previewKey) {
+                await refreshPreview()
+            }
         }
+    }
+
+    private var previewKey: String {
+        "\(retailerId)|\(productId)|\(price)"
+    }
+
+    @MainActor
+    private func refreshPreview() async {
+        guard showCreate else {
+            preview = nil
+            previewLoading = false
+            return
+        }
+        guard let priceMinor = Int(price), priceMinor > 0, !productId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            preview = nil
+            previewLoading = false
+            return
+        }
+        previewLoading = true
+        try? await Task.sleep(for: .milliseconds(400))
+        do {
+            preview = try await SupplierOperationsService.previewRetailerPriceOverride(
+                RetailerOverridePreviewRequest(
+                    retailerId: retailerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : retailerId,
+                    productId: productId.trimmingCharacters(in: .whitespacesAndNewlines),
+                    skuId: nil,
+                    proposedPrice: Int64(priceMinor)
+                )
+            )
+        } catch {
+            preview = nil
+        }
+        previewLoading = false
     }
 
     @MainActor
@@ -109,6 +159,7 @@ struct RetailerOverridesView: View {
             retailerId = ""
             productId = ""
             price = ""
+            preview = nil
             await load(silent: true)
         } catch {
             self.error = error.localizedDescription

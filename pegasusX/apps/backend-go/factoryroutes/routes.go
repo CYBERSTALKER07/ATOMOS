@@ -54,6 +54,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/factory/staff/{staffID}", d.Service.HandleStaffDetail)
 		rr.Post("/v1/factory/dispatch", d.Service.HandleDispatch)
 		rr.Get("/v1/factory/supply-requests", d.Service.HandleSupplyRequests)
+		rr.Get("/v1/factory/supply-requests/{id}/fulfill-options", d.Service.HandleSupplyRequestFulfillOptions)
 		rr.Post("/v1/factory/supply-requests/{requestID}/accept", d.Service.HandleAcceptSupplyRequest)
 		rr.Patch("/v1/factory/supply-requests/{id}", d.Service.HandleSupplyRequestTransition)
 	}

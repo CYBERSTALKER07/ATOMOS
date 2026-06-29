@@ -115,6 +115,12 @@ class SupplierOperationsRepository @Inject constructor(
 
     suspend fun getFleetLiveMap(): Response<SupplierFleetLiveMapResponse> = api.getFleetLiveMap()
 
+    suspend fun getExceptionMap(windowHours: Int = 24): Response<ExceptionMapResponse> =
+        api.getExceptionMap(windowHours)
+
+    suspend fun previewRetailerPriceOverride(body: RetailerOverridePreviewRequest): Response<RetailerOverridePreview> =
+        api.previewRetailerPriceOverride(body)
+
     suspend fun getWsSession(): Response<SupplierWsSessionResponse> = api.getWsSession()
 
     suspend fun getPaymentLedger(currency: String? = null): Response<PaymentLedgerResponse> =

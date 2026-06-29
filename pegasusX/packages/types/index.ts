@@ -103,6 +103,83 @@ export interface PulseResponse {
   unread_count?: number;
 }
 
+export interface ExceptionMapCell {
+  h3_cell: H3Cell;
+  lat: number;
+  lng: number;
+  severity: "low" | "medium" | "high";
+  counts: Record<string, number>;
+  sample_order_ids?: string[];
+  deep_link: string;
+}
+
+export interface ExceptionMapResponse {
+  cells: ExceptionMapCell[];
+  window_hours: number;
+}
+
+export interface RetailerOverridePreview {
+  retailers_on_sku_count: number;
+  active_override_count: number;
+  catalog_list_price: number;
+  margin_delta_per_unit: number;
+  margin_estimate_label: string;
+  affected_retailer_ids?: string[];
+}
+
+export interface SupplyFulfillOptions {
+  transfer_mode: "TRUCK" | "INTERNAL";
+  warehouse_id: string;
+  warehouse_name: string;
+  co_located: boolean;
+  outcome_internal: string;
+  outcome_truck: string;
+  linked_driver_eta?: string;
+}
+
+export interface BroadcastTemplate {
+  id: string;
+  category: string;
+  title: string;
+  body: string;
+  default_role: "ALL" | "DRIVER" | "RETAILER" | "PAYLOAD" | "WAREHOUSE" | "FACTORY";
+  placeholder_keys?: string[];
+}
+
+export const SUPPLIER_BROADCAST_TEMPLATES: BroadcastTemplate[] = [
+  {
+    id: "storm_delay",
+    category: "operations",
+    title: "Delivery delay notice",
+    body: "Due to weather conditions, deliveries may be delayed on {date}. We will update routes as conditions improve.",
+    default_role: "RETAILER",
+    placeholder_keys: ["date"],
+  },
+  {
+    id: "holiday_hours",
+    category: "operations",
+    title: "Holiday receiving hours",
+    body: "Our network will operate on reduced hours on {date}. Please confirm your receiving window in the app.",
+    default_role: "RETAILER",
+    placeholder_keys: ["date"],
+  },
+  {
+    id: "fee_notice",
+    category: "finance",
+    title: "Service fee update",
+    body: "A service fee adjustment takes effect on {date}. Review your latest invoices for details.",
+    default_role: "RETAILER",
+    placeholder_keys: ["date"],
+  },
+  {
+    id: "yard_hold",
+    category: "operations",
+    title: "Yard congestion advisory",
+    body: "Loading bay congestion reported. Drivers: expect queue delays at warehouse check-in.",
+    default_role: "DRIVER",
+  },
+];
+
 export type DriverId = string;
 export type VehicleId = string;
 export type WarehouseId = string;

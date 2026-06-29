@@ -28,6 +28,9 @@ import type {
   RetailerSupplierPreference,
   RetailerTrackingResponse,
   PulseResponse,
+  ExceptionMapResponse,
+  RetailerOverridePreview,
+  SupplyFulfillOptions,
   SettlementAuthorityQuery,
   SettlementAuthorityResponse,
   SupplierBillingSetupRequest,
@@ -479,6 +482,33 @@ export class ApiClient {
       `/v1/supplier/pricing/retailer-overrides/${overrideId}`,
       "DELETE",
       { idempotencyKey },
+    );
+  }
+
+  async previewRetailerPriceOverride(body: {
+    retailer_id?: string;
+    product_id?: string;
+    sku_id?: string;
+    proposed_price: number;
+  }): Promise<RetailerOverridePreview> {
+    return this.request<RetailerOverridePreview>(
+      "/v1/supplier/pricing/retailer-overrides/preview",
+      "POST",
+      { body },
+    );
+  }
+
+  async getSupplierExceptionMap(query: { window_hours?: number } = {}): Promise<ExceptionMapResponse> {
+    return this.request<ExceptionMapResponse>(
+      appendQuery("/v1/supplier/ops/exception-map", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async getFactorySupplyFulfillOptions(requestId: string): Promise<SupplyFulfillOptions> {
+    return this.request<SupplyFulfillOptions>(
+      `/v1/factory/supply-requests/${requestId}/fulfill-options`,
+      "GET",
     );
   }
 

@@ -1154,6 +1154,102 @@ struct SupplierBroadcastResponse: Decodable {
     }
 }
 
+// MARK: - Cool Features Wave 3
+
+struct ExceptionMapCell: Decodable, Identifiable {
+    var id: String { h3Cell }
+    let h3Cell: String
+    let lat: Double
+    let lng: Double
+    let severity: String
+    let counts: [String: Int]
+    let sampleOrderIds: [String]?
+    let deepLink: String
+
+    enum CodingKeys: String, CodingKey {
+        case h3Cell = "h3_cell"
+        case lat, lng, severity, counts
+        case sampleOrderIds = "sample_order_ids"
+        case deepLink = "deep_link"
+    }
+}
+
+struct ExceptionMapResponse: Decodable {
+    let cells: [ExceptionMapCell]
+    let windowHours: Int
+
+    enum CodingKeys: String, CodingKey {
+        case cells
+        case windowHours = "window_hours"
+    }
+}
+
+struct RetailerOverridePreview: Decodable {
+    let retailersOnSkuCount: Int
+    let activeOverrideCount: Int
+    let catalogListPrice: Int64
+    let marginDeltaPerUnit: Int64
+    let marginEstimateLabel: String
+    let affectedRetailerIds: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case retailersOnSkuCount = "retailers_on_sku_count"
+        case activeOverrideCount = "active_override_count"
+        case catalogListPrice = "catalog_list_price"
+        case marginDeltaPerUnit = "margin_delta_per_unit"
+        case marginEstimateLabel = "margin_estimate_label"
+        case affectedRetailerIds = "affected_retailer_ids"
+    }
+}
+
+struct RetailerOverridePreviewRequest: Encodable {
+    let retailerId: String?
+    let productId: String?
+    let skuId: String?
+    let proposedPrice: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case retailerId = "retailer_id"
+        case productId = "product_id"
+        case skuId = "sku_id"
+        case proposedPrice = "proposed_price"
+    }
+}
+
+struct SupplierBroadcastTemplate: Identifiable {
+    let id: String
+    let title: String
+    let body: String
+    let defaultRole: String
+}
+
+let supplierBroadcastTemplates: [SupplierBroadcastTemplate] = [
+    SupplierBroadcastTemplate(
+        id: "storm_delay",
+        title: "Delivery delay notice",
+        body: "Due to weather conditions, deliveries may be delayed on {date}. We will update routes as conditions improve.",
+        defaultRole: "RETAILER"
+    ),
+    SupplierBroadcastTemplate(
+        id: "holiday_hours",
+        title: "Holiday receiving hours",
+        body: "Our network will operate on reduced hours on {date}. Please confirm your receiving window in the app.",
+        defaultRole: "RETAILER"
+    ),
+    SupplierBroadcastTemplate(
+        id: "fee_notice",
+        title: "Service fee update",
+        body: "A service fee adjustment takes effect on {date}. Review your latest invoices for details.",
+        defaultRole: "RETAILER"
+    ),
+    SupplierBroadcastTemplate(
+        id: "yard_hold",
+        title: "Yard congestion advisory",
+        body: "Loading bay congestion reported. Drivers: expect queue delays at warehouse check-in.",
+        defaultRole: "DRIVER"
+    ),
+]
+
 struct PaymentBypassRequest: Encodable {
     let orderId: String
     let reason: String

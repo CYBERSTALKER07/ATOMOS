@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
 import { usePolling, factorySupplyRequestTransitionKey } from '@pegasusx/api-client';
+import type { SupplyFulfillOptions } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { downloadCsv } from '@/lib/csv';
 import { usePagination } from '@/lib/use-pagination';
@@ -98,6 +99,8 @@ export default function SupplyRequestsPage() {
   const [transitioning, setTransitioning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'board'>('table');
+  const [fulfillModal, setFulfillModal] = useState<{ request: SupplyRequest; options: SupplyFulfillOptions } | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [isOffline, setIsOffline] = useState(() => (typeof navigator === 'undefined' ? false : !navigator.onLine));
   const previousSignatureRef = useRef('');
@@ -247,6 +250,24 @@ export default function SupplyRequestsPage() {
         : 'live';
 
   const handleTransition = async (request: SupplyRequest, action: string) => {
+    if (action === 'FULFILL') {
+      try {
+        const res = await apiFetch(`/v1/factory/supply-requests/${request.request_id}/fulfill-options`);
+        if (!res.ok) {
+          toast('Could not load fulfill options', 'error');
+          return;
+        }
+        const options = (await res.json()) as SupplyFulfillOptions;
+        setFulfillModal({ request, options });
+      } catch {
+        toast('Could not load fulfill options', 'error');
+      }
+      return;
+    }
+    await runTransition(request, action);
+  };
+
+  const runTransition = async (request: SupplyRequest, action: string) => {
     setTransitioning(request.request_id);
     try {
       const body: Record<string, unknown> = { action };
@@ -324,6 +345,7 @@ export default function SupplyRequestsPage() {
         </KpiStatGrid>
 
         <PageSection title="Queue filter" description={`${filtered.length} request${filtered.length !== 1 ? 's' : ''} in view`} className="mt-6">
+          <div className="flex gap-2 flex-wrap items-center justify-between">
           <div className="flex gap-2 flex-wrap">
             {(['ALL', 'SUBMITTED', 'ACKNOWLEDGED', 'IN_PRODUCTION', 'READY', 'FULFILLED', 'CANCELLED'] as FilterState[]).map((value) => (
               <button
@@ -341,6 +363,11 @@ export default function SupplyRequestsPage() {
               </button>
             ))}
           </div>
+          <div className="flex gap-2">
+            <button type="button" className={`portal-btn ${viewMode === 'table' ? 'portal-btn--primary' : 'portal-btn--ghost'} text-xs`} onClick={() => setViewMode('table')}>Table</button>
+            <button type="button" className={`portal-btn ${viewMode === 'board' ? 'portal-btn--primary' : 'portal-btn--ghost'} text-xs`} onClick={() => setViewMode('board')}>Board</button>
+          </div>
+          </div>
         </PageSection>
 
         {filtered.length === 0 ? (
@@ -356,6 +383,41 @@ export default function SupplyRequestsPage() {
             action={filter === 'ALL' ? undefined : 'Clear filter'}
             onAction={filter === 'ALL' ? undefined : () => setFilter('ALL')}
           />
+        ) : viewMode === 'board' ? (
+          <PageSection title="Production lane board" description="Kanban by supply-request lifecycle state.">
+            <div className="grid gap-4 lg:grid-cols-4 overflow-x-auto">
+              {(['SUBMITTED', 'ACKNOWLEDGED', 'IN_PRODUCTION', 'READY'] as const).map((lane) => (
+                <div key={lane} className="min-w-[220px] rounded-xl border p-3" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
+                  <div className="text-xs font-bold uppercase tracking-wider mb-3">{lane.replace(/_/g, ' ')}</div>
+                  <div className="space-y-2">
+                    {filtered.filter((r) => r.state === lane).map((request) => (
+                      <div key={request.request_id} className="rounded-lg border p-3 text-sm" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
+                        <div className="font-medium">{request.warehouse_name || request.warehouse_id.slice(0, 8)}</div>
+                        <div className="text-xs opacity-70 mt-1">{request.priority} · {request.item_count ?? request.items?.length ?? 0} items</div>
+                        <div className="text-xs font-mono opacity-60 mt-1">
+                          {request.requested_delivery_date ? new Date(request.requested_delivery_date).toLocaleDateString() : 'No delivery date'}
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {(ACTIONS[request.state] || []).map((action) => (
+                            <button
+                              key={action.action}
+                              type="button"
+                              className="px-2 py-1 rounded text-[10px] font-medium text-white"
+                              style={{ background: action.color }}
+                              disabled={transitioning === request.request_id}
+                              onClick={() => void handleTransition(request, action.action)}
+                            >
+                              {action.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </PageSection>
         ) : (
           <>
             <ListToolbar
@@ -469,6 +531,39 @@ export default function SupplyRequestsPage() {
             </PageSection>
           </>
         )}
+        {fulfillModal ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-lg rounded-2xl border bg-[var(--background)] p-6 space-y-4">
+              <h3 className="text-lg font-semibold">Confirm fulfill</h3>
+              <p className="text-sm opacity-80">
+                Warehouse: {fulfillModal.options.warehouse_name} · Mode: {fulfillModal.options.transfer_mode}
+                {fulfillModal.options.co_located ? ' · Co-located site' : ''}
+              </p>
+              <div className="rounded-lg border p-3 text-sm space-y-2" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
+                <p><strong>INTERNAL:</strong> {fulfillModal.options.outcome_internal}</p>
+                <p><strong>TRUCK:</strong> {fulfillModal.options.outcome_truck}</p>
+                {fulfillModal.options.linked_driver_eta ? (
+                  <p className="text-xs opacity-70">Linked transfer updated: {new Date(fulfillModal.options.linked_driver_eta).toLocaleString()}</p>
+                ) : null}
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button type="button" className="portal-btn portal-btn--ghost" onClick={() => setFulfillModal(null)}>Cancel</button>
+                <button
+                  type="button"
+                  className="portal-btn portal-btn--primary"
+                  disabled={transitioning === fulfillModal.request.request_id}
+                  onClick={() => {
+                    const req = fulfillModal.request;
+                    setFulfillModal(null);
+                    void runTransition(req, 'FULFILL');
+                  }}
+                >
+                  Confirm fulfill
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </PageChrome>
     </PageTransition>
   );

@@ -11,6 +11,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.CreateRetailerPriceOverrideRequest
+import com.pegasusx.supplier.data.model.RetailerOverridePreview
+import com.pegasusx.supplier.data.model.RetailerOverridePreviewRequest
 import com.pegasusx.supplier.data.model.RetailerPriceOverride
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
@@ -35,6 +37,8 @@ fun RetailerOverridesScreen(
     var price by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }
+    var preview by remember { mutableStateOf<RetailerOverridePreview?>(null) }
+    var previewLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun load() {
@@ -54,6 +58,37 @@ fun RetailerOverridesScreen(
     }
 
     LaunchedEffect(Unit) { load() }
+
+    LaunchedEffect(retailerId, productId, price, showCreate) {
+        if (!showCreate) {
+            preview = null
+            previewLoading = false
+            return@LaunchedEffect
+        }
+        val product = productId.trim()
+        val proposed = price.toLongOrNull()
+        if (product.isEmpty() || proposed == null || proposed <= 0) {
+            preview = null
+            previewLoading = false
+            return@LaunchedEffect
+        }
+        previewLoading = true
+        kotlinx.coroutines.delay(400)
+        try {
+            val resp = ops.previewRetailerPriceOverride(
+                RetailerOverridePreviewRequest(
+                    retailerId = retailerId.trim().ifBlank { null },
+                    productId = product,
+                    proposedPrice = proposed,
+                ),
+            )
+            preview = if (resp.isSuccessful) resp.body() else null
+        } catch (_: Exception) {
+            preview = null
+        } finally {
+            previewLoading = false
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -135,6 +170,21 @@ fun RetailerOverridesScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(notes, { notes = it }, label = { Text("Notes") }, modifier = Modifier.fillMaxWidth())
+                    when {
+                        previewLoading -> Text("Calculating impact preview…", style = MaterialTheme.typography.bodySmall)
+                        preview != null -> {
+                            val p = preview!!
+                            ElevatedCard(Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                                    Text("Impact preview", style = MaterialTheme.typography.titleSmall)
+                                    Text("Retailers on SKU: ${p.retailersOnSkuCount}")
+                                    Text("Active overrides: ${p.activeOverrideCount}")
+                                    Text("Catalog list price: ${p.catalogListPrice}")
+                                    Text("Margin delta / unit: ${p.marginDeltaPerUnit} (${p.marginEstimateLabel})")
+                                }
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
@@ -165,6 +215,7 @@ fun RetailerOverridesScreen(
                                     productId = ""
                                     price = ""
                                     notes = ""
+                                    preview = null
                                     load()
                                 }
                             } finally {
