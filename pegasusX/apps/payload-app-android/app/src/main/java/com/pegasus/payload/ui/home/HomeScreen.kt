@@ -163,6 +163,12 @@ fun HomeScreen(
             viewModel.clearBarcodeScanMessage()
         }
     }
+    LaunchedEffect(state.handoffNavigationMessage) {
+        state.handoffNavigationMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearHandoffNavigationMessage()
+        }
+    }
     LaunchedEffect(state.online) {
         if (!state.online) return@LaunchedEffect
         viewModel.refreshTrucks(silent = state.trucks.isNotEmpty())
@@ -241,6 +247,7 @@ fun HomeScreen(
                         error = state.error,
                         batchReadyCount = state.batchReadyManifestIds.size,
                         batchSealing = state.batchSealing,
+                        batchSealFailures = state.batchSealFailures,
                         isExpanded = isListExpanded,
                         onToggleExpanded = { isListExpanded = !isListExpanded },
                         onFinalizeBatch = viewModel::finalizeBatchSeal,
@@ -342,6 +349,7 @@ fun HomeScreen(
                 onDismiss = viewModel::toggleNotificationsPanel,
                 onMarkRead = viewModel::markNotificationRead,
                 onMarkAllRead = viewModel::markAllNotificationsRead,
+                onHandoffAction = viewModel::handleHandoffLink,
             )
         }
         if (state.showExceptionsPanel) {
@@ -364,6 +372,7 @@ private fun NotificationsSheet(
     onDismiss: () -> Unit,
     onMarkRead: (String) -> Unit,
     onMarkAllRead: () -> Unit,
+    onHandoffAction: (String) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -389,7 +398,11 @@ private fun NotificationsSheet(
             } else {
                 LazyColumn(Modifier.fillMaxWidth()) {
                     items(items, key = { it.notificationId }) { n ->
-                        NotificationRow(n, onClick = { if (n.isUnread) onMarkRead(n.notificationId) })
+                        NotificationRow(
+                            item = n,
+                            onClick = { if (n.isUnread) onMarkRead(n.notificationId) },
+                            onHandoffAction = onHandoffAction,
+                        )
                         HorizontalDivider()
                     }
                 }
@@ -471,7 +484,11 @@ private fun ManifestExceptionsSheet(
 }
 
 @Composable
-private fun NotificationRow(item: NotificationItem, onClick: () -> Unit) {
+private fun NotificationRow(
+    item: NotificationItem,
+    onClick: () -> Unit,
+    onHandoffAction: (String) -> Unit = {},
+) {
     val bg = if (item.isUnread) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
              else MaterialTheme.colorScheme.surface
     Row(
@@ -500,7 +517,11 @@ private fun NotificationRow(item: NotificationItem, onClick: () -> Unit) {
                 Text(item.body, style = MaterialTheme.typography.bodySmall)
             }
             item.handoffMetadata?.let { metadata ->
-                HandoffInboxCard(metadata = metadata, modifier = Modifier.padding(top = 8.dp))
+                HandoffInboxCard(
+                    metadata = metadata,
+                    modifier = Modifier.padding(top = 8.dp),
+                    onAction = onHandoffAction,
+                )
             }
             if (item.createdAt.isNotEmpty()) {
                 Text(item.createdAt, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -519,6 +540,7 @@ private fun TruckListPane(
     error: String?,
     batchReadyCount: Int,
     batchSealing: Boolean,
+    batchSealFailures: List<com.pegasus.payload.data.model.SealCompletedManifestResult> = emptyList(),
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
     onFinalizeBatch: () -> Unit,
@@ -591,6 +613,25 @@ private fun TruckListPane(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(if (batchSealing) "Finalizing…" else "Seal all trucks")
+                        }
+                        batchSealFailures.forEach { row ->
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp),
+                            ) {
+                                Text(
+                                    "${row.manifestId}: ${row.status}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                                row.explain?.let { explain ->
+                                    ExplainStatusBanner(
+                                        explain = explain,
+                                        fallbackTitle = row.status,
+                                        modifier = Modifier.padding(top = 4.dp),
+                                    )
+                                }
+                            }
                         }
                     }
                 }

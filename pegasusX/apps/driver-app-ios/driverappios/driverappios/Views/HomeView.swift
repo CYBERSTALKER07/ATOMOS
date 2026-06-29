@@ -11,10 +11,12 @@ import MapKit
 struct HomeView: View {
     @Bindable var vm: FleetViewModel
     let onOpenMap: () -> Void
+    var onHandoffNavigate: ((HandoffDestination) -> Void)? = nil
 
     @State private var appeared = false
     @State private var showNotificationInbox = false
     @State private var showSupplyTransfers = false
+    @State private var handoffAlertMessage: String?
     @State private var pulseEvents: [PulseEvent] = []
     @State private var pulseLoading = true
 
@@ -113,9 +115,19 @@ struct HomeView: View {
         .scrollIndicators(.hidden)
         .background(LabTheme.bg)
         .sheet(isPresented: $showNotificationInbox) {
-            DriverNotificationInboxView()
+            DriverNotificationInboxView { link in
+                handleHandoffLink(link)
+            }
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+        }
+        .alert("Handoff", isPresented: Binding(
+            get: { handoffAlertMessage != nil },
+            set: { if !$0 { handoffAlertMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { handoffAlertMessage = nil }
+        } message: {
+            Text(handoffAlertMessage ?? "")
         }
         .sheet(isPresented: $showSupplyTransfers) {
             SupplyTransfersView()
@@ -125,6 +137,21 @@ struct HomeView: View {
         .task {
             await vm.loadMissions()
             await loadPulse()
+        }
+    }
+
+    private func handleHandoffLink(_ link: String) {
+        switch HandoffPathResolver.resolve(link) {
+        case .home:
+            onHandoffNavigate?(.home)
+        case .fleetMap:
+            onHandoffNavigate?(.fleetMap)
+        case .manifestList, .manifestDetail:
+            onHandoffNavigate?(.manifestList)
+        case .orderDetail:
+            onHandoffNavigate?(.manifestList)
+        case .unresolved:
+            handoffAlertMessage = "Open in portal — no native route for this link"
         }
     }
 

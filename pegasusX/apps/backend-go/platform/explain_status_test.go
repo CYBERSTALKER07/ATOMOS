@@ -24,6 +24,23 @@ func TestExplainForCode_preorder_edit_locked_alias(t *testing.T) {
 	}
 }
 
+func TestAttachExplainToMap(t *testing.T) {
+	body := map[string]any{"manifest_id": "mf_x", "status": "not_found"}
+	AttachExplainToMap(body, "manifest_not_found")
+	explainRaw := body["explain"]
+	explain, ok := explainRaw.(StatusExplain)
+	if !ok {
+		if ptr, okPtr := explainRaw.(*StatusExplain); okPtr {
+			explain = *ptr
+		} else {
+			t.Fatalf("expected explain object, got %#v", explainRaw)
+		}
+	}
+	if explain.Code != "manifest_not_found" {
+		t.Fatalf("expected manifest_not_found, got %q", explain.Code)
+	}
+}
+
 func TestAttachExplain_adds_field(t *testing.T) {
 	body := map[string]any{"error": "warehouse_scope_required"}
 	AttachExplain(body, nil)

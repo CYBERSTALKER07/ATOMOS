@@ -128,8 +128,8 @@ Rail never fully hides on tablet — collapsed state keeps an 88dp/pt icon colum
 | Feature | Supplier | Warehouse | Retailer | Driver | Payload | Factory |
 |---------|----------|-----------|----------|--------|---------|---------|
 | Pulse timeline | portal dashboard | portal dashboard | desktop tracking (optional) | Android + iOS home strip | Android + iOS home strip | portal dashboard |
-| Explain status banners | API 4xx | dispatch page | tracking errors | manifest-gate (Android/iOS) | seal errors (Android/iOS/terminal) | — |
-| Handoff inbox cards | notifications | notifications | notifications | native inbox | native inbox | notifications |
+| Explain status banners | API 4xx | dispatch page | tracking errors | manifest-gate (Android/iOS) | seal errors + batch row explain (Android/iOS/terminal) | loading-bay, transfers, manifest detail, exceptions |
+| Handoff inbox cards | notifications | notifications | notifications | native inbox + primary_link nav | native inbox + primary_link nav | notifications |
 
 ## Intentional deltas
 

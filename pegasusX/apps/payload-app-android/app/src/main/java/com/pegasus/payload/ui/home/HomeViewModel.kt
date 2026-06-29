@@ -13,7 +13,10 @@ import com.pegasus.payload.data.model.NotificationItem
 import com.pegasus.payload.data.model.PulseEvent
 import com.pegasus.payload.data.model.parseApiErrorPayload
 import com.pegasus.payload.data.model.QueuedAction
-import com.pegasus.payload.data.model.RecommendReassignResponse
+import com.pegasus.payload.data.model.SealCompletedManifestResult
+import com.pegasus.payload.data.model.StatusExplain
+import com.pegasus.payload.ui.navigation.HandoffDestination
+import com.pegasus.payload.ui.navigation.HandoffPathResolver
 import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.data.remote.PayloadApi
 import com.pegasus.payload.data.repository.PayloadRepository
@@ -91,6 +94,8 @@ data class HomeUiState(
     /** LOADING manifests with every order sealed — eligible for seal-completed batch. */
     val batchReadyManifestIds: List<String> = emptyList(),
     val batchSealing: Boolean = false,
+    val batchSealFailures: List<SealCompletedManifestResult> = emptyList(),
+    val handoffNavigationMessage: String? = null,
     val barcodeScanMessage: String? = null,
     val pulseEvents: List<PulseEvent> = emptyList(),
     val pulseLoading: Boolean = false,
@@ -391,24 +396,99 @@ class HomeViewModel @Inject constructor(
     fun finalizeBatchSeal() {
         val manifestIds = _state.value.batchReadyManifestIds
         if (manifestIds.size < 2 || _state.value.batchSealing) return
-        _state.update { it.copy(batchSealing = true, error = null) }
+        _state.update { it.copy(batchSealing = true, error = null, errorExplain = null, batchSealFailures = emptyList()) }
         viewModelScope.launch {
             runCatching { repository.sealCompletedManifests(manifestIds) }
-                .onSuccess {
+                .onSuccess { response ->
+                    val failures = response.results.filter { it.status.isNotBlank() && it.status != "sealed" }
+                    if (failures.isNotEmpty()) {
+                        _state.update {
+                            it.copy(
+                                batchSealing = false,
+                                batchSealFailures = failures,
+                                error = failures.joinToString("\n") { row ->
+                                    row.explain?.title ?: "${row.manifestId}: ${row.status}"
+                                },
+                                errorExplain = failures.firstNotNullOfOrNull { row -> row.explain },
+                            )
+                        }
+                        return@launch
+                    }
                     _state.update {
                         it.copy(
                             batchSealing = false,
                             manifestSealed = true,
                             batchReadyManifestIds = emptyList(),
+                            batchSealFailures = emptyList(),
                             sealedOrdersByTruck = emptyMap(),
                             manifest = it.manifest?.copy(state = "SEALED"),
                         )
                     }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(batchSealing = false, error = e.message ?: "Batch seal failed") }
+                    val parsed = parseApiErrorPayload(e)
+                    _state.update {
+                        it.copy(
+                            batchSealing = false,
+                            error = parsed.message,
+                            errorExplain = parsed.explain,
+                        )
+                    }
                 }
         }
+    }
+
+    fun handleHandoffLink(link: String) {
+        when (val dest = HandoffPathResolver.resolve(link)) {
+            HandoffDestination.TruckList -> {
+                _state.update { it.copy(showNotificationsPanel = false) }
+            }
+            is HandoffDestination.ManifestDetail -> viewModelScope.launch {
+                runCatching { repository.loadSupplierManifestDetail(dest.manifestId) }
+                    .onSuccess { manifest ->
+                        val truckId = manifest.truckId.takeIf { it.isNotBlank() }
+                        if (truckId == null) {
+                            _state.update {
+                                it.copy(
+                                    showNotificationsPanel = false,
+                                    handoffNavigationMessage = "Open in portal — no native route for this link",
+                                )
+                            }
+                            return@onSuccess
+                        }
+                        _state.update { it.copy(showNotificationsPanel = false) }
+                        selectTruck(truckId)
+                    }
+                    .onFailure {
+                        _state.update {
+                            it.copy(
+                                showNotificationsPanel = false,
+                                handoffNavigationMessage = "Open in portal — no native route for this link",
+                            )
+                        }
+                    }
+            }
+            is HandoffDestination.OrderDetail -> {
+                _state.update { it.copy(showNotificationsPanel = false) }
+                if (_state.value.orders.any { it.orderId == dest.orderId }) {
+                    selectOrder(dest.orderId)
+                } else {
+                    _state.update { it.copy(handoffNavigationMessage = "Open in portal — order not on this truck") }
+                }
+            }
+            HandoffDestination.Unresolved -> {
+                _state.update {
+                    it.copy(
+                        showNotificationsPanel = false,
+                        handoffNavigationMessage = "Open in portal — no native route for this link",
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearHandoffNavigationMessage() {
+        _state.update { it.copy(handoffNavigationMessage = null) }
     }
 
     fun refreshManifest() {

@@ -48,6 +48,13 @@ struct MainTabView: View {
                         Tab("Home", systemImage: "house.fill", value: .home) {
                             HomeView(vm: vm, onOpenMap: {
                                 withAnimation(Anim.snappy) { selectedTab = .map }
+                            }, onHandoffNavigate: { dest in
+                                switch dest {
+                                case .home: selectedTab = .home
+                                case .fleetMap: selectedTab = .map
+                                case .manifestList, .manifestDetail, .orderDetail: selectedTab = .rides
+                                case .unresolved: break
+                                }
                             })
                         }
 

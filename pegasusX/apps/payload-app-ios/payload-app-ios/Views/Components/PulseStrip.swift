@@ -84,6 +84,7 @@ struct ExplainStatusBanner: View {
 
 struct HandoffInboxCard: View {
     let metadata: HandoffCardMetadata
+    var onAction: ((String) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -97,6 +98,16 @@ struct HandoffInboxCard: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            }
+            if let link = metadata.primaryLink, !link.isEmpty {
+                Button {
+                    onAction?(link)
+                } label: {
+                    Text(metadata.primaryCta ?? "Open")
+                        .font(.caption.bold())
+                        .foregroundStyle(Color.accentColor)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(10)

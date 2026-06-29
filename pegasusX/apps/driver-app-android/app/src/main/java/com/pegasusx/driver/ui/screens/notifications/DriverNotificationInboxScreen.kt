@@ -54,6 +54,8 @@ import java.time.Instant
 @Composable
 fun DriverNotificationInboxScreen(
     onBack: () -> Unit,
+    onHandoffAction: (String) -> Unit = {},
+    onHandoffUnresolved: () -> Unit = {},
     viewModel: DriverNotificationInboxViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -130,7 +132,12 @@ fun DriverNotificationInboxScreen(
             else -> {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(state.items, key = { it.id }) { notif ->
-                        DriverNotificationRow(notif) { if (notif.readAt == null) viewModel.markRead(notif.id) }
+                        DriverNotificationRow(
+                            notification = notif,
+                            onClick = { if (notif.readAt == null) viewModel.markRead(notif.id) },
+                            onHandoffAction = onHandoffAction,
+                            onHandoffUnresolved = onHandoffUnresolved,
+                        )
                         HorizontalDivider()
                     }
                 }
@@ -140,7 +147,12 @@ fun DriverNotificationInboxScreen(
 }
 
 @Composable
-private fun DriverNotificationRow(notification: DriverNotificationItem, onClick: () -> Unit) {
+private fun DriverNotificationRow(
+    notification: DriverNotificationItem,
+    onClick: () -> Unit,
+    onHandoffAction: (String) -> Unit,
+    onHandoffUnresolved: () -> Unit,
+) {
     val isUnread = notification.readAt == null
     val bg = if (isUnread) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surface
     val icon = typeIcon(notification.type)
@@ -158,7 +170,13 @@ private fun DriverNotificationRow(notification: DriverNotificationItem, onClick:
             }
             Text(notification.body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
             notification.handoffMetadata?.let { metadata ->
-                HandoffInboxCard(metadata = metadata, modifier = Modifier.padding(top = 8.dp))
+                HandoffInboxCard(
+                    metadata = metadata,
+                    modifier = Modifier.padding(top = 8.dp),
+                    onAction = { link ->
+                        if (link.isNotBlank()) onHandoffAction(link) else onHandoffUnresolved()
+                    },
+                )
             }
         }
         if (isUnread) {

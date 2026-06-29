@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
+import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
@@ -72,14 +74,21 @@ export default function ManifestDetailPage() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fetchExplain, setFetchExplain] = useState<StatusExplain | null>(null);
+  const [actionExplain, setActionExplain] = useState<StatusExplain | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     setError(null);
+    setFetchExplain(null);
     try {
       const res = await apiFetch(`/v1/factory/manifests/${id}`);
-      if (!res.ok) throw new Error(`Unable to load manifest (${res.status})`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setFetchExplain(explainFromApiError(body));
+        throw new Error(body.error || `Unable to load manifest (${res.status})`);
+      }
       setDetail(await res.json());
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unable to load manifest');
@@ -111,6 +120,7 @@ export default function ManifestDetailPage() {
     const next = nextManifestLifecycleAction(detail.manifest.state);
     if (!next) return;
     setActing(true);
+    setActionExplain(null);
     try {
       const idempotencyKey = manifestTransitionIdempotencyKey(
         detail.manifest.manifest_id,
@@ -127,6 +137,7 @@ export default function ManifestDetailPage() {
       });
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
+        setActionExplain(explainFromApiError(payload));
         throw new Error(payload.message || payload.error || `Transition failed (${res.status})`);
       }
       toast(`${next.label} applied`, 'success');
@@ -152,7 +163,7 @@ export default function ManifestDetailPage() {
     return (
       <PageTransition>
         <PageChrome icon="manifests" title="Manifest detail" error={error || 'Manifest not found'}>
-          <span />
+          {fetchExplain ? <ExplainStatusBanner explain={fetchExplain} /> : null}
         </PageChrome>
       </PageTransition>
     );
@@ -169,6 +180,7 @@ export default function ManifestDetailPage() {
         description={`Route ${detail.route_id || '—'} · ${detail.order_count ?? detail.transfers.length} orders · ${detail.stop_count ?? '—'} stops`}
         actions={<span className={`status-chip ${stateClass(detail.manifest.state)}`}>{detail.manifest.state}</span>}
       >
+      {actionExplain ? <ExplainStatusBanner explain={actionExplain} className="mb-4" /> : null}
       <Link href="/manifests" className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]">← Back to manifests</Link>
       <div className="mt-6 space-y-6">
 

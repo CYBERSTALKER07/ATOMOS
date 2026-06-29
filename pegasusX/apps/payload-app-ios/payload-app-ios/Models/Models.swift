@@ -163,9 +163,11 @@ struct SealCompletedManifestsResponse: Decodable {
 struct SealCompletedManifestResult: Decodable {
     let manifestId: String?
     let status: String?
+    let explain: StatusExplain?
     enum CodingKeys: String, CodingKey {
         case manifestId = "manifest_id"
         case status
+        case explain
     }
 }
 

@@ -19,6 +19,9 @@ importers:
       '@pegasusx/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@pegasusx/explain-ui':
+        specifier: workspace:*
+        version: link:../../packages/explain-ui
       '@pegasusx/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n

@@ -19,6 +19,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 
 	"cloud.google.com/go/spanner"
@@ -942,7 +943,7 @@ func (s *Service) HandleManifestDetail(w http.ResponseWriter, r *http.Request) {
 	idx := s.findManifestIndexLocked(manifestID)
 	if idx < 0 {
 		s.mu.Unlock()
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "manifest_not_found"})
+		platform.WriteErrorWithExplain(w, http.StatusNotFound, "manifest_not_found", nil)
 		return
 	}
 	snapshot := s.manifestDetailSnapshotLocked(s.manifests[idx])
@@ -1043,10 +1044,10 @@ func (s *Service) handleManifestTransition(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		if err.Error() == "manifest_not_found" {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "manifest_not_found"})
+			platform.WriteErrorWithExplain(w, http.StatusNotFound, "manifest_not_found", err)
 			return
 		}
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "transition_failed"})
+		platform.WriteErrorWithExplain(w, http.StatusInternalServerError, "transition_failed", err)
 		return
 	}
 
@@ -1253,7 +1254,7 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		})
 	})
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dispatch_failed"})
+		platform.WriteErrorWithExplain(w, http.StatusInternalServerError, "dispatch_failed", err)
 		return
 	}
 

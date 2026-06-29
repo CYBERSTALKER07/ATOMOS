@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
+import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
@@ -35,6 +37,7 @@ export default function LoadingBayPage() {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [dispatching, setDispatching] = useState(false);
+  const [dispatchExplain, setDispatchExplain] = useState<StatusExplain | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -93,6 +96,7 @@ export default function LoadingBayPage() {
 
   async function handleDispatch() {
     setDispatching(true);
+    setDispatchExplain(null);
     try {
       const res = await apiFetch('/v1/factory/dispatch', { method: 'POST' });
       if (res.ok) {
@@ -101,6 +105,7 @@ export default function LoadingBayPage() {
         load();
       } else {
         const err = await res.json().catch(() => ({}));
+        setDispatchExplain(explainFromApiError(err));
         toast(err.error || 'Dispatch failed', 'error');
       }
     } catch {
@@ -138,6 +143,9 @@ export default function LoadingBayPage() {
           </div>
         }
       >
+        {dispatchExplain ? (
+          <ExplainStatusBanner explain={dispatchExplain} className="mb-4" />
+        ) : null}
         <KpiStatGrid columns={4}>
           <KpiStatCard label="Ready to load" value={readyCount} sub="Awaiting operator attention" />
           <KpiStatCard label="Now loading" value={loadingCount} sub="Active bay work" />

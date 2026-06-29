@@ -137,6 +137,7 @@ data class SealCompletedManifestsResponse(
 data class SealCompletedManifestResult(
     @SerialName("manifest_id") val manifestId: String = "",
     val status: String = "",
+    val explain: StatusExplain? = null,
 )
 
 // ─── Exception ───────────────────────────────────────────────────────────────

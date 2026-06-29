@@ -32,6 +32,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,9 +80,19 @@ fun MainTabView(
     profileContent: @Composable () -> Unit,
     activeRideBar: (@Composable (onOpenMap: () -> Unit) -> Unit)? = null,
     windowSizeClass: WindowSizeClass? = null,
+    requestedTab: AppTab? = null,
+    onRequestedTabConsumed: () -> Unit = {},
 ) {
     var selectedTab by remember { mutableStateOf(AppTab.HOME) }
     val openMapTab: () -> Unit = { selectedTab = AppTab.MAP }
+
+    LaunchedEffect(requestedTab) {
+        when (requestedTab) {
+            AppTab.HOME, AppTab.MAP, AppTab.RIDES, AppTab.PROFILE -> selectedTab = requestedTab
+            null -> Unit
+        }
+        if (requestedTab != null) onRequestedTabConsumed()
+    }
     val useRail = windowSizeClass?.widthSizeClass != null &&
         windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
     var isRailExpanded by remember { mutableStateOf(true) }

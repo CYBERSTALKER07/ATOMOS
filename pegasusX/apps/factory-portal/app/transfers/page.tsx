@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
+import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { downloadCsv } from '@/lib/csv';
 import { usePagination } from '@/lib/use-pagination';
@@ -53,11 +55,13 @@ export default function TransfersPage() {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fetchExplain, setFetchExplain] = useState<StatusExplain | null>(null);
   const [stateFilter, setStateFilter] = useState('ALL');
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setFetchExplain(null);
     try {
       const query = stateFilter !== 'ALL' ? `?state=${stateFilter}` : '';
       const res = await apiFetch(`/v1/factory/transfers${query}`);
@@ -65,7 +69,9 @@ export default function TransfersPage() {
         const data = await res.json();
         setTransfers(data.transfers || []);
       } else {
-        setError(`Unable to load transfers (${res.status}).`);
+        const body = await res.json().catch(() => ({}));
+        setFetchExplain(explainFromApiError(body));
+        setError(body.error || `Unable to load transfers (${res.status}).`);
       }
     } catch {
       setError('Unable to load transfers right now.');
@@ -161,6 +167,7 @@ export default function TransfersPage() {
           </div>
         }
       >
+        {fetchExplain ? <ExplainStatusBanner explain={fetchExplain} className="mb-4" /> : null}
         <KpiStatGrid columns={4}>
           <KpiStatCard
             label="Visible transfers"

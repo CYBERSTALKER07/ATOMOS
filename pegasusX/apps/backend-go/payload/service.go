@@ -1575,11 +1575,17 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 		})
 		switch {
 		case err == http.ErrMissingFile:
-			results = append(results, map[string]any{"manifest_id": manifestID, "status": "not_found"})
+			row := map[string]any{"manifest_id": manifestID, "status": "not_found"}
+			platform.AttachExplainToMap(row, "manifest_not_found")
+			results = append(results, row)
 		case err == http.ErrBodyNotAllowed:
-			results = append(results, map[string]any{"manifest_id": manifestID, "status": "not_sealable"})
+			row := map[string]any{"manifest_id": manifestID, "status": "not_sealable"}
+			platform.AttachExplainToMap(row, "manifest_not_sealable")
+			results = append(results, row)
 		case err != nil:
-			results = append(results, map[string]any{"manifest_id": manifestID, "status": "seal_failed"})
+			row := map[string]any{"manifest_id": manifestID, "status": "seal_failed"}
+			platform.AttachExplainToMap(row, "manifest_seal_failed")
+			results = append(results, row)
 		default:
 			sealedCount++
 			if s.manifestStore != nil {

@@ -92,6 +92,48 @@ var explainCatalog = map[string]StatusExplain{
 		NextSteps:   []string{"Finish loading and per-order seals", "Refresh the manifest before retrying"},
 		Recoverable: true,
 	},
+	"manifest_not_found": {
+		Code: "manifest_not_found", Title: "Manifest not found",
+		Summary:     "This manifest is no longer available or was removed before the seal could complete.",
+		NextSteps:   []string{"Refresh the truck list", "Confirm the manifest still exists in the loading bay"},
+		Recoverable: true,
+	},
+	"transfer_not_ready": {
+		Code: "transfer_not_ready", Title: "Transfer not ready",
+		Summary:     "This transfer is not in a state that allows the requested action.",
+		NextSteps:   []string{"Wait for warehouse approval", "Refresh the transfer list"},
+		Recoverable: true,
+	},
+	"loading_bay_blocked": {
+		Code: "loading_bay_blocked", Title: "Loading bay blocked",
+		Summary:     "Dispatch cannot proceed until approved transfers finish loading or blocking issues are cleared.",
+		NextSteps:   []string{"Complete in-progress loading", "Resolve manifest exceptions before retrying dispatch"},
+		Recoverable: true,
+	},
+	"manifest_not_mutable": {
+		Code: "manifest_not_mutable", Title: "Manifest not mutable",
+		Summary:     "This manifest has left the editable loading state and cannot accept changes.",
+		NextSteps:   []string{"Open a draft manifest for new transfers", "Contact operations if the manifest should still be editable"},
+		Recoverable: false,
+	},
+	"invalid_transfer_transition": {
+		Code: "invalid_transfer_transition", Title: "Invalid transfer transition",
+		Summary:     "The requested transfer state change is not allowed from the current state.",
+		NextSteps:   []string{"Refresh the transfer", "Follow the loading-bay workflow order"},
+		Recoverable: true,
+	},
+	"dispatch_failed": {
+		Code: "dispatch_failed", Title: "Dispatch failed",
+		Summary:     "The loading bay could not create manifests for the approved transfers.",
+		NextSteps:   []string{"Review approved transfers", "Retry dispatch after refreshing the loading bay"},
+		Recoverable: true,
+	},
+	"transition_failed": {
+		Code: "transition_failed", Title: "Manifest transition failed",
+		Summary:     "The manifest could not move to the requested lifecycle state.",
+		NextSteps:   []string{"Refresh manifest detail", "Verify loading and seal steps are complete"},
+		Recoverable: true,
+	},
 }
 
 // ExplainForError maps an error or error code string to guidance copy.
@@ -127,6 +169,19 @@ func ExplainForCode(code string) *StatusExplain {
 		return ExplainForCode("preorder_edit_locked")
 	}
 	return nil
+}
+
+// AttachExplainToMap adds catalog guidance under `explain` when absent.
+func AttachExplainToMap(body map[string]any, code string) {
+	if body == nil {
+		return
+	}
+	if _, ok := body["explain"]; ok {
+		return
+	}
+	if ex := ExplainForCode(code); ex != nil {
+		body["explain"] = ex
+	}
 }
 
 // AttachExplain adds an `explain` field to a JSON error body map.

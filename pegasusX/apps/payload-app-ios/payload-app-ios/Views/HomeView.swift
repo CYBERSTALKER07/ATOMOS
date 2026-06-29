@@ -193,6 +193,15 @@ private struct HomeSheetsModifier: ViewModifier {
                 actions: { Button("OK", role: .cancel) { viewModel.clearEscalatedMessage() } },
                 message: { Text(viewModel.escalatedMessage ?? "") }
             )
+            .alert(
+                "Handoff",
+                isPresented: Binding(
+                    get: { viewModel.handoffNavigationMessage != nil },
+                    set: { if !$0 { viewModel.clearHandoffNavigationMessage() } }
+                ),
+                actions: { Button("OK", role: .cancel) { viewModel.clearHandoffNavigationMessage() } },
+                message: { Text(viewModel.handoffNavigationMessage ?? "") }
+            )
             .sheet(isPresented: Binding(
                 get: { viewModel.showNotificationsPanel },
                 set: { viewModel.showNotificationsPanel = $0 }
@@ -430,6 +439,16 @@ private struct TruckSidebar: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(viewModel.batchSealing)
+                        ForEach(viewModel.batchSealFailures.indices, id: \.self) { idx in
+                            let row = viewModel.batchSealFailures[idx]
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("\(row.manifestId ?? "manifest"): \(row.status ?? "failed")")
+                                    .font(.caption.monospaced())
+                                if let explain = row.explain {
+                                    ExplainStatusBanner(explain: explain)
+                                }
+                            }
+                        }
                     }
                     .padding(.vertical, 4)
                 }
@@ -1529,6 +1548,8 @@ private struct NotificationsSheet: View {
                         ForEach(viewModel.notifications) { n in
                             NotificationRow(item: n) {
                                 if n.isUnread { viewModel.markNotificationRead(n.notificationId) }
+                            } onHandoffAction: { link in
+                                Task { await viewModel.handleHandoffLink(link) }
                             }
                         }
                     }
@@ -1609,6 +1630,8 @@ private struct ManifestExceptionsSheet: View {
 private struct NotificationRow: View {
     let item: NotificationItem
     let onTap: () -> Void
+    var onHandoffAction: ((String) -> Void)? = nil
+
     var body: some View {
         Button(action: onTap) {
             HStack(alignment: .top, spacing: 12) {
@@ -1623,7 +1646,7 @@ private struct NotificationRow: View {
                         Text(item.body).font(.subheadline).foregroundStyle(.secondary)
                     }
                     if let handoff = item.handoffMetadata {
-                        HandoffInboxCard(metadata: handoff)
+                        HandoffInboxCard(metadata: handoff, onAction: onHandoffAction)
                     }
                     if !item.createdAt.isEmpty {
                         Text(item.createdAt).font(.caption2).foregroundStyle(.tertiary)

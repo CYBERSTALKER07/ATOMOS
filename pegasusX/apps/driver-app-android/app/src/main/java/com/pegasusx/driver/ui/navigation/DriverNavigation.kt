@@ -43,6 +43,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import java.net.URLEncoder
 import androidx.compose.material3.Button
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
@@ -115,6 +117,8 @@ fun DriverNavigation(
     windowSizeClass: WindowSizeClass? = null,
 ) {
     val navController = rememberNavController()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var handoffTabRequest by remember { mutableStateOf<AppTab?>(null) }
     val startDest = if (TokenHolder.token != null) DriverRoutes.MAIN else DriverRoutes.LOGIN
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
@@ -255,6 +259,8 @@ fun DriverNavigation(
                     order.longitude != null
             }
             MainTabView(
+                requestedTab = handoffTabRequest,
+                onRequestedTabConsumed = { handoffTabRequest = null },
                 homeContent = {
                     HomeScreen(
                         api = api,
@@ -326,7 +332,43 @@ fun DriverNavigation(
         }
 
         composable(DriverRoutes.NOTIFICATIONS) {
-            DriverNotificationInboxScreen(onBack = { navController.popBackStack() })
+            DriverNotificationInboxScreen(
+                onBack = { navController.popBackStack() },
+                onHandoffAction = { link ->
+                    when (val dest = HandoffPathResolver.resolve(link)) {
+                        HandoffDestination.FleetMap -> {
+                            handoffTabRequest = AppTab.MAP
+                            navController.popBackStack()
+                        }
+                        HandoffDestination.Home -> {
+                            handoffTabRequest = AppTab.HOME
+                            navController.popBackStack()
+                        }
+                        HandoffDestination.ManifestList -> {
+                            handoffTabRequest = AppTab.RIDES
+                            navController.popBackStack()
+                        }
+                        is HandoffDestination.ManifestDetail -> {
+                            handoffTabRequest = AppTab.RIDES
+                            navController.popBackStack()
+                        }
+                        is HandoffDestination.OrderDetail -> {
+                            navController.popBackStack()
+                            navController.navigate(DriverRoutes.correctionRoute(dest.orderId, ""))
+                        }
+                        HandoffDestination.Unresolved -> {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Open in portal — no native route for this link")
+                            }
+                        }
+                    }
+                },
+                onHandoffUnresolved = {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Open in portal — no native route for this link")
+                    }
+                },
+            )
         }
 
         composable(
@@ -432,6 +474,8 @@ fun DriverNavigation(
                 }
             )
         }
+    }
+        SnackbarHost(hostState = snackbarHostState)
     }
 }
 

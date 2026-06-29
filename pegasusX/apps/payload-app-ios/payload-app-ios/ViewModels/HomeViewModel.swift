@@ -80,6 +80,8 @@ final class HomeViewModel {
     private var sealedOrdersByTruck: [String: Set<String>] = [:]
     private(set) var batchReadyManifestIds: [String] = []
     private(set) var batchSealing = false
+    private(set) var batchSealFailures: [SealCompletedManifestResult] = []
+    var handoffNavigationMessage: String?
 
     private let api: APIClient
     private let ws: WebSocketClient
@@ -193,9 +195,18 @@ final class HomeViewModel {
         guard batchReadyManifestIds.count > 1, !batchSealing else { return }
         batchSealing = true
         error = nil
+        errorExplain = nil
+        batchSealFailures = []
         defer { batchSealing = false }
         do {
-            _ = try await api.sealCompletedManifests(manifestIds: batchReadyManifestIds)
+            let response = try await api.sealCompletedManifests(manifestIds: batchReadyManifestIds)
+            let failures = (response.results ?? []).filter { ($0.status ?? "") != "sealed" && !($0.status ?? "").isEmpty }
+            if !failures.isEmpty {
+                batchSealFailures = failures
+                error = failures.compactMap { $0.explain?.title ?? $0.manifestId }.joined(separator: "\n")
+                errorExplain = failures.compactMap(\.explain).first
+                return
+            }
             manifestSealed = true
             batchReadyManifestIds = []
             sealedOrdersByTruck = [:]
@@ -203,6 +214,39 @@ final class HomeViewModel {
         } catch {
             self.error = describe(error)
         }
+    }
+
+    func handleHandoffLink(_ link: String) async {
+        switch HandoffPathResolver.resolve(link) {
+        case .truckList:
+            showNotificationsPanel = false
+        case .manifestDetail(let manifestId):
+            showNotificationsPanel = false
+            do {
+                let detail = try await api.supplierManifestDetail(manifestId)
+                if let truckId = detail.truckId, !truckId.isEmpty {
+                    await selectTruck(truckId)
+                } else {
+                    handoffNavigationMessage = "Open in portal — no native route for this link"
+                }
+            } catch {
+                handoffNavigationMessage = "Open in portal — no native route for this link"
+            }
+        case .orderDetail(let orderId):
+            showNotificationsPanel = false
+            if orders.contains(where: { $0.orderId == orderId }) {
+                selectedOrderId = orderId
+            } else {
+                handoffNavigationMessage = "Open in portal — order not on this truck"
+            }
+        case .unresolved:
+            showNotificationsPanel = false
+            handoffNavigationMessage = "Open in portal — no native route for this link"
+        }
+    }
+
+    func clearHandoffNavigationMessage() {
+        handoffNavigationMessage = nil
     }
 
     private func loadManifest(for truckId: String) async {

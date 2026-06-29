@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { usePolling } from '@pegasusx/api-client';
+import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
+import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
@@ -66,6 +68,7 @@ export default function ManifestExceptionsPage() {
   const [loading, setLoading] = useState(true);
   const [escalatedOnly, setEscalatedOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fetchExplain, setFetchExplain] = useState<StatusExplain | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [isOffline, setIsOffline] = useState(() => (typeof navigator === 'undefined' ? false : !navigator.onLine));
@@ -84,7 +87,9 @@ export default function ManifestExceptionsPage() {
       const qs = escalatedOnly ? '?escalated=true' : '';
       const res = await apiFetch(`/v1/factory/manifest-exceptions${qs}`);
       if (!res.ok) {
-        throw new Error(`Factory API responded with ${res.status}`);
+        const body = await res.json().catch(() => ({}));
+        setFetchExplain(explainFromApiError(body));
+        throw new Error(body.error || `Factory API responded with ${res.status}`);
       }
       const data = await res.json();
       const next: ManifestException[] = data.exceptions || [];
@@ -189,6 +194,7 @@ export default function ManifestExceptionsPage() {
         }
       >
         <FactoryRuntimeBanner tone={runtimeTone} message={runtimeMessage} />
+        {fetchExplain ? <ExplainStatusBanner explain={fetchExplain} className="mt-4" /> : null}
 
         <div className="mt-4">
         <KpiStatGrid columns={4}>

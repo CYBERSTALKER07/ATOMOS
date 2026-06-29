@@ -89,6 +89,7 @@ struct ExplainStatusBanner: View {
 
 struct HandoffInboxCard: View {
     let metadata: HandoffCardMetadata
+    var onAction: ((String) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -107,9 +108,14 @@ struct HandoffInboxCard: View {
                 }
             }
             if let link = metadata.primaryLink, !link.isEmpty {
-                Text(metadata.primaryCta ?? "Open")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(LabTheme.transit)
+                Button {
+                    onAction?(link)
+                } label: {
+                    Text(metadata.primaryCta ?? "Open")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(LabTheme.transit)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(10)

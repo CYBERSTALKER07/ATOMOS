@@ -129,6 +129,7 @@ private struct EmptyResponse: Decodable {}
 // MARK: - View
 
 struct DriverNotificationInboxView: View {
+    var onHandoffAction: ((String) -> Void)? = nil
     @State private var vm = DriverNotificationInboxViewModel()
     @Environment(\.dismiss) private var dismiss
 
@@ -159,7 +160,13 @@ struct DriverNotificationInboxView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List(vm.items) { notif in
-                        DriverNotifRow(notification: notif)
+                        DriverNotifRow(
+                            notification: notif,
+                            onHandoffAction: { link in
+                                dismiss()
+                                onHandoffAction?(link)
+                            }
+                        )
                             .listRowBackground(notif.isUnread ? Color(.systemGray6) : Color.clear)
                             .onTapGesture {
                                 if notif.isUnread {
@@ -197,6 +204,7 @@ struct DriverNotificationInboxView: View {
 
 private struct DriverNotifRow: View {
     let notification: DriverNotification
+    var onHandoffAction: ((String) -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -228,7 +236,7 @@ private struct DriverNotifRow: View {
                     .foregroundStyle(LabTheme.fgSecondary)
                     .lineLimit(2)
                 if let handoff = notification.handoffMetadata {
-                    HandoffInboxCard(metadata: handoff)
+                    HandoffInboxCard(metadata: handoff, onAction: onHandoffAction)
                         .padding(.top, 4)
                 }
             }

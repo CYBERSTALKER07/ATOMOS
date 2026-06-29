@@ -1290,6 +1290,70 @@ func TestHandleApplyReassign_ReplayAfterSuccessIdempotent(t *testing.T) {
 	}
 }
 
+func TestHandleSealCompletedManifests_AttachesExplainOnFailedRows(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	cacheBackend := &payloadCacheBackendSpy{}
+	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	sealedIdx := svc.findManifestIndexLocked("mf_payload_2")
+	if sealedIdx < 0 {
+		svc.mu.Unlock()
+		t.Fatal("expected demo manifest mf_payload_2")
+	}
+	svc.manifests[sealedIdx].State = payloadManifestStateSealed
+	svc.mu.Unlock()
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/v1/payloader/manifests/seal-completed",
+		strings.NewReader(`{"manifest_ids":["missing_manifest","mf_payload_2"]}`),
+	)
+	rr := httptest.NewRecorder()
+	svc.HandleSealCompletedManifests(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	rawResults, ok := body["results"].([]any)
+	if !ok || len(rawResults) != 2 {
+		t.Fatalf("expected 2 batch results, got %#v", body["results"])
+	}
+
+	assertBatchExplain := func(manifestID, status, code string) {
+		t.Helper()
+		for _, raw := range rawResults {
+			row, ok := raw.(map[string]any)
+			if !ok || row["manifest_id"] != manifestID {
+				continue
+			}
+			if row["status"] != status {
+				t.Fatalf("manifest %s expected status %s, got %#v", manifestID, status, row["status"])
+			}
+			explain, ok := row["explain"].(map[string]any)
+			if !ok {
+				t.Fatalf("manifest %s missing explain on %s row", manifestID, status)
+			}
+			if got, _ := explain["code"].(string); got != code {
+				t.Fatalf("manifest %s expected explain code %s, got %#v", manifestID, code, explain["code"])
+			}
+			if title, _ := explain["title"].(string); title == "" {
+				t.Fatalf("manifest %s explain title required", manifestID)
+			}
+			return
+		}
+		t.Fatalf("result row for manifest %s not found", manifestID)
+	}
+
+	assertBatchExplain("missing_manifest", "not_found", "manifest_not_found")
+	assertBatchExplain("mf_payload_2", "not_sealable", "manifest_not_sealable")
+}
+
 func newPayloadTestService(repo *payloadRepoSpy, cacheBackend *payloadCacheBackendSpy) *Service {
 	_ = os.Setenv("PAYLOAD_PORTAL_SEED", "true")
 	now := time.Date(2026, 5, 17, 11, 0, 0, 0, time.UTC)

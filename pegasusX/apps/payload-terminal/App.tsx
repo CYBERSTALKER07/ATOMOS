@@ -199,6 +199,11 @@ export default function App() {
   const [sealedOrdersByTruck, setSealedOrdersByTruck] = useState<Record<string, string[]>>({});
   const [batchReadyManifestIds, setBatchReadyManifestIds] = useState<string[]>([]);
   const [batchSealing, setBatchSealing] = useState(false);
+  const [batchSealFailures, setBatchSealFailures] = useState<Array<{
+    manifest_id?: string;
+    status?: string;
+    explain?: StatusExplain;
+  }>>([]);
 
   // UI state
   const [workspaceMode, setWorkspaceMode] = useState<'outbound' | 'inbound'>('outbound');
@@ -1367,6 +1372,7 @@ export default function App() {
     if (batchReadyManifestIds.length < 2 || batchSealing || !token) return;
     setBatchSealing(true);
     setSealExplain(null);
+    setBatchSealFailures([]);
     const manifestCount = batchReadyManifestIds.length;
     try {
       const data = await PayloadTerminalApi.sealCompletedManifests(
@@ -1374,6 +1380,22 @@ export default function App() {
         batchReadyManifestIds,
         payloadSealCompletedKey(batchReadyManifestIds),
       );
+      const failures = Array.isArray(data.results)
+        ? data.results.filter((row: { status?: string }) => row.status && row.status !== 'sealed')
+        : [];
+      if (failures.length > 0) {
+        setBatchSealFailures(failures);
+        const firstExplain = failures.find((row: { explain?: StatusExplain }) => row.explain)?.explain ?? null;
+        setSealExplain(firstExplain);
+        showToast(
+          tx('payload.alert.seal_failed'),
+          failures.map((row: { manifest_id?: string; status?: string; explain?: StatusExplain }) =>
+            row.explain?.title ?? `${row.manifest_id ?? 'manifest'}: ${row.status ?? 'failed'}`
+          ).join(' · '),
+          'error',
+        );
+        return;
+      }
       setBatchReadyManifestIds([]);
       setAllSealed(true);
       setManifestState('SEALED');
@@ -1947,6 +1969,14 @@ export default function App() {
                 {batchSealing ? (isIOS ? 'Finalizing…' : 'FINALIZING…') : (isIOS ? 'Seal all trucks' : 'SEAL ALL TRUCKS')}
               </Text>
             </Pressable>
+            {batchSealFailures.map((row, idx) => (
+              <View key={`${row.manifest_id ?? 'manifest'}-${idx}`} style={{ marginTop: 8 }}>
+                <Text style={{ fontSize: 11, color: T.colors.secondaryLabel, marginBottom: 4 }}>
+                  {(row.manifest_id ?? 'manifest').slice(0, 12)} · {row.status ?? 'failed'}
+                </Text>
+                {row.explain ? <ExplainStatusBanner explain={row.explain} /> : null}
+              </View>
+            ))}
           </View>
         )}
 
