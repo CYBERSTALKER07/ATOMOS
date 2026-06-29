@@ -74,6 +74,24 @@ var explainCatalog = map[string]StatusExplain{
 		DeepLink:    "/exceptions/shop-closed",
 		Recoverable: true,
 	},
+	"AWAITING_PAYLOAD_SEAL": {
+		Code: "AWAITING_PAYLOAD_SEAL", Title: "Awaiting payload seal",
+		Summary:     "The manifest is still being loaded. The payloader must finish tap-check and seal before the driver can depart.",
+		NextSteps:   []string{"Wait for the payloader to seal the manifest", "Contact the loading bay if loading is complete"},
+		Recoverable: true,
+	},
+	"manifest_seal_failed": {
+		Code: "manifest_seal_failed", Title: "Manifest seal failed",
+		Summary:     "The server could not seal this manifest. Review manifest state and retry.",
+		NextSteps:   []string{"Confirm every order is sealed", "Retry seal after refreshing the manifest"},
+		Recoverable: true,
+	},
+	"manifest_not_sealable": {
+		Code: "manifest_not_sealable", Title: "Manifest not sealable",
+		Summary:     "This manifest is not in a state that allows sealing.",
+		NextSteps:   []string{"Finish loading and per-order seals", "Refresh the manifest before retrying"},
+		Recoverable: true,
+	},
 }
 
 // ExplainForError maps an error or error code string to guidance copy.

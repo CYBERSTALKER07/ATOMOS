@@ -18,6 +18,7 @@ import com.pegasusx.driver.data.model.OrderState
 import com.pegasusx.driver.data.model.PendingCollection
 import com.pegasusx.driver.data.model.RouteCoordinate
 import com.pegasusx.driver.data.model.RouteStep
+import com.pegasusx.driver.data.model.StatusExplain
 import com.pegasusx.driver.data.model.ReorderStopsRequest
 import com.pegasusx.driver.data.telemetry.NavigationCue
 import com.pegasusx.driver.data.telemetry.NavigationCueAnnouncer
@@ -67,6 +68,7 @@ data class ManifestUiState(
     val manifestSealed: Boolean = false,
     val manifestState: String? = null, // DRAFT | LOADING | SEALED | DISPATCHED
     val awaitingSeal: Boolean = false,  // true when manifest exists but not SEALED
+    val gateExplain: StatusExplain? = null,
     val wsConnectionState: ConnectionState = ConnectionState.DISCONNECTED,
     val lastWsRefreshAt: Long? = null,
     val pendingCollections: List<PendingCollection> = emptyList(),
@@ -331,18 +333,19 @@ class ManifestViewModel @Inject constructor(
             val manifestId = _state.value.manifestId
             if (manifestId != null && !_state.value.manifestSealed) {
                 try {
-                    val gate = api.checkManifestGate(manifestId)
-                    val cleared = gate.cleared
-                    if (!cleared) {
-                        val mState = gate.state
+                    val response = api.checkManifestGate(manifestId)
+                    val gate = response.body()
+                    if (response.isSuccessful && gate?.cleared == true) {
+                        _state.value = _state.value.copy(manifestSealed = true, awaitingSeal = false, gateExplain = null)
+                    } else if (gate != null && !gate.cleared) {
                         _state.value = _state.value.copy(
-                            error = "Cannot depart: manifest is $mState. Wait for Payloader to seal.",
+                            error = gate.message ?: gate.explain?.summary ?: "Cannot depart: manifest is ${gate.state}. Wait for Payloader to seal.",
                             awaitingSeal = true,
-                            manifestState = mState
+                            manifestState = gate.state,
+                            gateExplain = gate.explain,
                         )
                         return@launch
                     }
-                    _state.value = _state.value.copy(manifestSealed = true, awaitingSeal = false)
                 } catch (e: Exception) {
                     // If gate check fails, allow depart (graceful degradation)
                 }

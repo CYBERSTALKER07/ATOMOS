@@ -276,6 +276,7 @@ data class NotificationItem(
     val channel: String = "",
     @SerialName("read_at") val readAt: String? = null,
     @SerialName("created_at") val createdAt: String = "",
+    @SerialName("handoff_metadata") val handoffMetadata: HandoffCardMetadata? = null,
 ) {
     val isUnread: Boolean get() = readAt.isNullOrEmpty()
 }

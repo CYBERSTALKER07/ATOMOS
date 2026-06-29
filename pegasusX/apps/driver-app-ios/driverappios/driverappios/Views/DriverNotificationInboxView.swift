@@ -11,6 +11,7 @@ struct DriverNotification: Identifiable, Decodable {
     let channel: String
     let readAt: String?
     let createdAt: String
+    let handoffMetadata: HandoffCardMetadata?
 
     var isUnread: Bool { readAt == nil }
 
@@ -18,6 +19,7 @@ struct DriverNotification: Identifiable, Decodable {
         case id, type, title, body, payload, channel
         case readAt = "read_at"
         case createdAt = "created_at"
+        case handoffMetadata = "handoff_metadata"
     }
 }
 
@@ -100,7 +102,8 @@ final class DriverNotificationInboxViewModel {
                 id: items[idx].id, type: items[idx].type,
                 title: items[idx].title, body: items[idx].body,
                 payload: items[idx].payload, channel: items[idx].channel,
-                readAt: "now", createdAt: items[idx].createdAt
+                readAt: "now", createdAt: items[idx].createdAt,
+                handoffMetadata: items[idx].handoffMetadata
             )
             unreadCount = max(0, unreadCount - 1)
         }
@@ -113,7 +116,8 @@ final class DriverNotificationInboxViewModel {
             DriverNotification(
                 id: $0.id, type: $0.type, title: $0.title, body: $0.body,
                 payload: $0.payload, channel: $0.channel,
-                readAt: $0.readAt ?? "now", createdAt: $0.createdAt
+                readAt: $0.readAt ?? "now", createdAt: $0.createdAt,
+                handoffMetadata: $0.handoffMetadata
             )
         }
         unreadCount = 0
@@ -223,6 +227,10 @@ private struct DriverNotifRow: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(LabTheme.fgSecondary)
                     .lineLimit(2)
+                if let handoff = notification.handoffMetadata {
+                    HandoffInboxCard(metadata: handoff)
+                        .padding(.top, 4)
+                }
             }
         }
         .padding(.vertical, 4)

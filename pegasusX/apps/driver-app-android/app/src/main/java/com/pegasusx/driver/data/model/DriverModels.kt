@@ -364,9 +364,12 @@ data class LoginRequest(
 
 @Serializable
 data class ManifestGateResponse(
-    val cleared: Boolean,
+    val cleared: Boolean = false,
     val state: String? = null,
-    @SerialName("manifest_id") val manifestId: String? = null
+    @SerialName("manifest_id") val manifestId: String? = null,
+    val error: String? = null,
+    val message: String? = null,
+    val explain: StatusExplain? = null,
 )
 
 @Serializable

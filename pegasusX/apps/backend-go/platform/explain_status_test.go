@@ -32,6 +32,15 @@ func TestAttachExplain_adds_field(t *testing.T) {
 	}
 }
 
+func TestExplainForCode_gate_and_seal(t *testing.T) {
+	for _, code := range []string{"AWAITING_PAYLOAD_SEAL", "manifest_seal_failed", "manifest_not_sealable"} {
+		ex := ExplainForCode(code)
+		if ex == nil || ex.Title == "" || ex.Summary == "" {
+			t.Fatalf("expected catalog entry for %s, got %#v", code, ex)
+		}
+	}
+}
+
 func TestWriteErrorWithExplain(t *testing.T) {
 	rr := httptest.NewRecorder()
 	WriteErrorWithExplain(rr, http.StatusForbidden, "geofence_violation", nil)

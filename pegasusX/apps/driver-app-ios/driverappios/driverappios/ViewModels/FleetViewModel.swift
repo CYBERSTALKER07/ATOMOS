@@ -118,6 +118,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     var manifestSealed = false
     var manifestState: String?
     var awaitingSeal = false
+    var gateExplain: StatusExplain?
 
     // MARK: - Delivery-edge feedback
     var deliveryEdgeError: String?
@@ -344,14 +345,16 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         // LEO: Ghost Stop Prevention — check manifest seal gate before depart
         if let mId = manifestId, !manifestSealed {
             do {
-                let gate = try await APIClient.shared.checkManifestGate(manifestId: mId)
-                if !gate.cleared {
-                    manifestState = gate.state
+                let result = try await APIClient.shared.checkManifestGate(manifestId: mId)
+                if !result.gate.cleared {
+                    manifestState = result.gate.state
                     awaitingSeal = true
+                    gateExplain = result.explain
                     return
                 }
                 manifestSealed = true
                 awaitingSeal = false
+                gateExplain = nil
             } catch {
                 // Graceful degradation — allow depart if gate check fails
             }

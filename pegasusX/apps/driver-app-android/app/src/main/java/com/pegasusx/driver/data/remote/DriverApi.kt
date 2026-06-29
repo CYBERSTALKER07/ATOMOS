@@ -46,6 +46,7 @@ import com.pegasusx.driver.data.model.VerifyHandshakeRequest
 import com.pegasusx.driver.data.model.VerifyHandshakeResponse
 
 import com.pegasusx.driver.ui.screens.notifications.DriverNotificationsResponse
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
@@ -278,7 +279,7 @@ interface DriverApi {
 
     // Check if manifest is sealed before allowing route start
     @GET("v1/driver/manifest-gate")
-    suspend fun checkManifestGate(@Query("manifest_id") manifestId: String): ManifestGateResponse
+    suspend fun checkManifestGate(@Query("manifest_id") manifestId: String): Response<ManifestGateResponse>
 
     // Edge 35: Create split payment
     @POST("v1/delivery/split-payment")

@@ -11,6 +11,7 @@ import com.pegasus.payload.data.model.Manifest
 import com.pegasus.payload.data.model.ManifestExceptionRow
 import com.pegasus.payload.data.model.NotificationItem
 import com.pegasus.payload.data.model.PulseEvent
+import com.pegasus.payload.data.model.parseApiErrorPayload
 import com.pegasus.payload.data.model.QueuedAction
 import com.pegasus.payload.data.model.RecommendReassignResponse
 import com.pegasus.payload.data.model.Truck
@@ -94,6 +95,7 @@ data class HomeUiState(
     val pulseEvents: List<PulseEvent> = emptyList(),
     val pulseLoading: Boolean = false,
     val error: String? = null,
+    val errorExplain: StatusExplain? = null,
 )
 
 @HiltViewModel
@@ -587,7 +589,7 @@ class HomeViewModel @Inject constructor(
         if (_state.value.sealingManifest) return
         val batchIds = _state.value.batchReadyManifestIds
         val manifestIds = if (batchIds.size > 1 && manifestId in batchIds) batchIds else listOf(manifestId)
-        _state.update { it.copy(sealingManifest = true, error = null) }
+        _state.update { it.copy(sealingManifest = true, error = null, errorExplain = null) }
         viewModelScope.launch {
             runCatching { repository.sealCompletedManifests(manifestIds) }
                 .onSuccess { resp ->
@@ -604,7 +606,14 @@ class HomeViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _state.update { it.copy(sealingManifest = false, error = e.message ?: "Manifest seal failed") }
+                    val payload = parseApiErrorPayload(e)
+                    _state.update {
+                        it.copy(
+                            sealingManifest = false,
+                            error = payload.message,
+                            errorExplain = payload.explain,
+                        )
+                    }
                 }
         }
     }
@@ -617,7 +626,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun clearError() {
-        _state.update { it.copy(error = null) }
+        _state.update { it.copy(error = null, errorExplain = null) }
     }
 
     fun clearEscalatedMessage() {

@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.OrderState
 import androidx.compose.material.icons.filled.Refresh
+import com.pegasusx.driver.ui.components.ExplainStatusBanner
 import com.pegasusx.driver.ui.components.DriverLoadingState
 import com.pegasusx.driver.ui.components.DriverStateKind
 import com.pegasusx.driver.ui.components.DriverStatePane
@@ -125,31 +126,14 @@ fun ManifestScreen(
                     // LEO: Ghost Stop Prevention banner
                     if (state.awaitingSeal) {
                         item {
-                            Box(
+                            ExplainStatusBanner(
+                                explain = state.gateExplain,
+                                fallbackTitle = "AWAITING PAYLOAD SEAL",
+                                fallbackDetail = "Manifest is ${state.manifestState ?: "not sealed"}. Payloader must complete loading and seal before you can depart.",
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = PegasusSpacing.s16, vertical = 8.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.errorContainer)
-                                    .padding(16.dp)
-                            ) {
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(
-                                        text = "AWAITING PAYLOAD SEAL",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            fontWeight = FontWeight.Black,
-                                            fontFamily = FontFamily.Monospace,
-                                            letterSpacing = 1.sp
-                                        ),
-                                        color = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                    Text(
-                                        text = "Manifest is ${state.manifestState ?: "not sealed"}. Payloader must complete loading and seal before you can depart.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                }
-                            }
+                                    .padding(horizontal = PegasusSpacing.s16, vertical = 8.dp),
+                            )
                         }
                     }
 

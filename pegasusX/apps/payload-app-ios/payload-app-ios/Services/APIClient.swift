@@ -14,6 +14,7 @@ enum APIError: Error {
     case forbidden
     case httpError(Int)
     case problemDetail(ProblemDetail)
+    case explainError(message: String, explain: StatusExplain?)
     case networkError
     case decodingError
     case invalidURL
@@ -242,6 +243,10 @@ final class APIClient: @unchecked Sendable {
     func notifications(limit: Int = 100, offset: Int = 0) async throws -> NotificationsResponse {
         try await get("v1/user/notifications?limit=\(limit)&offset=\(offset)")
     }
+
+    func pulse() async throws -> PulseResponse {
+        try await get("v1/payloader/pulse")
+    }
     func markRead(ids: [String]?, all: Bool? = nil) async throws -> StatusResponse {
         try await post("v1/user/notifications/read", body: MarkReadRequest(notificationIds: ids, markAll: all))
     }
@@ -422,6 +427,9 @@ final class APIClient: @unchecked Sendable {
             if let p = parseProblem(data) { throw APIError.problemDetail(p) }
             throw APIError.forbidden
         default:
+            if let parsed = ApiExplainParser.parse(from: data) {
+                throw APIError.explainError(message: parsed.message, explain: parsed.explain)
+            }
             if let p = parseProblem(data) { throw APIError.problemDetail(p) }
             throw APIError.httpError(http.statusCode)
         }

@@ -18,6 +18,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -1469,7 +1470,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "target_driver_manifest_mismatch"})
 			return
 		case "target_manifest_capacity_exceeded":
-			writeJSON(w, http.StatusConflict, map[string]string{"error": "target_manifest_capacity_exceeded"})
+			platform.WriteErrorWithExplain(w, http.StatusConflict, "target_manifest_capacity_exceeded", err)
 			return
 		case "reassign_target_unavailable":
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "reassign_target_unavailable"})
@@ -1671,11 +1672,11 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err == http.ErrBodyNotAllowed {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "manifest_not_sealable"})
+		platform.WriteErrorWithExplain(w, http.StatusConflict, "manifest_not_sealable", err)
 		return
 	}
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "manifest_seal_failed"})
+		platform.WriteErrorWithExplain(w, http.StatusInternalServerError, "manifest_seal_failed", err)
 		return
 	}
 
@@ -1773,11 +1774,11 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err == http.ErrBodyNotAllowed {
-			writeJSON(w, http.StatusConflict, map[string]string{"error": "manifest_not_sealable"})
+			platform.WriteErrorWithExplain(w, http.StatusConflict, "manifest_not_sealable", err)
 			return
 		}
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "manifest_seal_failed"})
+			platform.WriteErrorWithExplain(w, http.StatusInternalServerError, "manifest_seal_failed", err)
 			return
 		}
 

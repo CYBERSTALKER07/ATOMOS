@@ -60,15 +60,11 @@ struct RidesListView: View {
 
                 // LEO: Ghost Stop Prevention banner
                 if vm.awaitingSeal {
-                    VStack(alignment: .leading, spacing: LabTheme.s8) {
-                        DriverStatusBadge(text: "AWAITING_SEAL", tint: LabTheme.destructive, large: true)
-                        Text("Manifest is \(vm.manifestState ?? "not sealed"). Payloader must complete loading and seal before you can depart.")
-                            .font(.system(size: 13, weight: .medium))
-                    }
-                    .foregroundStyle(.white)
-                    .padding(LabTheme.s16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(LabTheme.destructive, in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius))
+                    ExplainStatusBanner(
+                        explain: vm.gateExplain,
+                        fallbackTitle: "AWAITING SEAL",
+                        fallbackDetail: "Manifest is \(vm.manifestState ?? "not sealed"). Payloader must complete loading and seal before you can depart."
+                    )
                     .padding(.horizontal, LabTheme.s16)
                     .padding(.bottom, 8)
                 }

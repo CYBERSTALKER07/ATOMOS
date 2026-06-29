@@ -13,6 +13,7 @@ enum APIError: Error {
     case forbidden          // 403
     case httpError(Int)     // other HTTP errors
     case problemDetail(ProblemDetail) // RFC 7807 structured error
+    case explainError(message: String, explain: StatusExplain?)
     case networkError       // connectivity
     case decodingError      // JSON parse failure
     case invalidURL
@@ -293,8 +294,22 @@ final class APIClient: @unchecked Sendable {
     }
 
     /// LEO: Ghost Stop Prevention — check if manifest is sealed before depart
-    func checkManifestGate(manifestId: String) async throws -> ManifestGateResponse {
-        return try await get("v1/driver/manifest-gate?manifest_id=\(manifestId)")
+    func checkManifestGate(manifestId: String) async throws -> ManifestGateResult {
+        let request = try buildRequest(path: "v1/driver/manifest-gate?manifest_id=\(manifestId)", method: "GET")
+        let (data, response) = try await dataWithFallback(for: request)
+        guard let http = response as? HTTPURLResponse else { throw APIError.networkError }
+        if http.statusCode == 200 || http.statusCode == 403 {
+            let gate = try decoder.decode(ManifestGateResponse.self, from: data)
+            let parsed = ApiExplainParser.parse(from: data)
+            return ManifestGateResult(gate: gate, explain: gate.explain ?? parsed?.explain)
+        }
+        if let parsed = ApiExplainParser.parse(from: data) {
+            throw APIError.explainError(message: parsed.message, explain: parsed.explain)
+        }
+        if let problem = Self.parseProblemDetail(data: data, response: http) {
+            throw APIError.problemDetail(problem)
+        }
+        throw APIError.httpError(http.statusCode)
     }
 
     func getFleetManifest() async throws -> [String: AnyDecodable] {
@@ -426,6 +441,10 @@ final class APIClient: @unchecked Sendable {
 
     func getDriverHistory() async throws -> [String: AnyDecodable] {
         return try await get("v1/driver/history")
+    }
+
+    func getPulse() async throws -> PulseResponse {
+        try await get("v1/driver/pulse")
     }
 
     // MARK: - Generic HTTP
@@ -629,11 +648,19 @@ struct ManifestGateResponse: Decodable {
     let cleared: Bool
     let state: String?
     let manifestId: String?
+    let error: String?
+    let message: String?
+    let explain: StatusExplain?
 
     enum CodingKeys: String, CodingKey {
-        case cleared, state
+        case cleared, state, error, message, explain
         case manifestId = "manifest_id"
     }
+}
+
+struct ManifestGateResult {
+    let gate: ManifestGateResponse
+    let explain: StatusExplain?
 }
 
 /// Edge 27 response payload for /v1/fleet/route/request-early-complete.

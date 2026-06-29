@@ -18,6 +18,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
+	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -698,7 +699,7 @@ func (s *Service) HandleManifestGate(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	writeJSON(w, http.StatusForbidden, map[string]any{
+	gateBody := map[string]any{
 		"driver_id":   driverID,
 		"manifest_id": gate.ManifestID,
 		"state":       gate.State,
@@ -707,7 +708,9 @@ func (s *Service) HandleManifestGate(w http.ResponseWriter, r *http.Request) {
 		"reason":      events.EventManifestSealed,
 		"error":       "AWAITING_PAYLOAD_SEAL",
 		"message":     "Manifest is in " + gate.State + " state. Wait for Payloader to complete loading and seal.",
-	})
+	}
+	platform.AttachExplain(gateBody, nil)
+	writeJSON(w, http.StatusForbidden, gateBody)
 }
 
 // HandleManifest serves GET /v1/driver/manifest and legacy GET /v1/fleet/manifest.

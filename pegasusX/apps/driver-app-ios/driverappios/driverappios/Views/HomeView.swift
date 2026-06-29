@@ -15,6 +15,8 @@ struct HomeView: View {
     @State private var appeared = false
     @State private var showNotificationInbox = false
     @State private var showSupplyTransfers = false
+    @State private var pulseEvents: [PulseEvent] = []
+    @State private var pulseLoading = true
 
     var body: some View {
         ScrollView {
@@ -44,6 +46,10 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, LabTheme.s4)
                 .padding(.top, 60)
+
+                PulseStrip(events: pulseEvents, loading: pulseLoading)
+                    .padding(.horizontal, LabTheme.s4)
+                    .staggeredAppear(index: 0)
 
                 // MARK: - Status Chip
                 HStack(spacing: 10) {
@@ -118,6 +124,18 @@ struct HomeView: View {
         }
         .task {
             await vm.loadMissions()
+            await loadPulse()
+        }
+    }
+
+    private func loadPulse() async {
+        pulseLoading = true
+        defer { pulseLoading = false }
+        do {
+            let response = try await APIClient.shared.getPulse()
+            pulseEvents = response.events
+        } catch {
+            pulseEvents = []
         }
     }
 

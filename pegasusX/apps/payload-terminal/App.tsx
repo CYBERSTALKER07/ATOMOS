@@ -17,6 +17,7 @@ import { extractProblemMessage, getPayloadTranslator, resolvePayloadLocale } fro
 import * as Updates from 'expo-updates';
 import { buildManifest, type LiveOrder, type ManifestItem } from './utils/manifest';
 import { PayloadTerminalApi } from './api';
+import { ApiExplainError, ExplainStatusBanner, type StatusExplain } from './explainBanner';
 import { authFetch, clearPayloaderSession, savePayloaderSession, setTokenRefreshListener } from './authSession';
 import {
   payloadApplyReassignKey,
@@ -221,6 +222,7 @@ export default function App() {
   const [deliveryLabelsByOrder, setDeliveryLabelsByOrder] = useState<Record<string, string>>({});
   const [isStartingLoad, setIsStartingLoad] = useState(false);
   const [isSealingManifest, setIsSealingManifest] = useState(false);
+  const [sealExplain, setSealExplain] = useState<StatusExplain | null>(null);
   const [exceptionLoading, setExceptionLoading] = useState<string | null>(null); // orderId being excepted
   const [showInjectOrder, setShowInjectOrder] = useState(false);
   const [showProductScanner, setShowProductScanner] = useState(false);
@@ -1143,6 +1145,7 @@ export default function App() {
   const handleManifestSeal = async () => {
     if (!manifestId || !token) return;
     setIsSealingManifest(true);
+    setSealExplain(null);
     try {
       const data = await PayloadTerminalApi.sealCompletedManifests(
         token,
@@ -1164,7 +1167,12 @@ export default function App() {
         3600
       );
     } catch (e: unknown) {
-      showToast(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
+      if (e instanceof ApiExplainError) {
+        setSealExplain(e.explain);
+        showToast(tx('payload.alert.seal_failed'), e.message, 'error');
+      } else {
+        showToast(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
+      }
     } finally {
       setIsSealingManifest(false);
     }
@@ -1344,7 +1352,12 @@ export default function App() {
         });
       }, 1000);
     } catch (e: unknown) {
-      showToast(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
+      if (e instanceof ApiExplainError) {
+        setSealExplain(e.explain);
+        showToast(tx('payload.alert.seal_failed'), e.message, 'error');
+      } else {
+        showToast(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
+      }
     } finally {
       setIsSealing(false);
     }
@@ -1353,6 +1366,7 @@ export default function App() {
   const handleFinalizeBatchSeal = async () => {
     if (batchReadyManifestIds.length < 2 || batchSealing || !token) return;
     setBatchSealing(true);
+    setSealExplain(null);
     const manifestCount = batchReadyManifestIds.length;
     try {
       const data = await PayloadTerminalApi.sealCompletedManifests(
@@ -1371,7 +1385,12 @@ export default function App() {
         3600,
       );
     } catch (e: unknown) {
-      showToast(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
+      if (e instanceof ApiExplainError) {
+        setSealExplain(e.explain);
+        showToast(tx('payload.alert.seal_failed'), e.message, 'error');
+      } else {
+        showToast(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
+      }
     } finally {
       setBatchSealing(false);
     }
@@ -2250,6 +2269,7 @@ export default function App() {
                       {isIOS ? 'Add Order' : 'ADD ORDER'}
                     </Text>
                   </Pressable>
+                  <ExplainStatusBanner explain={sealExplain} />
                   {/* Seal manifest button */}
                   <Pressable
                     onPress={handleManifestSeal}

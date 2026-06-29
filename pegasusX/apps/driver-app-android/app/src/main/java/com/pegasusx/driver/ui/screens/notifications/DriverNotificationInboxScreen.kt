@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.driver.ui.components.DriverLoadingState
+import com.pegasusx.driver.ui.components.HandoffInboxCard
 import com.pegasusx.driver.ui.components.DriverStateKind
 import com.pegasusx.driver.ui.components.DriverStatePane
 import java.time.Duration
@@ -156,6 +157,9 @@ private fun DriverNotificationRow(notification: DriverNotificationItem, onClick:
                 Text(timeAgo(notification.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(notification.body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+            notification.handoffMetadata?.let { metadata ->
+                HandoffInboxCard(metadata = metadata, modifier = Modifier.padding(top = 8.dp))
+            }
         }
         if (isUnread) {
             Box(Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary).align(Alignment.CenterVertically))

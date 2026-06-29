@@ -45,7 +45,11 @@ final class HomeViewModel {
     private(set) var sealingManifest = false
 
     private(set) var error: String?
+    private(set) var errorExplain: StatusExplain?
     var barcodeScanMessage: String?
+
+    private(set) var pulseEvents: [PulseEvent] = []
+    private(set) var pulseLoading = false
 
     // MARK: - Phase 6 state
     private(set) var notifications: [NotificationItem] = []
@@ -349,6 +353,7 @@ final class HomeViewModel {
         guard let id = manifest?.manifestId, !sealingManifest else { return }
         sealingManifest = true
         error = nil
+        errorExplain = nil
         defer { sealingManifest = false }
         do {
             let manifestIds = batchReadyManifestIds.count > 1 && batchReadyManifestIds.contains(id)
@@ -363,7 +368,13 @@ final class HomeViewModel {
             manifest = manifest.map { mutateState($0, to: "SEALED") }
             await refreshBatchReadyManifests()
         } catch {
-            self.error = describe(error)
+            if case APIError.explainError(let message, let explain) = error {
+                self.error = message
+                self.errorExplain = explain
+            } else {
+                self.error = describe(error)
+                self.errorExplain = nil
+            }
         }
     }
 
@@ -387,7 +398,10 @@ final class HomeViewModel {
         await refreshTrucks()
     }
 
-    func clearError() { error = nil }
+    func clearError() {
+        error = nil
+        errorExplain = nil
+    }
     func clearEscalatedMessage() { escalatedMessage = nil }
     func clearMissingItemsReportedMessage() { missingItemsReportedMessage = nil }
 
@@ -527,6 +541,18 @@ final class HomeViewModel {
         online = ws.online
         queuedActions = queue.read().count
         await loadNotifications()
+        await refreshPulse()
+    }
+
+    func refreshPulse() async {
+        pulseLoading = true
+        defer { pulseLoading = false }
+        do {
+            let response = try await api.pulse()
+            pulseEvents = response.events
+        } catch {
+            pulseEvents = []
+        }
     }
 
     func disconnectPhase6() {
@@ -608,7 +634,8 @@ final class HomeViewModel {
             payload: nil,
             channel: frame.channel ?? "",
             readAt: nil,
-            createdAt: nowIso()
+            createdAt: nowIso(),
+            handoffMetadata: nil
         )
         notifications.insert(item, at: 0)
         unreadCount += 1
@@ -623,7 +650,8 @@ final class HomeViewModel {
             payload: item.payload,
             channel: item.channel,
             readAt: readAt,
-            createdAt: item.createdAt
+            createdAt: item.createdAt,
+            handoffMetadata: item.handoffMetadata
         )
     }
 

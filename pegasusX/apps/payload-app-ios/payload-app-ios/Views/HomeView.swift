@@ -21,7 +21,10 @@ struct HomeView: View {
     @State private var exceptionTargetOrderId: String?
 
     var body: some View {
-        navigationRoot
+        VStack(spacing: 0) {
+            PulseStrip(events: viewModel.pulseEvents, loading: viewModel.pulseLoading)
+            navigationRoot
+        }
             .homeSheets(
                 viewModel: viewModel,
                 tokenStore: tokenStore,
@@ -573,11 +576,12 @@ private struct ManifestWorkflow: View {
 
                 ManifestKpiGrid(manifest: manifest)
 
-                if let err = viewModel.error {
-                    Text(err)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .padding(.horizontal, 8)
+                if viewModel.error != nil || viewModel.errorExplain != nil {
+                    ExplainStatusBanner(
+                        explain: viewModel.errorExplain,
+                        fallbackTitle: viewModel.error,
+                        fallbackDetail: nil
+                    )
                 }
 
                 if manifest.state == "DRAFT" {
@@ -1617,6 +1621,9 @@ private struct NotificationRow: View {
                         .font(.headline)
                     if !item.body.isEmpty {
                         Text(item.body).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    if let handoff = item.handoffMetadata {
+                        HandoffInboxCard(metadata: handoff)
                     }
                     if !item.createdAt.isEmpty {
                         Text(item.createdAt).font(.caption2).foregroundStyle(.tertiary)

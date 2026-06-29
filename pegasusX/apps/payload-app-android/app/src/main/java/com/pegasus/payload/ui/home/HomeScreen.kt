@@ -96,6 +96,8 @@ import com.pegasus.payload.data.model.RecommendReassignResponse
 import com.pegasus.payload.data.model.NotificationItem
 import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.data.model.TruckRecommendation
+import com.pegasus.payload.ui.components.ExplainStatusBanner
+import com.pegasus.payload.ui.components.HandoffInboxCard
 import com.pegasus.payload.ui.components.ManifestKpiGrid
 import com.pegasus.payload.ui.components.PayloadConnectionStatus
 import com.pegasus.payload.ui.components.PulseStrip
@@ -497,6 +499,9 @@ private fun NotificationRow(item: NotificationItem, onClick: () -> Unit) {
             if (item.body.isNotEmpty()) {
                 Text(item.body, style = MaterialTheme.typography.bodySmall)
             }
+            item.handoffMetadata?.let { metadata ->
+                HandoffInboxCard(metadata = metadata, modifier = Modifier.padding(top = 8.dp))
+            }
             if (item.createdAt.isNotEmpty()) {
                 Text(item.createdAt, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -739,8 +744,12 @@ private fun ManifestDetailPane(
                 else -> {
                     ManifestKpiGrid(manifest = state.manifest)
 
-                    if (state.error != null) {
-                        ErrorBanner(state.error)
+                    if (state.error != null || state.errorExplain != null) {
+                        ExplainStatusBanner(
+                            explain = state.errorExplain,
+                            fallbackTitle = state.error,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
 
                     val phase = state.manifest.state

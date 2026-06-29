@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.pegasusx.driver.data.model.HandoffCardMetadata
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import javax.inject.Inject
@@ -23,6 +24,7 @@ data class DriverNotificationItem(
     @SerialName("channel") val channel: String = "",
     @SerialName("read_at") val readAt: String? = null,
     @SerialName("created_at") val createdAt: String = "",
+    @SerialName("handoff_metadata") val handoffMetadata: HandoffCardMetadata? = null,
 )
 
 @Serializable

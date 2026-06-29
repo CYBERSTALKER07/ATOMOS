@@ -1,4 +1,5 @@
 import { authFetch } from './authSession';
+import { readApiError } from './explainBanner';
 
 export const API_BASE = (process.env.EXPO_PUBLIC_API_URL?.trim() || '') ||
   (__DEV__ ? 'http://localhost:8180' : 'https://api.pegasus.uz');
@@ -74,7 +75,7 @@ export const PayloadTerminalApi = {
             headers,
             body: JSON.stringify({ manifest_ids: manifestIds }),
         });
-        if (!res.ok) throw new Error('Failed to seal completed manifests');
+        if (!res.ok) throw await readApiError(res);
         return res.json();
     },
 
