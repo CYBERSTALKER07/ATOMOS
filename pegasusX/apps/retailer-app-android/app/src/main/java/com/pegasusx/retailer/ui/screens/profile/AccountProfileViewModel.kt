@@ -3,6 +3,7 @@ package com.pegasusx.retailer.ui.screens.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
+import com.pegasusx.retailer.util.RetailerIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import javax.inject.Inject
@@ -14,6 +15,7 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
 data class AccountProfileUiState(
+    val retailerId: String = "",
     val name: String = "",
     val company: String = "",
     val phone: String = "",
@@ -47,6 +49,8 @@ class AccountProfileViewModel @Inject constructor(
                 val profile = api.getRetailerProfile()
                 _uiState.update {
                     it.copy(
+                        retailerId = profile["retailer_id"]?.takeIf { id -> id.isNotBlank() }
+                            ?: profile["id"].orEmpty(),
                         name = profile["name"].orEmpty(),
                         company = profile["company"].orEmpty(),
                         phone = profile["phone"].orEmpty(),
@@ -122,7 +126,14 @@ class AccountProfileViewModel @Inject constructor(
                     put("receiving_window_open", open)
                     put("receiving_window_close", close)
                 }
-                api.updateRetailerProfile(payload)
+                val retailerId = state.retailerId
+                api.updateRetailerProfile(
+                    payload,
+                    RetailerIdempotencyKeys.profileUpdate(
+                        retailerId.ifBlank { "unknown" },
+                        payload,
+                    ),
+                )
                 _uiState.update {
                     it.copy(
                         isSaving = false,

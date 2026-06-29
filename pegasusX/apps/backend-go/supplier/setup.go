@@ -124,12 +124,26 @@ func (s *Service) HandleSupplierBusinessSetup(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	body, ok := readMutationBody(w, r, 32*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), r)
+		}
+	}()
+
 	var req BusinessSetupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	supplierID := s.scopedSupplierID(r)
 	resp, err := s.CompleteBusinessSetup(r.Context(), supplierID, req)
@@ -147,5 +161,10 @@ func (s *Service) HandleSupplierBusinessSetup(w http.ResponseWriter, r *http.Req
 	if _, err := s.writeSessionCookie(w, resp.SupplierID, resp.IsRegistered, false); err != nil {
 		s.log.WarnContext(r.Context(), "business setup session reissue failed", "err", err)
 	}
-	writeJSON(w, http.StatusOK, resp)
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	s.saveMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }

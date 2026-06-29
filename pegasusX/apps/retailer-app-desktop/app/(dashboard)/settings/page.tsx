@@ -32,6 +32,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import { getPricingRules } from "../../../lib/api";
+import { retailerProfileUpdateKey } from "@pegasusx/api-client";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import type { AutoOrderSettings, RetailerProfile } from "../../../lib/types";
@@ -314,6 +315,7 @@ export default function SettingsPage() {
   const [profileErrors, setProfileErrors] = useState<ProfileFieldErrors>({});
   const [saveBanner, setSaveBanner] = useState<SaveBanner | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [profileRetailerId, setProfileRetailerId] = useState("");
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [pricingRulesSummary, setPricingRulesSummary] = useState<string | null>(null);
@@ -356,6 +358,11 @@ export default function SettingsPage() {
         throw new Error(text || `Profile fetch failed (${res.status}).`);
       }
       const data = await res.json();
+      if (typeof data.retailer_id === "string") {
+        setProfileRetailerId(data.retailer_id);
+      } else if (typeof data.id === "string") {
+        setProfileRetailerId(data.id);
+      }
       if (data.name) setProfileName(data.name);
       if (data.company) setProfileCompany(data.company);
       if (data.phone) setProfileEmail(data.phone);
@@ -428,20 +435,42 @@ export default function SettingsPage() {
     setSaveBanner(null);
     setSavingProfile(true);
     try {
+      const payload = {
+        name: profileName,
+        company: profileCompany,
+        location: profileLocation,
+        country_code: profileCountryCode,
+        receiving_window_open: normalizeReceivingWindow(
+          profileReceivingWindowOpen,
+        ),
+        receiving_window_close: normalizeReceivingWindow(
+          profileReceivingWindowClose,
+        ),
+      };
+      const retailerId =
+        profileRetailerId ||
+        (() => {
+          try {
+            const storage = getBrowserStorage();
+            if (!storage) return "";
+            const existing = JSON.parse(storage.getItem("retailer_profile") || "{}");
+            return typeof existing.id === "string" ? existing.id : "";
+          } catch {
+            return "";
+          }
+        })();
+      const fingerprint = Object.entries(payload)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => `${key}=${value}`)
+        .join("|");
       const res = await apiFetch("/v1/retailer/profile", {
         method: "PUT",
-        body: JSON.stringify({
-          name: profileName,
-          company: profileCompany,
-          location: profileLocation,
-          country_code: profileCountryCode,
-          receiving_window_open: normalizeReceivingWindow(
-            profileReceivingWindowOpen,
-          ),
-          receiving_window_close: normalizeReceivingWindow(
-            profileReceivingWindowClose,
-          ),
-        }),
+        headers: retailerId
+          ? {
+              "Idempotency-Key": retailerProfileUpdateKey(retailerId, fingerprint),
+            }
+          : undefined,
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const text = await res.text();

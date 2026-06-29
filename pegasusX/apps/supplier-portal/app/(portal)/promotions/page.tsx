@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
+import { supplierScopeId } from "@/lib/supplier-scope";
+import {
+  supplierPromotionCreateKey,
+  supplierPromotionDeactivateKey,
+  supplierPromotionUpdateKey,
+} from "@pegasusx/api-client";
 import type {
   SupplierPromotion,
   SupplierPromotionScopeType,
@@ -103,12 +109,18 @@ export default function PromotionsPage() {
       min_order_amount_minor: form.min_order_amount_minor || undefined,
     };
     try {
+      const scope = supplierScopeId();
+      const fingerprint = JSON.stringify(payload);
       if (editingId) {
-        await api.updateSupplierPromotion(editingId, payload);
+        await api.updateSupplierPromotion(
+          editingId,
+          payload,
+          supplierPromotionUpdateKey(scope, editingId, fingerprint),
+        );
       } else {
         await api.createSupplierPromotion(
           payload,
-          `supplier-promotion:${payload.name}:${Date.now()}`,
+          supplierPromotionCreateKey(scope, fingerprint),
         );
       }
       resetForm();
@@ -123,7 +135,10 @@ export default function PromotionsPage() {
   async function deactivate(promotionId: string) {
     setError(null);
     try {
-      await api.deactivateSupplierPromotion(promotionId);
+      await api.deactivateSupplierPromotion(
+        promotionId,
+        supplierPromotionDeactivateKey(supplierScopeId(), promotionId),
+      );
       if (editingId === promotionId) {
         resetForm();
       }

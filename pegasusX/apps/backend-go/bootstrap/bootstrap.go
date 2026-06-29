@@ -421,7 +421,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var promotionAudience *promotion.AudienceResolver
 	if spannerClient != nil {
 		promoRepo := promotion.NewSpannerRepository(spannerClient)
-		promotionSvc = promotion.NewService(promoRepo, cacheClient, log)
+		promotionSvc = promotion.NewService(promoRepo, cacheClient, idemStore, log)
 		promotionAudience = promotion.NewAudienceResolver(spannerClient)
 		log.Info("promotion service enabled", "backend", "spanner")
 	}

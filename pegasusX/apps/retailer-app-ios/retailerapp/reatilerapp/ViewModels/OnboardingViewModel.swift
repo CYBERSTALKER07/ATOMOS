@@ -68,7 +68,7 @@ final class OnboardingViewModel {
         do {
             try await api.setupRetailer(
                 payload: payload,
-                idempotencyKey: "retailer-setup:\(retailerId)"
+                idempotencyKey: RetailerIdempotency.setup(retailerId: retailerId)
             )
             AuthManager.shared.markConfigured()
             return true

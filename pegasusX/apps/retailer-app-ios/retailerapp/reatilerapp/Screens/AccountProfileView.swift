@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AccountProfileView: View {
+    @State private var retailerId = ""
     @State private var name = ""
     @State private var company = ""
     @State private var phone = ""
@@ -104,6 +105,7 @@ struct AccountProfileView: View {
         defer { isLoading = false }
         do {
             let profile = try await api.getProfile()
+            retailerId = profile.id
             name = profile.name
             company = profile.company
             phone = profile.phone
@@ -129,6 +131,7 @@ struct AccountProfileView: View {
         do {
             _ = try await RetailerProfileService.saveProfile(
                 api: api,
+                retailerId: retailerId,
                 name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                 company: company.trimmingCharacters(in: .whitespacesAndNewlines),
                 phone: nil,

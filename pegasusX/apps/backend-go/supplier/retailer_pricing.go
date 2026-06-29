@@ -136,12 +136,26 @@ func (s *Service) createRetailerPriceOverride(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	body, ok := readMutationBody(w, r, 32*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), r)
+		}
+	}()
+
 	var req createRetailerPriceOverrideRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	productID := strings.TrimSpace(req.ProductID)
 	if productID == "" {
@@ -219,13 +233,19 @@ func (s *Service) createRetailerPriceOverride(w http.ResponseWriter, r *http.Req
 	}
 	s.invalidateRetailerPricingCaches(ctx, sid, req.RetailerID)
 
-	writeJSON(w, http.StatusCreated, map[string]any{
+	resp := map[string]any{
 		"status":      "OVERRIDE_ACTIVE",
 		"override_id": overrideID,
 		"retailer_id": req.RetailerID,
 		"product_id":  productID,
 		"price":       req.Price,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	s.saveMutationReplay(r.Context(), key, body, http.StatusCreated, respBytes)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_, _ = w.Write(respBytes)
 }
 
 func (s *Service) deactivateRetailerPriceOverride(w http.ResponseWriter, r *http.Request, overrideID string) {
@@ -238,6 +258,22 @@ func (s *Service) deactivateRetailerPriceOverride(w http.ResponseWriter, r *http
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
+
+	body, ok := readMutationBody(w, r, 4*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), r)
+		}
+	}()
+
 	sid := s.scopedSupplierID(r)
 	ctx := r.Context()
 
@@ -300,7 +336,12 @@ func (s *Service) deactivateRetailerPriceOverride(w http.ResponseWriter, r *http
 		return
 	}
 	s.invalidateRetailerPricingCaches(ctx, sid, retailerID)
-	writeJSON(w, http.StatusOK, map[string]string{"status": "deactivated", "override_id": overrideID})
+	respBytes, _ := json.Marshal(map[string]string{"status": "deactivated", "override_id": overrideID})
+	idemCommitted = true
+	s.saveMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }
 
 var errProductNotFound = errors.New("product not found")

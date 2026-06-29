@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.model.Supplier
+import com.pegasusx.retailer.util.RetailerIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -90,7 +91,7 @@ class MySuppliersViewModel @Inject constructor(
     fun addSupplier(supplierId: String) {
         viewModelScope.launch {
             try {
-                api.addSupplier(supplierId, "retailer-supplier-add:$supplierId")
+                api.addSupplier(supplierId, RetailerIdempotencyKeys.supplierAdd(supplierId))
                 refresh()
             } catch (e: Exception) {
                 val issue = resolveLoadIssue(e)
@@ -107,7 +108,7 @@ class MySuppliersViewModel @Inject constructor(
     fun removeSupplier(supplierId: String) {
         viewModelScope.launch {
             try {
-                api.removeSupplier(supplierId, "retailer-supplier-remove:$supplierId")
+                api.removeSupplier(supplierId, RetailerIdempotencyKeys.supplierRemove(supplierId))
                 refresh()
             } catch (e: Exception) {
                 val issue = resolveLoadIssue(e)

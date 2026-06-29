@@ -17,6 +17,7 @@ import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -101,7 +102,11 @@ fun RetailerOverridesScreen(
                         trailingContent = {
                             IconButton(onClick = {
                                 scope.launch {
-                                    ops.deleteRetailerPriceOverride(row.overrideId)
+                                    val scopeId = SupplierIdempotencyKeys.supplierScopeId()
+                                    ops.deleteRetailerPriceOverride(
+                                        row.overrideId,
+                                        SupplierIdempotencyKeys.retailerPriceOverrideDelete(scopeId, row.overrideId),
+                                    )
                                     load()
                                 }
                             }) {
@@ -139,12 +144,19 @@ fun RetailerOverridesScreen(
                         scope.launch {
                             saving = true
                             try {
+                                val scopeId = SupplierIdempotencyKeys.supplierScopeId()
                                 val resp = ops.createRetailerPriceOverride(
                                     CreateRetailerPriceOverrideRequest(
                                         retailerId = retailerId.trim(),
                                         productId = productId.trim(),
                                         price = p,
                                         notes = notes.ifBlank { null },
+                                    ),
+                                    SupplierIdempotencyKeys.retailerPriceOverrideCreate(
+                                        scopeId,
+                                        retailerId.trim(),
+                                        productId.trim(),
+                                        p,
                                     ),
                                 )
                                 if (resp.isSuccessful) {

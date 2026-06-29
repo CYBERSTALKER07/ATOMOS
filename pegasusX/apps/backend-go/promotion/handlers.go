@@ -61,18 +61,38 @@ func (s *Service) HandleCreateSupplierPromotion(w http.ResponseWriter, r *http.R
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
 		return
 	}
+
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), r)
+		}
+	}()
+
 	var req createPromotionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	p, err := s.CreatePromotion(r.Context(), decodePromotionRequest(supplierID, "", req))
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusCreated, p)
+	respBytes, _ := json.Marshal(p)
+	idemCommitted = true
+	s.saveMutationReplay(r.Context(), key, body, http.StatusCreated, respBytes)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_, _ = w.Write(respBytes)
 }
 
 // HandleUpdateSupplierPromotion serves PATCH /v1/supplier/promotions/{promotionID}.
@@ -87,18 +107,38 @@ func (s *Service) HandleUpdateSupplierPromotion(w http.ResponseWriter, r *http.R
 		return
 	}
 	promotionID := strings.TrimSpace(chi.URLParam(r, "promotionID"))
+
+	body, ok := readMutationBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), r)
+		}
+	}()
+
 	var req createPromotionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 	p, err := s.UpdatePromotion(r.Context(), decodePromotionRequest(supplierID, promotionID, req))
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, p)
+	respBytes, _ := json.Marshal(p)
+	idemCommitted = true
+	s.saveMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }
 
 // HandleDeactivateSupplierPromotion serves DELETE /v1/supplier/promotions/{promotionID}.
@@ -113,11 +153,32 @@ func (s *Service) HandleDeactivateSupplierPromotion(w http.ResponseWriter, r *ht
 		return
 	}
 	promotionID := strings.TrimSpace(chi.URLParam(r, "promotionID"))
+
+	body, ok := readMutationBody(w, r, 4*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), r)
+		}
+	}()
+
 	if err := s.DeactivatePromotion(r.Context(), supplierID, promotionID); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "deactivated"})
+	respBytes, _ := json.Marshal(map[string]string{"status": "deactivated"})
+	idemCommitted = true
+	s.saveMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }
 
 // HandleCheckoutQuote serves POST /v1/retailer/checkout/quote.

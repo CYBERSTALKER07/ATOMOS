@@ -13,7 +13,7 @@ enum RetailerSupplierDiscoveryService {
         let _: APIResponse<String> = try await api.post(
             path: "/v1/retailer/suppliers/\(supplierId)/add",
             body: EmptyRequest(),
-            headers: ["Idempotency-Key": "retailer-supplier-add:\(supplierId)"]
+            headers: ["Idempotency-Key": RetailerIdempotency.supplierAdd(supplierId: supplierId)]
         )
     }
 
@@ -21,7 +21,7 @@ enum RetailerSupplierDiscoveryService {
         let _: APIResponse<String> = try await api.post(
             path: "/v1/retailer/suppliers/\(supplierId)/remove",
             body: EmptyRequest(),
-            headers: ["Idempotency-Key": "retailer-supplier-remove:\(supplierId)"]
+            headers: ["Idempotency-Key": RetailerIdempotency.supplierRemove(supplierId: supplierId)]
         )
     }
 

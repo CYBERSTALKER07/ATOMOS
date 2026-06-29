@@ -8,6 +8,7 @@ import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.Product
+import com.pegasusx.retailer.util.RetailerIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -185,7 +186,7 @@ class DashboardViewModel @Inject constructor(
                         "line_items" to lineItems,
                         "requested_delivery_date" to deliveryDate,
                     ),
-                    idempotencyKey = "retailer-edit-preorder:${order.id}",
+                    idempotencyKey = RetailerIdempotencyKeys.editPreorder(order.id),
                 )
                 refresh()
             } catch (e: Exception) {

@@ -7,6 +7,7 @@ import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.LoginRequest
 import com.pegasusx.retailer.data.model.RegisterRequest
+import com.pegasusx.retailer.util.RetailerIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
@@ -156,7 +157,7 @@ class AuthViewModel @Inject constructor(
                             "latitude" to latitude,
                             "longitude" to longitude,
                         ),
-                        idempotencyKey = "retailer-setup:${response.user.id}",
+                        idempotencyKey = RetailerIdempotencyKeys.setup(response.user.id),
                     )
                 } catch (_: Exception) {
                     // Registration already captured core profile; setup is additive best-effort.

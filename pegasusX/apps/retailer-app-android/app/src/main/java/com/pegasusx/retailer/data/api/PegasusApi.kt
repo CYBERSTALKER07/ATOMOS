@@ -156,7 +156,10 @@ interface PegasusApi {
     suspend fun getRetailerProfile(): Map<String, String>
 
     @PUT("/v1/retailer/profile")
-    suspend fun updateRetailerProfile(@Body body: Map<String, String>): ApiResponse
+    suspend fun updateRetailerProfile(
+        @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): ApiResponse
 
     @GET("/v1/retailer/family-members")
     suspend fun getFamilyMembers(): JsonElement

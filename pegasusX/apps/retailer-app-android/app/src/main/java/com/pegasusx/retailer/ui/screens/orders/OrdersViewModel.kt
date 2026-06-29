@@ -312,7 +312,7 @@ class OrdersViewModel @Inject constructor(
                         "line_items" to lineItems,
                         "requested_delivery_date" to deliveryDate,
                     ),
-                    idempotencyKey = "retailer-edit-preorder:${order.id}",
+                    idempotencyKey = RetailerIdempotencyKeys.editPreorder(order.id),
                 )
                 refresh()
             } catch (e: Exception) {

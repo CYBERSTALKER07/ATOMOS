@@ -171,7 +171,20 @@ enum SupplierService {
     }
 
     static func updatePricingRules(_ request: SupplierPricingRuleUpdateRequest) async throws -> SupplierPricingRule {
-        try await APIClient.shared.patch("v1/supplier/pricing/rules", body: request)
+        let fingerprint = [
+            String(request.baseMarkupBps),
+            String(request.retailerDiscountBps),
+            String(request.minMarginBps),
+            request.currency ?? "",
+        ].joined(separator: "|")
+        return try await APIClient.shared.patch(
+            "v1/supplier/pricing/rules",
+            body: request,
+            idempotencyKey: SupplierIdempotencyKeys.pricingRulePatch(
+                SupplierIdempotencyKeys.supplierScopeId(),
+                payloadFingerprint: fingerprint
+            )
+        )
     }
 
     static func updateTopology(body: [String: String]) async throws -> SupplierTopologyResponse {

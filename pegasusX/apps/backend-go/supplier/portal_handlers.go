@@ -226,11 +226,30 @@ func (s *Service) HandleConfigure(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	sid := s.scopedSupplierID(r)
+	body, ok := readMutationBody(w, r, 32*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), r)
+		}
+	}()
 
 	var req configureRequest
-	_ = json.NewDecoder(r.Body).Decode(&req)
-	defer r.Body.Close()
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, &req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+	}
+
+	sid := s.scopedSupplierID(r)
 
 	current, found, err := s.repo.GetProfile(r.Context(), sid)
 	if err != nil {
@@ -267,12 +286,18 @@ func (s *Service) HandleConfigure(w http.ResponseWriter, r *http.Request) {
 	if s.cache != nil {
 		s.cache.Invalidate(r.Context(), supplierCacheKey(s.scopedSupplierID(r)))
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"supplier_id":   sid,
 		"is_registered": current.IsRegistered,
 		"is_configured": current.IsConfigured,
 		"completed_at":  now.Format(time.RFC3339Nano),
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	s.saveMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }
 
 // HandleProfile supports GET/PUT /v1/supplier/profile.
@@ -297,11 +322,15 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	if !found {
 		current = Profile{SupplierID: sid, Country: s.country, Currency: s.currency}
 	}
+	writeJSON(w, http.StatusOK, s.buildSupplierProfileResponse(current))
+}
+
+func (s *Service) buildSupplierProfileResponse(current Profile) supplierProfileResponse {
 	updated := ""
 	if !current.UpdatedAt.IsZero() {
 		updated = current.UpdatedAt.Format(time.RFC3339Nano)
 	}
-	writeJSON(w, http.StatusOK, supplierProfileResponse{
+	return supplierProfileResponse{
 		SupplierID:       current.SupplierID,
 		LegalName:        current.LegalName,
 		ContactName:      current.ContactName,
@@ -315,17 +344,31 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		SelectedGateways: append([]string(nil), current.SelectedGateways...),
 		PaymentAcceptor:  normalizePaymentAcceptor(current.PaymentAcceptor),
 		UpdatedAt:        updated,
-	})
+	}
 }
 
 func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 	sid := s.scopedSupplierID(r)
+	body, ok := readMutationBody(w, r, 32*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), r)
+		}
+	}()
+
 	var req supplierProfileUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	current, found, err := s.repo.GetProfile(r.Context(), sid)
 	if err != nil {
@@ -373,7 +416,13 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 	if s.cache != nil {
 		s.cache.Invalidate(r.Context(), supplierCacheKey(s.scopedSupplierID(r)))
 	}
-	s.handleGetProfile(w, r)
+	resp := s.buildSupplierProfileResponse(current)
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	s.saveMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }
 
 // HandleTopology supports GET/PUT /v1/supplier/topology.
@@ -613,14 +662,44 @@ func (s *Service) handlePricingRuleGet(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Service) buildPricingRuleResponse(rule SupplierPricingRule) supplierPricingRuleResponse {
+	updatedAt := ""
+	if !rule.UpdatedAt.IsZero() {
+		updatedAt = rule.UpdatedAt.Format(time.RFC3339Nano)
+	}
+	return supplierPricingRuleResponse{
+		SupplierID:          rule.SupplierID,
+		BaseMarkupBps:       rule.BaseMarkupBps,
+		RetailerDiscountBps: rule.RetailerDiscountBps,
+		MinMarginBps:        rule.MinMarginBps,
+		Currency:            rule.Currency,
+		RuleVersion:         rule.RuleVersion,
+		UpdatedAt:           updatedAt,
+	}
+}
+
 func (s *Service) handlePricingRulePatch(w http.ResponseWriter, r *http.Request) {
 	sid := s.scopedSupplierID(r)
+	body, ok := readMutationBody(w, r, 16*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), r)
+		}
+	}()
+
 	var req supplierPricingRuleUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	if req.BaseMarkupBps == nil && req.RetailerDiscountBps == nil && req.MinMarginBps == nil && strings.TrimSpace(req.Currency) == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no_pricing_fields_provided"})
@@ -720,11 +799,21 @@ func (s *Service) handlePricingRulePatch(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if updated, ok, err := s.repo.GetPricingRule(r.Context(), sid); err == nil && ok {
+		rule = updated
+	}
+
 	if s.cache != nil {
 		s.cache.Invalidate(r.Context(), supplierCacheKey(s.scopedSupplierID(r)))
 	}
 
-	s.handlePricingRuleGet(w, r)
+	resp := s.buildPricingRuleResponse(rule)
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	s.saveMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }
 
 // HandleDashboard returns supplier-facing operational counters.
@@ -826,12 +915,26 @@ func (s *Service) handleInventoryList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleInventoryPatch(w http.ResponseWriter, r *http.Request) {
+	body, ok := readMutationBody(w, r, 16*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), r)
+		}
+	}()
+
 	var req InventoryPatchRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	invID := strings.TrimSpace(req.SKUID)
 	if invID == "" {
@@ -861,7 +964,12 @@ func (s *Service) handleInventoryPatch(w http.ResponseWriter, r *http.Request) {
 	if s.cache != nil {
 		s.cache.Invalidate(r.Context(), "supplier:inventory:"+s.scopedSupplierID(r))
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	respBytes, _ := json.Marshal(map[string]string{"status": "ok"})
+	idemCommitted = true
+	s.saveMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }
 
 // HandleInventoryAudit returns inventory levels (audit trail replaced by

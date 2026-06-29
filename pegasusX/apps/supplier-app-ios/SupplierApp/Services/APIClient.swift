@@ -72,15 +72,27 @@ final class APIClient: Sendable {
         return try await execute(request)
     }
 
-    func put<B: Encodable, T: Decodable>(_ path: String, body: B, authenticated: Bool = true) async throws -> T {
+    func put<B: Encodable, T: Decodable>(
+        _ path: String,
+        body: B,
+        idempotencyKey: String? = nil,
+        authenticated: Bool = true
+    ) async throws -> T {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
+        }
         request.httpBody = try encoder.encode(body)
         if authenticated {
             await attachToken(&request)
         }
         return try await execute(request)
+    }
+
+    func put<B: Encodable, T: Decodable>(_ path: String, body: B, authenticated: Bool = true) async throws -> T {
+        try await put(path, body: body, idempotencyKey: nil, authenticated: authenticated)
     }
 
     func patch<B: Encodable, T: Decodable>(
@@ -188,9 +200,16 @@ final class APIClient: Sendable {
         _ = try await executeVoid(request)
     }
 
-    func deleteVoid(_ path: String, authenticated: Bool = true) async throws {
+    func deleteVoid(
+        _ path: String,
+        idempotencyKey: String? = nil,
+        authenticated: Bool = true
+    ) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "DELETE"
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "X-Idempotency-Key")
+        }
         if authenticated {
             await attachToken(&request)
         }

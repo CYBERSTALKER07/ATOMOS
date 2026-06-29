@@ -144,11 +144,26 @@ enum SupplierOperationsService {
     static func createRetailerPriceOverride(
         _ request: CreateRetailerPriceOverrideRequest
     ) async throws -> CreateRetailerPriceOverrideResponse {
-        try await APIClient.shared.post("v1/supplier/pricing/retailer-overrides", body: request)
+        try await APIClient.shared.post(
+            "v1/supplier/pricing/retailer-overrides",
+            body: request,
+            idempotencyKey: SupplierIdempotencyKeys.retailerPriceOverrideCreate(
+                SupplierIdempotencyKeys.supplierScopeId(),
+                retailerId: request.retailerId,
+                productId: request.productId,
+                priceMinor: request.price
+            )
+        )
     }
 
     static func deleteRetailerPriceOverride(overrideId: String) async throws {
-        try await APIClient.shared.deleteVoid("v1/supplier/pricing/retailer-overrides/\(overrideId)")
+        try await APIClient.shared.deleteVoid(
+            "v1/supplier/pricing/retailer-overrides/\(overrideId)",
+            idempotencyKey: SupplierIdempotencyKeys.retailerPriceOverrideDelete(
+                SupplierIdempotencyKeys.supplierScopeId(),
+                overrideId: overrideId
+            )
+        )
     }
 
     static func topology() async throws -> SupplierTopologyResponse {
@@ -302,11 +317,35 @@ enum SupplierOperationsService {
     }
 
     static func updateProfile(_ request: SupplierProfileUpdateRequest) async throws -> SupplierProfile {
-        try await APIClient.shared.put("v1/supplier/profile", body: request)
+        let fingerprint = [
+            request.legalName,
+            request.contactName,
+            request.email,
+            request.phone ?? "",
+        ].joined(separator: "|")
+        return try await APIClient.shared.put(
+            "v1/supplier/profile",
+            body: request,
+            idempotencyKey: SupplierIdempotencyKeys.profileUpdate(
+                SupplierIdempotencyKeys.supplierScopeId(),
+                payloadFingerprint: fingerprint
+            )
+        )
     }
 
     static func updateInventory(_ request: InventoryPatchRequest) async throws {
-        try await APIClient.shared.patchVoid("v1/supplier/inventory", body: request)
+        let scope = SupplierIdempotencyKeys.supplierScopeId()
+        let sku = request.sku ?? request.skuId ?? ""
+        try await APIClient.shared.patchVoid(
+            "v1/supplier/inventory",
+            body: request,
+            idempotencyKey: SupplierIdempotencyKeys.inventoryAdjust(
+                scope,
+                skuId: sku,
+                quantityDelta: request.quantityDelta ?? 0,
+                version: request.quantity ?? 0
+            )
+        )
     }
 
     static func importInventoryCSV(_ csv: String, idempotencyKey: String) async throws -> SupplierInventoryImportResult {

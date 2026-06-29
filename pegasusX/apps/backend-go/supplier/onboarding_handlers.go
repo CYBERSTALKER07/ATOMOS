@@ -504,6 +504,10 @@ func (s *Service) guardMutationReplay(w http.ResponseWriter, r *http.Request, bo
 }
 
 func (s *Service) storeMutationReplay(ctx context.Context, key string, body []byte, statusCode int, response []byte) {
+	s.saveMutationReplay(ctx, key, body, statusCode, response)
+}
+
+func (s *Service) saveMutationReplay(ctx context.Context, key string, body []byte, statusCode int, response []byte) {
 	if key == "" || s.idem == nil {
 		return
 	}
@@ -513,6 +517,14 @@ func (s *Service) storeMutationReplay(ctx context.Context, key string, body []by
 		Response:   response,
 		StoredAt:   s.now(),
 	}, 24*time.Hour)
+}
+
+func (s *Service) releaseMutationReplay(ctx context.Context, r *http.Request) {
+	key := idempotencyKeyFromRequest(r)
+	if key == "" || s.idem == nil {
+		return
+	}
+	_ = s.idem.Release(ctx, key)
 }
 
 func buildOrgMemberParams(req orgMemberCreateRequest, supplierID string, topology SupplierTopology, now time.Time) (CreateOrgMemberParams, error) {

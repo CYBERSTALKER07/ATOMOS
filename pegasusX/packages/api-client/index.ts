@@ -196,6 +196,16 @@ export {
   driverReportShopClosedKey,
   supplierShopClosedResolveKey,
   supplierResolveReturnKey,
+  supplierProfileUpdateKey,
+  supplierConfigureKey,
+  supplierBusinessSetupKey,
+  supplierPricingRulePatchKey,
+  supplierInventoryAdjustKey,
+  supplierRetailerPriceOverrideCreateKey,
+  supplierRetailerPriceOverrideDeleteKey,
+  supplierPromotionCreateKey,
+  supplierPromotionUpdateKey,
+  supplierPromotionDeactivateKey,
   driverSupplyTransferArriveKey,
   warehouseCreateSupplyRequestKey,
   warehouseSupplyRequestTransitionKey,
@@ -220,6 +230,10 @@ export {
   retailerRejectPreorderKey,
   warehouseOrderProposeDeliveryKey,
   retailerConfirmAIKey,
+  retailerRejectAIKey,
+  retailerEditPreorderKey,
+  retailerSetupKey,
+  retailerProfileUpdateKey,
   adminOrderAssignKey,
   adminOrderStatusPatchKey,
   warehouseEmergencyTransferKey,
@@ -307,9 +321,13 @@ export class ApiClient {
     });
   }
 
-  async configureSupplier(request: SupplierConfigureRequest): Promise<SupplierConfigureResponse> {
+  async configureSupplier(
+    request: SupplierConfigureRequest,
+    idempotencyKey?: string,
+  ): Promise<SupplierConfigureResponse> {
     return this.request<SupplierConfigureResponse>("/v1/supplier/configure", "POST", {
       body: request,
+      idempotencyKey,
     });
   }
 
@@ -337,8 +355,11 @@ export class ApiClient {
     return this.request<SupplierProfile>("/v1/supplier/profile", "GET");
   }
 
-  async updateSupplierProfile(request: SupplierProfileUpdateRequest): Promise<SupplierProfile> {
-    return this.request<SupplierProfile>("/v1/supplier/profile", "PUT", { body: request });
+  async updateSupplierProfile(
+    request: SupplierProfileUpdateRequest,
+    idempotencyKey: string,
+  ): Promise<SupplierProfile> {
+    return this.request<SupplierProfile>("/v1/supplier/profile", "PUT", { body: request, idempotencyKey });
   }
 
   async getSupplierTopology(): Promise<SupplierTopologyResponse> {
@@ -435,18 +456,23 @@ export class ApiClient {
 
   async createRetailerPriceOverride(
     request: CreateRetailerPriceOverrideRequest,
+    idempotencyKey: string,
   ): Promise<CreateRetailerPriceOverrideResponse> {
     return this.request<CreateRetailerPriceOverrideResponse>(
       "/v1/supplier/pricing/retailer-overrides",
       "POST",
-      { body: request },
+      { body: request, idempotencyKey },
     );
   }
 
-  async deleteRetailerPriceOverride(overrideId: string): Promise<{ status: string; override_id: string }> {
+  async deleteRetailerPriceOverride(
+    overrideId: string,
+    idempotencyKey: string,
+  ): Promise<{ status: string; override_id: string }> {
     return this.request<{ status: string; override_id: string }>(
       `/v1/supplier/pricing/retailer-overrides/${overrideId}`,
       "DELETE",
+      { idempotencyKey },
     );
   }
 
@@ -467,14 +493,21 @@ export class ApiClient {
   async updateSupplierPromotion(
     promotionId: string,
     request: SupplierPromotionUpsertRequest,
+    idempotencyKey: string,
   ): Promise<SupplierPromotion> {
     return this.request<SupplierPromotion>(`/v1/supplier/promotions/${promotionId}`, "PATCH", {
       body: request,
+      idempotencyKey,
     });
   }
 
-  async deactivateSupplierPromotion(promotionId: string): Promise<{ status: string }> {
-    return this.request<{ status: string }>(`/v1/supplier/promotions/${promotionId}`, "DELETE");
+  async deactivateSupplierPromotion(
+    promotionId: string,
+    idempotencyKey: string,
+  ): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/v1/supplier/promotions/${promotionId}`, "DELETE", {
+      idempotencyKey,
+    });
   }
 
   async getSupplierOrders(
@@ -809,8 +842,14 @@ export class ApiClient {
     });
   }
 
-  async updateSupplierPricingRule(request: SupplierPricingRuleUpdateRequest): Promise<SupplierPricingRule> {
-    return this.request<SupplierPricingRule>("/v1/supplier/pricing/rules", "PATCH", { body: request });
+  async updateSupplierPricingRule(
+    request: SupplierPricingRuleUpdateRequest,
+    idempotencyKey: string,
+  ): Promise<SupplierPricingRule> {
+    return this.request<SupplierPricingRule>("/v1/supplier/pricing/rules", "PATCH", {
+      body: request,
+      idempotencyKey,
+    });
   }
 
   async getRetailerSuppliers(): Promise<RetailerSupplierPreference[]> {
@@ -825,8 +864,14 @@ export class ApiClient {
     return this.request<RetailerProfileResponse>("/v1/retailer/profile", "GET");
   }
 
-  async updateRetailerProfile(request: RetailerProfileUpdateRequest): Promise<RetailerProfileResponse> {
-    return this.request<RetailerProfileResponse>("/v1/retailer/profile", "PUT", { body: request });
+  async updateRetailerProfile(
+    request: RetailerProfileUpdateRequest,
+    idempotencyKey: string,
+  ): Promise<RetailerProfileResponse> {
+    return this.request<RetailerProfileResponse>("/v1/retailer/profile", "PUT", {
+      body: request,
+      idempotencyKey,
+    });
   }
 
   async getRetailerTracking(): Promise<RetailerTrackingResponse> {

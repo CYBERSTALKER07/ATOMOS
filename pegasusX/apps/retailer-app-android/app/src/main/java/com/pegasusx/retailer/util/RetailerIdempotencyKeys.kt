@@ -28,6 +28,24 @@ object RetailerIdempotencyKeys {
 
     fun cancel(orderId: String): String = "retailer-cancel:$orderId"
 
+    fun setup(retailerId: String): String = "retailer-setup:$retailerId"
+
+    fun editPreorder(orderId: String): String = "retailer-edit-preorder:$orderId"
+
+    fun rejectAI(orderId: String, reason: String = ""): String =
+        "retailer-reject-ai:$orderId:${stableHash(reason)}"
+
+    fun supplierAdd(supplierId: String): String = "retailer-supplier-add:$supplierId"
+
+    fun supplierRemove(supplierId: String): String = "retailer-supplier-remove:$supplierId"
+
+    fun profileUpdate(retailerId: String, payload: Map<String, String>): String {
+        val fingerprint = payload.entries
+            .sortedBy { it.key }
+            .joinToString("|") { "${it.key}=${it.value}" }
+        return "retailer-profile-update:$retailerId:${stableHash(fingerprint)}"
+    }
+
     /** FNV-1a 32-bit — matches api-client `stableHash`. */
     private fun stableHash(input: String): String {
         var hash = 2166136261L

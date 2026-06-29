@@ -4,6 +4,10 @@ import {
   retailerConfirmPreorderKey,
   retailerAcceptDeliveryProposalKey,
   retailerRejectDeliveryProposalKey,
+  retailerRejectAIKey,
+  retailerEditPreorderKey,
+  retailerSetupKey,
+  retailerProfileUpdateKey,
 } from '@pegasusx/api-client';
 
 // ── AI & Preorder Integrations ──
@@ -19,6 +23,7 @@ export async function confirmAiOrder(orderId: string): Promise<Response> {
 export async function rejectAiOrder(orderId: string, reason: string): Promise<Response> {
   return apiFetch('/v1/retailer/orders/reject-ai', {
     method: 'POST',
+    headers: { 'Idempotency-Key': retailerRejectAIKey(orderId, reason) },
     body: JSON.stringify({ order_id: orderId, reason }),
   });
 }
@@ -38,6 +43,7 @@ export async function editPreorder(
 ): Promise<Response> {
   return apiFetch('/v1/orders/edit-preorder', {
     method: 'POST',
+    headers: { 'Idempotency-Key': retailerEditPreorderKey(orderId) },
     body: JSON.stringify({
       order_id: orderId,
       requested_delivery_date: requestedDeliveryDate,
@@ -82,15 +88,11 @@ export async function correctPrediction(
 
 export async function setupRetailer(
   payload: Record<string, unknown>,
-  idempotencyKey?: string
+  retailerId: string,
 ): Promise<Response> {
-  const headers: Record<string, string> = {};
-  if (idempotencyKey) {
-    headers['Idempotency-Key'] = idempotencyKey;
-  }
   return apiFetch('/v1/retailer/setup', {
     method: 'POST',
-    headers,
+    headers: { 'Idempotency-Key': retailerSetupKey(retailerId) },
     body: JSON.stringify(payload),
   });
 }

@@ -51,6 +51,42 @@ enum SupplierIdempotencyKeys {
         "supplier-chargeback-reversal:\(chargebackId):\(stableHash(reason))"
     }
 
+    static func profileUpdate(scopeId: String, payloadFingerprint: String) -> String {
+        "supplier-profile-update:\(scopeId):\(stableHash(payloadFingerprint))"
+    }
+
+    static func businessSetup(scopeId: String, payloadFingerprint: String) -> String {
+        "supplier-business-setup:\(scopeId):\(stableHash(payloadFingerprint))"
+    }
+
+    static func pricingRulePatch(scopeId: String, payloadFingerprint: String) -> String {
+        "supplier-pricing-rule-patch:\(scopeId):\(stableHash(payloadFingerprint))"
+    }
+
+    static func inventoryAdjust(scopeId: String, skuId: String, quantityDelta: Int64, version: Int64) -> String {
+        "supplier-inventory-adjust:\(scopeId):\(skuId):\(quantityDelta):\(version)"
+    }
+
+    static func retailerPriceOverrideCreate(scopeId: String, retailerId: String, productId: String, priceMinor: Int64) -> String {
+        "supplier-retailer-price-create:\(scopeId):\(retailerId):\(productId):\(priceMinor)"
+    }
+
+    static func retailerPriceOverrideDelete(scopeId: String, overrideId: String) -> String {
+        "supplier-retailer-price-delete:\(scopeId):\(overrideId)"
+    }
+
+    static func promotionCreate(scopeId: String, payloadFingerprint: String) -> String {
+        "supplier-promotion-create:\(scopeId):\(stableHash(payloadFingerprint))"
+    }
+
+    static func promotionUpdate(scopeId: String, promotionId: String, payloadFingerprint: String) -> String {
+        "supplier-promotion-update:\(scopeId):\(promotionId):\(stableHash(payloadFingerprint))"
+    }
+
+    static func promotionDeactivate(scopeId: String, promotionId: String) -> String {
+        "supplier-promotion-deactivate:\(scopeId):\(promotionId)"
+    }
+
     private static func stableHash(_ input: String) -> String {
         var hash: UInt32 = 2166136261
         for scalar in input.unicodeScalars {

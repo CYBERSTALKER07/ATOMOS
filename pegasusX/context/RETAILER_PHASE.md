@@ -1,7 +1,7 @@
 # pegasusX RETAILER Role — Phased Execution Ledger
 
 **Scope:** pegasusX only · **Parent plan:** `VEGETABLE_PLAN.md` §2.5  
-**Last updated:** 2026-06-15 (RT-6P retailer desktop deep UI parity).
+**Last updated:** 2026-06-29 (retailer idempotency gap closure).
 
 ## Status model
 
@@ -141,6 +141,22 @@
 | RT8-08 | Pending checkout on reconnect | `PendingCheckoutFlusher` | `PendingOrderSyncWorker` | `PendingOrderReplayer` | **WIRED** (verified) |
 
 **Exit:** Retailer row marked **Wired** in `ROLE_ROW_PARITY_MATRIX.md`; builds green on Android + iOS; `go test ./retailer/...` pass.
+
+---
+
+## Phase RT-9 — Idempotency gap closure (2026-06-29)
+
+| ID | Feature | Backend | Desktop | Android | iOS | Status |
+|----|---------|---------|---------|---------|-----|--------|
+| RT9-01 | Profile PUT idempotency | `handleUpdateProfile` + Redis replay | `/settings` save | `AccountProfileViewModel` + `ProfileViewModel` | `RetailerProfileService` | **WIRED** |
+| RT9-02 | Setup POST idempotency | `HandleRetailerSetup` | `/setup/address` | `AuthViewModel` post-register | `OnboardingViewModel` | **WIRED** |
+| RT9-03 | Supplier favorite add/remove | `handleSupplierMutation` | `/procurement` (existing keys) | `MySuppliersViewModel` | `RetailerSupplierDiscoveryService` | **WIRED** |
+| RT9-04 | Reject AI + edit preorder | `HandleRejectAIOrder`, `HandleEditPreorder` | `lib/api.ts` | `RetailerIdempotencyKeys.editPreorder` | `RetailerIdempotency` | **WIRED** |
+| RT9-05 | Order checkout/cancel (pre-existing) | `order/` guards | checkout modals | cart + orders VMs | checkout + orders | **WIRED** (verified) |
+
+**Intentional deferrals:** `HandleMarkNotificationsRead` idempotency (clients do not send keys); `HandleAutoOrderPatch` / auto-order scaffold (P0-07); desktop-only dock queue; Firebase OTP production config.
+
+**Exit:** `go test ./retailer/... ./order/...` green; shared contract keys in `@pegasusx/api-client`.
 
 ---
 

@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.util
 
+import com.pegasusx.supplier.data.remote.TokenHolder
+
 /** Deterministic idempotency keys — aligned with @pegasusx/api-client idempotency.ts */
 object SupplierIdempotencyKeys {
     fun shopClosedResolve(attemptId: String, action: String): String =
@@ -69,6 +71,35 @@ object SupplierIdempotencyKeys {
 
     fun chargebackReversal(chargebackId: String, reason: String): String =
         "supplier-chargeback-reversal:$chargebackId:${stableHash(reason)}"
+
+    fun supplierScopeId(): String = TokenHolder.supplierId?.takeIf { it.isNotBlank() } ?: "supplier"
+
+    fun profileUpdate(scopeId: String, payloadFingerprint: String): String =
+        "supplier-profile-update:$scopeId:${stableHash(payloadFingerprint)}"
+
+    fun businessSetup(scopeId: String, payloadFingerprint: String): String =
+        "supplier-business-setup:$scopeId:${stableHash(payloadFingerprint)}"
+
+    fun pricingRulePatch(scopeId: String, payloadFingerprint: String): String =
+        "supplier-pricing-rule-patch:$scopeId:${stableHash(payloadFingerprint)}"
+
+    fun inventoryAdjust(scopeId: String, skuId: String, quantityDelta: Long, version: Long): String =
+        "supplier-inventory-adjust:$scopeId:$skuId:$quantityDelta:$version"
+
+    fun retailerPriceOverrideCreate(scopeId: String, retailerId: String, productId: String, priceMinor: Long): String =
+        "supplier-retailer-price-create:$scopeId:$retailerId:$productId:$priceMinor"
+
+    fun retailerPriceOverrideDelete(scopeId: String, overrideId: String): String =
+        "supplier-retailer-price-delete:$scopeId:$overrideId"
+
+    fun promotionCreate(scopeId: String, payloadFingerprint: String): String =
+        "supplier-promotion-create:$scopeId:${stableHash(payloadFingerprint)}"
+
+    fun promotionUpdate(scopeId: String, promotionId: String, payloadFingerprint: String): String =
+        "supplier-promotion-update:$scopeId:$promotionId:${stableHash(payloadFingerprint)}"
+
+    fun promotionDeactivate(scopeId: String, promotionId: String): String =
+        "supplier-promotion-deactivate:$scopeId:$promotionId"
 
     /** FNV-1a 32-bit — matches api-client `stableHash`. */
     private fun stableHash(input: String): String {

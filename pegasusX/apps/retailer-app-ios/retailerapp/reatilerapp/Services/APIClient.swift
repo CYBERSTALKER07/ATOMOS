@@ -271,7 +271,11 @@ final class APIClient {
     }
 
     func rejectAiOrder(orderId: String, reason: String) async throws {
-        let _: APIResponse<String> = try await post(path: "/v1/retailer/orders/reject-ai", body: RejectAiOrderRequest(orderId: orderId, reason: reason))
+        let _: APIResponse<String> = try await post(
+            path: "/v1/retailer/orders/reject-ai",
+            body: RejectAiOrderRequest(orderId: orderId, reason: reason),
+            headers: ["Idempotency-Key": RetailerIdempotency.rejectAI(orderId: orderId, reason: reason)]
+        )
     }
 
     func confirmPreorder(orderId: String) async throws {
@@ -310,7 +314,7 @@ final class APIClient {
         let _: APIResponse<String> = try await post(
             path: "/v1/orders/edit-preorder",
             body: EditPreorderRequest(orderId: orderId, requestedDeliveryDate: deliveryDate, lineItems: items),
-            headers: ["Idempotency-Key": "retailer-edit-preorder:\(orderId)"]
+            headers: ["Idempotency-Key": RetailerIdempotency.editPreorder(orderId: orderId)]
         )
     }
 
@@ -345,8 +349,12 @@ final class APIClient {
         return try await get(path: "/v1/retailer/profile")
     }
     
-    func updateProfile(request: RetailerProfileRequest) async throws {
-        let _: APIResponse<String> = try await put(path: "/v1/retailer/profile", body: request)
+    func updateProfile(request: RetailerProfileRequest, idempotencyKey: String) async throws {
+        let _: APIResponse<String> = try await put(
+            path: "/v1/retailer/profile",
+            body: request,
+            headers: ["Idempotency-Key": idempotencyKey]
+        )
     }
 
     func getFamilyMembers() async throws -> [FamilyMemberResponse] {

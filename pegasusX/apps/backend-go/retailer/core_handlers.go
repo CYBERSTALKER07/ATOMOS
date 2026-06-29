@@ -148,12 +148,25 @@ func retailerLocationLabel(address string, lat, lng float64) string {
 }
 
 func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, retailerID string) {
+	body, ok := readLimitedBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req retailerProfileUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	ret, found, err := s.repo.GetRetailer(r.Context(), retailerID)
 	if err != nil {
@@ -235,7 +248,14 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 	if s.cache != nil {
 		s.cache.Invalidate(r.Context(), retailerByPhoneKey(ret.Phone), "retailer:id:"+ret.RetailerID)
 	}
-	s.handleGetProfile(w, r, retailerID)
+	respBytes, err := json.Marshal(retailerProfileDTO(ret, s.supplierID))
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "marshal_profile_failed"})
+		return
+	}
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
 }
 
 // HandleSupplierAdd serves POST /v1/retailer/suppliers/{supplierID}/add.
@@ -263,46 +283,34 @@ func (s *Service) handleSupplierMutation(w http.ResponseWriter, r *http.Request,
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "supplier_id_required"})
 		return
 	}
-	s.mu.Lock()
-	prefs := s.favoriteSuppliers[rid]
-	if prefs == nil {
-		prefs = map[string]bool{}
+	body, ok := readLimitedBody(w, r, 8*1024)
+	if !ok {
+		return
 	}
-	if action == "add" {
-		prefs[supplierID] = true
-	} else {
-		delete(prefs, supplierID)
+	if s.guardIdempotency(w, r, body) {
+		return
 	}
-	s.favoriteSuppliers[rid] = prefs
-	s.mu.Unlock()
-	s.handleSupplierList(r.Context(), w, rid)
-}
-
-// HandleSuppliers supports GET /v1/retailer/suppliers and
-// POST /v1/retailer/suppliers/{supplierID}/{action}.
-func (s *Service) HandleSuppliers(w http.ResponseWriter, r *http.Request) {
-	rid, err := retailerIDFromRequest(r)
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+	s.applySupplierFavoriteMutation(rid, supplierID, action)
+	respBytes, err := s.supplierListResponseBytes(r.Context(), rid)
 	if err != nil {
-		writeRetailerIdentityError(w, err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_suppliers_failed"})
 		return
 	}
-	if r.Method == http.MethodGet {
-		s.handleSupplierList(r.Context(), w, rid)
-		return
-	}
-	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	supplierID := chi.URLParam(r, "supplierID")
-	action := strings.ToLower(strings.TrimSpace(chi.URLParam(r, "action")))
-	if supplierID == "" || (action != "add" && action != "remove") {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "supplierID and action(add|remove) required"})
-		return
-	}
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+}
 
+func (s *Service) applySupplierFavoriteMutation(retailerID, supplierID, action string) {
 	s.mu.Lock()
-	prefs := s.favoriteSuppliers[rid]
+	defer s.mu.Unlock()
+	prefs := s.favoriteSuppliers[retailerID]
 	if prefs == nil {
 		prefs = map[string]bool{}
 	}
@@ -311,12 +319,10 @@ func (s *Service) HandleSuppliers(w http.ResponseWriter, r *http.Request) {
 	} else {
 		delete(prefs, supplierID)
 	}
-	s.favoriteSuppliers[rid] = prefs
-	s.mu.Unlock()
-	s.handleSupplierList(r.Context(), w, rid)
+	s.favoriteSuppliers[retailerID] = prefs
 }
 
-func (s *Service) handleSupplierList(ctx context.Context, w http.ResponseWriter, retailerID string) {
+func (s *Service) supplierListResponseBytes(ctx context.Context, retailerID string) ([]byte, error) {
 	s.mu.RLock()
 	prefs := s.favoriteSuppliers[retailerID]
 	favorite := false
@@ -343,12 +349,50 @@ func (s *Service) handleSupplierList(ctx context.Context, w http.ResponseWriter,
 		pricing = &summary
 	}
 
-	writeJSON(w, http.StatusOK, []supplierPreference{{
+	return json.Marshal([]supplierPreference{{
 		SupplierID: s.supplierID,
 		Name:       "pegasusX Supplier",
 		IsFavorite: favorite,
 		Pricing:    pricing,
 	}})
+}
+
+// HandleSuppliers supports GET /v1/retailer/suppliers and
+// POST /v1/retailer/suppliers/{supplierID}/{action}.
+func (s *Service) HandleSuppliers(w http.ResponseWriter, r *http.Request) {
+	rid, err := retailerIDFromRequest(r)
+	if err != nil {
+		writeRetailerIdentityError(w, err)
+		return
+	}
+	if r.Method == http.MethodGet {
+		s.handleSupplierList(r.Context(), w, rid)
+		return
+	}
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	supplierID := chi.URLParam(r, "supplierID")
+	action := strings.ToLower(strings.TrimSpace(chi.URLParam(r, "action")))
+	if supplierID == "" || (action != "add" && action != "remove") {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "supplierID and action(add|remove) required"})
+		return
+	}
+	if action == "add" {
+		s.handleSupplierMutation(w, r, "add")
+		return
+	}
+	s.handleSupplierMutation(w, r, "remove")
+}
+
+func (s *Service) handleSupplierList(ctx context.Context, w http.ResponseWriter, retailerID string) {
+	respBytes, err := s.supplierListResponseBytes(ctx, retailerID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_suppliers_failed"})
+		return
+	}
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandlePricingRule supports GET /v1/retailer/pricing/rules.
@@ -743,8 +787,21 @@ func (s *Service) HandleRejectAIOrder(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
 		return
 	}
+	body, ok := readLimitedBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 	var req order.RejectAIOrderRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -753,7 +810,10 @@ func (s *Service) HandleRejectAIOrder(w http.ResponseWriter, r *http.Request) {
 		writeRetailerOrderLifecycleError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
 }
 
 // HandleEditPreorder edits a retailer draft preorder.
@@ -771,8 +831,21 @@ func (s *Service) HandleEditPreorder(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
 		return
 	}
+	body, ok := readLimitedBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 	var req order.EditPreorderRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -781,7 +854,10 @@ func (s *Service) HandleEditPreorder(w http.ResponseWriter, r *http.Request) {
 		writeRetailerOrderLifecycleError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, resp)
+	respBytes, _ := json.Marshal(resp)
+	idemCommitted = true
+	writeJSONBytes(w, http.StatusOK, respBytes)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
 }
 
 // HandleConfirmPreorder confirms a retailer draft preorder.

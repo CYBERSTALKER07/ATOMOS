@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
@@ -16,17 +17,18 @@ import (
 type Service struct {
 	repo        Repository
 	cache       *cache.Cache
+	idem        idempotency.Store
 	log         *slog.Logger
 	now         func() time.Time
 	retailerHub *ws.Hub
 }
 
 // NewService constructs a promotion service.
-func NewService(repo Repository, c *cache.Cache, log *slog.Logger) *Service {
+func NewService(repo Repository, c *cache.Cache, idem idempotency.Store, log *slog.Logger) *Service {
 	if log == nil {
 		log = slog.Default()
 	}
-	return &Service{repo: repo, cache: c, log: log, now: func() time.Time { return time.Now().UTC() }}
+	return &Service{repo: repo, cache: c, idem: idem, log: log, now: func() time.Time { return time.Now().UTC() }}
 }
 
 // ListForSupplier returns all promotions for the supplier portal.

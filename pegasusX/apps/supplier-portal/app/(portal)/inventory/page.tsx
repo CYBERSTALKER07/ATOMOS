@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
+import { supplierScopeId } from "@/lib/supplier-scope";
+import { supplierInventoryAdjustKey } from "@pegasusx/api-client";
 import { downloadCsv } from "@/lib/csv";
 import { usePagination } from "@/lib/use-pagination";
 import { ListToolbar } from "@/components/ListToolbar";
@@ -51,7 +53,15 @@ export default function PortalInventoryPage() {
     try {
       const res = await supplierFetch("/v1/supplier/inventory", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": supplierInventoryAdjustKey(
+            supplierScopeId(),
+            row.sku_id,
+            quantityDelta,
+            row.quantity,
+          ),
+        },
         body: JSON.stringify({
           sku_id: row.sku_id,
           quantity_delta: quantityDelta,

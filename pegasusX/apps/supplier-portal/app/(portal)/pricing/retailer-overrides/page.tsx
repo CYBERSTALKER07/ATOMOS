@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
+import { supplierScopeId } from "@/lib/supplier-scope";
+import {
+  supplierRetailerPriceOverrideCreateKey,
+  supplierRetailerPriceOverrideDeleteKey,
+} from "@pegasusx/api-client";
 import { supplierFetch } from "@/lib/auth";
 import type { CreateRetailerPriceOverrideRequest, RetailerPriceOverride } from "@pegasusx/types";
 import { PageChrome } from '@/components/PageChrome';
@@ -117,7 +122,10 @@ export default function RetailerOverridesPage() {
 
     setSaving(true);
     try {
-      await api.createRetailerPriceOverride(payload);
+      await api.createRetailerPriceOverride(
+        payload,
+        supplierRetailerPriceOverrideCreateKey(supplierScopeId(), retailerId, productId, price),
+      );
       setForm(EMPTY_FORM);
       setShowCreate(false);
       await loadOverrides();
@@ -133,7 +141,10 @@ export default function RetailerOverridesPage() {
     setDeletingId(overrideId);
     setError(null);
     try {
-      await api.deleteRetailerPriceOverride(overrideId);
+      await api.deleteRetailerPriceOverride(
+        overrideId,
+        supplierRetailerPriceOverrideDeleteKey(supplierScopeId(), overrideId),
+      );
       await loadOverrides();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete override");

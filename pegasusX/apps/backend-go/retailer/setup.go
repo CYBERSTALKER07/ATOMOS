@@ -20,12 +20,25 @@ func (s *Service) HandleRetailerSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, ok := readLimitedBody(w, r, 64*1024)
+	if !ok {
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req map[string]json.RawMessage
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	ret, found, err := s.repo.GetRetailer(r.Context(), retailerID)
 	if err != nil {
@@ -74,7 +87,14 @@ func (s *Service) HandleRetailerSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.cache.Invalidate(r.Context(), retailerByPhoneKey(ret.Phone))
-	s.writeMobileAuthResponse(w, ret)
+	status, respBytes := s.marshalMobileAuthResponse(ret)
+	if status != http.StatusOK {
+		writeJSONBytes(w, status, respBytes)
+		return
+	}
+	idemCommitted = true
+	writeJSONBytes(w, status, respBytes)
+	s.saveIdempotency(r.Context(), r, body, status, respBytes)
 }
 
 func rawString(req map[string]json.RawMessage, key string) string {

@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { CatalogProduct, SupplierPromotion } from "@pegasusx/types";
 import { supplierFetch } from "@/lib/auth";
+import { supplierScopeId } from "@/lib/supplier-scope";
+import {
+  supplierPromotionCreateKey,
+  supplierPromotionDeactivateKey,
+  supplierPromotionUpdateKey,
+} from "@pegasusx/api-client";
 import { PageChrome } from '@/components/PageChrome';
 
 export default function ProductPricingPage() {
@@ -87,21 +93,36 @@ export default function ProductPricingPage() {
           scope_product_id: product.product_id,
           retailer_scope: "ALL",
         };
+        const promoFingerprint = JSON.stringify(promoBody);
+        const scope = supplierScopeId();
         const promoRes = activeSale
           ? await supplierFetch(`/v1/supplier/promotions/${encodeURIComponent(activeSale.promotion_id)}`, {
               method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(promoBody),
+              headers: {
+                "Content-Type": "application/json",
+                "Idempotency-Key": supplierPromotionUpdateKey(
+                  scope,
+                  activeSale.promotion_id,
+                  promoFingerprint,
+                ),
+              },
+              body: promoFingerprint,
             })
           : await supplierFetch("/v1/supplier/promotions", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(promoBody),
+              headers: {
+                "Content-Type": "application/json",
+                "Idempotency-Key": supplierPromotionCreateKey(scope, promoFingerprint),
+              },
+              body: promoFingerprint,
             });
         if (!promoRes.ok) throw new Error(`promotion_failed_${promoRes.status}`);
       } else if (activeSale) {
         await supplierFetch(`/v1/supplier/promotions/${encodeURIComponent(activeSale.promotion_id)}`, {
           method: "DELETE",
+          headers: {
+            "Idempotency-Key": supplierPromotionDeactivateKey(supplierScopeId(), activeSale.promotion_id),
+          },
         });
       }
       setProduct({ ...product, price_minor: priceMinor, version: product.version + 1 });

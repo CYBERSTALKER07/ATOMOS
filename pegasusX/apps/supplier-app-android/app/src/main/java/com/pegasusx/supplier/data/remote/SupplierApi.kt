@@ -29,7 +29,10 @@ interface SupplierApi {
     suspend fun getProfile(): Response<SupplierProfile>
 
     @PUT("v1/supplier/profile")
-    suspend fun updateProfile(@Body body: Map<String, String>): Response<SupplierProfile>
+    suspend fun updateProfile(
+        @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<SupplierProfile>
 
     @GET("v1/supplier/org/members")
     suspend fun getOrgMembers(): Response<SupplierOrgMembersResponse>
@@ -205,7 +208,10 @@ interface SupplierApi {
     suspend fun getInventory(): Response<InventoryListResponse>
 
     @PATCH("v1/supplier/inventory")
-    suspend fun updateInventory(@Body body: JsonElement): Response<JsonElement>
+    suspend fun updateInventory(
+        @Body body: JsonElement,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<JsonElement>
 
     @GET("v1/supplier/inventory/audit")
     suspend fun getInventoryAudit(): Response<JsonElement>
@@ -290,7 +296,10 @@ interface SupplierApi {
     suspend fun getPricingRules(): Response<SupplierPricingRule>
 
     @PATCH("v1/supplier/pricing/rules")
-    suspend fun updatePricingRules(@Body body: JsonElement): Response<SupplierPricingRule>
+    suspend fun updatePricingRules(
+        @Body body: JsonElement,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<SupplierPricingRule>
 
     @GET("v1/supplier/pricing/retailer-overrides")
     suspend fun listRetailerPriceOverrides(
@@ -301,11 +310,13 @@ interface SupplierApi {
     @POST("v1/supplier/pricing/retailer-overrides")
     suspend fun createRetailerPriceOverride(
         @Body body: CreateRetailerPriceOverrideRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<CreateRetailerPriceOverrideResponse>
 
     @DELETE("v1/supplier/pricing/retailer-overrides/{overrideId}")
     suspend fun deleteRetailerPriceOverride(
         @Path("overrideId") overrideId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<JsonElement>
 
     @GET("v1/supplier/topology")

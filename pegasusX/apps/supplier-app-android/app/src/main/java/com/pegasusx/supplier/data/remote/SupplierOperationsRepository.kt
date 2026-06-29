@@ -69,8 +69,10 @@ class SupplierOperationsRepository @Inject constructor(
 
     suspend fun getPricingRules(): Response<SupplierPricingRule> = api.getPricingRules()
 
-    suspend fun updatePricingRules(body: JsonElement): Response<SupplierPricingRule> =
-        api.updatePricingRules(body)
+    suspend fun updatePricingRules(
+        body: JsonElement,
+        idempotencyKey: String,
+    ): Response<SupplierPricingRule> = api.updatePricingRules(body, idempotencyKey)
 
     suspend fun listRetailerPriceOverrides(
         retailerId: String? = null,
@@ -79,10 +81,13 @@ class SupplierOperationsRepository @Inject constructor(
 
     suspend fun createRetailerPriceOverride(
         body: CreateRetailerPriceOverrideRequest,
-    ): Response<CreateRetailerPriceOverrideResponse> = api.createRetailerPriceOverride(body)
+        idempotencyKey: String,
+    ): Response<CreateRetailerPriceOverrideResponse> = api.createRetailerPriceOverride(body, idempotencyKey)
 
-    suspend fun deleteRetailerPriceOverride(overrideId: String): Response<JsonElement> =
-        api.deleteRetailerPriceOverride(overrideId)
+    suspend fun deleteRetailerPriceOverride(
+        overrideId: String,
+        idempotencyKey: String,
+    ): Response<JsonElement> = api.deleteRetailerPriceOverride(overrideId, idempotencyKey)
 
     suspend fun getDashboard(): Response<SupplierDashboard> = api.getDashboard()
 
@@ -195,8 +200,10 @@ class SupplierOperationsRepository @Inject constructor(
         idempotencyKey: String,
     ): Response<kotlinx.serialization.json.JsonElement> = api.resolveReturn(idempotencyKey, body)
 
-    suspend fun updateProfile(body: Map<String, String>): Response<SupplierProfile> =
-        api.updateProfile(body)
+    suspend fun updateProfile(
+        body: Map<String, String>,
+        idempotencyKey: String,
+    ): Response<SupplierProfile> = api.updateProfile(body, idempotencyKey)
 
     suspend fun createFleetDriver(
         body: FleetDriverCreateRequest,
@@ -238,8 +245,10 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun vetOrder(body: JsonElement, idempotencyKey: String): Response<JsonElement> =
         api.vetOrder(idempotencyKey, body)
 
-    suspend fun updateInventory(body: JsonElement): Response<JsonElement> =
-        api.updateInventory(body)
+    suspend fun updateInventory(
+        body: JsonElement,
+        idempotencyKey: String,
+    ): Response<JsonElement> = api.updateInventory(body, idempotencyKey)
 
     suspend fun getDemandHistory(): Response<DemandHistoryResponse> =
         api.getDemandHistory()

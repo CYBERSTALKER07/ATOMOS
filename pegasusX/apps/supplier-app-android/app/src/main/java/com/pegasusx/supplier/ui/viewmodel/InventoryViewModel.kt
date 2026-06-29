@@ -6,6 +6,7 @@ import com.pegasusx.supplier.data.model.InventoryItem
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
+import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -81,11 +82,18 @@ class InventoryViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(adjustBusy = true, error = null) }
             try {
+                val item = _state.value.items.find { it.sku == sku }
+                val version = item?.quantity ?: 0L
+                val scopeId = SupplierIdempotencyKeys.supplierScopeId()
                 val body = buildJsonObject {
                     put("sku", JsonPrimitive(sku))
                     put("quantity_delta", JsonPrimitive(delta))
+                    put("quantity", JsonPrimitive(version))
                 }
-                val resp = ops.updateInventory(body)
+                val resp = ops.updateInventory(
+                    body,
+                    SupplierIdempotencyKeys.inventoryAdjust(scopeId, sku, delta, version),
+                )
                 if (resp.isSuccessful) {
                     showAdjust(null)
                     load()

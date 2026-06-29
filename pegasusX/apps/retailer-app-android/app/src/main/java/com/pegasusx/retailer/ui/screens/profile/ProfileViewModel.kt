@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.model.UpdateGlobalSettingsRequest
+import com.pegasusx.retailer.util.RetailerIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -225,7 +226,13 @@ class ProfileViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, error = "No profile changes to save") }
                     return@launch
                 }
-                api.updateRetailerProfile(payload)
+                api.updateRetailerProfile(
+                    payload,
+                    RetailerIdempotencyKeys.profileUpdate(
+                        _uiState.value.retailerId.ifBlank { "unknown" },
+                        payload,
+                    ),
+                )
                 _uiState.update {
                     it.copy(
                         retailerName = name.trim().ifEmpty { it.retailerName },

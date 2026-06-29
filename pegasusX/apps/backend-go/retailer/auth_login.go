@@ -203,7 +203,7 @@ func retailerProfileConfigured(ret Retailer) bool {
 	return strings.TrimSpace(ret.Name) != "" && (ret.Lat != 0 || ret.Lng != 0)
 }
 
-func (s *Service) writeMobileAuthResponse(w http.ResponseWriter, ret Retailer) {
+func (s *Service) marshalMobileAuthResponse(ret Retailer) (int, []byte) {
 	isConfigured := retailerProfileConfigured(ret)
 	claims := auth.Claims{
 		Subject:      ret.RetailerID,
@@ -216,18 +216,18 @@ func (s *Service) writeMobileAuthResponse(w http.ResponseWriter, ret Retailer) {
 	}
 	token, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 24 * time.Hour})
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_token_failed"})
-		return
+		b, _ := json.Marshal(map[string]string{"error": "issue_token_failed"})
+		return http.StatusInternalServerError, b
 	}
 	refresh, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: 7 * 24 * time.Hour})
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_refresh_failed"})
-		return
+		b, _ := json.Marshal(map[string]string{"error": "issue_refresh_failed"})
+		return http.StatusInternalServerError, b
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"token":          token,
-		"refresh_token":  refresh,
-		"is_configured":  isConfigured,
+	b, err := json.Marshal(map[string]any{
+		"token":         token,
+		"refresh_token": refresh,
+		"is_configured": isConfigured,
 		"user": map[string]any{
 			"id":         ret.RetailerID,
 			"name":       coalesceRetailerName(ret.Name),
@@ -236,6 +236,16 @@ func (s *Service) writeMobileAuthResponse(w http.ResponseWriter, ret Retailer) {
 			"avatar_url": nil,
 		},
 	})
+	if err != nil {
+		b, _ = json.Marshal(map[string]string{"error": "marshal_failed"})
+		return http.StatusInternalServerError, b
+	}
+	return http.StatusOK, b
+}
+
+func (s *Service) writeMobileAuthResponse(w http.ResponseWriter, ret Retailer) {
+	status, body := s.marshalMobileAuthResponse(ret)
+	writeJSONBytes(w, status, body)
 }
 
 func coalesceRetailerName(name string) string {

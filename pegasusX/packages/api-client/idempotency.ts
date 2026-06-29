@@ -288,6 +288,60 @@ export function supplierResolveReturnKey(returnId: string, resolution: string): 
   return `supplier-resolve-return:${returnId}:${resolution.trim().toUpperCase()}`;
 }
 
+export function supplierProfileUpdateKey(supplierId: string, payloadFingerprint: string): string {
+  return `supplier-profile-update:${supplierId}:${stableHash(payloadFingerprint)}`;
+}
+
+export function supplierConfigureKey(supplierId: string, payloadFingerprint: string): string {
+  return `supplier-configure:${supplierId}:${stableHash(payloadFingerprint)}`;
+}
+
+export function supplierBusinessSetupKey(supplierId: string, payloadFingerprint: string): string {
+  return `supplier-business-setup:${supplierId}:${stableHash(payloadFingerprint)}`;
+}
+
+export function supplierPricingRulePatchKey(supplierId: string, payloadFingerprint: string): string {
+  return `supplier-pricing-rule-patch:${supplierId}:${stableHash(payloadFingerprint)}`;
+}
+
+export function supplierInventoryAdjustKey(
+  supplierId: string,
+  skuId: string,
+  quantityDelta: number,
+  version: number,
+): string {
+  return `supplier-inventory-adjust:${supplierId}:${skuId}:${quantityDelta}:${version}`;
+}
+
+export function supplierRetailerPriceOverrideCreateKey(
+  supplierId: string,
+  retailerId: string,
+  productId: string,
+  priceMinor: number,
+): string {
+  return `supplier-retailer-price-create:${supplierId}:${retailerId}:${productId}:${priceMinor}`;
+}
+
+export function supplierRetailerPriceOverrideDeleteKey(supplierId: string, overrideId: string): string {
+  return `supplier-retailer-price-delete:${supplierId}:${overrideId}`;
+}
+
+export function supplierPromotionCreateKey(supplierId: string, payloadFingerprint: string): string {
+  return `supplier-promotion-create:${supplierId}:${stableHash(payloadFingerprint)}`;
+}
+
+export function supplierPromotionUpdateKey(
+  supplierId: string,
+  promotionId: string,
+  payloadFingerprint: string,
+): string {
+  return `supplier-promotion-update:${supplierId}:${promotionId}:${stableHash(payloadFingerprint)}`;
+}
+
+export function supplierPromotionDeactivateKey(supplierId: string, promotionId: string): string {
+  return `supplier-promotion-deactivate:${supplierId}:${promotionId}`;
+}
+
 export function driverSupplyTransferArriveKey(driverId: string, transferId: string): string {
   return `driver-supply-arrive:${driverId}:${transferId}`;
 }
@@ -390,6 +444,23 @@ export function retailerRejectPreorderKey(orderId: string, reason?: string): str
 
 export function retailerConfirmAIKey(orderId: string): string {
   return `retailer-confirm-ai:${orderId}`;
+}
+
+export function retailerRejectAIKey(orderId: string, reason?: string): string {
+  return `retailer-reject-ai:${orderId}:${stableHash(reason ?? '')}`;
+}
+
+export function retailerEditPreorderKey(orderId: string): string {
+  return `retailer-edit-preorder:${orderId}`;
+}
+
+/** Matches mobile onboarding key `retailer-setup:{retailerId}`. */
+export function retailerSetupKey(retailerId: string): string {
+  return `retailer-setup:${retailerId}`;
+}
+
+export function retailerProfileUpdateKey(retailerId: string, payloadFingerprint: string): string {
+  return `retailer-profile-update:${retailerId}:${stableHash(payloadFingerprint)}`;
 }
 
 export function adminOrderAssignKey(orderId: string, driverId: string): string {

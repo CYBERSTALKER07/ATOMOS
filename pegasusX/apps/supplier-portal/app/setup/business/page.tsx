@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { supplierFetch } from "@/lib/auth";
+import { supplierScopeId } from "@/lib/supplier-scope";
+import { supplierBusinessSetupKey } from "@pegasusx/api-client";
 import {
   SetupCallout,
   SetupField,
@@ -48,12 +50,13 @@ export default function BusinessSetupPage() {
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const body = JSON.stringify(state);
       const res = await supplierFetch("/v1/supplier/business/setup", {
         method: "POST",
         headers: {
-          "Idempotency-Key": cryptoRandomId(),
+          "Idempotency-Key": supplierBusinessSetupKey(supplierScopeId(), body),
         },
-        body: JSON.stringify(state),
+        body,
       });
       if (!res.ok) {
         const body = await res.text();
@@ -153,9 +156,4 @@ export default function BusinessSetupPage() {
       />
     </>
   );
-}
-
-function cryptoRandomId() {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }

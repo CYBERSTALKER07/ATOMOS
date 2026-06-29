@@ -52,6 +52,30 @@ enum RetailerIdempotency {
         "retailer-reject-preorder:\(orderId):\(stableHash(reason))"
     }
 
+    static func rejectAI(orderId: String, reason: String = "") -> String {
+        "retailer-reject-ai:\(orderId):\(stableHash(reason))"
+    }
+
+    static func editPreorder(orderId: String) -> String {
+        "retailer-edit-preorder:\(orderId)"
+    }
+
+    static func setup(retailerId: String) -> String {
+        "retailer-setup:\(retailerId)"
+    }
+
+    static func supplierAdd(supplierId: String) -> String {
+        "retailer-supplier-add:\(supplierId)"
+    }
+
+    static func supplierRemove(supplierId: String) -> String {
+        "retailer-supplier-remove:\(supplierId)"
+    }
+
+    static func profileUpdate(retailerId: String, payloadFingerprint: String) -> String {
+        "retailer-profile-update:\(retailerId):\(stableHash(payloadFingerprint))"
+    }
+
     private static func stableHash(_ input: String) -> String {
         var hash: UInt32 = 2166136261
         for scalar in input.unicodeScalars {

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
+import { supplierScopeId } from "@/lib/supplier-scope";
+import { supplierProfileUpdateKey } from "@pegasusx/api-client";
 import type { SupplierProfile, SupplierProfileUpdateRequest } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 
@@ -81,7 +83,10 @@ export default function ProfilePage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const updated = await api.updateSupplierProfile(body);
+      const updated = await api.updateSupplierProfile(
+        body,
+        supplierProfileUpdateKey(profile.supplier_id || supplierScopeId(), JSON.stringify(body)),
+      );
       setProfile(updated);
       setDraft(draftFromProfile(updated));
     } catch (err) {
