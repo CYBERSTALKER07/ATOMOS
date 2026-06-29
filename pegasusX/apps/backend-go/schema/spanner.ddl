@@ -339,6 +339,7 @@ CREATE TABLE Factories (
   Name             STRING(255)   NOT NULL,
   Lat              FLOAT64,
   Lng              FLOAT64,
+  H3Cell           STRING(15),
   Address          STRING(MAX),
   PlaceId          STRING(128),
   IsActive         BOOL          NOT NULL,
@@ -347,6 +348,7 @@ CREATE TABLE Factories (
 ) PRIMARY KEY (FactoryId);
 
 CREATE INDEX Idx_Factories_BySupplier ON Factories(SupplierId);
+CREATE INDEX Idx_Factories_ByH3Cell ON Factories(SupplierId, H3Cell);
 
 CREATE TABLE WarehouseSupplyRequests (
   RequestId                   STRING(36)    NOT NULL,

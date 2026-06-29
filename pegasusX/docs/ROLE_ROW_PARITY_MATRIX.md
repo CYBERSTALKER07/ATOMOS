@@ -38,7 +38,7 @@ Last updated: 2026-06-17 (supplier nav cleanup + catalog-first pricing + topolog
 | Manifest gate exceptions | `/(portal)/manifest-exceptions` | `ManifestExceptionsScreen` | `GET /v1/supplier/manifest-exceptions` | **Payload**, **Warehouse**, **Factory** | Wired — linked from manifests |
 | `/fleet`, `/supplier/fleet` | `/(portal)/fleet` | `FleetScreen` + `FleetLiveMapScreen` | `GET/POST /v1/supplier/fleet/*`, `GET /v1/supplier/fleet/live-map` | **Driver** telemetry | Wired |
 | Fleet orders | `/(portal)/fleet/orders` | `FleetOrdersScreen` | `GET /v1/supplier/fleet/orders` | **Driver** ↔ **Retailer** order | Wired |
-| Operations / empathy | `/(portal)/operations` | `OperationsScreen` | `GET /v1/supplier/empathy/adoption`, `POST /v1/supplier/broadcast`, `POST /v1/supplier/replenishment/trigger`, `POST /v1/supplier/orders/payment-bypass` | Broadcast → **Driver/Retailer/Payload**; replenishment → **Warehouse**; bypass → **Retailer** payment | Wired |
+| Operations / empathy | `/(portal)/operations` | `OperationsScreen` | `GET /v1/supplier/empathy/adoption`, `POST /v1/supplier/broadcast`, `POST /v1/supplier/replenishment/trigger`, `POST /v1/supplier/orders/payment-bypass` | Broadcast fans to **supplier + driver/retailer/payload/warehouse/factory** WS rooms by `role`; replenishment → **Warehouse**; bypass → **Retailer** payment | Wired |
 | Activity feed | dashboard snippet | `ActivityScreen` | `GET /v1/supplier/activity` | Cross-ecosystem events | Wired — native page; portal dashboard only |
 | Exceptions hub | `/(portal)/exceptions` | route exists; **not in nav** | `GET /v1/supplier/exceptions` | Multi-role | Wired — deep link only (removed from nav 2026-06-17) |
 | Shop closed | `/(portal)/exceptions/shop-closed` | route exists; **not in nav** | `GET/POST /v1/supplier/shop-closed/*` | **Driver** reports → **Retailer** | Wired — deep link only |
@@ -50,7 +50,7 @@ Last updated: 2026-06-17 (supplier nav cleanup + catalog-first pricing + topolog
 | Pegasus | pegasusX portal | pegasusX native | Backend | Cross-role | Status |
 |---------|-----------------|-----------------|---------|------------|--------|
 | `/supplier/inventory` | `/(portal)/inventory` | `InventoryScreen` | `GET/PATCH /v1/supplier/inventory`, `GET .../audit` | Stock for **Retailer** orders | Wired |
-| `/inventory/import` | `/(portal)/inventory/import` | `InventoryImportScreen` | `POST/GET /v1/supplier/inventory/imports/*` | **Warehouse**-scoped rows; WS to warehouse hub | Wired |
+| `/inventory/import` | `/(portal)/inventory/import` | `InventoryImportScreen` | `POST/GET /v1/supplier/inventory/imports/*` | Backend idempotency on create/ingest/approve/apply; **Warehouse**-scoped rows; WS to warehouse hub | Wired |
 | `/supplier/catalog` | `/(portal)/catalog` | `CatalogScreen` | `GET/POST /v1/catalog/products`, categories | **Retailer** browse/order | Wired |
 | Catalog detail | `/(portal)/catalog/[productId]` | `CatalogDetailScreen` | `PUT /v1/catalog/products/{id}`, upload ticket | **Retailer** product view | Wired |
 | `/supplier/pricing` | `/(portal)/pricing` → `/(portal)/pricing/[productId]` | `PricingScreen` + `ProductPricingDetailView` (iOS) | `GET/PATCH /v1/supplier/pricing/rules` | **Retailer** list prices | Wired — catalog-first (2026-06-17) |
@@ -61,7 +61,7 @@ Last updated: 2026-06-17 (supplier nav cleanup + catalog-first pricing + topolog
 
 | Pegasus | pegasusX portal | pegasusX native | Backend | Cross-role | Status |
 |---------|-----------------|-----------------|---------|------------|--------|
-| Topology editor | `/(portal)/topology` | `TopologyScreen` | `GET/PUT /v1/supplier/topology` | **Warehouse** + **Factory** nodes | Wired |
+| Topology editor | `/(portal)/topology` | `TopologyScreen` | `GET/PUT /v1/supplier/topology` | **Warehouse** + **Factory** nodes; factory `H3Cell` backfill on PUT | Wired |
 | `/supplier/factories` | `/(portal)/factories` | `FactoriesScreen` (topology PUT) | `PUT /v1/supplier/topology` | **Factory** app staff via org-fleet | Wired — empty-state create CTA (2026-06-17) |
 | `/supplier/warehouses` | `/(portal)/warehouses` | `WarehousesScreen` (topology PUT) | `PUT /v1/supplier/topology` | **Warehouse** app; dispatch origin | Wired — empty-state create CTA (2026-06-17) |
 | `/supplier/delivery-zones` | `/(portal)/delivery-zones` | `DeliveryZonesScreen` | `GET /v1/supplier/topology` (coverage radii) | **Retailer** delivery eligibility | Wired |
@@ -185,12 +185,14 @@ Per-role surfaces that must stay wired end-to-end (portal + native + terminal wh
 | Treasury / invoices | portal | desktop | — | portal + Android + iOS | portal | — |
 | Notifications inbox | portal + Android + iOS (dashboard bell on both native) | mobile + desktop | Android + iOS | portal + Android + iOS | portal + Android (+ iOS sheet) | Android + iOS |
 | Client policy banner | all clients (global shell) | all clients (global shell) | all clients (global shell) | all clients (global shell) | portal + native | all clients (global shell) |
-| Idempotency on mutations | dispatch, resolve, broadcast, payment-bypass | checkout, orders | delivery edges, amend, transition, supply arrive | dispatch, supply, inbound gate, order delay/reject/overflow | manifest, transfer | seal, reassign, inbound |
+| Idempotency on mutations | dispatch, resolve, broadcast, payment-bypass, import wizard, topology PUT, replenishment trigger | checkout, orders | delivery edges, amend, transition, supply arrive | dispatch, supply, inbound gate, order delay/reject/overflow | manifest, transfer | seal, reassign, inbound |
 | Dock inbound queue (supplier-grouped, QR reveal) | — | desktop + Android + iOS | — | — | — | — |
 
 **Intentional portal-only deferrals (v1):** supplier empathy adoption depth on native; warehouse supply forecast create form depth on native (create from Dispatch tab); factory iOS analytics/exceptions as dashboard sheets not tabs.
 
 **Intentional nav removals (2026-06-17):** supplier exceptions hub, shop-closed, and early-complete removed from portal sidebar and native More/rail — routes and APIs remain for deep links and SSMR.
+
+**Recently closed gaps (2026-06-29):** supplier ecosystem gap closure — import wizard backend idempotency; returns resolve idempotency + `outbox.EmitJSON`; cross-role broadcast WS fanout; factory `H3Cell` on topology PUT; deterministic idempotency keys on portal/Android/iOS (org-fleet, import, chargebacks); dispatch partial-commit structured error; vet order `Deprecation` header (route retained for SSMR). **Warehouse gap closure** — `PATCH /v1/warehouse/ops/location` now uses RW txn + `H3Cell` + idempotency replay + outbox `WAREHOUSE_LOCATION_UPDATED`; portal settings/location + native location PATCH send deterministic idempotency keys; warehouse-portal `Suspense` boundary for `useSearchParams` pages.
 
 **Recently closed gaps (2026-06-17):** supplier topology create UX (empty-state CTA + `PUT /v1/supplier/topology` on portal/Android/iOS); catalog-first pricing with per-product detail; orders+dispatch combined hub on native; Android rail full section parity (`ORG_FLEET`, treasury suite, `INVENTORY_IMPORT`, `RETAILER_OVERRIDES`); `PegasusCollapsibleRail` expanded-drawer layout fix (supplier/warehouse/factory tablet nav).
 

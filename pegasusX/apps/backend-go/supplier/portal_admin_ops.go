@@ -22,17 +22,22 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-// PortalOpsConfig wires optional Spanner + supplier hub for admin-parity endpoints.
+// PortalOpsConfig wires optional Spanner + role hubs for admin-parity endpoints.
 type PortalOpsConfig struct {
 	Spanner              *spanner.Client
 	ManifestStore        *manifest.Store
 	RouteGeometryBuilder *routing.GeometryBuilder
 	SupplierHub          *ws.Hub
+	WarehouseHub         *ws.Hub
+	DriverHub            *ws.Hub
+	RetailerHub          *ws.Hub
+	PayloadHub           *ws.Hub
+	FactoryHub           *ws.Hub
 	OptimizerClient      *optimizerclient.Client
 	PlanCounters         *plan.SourceCounters
-	FallbackDepotLat      float64
-	FallbackDepotLng      float64
-	ReplenishmentEngine   *replenishment.Engine
+	FallbackDepotLat     float64
+	FallbackDepotLng     float64
+	ReplenishmentEngine  *replenishment.Engine
 }
 
 // SetPortalOps attaches cross-cutting deps used by supplier admin-parity handlers.
@@ -41,6 +46,11 @@ func (s *Service) SetPortalOps(cfg PortalOpsConfig) {
 	s.manifestStore = cfg.ManifestStore
 	s.routeGeometryBuilder = cfg.RouteGeometryBuilder
 	s.portalSupplierHub = cfg.SupplierHub
+	s.portalWarehouseHub = cfg.WarehouseHub
+	s.portalDriverHub = cfg.DriverHub
+	s.portalRetailerHub = cfg.RetailerHub
+	s.portalPayloadHub = cfg.PayloadHub
+	s.portalFactoryHub = cfg.FactoryHub
 	s.optimizerClient = cfg.OptimizerClient
 	s.planCounters = cfg.PlanCounters
 	s.fallbackDepotLat = cfg.FallbackDepotLat
@@ -162,15 +172,16 @@ func (s *Service) HandleBroadcast(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	targetRole := strings.ToUpper(strings.TrimSpace(req.Role))
 	payload, _ := json.Marshal(map[string]any{
 		"type":        "SUPPLIER_BROADCAST",
 		"title":       req.Title,
 		"body":        req.Body,
-		"target_role": strings.TrimSpace(req.Role),
+		"target_role": targetRole,
 		"supplier_id": sid,
 		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
 	})
-	s.portalSupplierHub.Broadcast(r.Context(), "supplier:"+sid, payload)
+	s.broadcastAdminMessage(r.Context(), sid, targetRole, payload)
 
 	resp := map[string]any{
 		"status":      "broadcast_sent",
@@ -191,6 +202,15 @@ func (s *Service) HandleReplenishmentTrigger(w http.ResponseWriter, r *http.Requ
 	}
 	if s.portalSpanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "replenishment_unavailable"})
+		return
+	}
+
+	body, ok := readMutationBody(w, r, 4*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
 		return
 	}
 
@@ -282,14 +302,19 @@ func (s *Service) HandleReplenishmentTrigger(w http.ResponseWriter, r *http.Requ
 		s.portalSupplierHub.Broadcast(ctx, "supplier:"+sid, raw)
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"status":              "triggered",
-		"request_id":          requestID,
-		"warehouse_id":        warehouseID,
-		"insights_generated":  cycleResult.InsightsGenerated,
-		"transfers_created":   cycleResult.TransfersCreated,
-		"warehouses_scanned":  cycleResult.WarehousesScanned,
-	})
+	resp := map[string]any{
+		"status":             "triggered",
+		"request_id":         requestID,
+		"warehouse_id":       warehouseID,
+		"insights_generated": cycleResult.InsightsGenerated,
+		"transfers_created":  cycleResult.TransfersCreated,
+		"warehouses_scanned": cycleResult.WarehousesScanned,
+	}
+	respBytes, _ := json.Marshal(resp)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
+	s.storeMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
 }
 
 // HandleSupplierFleetOrders serves GET /v1/supplier/fleet/orders.

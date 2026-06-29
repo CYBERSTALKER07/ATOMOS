@@ -13,14 +13,15 @@ import com.pegasusx.supplier.data.model.*
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
+import com.pegasusx.supplier.data.session.TokenHolder
 import com.pegasusx.supplier.util.SUPPLIER_RECONNECT_RECOVERY_HINT
+import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import com.pegasusx.supplier.ui.realtime.SupplierReconnectRecoveryEffect
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +46,7 @@ fun OrgFleetScreen(
     var fleetActionBusy by remember { mutableStateOf(false) }
     var fleetActionMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val scopeId = TokenHolder.supplierId.orEmpty().ifBlank { "supplier" }
 
     SupplierReconnectRecoveryEffect(
         realtimeSignals = realtimeSignals,
@@ -134,7 +136,10 @@ fun OrgFleetScreen(
                             scope.launch {
                                 memberActionId = userId
                                 try {
-                                    val resp = ops.deactivateOrgMember(userId, UUID.randomUUID().toString())
+                                    val resp = ops.deactivateOrgMember(
+                                        userId,
+                                        SupplierIdempotencyKeys.orgMemberDeactivate(scopeId, userId),
+                                    )
                                     if (resp.isSuccessful) orgMembers = resp.body()?.items.orEmpty()
                                 } finally {
                                     memberActionId = null
@@ -158,7 +163,10 @@ fun OrgFleetScreen(
                     fleetActionBusy = true
                     fleetActionMessage = null
                     try {
-                        ops.createFleetDriver(request, UUID.randomUUID().toString())
+                        ops.createFleetDriver(
+                            request,
+                            SupplierIdempotencyKeys.fleetDriverCreate(scopeId, request.phone),
+                        )
                         showDriverDialog = false
                         reload()
                     } finally {
@@ -177,7 +185,10 @@ fun OrgFleetScreen(
                     fleetActionBusy = true
                     fleetActionMessage = null
                     try {
-                        ops.createFleetVehicle(request, UUID.randomUUID().toString())
+                        ops.createFleetVehicle(
+                            request,
+                            SupplierIdempotencyKeys.fleetVehicleCreate(scopeId, request.licensePlate),
+                        )
                         showVehicleDialog = false
                         reload()
                     } finally {
@@ -196,7 +207,10 @@ fun OrgFleetScreen(
                     fleetActionBusy = true
                     fleetActionMessage = null
                     try {
-                        ops.createOrgMember(request, UUID.randomUUID().toString())
+                        ops.createOrgMember(
+                            request,
+                            SupplierIdempotencyKeys.orgMemberCreate(scopeId, request.phone),
+                        )
                         showOrgDialog = false
                         reload()
                     } finally {
@@ -216,7 +230,12 @@ fun OrgFleetScreen(
                     scope.launch {
                         memberActionId = member.userId
                         try {
-                            val resp = ops.updateOrgMember(member.userId, request, UUID.randomUUID().toString())
+                            val revision = "${request.name}:${request.phone}:${request.supplierRole}"
+                            val resp = ops.updateOrgMember(
+                                member.userId,
+                                request,
+                                SupplierIdempotencyKeys.orgMemberUpdate(scopeId, member.userId, revision),
+                            )
                             if (resp.isSuccessful) {
                                 orgMembers = resp.body()?.items.orEmpty()
                                 editingMember = null

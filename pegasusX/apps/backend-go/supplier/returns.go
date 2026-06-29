@@ -12,6 +12,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
@@ -179,8 +180,17 @@ func (s *Service) HandleResolveReturn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, ok := readMutationBody(w, r, 32*1024)
+	if !ok {
+		return
+	}
+	idemKey, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+
 	var req resolveReturnRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -209,6 +219,7 @@ func (s *Service) HandleResolveReturn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := s.portalSpanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &supplierSpannerTxnBuf{}
 		row, err := txn.ReadRow(ctx, "SupplierReturns", spanner.Key{returnID},
 			[]string{"OrderId", "SkuId", "RejectedQty", "Status", "PhysicalStatus", "ReceivedQty"})
 		if err != nil {
@@ -295,8 +306,8 @@ func (s *Service) HandleResolveReturn(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		payload, err := json.Marshal(map[string]any{
-			"type":            events.EventSupplierReturnResolved,
+		eventPayload := map[string]any{
+			"type":        events.EventSupplierReturnResolved,
 			"return_id":   returnID,
 			"order_id":    orderID,
 			"sku_id":      skuID,
@@ -305,20 +316,13 @@ func (s *Service) HandleResolveReturn(w http.ResponseWriter, r *http.Request) {
 			"supplier_id": supplierID,
 			"notes":       strings.TrimSpace(req.Notes),
 			"timestamp":   time.Now().UTC().Format(time.RFC3339Nano),
-		})
-		if err != nil {
+		}
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, eventPayload); err != nil {
 			return err
 		}
-		eventID := fmt.Sprintf("evt_%s", returnID)
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-			"EventId":       eventID,
-			"AggregateType": events.AggregateOrder,
-			"AggregateId":   orderID,
-			"TopicName":     events.TopicMain,
-			"Payload":       payload,
-			"CreatedAt":     time.Now().UTC(),
-			"PublishedAt":   nil,
-		}))
+		for _, e := range buf.events {
+			mutations = append(mutations, portalOutboxMutation(e))
+		}
 
 		return txn.BufferWrite(mutations)
 	})
@@ -331,9 +335,14 @@ func (s *Service) HandleResolveReturn(w http.ResponseWriter, r *http.Request) {
 		s.cache.Invalidate(ctx, supplierCacheKey(supplierID), "supplier:inventory:"+supplierID)
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"status":     "RESOLVED",
 		"return_id":  returnID,
 		"resolution": resolution,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
+	s.storeMutationReplay(r.Context(), idemKey, body, http.StatusOK, respBytes)
 }

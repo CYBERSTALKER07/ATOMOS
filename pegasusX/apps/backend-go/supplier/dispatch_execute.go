@@ -108,6 +108,17 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 	result, err := s.executeDispatch(r.Context(), sid, warehouseFilter)
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "dispatch execute failed", "supplier_id", sid, "warehouse_id", warehouseFilter, "err", err)
+		if partial, ok := err.(*dispatchPartialCommitError); ok {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{
+				"error":             "dispatch_partial_commit",
+				"committed_routes":  partial.CommittedRoutes,
+				"failed_chunk":      partial.FailedChunk,
+				"total_chunks":      partial.TotalChunks,
+				"total_routes":      partial.TotalRoutes,
+				"detail":            partial.Cause.Error(),
+			})
+			return
+		}
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dispatch_execute_failed"})
 		return
 	}
@@ -246,150 +257,173 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 	}
 
 	chunkSize := 50 // 50 routes per chunk
+	totalRoutes := len(assignment.Routes)
+	totalChunks := (totalRoutes + chunkSize - 1) / chunkSize
+	if totalChunks == 0 {
+		totalChunks = 1
+	}
 
-	err = spannerutils.RunChunkedTransaction(ctx, s.portalSpanner, assignment.Routes, chunkSize, func(ctx context.Context, txn *spanner.ReadWriteTransaction, routes []dispatch.DispatchRoute) error {
-		batch := &manifest.SupplierWriteBatch{}
-		var chunkQueued []pendingEvent
+	for chunkIndex, i := 0, 0; i < totalRoutes; i += chunkSize {
+		chunkIndex++
+		end := i + chunkSize
+		if end > totalRoutes {
+			end = totalRoutes
+		}
+		routes := assignment.Routes[i:end]
 
-		for _, route := range routes {
-			driverID := strings.TrimSpace(route.DriverID)
-			if driverID == "" || len(route.Orders) == 0 {
-				continue
-			}
-			manifestID := uuid.NewString()
-			routeID := uuid.NewString()
-			vehicleID := strings.TrimSpace(vehicleByDriver[driverID])
-			batch.Manifests = append(batch.Manifests, manifest.SupplierTruckRow{
-				ManifestID:    manifestID,
-				SupplierID:    supplierID,
-				WarehouseID:   warehouseID,
-				RouteID:       routeID,
-				TruckID:       vehicleID,
-				DriverID:      driverID,
-				State:         dispatchExecuteManifestState,
-				TotalVolumeVU: route.LoadedVolume,
-				MaxVolumeVU:   route.MaxVolume,
-				StopCount:     int64(len(route.Orders)),
-				CreatedAt:     now,
-			})
+		chunkErr := spannerutils.RunReadWriteTransaction(ctx, s.portalSpanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			batch := &manifest.SupplierWriteBatch{}
+			var chunkQueued []pendingEvent
 
-			orderIDs := make([]string, 0, len(route.Orders))
-			for idx, stop := range route.Orders {
-				orderID := strings.TrimSpace(stop.OrderID)
-				if orderID == "" {
+			for _, route := range routes {
+				driverID := strings.TrimSpace(route.DriverID)
+				if driverID == "" || len(route.Orders) == 0 {
 					continue
 				}
-				batch.Orders = append(batch.Orders, manifest.SupplierManifestOrderRow{
+				manifestID := uuid.NewString()
+				routeID := uuid.NewString()
+				vehicleID := strings.TrimSpace(vehicleByDriver[driverID])
+				batch.Manifests = append(batch.Manifests, manifest.SupplierTruckRow{
 					ManifestID:    manifestID,
-					OrderID:       orderID,
-					SequenceIndex: int64(idx),
-					LoadingOrder:  int64(idx),
-					VolumeVU:      stop.Volume,
-					State:         "LOADED",
-					UpdatedAt:     now,
+					SupplierID:    supplierID,
+					WarehouseID:   warehouseID,
+					RouteID:       routeID,
+					TruckID:       vehicleID,
+					DriverID:      driverID,
+					State:         dispatchExecuteManifestState,
+					TotalVolumeVU: route.LoadedVolume,
+					MaxVolumeVU:   route.MaxVolume,
+					StopCount:     int64(len(route.Orders)),
+					CreatedAt:     now,
 				})
-				batch.OrderPatches = append(batch.OrderPatches, manifest.OrderPatch{
-					OrderID:    orderID,
-					Status:     "LOADED",
+
+				orderIDs := make([]string, 0, len(route.Orders))
+				for idx, stop := range route.Orders {
+					orderID := strings.TrimSpace(stop.OrderID)
+					if orderID == "" {
+						continue
+					}
+					batch.Orders = append(batch.Orders, manifest.SupplierManifestOrderRow{
+						ManifestID:    manifestID,
+						OrderID:       orderID,
+						SequenceIndex: int64(idx),
+						LoadingOrder:  int64(idx),
+						VolumeVU:      stop.Volume,
+						State:         "LOADED",
+						UpdatedAt:     now,
+					})
+					batch.OrderPatches = append(batch.OrderPatches, manifest.OrderPatch{
+						OrderID:    orderID,
+						Status:     "LOADED",
+						ManifestID: manifestID,
+						DriverID:   driverID,
+						VehicleID:  vehicleID,
+						RouteID:    routeID,
+						UpdatedAt:  now,
+					})
+					chunkQueued = append(chunkQueued, pendingEvent{
+						aggregateType: events.AggregateOrder,
+						aggregateID:   orderID,
+						payload: events.OrderEvent{
+							BaseEvent:   events.BaseEvent{Type: events.EventOrderAssigned},
+							OrderID:     orderID,
+							SupplierID:  supplierID,
+							RetailerID:  stop.RetailerID,
+							WarehouseID: warehouseID,
+							DriverID:    driverID,
+							VehicleID:   vehicleID,
+							RouteID:     routeID,
+							ManifestID:  manifestID,
+							Status:      "LOADED",
+						},
+					})
+					orderIDs = append(orderIDs, orderID)
+				}
+
+				chunkQueued = append(chunkQueued,
+					pendingEvent{
+						aggregateType: events.AggregateRoute,
+						aggregateID:   routeID,
+						payload: events.RouteEvent{
+							BaseEvent:   events.BaseEvent{Type: events.EventRouteCreated},
+							RouteID:     routeID,
+							ManifestID:  manifestID,
+							SupplierID:  supplierID,
+							WarehouseID: warehouseID,
+							DriverID:    driverID,
+							VehicleID:   vehicleID,
+							OrderIDs:    orderIDs,
+							OrderCount:  len(orderIDs),
+						},
+					},
+					pendingEvent{
+						aggregateType: events.AggregateManifest,
+						aggregateID:   manifestID,
+						payload: events.ManifestEvent{
+							BaseEvent:   events.BaseEvent{Type: events.EventManifestDraftCreated},
+							ManifestID:  manifestID,
+							RouteID:     routeID,
+							SupplierID:  supplierID,
+							WarehouseID: warehouseID,
+							DriverID:    driverID,
+							StopCount:   int64(len(orderIDs)),
+						},
+					},
+				)
+
+				committed = append(committed, DispatchExecuteRoute{
 					ManifestID: manifestID,
+					RouteID:    routeID,
 					DriverID:   driverID,
 					VehicleID:  vehicleID,
-					RouteID:    routeID,
-					UpdatedAt:  now,
+					OrderIDs:   orderIDs,
+					VolumeVU:   route.LoadedVolume,
+					MaxVolume:  route.MaxVolume,
 				})
-				chunkQueued = append(chunkQueued, pendingEvent{
-					aggregateType: events.AggregateOrder,
-					aggregateID:   orderID,
-					payload: events.OrderEvent{
-						BaseEvent:   events.BaseEvent{Type: events.EventOrderAssigned},
-						OrderID:     orderID,
-						SupplierID:  supplierID,
-						RetailerID:  stop.RetailerID,
-						WarehouseID: warehouseID,
-						DriverID:    driverID,
-						VehicleID:   vehicleID,
-						RouteID:     routeID,
-						ManifestID:  manifestID,
-						Status:      "LOADED",
-					},
-				})
-				orderIDs = append(orderIDs, orderID)
+				out.OrdersAssigned += len(orderIDs)
 			}
 
-			chunkQueued = append(chunkQueued,
-				pendingEvent{
-					aggregateType: events.AggregateRoute,
-					aggregateID:   routeID,
-					payload: events.RouteEvent{
-						BaseEvent:   events.BaseEvent{Type: events.EventRouteCreated},
-						RouteID:     routeID,
-						ManifestID:  manifestID,
-						SupplierID:  supplierID,
-						WarehouseID: warehouseID,
-						DriverID:    driverID,
-						VehicleID:   vehicleID,
-						OrderIDs:    orderIDs,
-						OrderCount:  len(orderIDs),
-					},
-				},
-				pendingEvent{
-					aggregateType: events.AggregateManifest,
-					aggregateID:   manifestID,
-					payload: events.ManifestEvent{
-						BaseEvent:   events.BaseEvent{Type: events.EventManifestDraftCreated},
-						ManifestID:  manifestID,
-						RouteID:     routeID,
-						SupplierID:  supplierID,
-						WarehouseID: warehouseID,
-						DriverID:    driverID,
-						StopCount:   int64(len(orderIDs)),
-					},
-				},
-			)
+			if len(batch.Manifests) == 0 {
+				return nil
+			}
 
-			committed = append(committed, DispatchExecuteRoute{
-				ManifestID: manifestID,
-				RouteID:    routeID,
-				DriverID:   driverID,
-				VehicleID:  vehicleID,
-				OrderIDs:   orderIDs,
-				VolumeVU:   route.LoadedVolume,
-				MaxVolume:  route.MaxVolume,
-			})
-			out.OrdersAssigned += len(orderIDs)
-		}
-
-		if len(batch.Manifests) == 0 {
-			return nil
-		}
-
-		store := manifest.NewStore(s.portalSpanner)
-		if err := store.CommitSupplierTxn(ctx, txn, batch, func(buf outbox.TxnBuffer) error {
-			versions := manifest.OrderPatchVersionByID(batch.OrderPatches)
-			for _, evt := range chunkQueued {
-				payload := evt.payload
-				if oe, ok := payload.(events.OrderEvent); ok {
-					if version, ok := versions[oe.OrderID]; ok {
-						oe.Version = version
-						oe.BaseEvent.Version = version
-						payload = oe
+			store := manifest.NewStore(s.portalSpanner)
+			if err := store.CommitSupplierTxn(ctx, txn, batch, func(buf outbox.TxnBuffer) error {
+				versions := manifest.OrderPatchVersionByID(batch.OrderPatches)
+				for _, evt := range chunkQueued {
+					payload := evt.payload
+					if oe, ok := payload.(events.OrderEvent); ok {
+						if version, ok := versions[oe.OrderID]; ok {
+							oe.Version = version
+							oe.BaseEvent.Version = version
+							payload = oe
+						}
+					}
+					if err := outbox.EmitJSON(ctx, buf, evt.aggregateType, evt.aggregateID, events.TopicMain, payload); err != nil {
+						return err
 					}
 				}
-				if err := outbox.EmitJSON(ctx, buf, evt.aggregateType, evt.aggregateID, events.TopicMain, payload); err != nil {
-					return err
+				return nil
+			}); err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if chunkErr != nil {
+			if len(committed) > 0 {
+				return DispatchExecuteResult{}, &dispatchPartialCommitError{
+					CommittedRoutes: len(committed),
+					FailedChunk:     chunkIndex,
+					TotalChunks:     totalChunks,
+					TotalRoutes:     totalRoutes,
+					Cause:           chunkErr,
 				}
 			}
-			return nil
-		}); err != nil {
-			return err
+			return DispatchExecuteResult{}, chunkErr
 		}
-
-		return nil
-	})
-
-	if err != nil {
-		return DispatchExecuteResult{}, err
 	}
+
 	out.ManifestsCreated = len(committed)
 	out.Manifests = committed
 	if len(committed) > 0 {

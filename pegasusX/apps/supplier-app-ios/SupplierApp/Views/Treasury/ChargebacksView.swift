@@ -87,7 +87,7 @@ struct ChargebacksView: View {
                     amount: amountMinor,
                     currency: currency
                 ),
-                idempotencyKey: UUID().uuidString
+                idempotencyKey: SupplierIdempotencyKeys.chargeback(orderId: orderId, reason: orderId)
             )
             chargebackMessage = "Chargeback recorded (\(response.status))."
             orderId = ""
@@ -106,7 +106,7 @@ struct ChargebacksView: View {
         do {
             let response = try await SupplierService.recordChargebackReversal(
                 PaymentChargebackReversalRequest(sessionId: sessionId),
-                idempotencyKey: UUID().uuidString
+                idempotencyKey: SupplierIdempotencyKeys.chargebackReversal(chargebackId: sessionId, reason: sessionId)
             )
             reversalMessage = "Reversal recorded (\(response.status))."
             sessionId = ""

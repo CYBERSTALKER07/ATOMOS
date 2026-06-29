@@ -876,6 +876,7 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 				"Name":       name,
 				"Lat":        nullableFloat(fc.Lat),
 				"Lng":        nullableFloat(fc.Lng),
+				"H3Cell":     topologyH3CellString(fc.Lat, fc.Lng),
 				"Address":    nullableString(strings.TrimSpace(fc.Address)),
 				"PlaceId":    nullableString(strings.TrimSpace(fc.PlaceID)),
 				"IsActive":   fc.IsActive,
@@ -908,7 +909,7 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 				"Name":             name,
 				"Lat":              nullableFloat(wh.Lat),
 				"Lng":              nullableFloat(wh.Lng),
-				"H3Cell":           warehouseH3CellString(wh.Lat, wh.Lng),
+				"H3Cell":           topologyH3CellString(wh.Lat, wh.Lng),
 				"Address":          nullableString(strings.TrimSpace(wh.Address)),
 				"PlaceId":          nullableString(strings.TrimSpace(wh.PlaceID)),
 				"CoverageRadiusKm": coverage,
@@ -1075,7 +1076,7 @@ func normalizeSupplierPaymentAcceptor(acceptor string) string {
 	}
 }
 
-func warehouseH3CellString(lat, lng float64) any {
+func topologyH3CellString(lat, lng float64) any {
 	if lat == 0 && lng == 0 {
 		return nil
 	}

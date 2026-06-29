@@ -95,6 +95,7 @@
 		FB6655F782FC8DE4394220AE /* FleetDriverMarkerAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A513992A121CDF2127E0CE /* FleetDriverMarkerAnimator.swift */; };
 		FC25832A84A967B2DEEE01E5 /* ClientPolicyBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A14CAD6BD4D831470BA28E57 /* ClientPolicyBanner.swift */; };
 		E2A3B4C5D6E7F89012345672 /* AddressLocationField.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A3B4C5D6E7F89012345672 /* AddressLocationField.swift */; };
+		E2A3B4C5D6E7F89012345673 /* SupplierIdempotencyKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A3B4C5D6E7F89012345674 /* SupplierIdempotencyKeys.swift */; };
 		E1A2B3C4D5E6F78901234561 /* GeocodeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E6F78901234561 /* GeocodeService.swift */; };
 /* End PBXBuildFile section */
 
@@ -196,6 +197,7 @@
 		EE20CFC9300E04F74A699D62 /* TopologyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopologyView.swift; sourceTree = "<group>"; };
 		F0B618FA26B0FB76D293158E /* PricingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PricingView.swift; sourceTree = "<group>"; };
 		F2A3B4C5D6E7F89012345672 /* AddressLocationField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressLocationField.swift; sourceTree = "<group>"; };
+		F2A3B4C5D6E7F89012345674 /* SupplierIdempotencyKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierIdempotencyKeys.swift; sourceTree = "<group>"; };
 		F1A2B3C4D5E6F78901234561 /* GeocodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeocodeService.swift; sourceTree = "<group>"; };
 		F63DA2C0F3385B834F584716 /* CatalogDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogDetailView.swift; sourceTree = "<group>"; };
 		F6D2D88DC5331A6974F157A8 /* EANBarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EANBarcodeScannerView.swift; sourceTree = "<group>"; };
@@ -606,6 +608,7 @@
 				15A513992A121CDF2127E0CE /* FleetDriverMarkerAnimator.swift */,
 				D55573AE3AFD23706DCEFB42 /* SupplierPortalFeature.swift */,
 				BF9EA6455252E35434B06DCE /* SupplierPortalLinks.swift */,
+				F2A3B4C5D6E7F89012345674 /* SupplierIdempotencyKeys.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -804,6 +807,7 @@
 				1C9DE128047EBF727731F9A1 /* SupplierSessionReconcile.swift in Sources */,
 				741416E1532015A14EDC58BC /* SupplierStateViews.swift in Sources */,
 				C70FAE4C984471734C1543ED /* SupplierTheme.swift in Sources */,
+				E2A3B4C5D6E7F89012345673 /* SupplierIdempotencyKeys.swift in Sources */,
 				45299D7C7BE708EF340EB618 /* SupplyLanesView.swift in Sources */,
 				3A51D70A6E7464F57351C46C /* TokenStore.swift in Sources */,
 				A8F58AC4FD26F1A0035F7D3C /* TopologyNodeForms.swift in Sources */,

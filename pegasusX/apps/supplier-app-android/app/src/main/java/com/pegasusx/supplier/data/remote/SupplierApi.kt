@@ -111,7 +111,10 @@ interface SupplierApi {
     ): Response<JsonElement>
 
     @POST("v1/supplier/inventory/imports")
-    suspend fun createImportSession(@Body body: ImportSessionCreateRequest): Response<ImportSessionCreateResponse>
+    suspend fun createImportSession(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: ImportSessionCreateRequest,
+    ): Response<ImportSessionCreateResponse>
 
     @GET("v1/supplier/inventory/imports/{sessionId}")
     suspend fun getImportSession(@Path("sessionId") sessionId: String): Response<JsonElement>
@@ -120,6 +123,7 @@ interface SupplierApi {
     @Headers("Content-Type: text/csv")
     suspend fun ingestImportSession(
         @Path("sessionId") sessionId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: RequestBody,
     ): Response<JsonElement>
 
@@ -133,10 +137,16 @@ interface SupplierApi {
     ): Response<JsonElement>
 
     @POST("v1/supplier/inventory/imports/{sessionId}/approve")
-    suspend fun approveImportSession(@Path("sessionId") sessionId: String): Response<JsonElement>
+    suspend fun approveImportSession(
+        @Path("sessionId") sessionId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<JsonElement>
 
     @POST("v1/supplier/inventory/imports/{sessionId}/apply")
-    suspend fun applyImportSession(@Path("sessionId") sessionId: String): Response<JsonElement>
+    suspend fun applyImportSession(
+        @Path("sessionId") sessionId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<JsonElement>
 
     @POST("v1/supplier/route/approve-early-complete")
     suspend fun approveEarlyComplete(

@@ -103,6 +103,7 @@ interface WarehouseApi {
     @PATCH("v1/warehouse/ops/location")
     suspend fun patchWarehouseLocation(
         @Body body: WarehouseLocationPatchRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<WarehouseLocationResponse>
 
     // ── Products ──

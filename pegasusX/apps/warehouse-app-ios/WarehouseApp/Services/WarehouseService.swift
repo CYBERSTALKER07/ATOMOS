@@ -404,7 +404,8 @@ enum WarehouseService {
     static func patchWarehouseLocation(address: String, placeId: String?, lat: Double, lng: Double) async throws -> WarehouseLocationResponse {
         try await api.patch(
             "v1/warehouse/ops/location",
-            body: WarehouseLocationPatchRequest(address: address, placeId: placeId, lat: lat, lng: lng)
+            body: WarehouseLocationPatchRequest(address: address, placeId: placeId, lat: lat, lng: lng),
+            idempotencyKey: WarehouseIdempotency.opsLocation(lat: lat, lng: lng, placeId: placeId)
         )
     }
 }

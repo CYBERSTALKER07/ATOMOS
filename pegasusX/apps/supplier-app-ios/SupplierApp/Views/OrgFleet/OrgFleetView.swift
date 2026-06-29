@@ -180,7 +180,10 @@ struct OrgFleetView: View {
         memberActionId = userId
         defer { memberActionId = nil }
         do {
-            orgMembers = try await SupplierOperationsService.deactivateOrgMember(userId, idempotencyKey: UUID().uuidString)
+            orgMembers = try await SupplierOperationsService.deactivateOrgMember(
+                userId,
+                idempotencyKey: SupplierIdempotencyKeys.orgMemberDeactivate(SupplierIdempotencyKeys.supplierScopeId(), userId: userId)
+            )
         } catch {
             self.error = error.localizedDescription
         }
@@ -271,7 +274,10 @@ private struct CreateDriverSheet: View {
                 vehicleId: vehicleId.isEmpty ? nil : vehicleId,
                 isActive: nil
             )
-            _ = try await SupplierOperationsService.createFleetDriver(request, idempotencyKey: UUID().uuidString)
+            _ = try await SupplierOperationsService.createFleetDriver(
+                request,
+                idempotencyKey: SupplierIdempotencyKeys.fleetDriverCreate(SupplierIdempotencyKeys.supplierScopeId(), phone: request.phone)
+            )
             dismiss()
             onDone()
         } catch {
@@ -345,7 +351,10 @@ private struct CreateVehicleSheet: View {
                 homeNodeId: nodeId,
                 isActive: nil
             )
-            _ = try await SupplierOperationsService.createFleetVehicle(request, idempotencyKey: UUID().uuidString)
+            _ = try await SupplierOperationsService.createFleetVehicle(
+                request,
+                idempotencyKey: SupplierIdempotencyKeys.fleetVehicleCreate(SupplierIdempotencyKeys.supplierScopeId(), licensePlate: request.licensePlate)
+            )
             dismiss()
             onDone()
         } catch {
@@ -453,7 +462,10 @@ private struct CreateOrgMemberSheet: View {
                 assignedWarehouseId: warehouseId,
                 assignedFactoryId: factoryId
             )
-            _ = try await SupplierOperationsService.createOrgMember(request, idempotencyKey: UUID().uuidString)
+            _ = try await SupplierOperationsService.createOrgMember(
+                request,
+                idempotencyKey: SupplierIdempotencyKeys.orgMemberCreate(SupplierIdempotencyKeys.supplierScopeId(), phone: request.phone)
+            )
             dismiss()
             onDone()
         } catch {
@@ -509,6 +521,7 @@ private struct EditOrgMemberSheet: View {
         error = nil
         defer { busy = false }
         do {
+            let revision = "\(name):\(role):\(isActive)"
             _ = try await SupplierOperationsService.updateOrgMember(
                 member.userId,
                 request: SupplierOrgMemberUpdateRequest(
@@ -518,7 +531,7 @@ private struct EditOrgMemberSheet: View {
                     assignedFactoryId: member.assignedFactoryId,
                     isActive: isActive
                 ),
-                idempotencyKey: UUID().uuidString
+                idempotencyKey: SupplierIdempotencyKeys.orgMemberUpdate(SupplierIdempotencyKeys.supplierScopeId(), userId: member.userId, revision: revision)
             )
             dismiss()
             onDone()

@@ -9,6 +9,8 @@ import { LocationPicker, resolveLocationValue, type LocationValue } from '@/comp
 import { hasValidCoordinates } from '@/lib/geocode';
 import { PortalField, PortalInput, PortalSection } from '@/components/portal';
 import type { DeliveryFeeRules, WarehouseOpsSettings, WarehouseOpsSettingsPatchRequest } from '@pegasusx/types';
+import { warehouseOpsLocationKey, warehouseOpsSettingsKey } from '@pegasusx/api-client';
+import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 
 type WarehouseLocation = {
   warehouse_id: string;
@@ -149,6 +151,9 @@ export default function WarehouseSettingsPage() {
       }
       const res = await apiFetch('/v1/warehouse/ops/settings', {
         method: 'PATCH',
+        headers: {
+          'Idempotency-Key': warehouseOpsSettingsKey(warehouseHomeNodeId() || 'warehouse'),
+        },
         body: JSON.stringify(patch),
       });
       if (res.ok) {
@@ -180,13 +185,23 @@ export default function WarehouseSettingsPage() {
         resolved = next;
         setLocation(next);
       }
+      const lat = Number.parseFloat(resolved.lat);
+      const lng = Number.parseFloat(resolved.lng);
       const res = await apiFetch('/v1/warehouse/ops/location', {
         method: 'PATCH',
+        headers: {
+          'Idempotency-Key': warehouseOpsLocationKey(
+            warehouseHomeNodeId() || 'warehouse',
+            lat,
+            lng,
+            resolved.place_id,
+          ),
+        },
         body: JSON.stringify({
           address: resolved.address.trim(),
           place_id: resolved.place_id,
-          lat: Number.parseFloat(resolved.lat),
-          lng: Number.parseFloat(resolved.lng),
+          lat,
+          lng,
         }),
       });
       if (res.ok) {

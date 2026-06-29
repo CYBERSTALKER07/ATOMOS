@@ -1,6 +1,13 @@
 "use client";
 
 import { ApiClient, ApiError } from "@pegasusx/api-client";
+import {
+  supplierFleetDriverCreateKey,
+  supplierFleetVehicleCreateKey,
+  supplierOrgMemberCreateKey,
+  supplierOrgMemberDeactivateKey,
+  supplierOrgMemberUpdateKey,
+} from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
 import type {
   HomeNodeType,
@@ -13,6 +20,13 @@ import type {
 import { PageChrome } from "@/components/PageChrome";
 import { PortalSection } from "@/components/portal";
 import { useEffect, useMemo, useState } from "react";
+
+function supplierScopeId(): string {
+  if (typeof window === "undefined") {
+    return "supplier";
+  }
+  return window.localStorage.getItem("supplier_id")?.trim() || "supplier";
+}
 
 type ReadyState = {
   status: "ready";
@@ -157,7 +171,10 @@ export default function OrgFleetPage() {
     setOrgMessage(null);
     const request = buildOrgMemberRequest(orgForm);
     try {
-      const response = await api.createSupplierOrgMember(request, newIdempotencyKey());
+      const response = await api.createSupplierOrgMember(
+        request,
+        supplierOrgMemberCreateKey(supplierScopeId(), request.phone),
+      );
       setState({ ...state, orgMembers: response.items });
       setOrgForm(defaultOrgForm);
       setOrgMessage("Org member created.");
@@ -175,7 +192,10 @@ export default function OrgFleetPage() {
     setMemberActionId(userId);
     setOrgMessage(null);
     try {
-      const response = await api.deactivateSupplierOrgMember(userId, newIdempotencyKey());
+      const response = await api.deactivateSupplierOrgMember(
+        userId,
+        supplierOrgMemberDeactivateKey(supplierScopeId(), userId),
+      );
       setState({ ...state, orgMembers: response.items });
       setOrgMessage("Org member deactivated.");
     } catch (error) {
@@ -206,7 +226,12 @@ export default function OrgFleetPage() {
       }
     }
     try {
-      const response = await api.updateSupplierOrgMember(userId, request, newIdempotencyKey());
+      const revision = `${role}:${nodeType}:${nodeID}`;
+      const response = await api.updateSupplierOrgMember(
+        userId,
+        request,
+        supplierOrgMemberUpdateKey(supplierScopeId(), userId, revision),
+      );
       setState({ ...state, orgMembers: response.items });
       setEditingMemberId(null);
       setOrgMessage("Org member updated.");
@@ -233,7 +258,10 @@ export default function OrgFleetPage() {
       vehicle_id: driverForm.vehicleID || undefined,
     };
     try {
-      const response = await api.createSupplierFleetDriver(request, newIdempotencyKey());
+      const response = await api.createSupplierFleetDriver(
+        request,
+        supplierFleetDriverCreateKey(supplierScopeId(), request.phone),
+      );
       setState({ ...state, drivers: response.items });
       setDriverForm(defaultDriverForm);
       setDriverMessage("Driver created.");
@@ -258,7 +286,10 @@ export default function OrgFleetPage() {
       home_node_id: vehicleForm.homeNodeID,
     };
     try {
-      const response = await api.createSupplierFleetVehicle(request, newIdempotencyKey());
+      const response = await api.createSupplierFleetVehicle(
+        request,
+        supplierFleetVehicleCreateKey(supplierScopeId(), request.license_plate),
+      );
       setState({ ...state, vehicles: response.items });
       setVehicleForm(defaultVehicleForm);
       setVehicleMessage("Vehicle created.");

@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import java.util.UUID
+import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 
 data class TreasuryHubUiState(
     val earnings: SupplierEarnings? = null,
@@ -105,7 +105,11 @@ class TreasuryViewModel @Inject constructor(
                     put("amount", JsonPrimitive(amount))
                     put("currency", JsonPrimitive(state.currency.trim()))
                 }
-                val resp = ops.recordChargeback(body, UUID.randomUUID().toString())
+                val reason = state.orderId.trim()
+                val resp = ops.recordChargeback(
+                    body,
+                    SupplierIdempotencyKeys.chargeback(state.orderId.trim(), reason),
+                )
                 if (resp.isSuccessful) {
                     _chargebacksState.update { it.copy(message = "Chargeback recorded") }
                 } else {
@@ -126,7 +130,10 @@ class TreasuryViewModel @Inject constructor(
             _chargebacksState.update { it.copy(loading = true, error = null, message = null) }
             try {
                 val body = buildJsonObject { put("session_id", JsonPrimitive(sessionId)) }
-                val resp = ops.recordChargebackReversal(body, UUID.randomUUID().toString())
+                val resp = ops.recordChargebackReversal(
+                    body,
+                    SupplierIdempotencyKeys.chargebackReversal(sessionId, sessionId),
+                )
                 if (resp.isSuccessful) {
                     _chargebacksState.update { it.copy(message = "Reversal recorded") }
                 } else {

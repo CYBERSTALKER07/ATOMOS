@@ -121,16 +121,17 @@ struct InventoryImportView: View {
         error = nil
         defer { busy = false }
         do {
+            let scopeId = SupplierIdempotencyKeys.supplierScopeId()
             let bytes = csvText.utf8.count
             let created = try await SupplierOperationsService.createImportSession(
                 fileName: fileName,
                 fileSizeBytes: bytes,
-                idempotencyKey: UUID().uuidString
+                idempotencyKey: SupplierIdempotencyKeys.importCreate(scopeId: scopeId, fileName: fileName, fileSizeBytes: bytes)
             )
             let ingested = try await SupplierOperationsService.ingestImportSession(
                 sessionId: created.sessionId,
                 csv: csvText,
-                idempotencyKey: UUID().uuidString
+                idempotencyKey: SupplierIdempotencyKeys.importIngest(sessionId: created.sessionId, csvBody: csvText)
             )
             let mapping = try await SupplierOperationsService.getImportMapping(sessionId: created.sessionId)
             sessionId = created.sessionId
@@ -149,11 +150,11 @@ struct InventoryImportView: View {
         do {
             try await SupplierOperationsService.approveImportSession(
                 sessionId: sessionId,
-                idempotencyKey: UUID().uuidString
+                idempotencyKey: SupplierIdempotencyKeys.importApprove(sessionId: sessionId)
             )
             applyResult = try await SupplierOperationsService.applyImportSession(
                 sessionId: sessionId,
-                idempotencyKey: UUID().uuidString
+                idempotencyKey: SupplierIdempotencyKeys.importApply(sessionId: sessionId)
             )
             step = 3
         } catch {

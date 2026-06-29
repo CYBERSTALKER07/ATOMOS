@@ -108,6 +108,11 @@ enum WarehouseIdempotency {
         "warehouse-ops-settings:\(warehouseId())"
     }
 
+    static func opsLocation(lat: Double, lng: Double, placeId: String? = nil) -> String {
+        let fingerprint = stableHash(String(format: "%.6f:%.6f:%@", lat, lng, placeId ?? ""))
+        return "warehouse-ops-location:\(warehouseId()):\(fingerprint)"
+    }
+
     static func supplyRequestTransition(requestId: String, action: String) -> String {
         "warehouse-supply-transition:\(requestId):\(action.uppercased())"
     }

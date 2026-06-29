@@ -181,14 +181,14 @@ func RegisterImportRoutes(r chi.Router, d ImportRoutesDeps) {
 	repo := NewImportRepository(d.Spanner)
 
 	r.Route(supplierImportRoutePrefix, func(imports chi.Router) {
-		imports.Post("/", handleCreateImportSession(repo))
+		imports.Post("/", handleCreateImportSession(repo, d.Service))
 		imports.Get("/{id}", handleGetImportSession(repo))
 		imports.Post("/{id}/uploaded", handlePostImportUploaded(repo))
 		imports.Post("/{id}/ingest", handlePostImportIngest(repo, d.Service))
 		imports.Get("/{id}/rows", handleGetImportRows(repo))
 		imports.Get("/{id}/mapping", handleGetImportMapping(repo))
 		imports.Post("/{id}/mapping", handlePostImportMapping(repo))
-		imports.Post("/{id}/approve", handlePostImportApprove(repo))
+		imports.Post("/{id}/approve", handlePostImportApprove(repo, d.Service))
 		imports.Post("/{id}/apply", handlePostImportApply(repo, d.Service, d.SupplierHub, d.WarehouseHub))
 	})
 }

@@ -32,6 +32,7 @@ import com.pegasusx.warehouse.ui.components.AddressLocationField
 import com.pegasusx.warehouse.ui.components.AddressLocationValue
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.GeocodeLocationSupport
+import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,6 +90,7 @@ fun LocationSetupScreen(
                             lat = resolved.lat,
                             lng = resolved.lng,
                         ),
+                        WarehouseIdempotencyKeys.opsLocation(resolved.lat, resolved.lng, resolved.placeId),
                     )
                     if (!resp.isSuccessful) {
                         error = "Setup failed (${resp.code()})"

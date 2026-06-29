@@ -192,6 +192,42 @@ export function supplierImportApplyKey(sessionId: string): string {
   return `supplier-import-apply:${sessionId}`;
 }
 
+export function supplierOrgMemberCreateKey(supplierId: string, phone: string): string {
+  return `supplier-org-member-create:${supplierId}:${stableHash(phone)}`;
+}
+
+export function supplierOrgMemberUpdateKey(supplierId: string, userId: string, revision: string): string {
+  return `supplier-org-member-update:${supplierId}:${userId}:${stableHash(revision)}`;
+}
+
+export function supplierOrgMemberDeactivateKey(supplierId: string, userId: string): string {
+  return `supplier-org-member-deactivate:${supplierId}:${userId}`;
+}
+
+export function supplierFleetDriverCreateKey(supplierId: string, phone: string): string {
+  return `supplier-fleet-driver-create:${supplierId}:${stableHash(phone)}`;
+}
+
+export function supplierFleetVehicleCreateKey(supplierId: string, licensePlate: string): string {
+  return `supplier-fleet-vehicle-create:${supplierId}:${stableHash(licensePlate)}`;
+}
+
+export function supplierChargebackKey(orderId: string, reason: string): string {
+  return `supplier-chargeback:${orderId}:${stableHash(reason)}`;
+}
+
+export function supplierChargebackReversalKey(chargebackId: string, reason: string): string {
+  return `supplier-chargeback-reversal:${chargebackId}:${stableHash(reason)}`;
+}
+
+export function supplierTopologyPutKey(supplierId: string, topologyFingerprint: string): string {
+  return `supplier-topology-put:${supplierId}:${stableHash(topologyFingerprint)}`;
+}
+
+export function supplierReplenishmentTriggerKey(supplierId: string): string {
+  return `supplier-replenishment-trigger:${supplierId}`;
+}
+
 export function supplierBroadcastKey(
   scopeId: string,
   role: string,
@@ -425,8 +461,19 @@ export function warehouseDispatchSettingsKey(warehouseId: string, autoDispatchEn
   return `warehouse-dispatch-settings:${warehouseId}:${autoDispatchEnabled}`;
 }
 
-export function warehouseOpsSettingsKey(warehouseId: string, revision: string): string {
-  return `warehouse-ops-settings:${warehouseId}:${revision}`;
+export function warehouseOpsSettingsKey(warehouseId: string, revision = ''): string {
+  const base = `warehouse-ops-settings:${warehouseId}`;
+  return revision ? `${base}:${revision}` : base;
+}
+
+export function warehouseOpsLocationKey(
+  warehouseId: string,
+  lat: number,
+  lng: number,
+  placeId?: string,
+): string {
+  const fingerprint = stableHash(`${lat.toFixed(6)}:${lng.toFixed(6)}:${placeId ?? ''}`);
+  return `warehouse-ops-location:${warehouseId}:${fingerprint}`;
 }
 
 export function factoryManifestStartLoadingKey(manifestId: string): string {

@@ -36,7 +36,7 @@ func writeImportJSON(w http.ResponseWriter, statusCode int, payload any) {
 	writeJSON(w, statusCode, payload)
 }
 
-func handleCreateImportSession(repo *ImportRepository) http.HandlerFunc {
+func handleCreateImportSession(repo *ImportRepository, svc *Service) http.HandlerFunc {
 	type request struct {
 		FileName      string `json:"file_name"`
 		FileSizeBytes int64  `json:"file_size_bytes"`
@@ -57,8 +57,21 @@ func handleCreateImportSession(repo *ImportRepository) http.HandlerFunc {
 			return
 		}
 
+		body, ok := readMutationBody(w, r, 64*1024)
+		if !ok {
+			return
+		}
+		var idemKey string
+		if svc != nil {
+			var handled bool
+			idemKey, handled = svc.guardMutationReplay(w, r, body)
+			if handled {
+				return
+			}
+		}
+
 		var payload request
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		if err := json.Unmarshal(body, &payload); err != nil {
 			writeImportJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
 			return
 		}
@@ -92,7 +105,7 @@ func handleCreateImportSession(repo *ImportRepository) http.HandlerFunc {
 			return
 		}
 
-		writeImportJSON(w, http.StatusCreated, map[string]any{
+		resp := map[string]any{
 			"session_id":          session.SessionID,
 			"status":              session.Status,
 			"file_name":           session.FileName,
@@ -106,7 +119,14 @@ func handleCreateImportSession(repo *ImportRepository) http.HandlerFunc {
 			"created_at":          session.CreatedAt.Format(time.RFC3339),
 			"updated_at":          session.UpdatedAtRFC3339,
 			"status_description":  "initialized",
-		})
+		}
+		respBytes, _ := json.Marshal(resp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write(respBytes)
+		if svc != nil {
+			svc.storeMutationReplay(r.Context(), idemKey, body, http.StatusCreated, respBytes)
+		}
 	}
 }
 
@@ -359,6 +379,14 @@ func handlePostImportIngest(repo *ImportRepository, svc *Service) http.HandlerFu
 			writeImportJSON(w, http.StatusBadRequest, map[string]string{"error": "csv body required"})
 			return
 		}
+		var idemKey string
+		if svc != nil {
+			var handled bool
+			idemKey, handled = svc.guardMutationReplay(w, r, body)
+			if handled {
+				return
+			}
+		}
 
 		delimiter := ','
 		if strings.EqualFold(strings.TrimSpace(r.Header.Get("Content-Type")), "text/tab-separated-values") {
@@ -429,16 +457,23 @@ func handlePostImportIngest(repo *ImportRepository, svc *Service) http.HandlerFu
 			svc.cache.Invalidate(ctx, "supplier:inventory:"+supplierID)
 		}
 
-		writeImportJSON(w, http.StatusOK, map[string]any{
-			"session_id":          sessionID,
-			"status":              summary.Status,
-			"rows_staged":         summary.RowsStaged,
-			"suggested_mappings":  summary.SuggestedMappings,
-			"valid_rows":          summary.ValidRows,
-			"invalid_rows":        summary.InvalidRows,
-			"discovery_model":     summary.DiscoveryModel,
-			"source":              "SUPPLIER_IMPORT_SYNC_INGEST",
-		})
+		resp := map[string]any{
+			"session_id":         sessionID,
+			"status":             summary.Status,
+			"rows_staged":        summary.RowsStaged,
+			"suggested_mappings": summary.SuggestedMappings,
+			"valid_rows":         summary.ValidRows,
+			"invalid_rows":       summary.InvalidRows,
+			"discovery_model":    summary.DiscoveryModel,
+			"source":             "SUPPLIER_IMPORT_SYNC_INGEST",
+		}
+		respBytes, _ := json.Marshal(resp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(respBytes)
+		if svc != nil {
+			svc.storeMutationReplay(r.Context(), idemKey, body, http.StatusOK, respBytes)
+		}
 	}
 }
 
@@ -503,7 +538,7 @@ func handlePostImportMapping(repo *ImportRepository) http.HandlerFunc {
 	}
 }
 
-func handlePostImportApprove(repo *ImportRepository) http.HandlerFunc {
+func handlePostImportApprove(repo *ImportRepository, svc *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeImportJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -519,6 +554,20 @@ func handlePostImportApprove(repo *ImportRepository) http.HandlerFunc {
 			writeImportJSON(w, http.StatusBadRequest, map[string]string{"error": "session id is required"})
 			return
 		}
+
+		body, ok := readMutationBody(w, r, 4*1024)
+		if !ok {
+			return
+		}
+		var idemKey string
+		if svc != nil {
+			var handled bool
+			idemKey, handled = svc.guardMutationReplay(w, r, body)
+			if handled {
+				return
+			}
+		}
+
 		if repo.client == nil {
 			writeImportJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "import storage unavailable"})
 			return
@@ -541,11 +590,18 @@ func handlePostImportApprove(repo *ImportRepository) http.HandlerFunc {
 			return
 		}
 
-		writeImportJSON(w, http.StatusAccepted, map[string]any{
+		resp := map[string]any{
 			"session_id": sessionID,
 			"status":     "APPROVED",
 			"next_phase": "apply",
-		})
+		}
+		respBytes, _ := json.Marshal(resp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write(respBytes)
+		if svc != nil {
+			svc.storeMutationReplay(r.Context(), idemKey, body, http.StatusAccepted, respBytes)
+		}
 	}
 }
 
@@ -568,6 +624,19 @@ func handlePostImportApply(repo *ImportRepository, svc *Service, supplierHub, wa
 		if repo.client == nil {
 			writeImportJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "import storage unavailable"})
 			return
+		}
+
+		body, ok := readMutationBody(w, r, 4*1024)
+		if !ok {
+			return
+		}
+		var idemKey string
+		if svc != nil {
+			var handled bool
+			idemKey, handled = svc.guardMutationReplay(w, r, body)
+			if handled {
+				return
+			}
 		}
 
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
@@ -595,7 +664,7 @@ func handlePostImportApply(repo *ImportRepository, svc *Service, supplierHub, wa
 			}
 		}
 
-		writeImportJSON(w, http.StatusOK, map[string]any{
+		resp := map[string]any{
 			"session_id":          summary.SessionID,
 			"status":              summary.Status,
 			"idempotent":          summary.Idempotent,
@@ -607,7 +676,14 @@ func handlePostImportApply(repo *ImportRepository, svc *Service, supplierHub, wa
 			"timestamp":           summary.Timestamp,
 			"source":              "SUPPLIER_IMPORT_SANDBOX_APPLY",
 			"journal_reason":      supplierImportReasonBulk,
-		})
+		}
+		respBytes, _ := json.Marshal(resp)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(respBytes)
+		if svc != nil {
+			svc.storeMutationReplay(r.Context(), idemKey, body, http.StatusOK, respBytes)
+		}
 	}
 }
 

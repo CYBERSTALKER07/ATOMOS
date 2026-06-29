@@ -72,6 +72,11 @@ object WarehouseIdempotencyKeys {
 
     fun opsSettings(): String = "warehouse-ops-settings:${warehouseId()}"
 
+    fun opsLocation(lat: Double, lng: Double, placeId: String? = null): String {
+        val fingerprint = stableHash("${"%.6f".format(lat)}:${"%.6f".format(lng)}:${placeId.orEmpty()}")
+        return "warehouse-ops-location:${warehouseId()}:$fingerprint"
+    }
+
     fun createSupplyRequest(factoryId: String, mode: String, notes: String): String =
         "warehouse-create-supply-request:${warehouseId()}:$factoryId:$mode:${stableHash(notes)}"
 

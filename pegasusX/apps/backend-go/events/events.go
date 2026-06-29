@@ -39,6 +39,7 @@ const (
 	EventVehicleCreated               = "VEHICLE_CREATED"
 	EventVehicleAvailabilityChanged   = "VEHICLE_AVAILABILITY_CHANGED"
 	EventWarehouseCreated             = "WAREHOUSE_CREATED"
+	EventWarehouseLocationUpdated     = "WAREHOUSE_LOCATION_UPDATED"
 	EventWarehouseSupplyRequestOpened = "WAREHOUSE_SUPPLY_REQUEST_OPENED"
 	EventSupplyRequestAccepted        = "SUPPLY_REQUEST_ACCEPTED"
 	EventSupplyRequestUpdate          = "SUPPLY_REQUEST_UPDATE"

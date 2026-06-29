@@ -11,9 +11,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.ImportSessionCreateRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.data.session.TokenHolder
 import com.pegasusx.supplier.ui.components.SupplierRuntimeBanner
 import com.pegasusx.supplier.ui.components.SupplierRuntimeTone
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
 import okhttp3.MediaType.Companion.toMediaType
@@ -36,6 +38,7 @@ fun InventoryImportScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val scopeId = TokenHolder.supplierId.orEmpty().ifBlank { "supplier" }
 
     Scaffold(
         topBar = {
@@ -77,6 +80,7 @@ fun InventoryImportScreen(
                                 try {
                                     val bytes = csvBody.ifBlank { "product_id,quantity\n" }.toByteArray()
                                     val resp = ops.createImportSession(
+                                        SupplierIdempotencyKeys.importCreate(scopeId, fileName.trim(), bytes.size),
                                         ImportSessionCreateRequest(fileName.trim(), bytes.size),
                                     )
                                     if (resp.isSuccessful) {
@@ -113,7 +117,11 @@ fun InventoryImportScreen(
                                 error = null
                                 try {
                                     val body = csvBody.toRequestBody("text/csv".toMediaType())
-                                    val resp = ops.ingestImportSession(sessionId, body)
+                                    val resp = ops.ingestImportSession(
+                                        sessionId,
+                                        SupplierIdempotencyKeys.importIngest(sessionId, csvBody),
+                                        body,
+                                    )
                                     if (resp.isSuccessful) {
                                         statusMessage = "Ingest complete"
                                         step = ImportWizardStep.MAPPING
@@ -154,7 +162,10 @@ fun InventoryImportScreen(
                                 busy = true
                                 error = null
                                 try {
-                                    val resp = ops.approveImportSession(sessionId)
+                                    val resp = ops.approveImportSession(
+                                        sessionId,
+                                        SupplierIdempotencyKeys.importApprove(sessionId),
+                                    )
                                     if (resp.isSuccessful) {
                                         statusMessage = "Approved"
                                         step = ImportWizardStep.APPLY
@@ -179,7 +190,10 @@ fun InventoryImportScreen(
                                 busy = true
                                 error = null
                                 try {
-                                    val resp = ops.applyImportSession(sessionId)
+                                    val resp = ops.applyImportSession(
+                                        sessionId,
+                                        SupplierIdempotencyKeys.importApply(sessionId),
+                                    )
                                     if (resp.isSuccessful) {
                                         statusMessage = "Applied: ${resp.body()}"
                                     } else {

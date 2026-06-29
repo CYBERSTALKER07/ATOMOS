@@ -15,6 +15,7 @@ import com.pegasusx.warehouse.ui.components.AddressLocationField
 import com.pegasusx.warehouse.ui.components.AddressLocationValue
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.GeocodeLocationSupport
+import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,6 +78,7 @@ fun LocationSettingsScreen(
                         lat = resolved.lat,
                         lng = resolved.lng,
                     ),
+                    WarehouseIdempotencyKeys.opsLocation(resolved.lat, resolved.lng, resolved.placeId),
                 )
                 saveMessage = if (resp.isSuccessful) "Location saved" else "Save failed (${resp.code()})"
                 if (resp.isSuccessful) load()

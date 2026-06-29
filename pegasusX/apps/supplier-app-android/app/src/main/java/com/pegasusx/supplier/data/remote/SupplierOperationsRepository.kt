@@ -250,14 +250,19 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun recordChargebackReversal(body: JsonElement, idempotencyKey: String): Response<JsonElement> =
         api.recordChargebackReversal(idempotencyKey, body)
 
-    suspend fun createImportSession(body: ImportSessionCreateRequest): Response<ImportSessionCreateResponse> =
-        api.createImportSession(body)
+    suspend fun createImportSession(
+        idempotencyKey: String,
+        body: ImportSessionCreateRequest,
+    ): Response<ImportSessionCreateResponse> = api.createImportSession(idempotencyKey, body)
 
     suspend fun getImportSession(sessionId: String): Response<JsonElement> =
         api.getImportSession(sessionId)
 
-    suspend fun ingestImportSession(sessionId: String, body: okhttp3.RequestBody): Response<JsonElement> =
-        api.ingestImportSession(sessionId, body)
+    suspend fun ingestImportSession(
+        sessionId: String,
+        idempotencyKey: String,
+        body: okhttp3.RequestBody,
+    ): Response<JsonElement> = api.ingestImportSession(sessionId, idempotencyKey, body)
 
     suspend fun getImportMapping(sessionId: String): Response<JsonElement> =
         api.getImportMapping(sessionId)
@@ -265,11 +270,11 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun postImportMapping(sessionId: String, body: JsonElement): Response<JsonElement> =
         api.postImportMapping(sessionId, body)
 
-    suspend fun approveImportSession(sessionId: String): Response<JsonElement> =
-        api.approveImportSession(sessionId)
+    suspend fun approveImportSession(sessionId: String, idempotencyKey: String): Response<JsonElement> =
+        api.approveImportSession(sessionId, idempotencyKey)
 
-    suspend fun applyImportSession(sessionId: String): Response<JsonElement> =
-        api.applyImportSession(sessionId)
+    suspend fun applyImportSession(sessionId: String, idempotencyKey: String): Response<JsonElement> =
+        api.applyImportSession(sessionId, idempotencyKey)
 
     suspend fun getCatalogProduct(productId: String): Response<CatalogProduct> =
         api.getCatalogProduct(productId)

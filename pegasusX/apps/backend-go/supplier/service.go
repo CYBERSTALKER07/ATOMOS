@@ -242,6 +242,11 @@ type Service struct {
 	manifestStore          *manifest.Store
 	routeGeometryBuilder   *routing.GeometryBuilder
 	portalSupplierHub      *ws.Hub
+	portalWarehouseHub     *ws.Hub
+	portalDriverHub        *ws.Hub
+	portalRetailerHub      *ws.Hub
+	portalPayloadHub       *ws.Hub
+	portalFactoryHub       *ws.Hub
 	optimizerClient   *optimizerclient.Client
 	planCounters      *plan.SourceCounters
 	fallbackDepotLat      float64

@@ -406,12 +406,20 @@ func (s *Service) handleTopologyGet(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 	sid := s.scopedSupplierID(r)
+	body, ok := readMutationBody(w, r, 512*1024)
+	if !ok {
+		return
+	}
+	idemKey, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+
 	var req topologyUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	defer r.Body.Close()
 
 	if len(req.Warehouses) == 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "warehouses_required"})
@@ -533,7 +541,22 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 		s.cache.Invalidate(r.Context(), supplierCacheKey(s.scopedSupplierID(r)))
 	}
 
-	s.handleTopologyGet(w, r)
+	savedTopology, err := s.repo.GetTopology(r.Context(), sid)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_topology_failed"})
+		return
+	}
+	resp := map[string]any{
+		"supplier_id": sid,
+		"warehouses":  savedTopology.Warehouses,
+		"factories":   savedTopology.Factories,
+		"updated_at":  s.now().Format(time.RFC3339Nano),
+	}
+	respBytes, _ := json.Marshal(resp)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
+	s.storeMutationReplay(r.Context(), idemKey, body, http.StatusOK, respBytes)
 }
 
 // HandlePricingRules supports GET/PATCH /v1/supplier/pricing/rules.
@@ -1097,5 +1120,7 @@ func (s *Service) HandleVetOrder(w http.ResponseWriter, r *http.Request) {
 	if encoded, err := json.Marshal(response); err == nil {
 		s.storeMutationReplay(r.Context(), key, body, http.StatusOK, encoded)
 	}
+	w.Header().Set("Deprecation", "true")
+	w.Header().Set("Sunset", "Sun, 31 Dec 2026 23:59:59 GMT")
 	writeJSON(w, http.StatusOK, response)
 }

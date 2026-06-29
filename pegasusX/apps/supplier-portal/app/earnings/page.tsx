@@ -1,6 +1,6 @@
 "use client";
 
-import { ApiClient } from "@pegasusx/api-client";
+import { ApiClient, supplierChargebackKey, supplierChargebackReversalKey } from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import type { PaymentChargebackRequest, PaymentChargebackReversalRequest, PaymentLedgerEntry } from "@pegasusx/types";
@@ -107,7 +107,10 @@ export default function EarningsPage() {
     event.preventDefault();
     setChargebackState({ status: "submitting" });
     try {
-      await api.recordPaymentChargeback(chargebackForm, createIdempotencyKey("supplier-chargeback"));
+      await api.recordPaymentChargeback(
+        chargebackForm,
+        supplierChargebackKey(chargebackForm.order_id, chargebackForm.order_id),
+      );
       setChargebackState({ status: "success", message: "Chargeback recorded. Live finance refresh queued." });
       setRefreshTick((value) => value + 1);
     } catch (error) {
@@ -119,7 +122,10 @@ export default function EarningsPage() {
     event.preventDefault();
     setReversalState({ status: "submitting" });
     try {
-      await api.recordPaymentChargebackReversal(reversalForm, createIdempotencyKey("supplier-reversal"));
+      await api.recordPaymentChargebackReversal(
+        reversalForm,
+        supplierChargebackReversalKey(reversalForm.session_id, reversalForm.session_id),
+      );
       setReversalState({ status: "success", message: "Chargeback reversal recorded. Live finance refresh queued." });
       setRefreshTick((value) => value + 1);
     } catch (error) {

@@ -9,6 +9,10 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
 type warehouseLocationResponse struct {
@@ -60,8 +64,24 @@ func (s *Service) handleOpsLocationPatch(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "warehouse_id_required"})
 		return
 	}
+
+	body, ok := readMutationBody(w, r, 8*1024)
+	if !ok {
+		return
+	}
+	key, handled := s.guardMutationReplay(w, r, body)
+	if handled {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseMutationReplay(r.Context(), key)
+		}
+	}()
+
 	var req warehouseLocationPatch
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -77,34 +97,75 @@ func (s *Service) handleOpsLocationPatch(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "spanner_unavailable"})
 		return
 	}
-	now := time.Now().UTC()
-	_, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{
-		spanner.UpdateMap("Warehouses", map[string]any{
-			"WarehouseId": warehouseID,
-			"Address":       strings.TrimSpace(req.Address),
-			"PlaceId":       nullableString(strings.TrimSpace(req.PlaceID)),
-			"Lat":           req.Lat,
-			"Lng":           req.Lng,
-			"UpdatedAt":     now,
-		}),
+
+	address := strings.TrimSpace(req.Address)
+	placeID := strings.TrimSpace(req.PlaceID)
+	h3Cell := proximity.H3CellFromLatLng(req.Lat, req.Lng)
+	supplierID := s.resolveDispatchSupplierID(r.Context(), warehouseID)
+
+	update := map[string]any{
+		"WarehouseId": warehouseID,
+		"Address":     address,
+		"PlaceId":     nullableString(placeID),
+		"Lat":         req.Lat,
+		"Lng":         req.Lng,
+		"UpdatedAt":   spanner.CommitTimestamp,
+	}
+	if h3Cell != "" {
+		update["H3Cell"] = h3Cell
+	} else {
+		update["H3Cell"] = nil
+	}
+
+	err := spannerutils.RunReadWriteTransaction(r.Context(), s.spannerClient, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		eventPayload := events.WarehouseEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventWarehouseLocationUpdated},
+			WarehouseID: warehouseID,
+			SupplierID:  supplierID,
+		}
+		buf := &spannerTxnBuffer{}
+		if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateWarehouse, warehouseID, events.TopicMain, eventPayload); emitErr != nil {
+			return emitErr
+		}
+		mutations := []*spanner.Mutation{spanner.UpdateMap("Warehouses", update)}
+		mutations = append(mutations, outboxMutations(buf.events)...)
+		return txn.BufferWrite(mutations)
 	})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "update_warehouse_location_failed"})
 		return
 	}
+
+	s.InvalidateDispatchPlanCache(r.Context(), warehouseID)
+	s.broadcastWarehouseEvent(r.Context(), warehouseID, map[string]any{
+		"type":         events.EventWarehouseLocationUpdated,
+		"warehouse_id": warehouseID,
+		"lat":          req.Lat,
+		"lng":          req.Lng,
+	})
+
 	loc, err := s.loadWarehouseLocation(r.Context(), warehouseID)
 	if err != nil {
-		writeJSON(w, http.StatusOK, warehouseLocationResponse{
+		now := s.now().UTC()
+		loc = warehouseLocationResponse{
 			WarehouseID: warehouseID,
-			Address:     strings.TrimSpace(req.Address),
-			PlaceID:     strings.TrimSpace(req.PlaceID),
+			Address:     address,
+			PlaceID:     placeID,
 			Lat:         req.Lat,
 			Lng:         req.Lng,
 			UpdatedAt:   now.Format(time.RFC3339Nano),
-		})
+		}
+	}
+	respBytes, err := json.Marshal(loc)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "encode_location_response_failed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, loc)
+	s.storeMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+	idemCommitted = true
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }
 
 func (s *Service) scopedWarehouseID(r *http.Request) (string, bool) {

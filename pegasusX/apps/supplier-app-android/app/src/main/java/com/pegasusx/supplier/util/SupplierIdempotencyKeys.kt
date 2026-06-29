@@ -45,6 +45,31 @@ object SupplierIdempotencyKeys {
     fun importIngest(sessionId: String, csvBody: String): String =
         "supplier-import-ingest:$sessionId:${stableHash(csvBody)}"
 
+    fun importApprove(sessionId: String): String = "supplier-import-approve:$sessionId"
+
+    fun importApply(sessionId: String): String = "supplier-import-apply:$sessionId"
+
+    fun orgMemberCreate(scopeId: String, phone: String): String =
+        "supplier-org-member-create:$scopeId:${stableHash(phone)}"
+
+    fun orgMemberUpdate(scopeId: String, userId: String, revision: String): String =
+        "supplier-org-member-update:$scopeId:$userId:${stableHash(revision)}"
+
+    fun orgMemberDeactivate(scopeId: String, userId: String): String =
+        "supplier-org-member-deactivate:$scopeId:$userId"
+
+    fun fleetDriverCreate(scopeId: String, phone: String): String =
+        "supplier-fleet-driver-create:$scopeId:${stableHash(phone)}"
+
+    fun fleetVehicleCreate(scopeId: String, licensePlate: String): String =
+        "supplier-fleet-vehicle-create:$scopeId:${stableHash(licensePlate)}"
+
+    fun chargeback(orderId: String, reason: String): String =
+        "supplier-chargeback:$orderId:${stableHash(reason)}"
+
+    fun chargebackReversal(chargebackId: String, reason: String): String =
+        "supplier-chargeback-reversal:$chargebackId:${stableHash(reason)}"
+
     /** FNV-1a 32-bit — matches api-client `stableHash`. */
     private fun stableHash(input: String): String {
         var hash = 2166136261L
