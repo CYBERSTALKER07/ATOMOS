@@ -131,8 +131,8 @@ Rail never fully hides on tablet — collapsed state keeps an 88dp/pt icon colum
 | Explain status banners | API 4xx | dispatch page | tracking errors | manifest-gate (Android/iOS) | seal errors + batch row explain (Android/iOS/terminal) | loading-bay, transfers, manifest detail, exceptions |
 | Handoff inbox cards | notifications | notifications | notifications | native inbox + primary_link nav | native inbox + primary_link nav | notifications |
 | Exception weather map | portal fleet tab + native fleet | — | — | — | — | — |
-| Broadcast templates | portal operations + native | — | — | — | — | — |
-| Override impact preview | portal + native retailer overrides | — | — | — | — | — |
+| Broadcast templates | portal operations + native | portal operations + native (depot-scoped, custom saved) | — | — | — | — |
+| Override impact preview | portal + native retailer overrides | portal operations read-only preview | — | — | — | — |
 | Production lane board | — | — | — | — | — | portal supply-requests board + native |
 | Fulfill mode helper | — | — | — | — | — | portal + native FULFILL sheet |
 

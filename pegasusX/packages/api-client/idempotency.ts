@@ -557,6 +557,27 @@ export function warehouseOpsLocationKey(
   return `warehouse-ops-location:${warehouseId}:${fingerprint}`;
 }
 
+export function warehouseBroadcastKey(
+  warehouseId: string,
+  role: string,
+  title: string,
+  body: string,
+): string {
+  return `warehouse-broadcast:${warehouseId}:${role.trim().toUpperCase()}:${stableHash(`${title}:${body}`)}`;
+}
+
+export function warehouseBroadcastTemplateCreateKey(
+  warehouseId: string,
+  title: string,
+  body: string,
+): string {
+  return `warehouse-broadcast-template-create:${warehouseId}:${stableHash(`${title}:${body}`)}`;
+}
+
+export function warehouseBroadcastTemplateDeleteKey(warehouseId: string, templateId: string): string {
+  return `warehouse-broadcast-template-delete:${warehouseId}:${templateId}`;
+}
+
 export function factoryManifestStartLoadingKey(manifestId: string): string {
   return `factory-start-loading:${manifestId}`;
 }

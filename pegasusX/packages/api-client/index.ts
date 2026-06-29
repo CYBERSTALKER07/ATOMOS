@@ -29,6 +29,8 @@ import type {
   RetailerTrackingResponse,
   PulseResponse,
   ExceptionMapResponse,
+  BroadcastTemplatesResponse,
+  BroadcastTemplate,
   RetailerOverridePreview,
   SupplyFulfillOptions,
   SettlementAuthorityQuery,
@@ -259,6 +261,9 @@ export {
   warehouseDispatchSettingsKey,
   warehouseOpsSettingsKey,
   warehouseOpsLocationKey,
+  warehouseBroadcastKey,
+  warehouseBroadcastTemplateCreateKey,
+  warehouseBroadcastTemplateDeleteKey,
   factoryManifestStartLoadingKey,
   factoryManifestSealKey,
   factoryManifestDispatchKey,
@@ -1309,6 +1314,67 @@ export class ApiClient {
     return this.request<WarehouseOpsFinancialsResponse>(
       appendQuery("/v1/warehouse/ops/financials", query as Record<string, unknown>),
       "GET",
+    );
+  }
+
+  async getWarehouseBroadcastTemplates(
+    query: { warehouse_id?: string } = {},
+  ): Promise<BroadcastTemplatesResponse> {
+    return this.request<BroadcastTemplatesResponse>(
+      appendQuery("/v1/warehouse/ops/broadcast/templates", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async createWarehouseBroadcastTemplate(
+    request: { title: string; body: string; default_role?: string; category?: string },
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<BroadcastTemplate> {
+    return this.request<BroadcastTemplate>(
+      appendQuery("/v1/warehouse/ops/broadcast/templates", query as Record<string, unknown>),
+      "POST",
+      { body: request, idempotencyKey },
+    );
+  }
+
+  async deleteWarehouseBroadcastTemplate(
+    templateId: string,
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<{ status: string; template_id: string }> {
+    return this.request<{ status: string; template_id: string }>(
+      appendQuery(`/v1/warehouse/ops/broadcast/templates/${templateId}`, query as Record<string, unknown>),
+      "DELETE",
+      { body: {}, idempotencyKey },
+    );
+  }
+
+  async postWarehouseBroadcast(
+    request: { title: string; body: string; role?: string },
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<{ status: string; warehouse_id: string; supplier_id: string }> {
+    return this.request<{ status: string; warehouse_id: string; supplier_id: string }>(
+      appendQuery("/v1/warehouse/ops/broadcast", query as Record<string, unknown>),
+      "POST",
+      { body: request, idempotencyKey },
+    );
+  }
+
+  async previewWarehouseRetailerPriceOverride(
+    request: {
+      retailer_id?: string;
+      product_id?: string;
+      sku_id?: string;
+      proposed_price: number;
+    },
+    query: { warehouse_id?: string } = {},
+  ): Promise<RetailerOverridePreview> {
+    return this.request<RetailerOverridePreview>(
+      appendQuery("/v1/warehouse/ops/pricing/retailer-overrides/preview", query as Record<string, unknown>),
+      "POST",
+      { body: request },
     );
   }
 

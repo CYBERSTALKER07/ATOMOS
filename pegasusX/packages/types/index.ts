@@ -125,6 +125,7 @@ export interface RetailerOverridePreview {
   margin_delta_per_unit: number;
   margin_estimate_label: string;
   affected_retailer_ids?: string[];
+  read_only?: boolean;
 }
 
 export interface SupplyFulfillOptions {
@@ -137,19 +138,30 @@ export interface SupplyFulfillOptions {
   linked_driver_eta?: string;
 }
 
+export type BroadcastTemplateScope = "supplier" | "warehouse";
+
 export interface BroadcastTemplate {
   id: string;
   category: string;
   title: string;
   body: string;
   default_role: "ALL" | "DRIVER" | "RETAILER" | "PAYLOAD" | "WAREHOUSE" | "FACTORY";
+  scope: BroadcastTemplateScope;
+  source?: "builtin" | "custom";
+  warehouse_id?: string;
   placeholder_keys?: string[];
+}
+
+export interface BroadcastTemplatesResponse {
+  templates: BroadcastTemplate[];
 }
 
 export const SUPPLIER_BROADCAST_TEMPLATES: BroadcastTemplate[] = [
   {
     id: "storm_delay",
     category: "operations",
+    scope: "supplier",
+    source: "builtin",
     title: "Delivery delay notice",
     body: "Due to weather conditions, deliveries may be delayed on {date}. We will update routes as conditions improve.",
     default_role: "RETAILER",
@@ -158,6 +170,8 @@ export const SUPPLIER_BROADCAST_TEMPLATES: BroadcastTemplate[] = [
   {
     id: "holiday_hours",
     category: "operations",
+    scope: "supplier",
+    source: "builtin",
     title: "Holiday receiving hours",
     body: "Our network will operate on reduced hours on {date}. Please confirm your receiving window in the app.",
     default_role: "RETAILER",
@@ -166,6 +180,8 @@ export const SUPPLIER_BROADCAST_TEMPLATES: BroadcastTemplate[] = [
   {
     id: "fee_notice",
     category: "finance",
+    scope: "supplier",
+    source: "builtin",
     title: "Service fee update",
     body: "A service fee adjustment takes effect on {date}. Review your latest invoices for details.",
     default_role: "RETAILER",
@@ -174,9 +190,52 @@ export const SUPPLIER_BROADCAST_TEMPLATES: BroadcastTemplate[] = [
   {
     id: "yard_hold",
     category: "operations",
+    scope: "supplier",
+    source: "builtin",
     title: "Yard congestion advisory",
     body: "Loading bay congestion reported. Drivers: expect queue delays at warehouse check-in.",
     default_role: "DRIVER",
+  },
+];
+
+export const WAREHOUSE_BROADCAST_TEMPLATES: BroadcastTemplate[] = [
+  {
+    id: "wh_yard_hold",
+    category: "operations",
+    scope: "warehouse",
+    source: "builtin",
+    title: "Yard congestion advisory",
+    body: "Loading bay congestion at this depot. Drivers: expect queue delays at check-in.",
+    default_role: "DRIVER",
+  },
+  {
+    id: "wh_gate_delay",
+    category: "operations",
+    scope: "warehouse",
+    source: "builtin",
+    title: "Gate delay notice",
+    body: "Inbound gate processing is slower than usual. Drivers: allow extra time at arrival.",
+    default_role: "DRIVER",
+  },
+  {
+    id: "wh_receiving_hours",
+    category: "operations",
+    scope: "warehouse",
+    source: "builtin",
+    title: "Receiving hours update",
+    body: "This depot will operate on reduced receiving hours on {date}. Confirm your delivery window.",
+    default_role: "RETAILER",
+    placeholder_keys: ["date"],
+  },
+  {
+    id: "wh_check_in_slow",
+    category: "operations",
+    scope: "warehouse",
+    source: "builtin",
+    title: "Slow check-in advisory",
+    body: "Check-in is taking longer than usual at this warehouse. Reason: {reason}",
+    default_role: "DRIVER",
+    placeholder_keys: ["reason"],
   },
 ];
 

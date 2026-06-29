@@ -266,6 +266,17 @@ Cross-role edge cases from [`REAL_WORLD_CASE_MATRIX.md`](../REAL_WORLD_CASE_MATR
 
 ---
 
+## COOL-W3.5 — Warehouse depot ops (manual)
+
+| Step | Role | Action | Pass criteria |
+|------|------|--------|---------------|
+| W3.5-1 | Warehouse portal | Operations → template chip | Title/body prefilled with optional date/reason |
+| W3.5-2 | Warehouse portal | Send with “Save as custom template” | Template appears in chip list; delete removes it |
+| W3.5-3 | Warehouse portal | Pricing preview panel | Read-only counts/margin; no override created |
+| W3.5-4 | Warehouse Android/iOS | Operations screen | Same broadcast + preview parity as portal |
+
+---
+
 ## Failure logging
 
 For any FAIL, capture:

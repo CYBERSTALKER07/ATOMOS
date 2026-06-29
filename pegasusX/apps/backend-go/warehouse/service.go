@@ -84,7 +84,9 @@ type Service struct {
 	routeGeometryBuilder *routing.GeometryBuilder
 	locations            telemetry.LastLocationReader
 	supplierHub          *ws.Hub
-	warehouseHub   *ws.Hub
+	warehouseHub         *ws.Hub
+	driverHub              *ws.Hub
+	retailerHub            *ws.Hub
 	log            *slog.Logger
 
 	supplierID string
@@ -111,6 +113,7 @@ type Service struct {
 	returns           []portalReturnItem
 	insights          []replenishmentInsight
 	internalTransfers map[string]memoryTransferRow
+	broadcastTemplatesMem map[string][]customBroadcastTemplateRow
 	firebaseVerifier  auth.FirebaseVerifier
 	orderStock        OrderStockReader
 }
@@ -130,7 +133,9 @@ type ServiceConfig struct {
 	RouteGeometryBuilder *routing.GeometryBuilder
 	Locations            telemetry.LastLocationReader
 	SupplierHub          *ws.Hub
-	WarehouseHub   *ws.Hub
+	WarehouseHub         *ws.Hub
+	DriverHub            *ws.Hub
+	RetailerHub          *ws.Hub
 	Log            *slog.Logger
 
 	SupplierID string
@@ -218,7 +223,9 @@ func NewService(c ServiceConfig) *Service {
 		routeGeometryBuilder: c.RouteGeometryBuilder,
 		locations:            c.Locations,
 		supplierHub:          c.SupplierHub,
-		warehouseHub:     c.WarehouseHub,
+		warehouseHub:         c.WarehouseHub,
+		driverHub:            c.DriverHub,
+		retailerHub:          c.RetailerHub,
 		log:              c.Log,
 		supplierID:       c.SupplierID,
 		currency:         c.Currency,

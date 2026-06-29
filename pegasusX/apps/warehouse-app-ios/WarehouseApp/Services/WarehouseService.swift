@@ -365,6 +365,43 @@ enum WarehouseService {
         return try await api.get("v1/warehouse/ops/financials", query: query)
     }
 
+    static func broadcastTemplates() async throws -> BroadcastTemplatesResponse {
+        try await api.get("v1/warehouse/ops/broadcast/templates")
+    }
+
+    static func createBroadcastTemplate(
+        _ request: WarehouseBroadcastTemplateCreateRequest,
+        idempotencyKey: String
+    ) async throws -> BroadcastTemplate {
+        try await api.post(
+            "v1/warehouse/ops/broadcast/templates",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func deleteBroadcastTemplate(templateId: String, idempotencyKey: String) async throws -> BroadcastTemplateDeleteResponse {
+        try await api.delete(
+            "v1/warehouse/ops/broadcast/templates/\(templateId)",
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func postBroadcast(_ request: WarehouseBroadcastRequest, idempotencyKey: String) async throws -> WarehouseBroadcastResponse {
+        try await api.post(
+            "v1/warehouse/ops/broadcast",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func previewRetailerPriceOverride(_ request: RetailerOverridePreviewRequest) async throws -> RetailerOverridePreview {
+        try await api.post(
+            "v1/warehouse/ops/pricing/retailer-overrides/preview",
+            body: request
+        )
+    }
+
     static func delayOrder(orderId: String, body: WarehouseOrderMutationRequest) async throws -> WarehouseOrderMutationResponse {
         try await api.post("v1/warehouse/ops/orders/\(orderId)/delay", body: body)
     }

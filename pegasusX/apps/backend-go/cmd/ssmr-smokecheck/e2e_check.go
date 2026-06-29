@@ -116,6 +116,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseReplenishmentInsightE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse replenishment insight: %w", err)
 	}
+	if err := runWarehouseBroadcastOpsE2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("warehouse broadcast ops: %w", err)
+	}
 	if err := runWarehouseSupplyRequestItemsE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse supply request items: %w", err)
 	}

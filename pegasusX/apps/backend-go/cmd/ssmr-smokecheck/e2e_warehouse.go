@@ -246,6 +246,70 @@ func runWarehouseReplenishmentInsightE2E(ctx context.Context, client *http.Clien
 	return nil
 }
 
+func runWarehouseBroadcastOpsE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	whID := demoWarehouseID()
+	listURL := base + "/v1/warehouse/ops/broadcast/templates?warehouse_id=" + whID
+	status, respBody, _, err := clientDo(ctx, client, http.MethodGet, listURL, nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse broadcast templates status %d body %s", status, string(respBody))
+	}
+	var list struct {
+		Templates []struct {
+			ID    string `json:"id"`
+			Scope string `json:"scope"`
+		} `json:"templates"`
+	}
+	if err := json.Unmarshal(respBody, &list); err != nil {
+		return fmt.Errorf("decode warehouse broadcast templates: %w", err)
+	}
+	if len(list.Templates) == 0 {
+		return fmt.Errorf("warehouse broadcast templates empty")
+	}
+
+	createBody, _ := json.Marshal(map[string]any{
+		"title":        "SSMR depot notice",
+		"body":         "Gate delay for smoke test.",
+		"default_role": "DRIVER",
+		"category":     "custom",
+	})
+	createURL := base + "/v1/warehouse/ops/broadcast/templates?warehouse_id=" + whID
+	status, respBody, _, err = clientPost(ctx, client, createURL, createBody, cookie, "ssmr-wh-broadcast-template")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated {
+		return fmt.Errorf("warehouse broadcast template create status %d body %s", status, string(respBody))
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(respBody, &created); err != nil {
+		return fmt.Errorf("decode warehouse broadcast template create: %w", err)
+	}
+	if created.ID == "" {
+		return fmt.Errorf("warehouse broadcast template create missing id")
+	}
+
+	broadcastBody, _ := json.Marshal(map[string]any{
+		"title": "SSMR broadcast",
+		"body":  "Depot-scoped broadcast smoke.",
+		"role":  "DRIVER",
+	})
+	broadcastURL := base + "/v1/warehouse/ops/broadcast?warehouse_id=" + whID
+	status, respBody, _, err = clientPost(ctx, client, broadcastURL, broadcastBody, cookie, "ssmr-wh-broadcast-send")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("warehouse broadcast send status %d body %s", status, string(respBody))
+	}
+	fmt.Println("PX_E2E_WAREHOUSE_BROADCAST_OPS_OK")
+	return nil
+}
+
 func runWarehouseSupplyRequestItemsE2E(ctx context.Context, client *http.Client, base, cookie string) error {
 	whID := demoWarehouseID()
 	createBody, _ := json.Marshal(map[string]any{

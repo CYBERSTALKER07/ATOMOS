@@ -132,4 +132,16 @@ enum WarehouseIdempotency {
     static func orderOverflow(orderId: String) -> String {
         "warehouse-order-overflow:\(orderId)"
     }
+
+    static func broadcast(role: String, title: String, body: String) -> String {
+        "warehouse-broadcast:\(warehouseId()):\(role.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()):\(stableHash("\(title):\(body)"))"
+    }
+
+    static func broadcastTemplateCreate(title: String, body: String) -> String {
+        "warehouse-broadcast-template-create:\(warehouseId()):\(stableHash("\(title):\(body)"))"
+    }
+
+    static func broadcastTemplateDelete(templateId: String) -> String {
+        "warehouse-broadcast-template-delete:\(warehouseId()):\(templateId)"
+    }
 }

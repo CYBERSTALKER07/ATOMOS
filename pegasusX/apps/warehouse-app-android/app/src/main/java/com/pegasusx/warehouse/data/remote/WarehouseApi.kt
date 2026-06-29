@@ -314,6 +314,32 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/financials")
     suspend fun getOpsFinancials(@Query("period") period: String? = null): Response<OpsFinancialsResponse>
 
+    @GET("v1/warehouse/ops/broadcast/templates")
+    suspend fun getBroadcastTemplates(): Response<BroadcastTemplatesResponse>
+
+    @POST("v1/warehouse/ops/broadcast/templates")
+    suspend fun createBroadcastTemplate(
+        @Body body: WarehouseBroadcastTemplateCreateRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<BroadcastTemplate>
+
+    @DELETE("v1/warehouse/ops/broadcast/templates/{id}")
+    suspend fun deleteBroadcastTemplate(
+        @Path("id") templateId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<BroadcastTemplateDeleteResponse>
+
+    @POST("v1/warehouse/ops/broadcast")
+    suspend fun postBroadcast(
+        @Body body: WarehouseBroadcastRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<WarehouseBroadcastResponse>
+
+    @POST("v1/warehouse/ops/pricing/retailer-overrides/preview")
+    suspend fun previewRetailerPriceOverride(
+        @Body body: RetailerOverridePreviewRequest,
+    ): Response<RetailerOverridePreview>
+
     @POST("v1/warehouse/ops/orders/{id}/delay")
     suspend fun delayOrder(
         @Path("id") orderId: String,

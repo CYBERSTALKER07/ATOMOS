@@ -836,6 +836,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Locations:            driverLocations,
 		SupplierHub:          supplierHub,
 		WarehouseHub:         warehouseHub,
+		DriverHub:            driverHub,
+		RetailerHub:          retailerHub,
 		Log:                  log,
 		SupplierID:           supplierSeed.SupplierID,
 		Currency:             cfg.SeedSupplierCurrency,

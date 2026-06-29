@@ -52,6 +52,7 @@ const NAV: NavSection[] = [
     items: [
       { href: '/staff', icon: 'staff', label: 'Staff' },
       { href: '/crm', icon: 'crm', label: 'Retailers' },
+      { href: '/operations', icon: 'send', label: 'Operations' },
       { href: '/returns', icon: 'returns', label: 'Returns' },
       { href: '/transfers', icon: 'transfers', label: 'Transfers' },
       { href: '/analytics', icon: 'analytics', label: 'Analytics' },

@@ -138,3 +138,68 @@ data class WarehouseFleetLiveMapResponse(
     @SerialName("warehouse_id") val warehouseId: String = "",
     @SerialName("fetched_at") val fetchedAt: String = "",
 )
+
+@Serializable
+data class BroadcastTemplate(
+    val id: String,
+    val category: String = "",
+    val title: String,
+    val body: String,
+    @SerialName("default_role") val defaultRole: String = "DRIVER",
+    val scope: String = "warehouse",
+    val source: String? = null,
+    @SerialName("warehouse_id") val warehouseId: String? = null,
+    @SerialName("placeholder_keys") val placeholderKeys: List<String>? = null,
+)
+
+@Serializable
+data class BroadcastTemplatesResponse(
+    val templates: List<BroadcastTemplate> = emptyList(),
+)
+
+@Serializable
+data class WarehouseBroadcastRequest(
+    val title: String,
+    val body: String,
+    val role: String? = null,
+)
+
+@Serializable
+data class WarehouseBroadcastResponse(
+    val status: String = "",
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+)
+
+@Serializable
+data class WarehouseBroadcastTemplateCreateRequest(
+    val title: String,
+    val body: String,
+    @SerialName("default_role") val defaultRole: String? = null,
+    val category: String? = null,
+)
+
+@Serializable
+data class BroadcastTemplateDeleteResponse(
+    val status: String = "",
+    @SerialName("template_id") val templateId: String = "",
+)
+
+@Serializable
+data class RetailerOverridePreview(
+    @SerialName("retailers_on_sku_count") val retailersOnSkuCount: Int = 0,
+    @SerialName("active_override_count") val activeOverrideCount: Int = 0,
+    @SerialName("catalog_list_price") val catalogListPrice: Long = 0,
+    @SerialName("margin_delta_per_unit") val marginDeltaPerUnit: Long = 0,
+    @SerialName("margin_estimate_label") val marginEstimateLabel: String = "",
+    @SerialName("affected_retailer_ids") val affectedRetailerIds: List<String>? = null,
+    @SerialName("read_only") val readOnly: Boolean? = null,
+)
+
+@Serializable
+data class RetailerOverridePreviewRequest(
+    @SerialName("retailer_id") val retailerId: String? = null,
+    @SerialName("product_id") val productId: String? = null,
+    @SerialName("sku_id") val skuId: String? = null,
+    @SerialName("proposed_price") val proposedPrice: Long,
+)

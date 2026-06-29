@@ -66,6 +66,7 @@ import com.pegasusx.warehouse.ui.screens.preorders.StockCommitmentsScreen
 import com.pegasusx.warehouse.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.warehouse.ui.screens.more.MoreHubScreen
 import com.pegasusx.warehouse.ui.screens.notifications.NotificationInboxScreen
+import com.pegasusx.warehouse.ui.screens.operations.OperationsScreen
 import com.pegasusx.warehouse.ui.screens.orders.OrderDetailScreen
 import com.pegasusx.warehouse.ui.screens.orders.OrdersScreen
 import com.pegasusx.warehouse.ui.screens.payment.PaymentConfigScreen
@@ -113,6 +114,7 @@ object WarehouseRoutes {
     const val STOCK_COMMITMENTS = "stock_commitments"
     const val PAYMENT_CONFIG = "payment_config"
     const val NOTIFICATIONS = "notifications"
+    const val OPERATIONS = "operations"
     const val SUPPLY_REQUESTS = "supply_requests"
     const val SUPPLY_REQUEST_DETAIL = "supply_requests/{id}"
     const val PORTAL_HANDOFF = "portal/{feature}"
@@ -495,6 +497,13 @@ fun WarehouseNavigation(
                     NotificationInboxScreen(
                         api = api,
                         onBack = backFor(WarehouseRoutes.NOTIFICATIONS),
+                    )
+                }
+
+                composable(WarehouseRoutes.OPERATIONS) {
+                    OperationsScreen(
+                        api = api,
+                        onBack = backFor(WarehouseRoutes.OPERATIONS),
                     )
                 }
 

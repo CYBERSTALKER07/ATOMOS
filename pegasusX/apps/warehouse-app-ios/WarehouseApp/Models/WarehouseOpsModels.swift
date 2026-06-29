@@ -240,3 +240,100 @@ struct WarehouseFleetLiveMapResponse: Decodable {
         case fetchedAt = "fetched_at"
     }
 }
+
+struct BroadcastTemplate: Decodable, Identifiable {
+    let id: String
+    let category: String
+    let title: String
+    let body: String
+    let defaultRole: String
+    let scope: String
+    let source: String?
+    let warehouseId: String?
+    let placeholderKeys: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case id, category, title, body, scope, source
+        case defaultRole = "default_role"
+        case warehouseId = "warehouse_id"
+        case placeholderKeys = "placeholder_keys"
+    }
+}
+
+struct BroadcastTemplatesResponse: Decodable {
+    let templates: [BroadcastTemplate]
+}
+
+struct WarehouseBroadcastRequest: Encodable {
+    let title: String
+    let body: String
+    let role: String?
+}
+
+struct WarehouseBroadcastResponse: Decodable {
+    let status: String
+    let warehouseId: String
+    let supplierId: String
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case warehouseId = "warehouse_id"
+        case supplierId = "supplier_id"
+    }
+}
+
+struct WarehouseBroadcastTemplateCreateRequest: Encodable {
+    let title: String
+    let body: String
+    let defaultRole: String?
+    let category: String?
+
+    enum CodingKeys: String, CodingKey {
+        case title, body, category
+        case defaultRole = "default_role"
+    }
+}
+
+struct BroadcastTemplateDeleteResponse: Decodable {
+    let status: String
+    let templateId: String
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case templateId = "template_id"
+    }
+}
+
+struct RetailerOverridePreview: Decodable {
+    let retailersOnSkuCount: Int
+    let activeOverrideCount: Int
+    let catalogListPrice: Int64
+    let marginDeltaPerUnit: Int64
+    let marginEstimateLabel: String
+    let affectedRetailerIds: [String]?
+    let readOnly: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case retailersOnSkuCount = "retailers_on_sku_count"
+        case activeOverrideCount = "active_override_count"
+        case catalogListPrice = "catalog_list_price"
+        case marginDeltaPerUnit = "margin_delta_per_unit"
+        case marginEstimateLabel = "margin_estimate_label"
+        case affectedRetailerIds = "affected_retailer_ids"
+        case readOnly = "read_only"
+    }
+}
+
+struct RetailerOverridePreviewRequest: Encodable {
+    let retailerId: String?
+    let productId: String?
+    let skuId: String?
+    let proposedPrice: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case retailerId = "retailer_id"
+        case productId = "product_id"
+        case skuId = "sku_id"
+        case proposedPrice = "proposed_price"
+    }
+}

@@ -48,6 +48,9 @@ struct MoreHubView: View {
                 }
             }
             Section("Operations") {
+                NavigationLink { OperationsView() } label: {
+                    Label("Depot operations", systemImage: "paperplane")
+                }
                 NavigationLink { CRMView() } label: {
                     Label("Retailers", systemImage: "person.crop.rectangle")
                 }

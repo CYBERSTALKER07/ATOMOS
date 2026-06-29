@@ -42,6 +42,7 @@ private val inventory = listOf(
 )
 
 private val operations = listOf(
+    MoreDestination("Depot operations", "Broadcasts & pricing preview", Icons.Default.Send, WarehouseRoutes.OPERATIONS),
     MoreDestination("Retailers", "CRM", Icons.Default.Store, WarehouseRoutes.CRM),
     MoreDestination("Returns", "Return queue", Icons.Default.Undo, WarehouseRoutes.RETURNS),
     MoreDestination("Analytics", "KPI trends", Icons.Default.Analytics, WarehouseRoutes.ANALYTICS),

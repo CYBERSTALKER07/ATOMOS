@@ -94,4 +94,13 @@ object WarehouseIdempotencyKeys {
         val hash = stableHash("$proposedDate:$reason")
         return "warehouse-order-propose-delivery:$orderId:$hash"
     }
+
+    fun broadcast(role: String, title: String, body: String): String =
+        "warehouse-broadcast:${warehouseId()}:${role.trim().uppercase()}:${stableHash("$title:$body")}"
+
+    fun broadcastTemplateCreate(title: String, body: String): String =
+        "warehouse-broadcast-template-create:${warehouseId()}:${stableHash("$title:$body")}"
+
+    fun broadcastTemplateDelete(templateId: String): String =
+        "warehouse-broadcast-template-delete:${warehouseId()}:$templateId"
 }
