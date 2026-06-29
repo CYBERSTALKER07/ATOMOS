@@ -9,6 +9,7 @@ import EmptyState from '@/components/EmptyState';
 import { PageChrome } from '@/components/PageChrome';
 import { motion } from 'framer-motion';
 import PageTransition from '@/components/PageTransition';
+import NetworkPulsePanel from '@/components/NetworkPulsePanel';
 
 interface FactoryStats {
   pending_transfers: number;
@@ -298,6 +299,14 @@ export default function FactoryDashboard() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Network pulse</p>
+        <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--foreground)]">Cross-role timeline</h2>
+        <div className="mt-5">
+          <NetworkPulsePanel />
         </div>
       </section>
 

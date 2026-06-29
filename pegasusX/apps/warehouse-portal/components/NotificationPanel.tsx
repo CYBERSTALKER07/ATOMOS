@@ -3,6 +3,7 @@
 import { useRef, useEffect } from 'react';
 import { Notification } from '@/lib/useNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
+import { HandoffCard } from '@pegasusx/explain-ui';
 import Icon from './Icon';
 
 interface NotificationPanelProps {
@@ -162,6 +163,20 @@ export default function NotificationPanel({
                         >
                           {n.body}
                         </p>
+                        {n.handoff_metadata ? (
+                          <div
+                            className="mt-2 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] p-3"
+                            onClick={(e) => e.stopPropagation()}
+                            role="presentation"
+                          >
+                            <HandoffCard
+                              metadata={n.handoff_metadata}
+                              onAction={(link) => {
+                                window.location.href = link;
+                              }}
+                            />
+                          </div>
+                        ) : null}
                       </div>
 
                       {!n.read_at && (

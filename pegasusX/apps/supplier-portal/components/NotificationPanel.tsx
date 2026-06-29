@@ -4,6 +4,7 @@ import { useRef, useEffect } from 'react';
 import { Notification } from '@/lib/useNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
 import Icon from './Icon';
+import { HandoffInboxCard } from './HandoffInboxCard';
 
 interface NotificationPanelProps {
   open: boolean;
@@ -160,6 +161,11 @@ export default function NotificationPanel({
                         >
                           {n.body}
                         </p>
+                        {n.handoff_metadata ? (
+                          <div onClick={(e) => e.stopPropagation()} role="presentation">
+                            <HandoffInboxCard handoff={n.handoff_metadata} />
+                          </div>
+                        ) : null}
                       </div>
 
                       {!n.read_at && (

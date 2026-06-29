@@ -98,6 +98,7 @@ import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.data.model.TruckRecommendation
 import com.pegasus.payload.ui.components.ManifestKpiGrid
 import com.pegasus.payload.ui.components.PayloadConnectionStatus
+import com.pegasus.payload.ui.components.PulseStrip
 import com.pegasus.payload.ui.components.PayloadInlineLoading
 import com.pegasus.payload.ui.components.PayloadLoadingState
 import com.pegasus.payload.ui.components.PayloadSectionTitle
@@ -164,12 +165,14 @@ fun HomeScreen(
         if (!state.online) return@LaunchedEffect
         viewModel.refreshTrucks(silent = state.trucks.isNotEmpty())
         viewModel.refreshManifest()
+        viewModel.refreshPulse()
     }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.refreshTrucks(silent = state.trucks.isNotEmpty())
                 viewModel.refreshManifest()
+                viewModel.refreshPulse()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -215,8 +218,16 @@ fun HomeScreen(
             )
         },
     ) { padding ->
-        ListDetailPaneScaffold(
-            modifier = Modifier.padding(padding).fillMaxSize(),
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            PulseStrip(
+                events = state.pulseEvents,
+                loading = state.pulseLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = PayloadSpacing.lg, vertical = PayloadSpacing.sm),
+            )
+            ListDetailPaneScaffold(
+            modifier = Modifier.fillMaxSize(),
             directive = navigator.scaffoldDirective,
             value = navigator.scaffoldValue,
             listPane = {
@@ -338,6 +349,7 @@ fun HomeScreen(
                 onDismiss = viewModel::toggleExceptionsPanel,
                 onRefresh = viewModel::loadManifestExceptions,
             )
+        }
         }
     }
 }

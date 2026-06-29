@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { reconnectDelayMs } from '@pegasusx/api-client';
 import { readTokenFromCookie, resolveSupplierToken, supplierFetch } from './auth';
 import { runSupplierSessionReconcile } from './session-reconcile';
+import type { HandoffCardMetadata } from '@pegasusx/types';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 const SUPPLIER_NOTIFICATIONS_WS_PATH = '/v1/ws';
@@ -17,6 +18,7 @@ interface BackendNotification {
   channel?: string;
   read_at: string | null;
   created_at: string;
+  handoff_metadata?: HandoffCardMetadata;
 }
 
 interface RealtimeNotificationFrame {
@@ -55,6 +57,7 @@ function normalizeNotification(item: BackendNotification): Notification {
     channel: item.channel || 'PUSH',
     read_at: item.read_at,
     created_at: item.created_at,
+    handoff_metadata: item.handoff_metadata,
   };
 }
 
@@ -67,6 +70,7 @@ export interface Notification {
   channel: string;
   read_at: string | null;
   created_at: string;
+  handoff_metadata?: HandoffCardMetadata;
 }
 
 interface NotificationsState {

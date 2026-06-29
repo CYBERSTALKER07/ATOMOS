@@ -22,9 +22,18 @@ importers:
       '@pegasusx/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@pegasusx/pulse-ui':
+        specifier: workspace:*
+        version: link:../../packages/pulse-ui
+      '@pegasusx/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@pegasusx/ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
+      '@pegasusx/ws-refresh-contract':
+        specifier: workspace:*
+        version: link:../../packages/ws-refresh-contract
       '@tauri-apps/api':
         specifier: ^2.11.0
         version: 2.11.0
@@ -174,12 +183,18 @@ importers:
       '@pegasusx/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@pegasusx/explain-ui':
+        specifier: workspace:*
+        version: link:../../packages/explain-ui
       '@pegasusx/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
       '@pegasusx/motion-tokens':
         specifier: workspace:*
         version: link:../../packages/motion-tokens
+      '@pegasusx/pulse-ui':
+        specifier: workspace:*
+        version: link:../../packages/pulse-ui
       '@pegasusx/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -295,6 +310,12 @@ importers:
       '@pegasusx/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@pegasusx/explain-ui':
+        specifier: workspace:*
+        version: link:../../packages/explain-ui
+      '@pegasusx/pulse-ui':
+        specifier: workspace:*
+        version: link:../../packages/pulse-ui
       '@pegasusx/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -368,6 +389,12 @@ importers:
       '@pegasusx/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@pegasusx/explain-ui':
+        specifier: workspace:*
+        version: link:../../packages/explain-ui
+      '@pegasusx/pulse-ui':
+        specifier: workspace:*
+        version: link:../../packages/pulse-ui
       '@pegasusx/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -461,9 +488,35 @@ importers:
         specifier: 19.0.0
         version: 19.0.0
 
+  packages/explain-ui:
+    dependencies:
+      '@pegasusx/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.15
+      react:
+        specifier: 19.0.0
+        version: 19.0.0
+
   packages/i18n: {}
 
   packages/motion-tokens: {}
+
+  packages/pulse-ui:
+    dependencies:
+      '@pegasusx/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.15
+      react:
+        specifier: 19.0.0
+        version: 19.0.0
 
   packages/types: {}
 

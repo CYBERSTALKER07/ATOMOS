@@ -27,6 +27,7 @@ import com.pegasusx.driver.data.model.MissingItemsResponse
 // NegotiationPayload / NegotiationProposalResponse — quantity negotiation disabled.
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.PendingCollection
+import com.pegasusx.driver.data.model.PulseResponse
 import com.pegasusx.driver.data.model.RouteGeometryResponse
 import com.pegasusx.driver.data.model.ReorderStopsRequest
 import com.pegasusx.driver.data.model.ReturnCompleteRequest
@@ -62,6 +63,9 @@ interface DriverApi {
     // Driver profile (polled every 60s for vehicle reassignment)
     @GET("v1/driver/profile")
     suspend fun getProfile(): DriverProfileResponse
+
+    @GET("v1/driver/pulse")
+    suspend fun getPulse(): PulseResponse
 
     // Driver hash manifest
     @GET("v1/driver/manifest")

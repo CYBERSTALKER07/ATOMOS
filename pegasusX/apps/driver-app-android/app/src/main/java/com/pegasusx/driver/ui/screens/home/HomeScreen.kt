@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.OrderState
+import com.pegasusx.driver.data.model.PulseEvent
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.TokenHolder
 import com.pegasusx.driver.services.TelemetryService
@@ -66,6 +67,7 @@ import com.pegasusx.driver.ui.components.DriverStateKind
 import com.pegasusx.driver.ui.components.DriverStatePane
 import com.pegasusx.driver.ui.components.DriverTodayKpiCard
 import com.pegasusx.driver.ui.components.PegasusCard
+import com.pegasusx.driver.ui.components.PulseStrip
 import com.pegasusx.driver.ui.components.StaggeredAppear
 import com.pegasusx.driver.ui.components.StatusPill
 import androidx.compose.material.icons.outlined.Notifications
@@ -99,6 +101,20 @@ fun HomeScreen(
     val lab = LocalPegasusColors.current
     var returnLines by remember { mutableStateOf<List<com.pegasusx.driver.data.model.ReturnGoodsLine>>(emptyList()) }
     var returnUnits by remember { mutableStateOf(0L) }
+    var pulseEvents by remember { mutableStateOf<List<PulseEvent>>(emptyList()) }
+    var pulseLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        pulseLoading = true
+        try {
+            val response = api.getPulse()
+            pulseEvents = response.events
+        } catch (_: Exception) {
+            pulseEvents = emptyList()
+        } finally {
+            pulseLoading = false
+        }
+    }
 
     LaunchedEffect(state.isReturning) {
         if (!state.isReturning) {
@@ -158,10 +174,19 @@ fun HomeScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(PegasusSpacing.s16))
+
+        StaggeredAppear(index = 1) {
+            PulseStrip(
+                events = pulseEvents,
+                loading = pulseLoading,
+            )
+        }
+
         Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
         // MARK: - Status Chips
-        StaggeredAppear(index = 1) {
+        StaggeredAppear(index = 2) {
             StatusChips(
                 hasActiveRoute = state.orders.any {
                     it.state == OrderState.IN_TRANSIT || it.state == OrderState.ARRIVING
@@ -178,7 +203,7 @@ fun HomeScreen(
         val vClass = TokenHolder.vehicleClass
         val vu = TokenHolder.maxVolumeVU
         if (!vehicle.isNullOrBlank() || !plate.isNullOrBlank()) {
-            StaggeredAppear(index = 2) {
+            StaggeredAppear(index = 3) {
                 VehicleInfoCard(
                     truckId = vehicle ?: "—",
                     licensePlate = plate ?: "—",
@@ -190,7 +215,7 @@ fun HomeScreen(
         }
 
         // MARK: - Transit Control
-        StaggeredAppear(index = 3) {
+        StaggeredAppear(index = 4) {
             if (state.isReturning) {
                 ReturningToWarehouseCard(
                     returnLines = returnLines,
@@ -209,14 +234,14 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
         // MARK: - Today Summary
-        StaggeredAppear(index = 4) {
+        StaggeredAppear(index = 5) {
             TodaySummaryCard(orders = state.orders)
         }
 
         Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
         // MARK: - Open Map CTA
-        StaggeredAppear(index = 5) {
+        StaggeredAppear(index = 6) {
             MapButton(
                 pendingCount = state.orders.count {
                     it.state != OrderState.COMPLETED && it.state != OrderState.CANCELLED
@@ -228,7 +253,7 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
         if (state.pendingCollections.isNotEmpty()) {
-            StaggeredAppear(index = 6) {
+            StaggeredAppear(index = 7) {
                 val pending = state.pendingCollections.first()
                 PegasusCard(
                     modifier = Modifier
@@ -256,14 +281,14 @@ fun HomeScreen(
 
         // MARK: - Factory supply (factory-scoped drivers)
         if (TokenHolder.isFactoryScopedDriver()) {
-            StaggeredAppear(index = 6) {
+            StaggeredAppear(index = 7) {
                 FactorySupplyCard(onOpenSupplyTransfers = onOpenSupplyTransfers)
             }
             Spacer(modifier = Modifier.height(PegasusSpacing.s20))
         }
 
         // MARK: - Quick Actions
-        StaggeredAppear(index = 7) {
+        StaggeredAppear(index = 8) {
             QuickActionsSection(
                 onScanQR = onScanQR,
                 onOfflineVerify = onOfflineVerify,
@@ -274,7 +299,7 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
         // MARK: - Recent Activity
-        StaggeredAppear(index = 8) {
+        StaggeredAppear(index = 9) {
             RecentActivitySection(
                 completedOrders = state.orders.filter { it.state == OrderState.COMPLETED }
             )

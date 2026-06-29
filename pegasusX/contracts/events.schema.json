@@ -263,6 +263,25 @@
         {
           "properties": {
             "type": {
+              "const": "FACTORY_LOCATION_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FactoryLocationUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "FACTORY_SUPPLY_REQUEST_UPDATE"
             }
           },
@@ -1517,6 +1536,25 @@
         {
           "properties": {
             "type": {
+              "const": "WAREHOUSE_LOCATION_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WarehouseLocationUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "WAREHOUSE_SUPPLY_REQUEST_OPENED"
             }
           },
@@ -1583,6 +1621,7 @@
         "DRIVER_LOCATION_UPDATED",
         "DRIVER_RETURN_APPROACHING",
         "FACTORY_CREATED",
+        "FACTORY_LOCATION_UPDATED",
         "FACTORY_SUPPLY_REQUEST_UPDATE",
         "FREEZE_LOCK_ACQUIRED",
         "FREEZE_LOCK_RELEASED",
@@ -1649,6 +1688,7 @@
         "VEHICLE_CREATED",
         "WAREHOUSE_CREATED",
         "WAREHOUSE_DISPATCH_LOCK_CHANGED",
+        "WAREHOUSE_LOCATION_UPDATED",
         "WAREHOUSE_SUPPLY_REQUEST_OPENED",
         "WAREHOUSE_TRANSFER_CREATED",
         "WAREHOUSE_TRANSFER_RECEIVED"
@@ -1675,6 +1715,7 @@
     "DRIVER_LOCATION_UPDATED": "UnknownEventPayload",
     "DRIVER_RETURN_APPROACHING": "UnknownEventPayload",
     "FACTORY_CREATED": "UnknownEventPayload",
+    "FACTORY_LOCATION_UPDATED": "UnknownEventPayload",
     "FACTORY_SUPPLY_REQUEST_UPDATE": "UnknownEventPayload",
     "FREEZE_LOCK_ACQUIRED": "UnknownEventPayload",
     "FREEZE_LOCK_RELEASED": "UnknownEventPayload",
@@ -1741,6 +1782,7 @@
     "VEHICLE_CREATED": "UnknownEventPayload",
     "WAREHOUSE_CREATED": "UnknownEventPayload",
     "WAREHOUSE_DISPATCH_LOCK_CHANGED": "UnknownEventPayload",
+    "WAREHOUSE_LOCATION_UPDATED": "UnknownEventPayload",
     "WAREHOUSE_SUPPLY_REQUEST_OPENED": "UnknownEventPayload",
     "WAREHOUSE_TRANSFER_CREATED": "UnknownEventPayload",
     "WAREHOUSE_TRANSFER_RECEIVED": "UnknownEventPayload"

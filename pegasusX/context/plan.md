@@ -62,7 +62,8 @@ Last updated: 2026-06-14 (synced with Vegetable Plan creation)
 24. `PX8-A3` Supplier native row (iOS, Android, desktop) - `implemented` (iOS + Android native; desktop via `supplier-portal` Tauri; `supplier-app-desktop` README anchor).
 25. `PX8-A4` Cross-role client parity audit + Gradle wrapper baseline - `implemented` (matrix in `parity-ledger.md`; all six `*-android` apps have `gradlew`).
 26. `COOL-W0` DeliveryExpectation + ExplainStatus + Pulse API + Handoff inbox metadata — `implemented` (2026-06-29).
-27. `COOL-W2` Warehouse Spanner manifests, dispatch replay, tomorrow board, yard radar, exception triage — `implemented` (2026-06-29).
+27. `COOL-W1` Pulse UI + handoff inbox cells on supplier/warehouse/retailer/factory portals; Android driver/payload pulse strips — `implemented` (2026-06-29).
+28. `COOL-W2` Warehouse Spanner manifests, dispatch replay, tomorrow board, yard radar, exception triage — `implemented` (2026-06-29).
 
 ## PX-9 Enterprise Hardening (P0 slice — 2026-06-04)
 

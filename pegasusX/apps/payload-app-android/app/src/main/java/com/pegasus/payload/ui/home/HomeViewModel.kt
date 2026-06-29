@@ -10,6 +10,7 @@ import com.pegasus.payload.data.model.LiveOrder
 import com.pegasus.payload.data.model.Manifest
 import com.pegasus.payload.data.model.ManifestExceptionRow
 import com.pegasus.payload.data.model.NotificationItem
+import com.pegasus.payload.data.model.PulseEvent
 import com.pegasus.payload.data.model.QueuedAction
 import com.pegasus.payload.data.model.RecommendReassignResponse
 import com.pegasus.payload.data.model.Truck
@@ -90,6 +91,8 @@ data class HomeUiState(
     val batchReadyManifestIds: List<String> = emptyList(),
     val batchSealing: Boolean = false,
     val barcodeScanMessage: String? = null,
+    val pulseEvents: List<PulseEvent> = emptyList(),
+    val pulseLoading: Boolean = false,
     val error: String? = null,
 )
 
@@ -117,8 +120,21 @@ class HomeViewModel @Inject constructor(
 
     init {
         refreshTrucks()
+        refreshPulse()
         bootstrapPhase6()
         observeNotificationBus()
+    }
+
+    fun refreshPulse() {
+        viewModelScope.launch {
+            _state.update { it.copy(pulseLoading = true) }
+            try {
+                val response = api.getPulse()
+                _state.update { it.copy(pulseEvents = response.events, pulseLoading = false) }
+            } catch (_: Exception) {
+                _state.update { it.copy(pulseEvents = emptyList(), pulseLoading = false) }
+            }
+        }
     }
 
     private fun observeNotificationBus() {

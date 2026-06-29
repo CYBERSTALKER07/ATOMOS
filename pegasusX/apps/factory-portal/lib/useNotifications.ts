@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { apiFetch, readTokenFromCookie } from './auth';
+import { PULSE_REFRESH_EVENTS } from '@pegasusx/ws-refresh-contract';
+import { apiFetch, readTokenFromCookie, subscribeFactoryWS } from './auth';
 
 interface BackendNotification {
   notification_id: string;
@@ -154,9 +155,23 @@ export function useNotifications(options?: { enabled?: boolean }) {
     window.addEventListener('pageshow', handleWake);
     document.addEventListener('visibilitychange', handleWake);
 
+    const unsubscribeWs = subscribeFactoryWS({
+      onMessage: (payload) => {
+        try {
+          const parsed = JSON.parse(payload) as { type?: string };
+          if (parsed.type && PULSE_REFRESH_EVENTS.has(parsed.type) && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('factory-pulse-refresh'));
+          }
+        } catch {
+          // Ignore malformed websocket frames.
+        }
+      },
+    });
+
     return () => {
       disposedRef.current = true;
       ac.abort();
+      unsubscribeWs();
       window.removeEventListener('online', handleWake);
       window.removeEventListener('focus', handleWake);
       window.removeEventListener('pageshow', handleWake);

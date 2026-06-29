@@ -16,6 +16,7 @@ import com.pegasus.payload.data.model.ManifestsResponse
 import com.pegasus.payload.data.model.MarkReadRequest
 import com.pegasus.payload.data.model.MissingItemsRequest
 import com.pegasus.payload.data.model.NotificationsResponse
+import com.pegasus.payload.data.model.PulseResponse
 import com.pegasus.payload.data.model.RecommendReassignRequest
 import com.pegasus.payload.data.model.RecommendReassignResponse
 import com.pegasus.payload.data.model.SealCompletedManifestsRequest
@@ -52,6 +53,9 @@ interface PayloadApi {
     // ── Trucks / Orders ──────────────────────────────────────────────────────
     @GET("v1/payloader/trucks")
     suspend fun trucks(): List<Truck>
+
+    @GET("v1/payloader/pulse")
+    suspend fun getPulse(): PulseResponse
 
     @GET("v1/payloader/orders")
     suspend fun orders(

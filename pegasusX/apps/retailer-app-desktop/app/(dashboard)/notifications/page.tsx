@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, CheckCheck, RefreshCw, WifiOff } from "lucide-react";
+import { HandoffCard } from "@pegasusx/explain-ui";
+import { useRouter } from "next/navigation";
 import { PageChrome } from "@/components/PageChrome";
 import EmptyState from "../../../components/EmptyState";
 import { ListRowSkeleton } from "../../../components/Skeleton";
@@ -10,6 +12,7 @@ import { useRetailerNotifications } from "../../../lib/notifications";
 import { useOptionalWebSocket } from "../../../lib/ws";
 
 export default function NotificationsPage() {
+  const router = useRouter();
   const {
     items,
     unreadCount,
@@ -276,6 +279,18 @@ export default function NotificationsPage() {
                         <p className="md-typescale-body-medium mt-1 text-muted">
                           {item.body}
                         </p>
+                        {item.handoffMetadata ? (
+                          <div
+                            className="mt-3 rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-3"
+                            onClick={(e) => e.stopPropagation()}
+                            role="presentation"
+                          >
+                            <HandoffCard
+                              metadata={item.handoffMetadata}
+                              onAction={(link) => router.push(link)}
+                            />
+                          </div>
+                        ) : null}
                       </div>
                       <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted">
                         <span>{formatRelativeTime(item.createdAt)}</span>
