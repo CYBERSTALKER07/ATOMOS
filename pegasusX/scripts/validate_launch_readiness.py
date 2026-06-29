@@ -73,6 +73,12 @@ def require_docs() -> None:
         "docs/INCIDENT_RESPONSE_RUNBOOK.md",
         "docs/RELEASE_TRAIN.md",
         "docs/DEPLOYMENT_READINESS_GAP_LEDGER.md",
+        "docs/REAL_WORLD_CASE_MATRIX.md",
+        "docs/SHOP_CLOSED_E2E_SOP.md",
+        "docs/PARTIAL_DISPATCH_RECOVERY_SOP.md",
+        "docs/BARCODE_GO_LIVE_CHECKLIST.md",
+        "docs/RETAILER_RECEIVING_WINDOWS_GUIDE.md",
+        "docs/V1_STAGING_CLOSURE_CHECKLIST.md",
     ]
     for relative_path in required_docs:
         read_text(relative_path)

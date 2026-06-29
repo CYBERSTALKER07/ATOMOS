@@ -205,6 +205,55 @@ Record any deviation (staging secrets, Boss GCP) in the sign-off sheet.
 
 ---
 
+## Phase C — War story scripts (~15 min each)
+
+Cross-role edge cases from [`REAL_WORLD_CASE_MATRIX.md`](../REAL_WORLD_CASE_MATRIX.md). Record pass/fail in [`PX12_ROLE_ROW_QA.md`](./PX12_ROLE_ROW_QA.md).
+
+### WS-01 — Shop-closed full loop
+
+**SSMR:** `PX_E2E_SHOP_CLOSED_OK` · **SOP:** [`SHOP_CLOSED_E2E_SOP.md`](../SHOP_CLOSED_E2E_SOP.md)
+
+1. SSMR stack up (`make ssmr-infra-up`) or staging with assigned shop-closed order.
+2. Driver: arrive at retailer → report shop closed → wait state visible.
+3. Retailer: respond OPEN_NOW (or equivalent) on mobile/desktop.
+4. Supplier (optional): deep link exceptions/shop-closed — resolve if escalated.
+5. Driver: complete offload/payment path → order `COMPLETED`.
+
+### WS-02 — Concurrent stock reject
+
+**SSMR:** `PX_E2E_CONCURRENT_STOCK_REJECT_OK`
+
+1. Configure warehouse stock policy `REJECT` at create (SSMR default).
+2. Create order A that reserves last unit (checkout succeeds).
+3. Attempt checkout B for same SKU/qty before A cancels — expect structured reject.
+4. Verify retailer UI shows cap from `orderable_quantities` (no silent failure).
+
+### WS-03 — Seal → driver gate → delivery
+
+**SSMR:** `PX_E2E_PAYLOAD_MANIFEST_LIFECYCLE_OK`, `PX_E2E_PAYLOAD_DRIVER_GATE_OK`, `PX_E2E_DELIVERY_OK`
+
+1. Warehouse dispatch assigns orders to driver.
+2. Payload: start-loading → inject → per-truck seal → `seal-completed` batch.
+3. Driver: manifest visible → depart → arrive → cash/card complete.
+4. Retailer: tracking shows terminal state.
+
+### WS-04 — Returns inbound EAN valid vs invalid
+
+**SSMR:** `PX_E2E_RETURN_GATE_RECEIVE_OK` · **Checklist:** [`BARCODE_GO_LIVE_CHECKLIST.md`](../BARCODE_GO_LIVE_CHECKLIST.md)
+
+1. Confirm supplier catalog barcode on pilot SKU.
+2. Payload or warehouse: scan valid EAN → confirm → history row.
+3. Scan unknown EAN → actionable error (no inventory credit).
+
+### WS-05 — Replenishment TRUCK vs INTERNAL
+
+**SSMR:** `PX_E2E_REPLENISH_OK`, `PX_E2E_REPLENISH_COLOCATE_OK`
+
+1. **TRUCK:** Warehouse create supply → factory ACK → READY → FULFILL → warehouse receive transfer.
+2. **INTERNAL:** Topology `co_locate_with_factory_id` → FULFILL auto-receives at linked warehouse (no driver leg).
+
+---
+
 ## Failure logging
 
 For any FAIL, capture:

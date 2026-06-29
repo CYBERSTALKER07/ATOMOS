@@ -16,23 +16,25 @@ import (
 
 // DispatcherDeps provides the dependencies to the NotificationDispatcher.
 type DispatcherDeps struct {
-	SupplierHub  *ws.Hub
-	WarehouseHub *ws.Hub
-	DriverHub    *ws.Hub
-	RetailerHub  *ws.Hub
-	FactoryHub   *ws.Hub
-	PayloadHub   *ws.Hub
-	Push         *notifications.PushBridge
-	Inbox        *notifications.Service
-	EventDedup   EventDedupStore
+	SupplierHub      *ws.Hub
+	WarehouseHub     *ws.Hub
+	DriverHub        *ws.Hub
+	RetailerHub      *ws.Hub
+	FactoryHub       *ws.Hub
+	PayloadHub       *ws.Hub
+	Push             *notifications.PushBridge
+	Inbox            *notifications.Service
+	EventDedup       EventDedupStore
+	ConsumerGroupID  string
 }
 
 // NotificationDispatcher consumes generic events from Kafka and routes
 // them to downstream systems like WebSocket Hubs or Push Notifications.
 type NotificationDispatcher struct {
-	deps       DispatcherDeps
-	dedup      *fanoutDedup
-	eventDedup EventDedupStore
+	deps              DispatcherDeps
+	dedup             *fanoutDedup
+	eventDedup        EventDedupStore
+	consumerGroupID   string
 }
 
 // NewNotificationDispatcher creates a new dispatcher instance.
@@ -42,9 +44,10 @@ func NewNotificationDispatcher(deps DispatcherDeps) *NotificationDispatcher {
 		eventDedup = NewInMemoryEventDedup(defaultFanoutDedupTTL)
 	}
 	return &NotificationDispatcher{
-		deps:       deps,
-		dedup:      newFanoutDedup(defaultFanoutDedupTTL),
-		eventDedup: eventDedup,
+		deps:            deps,
+		dedup:           newFanoutDedup(defaultFanoutDedupTTL),
+		eventDedup:      eventDedup,
+		consumerGroupID: strings.TrimSpace(deps.ConsumerGroupID),
 	}
 }
 
@@ -52,7 +55,7 @@ func NewNotificationDispatcher(deps DispatcherDeps) *NotificationDispatcher {
 func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Message) error {
 	ctx = WithTraceFromMessage(ctx, msg)
 
-	dedupKey := DedupKeyForMessage(msg.Topic, msg.Partition, msg.Offset)
+	dedupKey := DedupKeyForConsumerGroup(d.consumerGroupID, msg.Topic, msg.Partition, msg.Offset)
 	if d.eventDedup != nil {
 		ok, err := d.eventDedup.ShouldProcess(ctx, dedupKey)
 		if err != nil {

@@ -94,14 +94,32 @@ Shell invariant: every authenticated route renders inside `WarehouseShell` with 
 
 ---
 
-## Phase C — Staging (PX12-E)
+## Phase C — War story scripts (staging or local SSMR)
+
+| ID | Story | SSMR / doc | Boss [ ] |
+|----|-------|------------|----------|
+| WS-01 | Shop-closed full loop | `PX_E2E_SHOP_CLOSED_OK`, [`SHOP_CLOSED_E2E_SOP.md`](../SHOP_CLOSED_E2E_SOP.md) | [ ] |
+| WS-02 | Concurrent stock reject | `PX_E2E_CONCURRENT_STOCK_REJECT_OK` | [ ] |
+| WS-03 | Seal → driver gate → delivery | `PX_E2E_PAYLOAD_*`, `PX_E2E_DELIVERY_OK` | [ ] |
+| WS-04 | Returns inbound EAN | `PX_E2E_RETURN_GATE_RECEIVE_OK`, [`BARCODE_GO_LIVE_CHECKLIST.md`](../BARCODE_GO_LIVE_CHECKLIST.md) | [ ] |
+| WS-05 | Replenish TRUCK vs INTERNAL | `PX_E2E_REPLENISH_OK`, `PX_E2E_REPLENISH_COLOCATE_OK` | [ ] |
+
+Runbook steps: [`PX12_MANUAL_QA_RUNBOOK.md`](./PX12_MANUAL_QA_RUNBOOK.md#phase-c--war-story-scripts)
+
+---
+
+## Phase C2 — Staging credentials (PX12-E / LC-01–LC-06)
 
 | Step | Doc | Boss [ ] |
 |------|-----|----------|
+| Full checklist | [`V1_STAGING_CLOSURE_CHECKLIST.md`](../V1_STAGING_CLOSURE_CHECKLIST.md) | [ ] |
+| Credential validation | [`PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md`](../PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md) | [ ] |
+| Automated pre-check | `PUBLIC_BASE_URL=... bash scripts/validate_staging_credentials.sh` → `staging-credentials-ok` | [ ] |
 | GCP cutover | [`CLOUD_CUTOVER_RUNBOOK.md`](../CLOUD_CUTOVER_RUNBOOK.md) | [ ] |
-| Cloud smoke | `PUBLIC_BASE_URL=https://api.staging.<domain> bash scripts/cloud_smoke_ssmr.sh` | [ ] |
+| Cloud smoke | `PUBLIC_BASE_URL=... make cloud-smoke-ssmr` | [ ] |
 | Load cert (staging) | `PUBLIC_BASE_URL=... make load-cert-cloud` | [ ] |
-| Record run id | [`LOAD_TEST_REPORT.md`](../LOAD_TEST_REPORT.md) | [ ] |
+| Multi-pod WS proof | 2+ backend replicas — dispatch WS cross-pod | [ ] |
+| Record run id | `artifacts/load/*/LOAD_TEST_REPORT.md` | [ ] |
 
 ---
 

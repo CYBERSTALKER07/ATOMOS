@@ -16,11 +16,11 @@ Maps each pegasusX surface to the Pegasus reference and tracks intentional diver
 | `retailerroutes/` | `pegasus/apps/backend-go/retailerroutes` | Supplier discovery returns the seeded supplier. |
 | `driverroutes/` | `pegasus/apps/backend-go/driverroutes` | Same. |
 | `warehouseroutes/` | `pegasus/apps/backend-go/warehouseroutes` | Same. |
-| `factoryroutes/` | `pegasus/apps/backend-go/factoryroutes` | Advanced lifecycle mounted additively (`start-loading`/`seal`/`dispatch`/`complete`, rebalance/cancel/cancel-transfer, exception queue) with scaffold in-memory state; outbox/event flow is active in scaffold runtime while Spanner-backed durability remains pending. |
-| `payloaderroutes/` | `pegasus/apps/backend-go/payloaderroutes` | Advanced payload lifecycle/exception/reassignment mounted additively (manifests list/detail/start-loading/inject/seal, exception queue, recommendation + apply reassignment) with scaffold in-memory state; websocket relay path is active via typed fanout envelopes while production Kafka/Redis dependency hard guarantees remain pending. |
+| `factoryroutes/` | `pegasus/apps/backend-go/factoryroutes` | **WIRED** — Spanner-backed manifests, supply requests, transfers; outbox + WS; SSMR `PX_E2E_FACTORY_*` |
+| `payloaderroutes/` | `pegasus/apps/backend-go/payloaderroutes` | **WIRED** — Spanner manifest lifecycle, reassign, exceptions; Kafka dispatcher + Redis WS relay; SSMR `PX_E2E_PAYLOAD_*` |
 | `orderroutes/` | `pegasus/apps/backend-go/orderroutes` | Same. |
-| `paymentroutes/` | `pegasus/apps/backend-go/paymentroutes` | Additive scaffold parity: checkout + chargeback/reversal + deprecated global-pay initiate are mounted with idempotency replay support and outbox events, backed by in-memory payment repository seams. |
-| `webhookroutes/` | `pegasus/apps/backend-go/webhookroutes` | Signature-first HMAC scaffold handling with transaction-id idempotency and minimal provider payload contracts pending full provider SDK wiring. |
+| `paymentroutes/` | `pegasus/apps/backend-go/paymentroutes` | Spanner-backed checkout, chargebacks, webhooks; idempotency + outbox in RW txn |
+| `webhookroutes/` | `pegasus/apps/backend-go/webhookroutes` | Signature-first HMAC + transaction-id idempotency; GlobalPay/Payme/Click handlers |
 | `telemetryroutes/` | `pegasus/apps/backend-go/telemetryroutes` | Same. |
 
 ## Client Surfaces
@@ -92,6 +92,7 @@ Focused SSMR subchecks (CI-friendly, no full e2e): `payment`, `shop-closed`, `ma
 
 ## Divergence Log
 _Add an entry whenever pegasusX intentionally drifts from Pegasus behavior._
+- 2026-06-29: Kafka event dedup scoped per consumer group (`DedupKeyForConsumerGroup`) so order/warehouse mutators do not suppress notification-dispatcher inbox persistence on shared `pegasusx-main` topics; fixes `RETAILER_PRICE_OVERRIDE` retailer inbox SSMR.
 - 2026-06-29: Supplier ecosystem gap closure (phase 2) — `PATCH /v1/supplier/pricing/rules`, `PATCH /v1/supplier/inventory`, retailer price override create/delete, `PUT /v1/supplier/profile`, `POST /v1/supplier/configure`, `POST /v1/supplier/business/setup`, and promotion create/update/deactivate now honor Redis idempotency replay; contract keys exported from `@pegasusx/api-client` and wired on supplier-portal + Android/iOS. Phase 1 (import wizard, topology, returns resolve, broadcast, replenishment) unchanged.
 - 2026-06-29: Retailer ecosystem gap closure — `PUT /v1/retailer/profile`, `POST /v1/retailer/setup`, supplier add/remove, `POST /v1/retailer/orders/reject-ai`, and `POST /v1/orders/edit-preorder` now honor Redis idempotency replay on the retailer service; order checkout/cancel/confirm paths were already guarded at the order layer; `retailerProfileUpdateKey`, `retailerSetupKey`, `retailerRejectAIKey`, `retailerEditPreorderKey` exported from `@pegasusx/api-client` and wired on retailer-app-desktop settings/setup + Android/iOS profile, onboarding, supplier, and order flows.
 - 2026-06-29: Factory ecosystem gap closure — `PATCH /v1/factory/supply-requests/{id}` (including FULFILL transfer creation) and legacy `POST …/accept` honor Redis idempotency replay; `PATCH /v1/factory/ops/location` persists `H3Cell`, emits `FACTORY_LOCATION_UPDATED` via outbox in the same RW txn, broadcasts factory WS fanout, and supports idempotency replay; `factorySupplyRequestTransitionKey`, `factorySupplyRequestAcceptKey`, `factoryOpsLocationKey` wired on factory-portal supply-requests + location setup/settings and Android/iOS supply + location screens.

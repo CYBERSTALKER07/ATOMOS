@@ -33,6 +33,27 @@ func TestDedupKeyForMessageStable(t *testing.T) {
 	}
 }
 
+func TestDedupKeyForConsumerGroupIndependent(t *testing.T) {
+	t.Parallel()
+	store := NewInMemoryEventDedup(time.Minute)
+	ctx := context.Background()
+	msgKey := DedupKeyForMessage("pegasusx-main", 0, 42)
+	orderKey := DedupKeyForConsumerGroup("void-order-mutator", "pegasusx-main", 0, 42)
+	dispatchKey := DedupKeyForConsumerGroup("void-notification-dispatcher", "pegasusx-main", 0, 42)
+
+	okOrder, err := store.ShouldProcess(ctx, orderKey)
+	if err != nil || !okOrder {
+		t.Fatalf("order consumer first: ok=%v err=%v", okOrder, err)
+	}
+	okDispatch, err := store.ShouldProcess(ctx, dispatchKey)
+	if err != nil || !okDispatch {
+		t.Fatalf("notification dispatcher should not be suppressed by order consumer: ok=%v err=%v", okDispatch, err)
+	}
+	if orderKey == dispatchKey || orderKey == msgKey {
+		t.Fatal("expected distinct dedup keys per consumer group")
+	}
+}
+
 func TestConcurrentInMemoryEventDedup(t *testing.T) {
 	t.Parallel()
 	store := NewInMemoryEventDedup(time.Minute)

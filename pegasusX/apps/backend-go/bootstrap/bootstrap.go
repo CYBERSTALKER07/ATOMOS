@@ -917,37 +917,41 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 					kafkaEventDedup = kafka.NewRedisEventDedup(rc, 7*24*time.Hour)
 				}
 			}
+			const notificationConsumerGroup = "void-notification-dispatcher"
+			const orderConsumerGroup = "void-order-mutator"
+			const warehouseConsumerGroup = "void-warehouse-mutator"
 			dispatcher := kafka.NewNotificationDispatcher(kafka.DispatcherDeps{
-				RetailerHub:  retailerHub,
-				SupplierHub:  supplierHub,
-				DriverHub:    driverHub,
-				WarehouseHub: warehouseHub,
-				FactoryHub:   factoryHub,
-				PayloadHub:   payloadHub,
-				Push:         pushBridge,
-				Inbox:        notifSvc,
-				EventDedup:   kafkaEventDedup,
+				RetailerHub:     retailerHub,
+				SupplierHub:     supplierHub,
+				DriverHub:       driverHub,
+				WarehouseHub:    warehouseHub,
+				FactoryHub:      factoryHub,
+				PayloadHub:      payloadHub,
+				Push:            pushBridge,
+				Inbox:           notifSvc,
+				EventDedup:      kafkaEventDedup,
+				ConsumerGroupID: notificationConsumerGroup,
 			})
 			dispatcherTopics := events.DispatcherConsumerTopics()
 			notificationConsumer = kafka.NewMultiTopicConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
-				GroupID:   "void-notification-dispatcher",
+				GroupID:   notificationConsumerGroup,
 				Topics:    dispatcherTopics,
 				Handler:   dispatcher.HandleEvent,
 				DLQWriter: dlqWriter,
 			})
-			orderHandler := kafka.WithEventDedup(kafkaEventDedup, order.NewEventConsumer(orderSvc, log).HandleEvent)
-			warehouseHandler := kafka.WithEventDedup(kafkaEventDedup, warehouse.NewEventConsumer(warehouseSvc, log).HandleEvent)
+			orderHandler := kafka.WithEventDedup(kafkaEventDedup, orderConsumerGroup, order.NewEventConsumer(orderSvc, log).HandleEvent)
+			warehouseHandler := kafka.WithEventDedup(kafkaEventDedup, warehouseConsumerGroup, warehouse.NewEventConsumer(warehouseSvc, log).HandleEvent)
 			orderEventConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
-				GroupID:   "void-order-mutator",
+				GroupID:   orderConsumerGroup,
 				Topic:     events.OrderConsumerTopic(),
 				Handler:   orderHandler,
 				DLQWriter: dlqWriter,
 			})
 			warehouseEventConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
-				GroupID:   "void-warehouse-mutator",
+				GroupID:   warehouseConsumerGroup,
 				Topic:     events.DispatchConsumerTopic(),
 				Handler:   warehouseHandler,
 				DLQWriter: dlqWriter,

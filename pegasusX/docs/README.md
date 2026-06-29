@@ -38,6 +38,15 @@ Operational runbooks and migration notes. Architecture lives in `../context/`.
 - `DELIVERY_ESCALATION_POLICY.md`
 - `MIGRATION_RUNBOOK_MANIFEST_ROUTE_GEOMETRY.md` — Spanner DDL, OSRM config, backfill, fleet live-map API parity
 
+## v1 staging closure (2026-06-29)
+
+- `REAL_WORLD_CASE_MATRIX.md` — role × lifecycle × edge case × guard × SOP
+- `SHOP_CLOSED_E2E_SOP.md`
+- `PARTIAL_DISPATCH_RECOVERY_SOP.md`
+- `BARCODE_GO_LIVE_CHECKLIST.md`
+- `RETAILER_RECEIVING_WINDOWS_GUIDE.md`
+- `V1_STAGING_CLOSURE_CHECKLIST.md` — LC-01–LC-06 boss checklist
+
 ## PX7 launch-readiness support artifacts
 
 - `AI_WORKER_LAUNCH_RUNBOOK.md`

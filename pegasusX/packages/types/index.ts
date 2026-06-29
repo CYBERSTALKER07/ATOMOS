@@ -2594,6 +2594,7 @@ export interface CatalogProduct {
   units_per_pack?: number | null;
   is_active: boolean;
   version: number;
+  barcode?: string;
   created_at?: string;
   updated_at?: string;
 }

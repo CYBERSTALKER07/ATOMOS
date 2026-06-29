@@ -2,7 +2,24 @@
 
 > **Canonical ecosystem spec:** [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md)
 
-Last updated: 2026-06-15. Tracks production v1 closure — not full Pegasus reference parity.
+Last updated: 2026-06-29. Tracks production v1 closure — not full Pegasus reference parity.
+
+## Session continuity & idempotency (2026-06-29)
+
+June 2026 ecosystem gap-closure batch — Redis replay on hot mutations (contract keys on all role-row clients):
+
+| Domain | Routes / handlers | Client keys |
+|--------|-------------------|-------------|
+| **Supplier phase 2** | pricing PATCH, inventory PATCH, profile PUT, configure, business setup, retailer overrides, promotions | `supplier-portal`, Android/iOS `SupplierIdempotencyKeys` |
+| **Retailer** | profile PUT, setup POST, supplier add/remove, reject-ai, edit-preorder | `retailerProfileUpdateKey`, etc. on desktop + Android/iOS |
+| **Factory** | supply PATCH/accept, ops location PATCH + `FACTORY_LOCATION_UPDATED` outbox | `factorySupplyRequestTransitionKey`, `factoryOpsLocationKey` |
+| **Driver** | availability POST/PATCH, order state PATCH | `driverAvailabilityKey` |
+| **Payload** | manifest-exception POST; shared returns inbound scan/confirm | `payloadManifestExceptionKey`, inbound keys |
+| **Warehouse** (prior) | ops location PATCH + `WAREHOUSE_LOCATION_UPDATED` | `warehouseOpsLocationKey` |
+
+**Kafka consumer dedup fix (2026-06-29):** `DedupKeyForConsumerGroup` scopes Redis event dedup per consumer group so `void-order-mutator` no longer suppresses `void-notification-dispatcher` inbox fanout (fixes `RETAILER_PRICE_OVERRIDE` SSMR).
+
+**Overall:** backend P0/P1 mutation guards ~99%; client keys + reconcile ~99%; full audit ~99% after SSMR green.
 
 ## Session continuity & idempotency (2026-06-15)
 

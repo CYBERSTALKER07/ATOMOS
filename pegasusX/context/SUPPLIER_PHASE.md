@@ -2,7 +2,7 @@
 
 **Scope:** pegasusX only · **Reference:** pegasus `admin-portal` (read-only)  
 **Parent plan:** `VEGETABLE_PLAN.md` §2.1  
-**Last updated:** 2026-06-18 (enterprise production readiness — **PROD_CANDIDATE** core flows)
+**Last updated:** 2026-06-29 (phase 2 idempotency gap closure + kafka consumer-group dedup fix; **PROD_CANDIDATE**)
 
 ## Status model
 

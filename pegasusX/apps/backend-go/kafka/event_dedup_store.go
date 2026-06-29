@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -15,6 +16,16 @@ type EventDedupStore interface {
 // DedupKeyForMessage builds a stable dedup key from topic/partition/offset.
 func DedupKeyForMessage(topic string, partition int, offset int64) string {
 	return fmt.Sprintf("%s|%d|%d", topic, partition, offset)
+}
+
+// DedupKeyForConsumerGroup scopes dedup to one consumer group so independent
+// groups reading the same topic/partition/offset do not suppress each other.
+func DedupKeyForConsumerGroup(consumerGroup, topic string, partition int, offset int64) string {
+	group := strings.TrimSpace(consumerGroup)
+	if group == "" {
+		return DedupKeyForMessage(topic, partition, offset)
+	}
+	return fmt.Sprintf("%s:%s", group, DedupKeyForMessage(topic, partition, offset))
 }
 
 // InMemoryEventDedup is a process-local fallback dedup store.
