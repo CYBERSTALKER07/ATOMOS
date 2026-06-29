@@ -620,6 +620,7 @@ CREATE TABLE Notifications (
   Title           STRING(512)   NOT NULL,
   Body            STRING(MAX),
   DeepLink        STRING(512),
+  MetadataJson    BYTES(MAX),
   IsRead          BOOL          NOT NULL DEFAULT (FALSE),
   CreatedAt       TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (NotificationId);
@@ -709,6 +710,22 @@ CREATE INDEX Idx_SupplierManifests_BySupplierId ON SupplierTruckManifests(Suppli
 CREATE INDEX Idx_SupplierManifests_ByState ON SupplierTruckManifests(State);
 CREATE INDEX Idx_SupplierManifests_ByDriver ON SupplierTruckManifests(DriverId, State);
 CREATE INDEX Idx_SupplierManifests_ByWarehouse ON SupplierTruckManifests(WarehouseId, State);
+
+CREATE TABLE DispatchRuns (
+  RunId           STRING(36)  NOT NULL,
+  WarehouseId     STRING(36)  NOT NULL,
+  SupplierId      STRING(36)  NOT NULL,
+  ActorId         STRING(36),
+  Mode            STRING(20)  NOT NULL,
+  Status          STRING(32)  NOT NULL,
+  ManifestCount   INT64       NOT NULL DEFAULT (0),
+  OrdersAssigned  INT64       NOT NULL DEFAULT (0),
+  WarningsJson    BYTES(MAX),
+  ManifestsJson   BYTES(MAX),
+  CreatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RunId);
+
+CREATE INDEX Idx_DispatchRuns_ByWarehouseCreated ON DispatchRuns(WarehouseId, CreatedAt DESC);
 
 CREATE TABLE ManifestOrders (
   ManifestId     STRING(36)  NOT NULL,

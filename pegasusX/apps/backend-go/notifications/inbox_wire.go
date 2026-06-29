@@ -8,15 +8,16 @@ import (
 // InboxItemWire is the canonical inbox JSON shape for mobile and web clients.
 // Mobile decodes `id`; desktop may use `notification_id` — both are populated.
 type InboxItemWire struct {
-	ID             string `json:"id"`
-	NotificationID string `json:"notification_id"`
-	Type           string `json:"type"`
-	Title          string `json:"title"`
-	Body           string `json:"body"`
-	Payload        string `json:"payload,omitempty"`
-	Channel        string `json:"channel"`
-	ReadAt         string `json:"read_at,omitempty"`
-	CreatedAt      string `json:"created_at"`
+	ID              string               `json:"id"`
+	NotificationID  string               `json:"notification_id"`
+	Type            string               `json:"type"`
+	Title           string               `json:"title"`
+	Body            string               `json:"body"`
+	Payload         string               `json:"payload,omitempty"`
+	Channel         string               `json:"channel"`
+	ReadAt          string               `json:"read_at,omitempty"`
+	CreatedAt       string               `json:"created_at"`
+	HandoffMetadata *HandoffCardMetadata `json:"handoff_metadata,omitempty"`
 }
 
 // ToInboxWire maps a Spanner notification row to the client inbox DTO.
@@ -30,15 +31,16 @@ func ToInboxWire(n Notification) InboxItemWire {
 		payload = n.Body
 	}
 	return InboxItemWire{
-		ID:             n.NotificationID,
-		NotificationID: n.NotificationID,
-		Type:           n.EventType,
-		Title:          n.Title,
-		Body:           n.Body,
-		Payload:        payload,
-		Channel:        "PUSH",
-		ReadAt:         readAt,
-		CreatedAt:      n.CreatedAt.UTC().Format(time.RFC3339Nano),
+		ID:              n.NotificationID,
+		NotificationID:  n.NotificationID,
+		Type:            n.EventType,
+		Title:           n.Title,
+		Body:            n.Body,
+		Payload:         payload,
+		Channel:         "PUSH",
+		ReadAt:          readAt,
+		CreatedAt:       n.CreatedAt.UTC().Format(time.RFC3339Nano),
+		HandoffMetadata: n.HandoffMetadata,
 	}
 }
 

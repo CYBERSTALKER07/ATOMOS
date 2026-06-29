@@ -72,6 +72,7 @@ type Service struct {
 
 	portalLister  PortalManifestLister
 	manifestStore *manifest.Store
+	orderReader   OrderExpectationReader
 }
 
 // ServiceConfig is the constructor input.

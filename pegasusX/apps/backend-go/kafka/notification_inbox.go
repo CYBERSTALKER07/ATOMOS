@@ -23,7 +23,8 @@ func (d *NotificationDispatcher) persistInbox(ctx context.Context, recipientID, 
 		return
 	}
 	formatted := notifications.FormatFromEvent(envelope.Type, payload)
-	if err := d.deps.Inbox.CreateNotification(
+	handoff := notifications.BuildHandoffMetadata(envelope.Type, payload)
+	if err := d.deps.Inbox.CreateNotificationWithMetadata(
 		ctx,
 		recipientID,
 		role,
@@ -31,6 +32,7 @@ func (d *NotificationDispatcher) persistInbox(ctx context.Context, recipientID, 
 		formatted.Title,
 		formatted.Body,
 		formatted.DeepLink,
+		handoff,
 	); err != nil {
 		slog.ErrorContext(ctx, "notification inbox persist failed",
 			"recipient_id", recipientID,

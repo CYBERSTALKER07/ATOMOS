@@ -38,6 +38,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/report-damage", d.Service.HandleReportDamage)
 
 		gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/order/{orderID}/timeline", d.Service.HandleGetOrderTimeline)
+		gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/order/{orderID}/status-context", d.Service.HandleGetOrderStatusContext)
 		gr.With(auth.RequireRole(auth.RoleRetailer)).Get("/v1/order/{orderID}/qr-payload", d.Service.HandleGetQRPayload)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/scan-qr", d.Service.HandleDeliveryScanQR)
 		gr.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/delivery/confirm-cash", d.Service.HandleRetailerConfirmCash)

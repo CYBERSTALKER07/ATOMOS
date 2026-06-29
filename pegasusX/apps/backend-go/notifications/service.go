@@ -23,6 +23,11 @@ func NewService(repo Repository, c *cache.Cache, log *slog.Logger) *Service {
 
 // CreateNotification persists a new notification for a recipient.
 func (s *Service) CreateNotification(ctx context.Context, recipientID, recipientRole, eventType, title, body, deepLink string) error {
+	return s.CreateNotificationWithMetadata(ctx, recipientID, recipientRole, eventType, title, body, deepLink, nil)
+}
+
+// CreateNotificationWithMetadata persists a notification with optional handoff metadata.
+func (s *Service) CreateNotificationWithMetadata(ctx context.Context, recipientID, recipientRole, eventType, title, body, deepLink string, handoff *HandoffCardMetadata) error {
 	n := Notification{
 		NotificationID: uuid.NewString(),
 		RecipientID:    recipientID,
@@ -31,6 +36,7 @@ func (s *Service) CreateNotification(ctx context.Context, recipientID, recipient
 		Title:          title,
 		Body:           body,
 		DeepLink:       deepLink,
+		HandoffMetadata: handoff,
 	}
 	if err := s.repo.Create(ctx, n); err != nil {
 		return fmt.Errorf("create notification: %w", err)

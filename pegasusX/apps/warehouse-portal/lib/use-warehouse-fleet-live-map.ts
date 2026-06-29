@@ -11,6 +11,7 @@ const api = createWarehouseApi();
 
 export function useWarehouseFleetLiveMap(pollMs = 15_000) {
   const [routes, setRoutes] = useState<Awaited<ReturnType<typeof api.getWarehouseFleetLiveMap>>['routes']>([]);
+  const [yardManifests, setYardManifests] = useState<Awaited<ReturnType<typeof api.getWarehouseFleetLiveMap>>['yard_manifests']>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
@@ -22,6 +23,7 @@ export function useWarehouseFleetLiveMap(pollMs = 15_000) {
     try {
       const response = await api.getWarehouseFleetLiveMap();
       setRoutes(response.routes ?? []);
+      setYardManifests(response.yard_manifests ?? []);
       setFetchedAt(response.fetched_at);
       setError(null);
     } catch (err) {
@@ -71,5 +73,5 @@ export function useWarehouseFleetLiveMap(pollMs = 15_000) {
     void refresh(true);
   });
 
-  return { routes, loading, error, fetchedAt, refresh };
+  return { routes, yardManifests, loading, error, fetchedAt, refresh };
 }

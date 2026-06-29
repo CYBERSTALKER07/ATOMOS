@@ -17,6 +17,7 @@ import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import EmptyState from "../../../components/EmptyState";
 import { PageSection } from "../../../components/PageSection";
+import NetworkPulsePanel from "../../../components/NetworkPulsePanel";
 import { Skeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { useWsEvent, useOptionalWebSocket, type WsMessage } from "../../../lib/ws";
@@ -335,6 +336,10 @@ export default function TrackingPage() {
           </button>
         }
       >
+
+      <PageSection title="Network pulse" description="Recent order and notification activity for your account.">
+        <NetworkPulsePanel />
+      </PageSection>
 
       {syncBanner && (
         <motion.div

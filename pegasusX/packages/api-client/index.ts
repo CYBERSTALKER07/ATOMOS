@@ -27,6 +27,7 @@ import type {
   RetailerPriceOverridesResponse,
   RetailerSupplierPreference,
   RetailerTrackingResponse,
+  PulseResponse,
   SettlementAuthorityQuery,
   SettlementAuthorityResponse,
   SupplierBillingSetupRequest,
@@ -134,6 +135,11 @@ import type {
   WarehouseSupplyRequest,
   WarehouseSupplyRequestsResponse,
   WarehouseTransferMutationResponse,
+  PulseResponse,
+  WarehouseDispatchRunsResponse,
+  WarehouseDispatchRun,
+  WarehouseOpsBoardResponse,
+  WarehouseOpsExceptionsResponse,
 } from "@pegasusx/types";
 
 export { reconnectDelayMs, parseRetryAfterSeconds, retryAfterSecondsFromResponse } from "./reconnect";
@@ -984,6 +990,46 @@ export class ApiClient {
 
   async getWarehouseFleetLiveMap(query: { warehouse_id?: string } = {}): Promise<WarehouseFleetLiveMapResponse> {
     return this.request<WarehouseFleetLiveMapResponse>(appendQuery("/v1/warehouse/ops/fleet/live-map", query as Record<string, unknown>), "GET");
+  }
+
+  async getWarehousePulse(query: { warehouse_id?: string } = {}): Promise<PulseResponse> {
+    return this.request<PulseResponse>(appendQuery("/v1/warehouse/ops/pulse", query as Record<string, unknown>), "GET");
+  }
+
+  async getSupplierPulse(): Promise<PulseResponse> {
+    return this.request<PulseResponse>("/v1/supplier/pulse", "GET");
+  }
+
+  async getRetailerPulse(): Promise<PulseResponse> {
+    return this.request<PulseResponse>("/v1/retailer/pulse", "GET");
+  }
+
+  async getFactoryPulse(): Promise<PulseResponse> {
+    return this.request<PulseResponse>("/v1/factory/pulse", "GET");
+  }
+
+  async getDriverPulse(): Promise<PulseResponse> {
+    return this.request<PulseResponse>("/v1/driver/pulse", "GET");
+  }
+
+  async getPayloaderPulse(): Promise<PulseResponse> {
+    return this.request<PulseResponse>("/v1/payloader/pulse", "GET");
+  }
+
+  async getWarehouseDispatchRuns(query: { warehouse_id?: string } = {}): Promise<WarehouseDispatchRunsResponse> {
+    return this.request<WarehouseDispatchRunsResponse>(appendQuery("/v1/warehouse/ops/dispatch/runs", query as Record<string, unknown>), "GET");
+  }
+
+  async getWarehouseDispatchRun(runId: string, query: { warehouse_id?: string } = {}): Promise<WarehouseDispatchRun> {
+    return this.request<WarehouseDispatchRun>(appendQuery(`/v1/warehouse/ops/dispatch/runs/${runId}`, query as Record<string, unknown>), "GET");
+  }
+
+  async getWarehouseOpsBoard(query: { warehouse_id?: string; date?: string } = {}): Promise<WarehouseOpsBoardResponse> {
+    return this.request<WarehouseOpsBoardResponse>(appendQuery("/v1/warehouse/ops/board", query as Record<string, unknown>), "GET");
+  }
+
+  async getWarehouseOpsExceptions(query: { warehouse_id?: string } = {}): Promise<WarehouseOpsExceptionsResponse> {
+    return this.request<WarehouseOpsExceptionsResponse>(appendQuery("/v1/warehouse/ops/exceptions", query as Record<string, unknown>), "GET");
   }
 
   async getWarehouseInventory(query: { warehouse_id?: string } = {}): Promise<WarehouseInventoryResponse> {

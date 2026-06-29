@@ -90,6 +90,9 @@ Last updated: 2026-06-17 (supplier nav cleanup + catalog-first pricing + topolog
 | `/supplier/profile` | `/(portal)/profile` | `ProfileScreen` | `GET/PUT /v1/supplier/profile` | — | Wired |
 | `/supplier/returns` | `/(portal)/returns` | `ReturnsScreen` | `GET /v1/supplier/returns`, `POST .../resolve` | **Retailer** returns; **Driver** manifest | Wired |
 | Notifications | top-bar panel | `NotificationsScreen` | `GET /v1/user/notifications`, `POST .../read` | Cross-role alerts | Wired |
+| Network pulse | `NetworkPulsePanel` on dashboard | — | `GET /v1/supplier/pulse` | Merged inbox + transitions + activity | Wired — `@pegasusx/pulse-ui` |
+| Handoff inbox cards | notifications panel | — | `MetadataJson` on Notifications | Dispatch/manifest/preorder handoffs | Wired — `handoff_metadata` |
+| Explain errors | dispatch + API 4xx | — | `platform/explain_status` | Human guidance on operational errors | Wired — `@pegasusx/explain-ui` |
 | Portal handoff | — | `PortalHandoffScreen` (Android) | — (opens web) | Register, business setup, chargebacks | Android only |
 
 ### SUPPLIER — cross-role touchpoint matrix
@@ -119,6 +122,14 @@ All six native role apps use a shared monochrome design system (`packages/mobile
 | DRIVER | Collapsible rail (4 tabs) | Bottom tabs + map overlay | B&W; `dynamicColor = false` |
 
 Rail never fully hides on tablet — collapsed state keeps an 88dp/pt icon column.
+
+## Cool Features Program (Waves 0–2)
+
+| Feature | Supplier | Warehouse | Retailer | Driver | Payload | Factory |
+|---------|----------|-----------|----------|--------|---------|---------|
+| Pulse timeline | portal dashboard | portal dashboard | desktop tracking (optional) | Android/iOS home strip | Android home strip | portal dashboard |
+| Explain status banners | API 4xx | dispatch page | tracking errors | — | seal errors | — |
+| Handoff inbox cards | notifications | notifications | notifications | native inbox | native inbox | notifications |
 
 ## Intentional deltas
 

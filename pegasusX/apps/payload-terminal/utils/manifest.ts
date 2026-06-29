@@ -8,6 +8,11 @@ export type LiveOrder = {
   state: string;
   route_id?: string | null;
   warehouse_id?: string;
+  delivery_expectation?: {
+    target_label?: string;
+    badge_label?: string;
+    urgency?: string;
+  };
   items?: {
     line_item_id: string;
     sku_id: string;

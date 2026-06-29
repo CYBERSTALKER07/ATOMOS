@@ -229,6 +229,7 @@ type TrackingOrder struct {
 	UpdatedAt             string                   `json:"updated_at"`
 	Items                 []TrackingLineItem       `json:"items"`
 	DeliveryToken         string                   `json:"delivery_token,omitempty"`
+	DeliveryExpectation   *order.DeliveryExpectation `json:"delivery_expectation,omitempty"`
 	IsApproaching         bool                     `json:"is_approaching"`
 	PaymentStatus         string                   `json:"payment_status,omitempty"`
 	DeliveryLat           float64                  `json:"-"`

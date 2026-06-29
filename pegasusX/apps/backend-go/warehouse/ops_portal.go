@@ -622,11 +622,22 @@ func (s *Service) HandleOpsProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) HandleOpsManifests(w http.ResponseWriter, r *http.Request) {
-	s.ensurePortalSeed()
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	whID := warehouseIDFromRequest(r)
+	if s.spannerClient != nil && !s.portalSeedEnabled() {
+		manifests, err := s.loadWarehouseManifestsFromSpanner(r.Context(), whID)
+		if err != nil {
+			s.log.WarnContext(r.Context(), "warehouse manifests query failed", "err", err, "warehouse_id", whID)
+			writeJSON(w, http.StatusOK, map[string]any{"manifests": []portalManifest{}})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"manifests": manifests})
+		return
+	}
+	s.ensurePortalSeed()
 	s.mu.RLock()
 	manifests := append([]portalManifest(nil), s.manifests...)
 	s.mu.RUnlock()

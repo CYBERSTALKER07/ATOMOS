@@ -32,6 +32,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotionroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pulseroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/returnsroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailerroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
@@ -128,6 +129,12 @@ func main() {
 		GeocodeHandler: geolocation.NewHandler(geocodeSvc),
 		JWTSecret:      cfg.JWTSecret,
 		JWTIssuer:      cfg.JWTIssuer,
+	})
+	pulseroutes.RegisterRoutes(r, pulseroutes.Deps{
+		Handlers:            app.PulseHandlers,
+		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
+		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
 	})
 	retailerroutes.RegisterRoutes(r, retailerroutes.Deps{
 		Service:             app.RetailerService,

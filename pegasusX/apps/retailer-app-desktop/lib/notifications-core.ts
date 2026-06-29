@@ -10,6 +10,7 @@ export type BackendNotificationItem = {
   channel?: string;
   read_at?: string | null;
   created_at: string;
+  handoff_metadata?: import('@pegasusx/types').HandoffCardMetadata;
 };
 
 export type RetailerNotificationItem = {
@@ -21,6 +22,7 @@ export type RetailerNotificationItem = {
   channel: string;
   readAt: string | null;
   createdAt: string;
+  handoffMetadata?: import('@pegasusx/types').HandoffCardMetadata;
 };
 
 const retailerNotificationEventTypes = new Set([
@@ -61,6 +63,7 @@ export function normalizeNotification(item: BackendNotificationItem): RetailerNo
     channel: item.channel ?? 'PUSH',
     readAt: item.read_at ?? null,
     createdAt: item.created_at,
+    handoffMetadata: item.handoff_metadata,
   };
 }
 

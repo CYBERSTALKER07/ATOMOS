@@ -60,6 +60,24 @@ export function shouldRefreshOnEvent(eventType: string, allowed: ReadonlySet<str
   return allowed.has(eventType);
 }
 
+export const PULSE_REFRESH_EVENTS = new Set([
+  ...ORDER_STATUS_REFRESH_EVENTS,
+  ...PREORDER_REFRESH_EVENTS,
+  "DISPATCH_COMMITTED",
+  "MANIFEST_DRAFT_CREATED",
+  "MANIFEST_SEALED",
+  "MANIFEST_DISPATCHED",
+  "MANIFEST_COMPLETED",
+  "MANIFEST_LOADING_STARTED",
+  "ORDER_CREATED",
+  "ORDER_ASSIGNED",
+  "PAYMENT_REQUIRED",
+  "PAYMENT_CLEARED",
+  "PAYMENT_SETTLED",
+  "SHOP_CLOSED",
+  "SHOP_CLOSED_ESCALATED",
+]);
+
 export function parseWsEventType(raw: unknown): string | null {
   if (typeof raw !== "string" || raw.trim() === "") {
     return null;

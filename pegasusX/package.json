@@ -13,7 +13,10 @@
     "packages/api-client",
     "packages/validation",
     "packages/i18n",
-    "packages/ui-kit"
+    "packages/ui-kit",
+    "packages/pulse-ui",
+    "packages/explain-ui",
+    "packages/ws-refresh-contract"
   ],
   "packageManager": "pnpm@9.0.0",
   "engines": {

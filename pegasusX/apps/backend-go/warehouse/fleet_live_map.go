@@ -35,6 +35,9 @@ type WarehouseFleetLiveRoute struct {
 	DriverID              string                        `json:"driver_id"`
 	DriverName            string                        `json:"driver_name,omitempty"`
 	ManifestState         string                        `json:"manifest_state"`
+	OrderCount            int64                         `json:"order_count,omitempty"`
+	LoadingStartedAt      string                        `json:"loading_started_at,omitempty"`
+	DeliverySummary       string                        `json:"delivery_summary,omitempty"`
 	RouteGeometry         *routing.RouteGeometry        `json:"route_geometry,omitempty"`
 	DriverLocation        *WarehouseFleetDriverLocation `json:"driver_location,omitempty"`
 	LiveLocationAvailable bool                          `json:"live_location_available"`
@@ -43,9 +46,20 @@ type WarehouseFleetLiveRoute struct {
 
 // WarehouseFleetLiveMapResponse is GET /v1/warehouse/ops/fleet/live-map.
 type WarehouseFleetLiveMapResponse struct {
-	Routes      []WarehouseFleetLiveRoute `json:"routes"`
-	WarehouseID string                    `json:"warehouse_id"`
-	FetchedAt   string                    `json:"fetched_at"`
+	Routes       []WarehouseFleetLiveRoute `json:"routes"`
+	YardManifests []WarehouseYardManifest  `json:"yard_manifests,omitempty"`
+	WarehouseID  string                    `json:"warehouse_id"`
+	FetchedAt    string                    `json:"fetched_at"`
+}
+
+// WarehouseYardManifest is a LOADING manifest on the yard radar layer.
+type WarehouseYardManifest struct {
+	ManifestID       string `json:"manifest_id"`
+	DriverName       string `json:"driver_name,omitempty"`
+	OrderCount       int64  `json:"order_count"`
+	LoadingStartedAt string `json:"loading_started_at,omitempty"`
+	DeliverySummary  string `json:"delivery_summary,omitempty"`
+	ManifestState    string `json:"manifest_state"`
 }
 
 // HandleWarehouseFleetLiveMap serves GET /v1/warehouse/ops/fleet/live-map.
@@ -59,36 +73,37 @@ func (s *Service) HandleWarehouseFleetLiveMap(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "warehouse_id_required"})
 		return
 	}
-	routes, err := s.listWarehouseFleetLiveRoutes(r.Context(), whID)
+	routes, yard, err := s.listWarehouseFleetLiveRoutes(r.Context(), whID)
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "warehouse fleet live map failed", "err", err, "warehouse_id", whID)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "fleet_live_map_failed"})
 		return
 	}
 	writeJSON(w, http.StatusOK, WarehouseFleetLiveMapResponse{
-		Routes:      routes,
-		WarehouseID: whID,
-		FetchedAt:   s.now().UTC().Format(time.RFC3339Nano),
+		Routes:        routes,
+		YardManifests: yard,
+		WarehouseID:   whID,
+		FetchedAt:     s.now().UTC().Format(time.RFC3339Nano),
 	})
 }
 
-func (s *Service) listWarehouseFleetLiveRoutes(ctx context.Context, warehouseID string) ([]WarehouseFleetLiveRoute, error) {
+func (s *Service) listWarehouseFleetLiveRoutes(ctx context.Context, warehouseID string) ([]WarehouseFleetLiveRoute, []WarehouseYardManifest, error) {
 	warehouseID = strings.TrimSpace(warehouseID)
 	if warehouseID == "" {
-		return nil, nil
+		return nil, nil, nil
 	}
 	if s.spannerClient == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	stmt := spanner.Statement{
 		SQL: `SELECT m.ManifestId, m.RouteId, m.DriverId, m.State,
 		             m.EncodedRoutePolyline, m.RouteGeometrySource, m.StopCount,
-		             d.Name
+		             m.LoadingStartedAt, d.Name
 		      FROM SupplierTruckManifests m
 		      LEFT JOIN Drivers d ON d.DriverId = m.DriverId
 		      WHERE m.WarehouseId = @wh
-		        AND m.State IN ('SEALED', 'DISPATCHED')
+		        AND m.State IN ('SEALED', 'DISPATCHED', 'LOADING')
 		      ORDER BY m.UpdatedAt DESC
 		      LIMIT 40`,
 		Params: map[string]any{"wh": warehouseID},
@@ -99,6 +114,7 @@ func (s *Service) listWarehouseFleetLiveRoutes(ctx context.Context, warehouseID 
 	defer iter.Stop()
 
 	rows := make([]WarehouseFleetLiveRoute, 0, 8)
+	yard := make([]WarehouseYardManifest, 0, 8)
 	seenDrivers := make(map[string]struct{}, 8)
 	for {
 		row, err := iter.Next()
@@ -106,14 +122,29 @@ func (s *Service) listWarehouseFleetLiveRoutes(ctx context.Context, warehouseID 
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("warehouse fleet live map query: %w", err)
+			return nil, nil, fmt.Errorf("warehouse fleet live map query: %w", err)
 		}
 		var manifestID, routeID, driverID, state, driverName string
 		var encoded spanner.NullString
 		var source spanner.NullString
 		var stopCount int64
-		if err := row.Columns(&manifestID, &routeID, &driverID, &state, &encoded, &source, &stopCount, &driverName); err != nil {
-			return nil, fmt.Errorf("warehouse fleet live map scan: %w", err)
+		var loadingStarted spanner.NullTime
+		if err := row.Columns(&manifestID, &routeID, &driverID, &state, &encoded, &source, &stopCount, &loadingStarted, &driverName); err != nil {
+			return nil, nil, fmt.Errorf("warehouse fleet live map scan: %w", err)
+		}
+		if strings.EqualFold(state, "LOADING") {
+			yardEntry := WarehouseYardManifest{
+				ManifestID:    manifestID,
+				DriverName:    strings.TrimSpace(driverName),
+				OrderCount:    stopCount,
+				DeliverySummary: fmt.Sprintf("%d stops loading", stopCount),
+				ManifestState: state,
+			}
+			if loadingStarted.Valid {
+				yardEntry.LoadingStartedAt = loadingStarted.Time.UTC().Format(time.RFC3339Nano)
+			}
+			yard = append(yard, yardEntry)
+			continue
 		}
 		driverID = strings.TrimSpace(driverID)
 		if driverID != "" {
@@ -128,6 +159,7 @@ func (s *Service) listWarehouseFleetLiveRoutes(ctx context.Context, warehouseID 
 			DriverID:      driverID,
 			DriverName:    strings.TrimSpace(driverName),
 			ManifestState: state,
+			OrderCount:    stopCount,
 		}
 		if encoded.Valid && encoded.StringVal != "" {
 			geometry, decodeErr := routing.GeometryFromStoredPolyline(
@@ -143,7 +175,7 @@ func (s *Service) listWarehouseFleetLiveRoutes(ctx context.Context, warehouseID 
 		s.attachWarehouseDriverLocation(ctx, &liveRoute)
 		rows = append(rows, liveRoute)
 	}
-	return rows, nil
+	return rows, yard, nil
 }
 
 func (s *Service) attachWarehouseDriverLocation(ctx context.Context, route *WarehouseFleetLiveRoute) {

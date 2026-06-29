@@ -2,7 +2,9 @@
 // supplier portal (order projection) and payloader surfaces (loading gate).
 package manifest
 
-import "strings"
+import (
+	"strings"
+)
 
 // Wire is the additive manifest DTO every list/detail endpoint emits.
 // Portal clients read status/orders_count/driver_name; tablet clients read
@@ -30,17 +32,32 @@ type Wire struct {
 	OverflowCount int         `json:"overflow_count"`
 }
 
+// DeliveryExpectationWire is the JSON shape embedded on manifest order rows.
+type DeliveryExpectationWire struct {
+	Kind                 string  `json:"kind"`
+	TargetDate           *string `json:"target_date,omitempty"`
+	TargetLabel          string  `json:"target_label"`
+	ModeLabel            string  `json:"mode_label,omitempty"`
+	ReceivingWindowOpen  string  `json:"receiving_window_open,omitempty"`
+	ReceivingWindowClose string  `json:"receiving_window_close,omitempty"`
+	Delayed              bool    `json:"delayed"`
+	DelayReason          string  `json:"delay_reason,omitempty"`
+	Urgency              string  `json:"urgency"`
+	BadgeLabel           string  `json:"badge_label,omitempty"`
+}
+
 // OrderWire is the per-stop order shape embedded in manifest detail responses.
 type OrderWire struct {
-	OrderID        string          `json:"order_id"`
-	RetailerID     string          `json:"retailer_id,omitempty"`
-	Amount         int64           `json:"amount"`
-	PaymentGateway string          `json:"payment_gateway,omitempty"`
-	State          string          `json:"state"`
-	Status         string          `json:"status"`
-	RouteID        string          `json:"route_id,omitempty"`
-	WarehouseID    string          `json:"warehouse_id,omitempty"`
-	Items          []OrderItemWire `json:"items"`
+	OrderID             string                   `json:"order_id"`
+	RetailerID          string                   `json:"retailer_id,omitempty"`
+	Amount              int64                    `json:"amount"`
+	PaymentGateway      string                   `json:"payment_gateway,omitempty"`
+	State               string                   `json:"state"`
+	Status              string                   `json:"status"`
+	RouteID             string                   `json:"route_id,omitempty"`
+	WarehouseID         string                   `json:"warehouse_id,omitempty"`
+	DeliveryExpectation *DeliveryExpectationWire `json:"delivery_expectation,omitempty"`
+	Items               []OrderItemWire          `json:"items"`
 }
 
 // OrderItemWire is one catalog line on a manifest order.

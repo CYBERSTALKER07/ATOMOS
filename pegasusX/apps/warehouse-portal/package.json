@@ -20,6 +20,8 @@
     "@heroui/react": "^3.1.0",
     "@heroui/styles": "^3.1.0",
     "@pegasusx/api-client": "workspace:*",
+    "@pegasusx/pulse-ui": "workspace:*",
+    "@pegasusx/explain-ui": "workspace:*",
     "@pegasusx/types": "workspace:*",
     "@pegasusx/ws-refresh-contract": "workspace:*",
     "@pegasusx/ui-kit": "workspace:*",

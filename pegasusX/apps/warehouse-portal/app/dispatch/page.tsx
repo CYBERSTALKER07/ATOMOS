@@ -13,6 +13,8 @@ import type {
   WarehouseVehicleUnavailableReason,
 } from '@pegasusx/types';
 import { ApiError, warehouseDispatchKey, warehouseUpdateVehicleKey } from '@pegasusx/api-client';
+import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
+import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
@@ -87,7 +89,15 @@ export default function DispatchPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [executing, setExecuting] = useState(false);
   const [executeError, setExecuteError] = useState<string | null>(null);
+  const [executeExplain, setExecuteExplain] = useState<StatusExplain | null>(null);
   const [executeSuccess, setExecuteSuccess] = useState<string | null>(null);
+  const [dispatchRuns, setDispatchRuns] = useState<Array<{
+    run_id: string;
+    status: string;
+    manifest_count: number;
+    orders_assigned: number;
+    created_at: string;
+  }>>([]);
   const [proposedRoutes, setProposedRoutes] = useState<WarehouseDispatchProposedRoute[]>([]);
   const [optimizerSource, setOptimizerSource] = useState<string | null>(null);
   const [optimizerWarnings, setOptimizerWarnings] = useState<string[]>([]);
@@ -269,9 +279,16 @@ export default function DispatchPage() {
     if (executing) {
       setExecuting(false);
       setExecuteError(null);
+      setExecuteExplain(null);
       setExecuteSuccess('Connection restored — dispatch board refreshed from server.');
     }
   });
+
+  useEffect(() => {
+    void apiFetch<{ runs: typeof dispatchRuns }>('/v1/warehouse/ops/dispatch/runs')
+      .then((data) => setDispatchRuns(data.runs ?? []))
+      .catch(() => setDispatchRuns([]));
+  }, [executeSuccess]);
 
   const selectedDriver = useMemo(
     () => drivers.find(driver => driver.driver_id === selectedDriverId),
@@ -493,7 +510,13 @@ export default function DispatchPage() {
         setExecuteError('Smart dispatch did not commit. Refresh and try again.');
       }
     } catch (err) {
-      setExecuteError(err instanceof ApiError ? err.message : 'Smart dispatch failed');
+      if (err instanceof ApiError) {
+        setExecuteError(err.message);
+        setExecuteExplain(explainFromApiError(err.body));
+      } else {
+        setExecuteExplain(null);
+        setExecuteError(err instanceof Error ? err.message : 'Smart dispatch failed');
+      }
     } finally {
       setExecuting(false);
     }
@@ -609,7 +632,10 @@ export default function DispatchPage() {
         )}
 
         {executeError && (
-          <p className="text-sm mb-4" style={{ color: 'var(--error)' }}>{executeError}</p>
+          <div className="mb-4">
+            <ExplainStatusBanner explain={executeExplain} className="mb-2" />
+            <p className="text-sm" style={{ color: 'var(--error)' }}>{executeError}</p>
+          </div>
         )}
         {executeSuccess && (
           <p className="text-sm mb-4" style={{ color: 'var(--success)' }}>{executeSuccess}</p>
@@ -709,6 +735,27 @@ export default function DispatchPage() {
             sub={optimizerSource ? `Source: ${optimizerSource}` : 'Optimizer preview'}
           />
         </KpiStatGrid>
+
+        <PageSection
+          title="Recent dispatch commits"
+          description="Replay the last committed smart-dispatch runs for this node."
+          className="mt-6"
+        >
+          {dispatchRuns.length === 0 ? (
+            <p className="text-sm text-(--muted)">No dispatch runs recorded yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {dispatchRuns.slice(0, 8).map((run) => (
+                <div key={run.run_id} className="rounded-lg border border-(--border) p-3 text-sm">
+                  <div className="font-medium">{run.status}</div>
+                  <div className="text-(--muted)">
+                    {run.orders_assigned} orders · {run.manifest_count} manifests · {new Date(run.created_at).toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </PageSection>
 
         <PageSection
           title="Live fleet map"

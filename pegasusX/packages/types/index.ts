@@ -41,7 +41,68 @@ export type Role =
 
 export type SupplierId = string;
 export type RetailerId = string;
-export type OrderId = string;
+export type DeliveryExpectationKind =
+  | "STANDARD"
+  | "SCHEDULED_PREORDER"
+  | "EXPRESS"
+  | "PROPOSAL_PENDING";
+
+export type DeliveryExpectationUrgency =
+  | "on_track"
+  | "due_soon"
+  | "overdue"
+  | "scheduled_far";
+
+export interface DeliveryExpectation {
+  kind: DeliveryExpectationKind;
+  target_date?: string;
+  target_label: string;
+  mode_label?: string;
+  receiving_window_open?: string;
+  receiving_window_close?: string;
+  delayed: boolean;
+  delay_reason?: string;
+  urgency: DeliveryExpectationUrgency;
+  badge_label?: string;
+}
+
+export interface StatusExplain {
+  code: string;
+  title: string;
+  summary: string;
+  next_steps?: string[];
+  deep_link?: string;
+  recoverable: boolean;
+}
+
+export interface HandoffCardMetadata {
+  kind: string;
+  title: string;
+  subtitle?: string;
+  primary_cta?: string;
+  primary_link?: string;
+  entity_type?: string;
+  entity_id?: string;
+  fields?: Record<string, string>;
+}
+
+export interface PulseEvent {
+  id: string;
+  kind: string;
+  title: string;
+  description?: string;
+  occurred_at: string;
+  deep_link?: string;
+  order_id?: string;
+  manifest_id?: string;
+}
+
+export interface PulseResponse {
+  events: PulseEvent[];
+  fetched_at: string;
+  unread_count?: number;
+}
+
 export type DriverId = string;
 export type VehicleId = string;
 export type WarehouseId = string;
@@ -491,6 +552,7 @@ export interface SupplierManifestOrderWire {
   status: string;
   route_id?: string;
   warehouse_id?: string;
+  delivery_expectation?: DeliveryExpectation;
 }
 
 export interface SupplierManifestDetail extends SupplierManifestRow {
@@ -639,8 +701,70 @@ export type WarehouseFleetLiveRoute = SupplierFleetLiveRoute;
 
 export interface WarehouseFleetLiveMapResponse {
   routes: WarehouseFleetLiveRoute[];
+  yard_manifests?: WarehouseYardManifest[];
   warehouse_id: string;
   fetched_at: string;
+}
+
+export interface WarehouseYardManifest {
+  manifest_id: string;
+  driver_name?: string;
+  order_count: number;
+  loading_started_at?: string;
+  delivery_summary?: string;
+  manifest_state: string;
+}
+
+export interface WarehouseDispatchRun {
+  run_id: string;
+  warehouse_id: string;
+  supplier_id: string;
+  actor_id?: string;
+  mode: string;
+  status: string;
+  manifest_count: number;
+  orders_assigned: number;
+  warnings?: string[];
+  manifest_ids?: string[];
+  created_at: string;
+}
+
+export interface WarehouseDispatchRunsResponse {
+  runs: WarehouseDispatchRun[];
+}
+
+export interface WarehouseOpsBoardOrder {
+  order_id: string;
+  status: string;
+  retailer_id?: string;
+  total_minor: number;
+  delivery_expectation?: DeliveryExpectation;
+}
+
+export interface WarehouseOpsBoardResponse {
+  date: string;
+  warehouse_id: string;
+  preorders: WarehouseOpsBoardOrder[];
+  deliver_before: WarehouseOpsBoardOrder[];
+  stock_commitments: { sku_id: string; committed_qty: number }[];
+  draft_manifests: { manifest_id: string; state: string; stop_count: number; driver_name?: string }[];
+  loading_manifests: { manifest_id: string; state: string; stop_count: number; driver_name?: string }[];
+  fetched_at: string;
+}
+
+export interface WarehouseOpsExceptionRow {
+  exception_id?: string;
+  kind: string;
+  order_id?: string;
+  manifest_id?: string;
+  reason?: string;
+  status?: string;
+  updated_at?: string;
+  delivery_expectation?: DeliveryExpectation;
+}
+
+export interface WarehouseOpsExceptionsResponse {
+  exceptions: WarehouseOpsExceptionRow[];
 }
 
 export interface SupplierBusinessSetupRequest {
@@ -1720,6 +1844,7 @@ export interface RetailerTrackingOrder {
   created_at: string;
   updated_at: string;
   items: RetailerTrackingLineItem[];
+  delivery_expectation?: DeliveryExpectation;
 }
 
 export interface RetailerTrackingPaymentEvidence {
@@ -2719,6 +2844,7 @@ export interface NotificationInboxItem {
   channel: string;
   read_at?: string | null;
   created_at: string;
+  handoff_metadata?: HandoffCardMetadata;
 }
 
 export interface NotificationInboxResponse {

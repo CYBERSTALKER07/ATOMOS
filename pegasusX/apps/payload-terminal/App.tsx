@@ -218,6 +218,7 @@ export default function App() {
   const [manifestMaxVolume, setManifestMaxVolume] = useState(0);
   const [manifestStopCount, setManifestStopCount] = useState(0);
   const [manifestRegionCode, setManifestRegionCode] = useState('');
+  const [deliveryLabelsByOrder, setDeliveryLabelsByOrder] = useState<Record<string, string>>({});
   const [isStartingLoad, setIsStartingLoad] = useState(false);
   const [isSealingManifest, setIsSealingManifest] = useState(false);
   const [exceptionLoading, setExceptionLoading] = useState<string | null>(null); // orderId being excepted
@@ -993,6 +994,20 @@ export default function App() {
         setManifestMaxVolume(m.max_volume_vu || 0);
         setManifestStopCount(m.stop_count || 0);
         setManifestRegionCode(m.region_code || '');
+        try {
+          const detailRes = await authFetch(`/v1/payloader/manifests/${encodeURIComponent(m.manifest_id)}`);
+          if (detailRes.ok) {
+            const detail = await detailRes.json();
+            const labels: Record<string, string> = {};
+            for (const row of detail.orders ?? []) {
+              const label = row.delivery_expectation?.target_label || row.delivery_expectation?.badge_label;
+              if (label) labels[row.order_id] = label;
+            }
+            setDeliveryLabelsByOrder(labels);
+          }
+        } catch {
+          setDeliveryLabelsByOrder({});
+        }
       }
     } catch {}
   }, [token, activeTruck]);
@@ -2005,7 +2020,7 @@ export default function App() {
                       {order.order_id}
                     </Text>
                     <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 11, marginTop: 2, color: isActive ? (isIOS ? 'rgba(0,0,0,0.5)' : T.colors.sidebarActiveText) : T.colors.sidebarSecondary }}>
-                      {order.retailer_id}
+                      {(order.delivery_expectation?.target_label || deliveryLabelsByOrder[order.order_id]) ?? order.retailer_id}
                     </Text>
                   </View>
                   {isSealed && (

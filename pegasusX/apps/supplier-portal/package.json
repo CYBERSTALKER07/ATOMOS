@@ -19,6 +19,8 @@
     "@heroui/react": "^3.0.2",
     "@heroui/styles": "^3.0.2",
     "@pegasusx/api-client": "workspace:*",
+    "@pegasusx/explain-ui": "workspace:*",
+    "@pegasusx/pulse-ui": "workspace:*",
     "@pegasusx/types": "workspace:*",
     "@pegasusx/ui-kit": "workspace:*",
     "@pegasusx/validation": "workspace:*",

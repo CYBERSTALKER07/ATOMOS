@@ -8,6 +8,7 @@ import EmptyState from '@/components/EmptyState';
 import { motion } from 'framer-motion';
 import PageTransition from '@/components/PageTransition';
 import FleetLiveMapPanel from '@/components/FleetLiveMapPanel';
+import NetworkPulsePanel from '@/components/NetworkPulsePanel';
 import { PageSection } from '@/components/PageSection';
 import { PageChrome } from '@/components/PageChrome';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
@@ -203,6 +204,14 @@ export default function WarehouseDashboard() {
           />
         ))}
       </KpiStatGrid>
+
+      <PageSection
+        title="Network pulse"
+        description="Cross-role timeline for this warehouse node."
+        bay="ops"
+      >
+        <NetworkPulsePanel />
+      </PageSection>
 
       <PageSection
         title="Live fleet map"

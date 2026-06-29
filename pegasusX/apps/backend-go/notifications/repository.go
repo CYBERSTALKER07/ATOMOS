@@ -11,15 +11,16 @@ import (
 
 // Notification mirrors the Notifications Spanner row.
 type Notification struct {
-	NotificationID string    `json:"notification_id"`
-	RecipientID    string    `json:"recipient_id"`
-	RecipientRole  string    `json:"recipient_role"`
-	EventType      string    `json:"event_type"`
-	Title          string    `json:"title"`
-	Body           string    `json:"body"`
-	DeepLink       string    `json:"deep_link"`
-	IsRead         bool      `json:"is_read"`
-	CreatedAt      time.Time `json:"created_at"`
+	NotificationID string                 `json:"notification_id"`
+	RecipientID    string                 `json:"recipient_id"`
+	RecipientRole  string                 `json:"recipient_role"`
+	EventType      string                 `json:"event_type"`
+	Title          string                 `json:"title"`
+	Body           string                 `json:"body"`
+	DeepLink       string                 `json:"deep_link"`
+	IsRead         bool                   `json:"is_read"`
+	CreatedAt      time.Time              `json:"created_at"`
+	HandoffMetadata *HandoffCardMetadata  `json:"handoff_metadata,omitempty"`
 }
 
 // Repository defines the data access contract for notifications.
@@ -43,18 +44,20 @@ func NewSpannerRepository(client *spanner.Client) *SpannerRepository {
 
 var notifColumns = []string{
 	"NotificationId", "RecipientId", "RecipientRole", "EventType",
-	"Title", "Body", "DeepLink", "IsRead", "CreatedAt",
+	"Title", "Body", "DeepLink", "IsRead", "CreatedAt", "MetadataJson",
 }
 
 func scanNotification(row *spanner.Row) (Notification, error) {
 	var n Notification
 	var body, deepLink spanner.NullString
+	var metaRaw []byte
 	if err := row.Columns(&n.NotificationID, &n.RecipientID, &n.RecipientRole, &n.EventType,
-		&n.Title, &body, &deepLink, &n.IsRead, &n.CreatedAt); err != nil {
+		&n.Title, &body, &deepLink, &n.IsRead, &n.CreatedAt, &metaRaw); err != nil {
 		return Notification{}, fmt.Errorf("scan notification: %w", err)
 	}
 	n.Body = body.StringVal
 	n.DeepLink = deepLink.StringVal
+	n.HandoffMetadata = DecodeHandoffMetadata(metaRaw)
 	return n, nil
 }
 
@@ -71,6 +74,7 @@ func (r *SpannerRepository) Create(ctx context.Context, n Notification) error {
 			"DeepLink":       spanner.NullString{StringVal: n.DeepLink, Valid: n.DeepLink != ""},
 			"IsRead":         false,
 			"CreatedAt":      spanner.CommitTimestamp,
+			"MetadataJson":   EncodeHandoffMetadata(n.HandoffMetadata),
 		})
 		return txn.BufferWrite([]*spanner.Mutation{m})
 	})
@@ -89,7 +93,7 @@ func (r *SpannerRepository) ListByRecipient(ctx context.Context, recipientID str
 		offset = 0
 	}
 	stmt := spanner.Statement{
-		SQL: `SELECT NotificationId, RecipientId, RecipientRole, EventType, Title, Body, DeepLink, IsRead, CreatedAt
+		SQL: `SELECT NotificationId, RecipientId, RecipientRole, EventType, Title, Body, DeepLink, IsRead, CreatedAt, MetadataJson
 			FROM Notifications
 			WHERE RecipientId = @rid
 			ORDER BY CreatedAt DESC

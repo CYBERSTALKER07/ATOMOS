@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/packages/handoff"
 	"google.golang.org/api/iterator"
@@ -397,7 +398,10 @@ func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID s
 		SQL: `SELECT OrderId, SupplierId, RetailerId,
 		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
 		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), COALESCE(DeliveryToken, ''), Status, LineItemsJson,
-		             TotalMinor, Currency, CreatedAt, UpdatedAt, Lat, Lng
+		             TotalMinor, Currency, CreatedAt, UpdatedAt, Lat, Lng,
+		             COALESCE(Source, 'MANUAL'), DeliverBefore, RequestedDeliveryDate,
+		             COALESCE(DeliveryPriority, 'STANDARD'), COALESCE(ConfirmationStatus, 'CONFIRMED'),
+		             ProposedDeliveryDate, COALESCE(ReceivingWindowOpen, ''), COALESCE(ReceivingWindowClose, '')
 		      FROM Orders@{FORCE_INDEX=Idx_Orders_ByRetailerCreated}
 		      WHERE RetailerId = @RetailerId
 		        AND Status IN UNNEST(@Statuses)
@@ -432,7 +436,10 @@ func (r *SpannerRepository) ListRecentReceipts(ctx context.Context, retailerID s
 		SQL: `SELECT OrderId, SupplierId, RetailerId,
 		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
 		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), COALESCE(DeliveryToken, ''), Status, LineItemsJson,
-		             TotalMinor, Currency, CreatedAt, UpdatedAt, Lat, Lng
+		             TotalMinor, Currency, CreatedAt, UpdatedAt, Lat, Lng,
+		             COALESCE(Source, 'MANUAL'), DeliverBefore, RequestedDeliveryDate,
+		             COALESCE(DeliveryPriority, 'STANDARD'), COALESCE(ConfirmationStatus, 'CONFIRMED'),
+		             ProposedDeliveryDate, COALESCE(ReceivingWindowOpen, ''), COALESCE(ReceivingWindowClose, '')
 		      FROM Orders
 		      WHERE RetailerId = @RetailerId
 		        AND Status = @Status
@@ -1106,53 +1113,107 @@ func (r *SpannerRepository) queryTrackingOrders(ctx context.Context, stmt spanne
 
 func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 	var (
-		order               TrackingOrder
+		tracking            TrackingOrder
 		storedDeliveryToken string
 		lineItems           []byte
 		createdAt           time.Time
 		updatedAt           time.Time
 		lat                 spanner.NullFloat64
 		lng                 spanner.NullFloat64
+		source              string
+		deliverBefore       spanner.NullTime
+		requestedDelivery   spanner.NullTime
+		deliveryPriority    string
+		confirmationStatus  string
+		proposedDelivery    spanner.NullTime
+		receivingOpen       string
+		receivingClose      string
 	)
 	if err := row.Columns(
-		&order.OrderID,
-		&order.SupplierID,
-		&order.RetailerID,
-		&order.WarehouseID,
-		&order.DriverID,
-		&order.VehicleID,
-		&order.RouteID,
-		&order.ManifestID,
+		&tracking.OrderID,
+		&tracking.SupplierID,
+		&tracking.RetailerID,
+		&tracking.WarehouseID,
+		&tracking.DriverID,
+		&tracking.VehicleID,
+		&tracking.RouteID,
+		&tracking.ManifestID,
 		&storedDeliveryToken,
-		&order.Status,
+		&tracking.Status,
 		&lineItems,
-		&order.TotalMinor,
-		&order.Currency,
+		&tracking.TotalMinor,
+		&tracking.Currency,
 		&createdAt,
 		&updatedAt,
 		&lat,
 		&lng,
+		&source,
+		&deliverBefore,
+		&requestedDelivery,
+		&deliveryPriority,
+		&confirmationStatus,
+		&proposedDelivery,
+		&receivingOpen,
+		&receivingClose,
 	); err != nil {
 		return TrackingOrder{}, fmt.Errorf("scan retailer tracking order: %w", err)
 	}
 
-	order.CreatedAt = createdAt.UTC().Format(time.RFC3339Nano)
-	order.UpdatedAt = updatedAt.UTC().Format(time.RFC3339Nano)
-	order.TrackingStatus = "unassigned"
-	if strings.TrimSpace(order.DriverID) != "" && strings.TrimSpace(order.RouteID) != "" {
-		order.TrackingStatus = "assigned"
+	tracking.CreatedAt = createdAt.UTC().Format(time.RFC3339Nano)
+	tracking.UpdatedAt = updatedAt.UTC().Format(time.RFC3339Nano)
+	tracking.TrackingStatus = "unassigned"
+	if strings.TrimSpace(tracking.DriverID) != "" && strings.TrimSpace(tracking.RouteID) != "" {
+		tracking.TrackingStatus = "assigned"
 	}
-	order.LiveLocationAvailable = false
-	order.Items = decodeTrackingLineItems(lineItems)
+	tracking.LiveLocationAvailable = false
+	tracking.Items = decodeTrackingLineItems(lineItems)
 	if lat.Valid {
-		order.DeliveryLat = lat.Float64
+		tracking.DeliveryLat = lat.Float64
 	}
 	if lng.Valid {
-		order.DeliveryLng = lng.Float64
+		tracking.DeliveryLng = lng.Float64
 	}
-	order.DeliveryToken = trackingDeliveryToken(order.OrderID, storedDeliveryToken, order.Status)
-	order.PaymentStatus = trackingPaymentStatus(order.Status)
-	return order, nil
+	tracking.DeliveryToken = trackingDeliveryToken(tracking.OrderID, storedDeliveryToken, tracking.Status)
+	tracking.PaymentStatus = trackingPaymentStatus(tracking.Status)
+	orderRow := orderRowForExpectation(tracking, source, deliverBefore, requestedDelivery, deliveryPriority, confirmationStatus, proposedDelivery, receivingOpen, receivingClose)
+	exp := order.ComputeDeliveryExpectation(time.Now().UTC(), orderRow)
+	tracking.DeliveryExpectation = &exp
+	return tracking, nil
+}
+
+func orderRowForExpectation(
+	tracking TrackingOrder,
+	source string,
+	deliverBefore spanner.NullTime,
+	requestedDelivery spanner.NullTime,
+	deliveryPriority string,
+	confirmationStatus string,
+	proposedDelivery spanner.NullTime,
+	receivingOpen string,
+	receivingClose string,
+) order.Order {
+	o := order.Order{
+		OrderID:              tracking.OrderID,
+		Status:               order.Status(tracking.Status),
+		Source:               order.OrderSource(source),
+		ConfirmationStatus:   order.ConfirmationStatus(confirmationStatus),
+		DeliveryPriority:     order.DeliveryPriority(deliveryPriority),
+		ReceivingWindowOpen:  receivingOpen,
+		ReceivingWindowClose: receivingClose,
+	}
+	if deliverBefore.Valid {
+		t := deliverBefore.Time
+		o.DeliverBefore = &t
+	}
+	if requestedDelivery.Valid {
+		t := requestedDelivery.Time
+		o.RequestedDeliveryDate = &t
+	}
+	if proposedDelivery.Valid {
+		t := proposedDelivery.Time
+		o.ProposedDeliveryDate = &t
+	}
+	return o
 }
 
 func trackingDeliveryToken(orderID, storedToken, status string) string {

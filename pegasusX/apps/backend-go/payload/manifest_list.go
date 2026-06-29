@@ -171,5 +171,6 @@ func (s *Service) HandleManifestDetail(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "manifest_not_found"})
 		return
 	}
+	wire = s.enrichManifestWireExpectations(r.Context(), wire)
 	writeJSON(w, http.StatusOK, wire)
 }

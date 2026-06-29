@@ -249,6 +249,7 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	}
 
 	if out.Status == "dispatched" {
+		s.persistDispatchRun(r.Context(), out, req.Mode, warehouseActorID(r.Context()))
 		s.log.InfoContext(r.Context(), "dispatch executed",
 			"warehouse_id", whID,
 			"manifests", out.ManifestsCreated,

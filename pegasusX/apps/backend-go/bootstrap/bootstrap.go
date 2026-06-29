@@ -38,6 +38,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pulse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
@@ -160,6 +161,7 @@ type App struct {
 	OutboundCircuits       *OutboundCircuits
 	PlatformService        *platform.Service
 	PlatformHandler        *platform.Handler
+	PulseHandlers          *pulse.Handlers
 	PushBridge             *notifications.PushBridge
 	Spanner                *spanner.Client
 	OptimizerClient        *optimizerclient.Client
@@ -658,6 +660,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Idem:          idemStore,
 	})
 	payloadSvc.SetPortalManifestLister(&supplier.ManifestLister{Service: supplierSvc})
+	payloadSvc.SetOrderExpectationReader(orderRepo)
 	payloadSvc.WarmManifestCache(ctx)
 	factorySvc.WarmManifestCache(ctx)
 	returnsSvc := returns.NewService(returns.ServiceConfig{
@@ -996,6 +999,14 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		SpannerOutbox:    spannerOutboxEnabled,
 	})
 
+	pulseSvc := pulse.NewService(pulse.Config{
+		Notifications: notifSvc,
+		Spanner:       spannerClient,
+		SupplierAct:   &supplierPulseLoader{svc: supplierSvc},
+		Log:           log,
+	})
+	pulseHandlers := &pulse.Handlers{Service: pulseSvc}
+
 	return &App{
 		Config:                 cfg,
 		Cache:                  cacheClient,
@@ -1035,6 +1046,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		OutboundCircuits:       outboundCircuits,
 		PlatformService:        platformSvc,
 		PlatformHandler:        platformHandler,
+		PulseHandlers:          pulseHandlers,
 		PushBridge:             pushBridge,
 		Spanner:                spannerClient,
 		OptimizerClient:        optimizerCli,
