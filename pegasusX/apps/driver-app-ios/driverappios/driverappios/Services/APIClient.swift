@@ -319,7 +319,11 @@ final class APIClient: @unchecked Sendable {
     func setAvailability(available: Bool, reason: String? = nil, note: String? = nil) async throws {
         struct Req: Encodable { let available: Bool; let reason: String?; let note: String? }
         struct Resp: Decodable { let status: String }
-        let _: Resp = try await post("v1/driver/availability", body: Req(available: available, reason: reason, note: note))
+        let _: Resp = try await post(
+            "v1/driver/availability",
+            body: Req(available: available, reason: reason, note: note),
+            headers: ["Idempotency-Key": DriverIdempotency.availability(onShift: available, reason: reason ?? "", note: note)]
+        )
     }
 
     func getAvailability() async throws -> [String: AnyDecodable] {
@@ -327,7 +331,14 @@ final class APIClient: @unchecked Sendable {
     }
 
     func updateAvailability(payload: [String: AnyEncodable]) async throws -> [String: String] {
-        return try await patch("v1/driver/availability", body: payload)
+        let onShift = (payload["on_shift"]?.value as? Bool) ?? false
+        let reason = (payload["reason"]?.value as? String) ?? ""
+        let note = (payload["note"]?.value as? String) ?? ""
+        return try await patch(
+            "v1/driver/availability",
+            body: payload,
+            headers: ["Idempotency-Key": DriverIdempotency.availability(onShift: onShift, reason: reason, note: note)]
+        )
     }
 
     func reorderStops(routeId: String, orderSequence: [String]) async throws -> RouteReorderResponse {

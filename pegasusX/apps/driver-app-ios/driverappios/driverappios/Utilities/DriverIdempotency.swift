@@ -107,6 +107,11 @@ enum DriverIdempotency {
         return "driver-transition-state:\(driverId()):\(orderId):\(state)"
     }
 
+    static func availability(onShift: Bool, reason: String = "", note: String? = nil) -> String {
+        let fingerprint = stableHash("\(onShift):\(reason.trimmingCharacters(in: .whitespacesAndNewlines)):\((note ?? "").trimmingCharacters(in: .whitespacesAndNewlines))")
+        return "driver-availability:\(driverId()):\(fingerprint)"
+    }
+
     private static func stableHash(_ input: String) -> String {
         var hash: UInt32 = 2166136261
         for scalar in input.unicodeScalars {

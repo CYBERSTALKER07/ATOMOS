@@ -303,23 +303,40 @@ func (s *Service) HandleOrderStatePatch(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	orderID := strings.TrimSpace(chi.URLParam(r, "orderID"))
+	body, err := readLimitedBody(r, 8*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
 	var req struct {
 		State string `json:"state"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&req)
+	_ = json.Unmarshal(body, &req)
 	state := strings.TrimSpace(req.State)
 	if state == "" {
 		state = "IN_TRANSIT"
 	}
+	var resp any
 	if s.orderGet != nil {
 		current, found, _ := s.orderGet(r.Context(), orderID)
 		if found {
 			current.Status = state
-			writeJSON(w, http.StatusOK, current)
-			return
+			resp = current
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"id": orderID, "state": state})
+	if resp == nil {
+		resp = map[string]any{"id": orderID, "state": state}
+	}
+	respBytes, err := json.Marshal(resp)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "encode_response_failed"})
+		return
+	}
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandleDeliveryArrive serves POST /v1/delivery/arrive.

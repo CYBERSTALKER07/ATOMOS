@@ -13,6 +13,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
@@ -260,6 +261,42 @@ func TestHandleAvailability_PatchIdempotentNoOpNoSideEffects(t *testing.T) {
 	}
 	if len(supplierConn.messages) != supplierMsgsAfterFirst {
 		t.Fatalf("expected no extra supplier ws messages on no-op, got %d (was %d)", len(supplierConn.messages), supplierMsgsAfterFirst)
+	}
+}
+
+func TestHandleAvailability_PatchIdempotencyReplay(t *testing.T) {
+	body := []byte(`{"on_shift":true}`)
+	cached := map[string]any{"driver_id": "drv-1", "on_shift": true, "no_change": true}
+	cachedBytes, err := json.Marshal(cached)
+	if err != nil {
+		t.Fatalf("marshal cached: %v", err)
+	}
+
+	store := idempotency.NewInMemoryStore()
+	key := "driver-availability:drv-1:test"
+	if err := store.Save(context.Background(), key, idempotency.Record{
+		BodyHash:   sha256HexBytes(body),
+		StatusCode: http.StatusOK,
+		Response:   cachedBytes,
+	}, 24*time.Hour); err != nil {
+		t.Fatalf("save replay: %v", err)
+	}
+
+	svc := newDriverTestService(&driverRepoSpy{}, &driverCacheBackendSpy{})
+	svc.idem = store
+
+	req := httptest.NewRequest(http.MethodPatch, "/v1/driver/availability", strings.NewReader(string(body)))
+	req = withDriverClaims(req, auth.Claims{Subject: "drv-1"})
+	req.Header.Set("Idempotency-Key", key)
+	rr := httptest.NewRecorder()
+
+	svc.HandleAvailability(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rr.Code, rr.Body.String())
+	}
+	if rr.Body.String() != string(cachedBytes) {
+		t.Fatalf("replay body = %s want %s", rr.Body.String(), string(cachedBytes))
 	}
 }
 

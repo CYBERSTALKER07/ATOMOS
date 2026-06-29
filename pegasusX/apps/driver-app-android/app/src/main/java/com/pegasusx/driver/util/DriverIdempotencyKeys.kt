@@ -65,6 +65,11 @@ object DriverIdempotencyKeys {
         return "driver-transition-state:${driverId()}:$orderId:$state"
     }
 
+    fun availability(onShift: Boolean, reason: String = "", note: String? = null): String {
+        val fingerprint = stableHash("$onShift:${reason.trim()}:${note.orEmpty().trim()}")
+        return "driver-availability:${driverId()}:$fingerprint"
+    }
+
     private fun stableHash(input: String): String {
         var hash = 2166136261L
         for (c in input) {

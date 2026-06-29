@@ -143,6 +143,7 @@ export {
   driverOffloadKey,
   driverCompleteKey,
   driverCollectCashKey,
+  driverAvailabilityKey,
   retailerCheckoutKey,
   retailerUnifiedCheckoutKey,
   retailerCardCheckoutKey,

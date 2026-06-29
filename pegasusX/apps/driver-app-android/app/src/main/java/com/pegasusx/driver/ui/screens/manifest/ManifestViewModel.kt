@@ -466,11 +466,14 @@ class ManifestViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(isEndingSession = true, endSessionError = null)
             try {
-                api.setAvailability(AvailabilityRequest(
-                    available = false,
-                    reason = reason,
-                    note = note
-                ))
+                api.setAvailability(
+                    AvailabilityRequest(
+                        available = false,
+                        reason = reason,
+                        note = note,
+                    ),
+                    DriverIdempotencyKeys.availability(onShift = false, reason = reason, note = note),
+                )
                 _state.value = _state.value.copy(isEndingSession = false, sessionEnded = true)
                 TokenHolder.clear()
             } catch (e: Exception) {

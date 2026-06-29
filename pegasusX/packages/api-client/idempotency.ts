@@ -40,6 +40,16 @@ export function driverTransitionStateKey(
   return `driver-transition-state:${driverId}:${orderId}:${newState.trim().toUpperCase()}`;
 }
 
+export function driverAvailabilityKey(
+  driverId: string,
+  onShift: boolean,
+  reason = '',
+  note = '',
+): string {
+  const fingerprint = stableHash(`${onShift}:${reason.trim()}:${note.trim()}`);
+  return `driver-availability:${driverId}:${fingerprint}`;
+}
+
 export function retailerCheckoutKey(retailerId: string, cartFingerprint: string): string {
   return `retailer-checkout:${retailerId}:${stableHash(cartFingerprint)}`;
 }

@@ -155,7 +155,10 @@ interface DriverApi {
 
     // End session — go offline with reason code
     @POST("v1/driver/availability")
-    suspend fun setAvailability(@Body request: AvailabilityRequest): Map<String, String>
+    suspend fun setAvailability(
+        @Body request: AvailabilityRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, String>
 
     // Read current availability
     @GET("v1/driver/availability")
@@ -163,7 +166,10 @@ interface DriverApi {
 
     // Partial update to availability
     @PATCH("v1/driver/availability")
-    suspend fun updateAvailability(@Body body: Map<String, @JvmSuppressWildcards Any>): Map<String, String>
+    suspend fun updateAvailability(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, String>
 
     // Fetch driver history
     @GET("v1/driver/history")

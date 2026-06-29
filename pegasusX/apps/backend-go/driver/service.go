@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -470,105 +469,123 @@ func (s *Service) HandleAvailability(w http.ResponseWriter, r *http.Request) {
 		onShift := s.driverOnShiftSnapshot(r.Context(), driverID)
 		writeJSON(w, http.StatusOK, map[string]any{"driver_id": driverID, "on_shift": onShift, "available": onShift})
 	case http.MethodPost:
+		body, err := readLimitedBody(r, 8*1024)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+			return
+		}
+		if s.guardIdempotency(w, r, body) {
+			return
+		}
 		var req struct {
 			Available bool   `json:"available"`
 			Reason    string `json:"reason"`
 			Note      string `json:"note"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.Unmarshal(body, &req); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
-		defer r.Body.Close()
-		patchBody, _ := json.Marshal(availabilityPatchRequest{
+		s.patchDriverAvailability(w, r, driverID, body, availabilityPatchRequest{
 			OnShift: req.Available,
 			Reason:  req.Reason,
 			Note:    req.Note,
 		})
-		r2 := r.Clone(r.Context())
-		r2.Method = http.MethodPatch
-		r2.Body = io.NopCloser(strings.NewReader(string(patchBody)))
-		r2.ContentLength = int64(len(patchBody))
-		s.HandleAvailability(w, r2)
 	case http.MethodPatch:
+		body, err := readLimitedBody(r, 8*1024)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+			return
+		}
+		if s.guardIdempotency(w, r, body) {
+			return
+		}
 		var req availabilityPatchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.Unmarshal(body, &req); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
-		defer r.Body.Close()
-
-		current, known := s.driverOnShiftKnown(r.Context(), driverID)
-		if known && current == req.OnShift {
-			writeJSON(w, http.StatusOK, map[string]any{"driver_id": driverID, "on_shift": req.OnShift, "no_change": true})
-			return
-		}
-
-		reason := ""
-		note := strings.TrimSpace(req.Note)
-		if !req.OnShift {
-			reason = normalizeDriverUnavailableReason(req.Reason)
-			if reason == ReasonOther && note == "" {
-				note = strings.TrimSpace(req.Reason)
-			}
-		}
-
-		nowTS := s.now().Format(time.RFC3339Nano)
-		claims, _ := auth.FromContext(r.Context())
-		homeNodeType := strings.TrimSpace(string(claims.HomeNodeType))
-		homeNodeID := strings.TrimSpace(claims.HomeNodeID)
-		eventPayload := events.DriverEvent{
-			BaseEvent:    events.BaseEvent{Type: events.EventDriverAvailabilityChanged, Timestamp: nowTS, Version: 1},
-			DriverID:     driverID,
-			Available:    req.OnShift,
-			OnShift:      req.OnShift,
-			Reason:       reason,
-			Note:         note,
-			SupplierID:   s.supplierID,
-			HomeNodeType: homeNodeType,
-			HomeNodeID:   homeNodeID,
-		}
-
-		if err := s.persistDriverAvailability(r.Context(), driverID, req.OnShift, reason, note, eventPayload); err != nil {
-			s.log.Error("driver availability persist failed", "driver_id", driverID, "err", err)
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_availability_failed"})
-			return
-		}
-
-		s.mu.Lock()
-		s.availability[driverID] = req.OnShift
-		s.mu.Unlock()
-
-		if s.cache != nil {
-			s.cache.Invalidate(r.Context(), driverAvailabilityKey(driverID))
-		}
-		if s.planInvalidate != nil && strings.EqualFold(homeNodeType, "WAREHOUSE") && homeNodeID != "" {
-			s.planInvalidate(r.Context(), homeNodeID)
-		}
-		if s.fleetBroadcast != nil && strings.EqualFold(homeNodeType, "WAREHOUSE") && homeNodeID != "" {
-			raw, _ := json.Marshal(eventPayload)
-			formatted := notifications.FormatFromEvent(events.EventDriverAvailabilityChanged, raw)
-			s.fleetBroadcast(r.Context(), homeNodeID, map[string]any{
-				"type":           events.EventDriverAvailabilityChanged,
-				"driver_id":      driverID,
-				"on_shift":       req.OnShift,
-				"available":      req.OnShift,
-				"reason":         reason,
-				"note":           note,
-				"home_node_id":   homeNodeID,
-				"home_node_type": homeNodeType,
-				"title":          formatted.Title,
-				"body":           formatted.Body,
-				"deep_link":      formatted.DeepLink,
-				"timestamp":      nowTS,
-			})
-		}
-		s.broadcastDriverEvent(r.Context(), driverID, eventPayload)
-		s.log.Info("driver availability changed", "driver_id", driverID, "on_shift", req.OnShift, "reason", reason)
-		writeJSON(w, http.StatusOK, map[string]any{"driver_id": driverID, "on_shift": req.OnShift, "reason": reason})
+		s.patchDriverAvailability(w, r, driverID, body, req)
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
+}
+
+func (s *Service) patchDriverAvailability(w http.ResponseWriter, r *http.Request, driverID string, idemBody []byte, req availabilityPatchRequest) {
+	current, known := s.driverOnShiftKnown(r.Context(), driverID)
+	if known && current == req.OnShift {
+		resp := map[string]any{"driver_id": driverID, "on_shift": req.OnShift, "no_change": true}
+		respBytes, _ := json.Marshal(resp)
+		s.saveIdempotency(r.Context(), r, idemBody, http.StatusOK, respBytes)
+		writeJSONBytes(w, http.StatusOK, respBytes)
+		return
+	}
+
+	reason := ""
+	note := strings.TrimSpace(req.Note)
+	if !req.OnShift {
+		reason = normalizeDriverUnavailableReason(req.Reason)
+		if reason == ReasonOther && note == "" {
+			note = strings.TrimSpace(req.Reason)
+		}
+	}
+
+	nowTS := s.now().Format(time.RFC3339Nano)
+	claims, _ := auth.FromContext(r.Context())
+	homeNodeType := strings.TrimSpace(string(claims.HomeNodeType))
+	homeNodeID := strings.TrimSpace(claims.HomeNodeID)
+	eventPayload := events.DriverEvent{
+		BaseEvent:    events.BaseEvent{Type: events.EventDriverAvailabilityChanged, Timestamp: nowTS, Version: 1},
+		DriverID:     driverID,
+		Available:    req.OnShift,
+		OnShift:      req.OnShift,
+		Reason:       reason,
+		Note:         note,
+		SupplierID:   s.supplierID,
+		HomeNodeType: homeNodeType,
+		HomeNodeID:   homeNodeID,
+	}
+
+	if err := s.persistDriverAvailability(r.Context(), driverID, req.OnShift, reason, note, eventPayload); err != nil {
+		s.log.Error("driver availability persist failed", "driver_id", driverID, "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_availability_failed"})
+		return
+	}
+
+	s.mu.Lock()
+	s.availability[driverID] = req.OnShift
+	s.mu.Unlock()
+
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), driverAvailabilityKey(driverID))
+	}
+	if s.planInvalidate != nil && strings.EqualFold(homeNodeType, "WAREHOUSE") && homeNodeID != "" {
+		s.planInvalidate(r.Context(), homeNodeID)
+	}
+	if s.fleetBroadcast != nil && strings.EqualFold(homeNodeType, "WAREHOUSE") && homeNodeID != "" {
+		raw, _ := json.Marshal(eventPayload)
+		formatted := notifications.FormatFromEvent(events.EventDriverAvailabilityChanged, raw)
+		s.fleetBroadcast(r.Context(), homeNodeID, map[string]any{
+			"type":           events.EventDriverAvailabilityChanged,
+			"driver_id":      driverID,
+			"on_shift":       req.OnShift,
+			"available":      req.OnShift,
+			"reason":         reason,
+			"note":           note,
+			"home_node_id":   homeNodeID,
+			"home_node_type": homeNodeType,
+			"title":          formatted.Title,
+			"body":           formatted.Body,
+			"deep_link":      formatted.DeepLink,
+			"timestamp":      nowTS,
+		})
+	}
+	s.broadcastDriverEvent(r.Context(), driverID, eventPayload)
+	s.log.Info("driver availability changed", "driver_id", driverID, "on_shift", req.OnShift, "reason", reason)
+	resp := map[string]any{"driver_id": driverID, "on_shift": req.OnShift, "reason": reason}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, idemBody, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
 // HandlePendingCollections serves GET /v1/driver/pending-collections.
