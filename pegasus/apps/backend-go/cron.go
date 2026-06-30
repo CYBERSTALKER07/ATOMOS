@@ -45,7 +45,9 @@ func StartAwakener(orderSvc *order.OrderService, fcm *notifications.FCMClient, t
 				SQL: `SELECT p.PredictionId, p.RetailerId, p.PredictedAmount,
 				             COALESCE(r.FcmToken, ''),
 				             COALESCE(r.TelegramChatId, ''),
-				             COALESCE(r.ShopName, p.RetailerId)
+				             COALESCE(r.ShopName, p.RetailerId),
+				             COALESCE(r.Latitude, 41.3),
+				             COALESCE(r.Longitude, 69.2)
 				      FROM AIPredictions@{FORCE_INDEX=Idx_AIPredictions_ByTriggerShardStatusDate} p
 				      LEFT JOIN Retailers r ON r.RetailerId = p.RetailerId
 				      WHERE p.TriggerShard IN UNNEST(@shards)
@@ -55,7 +57,9 @@ func StartAwakener(orderSvc *order.OrderService, fcm *notifications.FCMClient, t
 				      SELECT p.PredictionId, p.RetailerId, p.PredictedAmount,
 				             COALESCE(r.FcmToken, ''),
 				             COALESCE(r.TelegramChatId, ''),
-				             COALESCE(r.ShopName, p.RetailerId)
+				             COALESCE(r.ShopName, p.RetailerId),
+				             COALESCE(r.Latitude, 41.3),
+				             COALESCE(r.Longitude, 69.2)
 				      FROM AIPredictions p
 				      LEFT JOIN Retailers r ON r.RetailerId = p.RetailerId
 				      WHERE p.TriggerShard IS NULL
@@ -67,7 +71,6 @@ func StartAwakener(orderSvc *order.OrderService, fcm *notifications.FCMClient, t
 				},
 			}
 			iter := orderSvc.Client.Single().Query(ctx, stmt)
-			defer iter.Stop()
 
 			for {
 				row, err := iter.Next()
@@ -81,7 +84,8 @@ func StartAwakener(orderSvc *order.OrderService, fcm *notifications.FCMClient, t
 
 				var predId, retId, fcmToken, telegramChatId, shopName string
 				var amount int64
-				if err := row.Columns(&predId, &retId, &amount, &fcmToken, &telegramChatId, &shopName); err != nil {
+				var latitude, longitude float64
+				if err := row.Columns(&predId, &retId, &amount, &fcmToken, &telegramChatId, &shopName, &latitude, &longitude); err != nil {
 					fmt.Printf("[THE AWAKENER] Row decode error: %v\n", err)
 					continue
 				}
@@ -103,8 +107,8 @@ func StartAwakener(orderSvc *order.OrderService, fcm *notifications.FCMClient, t
 					Amount:         amount,
 					PaymentGateway: "SYSTEM_AUTO",
 					State:          "PENDING_REVIEW",
-					Latitude:       41.3,
-					Longitude:      69.2,
+					Latitude:       latitude,
+					Longitude:      longitude,
 					OrderSource:    "AI_PREDICTED",
 					AutoConfirmAt:  gracePeriod,
 					DeliverBefore:  deadline,
@@ -130,6 +134,7 @@ func StartAwakener(orderSvc *order.OrderService, fcm *notifications.FCMClient, t
 					fmt.Printf("[THE AWAKENER] Failed to mark FIRED: %v\n", err)
 				}
 			}
+			iter.Stop()
 		}
 	}()
 }
@@ -340,9 +345,9 @@ func StartPaymentSessionExpirer(sessionSvc *payment.SessionService, retailerPush
 
 // StartStaleOrderAuditor runs every 15 minutes and:
 //   - Step 6.1: IN_TRANSIT or ARRIVING orders stuck >12h → STALE_AUDIT
-//   - Step 6.2: QUARANTINE orders older than 7 days → CANCELLED
+//   - Step 6.2: QUARANTINE orders older than 7 days → CANCELLED (+ refund if paid)
 //   - Step 6.3: ARRIVED orders older than 48h → log admin alert
-func StartStaleOrderAuditor(spannerClient *spanner.Client) {
+func StartStaleOrderAuditor(spannerClient *spanner.Client, refundSvc *payment.RefundService) {
 	fmt.Println("[STALE_AUDITOR] Quarantine Protocol armed — 15min sweep cycle...")
 
 	ticker := time.NewTicker(15 * time.Minute)
@@ -410,16 +415,24 @@ func StartStaleOrderAuditor(spannerClient *spanner.Client) {
 			// ── Step 6.2: QUARANTINE >7 days → CANCELLED ──────────────────
 			quarantineThreshold := now.Add(-7 * 24 * time.Hour)
 			quarStmt := spanner.Statement{
-				SQL: `SELECT OrderId
-				      FROM Orders
-				      WHERE State = 'QUARANTINE'
-				        AND UpdatedAt < @threshold
+				SQL: `SELECT o.OrderId,
+				             EXISTS(
+				               SELECT 1 FROM PaymentSessions ps
+				               WHERE ps.OrderId = o.OrderId AND ps.Status = 'SETTLED'
+				             ) AS HasSettledPayment
+				      FROM Orders o
+				      WHERE o.State = 'QUARANTINE'
+				        AND o.UpdatedAt < @threshold
 				      LIMIT 50`,
 				Params: map[string]interface{}{"threshold": quarantineThreshold},
 			}
 
 			quarIter := spannerClient.Single().Query(ctx, quarStmt)
-			var quarantineOrders []string
+			type quarantineOrder struct {
+				orderID            string
+				hasSettledPayment bool
+			}
+			var quarantineOrders []quarantineOrder
 			for {
 				row, err := quarIter.Next()
 				if err == iterator.Done {
@@ -429,9 +442,9 @@ func StartStaleOrderAuditor(spannerClient *spanner.Client) {
 					fmt.Printf("[STALE_AUDITOR] Quarantine query error: %v\n", err)
 					break
 				}
-				var orderID string
-				if err := row.Columns(&orderID); err == nil {
-					quarantineOrders = append(quarantineOrders, orderID)
+				var qo quarantineOrder
+				if err := row.Columns(&qo.orderID, &qo.hasSettledPayment); err == nil {
+					quarantineOrders = append(quarantineOrders, qo)
 				}
 			}
 			quarIter.Stop()
@@ -439,10 +452,10 @@ func StartStaleOrderAuditor(spannerClient *spanner.Client) {
 			if len(quarantineOrders) > 0 {
 				_, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 					var mutations []*spanner.Mutation
-					for _, oid := range quarantineOrders {
+					for _, qo := range quarantineOrders {
 						mutations = append(mutations, spanner.Update("Orders",
 							[]string{"OrderId", "State", "UpdatedAt"},
-							[]interface{}{oid, "CANCELLED", now},
+							[]interface{}{qo.orderID, "CANCELLED", now},
 						))
 					}
 					return txn.BufferWrite(mutations)
@@ -451,6 +464,22 @@ func StartStaleOrderAuditor(spannerClient *spanner.Client) {
 					fmt.Printf("[STALE_AUDITOR] Failed to cancel %d quarantined orders: %v\n", len(quarantineOrders), err)
 				} else {
 					fmt.Printf("[STALE_AUDITOR] Cancelled %d quarantined orders (7d timeout)\n", len(quarantineOrders))
+					if refundSvc != nil {
+						for _, qo := range quarantineOrders {
+							if !qo.hasSettledPayment {
+								continue
+							}
+							_, refundErr := refundSvc.InitiateRefund(ctx, payment.RefundRequest{
+								OrderID: qo.orderID,
+								Reason:  "QUARANTINE_TIMEOUT_AUTO_CANCEL",
+							}, "STALE_ORDER_AUDITOR")
+							if refundErr != nil {
+								fmt.Printf("[STALE_AUDITOR] Refund required but failed for order %s: %v\n", qo.orderID, refundErr)
+							} else {
+								fmt.Printf("[STALE_AUDITOR] Refund initiated for cancelled quarantined order %s\n", qo.orderID)
+							}
+						}
+					}
 				}
 			}
 

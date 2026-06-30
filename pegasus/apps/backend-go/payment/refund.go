@@ -83,27 +83,21 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 		return nil, fmt.Errorf("order %s is in state %s — only COMPLETED or CANCELLED orders can be refunded", orderID, state)
 	}
 
-	// 2. Find settled payment session for this order
-	stmt := spanner.Statement{
-		SQL:    `SELECT SessionId, Gateway, LockedAmount, PaidAmount, Currency, ProviderReference FROM PaymentSessions WHERE OrderId = @orderID AND Status = 'SETTLED' LIMIT 1`,
-		Params: map[string]interface{}{"orderID": orderID},
-	}
-	iter := rs.spanner.Single().Query(ctx, stmt)
-	defer iter.Stop()
-
-	sessRow, err := iter.Next()
+	// 2. Find settled payment session for this order (highest paid amount wins when duplicates exist)
+	sessRow, err := rs.lookupHighestSettledSession(ctx, orderID)
 	if err != nil {
-		return nil, fmt.Errorf("no settled payment session for order %s: %w", orderID, err)
+		return nil, fmt.Errorf("lookup settled session: %w", err)
+	}
+	if sessRow == nil {
+		return nil, fmt.Errorf("no settled payment session for order %s", orderID)
 	}
 
-	var sessionID, sessGateway string
-	var lockedAmount spanner.NullInt64
-	var paidAmount spanner.NullInt64
-	var sessionCurrency spanner.NullString
-	var providerReference spanner.NullString
-	if err := sessRow.Columns(&sessionID, &sessGateway, &lockedAmount, &paidAmount, &sessionCurrency, &providerReference); err != nil {
-		return nil, fmt.Errorf("parse session: %w", err)
-	}
+	sessionID := sessRow.sessionID
+	sessGateway := sessRow.gateway
+	lockedAmount := sessRow.lockedAmount
+	paidAmount := sessRow.paidAmount
+	sessionCurrency := sessRow.currency
+	providerReference := sessRow.providerReference
 
 	resolvedCurrency := normalizeCurrencyCode("")
 	if sessionCurrency.Valid {
@@ -462,28 +456,20 @@ func (rs *RefundService) InitiateDeliveryDeltaRefund(ctx context.Context, req De
 
 	// Find SETTLED session. If none, this is a hosted/AUTH-CAPTURE flow and
 	// the gateway worker will capture FinalAmount instead — no-op.
-	stmt := spanner.Statement{
-		SQL:    `SELECT SessionId, Gateway, LockedAmount, PaidAmount, Currency, ProviderReference FROM PaymentSessions WHERE OrderId = @orderID AND Status = 'SETTLED' LIMIT 1`,
-		Params: map[string]interface{}{"orderID": req.OrderID},
-	}
-	iter := rs.spanner.Single().Query(ctx, stmt)
-	sessRow, err := iter.Next()
-	iter.Stop()
+	sessRow, err := rs.lookupHighestSettledSession(ctx, req.OrderID)
 	if err != nil {
-		if errors.Is(err, iterator.Done) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("delivery delta refund settled session lookup: %w", err)
 	}
-
-	var sessionID, sessGateway string
-	var lockedAmount spanner.NullInt64
-	var paidAmount spanner.NullInt64
-	var sessionCurrency spanner.NullString
-	var providerReference spanner.NullString
-	if err := sessRow.Columns(&sessionID, &sessGateway, &lockedAmount, &paidAmount, &sessionCurrency, &providerReference); err != nil {
-		return nil, fmt.Errorf("delivery delta refund parse session: %w", err)
+	if sessRow == nil {
+		return nil, nil
 	}
+
+	sessionID := sessRow.sessionID
+	sessGateway := sessRow.gateway
+	lockedAmount := sessRow.lockedAmount
+	paidAmount := sessRow.paidAmount
+	sessionCurrency := sessRow.currency
+	providerReference := sessRow.providerReference
 
 	// Cash gateway has no programmatic refund path.
 	if sessGateway == "CASH" {
@@ -685,4 +671,42 @@ func (rs *RefundService) GetRefundsByOrder(ctx context.Context, orderID string) 
 	}
 
 	return results, nil
+}
+
+type settledSessionRow struct {
+	sessionID         string
+	gateway           string
+	lockedAmount      spanner.NullInt64
+	paidAmount        spanner.NullInt64
+	currency          spanner.NullString
+	providerReference spanner.NullString
+}
+
+const settledSessionLookupSQL = `SELECT SessionId, Gateway, LockedAmount, PaidAmount, Currency, ProviderReference
+		      FROM PaymentSessions
+		      WHERE OrderId = @orderID AND Status = 'SETTLED'
+		      ORDER BY COALESCE(PaidAmount, LockedAmount) DESC, SettledAt DESC, UpdatedAt DESC
+		      LIMIT 1`
+
+func (rs *RefundService) lookupHighestSettledSession(ctx context.Context, orderID string) (*settledSessionRow, error) {
+	stmt := spanner.Statement{
+		SQL:    settledSessionLookupSQL,
+		Params: map[string]interface{}{"orderID": orderID},
+	}
+	iter := rs.spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var sess settledSessionRow
+	if err := row.Columns(&sess.sessionID, &sess.gateway, &sess.lockedAmount, &sess.paidAmount, &sess.currency, &sess.providerReference); err != nil {
+		return nil, fmt.Errorf("parse session: %w", err)
+	}
+	return &sess, nil
 }

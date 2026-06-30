@@ -119,10 +119,8 @@ func enableCORS(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		} else if origin != "" && (strings.HasSuffix(origin, ".ngrok-free.app") || strings.HasSuffix(origin, ".expo.dev") || strings.HasPrefix(origin, "http://192.168.") || strings.HasPrefix(origin, "http://10.0.")) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-		} else if origin == "" {
-			// Same-origin or non-browser clients (mobile apps)
-			w.Header().Set("Access-Control-Allow-Origin", "*")
 		}
+		// Non-browser clients (curl, mobile native) send no Origin header and do not need CORS.
 
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Idempotency-Key, X-Internal-Key, X-Trace-Id")
@@ -732,7 +730,7 @@ func main() {
 	})
 
 	// 6. Quarantine Protocol — Stale Order Auditor (15min sweep)
-	StartStaleOrderAuditor(spannerClient)
+	StartStaleOrderAuditor(spannerClient, refundSvc)
 
 	// 7. Edge 4: Orphaned AIPredictionItems Cleanup (daily)
 	StartOrphanedPredictionCleaner(spannerClient)
