@@ -93,7 +93,7 @@ func (r *inventoryImportRuntime) Run(ctx context.Context, metrics *consumerLagMe
 		}
 
 		importSem <- struct{}{}
-		go func(m kafka.Message, e events.InventoryImportUploadedEvent) {
+		go func(m kafka.Message, e events.InventoryImportEvent) {
 			defer func() { <-importSem }()
 
 			processErr := r.repo.ProcessImportUploaded(ctx, r.opener, e.SupplierID, e.SessionID, e.GCSPath)
