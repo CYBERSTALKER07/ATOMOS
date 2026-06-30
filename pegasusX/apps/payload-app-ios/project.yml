@@ -71,3 +71,10 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pegasus.payload
         INFOPLIST_FILE: payload-app-ios/Info.plist
+  payload-app-iosTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: payload-app-iosTests
+    dependencies:
+      - target: payload-app-ios

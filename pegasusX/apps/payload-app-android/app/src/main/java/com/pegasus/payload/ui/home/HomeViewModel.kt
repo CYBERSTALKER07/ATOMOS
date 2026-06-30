@@ -11,6 +11,7 @@ import com.pegasus.payload.data.model.Manifest
 import com.pegasus.payload.data.model.ManifestExceptionRow
 import com.pegasus.payload.data.model.NotificationItem
 import com.pegasus.payload.data.model.PulseEvent
+import com.pegasus.payload.data.model.RecommendReassignResponse
 import com.pegasus.payload.data.model.parseApiErrorPayload
 import com.pegasus.payload.data.model.QueuedAction
 import com.pegasus.payload.data.model.SealCompletedManifestResult

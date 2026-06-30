@@ -1,5 +1,5 @@
 import XCTest
-@testable import SupplierApp
+@testable import SupplierAppIOS
 
 final class AuthTests: XCTestCase {
     
@@ -16,6 +16,7 @@ final class AuthTests: XCTestCase {
     func testLoginSuccess() async throws {
         let json = """
         {
+            "supplier_id": "test-supplier",
             "token": "fake-jwt-token",
             "is_registered": true,
             "is_configured": true

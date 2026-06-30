@@ -606,9 +606,11 @@ final class APIClient: @unchecked Sendable {
 
 struct AnyEncodable: Encodable {
     private let _encode: (Encoder) throws -> Void
+    let value: Any
 
     init(_ wrapped: any Encodable) {
         _encode = wrapped.encode
+        value = wrapped
     }
 
     func encode(to encoder: Encoder) throws {

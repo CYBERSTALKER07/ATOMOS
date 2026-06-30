@@ -757,6 +757,7 @@ final class HomeViewModel {
             case .networkError: return "Network unavailable."
             case .decodingError: return "Unexpected response from server."
             case .invalidURL: return "Invalid request URL."
+            case .explainError(let msg, _): return msg
             }
         }
         return e.localizedDescription

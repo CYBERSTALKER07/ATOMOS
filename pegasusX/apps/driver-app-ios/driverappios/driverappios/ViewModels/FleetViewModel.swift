@@ -687,6 +687,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
                         orders[idx] = Order(
                             id: o.id, retailerId: o.retailerId, retailerName: o.retailerName,
                             state: .ARRIVED, totalAmount: o.totalAmount,
+                            deliveryFeeMinor: o.deliveryFeeMinor, deliveryDistanceKm: o.deliveryDistanceKm,
                             deliveryAddress: o.deliveryAddress, latitude: o.latitude, longitude: o.longitude,
                             qrToken: o.qrToken, paymentGateway: o.paymentGateway,
                             createdAt: o.createdAt, updatedAt: o.updatedAt, items: o.items,

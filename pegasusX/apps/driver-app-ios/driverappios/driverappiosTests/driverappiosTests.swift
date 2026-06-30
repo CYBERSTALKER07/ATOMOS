@@ -39,6 +39,8 @@ struct OrderModelTests {
             retailerName: "Test Shop",
             state: .PENDING,
             totalAmount: 150000,
+            deliveryFeeMinor: 0,
+            deliveryDistanceKm: 0,
             deliveryAddress: "123 Main St",
             latitude: 41.2995,
             longitude: 69.2401,
@@ -86,7 +88,7 @@ struct HaversineTests {
     @Test func geofenceThreshold_500m() async throws {
         let threshold = 500.0
         let base = CLLocationCoordinate2D(latitude: 41.2995, longitude: 69.2401)
-        let within = CLLocationCoordinate2D(latitude: 41.3040, longitude: 69.2401)
+        let within = CLLocationCoordinate2D(latitude: 41.3035, longitude: 69.2401)
         let dist = haversineDistance(from: base, to: within)
         #expect(dist <= threshold, "Should be within 500m, got \(dist)m")
     }
@@ -103,6 +105,8 @@ struct OrderImmutabilityTests {
             retailerName: "Test Shop",
             state: .IN_TRANSIT,
             totalAmount: 50000,
+            deliveryFeeMinor: 0,
+            deliveryDistanceKm: 0,
             deliveryAddress: "456 Side St",
             latitude: 41.3000,
             longitude: 69.2500,
@@ -124,6 +128,8 @@ struct OrderImmutabilityTests {
             retailerName: original.retailerName,
             state: .ARRIVED,
             totalAmount: original.totalAmount,
+            deliveryFeeMinor: original.deliveryFeeMinor,
+            deliveryDistanceKm: original.deliveryDistanceKm,
             deliveryAddress: original.deliveryAddress,
             latitude: original.latitude,
             longitude: original.longitude,

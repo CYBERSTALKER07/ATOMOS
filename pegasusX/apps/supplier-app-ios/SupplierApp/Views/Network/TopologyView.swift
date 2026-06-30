@@ -13,6 +13,7 @@ private struct FactoryDraft: Identifiable {
     var factoryId: String?
     var name: String
     var location: AddressLocationValue
+    var isActive: Bool = true
 }
 
 struct TopologyView: View {

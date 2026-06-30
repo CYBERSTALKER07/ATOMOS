@@ -1,5 +1,5 @@
 import XCTest
-@testable import SupplierApp
+@testable import SupplierAppIOS
 
 final class RealtimeHubTests: XCTestCase {
     

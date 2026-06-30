@@ -1,5 +1,5 @@
 import XCTest
-@testable import SupplierApp
+@testable import SupplierAppIOS
 
 final class DashboardTests: XCTestCase {
     
@@ -16,6 +16,7 @@ final class DashboardTests: XCTestCase {
     func testDashboardParsing() async throws {
         let json = """
         {
+            "supplier_id": "test-supplier",
             "pending_orders": 42,
             "inventory_skus": 12,
             "is_configured": true,

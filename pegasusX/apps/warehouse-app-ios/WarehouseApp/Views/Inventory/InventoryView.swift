@@ -140,7 +140,7 @@ private struct AdjustInventorySheet: View {
     }
 
     private var skuLabel: String {
-        item.skuId.isEmpty ? item.productId : item.skuId
+        item.productId
     }
 
     var body: some View {
@@ -212,8 +212,7 @@ private struct AdjustInventorySheet: View {
                 let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
                 try await WarehouseService.adjustInventory(
                     productId: item.productId,
-                    quantity: q,
-                    reason: trimmedReason.isEmpty ? nil : trimmedReason
+                    quantity: q
                 )
                 dismiss()
                 onAdjusted()

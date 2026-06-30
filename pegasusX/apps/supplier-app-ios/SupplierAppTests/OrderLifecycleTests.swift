@@ -1,5 +1,5 @@
 import XCTest
-@testable import SupplierApp
+@testable import SupplierAppIOS
 
 final class OrderLifecycleTests: XCTestCase {
     
@@ -18,13 +18,13 @@ final class OrderLifecycleTests: XCTestCase {
         {
             "orders": [
                 {
-                    "id": "ord_123",
+                    "order_id": "ord_123",
                     "retailer_id": "ret_1",
                     "retailer_name": "Test Retailer",
                     "status": "PENDING",
                     "total_minor": 50000,
                     "currency": "UZS",
-                    "created_at": "2026-06-30T10:00:00Z"
+                    "updated_at": "2026-06-30T10:00:00Z"
                 }
             ],
             "total_count": 1

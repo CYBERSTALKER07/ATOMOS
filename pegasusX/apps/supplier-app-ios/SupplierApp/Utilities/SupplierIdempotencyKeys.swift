@@ -2,6 +2,7 @@ import Foundation
 
 /// Deterministic idempotency keys — aligned with @pegasusx/api-client idempotency.ts
 enum SupplierIdempotencyKeys {
+    @MainActor
     static func supplierScopeId() -> String {
         let id = TokenStore.shared.supplierId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return id.isEmpty ? "supplier" : id

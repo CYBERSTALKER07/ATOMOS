@@ -182,7 +182,7 @@ struct OrgFleetView: View {
         do {
             orgMembers = try await SupplierOperationsService.deactivateOrgMember(
                 userId,
-                idempotencyKey: SupplierIdempotencyKeys.orgMemberDeactivate(SupplierIdempotencyKeys.supplierScopeId(), userId: userId)
+                idempotencyKey: SupplierIdempotencyKeys.orgMemberDeactivate(scopeId: SupplierIdempotencyKeys.supplierScopeId(), userId: userId)
             )
         } catch {
             self.error = error.localizedDescription
@@ -276,7 +276,7 @@ private struct CreateDriverSheet: View {
             )
             _ = try await SupplierOperationsService.createFleetDriver(
                 request,
-                idempotencyKey: SupplierIdempotencyKeys.fleetDriverCreate(SupplierIdempotencyKeys.supplierScopeId(), phone: request.phone)
+                idempotencyKey: SupplierIdempotencyKeys.fleetDriverCreate(scopeId: SupplierIdempotencyKeys.supplierScopeId(), phone: request.phone)
             )
             dismiss()
             onDone()
@@ -353,7 +353,7 @@ private struct CreateVehicleSheet: View {
             )
             _ = try await SupplierOperationsService.createFleetVehicle(
                 request,
-                idempotencyKey: SupplierIdempotencyKeys.fleetVehicleCreate(SupplierIdempotencyKeys.supplierScopeId(), licensePlate: request.licensePlate)
+                idempotencyKey: SupplierIdempotencyKeys.fleetVehicleCreate(scopeId: SupplierIdempotencyKeys.supplierScopeId(), licensePlate: request.licensePlate)
             )
             dismiss()
             onDone()
@@ -464,7 +464,7 @@ private struct CreateOrgMemberSheet: View {
             )
             _ = try await SupplierOperationsService.createOrgMember(
                 request,
-                idempotencyKey: SupplierIdempotencyKeys.orgMemberCreate(SupplierIdempotencyKeys.supplierScopeId(), phone: request.phone)
+                idempotencyKey: SupplierIdempotencyKeys.orgMemberCreate(scopeId: SupplierIdempotencyKeys.supplierScopeId(), phone: request.phone)
             )
             dismiss()
             onDone()
@@ -531,7 +531,7 @@ private struct EditOrgMemberSheet: View {
                     assignedFactoryId: member.assignedFactoryId,
                     isActive: isActive
                 ),
-                idempotencyKey: SupplierIdempotencyKeys.orgMemberUpdate(SupplierIdempotencyKeys.supplierScopeId(), userId: member.userId, revision: revision)
+                idempotencyKey: SupplierIdempotencyKeys.orgMemberUpdate(scopeId: SupplierIdempotencyKeys.supplierScopeId(), userId: member.userId, revision: revision)
             )
             dismiss()
             onDone()

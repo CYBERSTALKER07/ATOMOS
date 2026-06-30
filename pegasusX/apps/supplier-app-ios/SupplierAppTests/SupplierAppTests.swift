@@ -1,5 +1,5 @@
 import XCTest
-
+@testable import SupplierAppIOS
 final class SupplierAppTests: XCTestCase {
     func testMoneyFormatMinorUnits() {
         let formatted = MoneyFormat.minor(150_000, currency: "UZS")

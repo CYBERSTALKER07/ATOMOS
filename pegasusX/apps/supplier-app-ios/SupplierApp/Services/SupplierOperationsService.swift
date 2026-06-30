@@ -148,10 +148,10 @@ enum SupplierOperationsService {
             "v1/supplier/pricing/retailer-overrides",
             body: request,
             idempotencyKey: SupplierIdempotencyKeys.retailerPriceOverrideCreate(
-                SupplierIdempotencyKeys.supplierScopeId(),
+                scopeId: await SupplierIdempotencyKeys.supplierScopeId(),
                 retailerId: request.retailerId,
                 productId: request.productId,
-                priceMinor: request.price
+                priceMinor: Int64(request.price)
             )
         )
     }
@@ -160,7 +160,7 @@ enum SupplierOperationsService {
         try await APIClient.shared.deleteVoid(
             "v1/supplier/pricing/retailer-overrides/\(overrideId)",
             idempotencyKey: SupplierIdempotencyKeys.retailerPriceOverrideDelete(
-                SupplierIdempotencyKeys.supplierScopeId(),
+                scopeId: await SupplierIdempotencyKeys.supplierScopeId(),
                 overrideId: overrideId
             )
         )
@@ -318,29 +318,29 @@ enum SupplierOperationsService {
 
     static func updateProfile(_ request: SupplierProfileUpdateRequest) async throws -> SupplierProfile {
         let fingerprint = [
-            request.legalName,
-            request.contactName,
-            request.email,
+            request.legalName ?? "",
+            request.contactName ?? "",
+            request.email ?? "",
             request.phone ?? "",
         ].joined(separator: "|")
         return try await APIClient.shared.put(
             "v1/supplier/profile",
             body: request,
             idempotencyKey: SupplierIdempotencyKeys.profileUpdate(
-                SupplierIdempotencyKeys.supplierScopeId(),
+                scopeId: await SupplierIdempotencyKeys.supplierScopeId(),
                 payloadFingerprint: fingerprint
             )
         )
     }
 
     static func updateInventory(_ request: InventoryPatchRequest) async throws {
-        let scope = SupplierIdempotencyKeys.supplierScopeId()
+        let scope = await SupplierIdempotencyKeys.supplierScopeId()
         let sku = request.sku ?? request.skuId ?? ""
         try await APIClient.shared.patchVoid(
             "v1/supplier/inventory",
             body: request,
             idempotencyKey: SupplierIdempotencyKeys.inventoryAdjust(
-                scope,
+                scopeId: scope,
                 skuId: sku,
                 quantityDelta: request.quantityDelta ?? 0,
                 version: request.quantity ?? 0
@@ -507,30 +507,6 @@ enum SupplierOperationsService {
             body: request
         )
     }
-}
-
-/// Deterministic idempotency keys — aligned with @pegasusx/api-client idempotency.ts
-enum SupplierIdempotency {
-    static func resolveReturn(returnId: String, resolution: String) -> String {
-        "supplier-resolve-return:\(returnId):\(resolution.uppercased())"
-    }
-
-    static func dispatch(
-        supplierId: String,
-        warehouseId: String,
-        mode: String,
-        routeFingerprint: String
-    ) -> String {
-        "supplier-dispatch:\(supplierId):\(warehouseId):\(mode):\(stableHash(routeFingerprint))"
-    }
-
-    static func broadcast(scopeId: String, role: String, title: String, body: String) -> String {
-        "supplier-broadcast:\(scopeId):\(stableHash("\(role):\(title):\(body)"))"
-    }
-
-    static func paymentBypass(orderId: String, reason: String) -> String {
-        "supplier-payment-bypass:\(orderId):\(stableHash(reason))"
-    }
 
     static func getWarehouseOrder(orderId: String, warehouseId: String) async throws -> WarehouseOrderDetail {
         try await APIClient.shared.get(
@@ -570,6 +546,30 @@ enum SupplierIdempotency {
             body: WarehouseOrderMutationRequest(reason: reason),
             idempotencyKey: idempotencyKey
         )
+    }
+}
+
+/// Deterministic idempotency keys — aligned with @pegasusx/api-client idempotency.ts
+enum SupplierIdempotency {
+    static func resolveReturn(returnId: String, resolution: String) -> String {
+        "supplier-resolve-return:\(returnId):\(resolution.uppercased())"
+    }
+
+    static func dispatch(
+        supplierId: String,
+        warehouseId: String,
+        mode: String,
+        routeFingerprint: String
+    ) -> String {
+        "supplier-dispatch:\(supplierId):\(warehouseId):\(mode):\(stableHash(routeFingerprint))"
+    }
+
+    static func broadcast(scopeId: String, role: String, title: String, body: String) -> String {
+        "supplier-broadcast:\(scopeId):\(stableHash("\(role):\(title):\(body)"))"
+    }
+
+    static func paymentBypass(orderId: String, reason: String) -> String {
+        "supplier-payment-bypass:\(orderId):\(stableHash(reason))"
     }
 
     private static func stableHash(_ input: String) -> String {

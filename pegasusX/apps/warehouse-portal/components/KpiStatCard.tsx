@@ -67,7 +67,6 @@ export function KpiStatCard({
         {flag === "alert" ? <span className="wh-kpi-flag wh-kpi-flag--alert">Alert</span> : null}
         {flag === "ok" ? <span className="wh-kpi-flag wh-kpi-flag--ok">Done</span> : null}
       </div>
-      </div>
       <div className={`mt-2 flex items-end justify-between ${align === "center" ? "w-full flex-col items-center" : ""}`}>
         <div>
           <p className="wh-kpi-label">{label}</p>

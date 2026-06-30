@@ -180,8 +180,8 @@ enum SupplierService {
         return try await APIClient.shared.patch(
             "v1/supplier/pricing/rules",
             body: request,
-            idempotencyKey: SupplierIdempotencyKeys.pricingRulePatch(
-                SupplierIdempotencyKeys.supplierScopeId(),
+            idempotencyKey: SupplierIdempotencyKeys.pricingRulePatch(scopeId: 
+                await SupplierIdempotencyKeys.supplierScopeId(),
                 payloadFingerprint: fingerprint
             )
         )
