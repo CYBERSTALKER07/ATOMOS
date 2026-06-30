@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { gsap } from 'gsap';
+import MegaMenuOverlay from './MegaMenuOverlay';
 
 export type PillNavItem = {
   label: string;
@@ -23,6 +24,7 @@ export interface PillNavProps {
   pillTextColor?: string;
   onMobileMenuClick?: () => void;
   initialLoadAnimation?: boolean;
+  showMenuButton?: boolean;
 }
 
 const PillNav: React.FC<PillNavProps> = ({
@@ -37,10 +39,12 @@ const PillNav: React.FC<PillNavProps> = ({
   hoveredPillTextColor = '#000000',
   pillTextColor,
   onMobileMenuClick,
-  initialLoadAnimation = true
+  initialLoadAnimation = true,
+  showMenuButton = false,
 }) => {
   const resolvedPillTextColor = pillTextColor ?? baseColor;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const circleRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const tlRefs = useRef<Array<gsap.core.Timeline | null>>([]);
   const activeTweenRefs = useRef<Array<gsap.core.Tween | null>>([]);
@@ -177,7 +181,17 @@ const PillNav: React.FC<PillNavProps> = ({
     });
   };
 
+  const openMegaMenu = () => {
+    setMegaMenuOpen(true);
+    onMobileMenuClick?.();
+  };
+
   const toggleMobileMenu = () => {
+    if (showMenuButton) {
+      openMegaMenu();
+      return;
+    }
+
     const newState = !isMobileMenuOpen;
     setIsMobileMenuOpen(newState);
 
@@ -384,11 +398,23 @@ const PillNav: React.FC<PillNavProps> = ({
           </ul>
         </div>
 
+        {showMenuButton ? (
+          <button
+            type="button"
+            className="editorial-btn editorial-btn--sm shrink-0 hidden md:inline-flex ml-1"
+            onClick={openMegaMenu}
+            aria-haspopup="dialog"
+            aria-expanded={megaMenuOpen}
+          >
+            MENU
+          </button>
+        ) : null}
+
         <button
           ref={hamburgerRef}
           onClick={toggleMobileMenu}
-          aria-label="Toggle menu"
-          aria-expanded={isMobileMenuOpen}
+          aria-label={showMenuButton ? 'Open navigation menu' : 'Toggle menu'}
+          aria-expanded={showMenuButton ? megaMenuOpen : isMobileMenuOpen}
           className="md:hidden shrink-0 ml-auto rounded-full border-0 flex flex-col items-center justify-center gap-1 cursor-pointer p-0 relative focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
           style={{
             width: 'var(--nav-h)',
@@ -407,6 +433,11 @@ const PillNav: React.FC<PillNavProps> = ({
         </button>
       </nav>
 
+      {showMenuButton ? (
+        <MegaMenuOverlay open={megaMenuOpen} onClose={() => setMegaMenuOpen(false)} />
+      ) : null}
+
+      {!showMenuButton ? (
       <div
         ref={mobileMenuRef}
         className="md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-[27px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-[998] origin-top max-h-[70vh] overflow-y-auto"
@@ -467,6 +498,7 @@ const PillNav: React.FC<PillNavProps> = ({
           })}
         </ul>
       </div>
+      ) : null}
       </div>
     </div>
   );

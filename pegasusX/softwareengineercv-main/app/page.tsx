@@ -81,6 +81,7 @@ export default function Home() {
         <PillNav
           logo=""
           logoAlt="Pegasus Logo"
+          showMenuButton
           items={[
             { label: 'Home', href: '#' },
             { label: 'About', href: '#about' },
