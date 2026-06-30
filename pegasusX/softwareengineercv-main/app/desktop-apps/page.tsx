@@ -126,13 +126,13 @@ export default function DesktopAppsPage() {
             ref={titleRef}
             className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8"
           >
-            Desktop Applications
+            Retailer Desktop
           </h1>
           <p
             ref={subtitleRef}
             className="text-xl md:text-2xl text-[#C0C0C0] max-w-3xl mx-auto"
           >
-            Powerful native desktop applications built for performance, efficiency, and seamless user experiences
+            Native desktop apps for retailer teams — catalog, checkout, and live delivery tracking at the counter
           </p>
         </div>
       </section>
@@ -150,21 +150,21 @@ export default function DesktopAppsPage() {
               <div className="order-2 md:order-1">
                 <div className="flex items-center gap-4 mb-6">
                   <FiMonitor size={32} className="text-[#A9EBF9]" />
-                  <h2 className="text-3xl md:text-4xl font-bold">Video Editing Suite</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold">Retailer Desktop (Tauri)</h2>
                 </div>
                 <p className="text-lg text-[#C0C0C0] mb-6">
-                  Professional-grade video editing desktop application with multi-track timeline, 
-                  real-time effects, color grading, and advanced rendering capabilities for creators and professionals.
+                  Fast native desktop app for retailer ordering — catalog with zone checks,
+                  scheduled delivery windows, checkout, and live shipment tracking from the store counter.
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <span className="px-4 py-2 bg-black border-2 border-[#A9EBF9] text-[#A9EBF9] rounded-2xl text-sm font-bold">
-                    Electron
+                    Tauri
                   </span>
                   <span className="px-4 py-2 bg-black border-2 border-[#8DDC96] text-[#8DDC96] rounded-2xl text-sm font-bold">
-                    C++
+                    Next.js
                   </span>
                   <span className="px-4 py-2 bg-black border-2 border-[#DABDFF] text-[#DABDFF] rounded-2xl text-sm font-bold">
-                    GPU Acceleration
+                    Live Tracking
                   </span>
                 </div>
               </div>
@@ -191,11 +191,11 @@ export default function DesktopAppsPage() {
               <div className="order-2 md:order-2">
                 <div className="flex items-center gap-4 mb-6">
                   <FiCpu size={32} className="text-[#8DDC96]" />
-                  <h2 className="text-3xl md:text-4xl font-bold">System Monitor Pro</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold">Supplier Ops Dashboard</h2>
                 </div>
                 <p className="text-lg text-[#C0C0C0] mb-6">
-                  Advanced system monitoring tool providing real-time CPU, memory, disk, and network statistics 
-                  with customizable alerts and performance optimization recommendations.
+                  Executive view across the network — order vetting queues, dispatch preview,
+                  treasury reconciliation, and topology management for multi-site suppliers.
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <span className="px-4 py-2 bg-black border-2 border-[#8DDC96] text-[#8DDC96] rounded-2xl text-sm font-bold">
@@ -436,7 +436,7 @@ export default function DesktopAppsPage() {
       <footer className="py-12 px-4 md:px-8 border-t-2 border-white">
         <div className="max-w-7xl mx-auto text-center">
           <p className="text-[#C0C0C0]">
-            © 2025 Software Engineer Portfolio. All rights reserved.
+            © 2025 Pegasus. All rights reserved.
           </p>
         </div>
       </footer>

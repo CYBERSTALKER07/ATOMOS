@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     let data = null;
     if (resend) {
       data = await resend.emails.send({
-      from: 'Portfolio Contact <onboarding@resend.dev>',
+      from: 'Pegasus Contact <onboarding@resend.dev>',
       to: [process.env.RECIPIENT_EMAIL || 'shsoliyev@aut-edu.uz'],
       replyTo: email,
       subject: emailSubject,

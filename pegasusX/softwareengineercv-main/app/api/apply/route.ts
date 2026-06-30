@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
                 </div>
                 ${portfolio ? `
                 <div class="field">
-                  <div class="label">Portfolio:</div>
+                  <div class="label">Company Website:</div>
                   <div class="value"><a href="${portfolio}" target="_blank">${portfolio}</a></div>
                 </div>
                 ` : ''}

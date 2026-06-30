@@ -91,13 +91,13 @@ export default function WebAppsPage() {
             ref={titleRef}
             className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8"
           >
-            Web Applications
+            Operations Portals
           </h1>
           <p
             ref={subtitleRef}
             className="text-xl md:text-2xl text-[#C0C0C0] max-w-3xl mx-auto"
           >
-            Building powerful and scalable web applications with modern technologies and best practices
+            Web portals for suppliers, warehouses, factories, and retailers — dispatch boards, treasury, and live ops
           </p>
         </div>
       </section>
@@ -115,11 +115,11 @@ export default function WebAppsPage() {
               <div className="order-2 md:order-1">
                 <div className="flex items-center gap-4 mb-6">
                   <FiMonitor size={32} className="text-[#A9EBF9]" />
-                  <h2 className="text-3xl md:text-4xl font-bold">E-Commerce Platform</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold">Supplier Control Plane</h2>
                 </div>
                 <p className="text-lg text-[#C0C0C0] mb-6">
-                  A fully-featured e-commerce web application with shopping cart, payment integration,
-                  user authentication, and real-time inventory management. Built for scalability and performance.
+                  Network oversight for suppliers — order vetting, dispatch preview, topology management,
+                  and treasury views across warehouses, factories, and retailers.
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <span className="px-4 py-2 bg-black border-2 border-[#A9EBF9] text-[#A9EBF9] rounded-2xl text-sm font-bold">
@@ -156,11 +156,11 @@ export default function WebAppsPage() {
               <div className="order-2 md:order-2">
                 <div className="flex items-center gap-4 mb-6">
                   <FiCode size={32} className="text-[#8DDC96]" />
-                  <h2 className="text-3xl md:text-4xl font-bold">Dashboard Analytics</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold">Warehouse Dispatch Board</h2>
                 </div>
                 <p className="text-lg text-[#C0C0C0] mb-6">
-                  Advanced analytics dashboard with real-time data visualization, interactive charts,
-                  and comprehensive reporting tools. Designed for data-driven decision making.
+                  Visual morning dispatch with truck-and-order matching, capacity planning,
+                  gate seal workflow, and live fleet map after departure.
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <span className="px-4 py-2 bg-black border-2 border-[#8DDC96] text-[#8DDC96] rounded-2xl text-sm font-bold">
@@ -197,11 +197,11 @@ export default function WebAppsPage() {
               <div className="order-2 md:order-1">
                 <div className="flex items-center gap-4 mb-6">
                   <FiLayers size={32} className="text-[#DABDFF]" />
-                  <h2 className="text-3xl md:text-4xl font-bold">Content Management System</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold">Retailer Commerce Portal</h2>
                 </div>
                 <p className="text-lg text-[#C0C0C0] mb-6">
-                  Powerful CMS with intuitive interface for content creation, media management,
-                  and multi-user collaboration. Built with flexibility and ease of use in mind.
+                  Catalog browsing, checkout, delivery scheduling, and live order tracking —
+                  self-serve for retailer teams without calling support.
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <span className="px-4 py-2 bg-black border-2 border-[#DABDFF] text-[#DABDFF] rounded-2xl text-sm font-bold">
@@ -238,11 +238,11 @@ export default function WebAppsPage() {
               <div className="order-2 md:order-2">
                 <div className="flex items-center gap-4 mb-6">
                   <FiZap size={32} className="text-[#FFDA6F]" />
-                  <h2 className="text-3xl md:text-4xl font-bold">Project Management Tool</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold">Fleet Telemetry Map</h2>
                 </div>
                 <p className="text-lg text-[#C0C0C0] mb-6">
-                  Comprehensive project management application with task tracking, team collaboration,
-                  time management, and progress reporting features for enhanced productivity.
+                  Live fleet map with planned-vs-actual routes, deviation alerts for ops,
+                  and retailer self-serve tracking when deliveries run late.
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <span className="px-4 py-2 bg-black border-2 border-[#FFDA6F] text-[#FFDA6F] rounded-2xl text-sm font-bold">
@@ -389,7 +389,7 @@ export default function WebAppsPage() {
       <footer className="py-12 px-4 md:px-8 border-t-2 border-white">
         <div className="max-w-7xl mx-auto text-center">
           <p className="text-[#C0C0C0]">
-            © 2025 Software Engineer Portfolio. All rights reserved.
+            © 2025 Pegasus. All rights reserved.
           </p>
         </div>
       </footer>

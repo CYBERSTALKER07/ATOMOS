@@ -18,7 +18,7 @@ export default function JoinPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    position: 'Frontend Developer',
+    position: 'Supplier Operations',
     portfolio: '',
     message: ''
   });
@@ -27,7 +27,7 @@ export default function JoinPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    document.title = 'Join Our Team | Software Engineer Portfolio';
+    document.title = 'Request Demo | Pegasus';
     
     // Mobile: Skip all GSAP animations, use simple CSS fade-in
     if (isMobile) {
@@ -144,43 +144,43 @@ export default function JoinPage() {
           <div className="space-y-8 relative z-10">
             <div ref={titleRef}>
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 text-white">
-                Want to Join Us?
+                Request a Demo
               </h1>
               <div className="w-24 h-1 bg-white mb-8" />
             </div>
 
             <div ref={subtitleRef}>
               <p className="text-xl md:text-2xl text-gray-300 mb-8 leading-relaxed">
-                Be part of something extraordinary. Join our team of innovators and creators.
+                See how Pegasus runs dispatch, tracking, and payments for supplier-led logistics networks.
               </p>
             </div>
 
             <div ref={contentRef} className="space-y-6">
               <div className="border-2 border-white rounded-2xl p-6 hover:bg-[#FFA500] hover:border-[#FFA500] transition-all duration-300 group">
-                <h3 className="text-2xl font-bold mb-3">Innovation First</h3>
+                <h3 className="text-2xl font-bold mb-3">Dispatch Accuracy</h3>
                 <p className="text-gray-300 group-hover:text-black">
-                  Work with cutting-edge technologies and push boundaries in web development.
+                  Visual warehouse boards with smart truck-and-order matching at peak hours.
                 </p>
               </div>
 
               <div className="border-2 border-white rounded-2xl p-6 hover:bg-[#8DDC96] hover:border-[#8DDC96] transition-all duration-300 group">
-                <h3 className="text-2xl font-bold mb-3">Growth Opportunities</h3>
+                <h3 className="text-2xl font-bold mb-3">Fleet Visibility</h3>
                 <p className="text-gray-300 group-hover:text-black">
-                  Continuous learning with mentorship programs and professional development.
+                  Live maps with planned-vs-actual routes and deviation alerts before complaints.
                 </p>
               </div>
 
               <div className="border-2 border-white rounded-2xl p-6 hover:bg-[#A9EBF9] hover:border-[#A9EBF9] transition-all duration-300 group">
-                <h3 className="text-2xl font-bold mb-3">Collaborative Culture</h3>
+                <h3 className="text-2xl font-bold mb-3">Payment Confidence</h3>
                 <p className="text-gray-300 group-hover:text-black">
-                  Work alongside passionate professionals in a supportive environment.
+                  Checkout through driver collection to supplier treasury — one reconciled flow.
                 </p>
               </div>
             </div>
 
             {/* Application Form */}
             <div ref={formRef} className="border-2 border-white rounded-2xl p-8 bg-[#0D0D0D]">
-              <h3 className="text-2xl font-bold mb-6">Apply Now</h3>
+              <h3 className="text-2xl font-bold mb-6">Book Your Walkthrough</h3>
               
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
@@ -212,7 +212,7 @@ export default function JoinPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Position *</label>
+                  <label className="block text-sm font-semibold mb-2">Your Role *</label>
                   <select 
                     name="position"
                     value={formData.position}
@@ -220,16 +220,16 @@ export default function JoinPage() {
                     disabled={isSubmitting}
                     className="w-full px-4 py-3 bg-black border-2 border-white rounded-lg text-white focus:outline-none focus:border-[#FBFF63] transition-colors disabled:opacity-50"
                   >
-                    <option>Frontend Developer</option>
-                    <option>Backend Developer</option>
-                    <option>Full Stack Developer</option>
-                    <option>UI/UX Designer</option>
-                    <option>DevOps Engineer</option>
+                    <option>Supplier Operations</option>
+                    <option>Warehouse Manager</option>
+                    <option>Fleet / Dispatch Lead</option>
+                    <option>IT / Platform Owner</option>
+                    <option>Executive / Founder</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Portfolio URL</label>
+                  <label className="block text-sm font-semibold mb-2">Company Website</label>
                   <input 
                     type="url"
                     name="portfolio"
@@ -237,12 +237,12 @@ export default function JoinPage() {
                     onChange={handleChange}
                     disabled={isSubmitting}
                     className="w-full px-4 py-3 bg-black border-2 border-white rounded-lg text-white focus:outline-none focus:border-[#FBFF63] transition-colors disabled:opacity-50"
-                    placeholder="https://yourportfolio.com"
+                    placeholder="https://yourcompany.com"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Why do you want to join?</label>
+                  <label className="block text-sm font-semibold mb-2">Tell us about your network</label>
                   <textarea 
                     name="message"
                     value={formData.message}
@@ -250,13 +250,13 @@ export default function JoinPage() {
                     rows={4}
                     disabled={isSubmitting}
                     className="w-full px-4 py-3 bg-black border-2 border-white rounded-lg text-white focus:outline-none focus:border-[#FBFF63] transition-colors resize-none disabled:opacity-50"
-                    placeholder="Tell us about yourself..."
+                    placeholder="Sites, fleet size, dispatch volume..."
                   />
                 </div>
 
                 {submitStatus === 'success' && (
                   <div className="success-message bg-[#8DDC96] text-black p-4 rounded-lg font-semibold text-center">
-                    ✓ Application submitted successfully! We'll get back to you soon.
+                    ✓ Demo request submitted! Our team will reach out within one business day.
                   </div>
                 )}
 
@@ -271,7 +271,7 @@ export default function JoinPage() {
                   disabled={isSubmitting}
                   className="w-full py-4 bg-white text-black border-2 border-white rounded-2xl hover:bg-[#FBFF63] hover:border-[#FBFF63] transition-all duration-300 font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? 'Submitting...' : 'Submit Application'}
+                  {isSubmitting ? 'Submitting...' : 'Request Demo'}
                 </button>
               </form>
             </div>

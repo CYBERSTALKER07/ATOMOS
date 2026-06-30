@@ -1,7 +1,7 @@
 {
-  "name": "Software Engineer Portfolio",
-  "short_name": "Portfolio",
-  "description": "Professional software engineer portfolio showcasing full-stack development projects",
+  "name": "Pegasus — Logistics Operating System",
+  "short_name": "Pegasus",
+  "description": "Dispatch, fleet tracking, payments, and coordination for supplier-led logistics networks",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

@@ -107,7 +107,7 @@ export default function MobileAppsPage() {
           href="/#contact"
           className="px-8 py-4 bg-white text-black border-2 border-white hover:bg-[#FFA500] hover:border-[#FFA500] hover:text-white transition-all duration-300 font-bold text-base rounded-2xl shadow-lg"
         >
-          Hire Me
+          Request Demo
         </Link>
       </div>
 
@@ -142,13 +142,13 @@ export default function MobileAppsPage() {
             ref={titleRef}
             className="text-5xl md:text-7xl lg:text-8xl xl:text-9xl font-bold mb-8"
           >
-            Mobile Apps
+            Field Mobile Apps
           </h1>
           <p
             ref={subtitleRef}
             className="text-xl md:text-2xl lg:text-3xl text-[#C0C0C0] max-w-3xl mx-auto"
           >
-            Crafting beautiful and performant mobile experiences with cutting-edge technology
+            Native apps for drivers, warehouse floor teams, and gate operators — built for the field
           </p>
         </div>
       </section>
@@ -166,22 +166,21 @@ export default function MobileAppsPage() {
               <div className="order-2 lg:order-1">
                 <div className="flex items-center gap-4 mb-6">
                   <FiSmartphone size={40} className="text-[#8DDC96]" />
-                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold">Modern UI Experience</h2>
+                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold">Driver Execution</h2>
                 </div>
                 <p className="text-lg md:text-xl lg:text-2xl text-[#C0C0C0] mb-8">
-                  A sleek and intuitive mobile application featuring modern design patterns,
-                  smooth animations, and seamless user interactions. Built with performance
-                  and user experience at the forefront.
+                  Route execution stop by stop — sealed manifests, delivery confirmation,
+                  cash collection, and live progress back to ops and retailers.
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <span className="px-6 py-3 bg-black border-2 border-[#A9EBF9] text-[#A9EBF9] rounded-2xl text-sm md:text-base font-bold">
-                    React Native
+                    Kotlin
                   </span>
                   <span className="px-6 py-3 bg-black border-2 border-[#DABDFF] text-[#DABDFF] rounded-2xl text-sm md:text-base font-bold">
-                    TypeScript
+                    SwiftUI
                   </span>
                   <span className="px-6 py-3 bg-black border-2 border-[#FFDA6F] text-[#FFDA6F] rounded-2xl text-sm md:text-base font-bold">
-                    Native Animations
+                    Offline-Tolerant
                   </span>
                 </div>
               </div>
@@ -208,12 +207,11 @@ export default function MobileAppsPage() {
               <div className="order-2 lg:order-2">
                 <div className="flex items-center gap-4 mb-6">
                   <FiCode size={40} className="text-[#BDE7FF]" />
-                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold">Feature-Rich Platform</h2>
+                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold">Warehouse & Gate</h2>
                 </div>
                 <p className="text-lg md:text-xl lg:text-2xl text-[#C0C0C0] mb-8">
-                  Advanced mobile application with comprehensive features including real-time
-                  updates, cloud integration, and robust state management. Optimized for
-                  both iOS and Android platforms.
+                  Android apps for warehouse floor teams and gate operators — dispatch boards,
+                  manifest scanning, seal workflows, and live fleet visibility after departure.
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <span className="px-6 py-3 bg-black border-2 border-[#8DDC96] text-[#8DDC96] rounded-2xl text-sm md:text-base font-bold">
@@ -248,7 +246,7 @@ export default function MobileAppsPage() {
       <section className="py-20 px-4 md:px-8 lg:px-12 bg-[#0D0D0D]">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-center mb-16">
-            Why Choose Our Mobile Apps?
+            Why Pegasus Mobile?
           </h2>
           <div
             ref={featuresRef}
@@ -261,10 +259,10 @@ export default function MobileAppsPage() {
               <div className="w-20 h-20 bg-[#A9EBF9] rounded-2xl flex items-center justify-center mb-6">
                 <FiZap size={40} className="text-black" />
               </div>
-              <h3 className="text-2xl md:text-3xl font-bold mb-4">Lightning Fast</h3>
+              <h3 className="text-2xl md:text-3xl font-bold mb-4">Field-First</h3>
               <p className="text-lg md:text-xl text-[#C0C0C0]">
-                Optimized performance with smooth 60fps animations and instant response times
-                for the best user experience.
+                Clear stop-by-stop workflows for drivers and floor teams under time pressure
+                at peak dispatch hours.
               </p>
             </div>
 
@@ -275,10 +273,10 @@ export default function MobileAppsPage() {
               <div className="w-20 h-20 bg-[#8DDC96] rounded-2xl flex items-center justify-center mb-6">
                 <FiSmartphone size={40} className="text-black" />
               </div>
-              <h3 className="text-2xl md:text-3xl font-bold mb-4">Responsive Design</h3>
+              <h3 className="text-2xl md:text-3xl font-bold mb-4">Role Parity</h3>
               <p className="text-lg md:text-xl text-[#C0C0C0]">
-                Perfectly adapted for all screen sizes and devices, ensuring consistency
-                across iOS and Android platforms.
+                Android and iOS apps share the same contracts — driver, warehouse,
+                and gate teams stay aligned with portal ops.
               </p>
             </div>
 
@@ -289,10 +287,10 @@ export default function MobileAppsPage() {
               <div className="w-20 h-20 bg-[#DABDFF] rounded-2xl flex items-center justify-center mb-6">
                 <FiCode size={40} className="text-black" />
               </div>
-              <h3 className="text-2xl md:text-3xl font-bold mb-4">Clean Code</h3>
+              <h3 className="text-2xl md:text-3xl font-bold mb-4">Live Sync</h3>
               <p className="text-lg md:text-xl text-[#C0C0C0]">
-                Written with best practices, following industry standards for maintainability,
-                scalability, and performance.
+                Status changes propagate within seconds — no manual refresh
+                when dispatch, routes, or payments update.
               </p>
             </div>
           </div>
@@ -303,10 +301,10 @@ export default function MobileAppsPage() {
       <section className="py-20 px-4 md:px-8 lg:px-12">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8">
-            Ready to Build Something Amazing?
+            Ready to Run Field Ops on Pegasus?
           </h2>
           <p className="text-xl md:text-2xl lg:text-3xl text-[#C0C0C0] mb-12">
-            Let&apos;s create exceptional mobile experiences together
+            See how driver, warehouse, and gate apps work together on one network
           </p>
           <Link
             href="/#contact"
@@ -321,7 +319,7 @@ export default function MobileAppsPage() {
       <footer className="py-12 px-4 md:px-8 lg:px-12 border-t-2 border-white">
         <div className="max-w-7xl mx-auto text-center">
           <p className="text-base md:text-lg text-[#C0C0C0]">
-            © 2025 Software Engineer Portfolio. All rights reserved.
+            © 2025 Pegasus. All rights reserved.
           </p>
         </div>
       </footer>

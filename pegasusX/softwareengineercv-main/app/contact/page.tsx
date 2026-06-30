@@ -290,7 +290,7 @@ export default function ContactPage() {
                 href="/join"
                 className="px-8 py-4 bg-white text-black border-2 border-white rounded-2xl hover:bg-[#FFA500] hover:border-[#FFA500] transition-all duration-300 font-bold text-lg"
               >
-                Join Our Team
+                Request Demo
               </Link>
               <Link
                 href="/projects"

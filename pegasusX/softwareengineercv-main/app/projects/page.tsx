@@ -76,11 +76,11 @@ export default function AllProjectsPage() {
         {/* Header */}
         <div ref={headerRef} className="text-center mb-12 md:mb-16">
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4 md:mb-6 text-white">
-            All Projects
+            All Modules
           </h1>
           <div className="w-20 h-1 bg-white rounded-full mx-auto mb-6 md:mb-8" />
           <p className="text-base md:text-xl text-gray-300 max-w-3xl mx-auto px-4">
-            Explore {filteredProjects.length} {selectedCategory !== 'All' ? selectedCategory : ''} projects showcasing innovative solutions and creative development
+            Explore {filteredProjects.length} {selectedCategory !== 'All' ? selectedCategory : ''} modules powering supplier-led logistics on Pegasus
           </p>
         </div>
 
@@ -191,7 +191,7 @@ export default function AllProjectsPage() {
         {/* Empty State */}
         {filteredProjects.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-xl text-gray-400">No projects found in this category.</p>
+            <p className="text-xl text-gray-400">No modules found in this category.</p>
           </div>
         )}
       </div>

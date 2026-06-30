@@ -70,7 +70,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
     <main className="min-h-screen bg-black text-white">
       <PillNav
         logo=""
-        logoAlt="Portfolio Logo"
+        logoAlt="Pegasus Logo"
         items={[
           { label: 'Home', href: '/' },
           { label: 'About', href: '/#about' },
