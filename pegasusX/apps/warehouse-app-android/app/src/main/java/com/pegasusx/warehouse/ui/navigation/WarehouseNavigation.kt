@@ -75,6 +75,7 @@ import com.pegasusx.warehouse.ui.screens.products.ProductsScreen
 import com.pegasusx.warehouse.ui.screens.replenishment.ReplenishmentScreen
 import com.pegasusx.warehouse.ui.screens.returns.ReturnsScreen
 import com.pegasusx.warehouse.ui.screens.setup.LocationSetupScreen
+import com.pegasusx.warehouse.ui.screens.staff.StaffScreen
 import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestDetailScreen
 import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestsScreen
 import com.pegasusx.warehouse.ui.screens.transfers.TransferActionsScreen

@@ -20,7 +20,6 @@
 		2A89FD664216DF1DDF9F3F46 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 57C9CF70E5113B4CF702D63C /* Assets.xcassets */; };
 		2BF513A7728E6DAF51173E9D /* StaffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1963212DE00FAF5E10168BED /* StaffView.swift */; };
 		2F18755FAD1B248506FBA879 /* DemandForecastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ADD58C02F3BDE948D50E45C /* DemandForecastView.swift */; };
-		3F8E2A1B4C5D6E7F8091A2B3 /* OperationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E7D1C0B5A4938271605F4E3 /* OperationsView.swift */; };
 		2FF9DD4213CF98C9D3DC4A97 /* WarehouseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEDF5DC0D1406795DE0A4736 /* WarehouseService.swift */; };
 		341E7B32E90F94338A169FE0 /* TransferActionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 337112D659DB9E6E5D560871 /* TransferActionsView.swift */; };
 		37A98DE5E6B0372968D90168 /* WarehouseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42346A5EC575B103624DA7B5 /* WarehouseModels.swift */; };
@@ -31,6 +30,7 @@
 		555C0B7D96C65CD45AC026F4 /* OrdersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A324E35BD16F7C3A99A737 /* OrdersView.swift */; };
 		586A5E35B5E72386A388AC4F /* WarehouseOperationsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F9D6324029B6317393A54C7 /* WarehouseOperationsService.swift */; };
 		58C6C45C18E83F6A76AA0FBF /* WarehouseOpsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9261B8CE72327788E0CAA5CD /* WarehouseOpsModels.swift */; };
+		5A8DB31AA145934DD541D87E /* OperationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B4EAE072AE754D155A16E4 /* OperationsView.swift */; };
 		62C461820F4BD5D36335A0B3 /* DriversView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07A64AD811E451A8DAFB8448 /* DriversView.swift */; };
 		64EDC6EAD92ED41DE3EB484E /* GeocodeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 625F9C13FD7C9A8D3D681D4A /* GeocodeService.swift */; };
 		65C785FD3829E7B906D0E049 /* FirebaseAuthHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97A3D8F9EDDB53A7D75E811E /* FirebaseAuthHelper.swift */; };
@@ -102,7 +102,6 @@
 		2CA8CF92A11C3F61B74CB7AA /* AddressLocationField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressLocationField.swift; sourceTree = "<group>"; };
 		2D1D7E644EE093FE8A039917 /* PreordersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreordersView.swift; sourceTree = "<group>"; };
 		2D3F9071290B8729D26669BF /* DispatchPreviewMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DispatchPreviewMapView.swift; sourceTree = "<group>"; };
-		2E7D1C0B5A4938271605F4E3 /* OperationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationsView.swift; sourceTree = "<group>"; };
 		304C3ECD36A18604C024F031 /* FleetDriverMarkerAnimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetDriverMarkerAnimator.swift; sourceTree = "<group>"; };
 		337112D659DB9E6E5D560871 /* TransferActionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferActionsView.swift; sourceTree = "<group>"; };
 		37970FE481821C1886663153 /* LocationSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSetupView.swift; sourceTree = "<group>"; };
@@ -131,6 +130,7 @@
 		8BC14978EB4C787C361EE07F /* ReturnsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnsView.swift; sourceTree = "<group>"; };
 		9261B8CE72327788E0CAA5CD /* WarehouseOpsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseOpsModels.swift; sourceTree = "<group>"; };
 		948CD89DFC2A4D9363817EAF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		96B4EAE072AE754D155A16E4 /* OperationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationsView.swift; sourceTree = "<group>"; };
 		97A3D8F9EDDB53A7D75E811E /* FirebaseAuthHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseAuthHelper.swift; sourceTree = "<group>"; };
 		9D77AB43CF3715D84ADF4FB6 /* FleetLiveMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetLiveMapView.swift; sourceTree = "<group>"; };
 		9E6B4415599F87770EB09AE1 /* ProductsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductsView.swift; sourceTree = "<group>"; };
@@ -236,14 +236,6 @@
 			path = Dashboard;
 			sourceTree = "<group>";
 		};
-		1D6C0B9A4837261504E3D2F1 /* Operations */ = {
-			isa = PBXGroup;
-			children = (
-				2E7D1C0B5A4938271605F4E3 /* OperationsView.swift */,
-			);
-			path = Operations;
-			sourceTree = "<group>";
-		};
 		2C76B0C8188BD93FFF53D827 /* Replenishment */ = {
 			isa = PBXGroup;
 			children = (
@@ -341,7 +333,7 @@
 				0553A3F7A9577159F61C9E79 /* Manifests */,
 				08E96696049812D1F7D5458B /* More */,
 				C5E0372E57895937D9F01382 /* Notifications */,
-				1D6C0B9A4837261504E3D2F1 /* Operations */,
+				91CDA53AF406A307964B2293 /* Operations */,
 				420412FE46599C30C20E49F9 /* Orders */,
 				AFF85A15CC7B254482613B5C /* PaymentConfig */,
 				6CB01CD37BAF420EADDA6950 /* Portal */,
@@ -373,6 +365,14 @@
 				3C562B270DA26FA42E315270 /* CRMView.swift */,
 			);
 			path = CRM;
+			sourceTree = "<group>";
+		};
+		91CDA53AF406A307964B2293 /* Operations */ = {
+			isa = PBXGroup;
+			children = (
+				96B4EAE072AE754D155A16E4 /* OperationsView.swift */,
+			);
+			path = Operations;
 			sourceTree = "<group>";
 		};
 		9641ACC8D9DAC09C0026A590 /* packages */ = {
@@ -684,8 +684,8 @@
 				C693D3BCC084A0EF533F1059 /* LoginView.swift in Sources */,
 				F1EC5465A24D24427C9F2D1D /* ManifestsView.swift in Sources */,
 				8E3A118BB4A8F5B1A3C9A769 /* MoreHubView.swift in Sources */,
-				3F8E2A1B4C5D6E7F8091A2B3 /* OperationsView.swift in Sources */,
 				FC5FA964A3A7D626BDE3DE43 /* NotificationInboxView.swift in Sources */,
+				5A8DB31AA145934DD541D87E /* OperationsView.swift in Sources */,
 				9C0BC628A2F31E782E4BA17E /* OpsSettingsView.swift in Sources */,
 				DC25E444D5E978B169F6199A /* OrderDetailView.swift in Sources */,
 				555C0B7D96C65CD45AC026F4 /* OrdersView.swift in Sources */,
@@ -765,6 +765,8 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
@@ -856,6 +858,8 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";

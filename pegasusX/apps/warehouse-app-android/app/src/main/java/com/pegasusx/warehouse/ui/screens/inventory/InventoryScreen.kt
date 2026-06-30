@@ -219,7 +219,7 @@ private fun AdjustDialog(
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val skuLabel = item.sku.ifBlank { item.skuId.ifBlank { item.productId } }
+    val skuLabel = item.sku.ifBlank { item.productId }
 
     WarehouseReconnectRecoveryEffect(
         realtimeSignals = realtimeSignals,
@@ -239,7 +239,7 @@ private fun AdjustDialog(
             try {
                 val trimmedReason = reason.trim().ifBlank { null }
                 val resp = api.adjustInventory(
-                    InventoryAdjustRequest(productId = item.productId, quantity = q, reason = trimmedReason),
+                    InventoryAdjustRequest(productId = item.productId, quantity = q),
                     WarehouseIdempotencyKeys.adjustInventory(item.productId, q),
                 )
                 if (resp.isSuccessful) onAdjusted()

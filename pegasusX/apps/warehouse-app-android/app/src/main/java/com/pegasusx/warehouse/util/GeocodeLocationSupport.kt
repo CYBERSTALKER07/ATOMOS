@@ -31,7 +31,7 @@ object GeocodeLocationSupport {
             }
         }
 
-        val byAddress = runCatching { geocodeApi.forward(address) }.getOrNull()
+        val byAddress = runCatching { geocodeApi.forward(com.pegasusx.warehouse.data.model.ForwardGeocodeRequest(address = address)) }.getOrNull()
         if (byAddress != null && hasValidCoordinates(byAddress.lat, byAddress.lng)) {
             return AddressLocationValue(
                 address = byAddress.address.ifBlank { address },
