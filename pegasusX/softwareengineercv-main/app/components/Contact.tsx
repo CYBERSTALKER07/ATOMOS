@@ -123,9 +123,9 @@ export default function Contact() {
   ];
 
   const tabs = [
-    { id: 'general' as InquiryType, label: 'General Inquiry', color: 'hover:bg-[#A9EBF9]' },
-    { id: 'client' as InquiryType, label: 'Request Demo', color: 'hover:bg-[#8DDC96]' },
-    { id: 'sponsor' as InquiryType, label: 'Partner With Us', color: 'hover:bg-[#FFDA6F]' }
+    { id: 'general' as InquiryType, label: 'General Inquiry' },
+    { id: 'client' as InquiryType, label: 'Request Demo' },
+    { id: 'sponsor' as InquiryType, label: 'Partner With Us' }
   ];
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
@@ -196,10 +196,8 @@ export default function Contact() {
                 tabIndex={inquiryType === tab.id ? 0 : -1}
                 onClick={() => setInquiryType(tab.id)}
                 onKeyDown={(e) => handleKeyDown(e, index)}
-                className={`px-6 py-4 border-2 border-black rounded-2xl font-bold text-base md:text-lg transition-all duration-300 focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 outline-none ${
-                  inquiryType === tab.id 
-                    ? 'bg-black text-white' 
-                    : `bg-white text-black ${tab.color} hover:border-black`
+                className={`editorial-btn editorial-btn--sm editorial-btn--on-light ${
+                  inquiryType === tab.id ? 'editorial-btn--active' : ''
                 }`}
               >
                 {tab.label}
@@ -424,7 +422,7 @@ export default function Contact() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full py-4 px-8 bg-black text-white border-2 border-black hover:bg-white hover:text-black transition-all duration-300 font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl"
+                    className="editorial-btn editorial-btn--full editorial-btn--on-light"
                   >
                     {isSubmitting ? 'SUBMITTING...' : 'SUBMIT INQUIRY →'}
                   </button>
@@ -454,11 +452,11 @@ export default function Contact() {
           <p className="text-lg md:text-xl text-black mb-6">
             Prefer a live walkthrough? Book a demo call
           </p>
-          <a 
+          <a
             href="https://calendly.com"
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-block px-8 py-4 bg-black text-white border-2 border-black hover:bg-[#FBFF63] hover:text-black hover:border-black transition-all duration-300 font-semibold text-lg rounded-2xl"
+            className="editorial-btn editorial-btn--on-light"
           >
             BOOK A DEMO
           </a>

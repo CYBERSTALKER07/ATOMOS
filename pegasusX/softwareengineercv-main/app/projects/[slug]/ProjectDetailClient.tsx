@@ -93,10 +93,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
         <div className="container mx-auto px-4 py-12 md:py-20 relative z-10">
           <div ref={heroRef} className="max-w-5xl mx-auto text-center">
             {/* Back Button */}
-            <Link 
-              href="/projects"
-              className="inline-flex items-center gap-2 mb-6 md:mb-8 px-4 md:px-6 py-2 md:py-3 border-2 border-white hover:bg-white hover:text-black transition-all duration-300 rounded-2xl text-sm md:text-base"
-            >
+            <Link href="/projects" className="editorial-btn editorial-btn--sm mb-6 md:mb-8">
               ← Back to Projects
             </Link>
 
@@ -143,7 +140,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
                 href={project.github}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 md:px-8 py-3 md:py-4 bg-white text-black border-2 border-white hover:bg-[#A9EBF9] hover:border-[#A9EBF9] transition-all duration-300 font-bold rounded-2xl text-sm md:text-base"
+                className="editorial-btn"
               >
                 View on GitHub →
               </a>
@@ -152,7 +149,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
                   href={project.liveUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-6 md:px-8 py-3 md:py-4 border-2 border-white hover:bg-[#8DDC96] hover:text-black hover:border-[#8DDC96] transition-all duration-300 font-bold rounded-2xl text-sm md:text-base"
+                  className="editorial-btn"
                 >
                   Live Demo →
                 </a>
@@ -181,7 +178,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
                 {project.technologies.map((tech, index) => (
                   <span
                     key={index}
-                    className="px-4 md:px-6 py-2 md:py-3 bg-black text-white border-2 border-black hover:bg-white hover:text-black transition-all duration-300 font-bold rounded-2xl text-sm md:text-base"
+                    className="editorial-btn editorial-btn--sm editorial-btn--on-light"
                   >
                     {tech}
                   </span>
@@ -196,7 +193,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
                 {project.tags.map((tag, index) => (
                   <span
                     key={index}
-                    className="px-3 md:px-4 py-2 border-2 border-black rounded-2xl text-xs md:text-sm font-medium hover:bg-black hover:text-white transition-all duration-300"
+                    className="editorial-btn editorial-btn--sm editorial-btn--on-light editorial-btn--inverted"
                   >
                     #{tag}
                   </span>
@@ -301,10 +298,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
             </div>
 
             <div className="text-center">
-              <Link
-                href="/projects"
-                className="editorial-btn editorial-btn--inverted"
-              >
+              <Link href="/projects" className="editorial-btn">
                 VIEW ALL MODULES
               </Link>
             </div>

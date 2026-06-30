@@ -67,9 +67,9 @@ export default function AllProjectsPage() {
       />
 
       {/* Floating "Join Us" Button */}
-      <Link 
+      <Link
         href="/join"
-        className="fixed bottom-8 right-8 z-50 px-6 py-3 md:px-8 md:py-4 bg-white text-black border-2 border-white hover:bg-[#FFA500] hover:border-[#FFA500] transition-all duration-300 font-bold text-base md:text-lg shadow-lg rounded-3xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black outline-none"
+        className="editorial-btn editorial-btn--shadow fixed bottom-8 right-8 z-50"
       >
         Request Demo →
       </Link>
@@ -92,10 +92,8 @@ export default function AllProjectsPage() {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-4 md:px-6 py-2 md:py-3 border-2 border-white rounded-2xl font-bold text-sm md:text-base transition-all duration-300 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none ${
-                selectedCategory === category
-                  ? 'bg-white text-black'
-                  : 'bg-black text-white hover:bg-[#8DDC96] hover:text-black hover:border-[#8DDC96]'
+              className={`editorial-btn editorial-btn--sm ${
+                selectedCategory === category ? 'editorial-btn--active' : ''
               }`}
             >
               {category}

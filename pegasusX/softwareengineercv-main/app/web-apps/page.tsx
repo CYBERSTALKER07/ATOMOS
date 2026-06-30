@@ -76,10 +76,7 @@ export default function WebAppsPage() {
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Back Button */}
-      <Link
-        href="/"
-        className="fixed top-8 left-8 z-50 px-6 py-3 bg-black text-white border-2 border-white hover:bg-white hover:text-black transition-all duration-300 font-bold rounded-3xl flex items-center gap-2"
-      >
+      <Link href="/" className="editorial-btn editorial-btn--shadow fixed top-8 left-8 z-50">
         <FiArrowLeft size={20} />
         Back
       </Link>

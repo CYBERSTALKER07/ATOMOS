@@ -132,17 +132,11 @@ export default function MessagesPage() {
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* Navigation */}
       <nav className="fixed top-8 left-8 z-50 flex gap-4">
-        <Link 
-          href="/admin"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black border-2 border-white rounded-2xl hover:bg-[#A9EBF9] hover:border-[#A9EBF9] transition-all duration-300 font-semibold"
-        >
+        <Link href="/admin" className="editorial-btn editorial-btn--sm editorial-btn--inverted">
           <span>←</span>
           <span>Applications</span>
         </Link>
-        <Link 
-          href="/"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white border-2 border-white rounded-2xl hover:bg-[#FBFF63] hover:text-black hover:border-[#FBFF63] transition-all duration-300 font-semibold"
-        >
+        <Link href="/" className="editorial-btn editorial-btn--sm">
           Home
         </Link>
       </nav>
@@ -311,14 +305,11 @@ export default function MessagesPage() {
               <div className="flex gap-4 pt-4">
                 <a
                   href={`mailto:${selectedMsg.email}?subject=Re: ${selectedMsg.subject}`}
-                  className="flex-1 py-3 bg-white text-black border-2 border-white rounded-2xl hover:bg-[#8DDC96] hover:border-[#8DDC96] transition-all duration-300 font-bold text-center"
+                  className="editorial-btn editorial-btn--inverted flex-1"
                 >
                   Reply via Email
                 </a>
-                <button
-                  onClick={() => deleteMessage(selectedMsg.id)}
-                  className="flex-1 py-3 bg-black text-white border-2 border-[#FE5934] rounded-2xl hover:bg-[#FE5934] transition-all duration-300 font-bold"
-                >
+                <button type="button" onClick={() => deleteMessage(selectedMsg.id)} className="editorial-btn flex-1">
                   Delete
                 </button>
               </div>

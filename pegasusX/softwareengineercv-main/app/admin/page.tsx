@@ -133,10 +133,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* Navigation */}
       <nav className="fixed top-4 left-4 md:top-8 md:left-8 z-50">
-        <Link 
-          href="/"
-          className="inline-flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-white text-black border-2 border-white rounded-2xl hover:bg-[#FBFF63] hover:border-[#FBFF63] transition-all duration-300 font-semibold text-sm md:text-base"
-        >
+        <Link href="/" className="editorial-btn editorial-btn--sm">
           <span>←</span>
           <span className="hidden sm:inline">Back to Home</span>
           <span className="sm:hidden">Home</span>
@@ -330,16 +327,10 @@ export default function AdminPage() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <button
-                  onClick={closeModal}
-                  className="flex-1 py-3 bg-white text-black border-2 border-white rounded-2xl hover:bg-[#8DDC96] hover:border-[#8DDC96] transition-all duration-300 font-bold text-sm md:text-base"
-                >
+                <button type="button" onClick={closeModal} className="editorial-btn editorial-btn--inverted flex-1">
                   Close
                 </button>
-                <button
-                  onClick={() => deleteApplication(selectedApp.id)}
-                  className="flex-1 py-3 bg-black text-white border-2 border-[#FE5934] rounded-2xl hover:bg-[#FE5934] transition-all duration-300 font-bold text-sm md:text-base"
-                >
+                <button type="button" onClick={() => deleteApplication(selectedApp.id)} className="editorial-btn flex-1">
                   Delete
                 </button>
               </div>

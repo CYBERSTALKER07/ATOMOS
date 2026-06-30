@@ -113,10 +113,7 @@ export default function Footer() {
               <p className="text-white text-lg mb-6 max-w-md leading-relaxed">
                 Dispatch, tracking, payments, and coordination for supplier-led logistics — one platform, six roles, every site connected.
               </p>
-              <a
-                href="/join"
-                className="inline-block px-8 py-4 bg-white text-black border-2 border-white hover:bg-black hover:text-white transition-all duration-300 font-bold rounded-2xl"
-              >
+              <a href="/join" className="editorial-btn">
                 GET A DEMO →
               </a>
             </div>
@@ -189,10 +186,7 @@ export default function Footer() {
 
           {/* Back to Top Button */}
           <div className="mt-12 text-center">
-            <a
-              href="#hero"
-              className="inline-flex items-center gap-2 px-6 py-3 border-2 border-white text-white hover:bg-white hover:text-black transition-all duration-300 rounded-2xl font-bold"
-            >
+            <a href="#hero" className="editorial-btn editorial-btn--sm">
               <span>↑</span>
               <span>BACK TO TOP</span>
             </a>

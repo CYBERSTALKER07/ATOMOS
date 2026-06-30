@@ -99,9 +99,9 @@ export default function Home() {
           pillTextColor="#000000"
         />
 
-        <Link 
+        <Link
           href="/join"
-          className="fixed bottom-8 right-8 z-50 px-8 py-4 bg-white text-black border-2 border-white hover:bg-black hover:text-white transition-all duration-300 font-bold text-lg shadow-lg rounded-3xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black outline-none"
+          className="editorial-btn editorial-btn--shadow fixed bottom-8 right-8 z-50"
           aria-label="Request a Pegasus demo"
         >
           Request Demo →

@@ -100,10 +100,7 @@ export default function ContactPage() {
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* Navigation */}
       <nav className="fixed top-8 left-8 z-50">
-        <Link 
-          href="/"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black border-2 border-white rounded-2xl hover:bg-[#FBFF63] hover:border-[#FBFF63] transition-all duration-300 font-semibold"
-        >
+        <Link href="/" className="editorial-btn editorial-btn--sm">
           <span>←</span>
           <span>Back to Home</span>
         </Link>
@@ -197,10 +194,10 @@ export default function ContactPage() {
                     </div>
                   )}
 
-                  <button 
+                  <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full py-4 bg-white text-black border-2 border-white rounded-2xl hover:bg-[#8DDC96] hover:border-[#8DDC96] transition-all duration-300 font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="editorial-btn editorial-btn--full"
                   >
                     {isSubmitting ? 'Sending...' : 'Send Message'}
                   </button>
@@ -254,24 +251,9 @@ export default function ContactPage() {
                 <div className="text-4xl mb-4">🌐</div>
                 <h3 className="text-2xl font-bold mb-4">Connect Online</h3>
                 <div className="flex flex-wrap gap-3">
-                  <a 
-                    href="#" 
-                    className="px-4 py-2 bg-black text-white border-2 border-white rounded-lg hover:bg-[#A9EBF9] hover:text-black hover:border-[#A9EBF9] transition-all duration-300 font-semibold"
-                  >
-                    LinkedIn
-                  </a>
-                  <a 
-                    href="#" 
-                    className="px-4 py-2 bg-black text-white border-2 border-white rounded-lg hover:bg-[#BDE7FF] hover:text-black hover:border-[#BDE7FF] transition-all duration-300 font-semibold"
-                  >
-                    Twitter
-                  </a>
-                  <a 
-                    href="#" 
-                    className="px-4 py-2 bg-black text-white border-2 border-white rounded-lg hover:bg-[#DABDFF] hover:text-black hover:border-[#DABDFF] transition-all duration-300 font-semibold"
-                  >
-                    GitHub
-                  </a>
+                  <a href="#" className="editorial-btn editorial-btn--sm">LinkedIn</a>
+                  <a href="#" className="editorial-btn editorial-btn--sm">Twitter</a>
+                  <a href="#" className="editorial-btn editorial-btn--sm">GitHub</a>
                 </div>
               </div>
             </div>
@@ -286,16 +268,10 @@ export default function ContactPage() {
               Let&apos;s turn your vision into reality. Reach out today and let&apos;s discuss how we can help.
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
-              <Link
-                href="/join"
-                className="px-8 py-4 bg-white text-black border-2 border-white rounded-2xl hover:bg-[#FFA500] hover:border-[#FFA500] transition-all duration-300 font-bold text-lg"
-              >
+              <Link href="/join" className="editorial-btn">
                 Request Demo
               </Link>
-              <Link
-                href="/projects"
-                className="px-8 py-4 bg-black text-white border-2 border-white rounded-2xl hover:bg-[#FBFF63] hover:text-black hover:border-[#FBFF63] transition-all duration-300 font-bold text-lg"
-              >
+              <Link href="/projects" className="editorial-btn">
                 View Our Work
               </Link>
             </div>

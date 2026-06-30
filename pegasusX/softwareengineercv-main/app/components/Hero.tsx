@@ -147,17 +147,10 @@ export default function Hero() {
 
             {/* CTA Buttons */}
             <div ref={ctaRef} className="flex flex-col sm:flex-row gap-4">
-              <button 
-                onClick={scrollToNext}
-                className="px-8 py-4 bg-black text-white font-semibold text-base md:text-lg border-1 border-white transition-all duration-300 rounded-0 hover:bg-[black] hover:border-[white] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
-              >
+              <button type="button" onClick={scrollToNext} className="editorial-btn">
                 Explore Platform
               </button>
-              
-              <a 
-                href="/join"
-                className="px-8 py-4 border-1 bg-black border-white text-white font-semibold text-base md:text-lg transition-all duration-300 text-center rounded-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
-              >
+              <a href="/join" className="editorial-btn">
                 Request Demo
               </a>
             </div>

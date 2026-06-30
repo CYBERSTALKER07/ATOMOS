@@ -111,39 +111,33 @@ export default function Licensing() {
             
             {/* Visual Badge Display */}
             <div className="flex flex-wrap justify-center gap-6 mb-12">
-              <div className="bg-white text-black px-6 py-4 rounded-2xl border-2 border-white hover:bg-[#A9EBF9] hover:text-black transition-all duration-300">
+              <div className="editorial-btn editorial-btn--inverted flex-col items-start gap-1 text-left">
                 <div className="text-2xl font-bold">Dispatch</div>
-                <div className="text-sm">Visual Load Planning</div>
+                <div className="text-sm font-normal">Visual Load Planning</div>
               </div>
-              
-              <div className="bg-black text-white px-6 py-4 rounded-2xl border-2 border-white hover:bg-[#8DDC96] hover:text-black transition-all duration-300">
+              <div className="editorial-btn flex-col items-start gap-1 text-left">
                 <div className="text-2xl font-bold">Tracking</div>
-                <div className="text-sm">Live Fleet Maps</div>
+                <div className="text-sm font-normal">Live Fleet Maps</div>
               </div>
-              
-              <div className="bg-white text-black px-6 py-4 rounded-2xl border-2 border-white hover:bg-[#FFA500] hover:text-black transition-all duration-300">
+              <div className="editorial-btn editorial-btn--inverted flex-col items-start gap-1 text-left">
                 <div className="text-2xl font-bold">Payments</div>
-                <div className="text-sm">Treasury Integrity</div>
+                <div className="text-sm font-normal">Treasury Integrity</div>
               </div>
-              
-              <div className="bg-black text-white px-6 py-4 rounded-2xl border-2 border-white hover:bg-[#8DDC96] hover:text-black transition-all duration-300">
+              <div className="editorial-btn flex-col items-start gap-1 text-left">
                 <div className="text-2xl font-bold">Realtime</div>
-                <div className="text-sm">Live Coordination</div>
+                <div className="text-sm font-normal">Live Coordination</div>
               </div>
-              
-              <div className="bg-white text-black px-6 py-4 rounded-2xl border-2 border-white hover:bg-[#FFDA6F] hover:text-black transition-all duration-300">
+              <div className="editorial-btn editorial-btn--inverted flex-col items-start gap-1 text-left">
                 <div className="text-2xl font-bold">Security</div>
-                <div className="text-sm">Claims & Audit</div>
+                <div className="text-sm font-normal">Claims & Audit</div>
               </div>
-              
-              <div className="bg-black text-white px-6 py-4 rounded-2xl border-2 border-white hover:bg-[#BDE7FF] hover:text-black transition-all duration-300">
+              <div className="editorial-btn flex-col items-start gap-1 text-left">
                 <div className="text-2xl font-bold">Scale</div>
-                <div className="text-sm">Multi-Site Networks</div>
+                <div className="text-sm font-normal">Multi-Site Networks</div>
               </div>
-              
-              <div className="bg-white text-black px-6 py-4 rounded-2xl border-2 border-white hover:bg-[#DABDFF] hover:text-black transition-all duration-300">
+              <div className="editorial-btn editorial-btn--inverted flex-col items-start gap-1 text-left">
                 <div className="text-2xl font-bold">Roles</div>
-                <div className="text-sm">Six-App Parity</div>
+                <div className="text-sm font-normal">Six-App Parity</div>
               </div>
             </div>
           </div>
@@ -181,7 +175,7 @@ export default function Licensing() {
             <p className="text-lg text-gray-300 mb-6">
               Have questions about deployment or enterprise rollout?
             </p>
-            <a href="/join" className="editorial-btn editorial-btn--inverted">
+            <a href="/join" className="editorial-btn">
               GET IN TOUCH
             </a>
           </div>

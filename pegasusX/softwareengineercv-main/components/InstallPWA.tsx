@@ -93,7 +93,7 @@ const InstallPWA: React.FC = () => {
       ref={buttonRef}
       onClick={handleInstallClick}
       onMouseEnter={handleMouseEnter}
-      className="fixed bottom-8 right-8 z-50 flex items-center gap-3 px-6 py-4 bg-black border-2 border-white rounded-2xl shadow-lg transition-all duration-300 hover:bg-[#FFA500] hover:border-[#FFA500] hover:shadow-2xl group"
+      className="editorial-btn editorial-btn--shadow fixed bottom-8 right-8 z-50 flex items-center gap-3 group"
       aria-label="Install App"
     >
       <span
@@ -104,7 +104,7 @@ const InstallPWA: React.FC = () => {
       >
         💾
       </span>
-      <span className="text-white font-bold text-sm md:text-base whitespace-nowrap">
+      <span className="font-semibold text-sm md:text-base whitespace-nowrap">
         Install App
       </span>
     </button>

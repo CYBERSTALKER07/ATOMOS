@@ -102,16 +102,10 @@ export default function ResumePage() {
 
         {/* Action Buttons */}
         <div className="fixed top-24 right-8 z-50 flex flex-col gap-4 no-print">
-          <button
-            onClick={handleDownloadPDF}
-            className="px-6 py-3 bg-white text-black border-2 border-white hover:bg-[#FFA500] hover:border-[#FFA500] transition-all duration-300 font-bold rounded-2xl shadow-lg"
-          >
+          <button type="button" onClick={handleDownloadPDF} className="editorial-btn editorial-btn--inverted editorial-btn--shadow">
             📄 Download PDF
           </button>
-          <Link
-            href="/"
-            className="px-6 py-3 bg-black text-white border-2 border-white hover:bg-white hover:text-black transition-all duration-300 font-bold rounded-2xl text-center"
-          >
+          <Link href="/" className="editorial-btn editorial-btn--shadow text-center">
             ← Back Home
           </Link>
         </div>
@@ -199,7 +193,7 @@ export default function ResumePage() {
                 <h3 className="text-lg font-bold mb-3 text-gray-800">Operations</h3>
                 <div className="flex flex-wrap gap-2">
                   {['Dispatch Engine', 'Fleet Telemetry', 'Gate Seal', 'Pre-Orders'].map((skill, idx) => (
-                    <span key={idx} className="px-4 py-2 bg-black text-white text-sm font-semibold rounded-lg hover:bg-[#FFA500] transition-colors cursor-default">
+                    <span key={idx} className="editorial-btn editorial-btn--sm editorial-btn--on-light cursor-default">
                       {skill}
                     </span>
                   ))}
@@ -209,7 +203,7 @@ export default function ResumePage() {
                 <h3 className="text-lg font-bold mb-3 text-gray-800">Finance</h3>
                 <div className="flex flex-wrap gap-2">
                   {['Payment Integrity', 'Cash on Delivery', 'Treasury', 'Reconciliation'].map((skill, idx) => (
-                    <span key={idx} className="px-4 py-2 bg-black text-white text-sm font-semibold rounded-lg hover:bg-[#8DDC96] transition-colors cursor-default">
+                    <span key={idx} className="editorial-btn editorial-btn--sm editorial-btn--on-light cursor-default">
                       {skill}
                     </span>
                   ))}
@@ -219,7 +213,7 @@ export default function ResumePage() {
                 <h3 className="text-lg font-bold mb-3 text-gray-800">Network</h3>
                 <div className="flex flex-wrap gap-2">
                   {['Topology', 'Service Zones', 'Multi-Site', 'Role Parity'].map((skill, idx) => (
-                    <span key={idx} className="px-4 py-2 bg-black text-white text-sm font-semibold rounded-lg hover:bg-[#A9EBF9] transition-colors cursor-default">
+                    <span key={idx} className="editorial-btn editorial-btn--sm editorial-btn--on-light cursor-default">
                       {skill}
                     </span>
                   ))}
@@ -229,7 +223,7 @@ export default function ResumePage() {
                 <h3 className="text-lg font-bold mb-3 text-gray-800">Mobile</h3>
                 <div className="flex flex-wrap gap-2">
                   {['Driver App', 'Warehouse Android', 'Gate Terminal'].map((skill, idx) => (
-                    <span key={idx} className="px-4 py-2 bg-black text-white text-sm font-semibold rounded-lg hover:bg-[#DABDFF] transition-colors cursor-default">
+                    <span key={idx} className="editorial-btn editorial-btn--sm editorial-btn--on-light cursor-default">
                       {skill}
                     </span>
                   ))}
@@ -239,7 +233,7 @@ export default function ResumePage() {
                 <h3 className="text-lg font-bold mb-3 text-gray-800">Realtime</h3>
                 <div className="flex flex-wrap gap-2">
                   {['Live Sync', 'WebSocket', 'Event Contracts', 'Cache Invalidation'].map((skill, idx) => (
-                    <span key={idx} className="px-4 py-2 bg-black text-white text-sm font-semibold rounded-lg hover:bg-[#FFDA6F] transition-colors cursor-default">
+                    <span key={idx} className="editorial-btn editorial-btn--sm editorial-btn--on-light cursor-default">
                       {skill}
                     </span>
                   ))}
@@ -317,7 +311,7 @@ export default function ResumePage() {
                   <p className="text-sm text-gray-700 mb-3 leading-relaxed">{project.description}</p>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {project.technologies.slice(0, 5).map((tech, idx) => (
-                      <span key={idx} className="px-3 py-1 border-2 border-black text-xs font-semibold rounded-lg hover:bg-black hover:text-white transition-colors">
+                      <span key={idx} className="editorial-btn editorial-btn--sm editorial-btn--on-light editorial-btn--inverted">
                         {tech}
                       </span>
                     ))}

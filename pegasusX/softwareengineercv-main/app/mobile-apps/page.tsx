@@ -103,8 +103,8 @@ export default function MobileAppsPage() {
       <div className="fixed top-8 right-24 z-40 hidden md:block">
         <Link
           ref={ctaButtonRef}
-          href="/#contact"
-          className="px-8 py-4 bg-white text-black border-2 border-white hover:bg-[#FFA500] hover:border-[#FFA500] hover:text-white transition-all duration-300 font-bold text-base rounded-2xl shadow-lg"
+          href="/join"
+          className="editorial-btn editorial-btn--shadow"
         >
           Request Demo
         </Link>

@@ -141,32 +141,168 @@
   padding-top: 1.75rem;
 }
 
+/* Hero-style CTA — sharp corners, white fill sweeps left → right on hover */
 .editorial-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
+  overflow: hidden;
+  isolation: isolate;
   min-height: 2.75rem;
-  padding: 0.75rem 1.25rem;
+  padding: 1rem 2rem;
   background: #000;
   color: #fff;
-  border: 0;
+  border: 1px solid #fff;
   border-radius: 0;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
+  font-size: 1rem;
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  line-height: 1.25;
   text-decoration: none;
-  transition: opacity 0.2s ease;
+  text-align: center;
+  cursor: pointer;
+  transition: color 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.editorial-btn:hover {
-  opacity: 0.82;
+@media (min-width: 768px) {
+  .editorial-btn {
+    font-size: 1.125rem;
+  }
 }
 
+.editorial-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+}
+
+.editorial-btn > * {
+  position: relative;
+  z-index: 1;
+}
+
+.editorial-btn:hover::before,
+.editorial-btn:focus-visible::before {
+  transform: scaleX(1);
+}
+
+.editorial-btn:hover,
+.editorial-btn:focus-visible {
+  color: #000;
+}
+
+.editorial-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
+}
+
+.editorial-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.editorial-btn:disabled::before {
+  transform: scaleX(0);
+}
+
+.editorial-btn:disabled:hover {
+  color: #fff;
+}
+
+/* White surface variant — black fill on hover */
 .editorial-btn--inverted {
   background: #fff;
   color: #000;
+  border-color: #000;
+}
+
+.editorial-btn--inverted::before {
+  background: #000;
+}
+
+.editorial-btn--inverted:hover,
+.editorial-btn--inverted:focus-visible {
+  color: #fff;
+}
+
+.editorial-btn--inverted:focus-visible {
+  box-shadow: 0 0 0 2px #000, 0 0 0 4px #fff;
+}
+
+.editorial-btn--inverted:disabled:hover {
+  color: #000;
+}
+
+/* On light backgrounds — black border, same white sweep */
+.editorial-btn--on-light {
+  border-color: #000;
+}
+
+.editorial-btn--on-light:focus-visible {
+  box-shadow: 0 0 0 2px #000, 0 0 0 4px #fff;
+}
+
+.editorial-btn--sm {
+  min-height: 2.25rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+@media (min-width: 768px) {
+  .editorial-btn--sm {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+  }
+}
+
+.editorial-btn--full {
+  width: 100%;
+}
+
+.editorial-btn--shadow {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+}
+
+.editorial-btn--fixed {
+  position: fixed;
+  z-index: 50;
+}
+
+/* Selected / active filter state — fill already applied */
+.editorial-btn--active {
+  color: #000;
+}
+
+.editorial-btn--active::before {
+  transform: scaleX(1);
+}
+
+.editorial-btn--active.editorial-btn--inverted {
+  color: #fff;
+}
+
+/* Card link hover propagates fill to nested button label */
+a:hover .editorial-btn::before,
+.editorial-card--interactive:hover .editorial-btn::before {
+  transform: scaleX(1);
+}
+
+a:hover .editorial-btn,
+.editorial-card--interactive:hover .editorial-btn {
+  color: #000;
+}
+
+a:hover .editorial-btn--inverted,
+.editorial-card--interactive:hover .editorial-btn--inverted {
+  color: #fff;
 }
 
 .editorial-link {

@@ -113,15 +113,9 @@ export default function About() {
             </p>
 
             <div className="flex flex-wrap gap-4">
-              <div className="px-6 py-3 bg-black text-white rounded-2xl border-2 border-black hover:bg-white hover:text-black transition-all duration-300">
-                Dispatch & Fleet
-              </div>
-              <div className="px-6 py-3 bg-black text-white rounded-2xl border-2 border-black hover:bg-white hover:text-black transition-all duration-300">
-                Payments & Treasury
-              </div>
-              <div className="px-6 py-3 bg-black text-white rounded-2xl border-2 border-black hover:bg-white hover:text-black transition-all duration-300">
-                Realtime Coordination
-              </div>
+              <span className="editorial-btn editorial-btn--on-light editorial-btn--sm">Dispatch & Fleet</span>
+              <span className="editorial-btn editorial-btn--on-light editorial-btn--sm">Payments & Treasury</span>
+              <span className="editorial-btn editorial-btn--on-light editorial-btn--sm">Realtime Coordination</span>
             </div>
           </div>
         </div>
