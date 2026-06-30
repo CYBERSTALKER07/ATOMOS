@@ -6,9 +6,31 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import GlitchText from './GlitchText';
 import ContentCard, { EDITORIAL_IMAGES } from './ContentCard';
 import { useIsMobile } from '../hooks/useDevice';
-import { BENTO_THREE } from '../lib/bento';
 
 gsap.registerPlugin(ScrollTrigger);
+
+const DEPLOYMENT_CARDS = [
+  {
+    tone: 'dark' as const,
+    tag: 'DISCOVER THE PLATFORM',
+    title: 'Take a Tour',
+    description:
+      'See how Pegasus unifies dispatch, fleet tracking, payments, and coordination across every role in your network.',
+    image: EDITORIAL_IMAGES[4],
+    href: '/#solutions',
+    ctaLabel: 'TAKE PLATFORM TOUR',
+  },
+  {
+    tone: 'light' as const,
+    tag: 'DISCOVER OUR PLATFORM',
+    title: 'Live Demo with a Pegasus Expert',
+    description:
+      'Get a personalized walkthrough and see how to run supplier-led logistics with faster, smarter decisions across your enterprise.',
+    image: EDITORIAL_IMAGES[1],
+    href: '/join',
+    ctaLabel: 'REQUEST DEMO',
+  },
+];
 
 export default function Licensing() {
   const { isMobile } = useIsMobile();
@@ -19,174 +41,85 @@ export default function Licensing() {
 
   useEffect(() => {
     if (sectionRef.current && titleRef.current && contentRef.current && cardsRef.current) {
-      
-      // Mobile: Simple fade-in only
       if (isMobile) {
         gsap.set([titleRef.current, contentRef.current, cardsRef.current], {
           opacity: 1,
           y: 0,
-          scale: 1
+          scale: 1,
         });
         return;
       }
 
-      // Desktop: Scroll-triggered animations
       const timeline = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top 80%',
           end: 'bottom 20%',
-          toggleActions: 'play none none reverse'
-        }
+          toggleActions: 'play none none reverse',
+        },
       });
 
       timeline
-        .fromTo(titleRef.current, 
-          { opacity: 0, scale: 0.9 }, 
-          { opacity: 1, scale: 1, duration: 1.2 }
-        )
-        .fromTo(contentRef.current, 
-          { opacity: 0, y: 30 }, 
-          { opacity: 1, y: 0, duration: 0.8 }, 
-          '-=0.4'
-        )
-        .fromTo(cardsRef.current.children, 
-          { opacity: 0, y: 30 }, 
-          { opacity: 1, y: 0, duration: 0.6, stagger: 0.2 }, 
+        .fromTo(titleRef.current, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 1.2 })
+        .fromTo(contentRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8 }, '-=0.4')
+        .fromTo(
+          cardsRef.current.children,
+          { opacity: 0, y: 30 },
+          { opacity: 1, y: 0, duration: 0.6, stagger: 0.15 },
           '-=0.3'
         );
     }
   }, [isMobile]);
 
-  const licenses = [
-    {
-      title: 'Starter',
-      description: 'Single-site dispatch and tracking for growing supplier networks.',
-      features: ['Dispatch Board', 'Fleet Map', 'Retailer Tracking', 'Email Support']
-    },
-    {
-      title: 'Professional',
-      description: 'Multi-site operations with payments, treasury, and priority onboarding.',
-      features: ['All Starter Features', 'Payment Integrity', 'Treasury Views', 'Priority Support']
-    },
-    {
-      title: 'Enterprise',
-      description: 'Full network rollout with dedicated success team and custom integrations.',
-      features: ['All Professional Features', 'Custom Topology', 'Dedicated Support', 'SLA Guarantee']
-    }
-  ];
-
   return (
-    <section 
-      ref={sectionRef} 
-      id="licensing" 
+    <section
+      ref={sectionRef}
+      id="licensing"
       className="min-h-screen py-20 bg-black text-white relative overflow-hidden flex items-center"
     >
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-6xl mx-auto">
-          {/* Title Section - Disable GlitchText on mobile */}
-          <div ref={titleRef} className="text-center mb-16">
+          <div ref={titleRef} className="text-center mb-12 md:mb-16">
             {isMobile ? (
-              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white">
-                DEPLOYMENT
-              </h2>
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white">DEPLOYMENT</h2>
             ) : (
-              <GlitchText
-                speed={1}
-                enableShadows={true}
-                enableOnHover={true}
-                className="mb-6"
-              >
+              <GlitchText speed={1} enableShadows={true} enableOnHover={true} className="mb-6">
                 DEPLOYMENT
               </GlitchText>
             )}
             <div className="w-20 h-1 bg-white rounded-full mx-auto" />
           </div>
 
-          {/* Content Description */}
-          <div ref={contentRef} className="text-center mb-16 max-w-3xl mx-auto">
-            <p className="text-lg md:text-xl text-gray-300 leading-relaxed mb-8">
-              Platform pillars built for physical logistics — dispatch accuracy, fleet visibility, payment confidence, and network scale
+          <div ref={contentRef} className="text-center mb-12 md:mb-16 max-w-3xl mx-auto">
+            <p className="text-lg md:text-xl text-gray-300 leading-relaxed">
+              Platform pillars built for physical logistics — dispatch accuracy, fleet visibility,
+              payment confidence, and network scale
             </p>
-            
-            {/* Visual Badge Display */}
-            <div className="flex flex-wrap justify-center gap-6 mb-12">
-              <div className="editorial-btn editorial-btn--inverted flex-col items-start gap-1 text-left">
-                <div className="text-2xl font-bold">Dispatch</div>
-                <div className="text-sm font-normal">Visual Load Planning</div>
-              </div>
-              <div className="editorial-btn flex-col items-start gap-1 text-left">
-                <div className="text-2xl font-bold">Tracking</div>
-                <div className="text-sm font-normal">Live Fleet Maps</div>
-              </div>
-              <div className="editorial-btn editorial-btn--inverted flex-col items-start gap-1 text-left">
-                <div className="text-2xl font-bold">Payments</div>
-                <div className="text-sm font-normal">Treasury Integrity</div>
-              </div>
-              <div className="editorial-btn flex-col items-start gap-1 text-left">
-                <div className="text-2xl font-bold">Realtime</div>
-                <div className="text-sm font-normal">Live Coordination</div>
-              </div>
-              <div className="editorial-btn editorial-btn--inverted flex-col items-start gap-1 text-left">
-                <div className="text-2xl font-bold">Security</div>
-                <div className="text-sm font-normal">Claims & Audit</div>
-              </div>
-              <div className="editorial-btn flex-col items-start gap-1 text-left">
-                <div className="text-2xl font-bold">Scale</div>
-                <div className="text-sm font-normal">Multi-Site Networks</div>
-              </div>
-              <div className="editorial-btn editorial-btn--inverted flex-col items-start gap-1 text-left">
-                <div className="text-2xl font-bold">Roles</div>
-                <div className="text-sm font-normal">Six-App Parity</div>
-              </div>
-            </div>
           </div>
 
-          {/* License Cards */}
-          <div ref={cardsRef} className="editorial-bento max-w-6xl mx-auto">
-            {licenses.map((license, index) => (
+          <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-6xl mx-auto">
+            {DEPLOYMENT_CARDS.map((card) => (
               <ContentCard
-                key={license.title}
-                variant={index === 1 ? 'split' : 'vertical'}
-                tone={index === 1 ? 'light' : 'dark'}
-                tag="Deployment"
-                title={license.title}
-                description={license.description}
-                image={EDITORIAL_IMAGES[(index + 4) % EDITORIAL_IMAGES.length]}
-                href="/join"
-                ctaLabel="REQUEST DEMO"
+                key={card.title}
+                variant="vertical"
+                tone={card.tone}
+                tag={card.tag}
+                title={card.title}
+                description={card.description}
+                image={card.image}
+                href={card.href}
+                ctaLabel={card.ctaLabel}
                 ctaStyle="button"
-                className={BENTO_THREE[index]}
-              >
-                <ul className="mt-5 space-y-2 text-sm text-inherit opacity-90">
-                  {license.features.map((feature) => (
-                    <li key={feature} className="flex gap-2">
-                      <span aria-hidden="true">—</span>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </ContentCard>
+                className="deployment-card min-h-[28rem]"
+                hoverLabel={card.ctaLabel.includes('TOUR') ? 'VIEW' : 'DEMO'}
+              />
             ))}
-          </div>
-
-          {/* Bottom CTA */}
-          <div className="text-center mt-12">
-            <p className="text-lg text-gray-300 mb-6">
-              Have questions about deployment or enterprise rollout?
-            </p>
-            <a href="/join" className="editorial-btn">
-              GET IN TOUCH
-            </a>
           </div>
         </div>
       </div>
 
-      {/* Decorative elements */}
       <div className="absolute top-10 left-10 w-32 h-32 border-2 border-white opacity-10 rounded-2xl" />
       <div className="absolute bottom-10 right-10 w-40 h-40 border-2 border-white opacity-10 rounded-2xl" />
-      <div className="absolute top-1/2 left-1/4 w-2 h-2 bg-white rounded-full opacity-30" />
-      <div className="absolute top-1/3 right-1/3 w-2 h-2 bg-white rounded-full opacity-30" />
     </section>
   );
 }

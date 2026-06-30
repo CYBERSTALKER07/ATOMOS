@@ -272,9 +272,9 @@ function ContentCard({
     ctaLabel ? (
       ctaStyle === 'button' ? (
         href ? (
-          <span className={`editorial-btn ${isLight ? 'editorial-btn--inverted' : ''}`}>{ctaLabel}</span>
+          <span className={`editorial-btn ${isLight ? '' : 'editorial-btn--inverted'}`}>{ctaLabel}</span>
         ) : (
-          <ContentCardButton inverted={isLight}>{ctaLabel}</ContentCardButton>
+          <ContentCardButton inverted={!isLight}>{ctaLabel}</ContentCardButton>
         )
       ) : href ? (
         <span className="editorial-link">

@@ -141,6 +141,23 @@
   padding-top: 1.75rem;
 }
 
+.editorial-card__cta .editorial-btn {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: none;
+  min-height: 2.5rem;
+  padding: 0.75rem 1.25rem;
+}
+
+.editorial-card__cta .editorial-btn:hover,
+.editorial-card__cta .editorial-btn:focus-visible,
+.editorial-card--interactive:hover .editorial-card__cta .editorial-btn {
+  color: #000 !important;
+}
+
 /* Hero-style CTA — sharp corners, white fill sweeps left → right on hover */
 .editorial-btn {
   position: relative;
@@ -164,6 +181,17 @@
   cursor: pointer;
   transition: color 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Pill nav uses GSAP for hover — disable global link transitions */
+.pill-nav a,
+.pill-nav button {
+  transition: none !important;
+}
+
+.pill-nav a:hover,
+.pill-nav button:hover {
+  color: inherit;
 }
 
 @media (min-width: 768px) {
@@ -195,7 +223,14 @@
 
 .editorial-btn:hover,
 .editorial-btn:focus-visible {
-  color: #000;
+  color: #000 !important;
+}
+
+.editorial-btn:hover > *,
+.editorial-btn:focus-visible > * {
+  color: #000 !important;
+  position: relative;
+  z-index: 1;
 }
 
 .editorial-btn:focus-visible {
@@ -214,10 +249,10 @@
 }
 
 .editorial-btn:disabled:hover {
-  color: #fff;
+  color: #fff !important;
 }
 
-/* White surface variant — black fill on hover */
+/* White surface variant — light sweep on hover, black label */
 .editorial-btn--inverted {
   background: #fff;
   color: #000;
@@ -225,12 +260,12 @@
 }
 
 .editorial-btn--inverted::before {
-  background: #000;
+  background: #e8e8e8;
 }
 
 .editorial-btn--inverted:hover,
 .editorial-btn--inverted:focus-visible {
-  color: #fff;
+  color: #000 !important;
 }
 
 .editorial-btn--inverted:focus-visible {
@@ -278,7 +313,7 @@
 
 /* Selected / active filter state — fill already applied */
 .editorial-btn--active {
-  color: #000;
+  color: #000 !important;
 }
 
 .editorial-btn--active::before {
@@ -286,7 +321,7 @@
 }
 
 .editorial-btn--active.editorial-btn--inverted {
-  color: #fff;
+  color: #000 !important;
 }
 
 /* Card link hover propagates fill to nested button label */
@@ -296,13 +331,10 @@ a:hover .editorial-btn::before,
 }
 
 a:hover .editorial-btn,
-.editorial-card--interactive:hover .editorial-btn {
-  color: #000;
-}
-
+.editorial-card--interactive:hover .editorial-btn,
 a:hover .editorial-btn--inverted,
 .editorial-card--interactive:hover .editorial-btn--inverted {
-  color: #fff;
+  color: #000 !important;
 }
 
 .editorial-link {
@@ -493,6 +525,21 @@ a:hover .editorial-btn--inverted,
   padding: 1.25rem 1.5rem 1.5rem;
 }
 
+/* Deployment section — o9-style full-bleed image on top */
+.deployment-card.editorial-card--vertical .editorial-card__media {
+  margin: 0;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+}
+
+.deployment-card.editorial-card--vertical .editorial-card__body {
+  padding: 1.75rem 2rem 2rem;
+}
+
+.deployment-card .editorial-card__cta {
+  padding-top: 1.25rem;
+}
+
 .editorial-card--split {
   display: grid;
   grid-template-columns: 1fr;
@@ -670,8 +717,8 @@ a:hover .editorial-btn--inverted,
   outline: none !important;
 }
 
-/* Smooth transitions for all hover effects */
-button, a, .card, .skill-card, .project-card, .company-card {
+/* Smooth transitions for hover effects — exclude pill nav + editorial buttons */
+.card, .skill-card, .project-card, .company-card {
   transition: all 0.3s ease-in-out;
 }
 
@@ -688,12 +735,13 @@ button, a, .card, .skill-card, .project-card, .company-card {
 .mega-menu {
   position: fixed;
   inset: 0;
-  z-index: 9998;
+  z-index: 10001;
   background: #000;
   color: #fff;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  pointer-events: auto;
 }
 
 .mega-menu__inner {
@@ -1112,14 +1160,6 @@ button, a, .card, .skill-card, .project-card, .company-card {
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
   * {
     @apply border-border outline-ring/50;
   }

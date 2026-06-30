@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { gsap } from 'gsap';
 import { useReducedMotion } from '../hooks/useDevice';
@@ -109,6 +110,11 @@ export default function MegaMenuOverlay({
   const prefersReducedMotion = useReducedMotion();
   const [activeId, setActiveId] = useState(categories[0]?.id ?? 'platform');
   const [mounted, setMounted] = useState(open);
+  const [portalReady, setPortalReady] = useState(false);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -224,6 +230,11 @@ export default function MegaMenuOverlay({
         ease: 'power2.in',
         onComplete: () => setMounted(false),
       });
+      return;
+    }
+
+    if (open && overlayRef.current) {
+      gsap.set(overlayRef.current, { opacity: 1, pointerEvents: 'auto' });
     }
   }, [open, mounted, prefersReducedMotion]);
 
@@ -236,15 +247,16 @@ export default function MegaMenuOverlay({
     );
   }, [activeId, prefersReducedMotion]);
 
-  if (!mounted) return null;
+  if (!mounted || !portalReady) return null;
 
-  return (
+  const menu = (
     <div
       ref={overlayRef}
       className="mega-menu"
       role="dialog"
       aria-modal="true"
       aria-label="Site navigation"
+      aria-hidden={!open}
     >
       <div className="mega-menu__inner">
         <header className="mega-menu__header">
@@ -340,4 +352,6 @@ export default function MegaMenuOverlay({
       </footer>
     </div>
   );
+
+  return createPortal(menu, document.body);
 }

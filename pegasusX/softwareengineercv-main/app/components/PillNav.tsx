@@ -144,7 +144,7 @@ const PillNav: React.FC<PillNavProps> = ({
     }
 
     return () => window.removeEventListener('resize', onResize);
-  }, [items, ease, initialLoadAnimation]);
+  }, [items, ease, initialLoadAnimation, showMenuButton]);
 
   const handleEnter = (i: number) => {
     const tl = tlRefs.current[i];
@@ -257,15 +257,25 @@ const PillNav: React.FC<PillNavProps> = ({
     ['--pill-text']: resolvedPillTextColor,
     ['--nav-h']: '42px',
     ['--logo']: '36px',
-    ['--pill-pad-x']: '14px',
+    ['--pill-pad-x']: '12px',
     ['--pill-gap']: '2px'
   } as React.CSSProperties;
 
+  const basePillClasses =
+    'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-full box-border font-semibold text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
+
+  const pillStyleBase: React.CSSProperties = {
+    background: 'var(--pill-bg, #fff)',
+    color: 'var(--pill-text, var(--base, #000))',
+    paddingLeft: 'var(--pill-pad-x)',
+    paddingRight: 'var(--pill-pad-x)',
+  };
+
   return (
-    <div className="fixed top-4 left-4 right-4 z-[1000]">
-      <div className="relative pointer-events-none">
+    <div className="fixed top-0 left-0 right-0 z-[1000] bg-black border-b border-white/10">
+      <div className="relative pointer-events-none px-4 py-3">
       <nav
-        className={`pointer-events-auto w-full flex items-center gap-2 min-w-0 ${className}`}
+        className={`pill-nav pointer-events-auto w-full flex items-center gap-2 min-w-0 max-w-7xl mx-auto ${className}`}
         aria-label="Primary"
         style={cssVars}
       >
@@ -294,7 +304,7 @@ const PillNav: React.FC<PillNavProps> = ({
 
         <div
           ref={navItemsRef}
-          className="relative hidden md:flex min-w-0 flex-1 items-center rounded-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          className="relative hidden md:flex min-w-0 flex-1 items-center rounded-full overflow-hidden"
           style={{
             height: 'var(--nav-h)',
             background: 'var(--base, #000)'
@@ -302,18 +312,13 @@ const PillNav: React.FC<PillNavProps> = ({
         >
           <ul
             role="menubar"
-            className="list-none flex items-stretch m-0 p-[3px] h-full w-max"
+            className="list-none flex items-stretch m-0 p-[3px] h-full w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             style={{ gap: 'var(--pill-gap)' }}
           >
             {items.map((item, i) => {
               const isActive = activeHref === item.href;
 
-              const pillStyle: React.CSSProperties = {
-                background: 'var(--pill-bg, #fff)',
-                color: 'var(--pill-text, var(--base, #000))',
-                paddingLeft: 'var(--pill-pad-x)',
-                paddingRight: 'var(--pill-pad-x)'
-              };
+              const pillStyle: React.CSSProperties = { ...pillStyleBase };
 
               const PillContent = (
                 <>
@@ -356,9 +361,6 @@ const PillNav: React.FC<PillNavProps> = ({
                 </>
               );
 
-              const basePillClasses =
-                'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-full box-border font-semibold text-[13px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
-
               return (
                 <li key={item.href} role="none" className="flex h-full">
                   {isExternalLink(item.href) ? (
@@ -395,20 +397,51 @@ const PillNav: React.FC<PillNavProps> = ({
                 </li>
               );
             })}
+            {showMenuButton ? (
+              <li role="none" className="flex h-full shrink-0 ml-auto">
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={basePillClasses}
+                  style={pillStyleBase}
+                  onClick={openMegaMenu}
+                  aria-haspopup="dialog"
+                  aria-expanded={megaMenuOpen}
+                  aria-label="Open site menu"
+                  onMouseEnter={() => handleEnter(items.length)}
+                  onMouseLeave={() => handleLeave(items.length)}
+                  onFocus={() => handleEnter(items.length)}
+                  onBlur={() => handleLeave(items.length)}
+                >
+                  <span
+                    className="hover-circle absolute left-1/2 bottom-0 rounded-full z-[1] block pointer-events-none"
+                    style={{
+                      background: 'var(--base, #000)',
+                      willChange: 'transform',
+                    }}
+                    aria-hidden="true"
+                    ref={(el) => {
+                      circleRefs.current[items.length] = el;
+                    }}
+                  />
+                  <span className="label-stack relative inline-block leading-[1] z-[2]">
+                    <span className="pill-label relative z-[2] inline-block leading-[1]">Menu</span>
+                    <span
+                      className="pill-label-hover absolute left-0 top-0 z-[3] inline-block"
+                      style={{
+                        color: 'var(--hover-text, #fff)',
+                        willChange: 'transform, opacity',
+                      }}
+                      aria-hidden="true"
+                    >
+                      Menu
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ) : null}
           </ul>
         </div>
-
-        {showMenuButton ? (
-          <button
-            type="button"
-            className="editorial-btn editorial-btn--sm shrink-0 hidden md:inline-flex ml-1"
-            onClick={openMegaMenu}
-            aria-haspopup="dialog"
-            aria-expanded={megaMenuOpen}
-          >
-            MENU
-          </button>
-        ) : null}
 
         <button
           ref={hamburgerRef}

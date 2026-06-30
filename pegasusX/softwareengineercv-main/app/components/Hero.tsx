@@ -68,7 +68,7 @@ export default function Hero() {
   };
 
   return (
-    <section id="hero" className="min-h-screen relative flex items-center bg-black overflow-hidden">
+    <section id="hero" className="min-h-screen relative flex items-center bg-black overflow-hidden pt-[4.5rem] md:pt-20">
       {/* Corner Loops - Hidden on mobile */}
       {!isMobile && (
         <>

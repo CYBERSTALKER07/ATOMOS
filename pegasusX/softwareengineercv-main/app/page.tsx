@@ -4,7 +4,6 @@ import About from './components/About';
 import PlatformValue from './components/PlatformValue';
 import Skills from './components/Skills';
 import PillNav from './components/PillNav';
-import Link from 'next/link';
 import type { Metadata } from 'next';
 
 const LogisticsSolutions = dynamic(() => import('./components/LogisticsSolutions'));
@@ -86,11 +85,7 @@ export default function Home() {
             { label: 'Home', href: '#' },
             { label: 'About', href: '#about' },
             { label: 'Solutions', href: '#solutions' },
-            { label: 'Skills', href: '#skills' },
             { label: 'Projects', href: '#projects' },
-            { label: 'Roles', href: '#companies' },
-            { label: 'Deploy', href: '#licensing' },
-            { label: 'Apps', href: '/mobile-apps' },
             { label: 'Demo', href: '/join' },
           ]}
           activeHref="#"
@@ -100,14 +95,6 @@ export default function Home() {
           pillTextColor="#000000"
         />
 
-        <Link
-          href="/join"
-          className="editorial-btn editorial-btn--shadow fixed bottom-8 right-8 z-50"
-          aria-label="Request a Pegasus demo"
-        >
-          Request Demo →
-        </Link>
-        
         <Hero />
         <About />
         <PlatformValue />
