@@ -135,3 +135,61 @@ func (f *flakyExecutor) Execute(_ context.Context, req ExecutionRequest) (Execut
 		RedirectURL:     "/redirect/success",
 	}, nil
 }
+
+func TestProviderExecutionRouter_Failover(t *testing.T) {
+	t.Parallel()
+
+	router := NewProviderExecutionRouter(ProviderExecutionRouterConfig{
+		MaxAttempts: 1,
+		BaseBackoff: time.Nanosecond,
+		MaxBackoff:  time.Nanosecond,
+	})
+	execPrimary := &flakyExecutor{failuresBeforeSuccess: 5} // Always fails since MaxAttempts=1
+	execFallback := &staticProviderExecutor{
+		gateway:      "ADYEN",
+		checkoutMode: ExecutionModeHostedRedirect,
+		urlPrefix:    "/v1/payment/redirect/adyen/",
+	}
+	router.SetExecutor("GLOBAL_PAY", execPrimary)
+	router.SetExecutor("ADYEN", execFallback)
+
+	result, err := router.Execute(context.Background(), ExecutionRequest{
+		Gateway:         "GLOBAL_PAY",
+		FallbackGateway: "ADYEN",
+		Action:          ExecutionActionCheckoutInit,
+		OrderID:         "order-failover-1",
+	})
+	if err != nil {
+		t.Fatalf("expected failover to succeed, got error: %v", err)
+	}
+	if result.ResolvedGateway != "ADYEN" {
+		t.Fatalf("resolved gateway = %s, want ADYEN", result.ResolvedGateway)
+	}
+	if result.PolicySource != "ROUTER_FAILOVER" {
+		t.Fatalf("policy source = %s, want ROUTER_FAILOVER", result.PolicySource)
+	}
+}
+
+func TestProviderExecutionRouter_Failover_FallbackAlsoFails(t *testing.T) {
+	t.Parallel()
+
+	router := NewProviderExecutionRouter(ProviderExecutionRouterConfig{
+		MaxAttempts: 1,
+		BaseBackoff: time.Nanosecond,
+		MaxBackoff:  time.Nanosecond,
+	})
+	execPrimary := &flakyExecutor{failuresBeforeSuccess: 5}
+	execFallback := &flakyExecutor{failuresBeforeSuccess: 5}
+	router.SetExecutor("GLOBAL_PAY", execPrimary)
+	router.SetExecutor("ADYEN", execFallback)
+
+	_, err := router.Execute(context.Background(), ExecutionRequest{
+		Gateway:         "GLOBAL_PAY",
+		FallbackGateway: "ADYEN",
+		Action:          ExecutionActionCheckoutInit,
+		OrderID:         "order-failover-2",
+	})
+	if err == nil {
+		t.Fatal("expected failure after fallback exhausted")
+	}
+}

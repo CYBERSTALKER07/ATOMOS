@@ -89,6 +89,9 @@ func (s *Service) runAutoDispatchForWarehouse(ctx context.Context, wh AutoDispat
 		AcceptPartial: true,
 	})
 	if err != nil {
+		if s.cache != nil && debounce > 0 {
+			s.cache.Invalidate(ctx, "warehouse:auto_dispatch:"+warehouseID)
+		}
 		return err
 	}
 	if result.Status != "dispatched" {

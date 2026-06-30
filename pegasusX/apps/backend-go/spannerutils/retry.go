@@ -57,3 +57,18 @@ func isRetryableSpannerErr(err error) bool {
 		return false
 	}
 }
+
+type ctxKeyReadOnlyTxn struct{}
+
+// WithReadOnlyTransaction returns a context that carries a ReadOnlyTransaction.
+func WithReadOnlyTransaction(ctx context.Context, txn *spanner.ReadOnlyTransaction) context.Context {
+	return context.WithValue(ctx, ctxKeyReadOnlyTxn{}, txn)
+}
+
+// ReadOnlyTxnFromContext extracts a ReadOnlyTransaction from the context, if present.
+func ReadOnlyTxnFromContext(ctx context.Context) *spanner.ReadOnlyTransaction {
+	if txn, ok := ctx.Value(ctxKeyReadOnlyTxn{}).(*spanner.ReadOnlyTransaction); ok {
+		return txn
+	}
+	return nil
+}

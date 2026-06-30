@@ -67,6 +67,35 @@ func (s *Service) HandleClickWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	amountMinor, _ := strconv.ParseInt(strings.TrimSpace(req.Amount), 10, 64)
+	orderID := strings.TrimSpace(req.MerchantTransID)
+
+	session, found, err := s.repo.GetSessionByOrderID(r.Context(), orderID)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "database_error", err.Error(), endpoint, false, "")
+		return
+	}
+	if !found {
+		resp := map[string]any{
+			"error":          -5,
+			"error_note":     "User does not exist",
+			"click_trans_id": transactionID,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	if session.AmountMinor != amountMinor {
+		resp := map[string]any{
+			"error":          -2,
+			"error_note":     "Incorrect parameter amount",
+			"click_trans_id": transactionID,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
 	now := s.now()
 	row := WebhookRecord{
 		WebhookID:      s.newID("webhook"),

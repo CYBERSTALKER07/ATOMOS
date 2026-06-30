@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"cloud.google.com/go/spanner"
+	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -101,6 +102,11 @@ func (s *Service) handleStockCommitmentDetail(w http.ResponseWriter, r *http.Req
 }
 
 func (s *Service) buildStockCommitments(ctx context.Context, warehouseID, skuFilter string) ([]StockCommitmentSKU, error) {
+	if s.spannerClient != nil {
+		txn := s.spannerClient.ReadOnlyTransaction()
+		defer txn.Close()
+		ctx = spannerutils.WithReadOnlyTransaction(ctx, txn)
+	}
 	onHand, err := s.inventoryLevelsByWarehouse(ctx, warehouseID)
 	if err != nil {
 		return nil, err

@@ -54,3 +54,50 @@ func (s *Service) resolveWarehouseSupplyContext(ctx context.Context, warehouseID
 		TransferMode: mode,
 	}, nil
 }
+
+// validateSupplyCycle checks if setting targetID as the primary factory (or supply source)
+// for sourceID would create a cycle in the supply chain topology.
+func (s *Service) validateSupplyCycle(ctx context.Context, sourceID, targetID string) error {
+	if sourceID == "" || targetID == "" {
+		return nil // nothing to validate
+	}
+	if sourceID == targetID {
+		return errors.New("cyclic_supply_chain: warehouse cannot supply itself")
+	}
+	if s.spannerClient == nil {
+		return nil
+	}
+
+	current := targetID
+	// Max depth of 20 to prevent unbounded loops in case of corrupt data.
+	for i := 0; i < 20; i++ {
+		row, err := s.spannerClient.Single().ReadRow(ctx, "Warehouses", spanner.Key{current}, []string{"PrimaryFactoryId", "CoLocateWithFactoryId"})
+		if err != nil {
+			if errors.Is(err, spanner.ErrRowNotFound) || strings.Contains(err.Error(), "not found") {
+				// Target is likely a real Factory (or missing), which is a sink. No cycle.
+				return nil
+			}
+			return err
+		}
+		
+		var primaryFactory, coLocate spanner.NullString
+		if err := row.Columns(&primaryFactory, &coLocate); err != nil {
+			return err
+		}
+
+		next := strings.TrimSpace(primaryFactory.StringVal)
+		if co := strings.TrimSpace(coLocate.StringVal); co != "" {
+			next = co
+		}
+		
+		if next == "" {
+			return nil // reached a sink
+		}
+		if next == sourceID {
+			return errors.New("cyclic_supply_chain: transfer chain cycle detected")
+		}
+		current = next
+	}
+	
+	return errors.New("cyclic_supply_chain: maximum depth exceeded")
+}

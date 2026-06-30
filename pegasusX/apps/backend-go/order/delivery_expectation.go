@@ -107,6 +107,9 @@ func urgencyForTarget(now time.Time, target time.Time, loc *time.Location, o Ord
 	if days < 0 {
 		return ExpectationUrgencyOverdue
 	}
+	if o.DeliveryPriority == DeliveryPriorityExpress {
+		return ExpectationUrgencyDueSoon
+	}
 	if days <= 1 {
 		return ExpectationUrgencyDueSoon
 	}

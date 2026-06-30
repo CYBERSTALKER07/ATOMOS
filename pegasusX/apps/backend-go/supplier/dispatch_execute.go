@@ -109,6 +109,11 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "dispatch execute failed", "supplier_id", sid, "warehouse_id", warehouseFilter, "err", err)
 		if partial, ok := err.(*dispatchPartialCommitError); ok {
+			s.log.WarnContext(r.Context(), "executing partial commit compensation", "committed_routes_count", len(partial.CommittedRoutes))
+			compErr := s.compensatePartialDispatch(r.Context(), sid, warehouseFilter, partial.CommittedRoutes)
+			if compErr != nil {
+				s.log.ErrorContext(r.Context(), "failed to execute partial commit compensation", "err", compErr)
+			}
 			writeJSON(w, http.StatusInternalServerError, map[string]any{
 				"error":             "dispatch_partial_commit",
 				"committed_routes":  partial.CommittedRoutes,
@@ -116,6 +121,7 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 				"total_chunks":      partial.TotalChunks,
 				"total_routes":      partial.TotalRoutes,
 				"detail":            partial.Cause.Error(),
+				"compensated":       compErr == nil,
 			})
 			return
 		}
@@ -511,4 +517,73 @@ func resolveDispatchLockWarehouseID(rows []dispatch.DispatchableOrder) string {
 		}
 	}
 	return ""
+}
+
+func (s *Service) compensatePartialDispatch(ctx context.Context, supplierID, warehouseID string, committed []DispatchExecuteRoute) error {
+	if len(committed) == 0 {
+		return nil
+	}
+
+	return spannerutils.RunReadWriteTransaction(ctx, s.portalSpanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		var muts []*spanner.Mutation
+		now := s.now().UTC()
+
+		for _, r := range committed {
+			muts = append(muts, spanner.UpdateMap("SupplierTruckManifests", map[string]any{
+				"ManifestId":  r.ManifestID,
+				"State":       "CANCELLED",
+				"CancelledAt": now,
+				"UpdatedAt":   spanner.CommitTimestamp,
+			}))
+
+			manifestPayload, _ := json.Marshal(events.ManifestEvent{
+				BaseEvent:  events.BaseEvent{Type: events.EventManifestCancelled},
+				ManifestID: r.ManifestID,
+				SupplierID: supplierID,
+				State:      "CANCELLED",
+			})
+
+			muts = append(muts, spanner.Insert("OutboxEvents", map[string]any{
+				"EventId":       uuid.NewString(),
+				"AggregateType": events.AggregateManifest,
+				"AggregateId":   r.ManifestID,
+				"TopicName":     events.TopicMain,
+				"Payload":       manifestPayload,
+				"CreatedAt":     now,
+				"PublishedAt":   nil,
+			}))
+
+			for _, oid := range r.OrderIDs {
+				muts = append(muts, spanner.Delete("ManifestOrders", spanner.Key{r.ManifestID, oid}))
+
+				muts = append(muts, spanner.UpdateMap("Orders", map[string]any{
+					"OrderId":    oid,
+					"Status":     "READY",
+					"ManifestId": spanner.NullString{Valid: false},
+					"DriverId":   spanner.NullString{Valid: false},
+					"VehicleId":  spanner.NullString{Valid: false},
+					"RouteId":    spanner.NullString{Valid: false},
+					"UpdatedAt":  spanner.CommitTimestamp,
+				}))
+
+				orderPayload, _ := json.Marshal(events.OrderEvent{
+					BaseEvent: events.BaseEvent{Type: events.EventOrderStatusChanged},
+					Status:    "READY",
+					OrderID:   oid,
+				})
+
+				muts = append(muts, spanner.Insert("OutboxEvents", map[string]any{
+					"EventId":       uuid.NewString(),
+					"AggregateType": events.AggregateOrder,
+					"AggregateId":   oid,
+					"TopicName":     events.TopicMain,
+					"Payload":       orderPayload,
+					"CreatedAt":     now,
+					"PublishedAt":   nil,
+				}))
+			}
+		}
+
+		return txn.BufferWrite(muts)
+	})
 }

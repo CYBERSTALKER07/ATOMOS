@@ -33,13 +33,14 @@ const (
 
 // ExecutionRequest carries provider execution inputs.
 type ExecutionRequest struct {
-	Gateway     string
-	Action      ExecutionAction
-	OrderID     string
-	SessionID   string
-	AmountMinor int64
-	Currency    string
-	AttemptNo   int
+	Gateway         string
+	FallbackGateway string
+	Action          ExecutionAction
+	OrderID         string
+	SessionID       string
+	AmountMinor     int64
+	Currency        string
+	AttemptNo       int
 }
 
 // ExecutionResult carries normalized provider execution outputs.
@@ -199,60 +200,80 @@ func (r *ProviderExecutionRouter) SetExecutor(gateway string, executor ProviderE
 }
 
 // Execute routes the request to the gateway adapter with bounded retries.
+// If the primary gateway fails and FallbackGateway is provided, it attempts failover.
 func (r *ProviderExecutionRouter) Execute(ctx context.Context, req ExecutionRequest) (ExecutionResult, error) {
 	if r == nil {
 		return ExecutionResult{}, fmt.Errorf("execution router is nil")
-	}
-	gateway := strings.ToUpper(strings.TrimSpace(req.Gateway))
-	if gateway == "" {
-		gateway = "GLOBAL_PAY"
-	}
-	executor, ok := r.executors[gateway]
-	if !ok {
-		return ExecutionResult{}, &GatewayPolicyError{
-			Code:             "payment_gateway_policy_violation",
-			Message:          fmt.Sprintf("unsupported payment gateway: %s", gateway),
-			RequestedGateway: gateway,
-			ResolvedGateway:  gateway,
-			PolicySource:     "ROUTER_CAPABILITY",
-		}
 	}
 
 	if req.Action == "" {
 		req.Action = ExecutionActionCheckoutInit
 	}
-	req.Gateway = gateway
 
-	var lastErr error
-	for attempt := 1; attempt <= r.maxAttempts; attempt++ {
-		req.AttemptNo = attempt
-		result, err := executor.Execute(ctx, req)
-		if err == nil {
-			result.ResolvedGateway = strings.ToUpper(strings.TrimSpace(result.ResolvedGateway))
-			if result.ResolvedGateway == "" {
-				result.ResolvedGateway = gateway
-			}
-			if result.PolicySource == "" {
-				result.PolicySource = "SUPPLIER_DEFAULT"
-			}
-			if result.Mode == "" {
-				result.Mode = ExecutionModeHostedRedirect
-			}
-			return result, nil
+	executeWithRetries := func(targetGateway string, execReq ExecutionRequest) (ExecutionResult, error) {
+		targetGateway = strings.ToUpper(strings.TrimSpace(targetGateway))
+		if targetGateway == "" {
+			targetGateway = "GLOBAL_PAY"
 		}
-		lastErr = err
-		if !isRetryableExecutionError(err) || attempt == r.maxAttempts {
-			return ExecutionResult{}, err
+		executor, ok := r.executors[targetGateway]
+		if !ok {
+			return ExecutionResult{}, &GatewayPolicyError{
+				Code:             "payment_gateway_policy_violation",
+				Message:          fmt.Sprintf("unsupported payment gateway: %s", targetGateway),
+				RequestedGateway: targetGateway,
+				ResolvedGateway:  targetGateway,
+				PolicySource:     "ROUTER_CAPABILITY",
+			}
 		}
-		if err := r.sleepFn(ctx, r.backoffForAttempt(attempt)); err != nil {
-			return ExecutionResult{}, err
+
+		execReq.Gateway = targetGateway
+
+		var lastErr error
+		for attempt := 1; attempt <= r.maxAttempts; attempt++ {
+			execReq.AttemptNo = attempt
+			result, err := executor.Execute(ctx, execReq)
+			if err == nil {
+				result.ResolvedGateway = strings.ToUpper(strings.TrimSpace(result.ResolvedGateway))
+				if result.ResolvedGateway == "" {
+					result.ResolvedGateway = targetGateway
+				}
+				if result.PolicySource == "" {
+					result.PolicySource = "SUPPLIER_DEFAULT"
+				}
+				if result.Mode == "" {
+					result.Mode = ExecutionModeHostedRedirect
+				}
+				return result, nil
+			}
+			lastErr = err
+			if !isRetryableExecutionError(err) || attempt == r.maxAttempts {
+				return ExecutionResult{}, err
+			}
+			if err := r.sleepFn(ctx, r.backoffForAttempt(attempt)); err != nil {
+				return ExecutionResult{}, err
+			}
+		}
+		return ExecutionResult{}, lastErr
+	}
+
+	primaryGateway := req.Gateway
+	if primaryGateway == "" {
+		primaryGateway = "GLOBAL_PAY"
+	}
+
+	result, err := executeWithRetries(primaryGateway, req)
+	if err != nil {
+		fallback := strings.ToUpper(strings.TrimSpace(req.FallbackGateway))
+		if fallback != "" && fallback != strings.ToUpper(strings.TrimSpace(primaryGateway)) {
+			fallbackResult, fallbackErr := executeWithRetries(fallback, req)
+			if fallbackErr == nil {
+				fallbackResult.PolicySource = "ROUTER_FAILOVER"
+				return fallbackResult, nil
+			}
 		}
 	}
 
-	if lastErr == nil {
-		lastErr = fmt.Errorf("payment execution failed")
-	}
-	return ExecutionResult{}, fmt.Errorf("payment execution failed after %d attempts: %w", r.maxAttempts, lastErr)
+	return result, err
 }
 
 func (r *ProviderExecutionRouter) backoffForAttempt(attempt int) time.Duration {

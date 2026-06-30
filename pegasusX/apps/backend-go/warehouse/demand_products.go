@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
 )
 
@@ -291,7 +292,13 @@ func (s *Service) inventoryLevelsByWarehouse(ctx context.Context, warehouseID st
 		      WHERE WarehouseId = @wid`,
 		Params: map[string]any{"wid": warehouseID},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = s.spannerClient.Single().Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	out := make(map[string]int64)

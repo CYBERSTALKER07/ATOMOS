@@ -90,6 +90,11 @@ func (s *Service) handleCreateSupplyRequestFromBody(w http.ResponseWriter, r *ht
 		factoryID = topology.FactoryID
 	}
 
+	if err := s.validateSupplyCycle(r.Context(), warehouseID, factoryID); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return true
+	}
+
 	claims, _ := auth.FromContext(r.Context())
 	requestedBy := strings.TrimSpace(claims.Subject)
 	nowTS := s.now().UTC().Format(time.RFC3339Nano)

@@ -705,7 +705,15 @@ func (r *SpannerRepository) ListOrdersForStockCommitment(ctx context.Context, wa
 
 func (r *SpannerRepository) queryOrders(ctx context.Context, stmt spanner.Statement) ([]Order, error) {
 	var res []Order
-	err := r.client.Single().Query(ctx, stmt).Do(func(row *spanner.Row) error {
+	
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().Query(ctx, stmt)
+	}
+	
+	err := iter.Do(func(row *spanner.Row) error {
 		o, err := scanOrderRowRow(row)
 		if err != nil {
 			return err

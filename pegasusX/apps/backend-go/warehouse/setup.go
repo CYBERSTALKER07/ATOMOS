@@ -59,8 +59,17 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 		req.CoverageRadiusKm = 25.0
 	}
 
-	now := s.now().UTC()
 	warehouseID := strings.TrimSpace(claims.HomeNodeID)
+	primaryFactoryID := strings.TrimSpace(req.PrimaryFactoryID)
+
+	if warehouseID != "" && primaryFactoryID != "" {
+		if err := s.validateSupplyCycle(r.Context(), warehouseID, primaryFactoryID); err != nil {
+			web.JSONError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	now := s.now().UTC()
 	supplierID := strings.TrimSpace(claims.SupplierID)
 	if supplierID == "" {
 		supplierID = s.supplierID

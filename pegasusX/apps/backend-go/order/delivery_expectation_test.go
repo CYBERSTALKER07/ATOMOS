@@ -49,6 +49,31 @@ func TestComputeDeliveryExpectation_express(t *testing.T) {
 	if exp.TargetLabel == "" || exp.TargetDate == nil {
 		t.Fatal("expected express target")
 	}
+	if exp.Urgency != ExpectationUrgencyDueSoon {
+		t.Fatalf("urgency=%s want due_soon", exp.Urgency)
+	}
+}
+
+func TestComputeDeliveryExpectation_express_far(t *testing.T) {
+	now := tashkentDate(2026, 6, 28)
+	deliver := tashkentDate(2026, 6, 30)
+	o := Order{
+		Source:           OrderSourceManual,
+		Status:           StatusPending,
+		DeliveryPriority: DeliveryPriorityExpress,
+		DeliverBefore:    &deliver,
+	}
+	loc := proximity.TashkentLocation
+	exp := ComputeDeliveryExpectation(now, loc, o)
+	if exp.Kind != ExpectationKindExpress {
+		t.Fatalf("kind=%s", exp.Kind)
+	}
+	if exp.TargetLabel == "" || exp.TargetDate == nil {
+		t.Fatal("expected express target")
+	}
+	if exp.Urgency != ExpectationUrgencyDueSoon {
+		t.Fatalf("urgency=%s want due_soon for express even if days > 1", exp.Urgency)
+	}
 }
 
 func TestComputeDeliveryExpectation_preorder_scheduled_far(t *testing.T) {
