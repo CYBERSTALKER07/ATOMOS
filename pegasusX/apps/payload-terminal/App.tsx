@@ -1266,9 +1266,17 @@ export default function App() {
   // ── Checkbox toggle ───────────────────────────────────────────────────────
   const toggleCheck = (itemId: string) => {
     setManifest(prev =>
-      prev.map(item =>
-        item.id === itemId ? { ...item, scanned: !item.scanned } : item
-      )
+      prev.map(item => {
+        if (item.id === itemId) {
+          const isComplete = !item.scanned;
+          return {
+            ...item,
+            scanned: isComplete,
+            verifiedQuantity: isComplete ? item.quantity : 0
+          };
+        }
+        return item;
+      })
     );
     Haptics.selectionAsync();
   };
@@ -1283,14 +1291,37 @@ export default function App() {
     try {
       const product = await PayloadTerminalApi.lookupBarcode(trimmed);
       const sku = product.sku_id ?? product.product_id ?? '';
-      const match = selectedManifest.find((item) => item.brand === sku);
-      if (!match) {
+      
+      const unverifiedMatch = selectedManifest.find((item) => item.brand === sku && item.verifiedQuantity < item.quantity);
+      if (!unverifiedMatch) {
+        const fullMatch = selectedManifest.find((item) => item.brand === sku);
+        if (fullMatch) {
+            showToast(isIOS ? 'Item fully scanned' : 'ITEM FULLY SCANNED', '', 'info', 2400);
+            return;
+        }
         showToast(isIOS ? 'SKU not on this order' : 'SKU NOT ON THIS ORDER', '', 'warning', 2400);
         return;
       }
-      if (!match.scanned) toggleCheck(match.id);
+
+      setManifest(prev =>
+        prev.map(item => {
+          if (item.id === unverifiedMatch.id) {
+            const newQty = item.verifiedQuantity + 1;
+            return {
+              ...item,
+              verifiedQuantity: newQty,
+              scanned: newQty >= item.quantity
+            };
+          }
+          return item;
+        })
+      );
+      
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast(isIOS ? 'Checked item' : 'CHECKED ITEM', product.name ?? sku, 'success', 2200);
-      setShowProductScanner(false);
+      
+      // Let the user scan more without closing the modal
+      // setShowProductScanner(false);
     } catch (e: unknown) {
       showToast(
         isIOS ? 'Barcode lookup failed' : 'BARCODE LOOKUP FAILED',
@@ -2231,9 +2262,14 @@ export default function App() {
                     <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 11, color: T.colors.tertiaryLabel, letterSpacing: 0.5 }}>
                       {item.brand}
                     </Text>
-                    <Text style={{ fontWeight: '600', fontSize: 15, color: T.colors.label, marginTop: 2 }}>
-                      {item.label}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                      <Text style={{ fontWeight: '600', fontSize: 15, color: T.colors.label }}>
+                        {item.label}
+                      </Text>
+                      <Text style={{ fontWeight: '500', fontSize: 13, color: item.scanned ? '#16A34A' : T.colors.secondaryLabel, marginLeft: 8 }}>
+                        ({item.verifiedQuantity}/{item.quantity} scanned)
+                      </Text>
+                    </View>
                   </View>
                 </Pressable>
               ))}

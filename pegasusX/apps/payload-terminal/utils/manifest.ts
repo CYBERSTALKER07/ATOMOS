@@ -28,6 +28,8 @@ export type ManifestItem = {
   orderId: string;
   brand: string;
   label: string;
+  quantity: number;
+  verifiedQuantity: number;
   scanned: boolean;
 };
 
@@ -40,6 +42,8 @@ export function buildManifest(orders: LiveOrder[]): ManifestItem[] {
       orderId: order.order_id,
       brand: item.sku_id,
       label: `${item.sku_name} × ${item.quantity}`,
+      quantity: item.quantity,
+      verifiedQuantity: 0,
       scanned: false,
     }))
   );

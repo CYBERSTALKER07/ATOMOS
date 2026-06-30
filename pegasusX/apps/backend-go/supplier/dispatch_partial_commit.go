@@ -6,7 +6,7 @@ import "fmt"
 // some routes before a later chunk fails. Idempotency keys are released on failure so
 // operators may retry warehouse-scoped execute after reconciling partial manifests.
 type dispatchPartialCommitError struct {
-	CommittedRoutes int
+	CommittedRoutes []DispatchExecuteRoute
 	FailedChunk     int
 	TotalChunks     int
 	TotalRoutes     int
@@ -16,7 +16,7 @@ type dispatchPartialCommitError struct {
 func (e *dispatchPartialCommitError) Error() string {
 	return fmt.Sprintf(
 		"dispatch_partial_commit: committed_routes=%d failed_chunk=%d/%d total_routes=%d: %v",
-		e.CommittedRoutes, e.FailedChunk, e.TotalChunks, e.TotalRoutes, e.Cause,
+		len(e.CommittedRoutes), e.FailedChunk, e.TotalChunks, e.TotalRoutes, e.Cause,
 	)
 }
 

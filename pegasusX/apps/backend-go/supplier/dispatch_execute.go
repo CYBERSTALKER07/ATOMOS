@@ -116,7 +116,7 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 			}
 			writeJSON(w, http.StatusInternalServerError, map[string]any{
 				"error":             "dispatch_partial_commit",
-				"committed_routes":  partial.CommittedRoutes,
+				"committed_routes":  len(partial.CommittedRoutes),
 				"failed_chunk":      partial.FailedChunk,
 				"total_chunks":      partial.TotalChunks,
 				"total_routes":      partial.TotalRoutes,
@@ -419,7 +419,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 		if chunkErr != nil {
 			if len(committed) > 0 {
 				return DispatchExecuteResult{}, &dispatchPartialCommitError{
-					CommittedRoutes: len(committed),
+					CommittedRoutes: committed,
 					FailedChunk:     chunkIndex,
 					TotalChunks:     totalChunks,
 					TotalRoutes:     totalRoutes,
@@ -543,7 +543,7 @@ func (s *Service) compensatePartialDispatch(ctx context.Context, supplierID, war
 				State:      "CANCELLED",
 			})
 
-			muts = append(muts, spanner.Insert("OutboxEvents", map[string]any{
+			muts = append(muts, spanner.InsertMap("OutboxEvents", map[string]any{
 				"EventId":       uuid.NewString(),
 				"AggregateType": events.AggregateManifest,
 				"AggregateId":   r.ManifestID,
@@ -572,7 +572,7 @@ func (s *Service) compensatePartialDispatch(ctx context.Context, supplierID, war
 					OrderID:   oid,
 				})
 
-				muts = append(muts, spanner.Insert("OutboxEvents", map[string]any{
+				muts = append(muts, spanner.InsertMap("OutboxEvents", map[string]any{
 					"EventId":       uuid.NewString(),
 					"AggregateType": events.AggregateOrder,
 					"AggregateId":   oid,

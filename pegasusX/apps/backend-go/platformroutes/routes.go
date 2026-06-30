@@ -22,6 +22,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		return
 	}
 	r.Get("/v1/platform/client-policy", d.Handler.HandleClientPolicy)
+	r.Get("/v1/platform/client-config", d.Handler.HandleClientConfig)
 	r.With(auth.RequireRole(auth.RoleAdmin)).Put("/v1/platform/client-policy", d.Handler.HandleUpsertPolicy)
 	r.Post("/v1/user/device-token", d.Handler.HandleDeviceToken)
 	if d.GeocodeHandler != nil {

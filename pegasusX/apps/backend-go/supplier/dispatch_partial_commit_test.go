@@ -4,7 +4,7 @@ import "testing"
 
 func TestDispatchPartialCommitError(t *testing.T) {
 	err := &dispatchPartialCommitError{
-		CommittedRoutes: 50,
+		CommittedRoutes: make([]DispatchExecuteRoute, 50),
 		FailedChunk:     2,
 		TotalChunks:     3,
 		TotalRoutes:     120,

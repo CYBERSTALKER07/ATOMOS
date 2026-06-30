@@ -46,6 +46,50 @@ type consumerLagMetrics struct {
 	seconds map[string]float64
 }
 
+type CircuitBreaker struct {
+	mu          sync.Mutex
+	failures    int
+	threshold   int
+}
+
+func (cb *CircuitBreaker) RecordFailure() {
+	if cb == nil {
+		return
+	}
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	cb.failures++
+}
+
+func (cb *CircuitBreaker) RecordSuccess() {
+	if cb == nil {
+		return
+	}
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	if cb.failures > 0 {
+		cb.failures = 0
+	}
+}
+
+func (cb *CircuitBreaker) WaitIfTripped(ctx context.Context) error {
+	if cb == nil {
+		return nil
+	}
+	cb.mu.Lock()
+	failures := cb.failures
+	cb.mu.Unlock()
+
+	if failures >= cb.threshold {
+		slog.Warn("circuit breaker tripped, pausing fetches for 15s", "failures", failures)
+		select {
+		case <-time.After(15 * time.Second):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return nil
+}
 func newConsumerLagMetrics() *consumerLagMetrics {
 	return &consumerLagMetrics{seconds: make(map[string]float64)}
 }
@@ -60,6 +104,9 @@ func (m *consumerLagMetrics) observe(consumer string, msg kafka.Message) {
 		if lagSeconds < 0 {
 			lagSeconds = 0
 		}
+	}
+	if lagSeconds > 300 {
+		slog.Warn("consumer lag alert", "consumer", consumer, "topic", msg.Topic, "partition", msg.Partition, "lag_seconds", lagSeconds)
 	}
 	key := consumer + "\xff" + msg.Topic + "\xff" + strconv.Itoa(msg.Partition)
 	m.mu.Lock()
@@ -202,6 +249,7 @@ func main() {
 	defer freezeReader.Close()
 
 	frozen := newFreezeRegistry()
+
 	metrics := newConsumerLagMetrics()
 	workerHTTPPort := aiWorkerHTTPPort(os.Getenv)
 	var healthy atomic.Bool
@@ -219,6 +267,10 @@ func main() {
 
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(runtime.GOMAXPROCS(0) * 2)
+	g.Go(func() error {
+		frozen.RunCleanup(gCtx)
+		return nil
+	})
 
 	importRepo := supplier.NewImportRepository(spannerClient)
 	if importOpener, importOpenerErr := supplier.NewImportObjectOpenerFromEnv(ctx); importOpenerErr != nil {
@@ -240,8 +292,14 @@ func main() {
 	})
 	ready.Store(true)
 
+	cb := &CircuitBreaker{threshold: 5}
+
 	g.Go(func() error {
 		for {
+			if err := cb.WaitIfTripped(gCtx); err != nil {
+				return nil
+			}
+
 			m, err := reader.FetchMessage(gCtx)
 			if err != nil {
 				if gCtx.Err() != nil {
@@ -264,6 +322,9 @@ func main() {
 
 				if err := processMessage(gCtx, msg, spannerClient, frozen); err != nil {
 					slog.Error("failed to process message", "err", err, "topic", msg.Topic, "partition", msg.Partition, "offset", msg.Offset)
+					cb.RecordFailure()
+				} else {
+					cb.RecordSuccess()
 				}
 
 				if err := reader.CommitMessages(context.Background(), msg); err != nil {

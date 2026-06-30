@@ -93,21 +93,24 @@ func (r *inventoryImportRuntime) Run(ctx context.Context, metrics *consumerLagMe
 		}
 
 		importSem <- struct{}{}
-		processErr := r.repo.ProcessImportUploaded(ctx, r.opener, evt.SupplierID, evt.SessionID, evt.GCSPath)
-		<-importSem
+		go func(m kafka.Message, e events.InventoryImportUploadedEvent) {
+			defer func() { <-importSem }()
 
-		if processErr != nil {
-			r.logger.Error("inventory import processing failed",
-				"session_id", evt.SessionID,
-				"supplier_id", evt.SupplierID,
-				"gcs_path", evt.GCSPath,
-				"err", processErr,
-			)
-			continue
-		}
+			processErr := r.repo.ProcessImportUploaded(ctx, r.opener, e.SupplierID, e.SessionID, e.GCSPath)
+			if processErr != nil {
+				r.logger.Error("inventory import processing failed",
+					"session_id", e.SessionID,
+					"supplier_id", e.SupplierID,
+					"gcs_path", e.GCSPath,
+					"err", processErr,
+				)
+				// Retry mechanisms or DLQ should be handled by the repo or later. 
+				// We commit the message to avoid poison pills blocking the partition.
+			}
 
-		if err := r.reader.CommitMessages(ctx, msg); err != nil {
-			r.logger.Error("inventory import commit failed", "err", err, "partition", msg.Partition, "offset", msg.Offset)
-		}
+			if err := r.reader.CommitMessages(context.Background(), m); err != nil {
+				r.logger.Error("inventory import commit failed", "err", err, "partition", m.Partition, "offset", m.Offset)
+			}
+		}(msg, evt)
 	}
 }

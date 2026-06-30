@@ -82,6 +82,39 @@ func (h *Handler) HandleClientPolicy(w http.ResponseWriter, r *http.Request) {
 	h.writeJSON(w, http.StatusOK, resp)
 }
 
+// HandleClientConfig serves GET /v1/platform/client-config.
+func (h *Handler) HandleClientConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed")
+		return
+	}
+	role := r.URL.Query().Get("role")
+	platform := r.URL.Query().Get("platform")
+	version := r.URL.Query().Get("version")
+	if version == "" {
+		version = r.Header.Get("X-App-Version")
+	}
+
+	if claims, ok := auth.FromContext(r.Context()); ok {
+		if role == "" {
+			role = ClaimsRoleForPolicy(claims)
+		}
+	}
+
+	if role == "" || platform == "" {
+		h.writeError(w, http.StatusBadRequest, "role and platform are required")
+		return
+	}
+
+	resp, err := h.svc.GetClientConfig(r.Context(), role, platform, version)
+	if err != nil {
+		h.log.ErrorContext(r.Context(), "client config evaluate failed", "err", err)
+		h.writeError(w, http.StatusInternalServerError, "client_config_failed")
+		return
+	}
+	h.writeJSON(w, http.StatusOK, resp)
+}
+
 type upsertPolicyRequest struct {
 	Role               string `json:"role"`
 	Platform           string `json:"platform"`

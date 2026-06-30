@@ -21,6 +21,29 @@ func newFreezeRegistry() *freezeRegistry {
 	return &freezeRegistry{until: make(map[string]time.Time)}
 }
 
+func (r *freezeRegistry) RunCleanup(ctx context.Context) {
+	if r == nil {
+		return
+	}
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-ticker.C:
+			r.mu.Lock()
+			for k, exp := range r.until {
+				if now.After(exp) {
+					delete(r.until, k)
+				}
+			}
+			r.mu.Unlock()
+		}
+	}
+}
+
 func (r *freezeRegistry) isFrozen(entityType, entityID string) bool {
 	if r == nil {
 		return false

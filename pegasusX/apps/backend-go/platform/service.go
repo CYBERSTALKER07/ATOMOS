@@ -28,6 +28,15 @@ type ClientPolicyResponse struct {
 	Outdated           bool       `json:"outdated"`
 }
 
+// ClientConfigResponse is the wire DTO for GET /v1/platform/client-config.
+type ClientConfigResponse struct {
+	Role                 string `json:"role"`
+	Platform             string `json:"platform"`
+	SyncIntervalMs       int    `json:"sync_interval_ms"`
+	TelemetryIntervalMs  int    `json:"telemetry_interval_ms"`
+	OfflineModeEnabled   bool   `json:"offline_mode_enabled"`
+}
+
 // Service evaluates version policy and builds outdated WS payloads.
 type Service struct {
 	policies PolicyRepository
@@ -89,6 +98,44 @@ func (s *Service) Evaluate(ctx context.Context, role, platform, channel, clientV
 		}
 	}
 	return resp, nil
+}
+
+// GetClientConfig returns dynamic configuration for a client based on their role and platform.
+func (s *Service) GetClientConfig(ctx context.Context, role, platform, version string) (ClientConfigResponse, error) {
+	platform = normalizePlatform(platform)
+	role = normalizeRole(role)
+
+	// Defaults
+	syncInterval := 30000
+	telemetryInterval := 60000
+	offlineMode := true
+
+	// Adjust intervals based on role
+	switch role {
+	case "DRIVER":
+		// Drivers need frequent telemetry updates for live tracking
+		syncInterval = 15000
+		telemetryInterval = 5000
+	case "PAYLOAD", "WAREHOUSE", "FACTORY":
+		// Ops workers are mostly active when scanning/loading
+		syncInterval = 20000
+		telemetryInterval = 30000
+	case "RETAILER":
+		// Retailers need moderate updates
+		syncInterval = 30000
+		telemetryInterval = 60000
+		if platform == "desktop" {
+			syncInterval = 60000 // Less frequent for desktop
+		}
+	}
+
+	return ClientConfigResponse{
+		Role:                role,
+		Platform:            platform,
+		SyncIntervalMs:      syncInterval,
+		TelemetryIntervalMs: telemetryInterval,
+		OfflineModeEnabled:  offlineMode,
+	}, nil
 }
 
 // OutdatedWSPayload builds the SYSTEM_APP_OUTDATED envelope bytes for a connection.
