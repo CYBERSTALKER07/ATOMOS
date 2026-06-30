@@ -378,7 +378,7 @@ private struct TruckSidebar: View {
                 if isExpanded {
                     Text("VEHICLES")
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .foregroundStyle(TermTheme.secondaryLabel)
+                        .foregroundStyle(TermTheme.secondary)
                 }
                 Spacer(minLength: 0)
                 Button {
@@ -387,7 +387,7 @@ private struct TruckSidebar: View {
                     }
                 } label: {
                     Image(systemName: "sidebar.left")
-                        .foregroundStyle(TermTheme.secondaryLabel)
+                        .foregroundStyle(TermTheme.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -474,7 +474,7 @@ private struct TruckSidebar: View {
                     } label: {
                         Image(systemName: "truck.box.fill")
                             .font(.system(size: 20, weight: selected ? .bold : .regular))
-                            .foregroundStyle(selected ? TermTheme.accent : TermTheme.secondaryLabel)
+                            .foregroundStyle(selected ? TermTheme.accent : TermTheme.secondary)
                             .frame(width: 44, height: 44)
                             .background(
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)

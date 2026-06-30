@@ -21,7 +21,7 @@ struct PulseStrip: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(event.title)
                                     .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(TermTheme.primary)
+                                    .foregroundStyle(TermTheme.accent)
                                     .lineLimit(2)
                                 if let body = event.description, !body.isEmpty {
                                     Text(body)
