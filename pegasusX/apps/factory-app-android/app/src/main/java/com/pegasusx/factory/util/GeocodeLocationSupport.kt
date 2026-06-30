@@ -1,5 +1,6 @@
 package com.pegasusx.factory.util
 
+import com.pegasusx.factory.data.model.ForwardGeocodeRequest
 import com.pegasusx.factory.data.remote.GeocodeApi
 import com.pegasusx.factory.ui.components.AddressLocationValue
 
@@ -31,7 +32,7 @@ object GeocodeLocationSupport {
             }
         }
 
-        val byAddress = runCatching { geocodeApi.forward(address) }.getOrNull()
+        val byAddress = runCatching { geocodeApi.forward(ForwardGeocodeRequest(address)) }.getOrNull()
         if (byAddress != null && hasValidCoordinates(byAddress.lat, byAddress.lng)) {
             return AddressLocationValue(
                 address = byAddress.address.ifBlank { address },

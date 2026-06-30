@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+@testable import FactoryAppIOS
 
 /// Factory Models — JSON Decoding, Defaults, Edge Cases
 struct FactoryModelsTests {

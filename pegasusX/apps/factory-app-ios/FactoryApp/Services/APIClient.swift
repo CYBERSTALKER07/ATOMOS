@@ -60,20 +60,26 @@ final class APIClient: Sendable {
     }
 
     // MARK: - PATCH
-    func patch<B: Encodable, T: Decodable>(_ path: String, body: B) async throws -> T {
+    func patch<B: Encodable, T: Decodable>(_ path: String, body: B, idempotencyKey: String? = nil) async throws -> T {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "PATCH"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        }
         request.httpBody = try encoder.encode(body)
         await attachToken(&request)
         return try await execute(request)
     }
 
     // MARK: - POST (no response body)
-    func postVoid<B: Encodable>(_ path: String, body: B) async throws {
+    func postVoid<B: Encodable>(_ path: String, body: B, idempotencyKey: String? = nil) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        }
         request.httpBody = try encoder.encode(body)
         await attachToken(&request)
         let (_, response) = try await dataForRequestWithFallback(request)

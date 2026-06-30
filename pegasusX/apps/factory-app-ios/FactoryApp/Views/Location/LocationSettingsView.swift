@@ -13,9 +13,7 @@ struct LocationSettingsView: View {
       if loading {
         ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
       } else if let error {
-        ContentUnavailableView("Error", systemImage: "exclamationmark.triangle", description: Text(error)) {
-          Button("Retry") { load() }
-        }
+        FactoryErrorView(message: error, retry: { load() })
       } else {
         Form {
           if !factoryName.isEmpty {

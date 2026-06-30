@@ -140,7 +140,6 @@ import type {
   WarehouseSupplyRequest,
   WarehouseSupplyRequestsResponse,
   WarehouseTransferMutationResponse,
-  PulseResponse,
   WarehouseDispatchRunsResponse,
   WarehouseDispatchRun,
   WarehouseOpsBoardResponse,

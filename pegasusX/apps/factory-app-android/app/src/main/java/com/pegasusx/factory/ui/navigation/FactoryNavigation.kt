@@ -53,6 +53,7 @@ import com.pegasusx.factory.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.factory.ui.screens.override.PayloadOverrideScreen
 import com.pegasusx.factory.ui.screens.setup.LocationSetupScreen
 import com.pegasusx.factory.ui.screens.staff.StaffScreen
+import com.pegasusx.factory.ui.screens.staff.StaffDetailScreen
 import com.pegasusx.factory.ui.screens.supply.SupplyRequestsScreen
 import com.pegasusx.factory.ui.screens.transfer.CreateTransferScreen
 import com.pegasusx.factory.ui.screens.transfer.TransferDetailScreen

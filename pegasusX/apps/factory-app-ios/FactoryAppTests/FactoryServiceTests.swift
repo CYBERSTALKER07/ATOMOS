@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+@testable import FactoryAppIOS
 
 /// Factory Service — API endpoint path validation and request formatting
 struct FactoryServiceTests {

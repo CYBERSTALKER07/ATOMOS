@@ -15,7 +15,7 @@ struct StaffView: View {
                         message: "Fetching factory operators and shift status."
                     )
                 } else if let error {
-                    FactoryErrorView(message: error, retry: load)
+                    FactoryErrorView(message: error, retry: { load() })
                 } else if staff.isEmpty {
                     FactoryStateView(
                         kind: .empty,
@@ -69,7 +69,7 @@ struct StaffView: View {
             .navigationTitle("Staff")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise", action: load)
+                    Button("Refresh", systemImage: "arrow.clockwise", action: { load() })
                         .labelStyle(.iconOnly)
                 }
             }

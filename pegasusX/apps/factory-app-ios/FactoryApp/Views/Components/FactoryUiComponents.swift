@@ -54,6 +54,28 @@ private struct OptionalStaggerModifier: ViewModifier {
     }
 }
 
+extension View {
+    func staggeredAppear(index: Int) -> some View {
+        self.modifier(StaggeredAppearModifier(index: index))
+    }
+}
+
+private struct StaggeredAppearModifier: ViewModifier {
+    let index: Int
+    @State private var appeared = false
+    
+    func body(content: Content) -> some View {
+        content
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 20)
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.3).delay(Double(index) * 0.05)) {
+                    appeared = true
+                }
+            }
+    }
+}
+
 struct FactorySectionHeader: View {
     let title: String
     var subtitle: String? = nil
