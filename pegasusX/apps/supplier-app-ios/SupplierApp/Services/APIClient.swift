@@ -19,7 +19,7 @@ final class APIClient: Sendable {
     private let baseURL = URL(string: "https://api.pegasus.uz/")!
     #endif
 
-    private let session: URLSession
+    private var session: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
 
@@ -30,6 +30,12 @@ final class APIClient: Sendable {
         decoder = JSONDecoder()
         encoder = JSONEncoder()
     }
+
+#if DEBUG
+    func setTestSession(_ session: URLSession) {
+        self.session = session
+    }
+#endif
 
     func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
         var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!

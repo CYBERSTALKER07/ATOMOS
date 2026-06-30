@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.ImportSessionCreateRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.data.session.TokenHolder
+import com.pegasusx.supplier.data.remote.TokenHolder
 import com.pegasusx.supplier.ui.components.SupplierRuntimeBanner
 import com.pegasusx.supplier.ui.components.SupplierRuntimeTone
 import com.pegasusx.supplier.ui.theme.PegasusSpacing

@@ -189,7 +189,7 @@ final class CartManager {
 
     func maxQuantity(for item: CartItem, preview: CheckoutPreviewResponse?) -> Int {
         let sku = item.variant.id.isEmpty ? item.product.id : item.variant.id
-        let rejectPolicy = preview.defaultOutOfStockPolicy?.uppercased() != "ACCEPT_BACKORDER"
+        let rejectPolicy = preview?.defaultOutOfStockPolicy?.uppercased() != "ACCEPT_BACKORDER"
         if rejectPolicy && !item.product.acceptsBackorder, let preview {
             let caps = preview.orderableQuantities ?? preview.maxQuantities
             if let cap = caps?[sku] {

@@ -13,7 +13,7 @@ import com.pegasusx.supplier.data.model.*
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasusx.supplier.data.session.TokenHolder
+import com.pegasusx.supplier.data.remote.TokenHolder
 import com.pegasusx.supplier.util.SUPPLIER_RECONNECT_RECOVERY_HINT
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import com.pegasusx.supplier.ui.realtime.SupplierReconnectRecoveryEffect
@@ -230,7 +230,7 @@ fun OrgFleetScreen(
                     scope.launch {
                         memberActionId = member.userId
                         try {
-                            val revision = "${request.name}:${request.phone}:${request.supplierRole}"
+                            val revision = "${request.name}:${request.supplierRole}"
                             val resp = ops.updateOrgMember(
                                 member.userId,
                                 request,

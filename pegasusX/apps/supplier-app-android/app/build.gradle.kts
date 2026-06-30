@@ -181,6 +181,7 @@ dependencies {
     // Location (address picker)
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.google.accompanist:accompanist-permissions:0.36.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")

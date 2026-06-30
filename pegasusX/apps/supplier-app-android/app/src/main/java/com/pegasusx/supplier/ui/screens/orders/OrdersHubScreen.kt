@@ -107,6 +107,7 @@ fun OrdersHubScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OrdersQueueContent(
     modifier: Modifier = Modifier,

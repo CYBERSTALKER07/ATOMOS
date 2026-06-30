@@ -103,7 +103,7 @@ data class CartUiState(
 }
 
 private fun checkoutPaymentLabel(gateway: String, options: List<CheckoutPaymentOption>): String {
-    return options.find { it.gateway == gateway }?.label ?: when (gateway.uppercase()) {
+    return options.find { it.gateway == gateway }?.label ?: when (gateway.trim().uppercase()) {
         "GLOBAL_PAY" -> "GlobalPay"
         "ADYEN" -> "Adyen"
         "CASH" -> "Cash on Delivery"
@@ -604,10 +604,10 @@ init {
                     previewShortfall = preview.shortfall,
                     oosItems = preview.oosItems.ifEmpty { preview.rejectedSkus },
                     stockWarnings = preview.stockWarnings,
-                    preorderMinLeadDays = preview.preorderMinLeadDays.takeIf { days -> days > 0 } ?: 3,
-                    preorderMaxLeadDays = preview.preorderMaxLeadDays,
+                    preorderMinLeadDays = preview.preorderMinLeadDays?.takeIf { days -> days > 0 } ?: 3L,
+                    preorderMaxLeadDays = preview.preorderMaxLeadDays ?: 0L,
                     deliveryFeeMinor = preview.deliveryFeeMinor,
-                    deliveryDistanceKm = preview.deliveryDistanceKm,
+                    deliveryDistanceKm = preview.deliveryDistanceKm ?: 0.0,
                     orderLineMinQuantity = preview.orderLineMinQuantity,
                     orderLineMaxQuantity = preview.orderLineMaxQuantity,
                     previewLoading = false,

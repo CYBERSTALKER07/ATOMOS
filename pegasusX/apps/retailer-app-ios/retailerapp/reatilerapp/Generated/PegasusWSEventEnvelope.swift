@@ -24,6 +24,7 @@ enum TypeEnum: String {
     case driverLocationUpdated
     case driverReturnApproaching
     case factoryCreated
+    case factoryLocationUpdated
     case factorySupplyRequestUpdate
     case freezeLockAcquired
     case freezeLockReleased
@@ -56,6 +57,9 @@ enum TypeEnum: String {
     case preOrderCancelled
     case preOrderConfirmation
     case preOrderConfirmed
+    case preOrderDateAccepted
+    case preOrderDateProposed
+    case preOrderDateRejected
     case preOrderEdited
     case preOrderNotified
     case preOrderNudge
@@ -87,6 +91,7 @@ enum TypeEnum: String {
     case vehicleCreated
     case warehouseCreated
     case warehouseDispatchLockChanged
+    case warehouseLocationUpdated
     case warehouseSupplyRequestOpened
     case warehouseTransferCreated
     case warehouseTransferReceived

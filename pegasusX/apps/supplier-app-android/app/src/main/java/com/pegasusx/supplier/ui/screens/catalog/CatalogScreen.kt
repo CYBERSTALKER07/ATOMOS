@@ -123,6 +123,8 @@ fun CatalogScreen(
                         priceMinor = product.priceMinor,
                         currency = product.currency,
                         unit = product.unit,
+                        saleUnit = product.saleUnit,
+                        unitsPerCase = product.unitsPerCase,
                         unitVolumeVu = product.unitVolumeVu,
                         imageUrl = imageUrl,
                         barcode = product.barcode,

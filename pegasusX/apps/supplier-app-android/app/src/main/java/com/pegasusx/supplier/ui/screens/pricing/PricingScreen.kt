@@ -189,6 +189,8 @@ private fun ProductPricingDialog(
                                     priceMinor = priceMinor,
                                     currency = product.currency,
                                     unit = product.unit,
+                                    saleUnit = product.saleUnit,
+                                    unitsPerCase = product.unitsPerCase,
                                     unitVolumeVu = product.unitVolumeVu,
                                     imageUrl = product.imageUrl,
                                     barcode = product.barcode,

@@ -23,6 +23,7 @@ import com.pegasusx.retailer.data.model.ProductCategory
 import com.pegasusx.retailer.data.model.ProcurementOrderRequest
 import com.pegasusx.retailer.data.model.ProcurementOrderResponse
 import com.pegasusx.retailer.data.model.RegisterRequest
+import com.pegasusx.retailer.data.model.ResolvedLocationResponse
 import com.pegasusx.retailer.data.model.RetailerAnalytics
 import com.pegasusx.retailer.data.model.RetailerDetailedAnalytics
 import com.pegasusx.retailer.data.model.Supplier
