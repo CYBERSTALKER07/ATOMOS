@@ -53,10 +53,10 @@ export default function CartDrawer({
                   <ShoppingBag size={22} />
                 </div>
                 <div>
-                  <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                  <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
                     Staged Assets
                   </h2>
-                  <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                  <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                     {items.length} Nodes in Queue
                   </p>
                 </div>
@@ -97,7 +97,7 @@ export default function CartDrawer({
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col justify-between">
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className="md-typescale-title-small font-bold text-[var(--desk-text-primary)] line-clamp-1">
+                        <h4 className="md-typescale-title-small font-light text-[var(--desk-text-primary)] line-clamp-1">
                           {item.name}
                         </h4>
                         <button
@@ -118,7 +118,7 @@ export default function CartDrawer({
                           >
                             <Minus size={12} />
                           </button>
-                          <span className="md-typescale-label-small font-bold w-4 text-center tabular-nums">
+                          <span className="md-typescale-label-small font-light w-4 text-center tabular-nums">
                             {item.quantity}
                           </span>
                           <button
@@ -130,7 +130,7 @@ export default function CartDrawer({
                             <Plus size={12} />
                           </button>
                         </div>
-                        <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                        <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                           {(item.price * item.quantity).toLocaleString()}
                         </span>
                       </div>
@@ -153,17 +153,17 @@ export default function CartDrawer({
             {/* Footer */}
             <div className="p-8 border-t border-[var(--desk-border)] bg-[var(--desk-surface-subtle)]">
               <div className="space-y-2 mb-8">
-                <div className="flex justify-between md-typescale-label-small text-[var(--desk-text-tertiary)] uppercase font-bold tracking-widest">
+                <div className="flex justify-between md-typescale-label-small text-[var(--desk-text-tertiary)] uppercase font-light tracking-widest">
                   <span>Operational Subtotal</span>
                   <span className="text-[var(--desk-text-secondary)]">
                     {total.toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between items-end">
-                  <span className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                  <span className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
                     Total Settlement
                   </span>
-                  <span className="md-typescale-display-small font-bold text-[var(--desk-text-primary)] tabular-nums">
+                  <span className="md-typescale-display-small font-light text-[var(--desk-text-primary)] tabular-nums">
                     {total.toLocaleString()}{" "}
                     <small className="text-xs opacity-40 ml-0.5">UZS</small>
                   </span>
@@ -173,7 +173,7 @@ export default function CartDrawer({
               <Button
                 isDisabled={items.length === 0}
                 onPress={() => onCheckout()}
-                className="w-full h-14 rounded-2xl flex items-center justify-center gap-3 bg-[var(--desk-text-primary)] text-white font-bold shadow-xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+                className="w-full h-14 rounded-2xl flex items-center justify-center gap-3 bg-[var(--desk-text-primary)] text-white font-light shadow-xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
               >
                 <CreditCard size={20} />
                 Execute Procurement

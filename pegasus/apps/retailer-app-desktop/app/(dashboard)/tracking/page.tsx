@@ -312,7 +312,7 @@ export default function TrackingPage() {
     >
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
+          <h1 className="md-typescale-display-small font-light tracking-tight text-[var(--desk-text-primary)]">
             Telemetry Control
           </h1>
           <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
@@ -323,7 +323,7 @@ export default function TrackingPage() {
           variant="secondary"
           onPress={refreshAll}
           isDisabled={isRefreshing}
-          className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
+          className="h-10 px-5 rounded-xl font-light text-[var(--desk-text-secondary)]"
         >
           <RefreshCw
             size={16}
@@ -348,14 +348,14 @@ export default function TrackingPage() {
               size={16}
               className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
             />
-            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+            <span className="md-typescale-body-small font-light uppercase tracking-wide">
               {syncBanner.message}
             </span>
           </div>
           {syncBanner.kind !== "refreshing" && (
             <button
               onClick={refreshAll}
-              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-light uppercase tracking-wide hover:bg-current/10"
             >
               Retry
             </button>
@@ -446,7 +446,7 @@ export default function TrackingPage() {
               <button
                 key={s.id}
                 onClick={() => toggleSupplier(s.id)}
-                className={`px-5 py-2 rounded-full md-typescale-label-large font-bold transition-all ${
+                className={`px-5 py-2 rounded-full md-typescale-label-large font-light transition-all ${
                   active
                     ? "bg-[var(--desk-accent)] text-white shadow-[var(--shadow-sm)]"
                     : "bg-[var(--desk-surface)] text-[var(--desk-text-secondary)] border border-[var(--desk-border)] hover:bg-[var(--desk-surface-subtle)]"
@@ -483,10 +483,10 @@ export default function TrackingPage() {
                   className="text-[var(--desk-text-tertiary)] opacity-40"
                 />
               </div>
-              <p className="md-typescale-title-medium font-bold text-[var(--desk-text-secondary)]">
+              <p className="md-typescale-title-medium font-light text-[var(--desk-text-secondary)]">
                 {emptyStateTitle}
               </p>
-              <p className="max-w-md text-center md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase font-bold tracking-widest">
+              <p className="max-w-md text-center md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase font-light tracking-widest">
                 {emptyStateMessage}
               </p>
             </motion.div>
@@ -565,10 +565,10 @@ export default function TrackingPage() {
                     className={`w-3 h-3 rounded-full ${selectedOrder.is_approaching || selectedOrder.state === "ARRIVED" ? "bg-[var(--desk-success)]" : "bg-[var(--desk-accent)]"}`}
                   />
                   <div>
-                    <h3 className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                    <h3 className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                       {selectedOrder.supplier_name || "Unknown Supplier"}
                     </h3>
-                    <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                    <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                       ID: #{selectedOrder.order_id.slice(-8)}
                     </p>
                   </div>
@@ -599,10 +599,10 @@ export default function TrackingPage() {
 
               <div className="flex items-center justify-between pt-4 border-t border-[var(--desk-border)]">
                 <div>
-                  <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mb-0.5">
+                  <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest mb-0.5">
                     Asset Value
                   </p>
-                  <p className="md-typescale-title-medium font-bold text-[var(--desk-text-primary)] tabular-nums">
+                  <p className="md-typescale-title-medium font-light text-[var(--desk-text-primary)] tabular-nums">
                     {formatAmount(selectedOrder.total_amount)}{" "}
                     <small className="text-[10px] ml-0.5 opacity-60">UZS</small>
                   </p>

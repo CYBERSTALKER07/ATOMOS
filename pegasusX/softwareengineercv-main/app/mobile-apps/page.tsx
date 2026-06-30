@@ -139,7 +139,7 @@ export default function MobileAppsPage() {
         <div className="max-w-6xl mx-auto text-center">
           <h1
             ref={titleRef}
-            className="text-5xl md:text-7xl lg:text-8xl xl:text-9xl font-bold mb-8"
+            className="text-5xl md:text-7xl lg:text-8xl xl:text-9xl font-light mb-8"
           >
             Field Mobile Apps
           </h1>
@@ -184,7 +184,7 @@ export default function MobileAppsPage() {
 
       <section className="py-20 px-4 md:px-8 lg:px-12 bg-black">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-center mb-16">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light text-center mb-16">
             Why Pegasus Mobile?
           </h2>
           <div

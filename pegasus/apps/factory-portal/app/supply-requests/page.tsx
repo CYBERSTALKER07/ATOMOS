@@ -360,12 +360,12 @@ export default function SupplyRequestsPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ border: `1px solid ${PRIORITY_COLORS[request.priority]}`, color: PRIORITY_COLORS[request.priority] || 'inherit' }}>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-light uppercase tracking-wider" style={{ border: `1px solid ${PRIORITY_COLORS[request.priority]}`, color: PRIORITY_COLORS[request.priority] || 'inherit' }}>
                         {request.priority}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider" style={{ background: STATE_COLORS[request.state], color: 'white' }}>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-light uppercase tracking-wider" style={{ background: STATE_COLORS[request.state], color: 'white' }}>
                         {request.state.replace(/_/g, ' ')}
                       </span>
                     </td>

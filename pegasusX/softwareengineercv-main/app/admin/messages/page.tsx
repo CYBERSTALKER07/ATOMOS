@@ -152,7 +152,7 @@ export default function MessagesPage() {
               <span className="text-2xl">💬</span>
             </div>
             <div className="flex-1">
-              <h4 className="font-bold text-lg mb-1 text-[#A9EBF9]">New Message!</h4>
+              <h4 className="font-light text-lg mb-1 text-[#A9EBF9]">New Message!</h4>
               <p className="text-white font-semibold">{notification.name}</p>
               <p className="text-gray-400 text-sm truncate">{notification.subject}</p>
               <button
@@ -184,7 +184,7 @@ export default function MessagesPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-5xl md:text-6xl font-bold mb-4">
+              <h1 className="text-5xl md:text-6xl font-light mb-4">
                 Customer Messages
               </h1>
               <div className="w-24 h-1 bg-white mb-4" />
@@ -195,7 +195,7 @@ export default function MessagesPage() {
             
             {unreadCount > 0 && (
               <div className="bg-[#A9EBF9] text-black px-6 py-3 rounded-2xl border-2 border-[#A9EBF9]">
-                <span className="text-2xl font-bold">{unreadCount}</span>
+                <span className="text-2xl font-light">{unreadCount}</span>
                 <span className="ml-2 text-sm">Unread</span>
               </div>
             )}
@@ -209,7 +209,7 @@ export default function MessagesPage() {
           {messages.length === 0 ? (
             <div className="border-2 border-white rounded-2xl p-12 text-center">
               <div className="text-6xl mb-4">📬</div>
-              <h3 className="text-2xl font-bold mb-2">No Messages Yet</h3>
+              <h3 className="text-2xl font-light mb-2">No Messages Yet</h3>
               <p className="text-gray-400">
                 Customer messages will appear here when they contact you
               </p>
@@ -232,9 +232,9 @@ export default function MessagesPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-2xl font-bold">{msg.name}</h3>
+                        <h3 className="text-2xl font-light">{msg.name}</h3>
                         {!msg.read && (
-                          <span className="bg-[#A9EBF9] text-black px-3 py-1 rounded-lg text-xs font-bold">
+                          <span className="bg-[#A9EBF9] text-black px-3 py-1 rounded-lg text-xs font-light">
                             NEW
                           </span>
                         )}
@@ -260,7 +260,7 @@ export default function MessagesPage() {
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
           <div className="modal-content bg-[#0D0D0D] border-2 border-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
-              <h2 className="text-3xl font-bold">Message Details</h2>
+              <h2 className="text-3xl font-light">Message Details</h2>
               <button
                 onClick={closeModal}
                 className="text-white hover:text-[#FE5934] transition-colors text-2xl"
@@ -272,14 +272,14 @@ export default function MessagesPage() {
             <div className="space-y-6">
               <div>
                 <label className="text-sm text-gray-400 uppercase tracking-wider">From</label>
-                <p className="text-xl font-bold mt-1">{selectedMsg.name}</p>
+                <p className="text-xl font-light mt-1">{selectedMsg.name}</p>
               </div>
 
               <div>
                 <label className="text-sm text-gray-400 uppercase tracking-wider">Email</label>
                 <a 
                   href={`mailto:${selectedMsg.email}`}
-                  className="text-xl font-bold mt-1 block text-[#A9EBF9] hover:text-white transition-colors"
+                  className="text-xl font-light mt-1 block text-[#A9EBF9] hover:text-white transition-colors"
                 >
                   {selectedMsg.email}
                 </a>
@@ -287,7 +287,7 @@ export default function MessagesPage() {
 
               <div>
                 <label className="text-sm text-gray-400 uppercase tracking-wider">Subject</label>
-                <p className="text-xl font-bold mt-1">{selectedMsg.subject}</p>
+                <p className="text-xl font-light mt-1">{selectedMsg.subject}</p>
               </div>
 
               <div>

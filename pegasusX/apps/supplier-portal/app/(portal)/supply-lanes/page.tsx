@@ -40,7 +40,7 @@ export default function SupplyLanesPage() {
               <div className="p-5">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="md-typescale-title-large font-bold group-hover:text-[var(--color-md-primary)] transition-colors">
+                    <h3 className="md-typescale-title-large font-light group-hover:text-[var(--color-md-primary)] transition-colors">
                       {lane.name}
                     </h3>
                     <div className="flex items-center gap-2 mt-1 text-[var(--color-md-outline)] text-sm">

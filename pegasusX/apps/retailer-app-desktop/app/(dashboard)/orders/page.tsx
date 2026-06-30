@@ -560,7 +560,7 @@ export default function OrdersPage() {
           <button
             type="button"
             onClick={() => router.push("/catalog")}
-            className="portal-btn portal-btn--primary h-11 px-6 rounded-xl font-bold shadow-[var(--shadow-sm)]"
+            className="portal-btn portal-btn--primary h-11 px-6 rounded-xl font-light shadow-[var(--shadow-sm)]"
           >
             <PackageOpen size={18} className="mr-2" /> New Order
           </button>
@@ -649,7 +649,7 @@ export default function OrdersPage() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-5 py-2 rounded-full md-typescale-label-large font-bold transition-all ${
+            className={`px-5 py-2 rounded-full md-typescale-label-large font-light transition-all ${
               activeTab === tab
                 ? "bg-[var(--desk-text-primary)] text-white shadow-[var(--shadow-sm)]"
                 : "text-[var(--desk-text-secondary)] hover:bg-[var(--desk-surface-subtle)]"
@@ -685,14 +685,14 @@ export default function OrdersPage() {
               size={16}
               className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
             />
-            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+            <span className="md-typescale-body-small font-light uppercase tracking-wide">
               {syncBanner.message}
             </span>
           </div>
           {syncBanner.kind !== "refreshing" && (
             <button
               onClick={refreshAll}
-              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-light uppercase tracking-wide hover:bg-current/10"
             >
               Retry
             </button>
@@ -748,11 +748,11 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                        <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                           #{order.order_id.slice(-8)}
                         </span>
                         <span
-                          className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md ${c.color === "success" ? "bg-green-100 text-green-700" : c.color === "warning" ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-700"}`}
+                          className={`text-[10px] font-light uppercase tracking-widest px-2 py-0.5 rounded-md ${c.color === "success" ? "bg-green-100 text-green-700" : c.color === "warning" ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-700"}`}
                         >
                           {c.label}
                         </span>
@@ -768,7 +768,7 @@ export default function OrdersPage() {
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                      <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                         {order.amount.toLocaleString()}
                       </p>
                       <ArrowUpRight
@@ -795,7 +795,7 @@ export default function OrdersPage() {
               <div className="flex items-start justify-between mb-8">
                 <div>
                   <div className="flex items-center gap-3 mb-2 text-[var(--desk-text-tertiary)]">
-                    <span className="md-typescale-label-small font-bold uppercase tracking-[0.2em]">
+                    <span className="md-typescale-label-small font-light uppercase tracking-[0.2em]">
                       {detail.state.replace("_", " ")}
                     </span>
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--desk-border-strong)]" />
@@ -803,7 +803,7 @@ export default function OrdersPage() {
                       {detail.order_id}
                     </span>
                   </div>
-                  <h2 className="md-typescale-display-small font-bold text-[var(--desk-text-primary)]">
+                  <h2 className="md-typescale-display-small font-light text-[var(--desk-text-primary)]">
                     Order Details
                   </h2>
                 </div>
@@ -823,7 +823,7 @@ export default function OrdersPage() {
                   </span>
                   <div className="flex items-center gap-3">
                     <Truck size={20} className="text-[var(--desk-accent)]" />
-                    <span className="md-typescale-title-medium font-bold text-[var(--desk-text-primary)]">
+                    <span className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">
                       {detail.route_id
                         ? detail.route_id.slice(-8)
                         : "Pending Assignment"}
@@ -835,7 +835,7 @@ export default function OrdersPage() {
                     Settlement Amount
                   </span>
                   <div className="flex items-center justify-between">
-                    <span className="md-typescale-display-small font-bold tabular-nums">
+                    <span className="md-typescale-display-small font-light tabular-nums">
                       {detail.amount.toLocaleString()}
                     </span>
                     <CheckCircle2 size={24} className="opacity-40" />
@@ -849,7 +849,7 @@ export default function OrdersPage() {
                     type="button"
                     disabled={aiActionPending}
                     onClick={() => void handleRejectAiOrder(detail.order_id)}
-                    className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-bold"
+                    className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-light"
                   >
                     Reject Suggestion
                   </button>
@@ -857,7 +857,7 @@ export default function OrdersPage() {
                     type="button"
                     disabled={aiActionPending}
                     onClick={() => void handleConfirmAiOrder(detail.order_id)}
-                    className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-bold"
+                    className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-light"
                   >
                     {aiActionPending ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -891,7 +891,7 @@ export default function OrdersPage() {
                       type="button"
                       disabled={preorderActionPending}
                       onClick={() => detail && void handleRejectDeliveryProposal(detail.order_id)}
-                      className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-bold"
+                      className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-light"
                     >
                       Reject Proposal
                     </button>
@@ -899,7 +899,7 @@ export default function OrdersPage() {
                       type="button"
                       disabled={preorderActionPending}
                       onClick={() => detail && void handleAcceptDeliveryProposal(detail.order_id)}
-                      className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-bold"
+                      className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-light"
                     >
                       {preorderActionPending ? (
                         <Loader2 size={16} className="animate-spin" />
@@ -917,7 +917,7 @@ export default function OrdersPage() {
                     type="button"
                     disabled={preorderActionPending}
                     onClick={() => detail && void handleEditPreorder(detail)}
-                    className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-bold"
+                    className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-light"
                   >
                     Edit Preorder
                   </button>
@@ -927,7 +927,7 @@ export default function OrdersPage() {
                     onClick={() =>
                       detail && void handleConfirmPreorder(detail.order_id)
                     }
-                    className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-bold"
+                    className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-light"
                   >
                     {preorderActionPending ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -944,7 +944,7 @@ export default function OrdersPage() {
                     type="button"
                     disabled={cancelling}
                     onClick={() => void handleCancelOrder(detail.order_id, detail.state)}
-                    className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-bold text-red-700 border border-red-200"
+                    className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-light text-red-700 border border-red-200"
                   >
                     {cancelling ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -994,7 +994,7 @@ export default function OrdersPage() {
                           />
                         </div>
                         <div>
-                          <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)]">
+                          <p className="md-typescale-body-medium font-light text-[var(--desk-text-primary)]">
                             {item.sku_name || "Generic SKU"}
                           </p>
                           <p className="md-typescale-body-small text-[var(--desk-text-tertiary)]">
@@ -1002,7 +1002,7 @@ export default function OrdersPage() {
                           </p>
                         </div>
                       </div>
-                      <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                      <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                         {(item.unit_price * item.quantity).toLocaleString()}
                       </span>
                     </div>

@@ -58,7 +58,7 @@ export const COMPONENT_DOCS: ComponentDocMeta[] = [
     ],
     motionSpec: "Scroll reveal: opacity + y 8px, medium2 duration.",
     usedIn: [{ role: "Supplier", surface: "Dashboard bento grid" }],
-    snippet: `<div className="desk-card p-4">\n  <p className="text-2xl font-bold">42</p>\n</div>`,
+    snippet: `<div className="desk-card p-4">\n  <p className="text-2xl font-light">42</p>\n</div>`,
   },
   {
     slug: "page-chrome",

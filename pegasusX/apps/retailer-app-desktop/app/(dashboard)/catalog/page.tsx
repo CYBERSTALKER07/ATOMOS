@@ -316,7 +316,7 @@ export default function CatalogPage() {
               type="button"
               disabled={isRefreshing}
               onClick={refreshAll}
-              className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-bold"
+              className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-light"
             >
               <RefreshCw
                 size={16}
@@ -327,7 +327,7 @@ export default function CatalogPage() {
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
-              className="portal-btn portal-btn--primary h-11 px-6 rounded-xl font-bold shadow-[var(--shadow-sm)]"
+              className="portal-btn portal-btn--primary h-11 px-6 rounded-xl font-light shadow-[var(--shadow-sm)]"
             >
               <ShoppingCart size={18} className="mr-2" />
               Cart ({cartQuantity})
@@ -351,14 +351,14 @@ export default function CatalogPage() {
               size={16}
               className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
             />
-            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+            <span className="md-typescale-body-small font-light uppercase tracking-wide">
               {syncBanner.message}
             </span>
           </div>
           {syncBanner.kind !== "refreshing" && (
             <button
               onClick={refreshAll}
-              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-light uppercase tracking-wide hover:bg-current/10"
             >
               Retry
             </button>
@@ -477,7 +477,7 @@ export default function CatalogPage() {
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
-              className={`px-5 py-2 rounded-full md-typescale-label-large font-bold transition-all ${
+              className={`px-5 py-2 rounded-full md-typescale-label-large font-light transition-all ${
                 activeCategory === category
                   ? "bg-[var(--desk-accent)] text-white shadow-[var(--shadow-sm)] scale-105"
                   : "bg-[var(--desk-surface)] text-[var(--desk-text-secondary)] border border-[var(--desk-border)] hover:bg-[var(--desk-surface-subtle)]"
@@ -512,7 +512,7 @@ export default function CatalogPage() {
                     key={supplier.id}
                     type="button"
                     onClick={() => setActiveSupplier(supplier.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-light uppercase tracking-wide border ${
                       activeSupplier === supplier.id
                         ? "border-[var(--desk-accent)] bg-[var(--desk-accent-soft)] text-[var(--desk-accent)]"
                         : "border-[var(--desk-border)] text-[var(--desk-text-secondary)]"
@@ -530,7 +530,7 @@ export default function CatalogPage() {
           <div className="lg:hidden flex flex-wrap items-center gap-2">
             <button
               onClick={() => setActiveSupplier("")}
-              className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all ${
+              className={`px-4 py-1.5 rounded-full text-[11px] font-light uppercase tracking-wide transition-all ${
                 activeSupplier === ""
                   ? "bg-[var(--desk-accent-soft)] text-[var(--desk-accent)]"
                   : "bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[var(--desk-text-secondary)]"
@@ -542,7 +542,7 @@ export default function CatalogPage() {
               <button
                 key={supplier.id}
                 onClick={() => setActiveSupplier(supplier.id)}
-                className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all ${
+                className={`px-4 py-1.5 rounded-full text-[11px] font-light uppercase tracking-wide transition-all ${
                   activeSupplier === supplier.id
                     ? "bg-[var(--desk-accent-soft)] text-[var(--desk-accent)]"
                     : "bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[var(--desk-text-secondary)]"
@@ -566,7 +566,7 @@ export default function CatalogPage() {
                 onClick={() => setActiveSupplier("")}
                 className={`flex items-center justify-between w-full h-10 px-3 rounded-lg transition-all ${
                   activeSupplier === ""
-                    ? "bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] font-bold"
+                    ? "bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] font-light"
                     : "text-[var(--desk-text-secondary)] hover:bg-[var(--desk-surface-subtle)]"
                 }`}
               >
@@ -579,7 +579,7 @@ export default function CatalogPage() {
                   onClick={() => setActiveSupplier(supplier.id)}
                   className={`flex items-center justify-between w-full h-10 px-3 rounded-lg transition-all ${
                     activeSupplier === supplier.id
-                      ? "bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] font-bold"
+                      ? "bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] font-light"
                       : "text-[var(--desk-text-secondary)] hover:bg-[var(--desk-surface-subtle)]"
                   }`}
                 >
@@ -675,7 +675,7 @@ export default function CatalogPage() {
 
                     <div className="p-5 flex flex-col gap-4">
                       <div className="space-y-1">
-                        <h3 className="md-typescale-title-medium font-bold text-[var(--desk-text-primary)] line-clamp-1 group-hover:text-[var(--desk-accent)] transition-colors">
+                        <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)] line-clamp-1 group-hover:text-[var(--desk-accent)] transition-colors">
                           {product.name}
                         </h3>
                         <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase tracking-widest">
@@ -693,7 +693,7 @@ export default function CatalogPage() {
                               <span className="md-typescale-label-small tabular-nums text-[var(--desk-text-tertiary)] line-through">
                                 {productListPrice(product).toLocaleString()}
                               </span>
-                              <span className="md-typescale-title-medium font-bold tabular-nums text-[var(--desk-accent)]">
+                              <span className="md-typescale-title-medium font-light tabular-nums text-[var(--desk-accent)]">
                                 {productDisplayPrice(product).toLocaleString()}{" "}
                                 <small className="text-[var(--desk-text-tertiary)] ml-0.5">
                                   UZS
@@ -701,7 +701,7 @@ export default function CatalogPage() {
                               </span>
                             </div>
                           ) : (
-                            <span className="md-typescale-title-medium font-bold tabular-nums text-[var(--desk-text-primary)]">
+                            <span className="md-typescale-title-medium font-light tabular-nums text-[var(--desk-text-primary)]">
                               {productDisplayPrice(product).toLocaleString()}{" "}
                               <small className="text-[var(--desk-text-tertiary)] ml-0.5">
                                 UZS
@@ -711,7 +711,7 @@ export default function CatalogPage() {
                         </div>
                         <button
                           type="button"
-                          className="portal-btn portal-btn--primary rounded-lg h-9 px-4 font-bold shadow-[var(--shadow-sm)] transition-all active:scale-95"
+                          className="portal-btn portal-btn--primary rounded-lg h-9 px-4 font-light shadow-[var(--shadow-sm)] transition-all active:scale-95"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (!blocked) addToCart(product);
@@ -764,13 +764,13 @@ function StockBadge({
   if (stock !== undefined && stock <= 0) {
     if (acceptsBackorder) {
       return (
-        <span className="px-2.5 py-1 rounded-lg bg-[var(--desk-warning)] text-white md-typescale-label-small font-bold uppercase tracking-widest shadow-[var(--shadow-sm)]">
+        <span className="px-2.5 py-1 rounded-lg bg-[var(--desk-warning)] text-white md-typescale-label-small font-light uppercase tracking-widest shadow-[var(--shadow-sm)]">
           Backorder
         </span>
       );
     }
     return (
-      <span className="px-2.5 py-1 rounded-lg bg-[var(--desk-danger)] text-white md-typescale-label-small font-bold uppercase tracking-widest shadow-[var(--shadow-sm)]">
+      <span className="px-2.5 py-1 rounded-lg bg-[var(--desk-danger)] text-white md-typescale-label-small font-light uppercase tracking-widest shadow-[var(--shadow-sm)]">
         Empty
       </span>
     );
@@ -778,14 +778,14 @@ function StockBadge({
 
   if (stock !== undefined && stock <= 5) {
     return (
-      <span className="px-2.5 py-1 rounded-lg bg-[var(--desk-warning)] text-white md-typescale-label-small font-bold uppercase tracking-widest shadow-[var(--shadow-sm)]">
+      <span className="px-2.5 py-1 rounded-lg bg-[var(--desk-warning)] text-white md-typescale-label-small font-light uppercase tracking-widest shadow-[var(--shadow-sm)]">
         Critical
       </span>
     );
   }
 
   return (
-    <span className="px-2.5 py-1 rounded-lg bg-[var(--desk-success)] text-white md-typescale-label-small font-bold uppercase tracking-widest shadow-[var(--shadow-sm)]">
+    <span className="px-2.5 py-1 rounded-lg bg-[var(--desk-success)] text-white md-typescale-label-small font-light uppercase tracking-widest shadow-[var(--shadow-sm)]">
       Stable
     </span>
   );

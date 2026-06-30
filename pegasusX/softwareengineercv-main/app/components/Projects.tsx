@@ -105,7 +105,7 @@ export default function Projects() {
     <section ref={sectionRef} className="py-20 bg-black text-white" id="projects">
       <div className="container mx-auto px-4">
         <div ref={titleRef} className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-white">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-4 text-white">
             Platform Modules
           </h2>
           <div className="w-20 h-1 bg-white mx-auto mb-6" />

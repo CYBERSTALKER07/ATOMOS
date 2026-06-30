@@ -55,7 +55,7 @@ const CompanyCard = ({ company }: { company: Company }) => (
             </span>
           </div>
           <div>
-            <h3 className="text-2xl font-bold">{company.name}</h3>
+            <h3 className="text-2xl font-light">{company.name}</h3>
             <p className="text-sm text-gray-600 group-hover:text-white transition-colors duration-300">{company.role}</p>
           </div>
         </div>
@@ -66,7 +66,7 @@ const CompanyCard = ({ company }: { company: Company }) => (
       </p>
       
       <div className="flex items-center justify-between gap-2">
-        <span className="px-4 py-2 bg-black text-white group-hover:bg-white group-hover:text-black text-xs font-bold rounded-xl border-2 border-black transition-all duration-300">
+        <span className="px-4 py-2 bg-black text-white group-hover:bg-white group-hover:text-black text-xs font-light rounded-xl border-2 border-black transition-all duration-300">
           {company.badge}
         </span>
         <span className="text-xs text-gray-500 group-hover:text-white transition-colors duration-300">
@@ -287,7 +287,7 @@ export default function Companies() {
     >
       <div className="container mx-auto px-4 mb-12">
         <div ref={titleRef} className="text-center max-w-3xl mx-auto">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-6 text-white">
             Six Roles, One Network
           </h2>
           <p className="text-lg md:text-xl text-gray-300 leading-relaxed">

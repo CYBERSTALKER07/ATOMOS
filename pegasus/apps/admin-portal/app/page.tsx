@@ -535,7 +535,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <p className="md-typescale-label-medium text-muted mb-1">Completed</p>
-              <CountUp value={kpi.completed.toString()} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
+              <CountUp value={kpi.completed.toString()} className="md-typescale-display-small font-light tabular-nums tracking-tighter" />
             </div>
           </div>
         </BentoCard>
@@ -551,7 +551,7 @@ export default function AdminDashboard() {
             <div>
               <p className="md-typescale-label-medium text-muted mb-1">In Transit</p>
               <div className="flex items-baseline gap-2">
-                <CountUp value={kpi.inTransit.toString()} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
+                <CountUp value={kpi.inTransit.toString()} className="md-typescale-display-small font-light tabular-nums tracking-tighter" />
                 <span className="md-typescale-label-small text-muted">{kpi.pending} pending</span>
               </div>
             </div>
@@ -569,7 +569,7 @@ export default function AdminDashboard() {
             <div>
               <p className="md-typescale-label-medium text-muted mb-1">Revenue</p>
               <div className="flex items-baseline gap-1">
-                <CountUp value={kpi.totalRev.toString()} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
+                <CountUp value={kpi.totalRev.toString()} className="md-typescale-display-small font-light tabular-nums tracking-tighter" />
                 <span className="md-typescale-label-small text-muted">Total</span>
               </div>
             </div>
@@ -927,7 +927,7 @@ export default function AdminDashboard() {
                 <tbody>
                   {printManifest.loading_manifest.map((entry) => (
                     <tr key={entry.load_sequence}>
-                      <td className="font-mono font-bold">{entry.load_sequence}</td>
+                      <td className="font-mono font-light">{entry.load_sequence}</td>
                       <td>{entry.retailer_name}</td>
                       <td className="font-mono text-xs">{entry.order_id}</td>
                       <td className="font-mono text-xs">{entry.volume_vu.toFixed(2)}</td>

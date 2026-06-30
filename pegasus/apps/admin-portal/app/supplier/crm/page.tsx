@@ -218,7 +218,7 @@ export default function SupplierCRM() {
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
                   <div
-                    className="w-14 h-14 flex items-center justify-center text-lg font-bold shrink-0"
+                    className="w-14 h-14 flex items-center justify-center text-lg font-light shrink-0"
                     style={{
                       background: 'var(--surface)',
                       color: 'var(--muted)',

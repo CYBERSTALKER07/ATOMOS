@@ -1191,7 +1191,7 @@ export default function DispatchPage() {
                         {/* Truck badge — dropdown to reassign */}
                         <div className="relative inline-block group">
                           <div
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-light cursor-pointer"
                             style={{ background: color.bg, color: color.text }}
                             title={`Assigned to ${assignedDriverName} — click to change`}
                           >
@@ -1407,7 +1407,7 @@ export default function DispatchPage() {
                     >
                       {/* Rank */}
                       <div
-                        className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
+                        className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-light"
                         style={{
                           background: isBest ? 'var(--color-md-primary)' : 'var(--color-md-surface-container)',
                           color: isBest ? 'var(--color-md-on-primary)' : 'var(--color-md-on-surface-variant)',

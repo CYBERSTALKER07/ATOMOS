@@ -30,12 +30,18 @@ const fragmentShader = `
 varying vec2 vUv;
 uniform float mouse;
 uniform float uTime;
+uniform float uCleanSample;
 uniform sampler2D uTexture;
 
 void main() {
-    float time = uTime;
     vec2 pos = vUv;
-    
+
+    if (uCleanSample > 0.5) {
+        gl_FragColor = texture2D(uTexture, pos);
+        return;
+    }
+
+    float time = uTime;
     float move = sin(time + mouse) * 0.01;
     float r = texture2D(uTexture, pos + cos(time * 2. - time + pos.x) * .01).r;
     float g = texture2D(uTexture, pos + tan(time * .5 + pos.x - time) * .01).g;
@@ -56,6 +62,7 @@ interface AsciiFilterOptions {
   fontFamily?: string;
   charset?: string;
   invert?: boolean;
+  cleanMode?: boolean;
 }
 
 class AsciiFilter {
@@ -66,6 +73,7 @@ class AsciiFilter {
   context: CanvasRenderingContext2D | null;
   deg: number;
   invert: boolean;
+  cleanMode: boolean;
   fontSize: number;
   fontFamily: string;
   charset: string;
@@ -76,8 +84,9 @@ class AsciiFilter {
   cols: number = 0;
   rows: number = 0;
 
-  constructor(renderer: THREE.WebGLRenderer, { fontSize, fontFamily, charset, invert }: AsciiFilterOptions = {}) {
+  constructor(renderer: THREE.WebGLRenderer, { fontSize, fontFamily, charset, invert, cleanMode }: AsciiFilterOptions = {}) {
     this.renderer = renderer;
+    this.cleanMode = cleanMode ?? false;
     this.domElement = document.createElement('div');
     this.domElement.style.position = 'absolute';
     this.domElement.style.top = '0';
@@ -96,11 +105,18 @@ class AsciiFilter {
     this.invert = invert ?? true;
     this.fontSize = fontSize ?? 12;
     this.fontFamily = fontFamily ?? "'Courier New', monospace";
-    this.charset = charset ?? ' .\'`^",:;Il!i~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$';
+    this.charset =
+      charset ??
+      (this.cleanMode
+        ? ' .:-=+*#%@'
+        : ' .\'`^",:;Il!i~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$');
 
     if (this.context) {
       this.context.imageSmoothingEnabled = false;
-      this.context.imageSmoothingEnabled = false;
+    }
+
+    if (this.cleanMode) {
+      this.canvas.style.display = 'none';
     }
 
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -137,8 +153,17 @@ class AsciiFilter {
       this.pre.style.top = '50%';
       this.pre.style.transform = 'translate(-50%, -50%)';
       this.pre.style.zIndex = '9';
-      this.pre.style.backgroundAttachment = 'fixed';
-      this.pre.style.mixBlendMode = 'difference';
+      if (this.cleanMode) {
+        this.pre.style.color = '#ffffff';
+        this.pre.style.mixBlendMode = 'normal';
+        this.pre.style.backgroundImage = 'none';
+        this.pre.style.webkitTextFillColor = '#ffffff';
+        this.pre.style.backgroundClip = 'border-box';
+        this.pre.style.webkitBackgroundClip = 'border-box';
+      } else {
+        this.pre.style.backgroundAttachment = 'fixed';
+        this.pre.style.mixBlendMode = 'difference';
+      }
     }
   }
 
@@ -154,7 +179,9 @@ class AsciiFilter {
       }
 
       this.asciify(this.context, w, h);
-      this.hue();
+      if (!this.cleanMode) {
+        this.hue();
+      }
     }
   }
 
@@ -191,6 +218,12 @@ class AsciiFilter {
           }
 
           const gray = (0.3 * r + 0.6 * g + 0.1 * b) / 255;
+
+          if (this.cleanMode && gray < 0.14) {
+            str += ' ';
+            continue;
+          }
+
           let idx = Math.floor((1 - gray) * (this.charset.length - 1));
           if (this.invert) idx = this.charset.length - idx - 1;
           str += this.charset[idx];
@@ -271,8 +304,64 @@ class CanvasTxt {
   }
 }
 
+class ImageCanvas {
+  canvas: HTMLCanvasElement;
+  context: CanvasRenderingContext2D | null;
+  private image: HTMLImageElement;
+  private ready = false;
+
+  constructor(src: string) {
+    this.canvas = document.createElement('canvas');
+    this.context = this.canvas.getContext('2d');
+    this.image = new Image();
+    this.image.crossOrigin = 'anonymous';
+    this.image.src = src;
+  }
+
+  waitForLoad(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const finish = () => {
+        this.canvas.width = this.image.naturalWidth;
+        this.canvas.height = this.image.naturalHeight;
+        this.ready = true;
+        this.render();
+        resolve();
+      };
+
+      if (this.image.complete && this.image.naturalWidth > 0) {
+        finish();
+        return;
+      }
+
+      this.image.onload = finish;
+      this.image.onerror = () => reject(new Error('Failed to load ASCII image source'));
+    });
+  }
+
+  render() {
+    if (!this.context || !this.ready) return;
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.context.drawImage(this.image, 0, 0);
+  }
+
+  get width() {
+    return this.canvas.width;
+  }
+
+  get height() {
+    return this.canvas.height;
+  }
+
+  get texture() {
+    return this.canvas;
+  }
+}
+
+type TextureCanvasSource = CanvasTxt | ImageCanvas;
+
 interface CanvAsciiOptions {
   text: string;
+  imageSrc?: string;
   asciiFontSize: number;
   textFontSize: number;
   textColor: string;
@@ -282,6 +371,7 @@ interface CanvAsciiOptions {
 
 class CanvAscii {
   textString: string;
+  imageSrc?: string;
   asciiFontSize: number;
   textFontSize: number;
   textColor: string;
@@ -293,7 +383,7 @@ class CanvAscii {
   camera: THREE.PerspectiveCamera;
   scene: THREE.Scene;
   mouse: { x: number; y: number };
-  textCanvas!: CanvasTxt;
+  textCanvas!: TextureCanvasSource;
   texture!: THREE.CanvasTexture;
   geometry!: THREE.PlaneGeometry;
   material!: THREE.ShaderMaterial;
@@ -304,12 +394,13 @@ class CanvAscii {
   animationFrameId: number = 0;
 
   constructor(
-    { text, asciiFontSize, textFontSize, textColor, planeBaseHeight, enableWaves }: CanvAsciiOptions,
+    { text, imageSrc, asciiFontSize, textFontSize, textColor, planeBaseHeight, enableWaves }: CanvAsciiOptions,
     containerElem: HTMLElement,
     width: number,
     height: number
   ) {
     this.textString = text;
+    this.imageSrc = imageSrc;
     this.asciiFontSize = asciiFontSize;
     this.textFontSize = textFontSize;
     this.textColor = textColor;
@@ -332,18 +423,25 @@ class CanvAscii {
   }
 
   setMesh() {
-    this.textCanvas = new CanvasTxt(this.textString, {
-      fontSize: this.textFontSize,
-      fontFamily: 'IBM Plex Mono',
-      color: this.textColor
-    });
-    this.textCanvas.resize();
-    this.textCanvas.render();
+    if (this.imageSrc) {
+      this.textCanvas = new ImageCanvas(this.imageSrc);
+    } else {
+      this.textCanvas = new CanvasTxt(this.textString, {
+        fontSize: this.textFontSize,
+        fontFamily: 'IBM Plex Mono',
+        color: this.textColor,
+      });
+      this.textCanvas.resize();
+      this.textCanvas.render();
+    }
 
     this.texture = new THREE.CanvasTexture(this.textCanvas.texture);
     this.texture.minFilter = THREE.NearestFilter;
 
-    const textAspect = this.textCanvas.width / this.textCanvas.height;
+    const textAspect =
+      this.textCanvas.width > 0 && this.textCanvas.height > 0
+        ? this.textCanvas.width / this.textCanvas.height
+        : 1;
     const baseH = this.planeBaseHeight;
     const planeW = baseH * textAspect;
     const planeH = baseH;
@@ -357,7 +455,8 @@ class CanvAscii {
         uTime: { value: 0 },
         mouse: { value: 1.0 },
         uTexture: { value: this.texture },
-        uEnableWaves: { value: this.enableWaves ? 1.0 : 0.0 }
+        uEnableWaves: { value: this.enableWaves ? 1.0 : 0.0 },
+        uCleanSample: { value: this.imageSrc ? 1.0 : 0.0 },
       }
     });
 
@@ -373,7 +472,8 @@ class CanvAscii {
     this.filter = new AsciiFilter(this.renderer, {
       fontFamily: 'IBM Plex Mono',
       fontSize: this.asciiFontSize,
-      invert: true
+      invert: true,
+      cleanMode: Boolean(this.imageSrc),
     });
 
     this.container.appendChild(this.filter.domElement);
@@ -395,7 +495,17 @@ class CanvAscii {
     this.center = { x: w / 2, y: h / 2 };
   }
 
-  load() {
+  async load() {
+    if (this.imageSrc && this.textCanvas instanceof ImageCanvas) {
+      await this.textCanvas.waitForLoad();
+      const textAspect = this.textCanvas.width / this.textCanvas.height;
+      const baseH = this.planeBaseHeight;
+      const planeW = baseH * textAspect;
+      const planeH = baseH;
+      this.geometry.dispose();
+      this.geometry = new THREE.PlaneGeometry(planeW, planeH, 36, 36);
+      this.mesh.geometry = this.geometry;
+    }
     this.animate();
   }
 
@@ -428,6 +538,8 @@ class CanvAscii {
   }
 
   updateRotation() {
+    if (this.imageSrc) return;
+
     const x = map(this.mouse.y, 0, this.height, 0.5, -0.5);
     const y = map(this.mouse.x, 0, this.width, -0.5, 0.5);
 
@@ -466,6 +578,7 @@ class CanvAscii {
 
 interface ASCIITextProps {
   text?: string;
+  imageSrc?: string;
   asciiFontSize?: number;
   textFontSize?: number;
   textColor?: string;
@@ -475,6 +588,7 @@ interface ASCIITextProps {
 
 export default function ASCIIText({
   text = 'DEVELOPER',
+  imageSrc,
   asciiFontSize = 8,
   textFontSize = 200,
   textColor = '#ffffff',
@@ -498,6 +612,7 @@ export default function ASCIIText({
             asciiRef.current = new CanvAscii(
               {
                 text,
+                imageSrc,
                 asciiFontSize,
                 textFontSize,
                 textColor,
@@ -508,7 +623,7 @@ export default function ASCIIText({
               w,
               h
             );
-            asciiRef.current.load();
+            void asciiRef.current.load();
 
             observer.disconnect();
           }
@@ -529,6 +644,7 @@ export default function ASCIIText({
     asciiRef.current = new CanvAscii(
       {
         text,
+        imageSrc,
         asciiFontSize,
         textFontSize,
         textColor,
@@ -539,7 +655,7 @@ export default function ASCIIText({
       width,
       height
     );
-    asciiRef.current.load();
+    void asciiRef.current.load();
 
     const ro = new ResizeObserver(entries => {
       if (!entries[0] || !asciiRef.current) return;
@@ -556,12 +672,12 @@ export default function ASCIIText({
         asciiRef.current.dispose();
       }
     };
-  }, [text, asciiFontSize, textFontSize, textColor, planeBaseHeight, enableWaves]);
+  }, [text, imageSrc, asciiFontSize, textFontSize, textColor, planeBaseHeight, enableWaves]);
 
   return (
     <div
       ref={containerRef}
-      className="ascii-text-container"
+      className={`ascii-text-container${imageSrc ? ' ascii-text-container--image' : ''}`}
       style={{
         position: 'absolute',
         width: '100%',
@@ -595,14 +711,23 @@ export default function ASCIIText({
           position: absolute;
           left: 0;
           top: 0;
+          z-index: 9;
+        }
+
+        .ascii-text-container:not(.ascii-text-container--image) pre {
           color: #ffffff;
           background-attachment: fixed;
           -webkit-text-fill-color: transparent;
           -webkit-background-clip: text;
           background-clip: text;
           background-image: linear-gradient(to right, #ffffff, #c0c0c0);
-          z-index: 9;
           mix-blend-mode: difference;
+        }
+
+        .ascii-text-container--image pre {
+          color: #ffffff;
+          -webkit-text-fill-color: #ffffff;
+          mix-blend-mode: normal;
         }
       `}</style>
     </div>

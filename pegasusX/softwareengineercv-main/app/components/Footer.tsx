@@ -107,7 +107,7 @@ export default function Footer() {
             
             {/* Brand Section */}
             <div className="lg:col-span-2">
-              <h3 className="text-3xl md:text-4xl font-bold mb-6 text-white">
+              <h3 className="text-3xl md:text-4xl font-light mb-6 text-white">
                 Run Your Network on Pegasus
               </h3>
               <p className="text-white text-lg mb-6 max-w-md leading-relaxed">
@@ -120,7 +120,7 @@ export default function Footer() {
 
             {/* Quick Links */}
             <div>
-              <h4 className="text-xl font-bold mb-6 text-white">Quick Links</h4>
+              <h4 className="text-xl font-light mb-6 text-white">Quick Links</h4>
               <ul className="space-y-3">
                 {quickLinks.map((link, index) => (
                   <li key={index}>
@@ -137,7 +137,7 @@ export default function Footer() {
 
             {/* Social Links */}
             <div>
-              <h4 className="text-xl font-bold mb-6 text-white">Connect</h4>
+              <h4 className="text-xl font-light mb-6 text-white">Connect</h4>
               <div className="space-y-4">
                 {socialLinks.map((social, index) => (
                   <a

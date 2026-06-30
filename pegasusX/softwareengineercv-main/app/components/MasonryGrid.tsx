@@ -106,10 +106,10 @@ export default function MasonryGrid({ images }: MasonryGridProps) {
               {/* Overlay on hover */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-300 flex items-end p-6">
                 <div className="transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                  <span className="inline-block px-3 py-1 mb-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full text-xs font-bold text-white">
+                  <span className="inline-block px-3 py-1 mb-3 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full text-xs font-light text-white">
                     {image.category}
                   </span>
-                  <h3 className="text-xl md:text-2xl font-bold text-white mb-2">
+                  <h3 className="text-xl md:text-2xl font-light text-white mb-2">
                     {image.title}
                   </h3>
                   <div className="flex items-center gap-2 text-white">

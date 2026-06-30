@@ -52,7 +52,7 @@ export function PortalCardPreview() {
     <div className="grid gap-3 sm:grid-cols-2">
       <div className="desk-card p-4">
         <p className="font-mono text-[10px] uppercase text-[var(--mkt-subtle)]">Stat</p>
-        <p className="text-2xl font-bold">42</p>
+        <p className="text-2xl font-light">42</p>
       </div>
       <div className="desk-card p-4">
         <p className="font-semibold">Control card</p>

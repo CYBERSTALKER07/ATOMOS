@@ -177,7 +177,7 @@ export default function DashboardPage() {
               type="button"
               disabled={isRefreshing}
               onClick={refreshAll}
-              className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-bold"
+              className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-light"
             >
               <RefreshCw
                 size={16}
@@ -186,12 +186,12 @@ export default function DashboardPage() {
               {isRefreshing ? "Syncing" : "Sync"}
             </button>
             <Link href="/orders">
-              <button type="button" className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-bold">
+              <button type="button" className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-light">
                 Review Orders
               </button>
             </Link>
             <Link href="/catalog">
-              <button type="button" className="portal-btn portal-btn--primary h-10 px-5 rounded-xl font-bold shadow-[var(--shadow-sm)]">
+              <button type="button" className="portal-btn portal-btn--primary h-10 px-5 rounded-xl font-light shadow-[var(--shadow-sm)]">
                 Open Catalog
               </button>
             </Link>
@@ -215,14 +215,14 @@ export default function DashboardPage() {
                     size={16}
                     className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
                   />
-                  <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+                  <span className="md-typescale-body-small font-light uppercase tracking-wide">
                     {syncBanner.message}
                   </span>
                 </div>
                 {syncBanner.kind !== "refreshing" && (
                   <button
                     onClick={refreshAll}
-                    className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+                    className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-light uppercase tracking-wide hover:bg-current/10"
                   >
                     Retry
                   </button>
@@ -241,7 +241,7 @@ export default function DashboardPage() {
                     <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
                       Focus today
                     </span>
-                    <h2 className="mt-2 text-2xl font-bold tracking-tight text-[var(--desk-text-primary)] leading-tight">
+                    <h2 className="mt-2 text-2xl font-light tracking-tight text-[var(--desk-text-primary)] leading-tight">
                       Predictive Replenishment
                     </h2>
                     <p className="mt-2 md-typescale-body-medium text-[var(--desk-text-secondary)]">
@@ -250,7 +250,7 @@ export default function DashboardPage() {
                       run.
                     </p>
                   </div>
-                  <div className="px-3 py-1 rounded-lg bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] font-bold text-xs">
+                  <div className="px-3 py-1 rounded-lg bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] font-light text-xs">
                     {productList.length} SKUS
                   </div>
                 </div>
@@ -333,7 +333,7 @@ export default function DashboardPage() {
                           <Package size={20} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="md-typescale-title-small font-bold truncate text-[var(--desk-text-primary)]">
+                          <p className="md-typescale-title-small font-light truncate text-[var(--desk-text-primary)]">
                             {p.name}
                           </p>
                           <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] truncate uppercase tracking-widest">
@@ -341,7 +341,7 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                          <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                             {p.price.toLocaleString()}
                           </p>
                           <ArrowUpRight
@@ -361,7 +361,7 @@ export default function DashboardPage() {
                 actions={
                   <Link
                     href="/insights"
-                    className="text-[var(--desk-accent)] md-typescale-label-small font-bold uppercase tracking-widest hover:underline"
+                    className="text-[var(--desk-accent)] md-typescale-label-small font-light uppercase tracking-widest hover:underline"
                   >
                     View All
                   </Link>
@@ -383,12 +383,12 @@ export default function DashboardPage() {
                         className="p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl flex items-center gap-4"
                       >
                         <div
-                          className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold ${forecast.confidence > 0.8 ? "border-[var(--desk-success)] text-[var(--desk-success)]" : "border-[var(--desk-warning)] text-[var(--desk-warning)]"}`}
+                          className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-light ${forecast.confidence > 0.8 ? "border-[var(--desk-success)] text-[var(--desk-success)]" : "border-[var(--desk-warning)] text-[var(--desk-warning)]"}`}
                         >
                           {Math.round(forecast.confidence * 100)}%
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="md-typescale-title-small font-bold truncate text-[var(--desk-text-primary)]">
+                          <p className="md-typescale-title-small font-light truncate text-[var(--desk-text-primary)]">
                             {forecast.productName}
                           </p>
                           <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] line-clamp-1">
@@ -396,10 +396,10 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                          <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                             {forecast.predictedQuantity}
                           </p>
-                          <p className="text-[10px] text-[var(--desk-text-tertiary)] uppercase font-bold tracking-tighter">
+                          <p className="text-[10px] text-[var(--desk-text-tertiary)] uppercase font-light tracking-tighter">
                             Units
                           </p>
                         </div>
@@ -434,7 +434,7 @@ function QuickAction({
         strokeWidth={1.5}
         className="group-hover:scale-110 transition-transform"
       />
-      <span className="md-typescale-label-small font-bold uppercase tracking-widest">
+      <span className="md-typescale-label-small font-light uppercase tracking-widest">
         {label}
       </span>
     </Link>

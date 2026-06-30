@@ -104,19 +104,19 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">Revenue</div>
-          <div className="text-2xl font-bold">{fmtCurrency(d.total_revenue)} UZS</div>
+          <div className="text-2xl font-light">{fmtCurrency(d.total_revenue)} UZS</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">Orders</div>
-          <div className="text-2xl font-bold">{fmt(d.total_orders)}</div>
+          <div className="text-2xl font-light">{fmt(d.total_orders)}</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">Avg Order Value</div>
-          <div className="text-2xl font-bold">{fmtCurrency(d.avg_order_value)} UZS</div>
+          <div className="text-2xl font-light">{fmtCurrency(d.avg_order_value)} UZS</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">Fleet Utilization</div>
-          <div className="text-2xl font-bold">{fleetUtilizationPct.toFixed(0)}%</div>
+          <div className="text-2xl font-light">{fleetUtilizationPct.toFixed(0)}%</div>
         </div>
       </div>
 
@@ -128,15 +128,15 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <div className="text-xs text-[var(--muted)]">Rows Imported (30d)</div>
-            <div className="text-xl font-bold">{fmt(importFreshness.applied_rows_30d)}</div>
+            <div className="text-xl font-light">{fmt(importFreshness.applied_rows_30d)}</div>
           </div>
           <div>
             <div className="text-xs text-[var(--muted)]">SKUs Updated (30d)</div>
-            <div className="text-xl font-bold">{fmt(importFreshness.applied_skus_30d)}</div>
+            <div className="text-xl font-light">{fmt(importFreshness.applied_skus_30d)}</div>
           </div>
           <div>
             <div className="text-xs text-[var(--muted)]">Quantity Delta (30d)</div>
-            <div className="text-xl font-bold">{fmt(importFreshness.quantity_delta_30d)}</div>
+            <div className="text-xl font-light">{fmt(importFreshness.quantity_delta_30d)}</div>
           </div>
         </div>
         <div className="mt-3 text-xs text-[var(--muted)]">
@@ -152,11 +152,11 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <div className="text-xs text-[var(--muted)]">Open Anomaly Rows (30d)</div>
-            <div className="text-xl font-bold">{fmt(importAnomalyQueue.open_rows_30d)}</div>
+            <div className="text-xl font-light">{fmt(importAnomalyQueue.open_rows_30d)}</div>
           </div>
           <div>
             <div className="text-xs text-[var(--muted)]">Affected Sessions (30d)</div>
-            <div className="text-xl font-bold">{fmt(importAnomalyQueue.affected_sessions_30d)}</div>
+            <div className="text-xl font-light">{fmt(importAnomalyQueue.affected_sessions_30d)}</div>
           </div>
         </div>
         <div className="mt-3 text-xs text-[var(--muted)]">

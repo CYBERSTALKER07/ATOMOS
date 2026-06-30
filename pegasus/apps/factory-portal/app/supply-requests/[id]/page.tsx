@@ -170,7 +170,7 @@ export default function SupplyRequestDetailPage() {
             </h2>
             {qc?.result && (
               <span
-                className="px-2 py-0.5 rounded text-xs font-bold uppercase"
+                className="px-2 py-0.5 rounded text-xs font-light uppercase"
                 style={{
                   background: qc.result === 'PASS' ? 'var(--color-md-success)' : 'var(--color-md-error)',
                   color: 'white',

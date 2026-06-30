@@ -29,13 +29,13 @@ export function Footer() {
           </p>
           <Link
             href="/contact"
-            className="mkt-btn mkt-btn-primary mt-6 inline-flex border-2 border-white font-bold uppercase tracking-wide"
+            className="mkt-btn mkt-btn-primary mt-6 inline-flex border-2 border-white font-light uppercase tracking-wide"
           >
             Get in touch →
           </Link>
         </div>
         <div>
-          <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--mkt-subtle)]">
+          <p className="mb-3 font-mono text-[10px] font-light uppercase tracking-[0.18em] text-[var(--mkt-subtle)]">
             Product
           </p>
           <ul className="space-y-2 text-sm text-[var(--mkt-muted)]">
@@ -46,7 +46,7 @@ export function Footer() {
           </ul>
         </div>
         <div>
-          <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--mkt-subtle)]">
+          <p className="mb-3 font-mono text-[10px] font-light uppercase tracking-[0.18em] text-[var(--mkt-subtle)]">
             Roles
           </p>
           <ul className="space-y-2 text-sm text-[var(--mkt-muted)]">
@@ -60,7 +60,7 @@ export function Footer() {
           </ul>
         </div>
         <div>
-          <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--mkt-subtle)]">
+          <p className="mb-3 font-mono text-[10px] font-light uppercase tracking-[0.18em] text-[var(--mkt-subtle)]">
             Company
           </p>
           <ul className="space-y-2 text-sm text-[var(--mkt-muted)]">

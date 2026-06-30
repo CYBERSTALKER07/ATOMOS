@@ -274,7 +274,7 @@ export default function MyProductsPage() {
                 )}
                 {/* Status badge */}
                 <span
-                  className="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                  className="absolute top-2 right-2 text-[10px] font-light px-2 py-0.5 rounded-full uppercase tracking-wider"
                   style={{
                     background: p.is_active
                       ? 'color-mix(in srgb, var(--success) 90%, transparent)'
@@ -308,7 +308,7 @@ export default function MyProductsPage() {
 
                 <div className="mt-auto pt-3 flex items-end justify-between gap-2" style={{ borderTop: '1px solid var(--border)' }}>
                   <div>
-                    <p className="md-typescale-title-medium font-bold font-mono" style={{ color: 'var(--foreground)' }}>
+                    <p className="md-typescale-title-medium font-light font-mono" style={{ color: 'var(--foreground)' }}>
                       {formatAmount(p.base_price)} <span className="text-[10px] font-normal"></span>
                     </p>
                     <p className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>

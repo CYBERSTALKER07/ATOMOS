@@ -140,7 +140,7 @@ export default function JoinPage() {
           {/* Left Content */}
           <div className="space-y-8 relative z-10">
             <div ref={titleRef}>
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 text-white">
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-light mb-6 text-white">
                 Request a Demo
               </h1>
               <div className="w-24 h-1 bg-white mb-8" />
@@ -181,7 +181,7 @@ export default function JoinPage() {
 
             {/* Application Form */}
             <div ref={formRef} className="editorial-card editorial-card--dark border border-white/20 p-8">
-              <h3 className="text-2xl font-bold mb-6">Book Your Walkthrough</h3>
+              <h3 className="text-2xl font-light mb-6">Book Your Walkthrough</h3>
               
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>

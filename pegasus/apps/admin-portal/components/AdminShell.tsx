@@ -150,7 +150,7 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
           transition={{ delay: 0.5, duration: 1 }}
           className="flex flex-col items-center"
         >
-          <h2 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--desk-text-primary)' }}>PEGASUS</h2>
+          <h2 className="text-2xl font-light tracking-tight" style={{ color: 'var(--desk-text-primary)' }}>PEGASUS</h2>
           <p className="text-[10px] uppercase tracking-[0.3em] mt-1" style={{ color: 'var(--desk-text-tertiary)' }}>Enterprise Hub</p>
         </motion.div>
         

@@ -206,7 +206,7 @@ export default function CheckoutModal({
             className="w-full max-w-lg bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-[32px] shadow-2xl overflow-hidden flex flex-col"
           >
             <div className="flex items-center justify-between p-6 border-b border-[var(--desk-border)]">
-              <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+              <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
                 Secure Checkout
               </h2>
               <button
@@ -223,7 +223,7 @@ export default function CheckoutModal({
                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-accent)] mb-1 block">
                     Total Authorization
                   </span>
-                  <div className="md-typescale-display-small font-bold text-[var(--desk-text-primary)]">
+                  <div className="md-typescale-display-small font-light text-[var(--desk-text-primary)]">
                     UZS {total.toLocaleString()}
                   </div>
                 </div>
@@ -237,7 +237,7 @@ export default function CheckoutModal({
                 <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl flex gap-3 text-orange-800">
                   <AlertTriangle size={20} className="shrink-0 mt-0.5" />
                   <div>
-                     <h3 className="font-bold text-sm uppercase tracking-wide">Card Payments Temporarily Unavailable</h3>
+                     <h3 className="font-light text-sm uppercase tracking-wide">Card Payments Temporarily Unavailable</h3>
                      <p className="text-xs mt-1 font-medium opacity-90">
                        {degradedBanner.gateway} is currently experiencing issues ({degradedBanner.reason}). We have automatically switched your payment method to cash.
                      </p>
@@ -273,10 +273,10 @@ export default function CheckoutModal({
                         <div className="w-2 h-2 rounded-full bg-[var(--desk-accent)] shadow-[0_0_8px_var(--desk-accent)]" />
                       )}
                     </div>
-                    <span className="block md-typescale-body-large font-bold text-[var(--desk-text-primary)]">
+                    <span className="block md-typescale-body-large font-light text-[var(--desk-text-primary)]">
                       Global Pay
                     </span>
-                    <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
+                    <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
                       Local UZ Cards
                     </span>
                   </button>
@@ -303,10 +303,10 @@ export default function CheckoutModal({
                         <div className="w-2 h-2 rounded-full bg-[var(--desk-accent)] shadow-[0_0_8px_var(--desk-accent)]" />
                       )}
                     </div>
-                    <span className="block md-typescale-body-large font-bold text-[var(--desk-text-primary)]">
+                    <span className="block md-typescale-body-large font-light text-[var(--desk-text-primary)]">
                       Adyen
                     </span>
-                    <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
+                    <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
                       International Auth
                     </span>
                   </button>
@@ -333,10 +333,10 @@ export default function CheckoutModal({
                         <div className="w-2 h-2 rounded-full bg-[var(--desk-accent)] shadow-[0_0_8px_var(--desk-accent)]" />
                       )}
                     </div>
-                    <span className="block md-typescale-body-large font-bold text-[var(--desk-text-primary)]">
+                    <span className="block md-typescale-body-large font-light text-[var(--desk-text-primary)]">
                       Airwallex
                     </span>
-                    <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
+                    <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
                       Cross-border B2B
                     </span>
                   </button>
@@ -362,10 +362,10 @@ export default function CheckoutModal({
                         <div className="w-2 h-2 rounded-full bg-[var(--desk-accent)] shadow-[0_0_8px_var(--desk-accent)]" />
                       )}
                     </div>
-                    <span className="block md-typescale-body-large font-bold text-[var(--desk-text-primary)]">
+                    <span className="block md-typescale-body-large font-light text-[var(--desk-text-primary)]">
                       Cash on Delivery
                     </span>
-                    <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
+                    <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
                       Physical tender
                     </span>
                   </button>
@@ -373,14 +373,14 @@ export default function CheckoutModal({
               </div>
 
               {error && (
-                <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-xs font-bold rounded-xl flex items-center gap-3">
+                <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-xs font-light rounded-xl flex items-center gap-3">
                   <ShieldCheck size={16} className="shrink-0" />
                   {error}
                 </div>
               )}
 
               {oosItems.length > 0 && (
-                <div className="p-4 bg-orange-50 border border-orange-100 text-orange-700 text-xs font-bold rounded-xl flex flex-col gap-2">
+                <div className="p-4 bg-orange-50 border border-orange-100 text-orange-700 text-xs font-light rounded-xl flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={16} />
                     <span>The following items are out of stock:</span>
@@ -397,14 +397,14 @@ export default function CheckoutModal({
             <div className="p-6 bg-[var(--desk-surface-subtle)] border-t border-[var(--desk-border)] flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)]">
                 <ShieldCheck size={14} />
-                <span className="text-[10px] font-bold uppercase tracking-widest">
+                <span className="text-[10px] font-light uppercase tracking-widest">
                   End-to-end encrypted
                 </span>
               </div>
               <Button
                 onPress={handleCheckout}
                 isDisabled={loading || items.length === 0}
-                className="h-12 px-8 bg-[var(--desk-text-primary)] text-[var(--desk-surface)] font-bold rounded-xl shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+                className="h-12 px-8 bg-[var(--desk-text-primary)] text-[var(--desk-surface)] font-light rounded-xl shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
               >
                 {loading ? (
                   <Loader2 size={18} className="animate-spin" />

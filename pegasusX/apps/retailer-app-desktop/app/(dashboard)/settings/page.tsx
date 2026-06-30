@@ -159,17 +159,17 @@ function OverrideRow({
           <Icon size={16} className="text-[var(--desk-text-tertiary)]" />
         </div>
         <div className="min-w-0">
-          <span className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] block truncate">
+          <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block truncate">
             {label}
           </span>
           <div className="flex items-center gap-2 mt-0.5">
             {hasHistory && (
-              <span className="md-typescale-label-small text-[var(--desk-success)] flex items-center gap-1 font-bold uppercase tracking-tighter">
+              <span className="md-typescale-label-small text-[var(--desk-success)] flex items-center gap-1 font-light uppercase tracking-tighter">
                 <CheckCircle2 size={10} /> Active History
               </span>
             )}
             {analyticsDate && (
-              <span className="md-typescale-label-small text-[var(--desk-text-tertiary)] uppercase font-bold tracking-tighter">
+              <span className="md-typescale-label-small text-[var(--desk-text-tertiary)] uppercase font-light tracking-tighter">
                 Since {new Date(analyticsDate).toLocaleDateString()}
               </span>
             )}
@@ -234,13 +234,13 @@ function OverrideSection<T extends { enabled: boolean }>({
           <div className="w-10 h-10 rounded-xl bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] flex items-center justify-center">
             <Icon size={20} />
           </div>
-          <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+          <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
             {title}
           </span>
           <Chip
             size="sm"
             variant="secondary"
-            className="font-bold text-[10px] ml-1"
+            className="font-light text-[10px] ml-1"
           >
             {enabledCount}/{items.length} ACTIVE
           </Chip>
@@ -637,7 +637,7 @@ export default function SettingsPage() {
             type="button"
             disabled={isSyncing}
             onClick={refreshAll}
-            className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-bold"
+            className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-light"
           >
             <RefreshCw
               size={16}
@@ -661,14 +661,14 @@ export default function SettingsPage() {
                 size={16}
                 className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
               />
-              <p className="md-typescale-body-small font-bold uppercase tracking-wide">
+              <p className="md-typescale-body-small font-light uppercase tracking-wide">
                 {syncBanner.message}
               </p>
             </div>
             {syncBanner.kind !== "refreshing" && (
               <button
                 onClick={refreshAll}
-                className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+                className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-light uppercase tracking-wide hover:bg-current/10"
               >
                 Retry
               </button>
@@ -688,7 +688,7 @@ export default function SettingsPage() {
             ) : (
               <AlertTriangle size={16} className="mt-0.5 shrink-0" />
             )}
-            <p className="md-typescale-body-small font-bold">{saveBanner.message}</p>
+            <p className="md-typescale-body-small font-light">{saveBanner.message}</p>
           </div>
         )}
       </div>
@@ -711,7 +711,7 @@ export default function SettingsPage() {
               {/* Profile Card */}
               <section className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)] flex items-center gap-2">
+                  <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)] flex items-center gap-2">
                     <User
                       size={20}
                       className="text-[var(--desk-text-tertiary)]"
@@ -720,7 +720,7 @@ export default function SettingsPage() {
                   </h2>
                   <button
                     onClick={() => setProfileEditing(!profileEditing)}
-                    className="text-[var(--desk-accent)] md-typescale-label-small font-bold uppercase tracking-widest hover:underline"
+                    className="text-[var(--desk-accent)] md-typescale-label-small font-light uppercase tracking-widest hover:underline"
                   >
                     {profileEditing ? "Cancel" : "Edit"}
                   </button>
@@ -803,7 +803,7 @@ export default function SettingsPage() {
                       type="button"
                       onClick={saveProfile}
                       disabled={savingProfile}
-                      className="portal-btn portal-btn--primary w-full font-bold h-11 rounded-xl shadow-lg transition-all active:scale-95"
+                      className="portal-btn portal-btn--primary w-full font-light h-11 rounded-xl shadow-lg transition-all active:scale-95"
                     >
                       {savingProfile ? (
                         <Loader2 size={18} className="animate-spin" />
@@ -816,7 +816,7 @@ export default function SettingsPage() {
               </section>
 
               <section className="flex flex-col gap-4 md:col-span-2">
-                <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)] flex items-center gap-2">
+                <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)] flex items-center gap-2">
                   <CreditCard
                     size={20}
                     className="text-[var(--desk-text-tertiary)]"
@@ -846,10 +846,10 @@ export default function SettingsPage() {
                         <CreditCard size={18} />
                       </div>
                       <div>
-                        <span className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] block">
+                        <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
                           Saved Cards
                         </span>
-                        <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                        <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                           Manage payment methods
                         </span>
                       </div>
@@ -866,10 +866,10 @@ export default function SettingsPage() {
                         <Users size={18} />
                       </div>
                       <div>
-                        <span className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] block">
+                        <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
                           Family Members
                         </span>
-                        <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                        <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                           Staff and delegated ordering
                         </span>
                       </div>
@@ -881,7 +881,7 @@ export default function SettingsPage() {
 
               {/* Preferences */}
               <section className="flex flex-col gap-4">
-                <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)] flex items-center gap-2">
+                <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)] flex items-center gap-2">
                   <Settings
                     size={20}
                     className="text-[var(--desk-text-tertiary)]"
@@ -895,10 +895,10 @@ export default function SettingsPage() {
                         <Bell size={18} />
                       </div>
                       <div>
-                        <span className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] block">
+                        <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
                           Push Notifications
                         </span>
-                        <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                        <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                           Real-time alerts
                         </span>
                       </div>
@@ -921,10 +921,10 @@ export default function SettingsPage() {
                         <CreditCard size={18} />
                       </div>
                       <div>
-                        <span className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] block">
+                        <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
                           Settlement Priority
                         </span>
-                        <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                        <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                           Managed by payment policy
                         </span>
                       </div>
@@ -937,7 +937,7 @@ export default function SettingsPage() {
 
             {/* AI Settings */}
             <div className="space-y-6">
-              <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)] flex items-center gap-2">
+              <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)] flex items-center gap-2">
                 <Brain size={24} className="text-[var(--desk-accent)]" /> Neural
                 Replenishment
               </h2>
@@ -949,7 +949,7 @@ export default function SettingsPage() {
                     <div className="absolute right-0 top-0 w-32 h-32 bg-[var(--desk-accent)] opacity-5 rotate-12 translate-x-8 -translate-y-8" />
                     <div className="flex items-center justify-between gap-8 relative z-10">
                       <div className="max-w-2xl">
-                        <h3 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)] mb-2">
+                        <h3 className="md-typescale-title-large font-light text-[var(--desk-text-primary)] mb-2">
                           Global AI Orchestration
                         </h3>
                         <p className="md-typescale-body-large text-[var(--desk-text-secondary)]">
@@ -967,7 +967,7 @@ export default function SettingsPage() {
                     {autoOrder.analytics_start_date && (
                       <div className="mt-8 pt-6 border-t border-[var(--desk-border)] flex items-center gap-2 text-[var(--desk-text-tertiary)]">
                         <Info size={14} />
-                        <span className="md-typescale-label-small uppercase font-bold tracking-widest">
+                        <span className="md-typescale-label-small uppercase font-light tracking-widest">
                           Analytics active since{" "}
                           {new Date(
                             autoOrder.analytics_start_date,
@@ -1040,7 +1040,7 @@ function ProfileField({
     <div className="space-y-1.5">
       <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)]">
         <Icon size={14} />
-        <span className="md-typescale-label-small font-bold uppercase tracking-widest">
+        <span className="md-typescale-label-small font-light uppercase tracking-widest">
           {label}
         </span>
       </div>
@@ -1050,21 +1050,21 @@ function ProfileField({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             aria-invalid={Boolean(errorMessage)}
-            className={`w-full h-11 px-4 bg-[var(--desk-canvas)] rounded-xl outline-none transition-all md-typescale-body-medium font-bold text-[var(--desk-text-primary)] ${
+            className={`w-full h-11 px-4 bg-[var(--desk-canvas)] rounded-xl outline-none transition-all md-typescale-body-medium font-light text-[var(--desk-text-primary)] ${
               errorMessage
                 ? "ring-2 ring-red-200 border border-red-300"
                 : "focus:ring-2 focus:ring-[var(--desk-accent-soft)]"
             }`}
           />
           {errorMessage && (
-            <p className="mt-1 flex items-center gap-1 text-[11px] font-bold text-red-600 uppercase tracking-wide">
+            <p className="mt-1 flex items-center gap-1 text-[11px] font-light text-red-600 uppercase tracking-wide">
               <AlertTriangle size={10} />
               {errorMessage}
             </p>
           )}
         </>
       ) : (
-        <p className="md-typescale-body-large font-bold text-[var(--desk-text-primary)] pl-0.5">
+        <p className="md-typescale-body-large font-light text-[var(--desk-text-primary)] pl-0.5">
           {value || "UNSET"}
         </p>
       )}
@@ -1093,7 +1093,7 @@ function ProfileTimeField({
     <div className="space-y-1.5">
       <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)]">
         <Icon size={14} />
-        <span className="md-typescale-label-small font-bold uppercase tracking-widest">
+        <span className="md-typescale-label-small font-light uppercase tracking-widest">
           {label}
         </span>
       </div>
@@ -1104,21 +1104,21 @@ function ProfileTimeField({
             value={displayValue}
             onChange={(e) => onChange(e.target.value)}
             aria-invalid={Boolean(errorMessage)}
-            className={`w-full h-11 px-4 bg-[var(--desk-canvas)] rounded-xl outline-none transition-all md-typescale-body-medium font-bold text-[var(--desk-text-primary)] ${
+            className={`w-full h-11 px-4 bg-[var(--desk-canvas)] rounded-xl outline-none transition-all md-typescale-body-medium font-light text-[var(--desk-text-primary)] ${
               errorMessage
                 ? "ring-2 ring-red-200 border border-red-300"
                 : "focus:ring-2 focus:ring-[var(--desk-accent-soft)]"
             }`}
           />
           {errorMessage && (
-            <p className="mt-1 flex items-center gap-1 text-[11px] font-bold text-red-600 uppercase tracking-wide">
+            <p className="mt-1 flex items-center gap-1 text-[11px] font-light text-red-600 uppercase tracking-wide">
               <AlertTriangle size={10} />
               {errorMessage}
             </p>
           )}
         </>
       ) : (
-        <p className="md-typescale-body-large font-bold text-[var(--desk-text-primary)] pl-0.5">
+        <p className="md-typescale-body-large font-light text-[var(--desk-text-primary)] pl-0.5">
           {displayValue || "UNSET"}
         </p>
       )}

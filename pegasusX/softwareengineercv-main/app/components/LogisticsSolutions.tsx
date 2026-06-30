@@ -95,7 +95,7 @@ const SOLUTIONS: Solution[] = [
     title: 'Six-Role Coordination',
     description:
       'Supplier, warehouse, factory, driver, retailer, and gate teams on shared contracts — every role sees the same live state.',
-    href: '#companies',
+    href: '/roles/role-parity-matrix',
     chartLabel: 'ROLE PARITY',
     bars: [72, 78, 82, 90],
     line: [68, 74, 80, 88],
@@ -275,7 +275,7 @@ export default function LogisticsSolutions() {
       <div className="container mx-auto px-4 max-w-7xl">
         <div ref={titleRef} className="mb-12 md:mb-16">
           <p className="editorial-eyebrow text-white/50 mb-4">The Pegasus Network</p>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight max-w-4xl">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight max-w-4xl">
             End-to-End Logistics Solutions
           </h2>
         </div>
@@ -313,7 +313,7 @@ export default function LogisticsSolutions() {
           <div className="grid grid-cols-1 md:grid-cols-2 min-h-[22rem]">
             <div className="p-8 md:p-10 lg:p-12 flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/10">
               <div>
-                <h3 className="text-2xl md:text-3xl font-bold mb-5">{active.title}</h3>
+                <h3 className="text-2xl md:text-3xl font-light mb-5">{active.title}</h3>
                 <p className="text-white/70 leading-relaxed max-w-md">{active.description}</p>
               </div>
               <Link href={active.href} className="editorial-btn mt-8 w-fit">

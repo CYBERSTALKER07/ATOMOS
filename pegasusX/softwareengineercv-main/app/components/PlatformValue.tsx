@@ -46,7 +46,7 @@ export default function PlatformValue() {
     <section ref={sectionRef} id="platform-value" className="py-20 md:py-28 bg-black text-white">
       <div className="container mx-auto px-4 max-w-7xl">
         <div ref={titleRef} className="mb-12 md:mb-16 max-w-4xl">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight leading-[1.05]">
             Redefining supplier-led logistics for live networks
           </h2>
         </div>
@@ -66,15 +66,9 @@ export default function PlatformValue() {
             imagePriority
           />
 
-          <article className="editorial-card editorial-card--featured editorial-card--light editorial-bento__4-2 border border-white/15">
-            <div className="editorial-card__media relative min-h-[16rem]">
-              <Image
-                src={EDITORIAL_IMAGES[3]}
-                alt="Pegasus platform overview"
-                fill
-                className="editorial-card__image object-cover"
-                sizes="(max-width: 768px) 100vw, 60vw"
-              />
+          <article className="editorial-card editorial-card--featured editorial-card--light editorial-bento__4-2  border-none">
+            <div className="editorial-card__media relative min-h-[16rem] border-none bg-black">
+            
             </div>
             <div className="editorial-card__body">
               <p className="editorial-tag">Platform overview</p>

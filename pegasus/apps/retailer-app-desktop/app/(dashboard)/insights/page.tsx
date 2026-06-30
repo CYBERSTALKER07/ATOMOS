@@ -290,7 +290,7 @@ export default function InsightsPage() {
     >
       <header className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
+          <h1 className="md-typescale-display-small font-light tracking-tight text-[var(--desk-text-primary)]">
             Intelligence Hub
           </h1>
           <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
@@ -301,7 +301,7 @@ export default function InsightsPage() {
           variant="secondary"
           isDisabled={isRefreshing}
           onPress={refreshAll}
-          className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
+          className="h-10 px-5 rounded-xl font-light text-[var(--desk-text-secondary)]"
         >
           <RefreshCw
             size={16}
@@ -326,14 +326,14 @@ export default function InsightsPage() {
               size={16}
               className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
             />
-            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+            <span className="md-typescale-body-small font-light uppercase tracking-wide">
               {syncBanner.message}
             </span>
           </div>
           {syncBanner.kind !== "refreshing" && (
             <button
               onClick={refreshAll}
-              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-light uppercase tracking-wide hover:bg-current/10"
             >
               Retry
             </button>
@@ -346,7 +346,7 @@ export default function InsightsPage() {
           <Chip
             color={orderResult === "success" ? "success" : "danger"}
             variant="secondary"
-            className="font-bold"
+            className="font-light"
           >
             {orderResult === "success"
               ? "Procurement order submitted. Signals are refreshing."
@@ -400,7 +400,7 @@ export default function InsightsPage() {
               </span>
               <TrendingUp size={18} style={{ color: "var(--desk-success)" }} />
             </div>
-            <span className="md-typescale-title-medium font-bold truncate text-[var(--desk-text-primary)]">
+            <span className="md-typescale-title-medium font-light truncate text-[var(--desk-text-primary)]">
               {topProducts[0]?.product_name || "Calculating..."}
             </span>
             <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
@@ -433,13 +433,13 @@ export default function InsightsPage() {
         {/* Main: AI Picks */}
         <div className="flex-1 flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+            <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
               AI Replenishment Picks
             </h2>
             {predList.length > 0 && (
               <button
                 onClick={selectAll}
-                className="text-[var(--desk-accent)] md-typescale-label-small font-bold uppercase tracking-widest hover:underline"
+                className="text-[var(--desk-accent)] md-typescale-label-small font-light uppercase tracking-widest hover:underline"
               >
                 {selected.size === predList.length
                   ? "Deselect All"
@@ -517,7 +517,7 @@ export default function InsightsPage() {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
-                          <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)] truncate">
+                          <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)] truncate">
                             {item.product_name ??
                               item.productName ??
                               "Predicted Item"}
@@ -541,7 +541,7 @@ export default function InsightsPage() {
                           >
                             <Minus size={14} />
                           </button>
-                          <span className="md-typescale-title-small font-bold w-6 text-center tabular-nums">
+                          <span className="md-typescale-title-small font-light w-6 text-center tabular-nums">
                             {qty}
                           </span>
                           <button
@@ -553,13 +553,13 @@ export default function InsightsPage() {
                         </div>
                       ) : (
                         <div className="text-right">
-                          <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                          <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                             {(item.predicted_amount ??
                               item.predictedAmount ??
                               0
                             ).toLocaleString()}
                           </p>
-                          <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                          <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                             {item.predicted_quantity ??
                               item.predictedQuantity ??
                               1} UNITS
@@ -580,14 +580,14 @@ export default function InsightsPage() {
               className="sticky bottom-4 p-4 bg-[var(--desk-text-primary)] rounded-2xl shadow-xl flex items-center justify-between text-white border border-white/10 backdrop-blur-md"
             >
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center font-light">
                   {selected.size}
                 </div>
                 <div>
-                  <p className="text-xs font-bold opacity-60 uppercase tracking-widest">
+                  <p className="text-xs font-light opacity-60 uppercase tracking-widest">
                     Staged Assets
                   </p>
-                  <p className="text-sm font-bold">
+                  <p className="text-sm font-light">
                     {totalSelectedUnits.toLocaleString()} units total
                   </p>
                 </div>
@@ -595,7 +595,7 @@ export default function InsightsPage() {
               <Button
                 onClick={() => void createOrder()}
                 isDisabled={submitting}
-                className="bg-[var(--desk-accent)] text-white font-bold h-11 px-8 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all"
+                className="bg-[var(--desk-accent)] text-white font-light h-11 px-8 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all"
               >
                 {submitting ? (
                   <>
@@ -617,17 +617,17 @@ export default function InsightsPage() {
             <span className="md-typescale-label-small uppercase tracking-[0.2em] opacity-60 mb-4 block">
               Fleet Efficiency
             </span>
-            <h3 className="md-typescale-display-small font-bold mb-2 tabular-nums">
+            <h3 className="md-typescale-display-small font-light mb-2 tabular-nums">
               {totalThisMonth.toLocaleString()}
             </h3>
             <p className="text-sm opacity-60 font-medium">
               Monthly Operational Volume
             </p>
             <div className="mt-8 pt-6 border-t border-white/10 flex items-center justify-between">
-              <span className="text-xs font-bold opacity-60 uppercase tracking-widest">
+              <span className="text-xs font-light opacity-60 uppercase tracking-widest">
                 Trend
               </span>
-              <div className="flex items-center gap-2 text-[var(--desk-success)] font-bold">
+              <div className="flex items-center gap-2 text-[var(--desk-success)] font-light">
                 <ArrowUpRight size={16} />
                 <span>+12.4%</span>
               </div>
@@ -640,7 +640,7 @@ export default function InsightsPage() {
             </h3>
             {topProducts.length === 0 ? (
               <div className="rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-4 text-center">
-                <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase font-bold tracking-widest">
+                <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase font-light tracking-widest">
                   No product demand rankings available yet
                 </p>
               </div>
@@ -655,10 +655,10 @@ export default function InsightsPage() {
                       {i + 1}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] truncate">
+                      <p className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] truncate">
                         {item.product_name}
                       </p>
-                      <p className="text-[10px] text-[var(--desk-text-tertiary)] font-bold uppercase">
+                      <p className="text-[10px] text-[var(--desk-text-tertiary)] font-light uppercase">
                         {item.quantity} Units
                       </p>
                     </div>

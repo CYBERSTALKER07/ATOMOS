@@ -159,7 +159,7 @@ export default function SupplyRequestDetailPage() {
           <Icon name="left" size={20} />
         </button>
         <div className="flex-1">
-          <h1 className="text-xl font-bold tracking-tight">Supply Request</h1>
+          <h1 className="text-xl font-light tracking-tight">Supply Request</h1>
           <p className="text-xs text-[var(--muted)] font-mono">{detail.request_id}</p>
         </div>
         <span className={`status-chip ${chipClass(detail.state)}`}>{detail.state}</span>

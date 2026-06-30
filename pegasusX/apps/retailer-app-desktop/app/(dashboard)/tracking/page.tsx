@@ -326,7 +326,7 @@ export default function TrackingPage() {
             type="button"
             onClick={refreshAll}
             disabled={isRefreshing}
-            className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-bold"
+            className="portal-btn portal-btn--ghost h-10 px-5 rounded-xl font-light"
           >
             <RefreshCw
               size={16}
@@ -356,14 +356,14 @@ export default function TrackingPage() {
               size={16}
               className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
             />
-            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+            <span className="md-typescale-body-small font-light uppercase tracking-wide">
               {syncBanner.message}
             </span>
           </div>
           {syncBanner.kind !== "refreshing" && (
             <button
               onClick={refreshAll}
-              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-light uppercase tracking-wide hover:bg-current/10"
             >
               Retry
             </button>
@@ -457,14 +457,14 @@ export default function TrackingPage() {
                 className="flex items-center justify-between rounded-xl border border-[var(--desk-border)] px-3 py-2"
               >
                 <div>
-                  <p className="text-sm font-bold text-[var(--desk-text-primary)]">
+                  <p className="text-sm font-light text-[var(--desk-text-primary)]">
                     {receipt.supplier_name || "Supplier"}
                   </p>
                   <p className="text-[10px] font-mono text-[var(--desk-text-tertiary)]">
                     #{receipt.order_id.slice(-8)}
                   </p>
                 </div>
-                <span className="text-sm font-bold tabular-nums">
+                <span className="text-sm font-light tabular-nums">
                   {formatAmount(receipt.total_amount)}
                 </span>
               </div>
@@ -482,7 +482,7 @@ export default function TrackingPage() {
               <button
                 key={s.id}
                 onClick={() => toggleSupplier(s.id)}
-                className={`px-5 py-2 rounded-full md-typescale-label-large font-bold transition-all ${
+                className={`px-5 py-2 rounded-full md-typescale-label-large font-light transition-all ${
                   active
                     ? "bg-[var(--desk-accent)] text-white shadow-[var(--shadow-sm)]"
                     : "bg-[var(--desk-surface)] text-[var(--desk-text-secondary)] border border-[var(--desk-border)] hover:bg-[var(--desk-surface-subtle)]"
@@ -609,10 +609,10 @@ export default function TrackingPage() {
                     className={`w-3 h-3 rounded-full ${selectedOrder.is_approaching || selectedOrder.state === "ARRIVED" ? "bg-[var(--desk-success)]" : "bg-[var(--desk-accent)]"}`}
                   />
                   <div>
-                    <h3 className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                    <h3 className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                       {selectedOrder.supplier_name || "Unknown Supplier"}
                     </h3>
-                    <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                    <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                       ID: #{selectedOrder.order_id.slice(-8)}
                     </p>
                   </div>
@@ -643,10 +643,10 @@ export default function TrackingPage() {
 
               <div className="flex items-center justify-between pt-4 border-t border-[var(--desk-border)]">
                 <div>
-                  <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mb-0.5">
+                  <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest mb-0.5">
                     Asset Value
                   </p>
-                  <p className="md-typescale-title-medium font-bold text-[var(--desk-text-primary)] tabular-nums">
+                  <p className="md-typescale-title-medium font-light text-[var(--desk-text-primary)] tabular-nums">
                     {formatAmount(selectedOrder.total_amount)}{" "}
                     <small className="text-[10px] ml-0.5 opacity-60">UZS</small>
                   </p>

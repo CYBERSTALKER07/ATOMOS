@@ -49,13 +49,13 @@ export function HeroSection() {
           <div className="mt-12 flex flex-wrap justify-center gap-4">
             <Link
               href={heroContent.primaryCta.href}
-              className="mkt-btn mkt-btn-primary min-w-[160px] border-2 border-white font-bold uppercase tracking-wide"
+              className="mkt-btn mkt-btn-primary min-w-[160px] border-2 border-white font-light uppercase tracking-wide"
             >
               {heroContent.primaryCta.label}
             </Link>
             <Link
               href={heroContent.secondaryCta.href}
-              className="mkt-btn mkt-btn-outline min-w-[160px] border-2 font-bold uppercase tracking-wide"
+              className="mkt-btn mkt-btn-outline min-w-[160px] border-2 font-light uppercase tracking-wide"
             >
               {heroContent.secondaryCta.label}
             </Link>

@@ -221,7 +221,7 @@ export default function ProductPricingPage() {
                       </div>
                       <div className="p-3 bg-[var(--field-background)] rounded-lg">
                         <div className="text-sm text-[var(--muted)]">New Sale Price</div>
-                        <div className="font-mono mt-1 font-bold text-[var(--primary)]">{formatMinor(newSale)}</div>
+                        <div className="font-mono mt-1 font-light text-[var(--primary)]">{formatMinor(newSale)}</div>
                       </div>
                     </div>
                     

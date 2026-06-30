@@ -145,7 +145,7 @@ export default function Home() {
             <div className="w-16 h-16 rounded-2xl bg-[var(--desk-accent)] flex items-center justify-center text-white shadow-xl mb-6 rotate-3 hover:rotate-0 transition-transform cursor-default">
               <ShieldCheck size={32} />
             </div>
-            <h1 className="md-typescale-display-small font-bold text-[var(--desk-text-primary)] tracking-tight">
+            <h1 className="md-typescale-display-small font-light text-[var(--desk-text-primary)] tracking-tight">
               Retailer Hub
             </h1>
             <p className="mt-2 md-typescale-body-large text-[var(--desk-text-secondary)]">
@@ -160,7 +160,7 @@ export default function Home() {
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
-                  className="p-3 rounded-xl bg-[var(--desk-info)]/10 border border-[var(--desk-info)]/30 text-[var(--desk-info)] text-xs font-bold text-center"
+                  className="p-3 rounded-xl bg-[var(--desk-info)]/10 border border-[var(--desk-info)]/30 text-[var(--desk-info)] text-xs font-light text-center"
                 >
                   Restoring secure session...
                 </motion.div>
@@ -173,7 +173,7 @@ export default function Home() {
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
-                  className="p-3 rounded-xl bg-[var(--desk-warning)]/10 border border-[var(--desk-warning)]/30 text-[var(--desk-warning)] text-xs font-bold text-center flex items-center justify-center gap-2"
+                  className="p-3 rounded-xl bg-[var(--desk-warning)]/10 border border-[var(--desk-warning)]/30 text-[var(--desk-warning)] text-xs font-light text-center flex items-center justify-center gap-2"
                 >
                   <WifiOff size={14} />
                   Network offline. Login is temporarily unavailable.
@@ -195,7 +195,7 @@ export default function Home() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+998"
-                  className="w-full h-12 pl-12 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] border border-transparent focus:border-[var(--desk-accent)] transition-all md-typescale-body-medium font-bold"
+                  className="w-full h-12 pl-12 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] border border-transparent focus:border-[var(--desk-accent)] transition-all md-typescale-body-medium font-light"
                   required
                 />
               </div>
@@ -215,7 +215,7 @@ export default function Home() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full h-12 pl-12 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] border border-transparent focus:border-[var(--desk-accent)] transition-all md-typescale-body-medium font-bold"
+                  className="w-full h-12 pl-12 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] border border-transparent focus:border-[var(--desk-accent)] transition-all md-typescale-body-medium font-light"
                   required
                 />
               </div>
@@ -226,7 +226,7 @@ export default function Home() {
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
-                  className="p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-xs font-bold text-center flex items-center justify-center gap-2"
+                  className="p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-xs font-light text-center flex items-center justify-center gap-2"
                 >
                   <AlertTriangle size={14} />
                   {error}
@@ -237,7 +237,7 @@ export default function Home() {
             <Button
               type="submit"
               isDisabled={!canSubmit}
-              className="w-full h-14 bg-[var(--desk-text-primary)] text-white font-bold rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30"
+              className="w-full h-14 bg-[var(--desk-text-primary)] text-white font-light rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30"
             >
               {loading || restoringSession ? (
                 <Loader2 size={20} className="animate-spin" />
@@ -251,7 +251,7 @@ export default function Home() {
         </div>
 
         <div className="px-10 py-6 bg-[var(--desk-surface-subtle)] border-t border-[var(--desk-border)] text-center">
-          <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+          <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
             Pegasus Logistics Core v2.0.0
           </p>
         </div>

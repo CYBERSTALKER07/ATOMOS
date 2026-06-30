@@ -76,7 +76,7 @@ export default function InsightsPage() {
     <PageTransition>
       <div className="p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold tracking-tight text-[var(--foreground)]">Replenishment Insights</h1>
+          <h1 className="text-xl font-light tracking-tight text-[var(--foreground)]">Replenishment Insights</h1>
           <motion.button 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

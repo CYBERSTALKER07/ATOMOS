@@ -439,7 +439,7 @@ export default function SupplyRequestsPage() {
             <div className="grid gap-4 lg:grid-cols-4 overflow-x-auto">
               {(['SUBMITTED', 'ACKNOWLEDGED', 'IN_PRODUCTION', 'READY'] as const).map((lane) => (
                 <div key={lane} className="min-w-[220px] rounded-xl border p-3" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
-                  <div className="text-xs font-bold uppercase tracking-wider mb-3">{lane.replace(/_/g, ' ')}</div>
+                  <div className="text-xs font-light uppercase tracking-wider mb-3">{lane.replace(/_/g, ' ')}</div>
                   <div className="space-y-2">
                     {filtered.filter((r) => r.state === lane).map((request) => (
                       <div key={request.request_id} className="rounded-lg border p-3 text-sm" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
@@ -553,12 +553,12 @@ export default function SupplyRequestsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ border: `1px solid ${PRIORITY_COLORS[request.priority]}`, color: PRIORITY_COLORS[request.priority] || 'inherit' }}>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-light uppercase tracking-wider" style={{ border: `1px solid ${PRIORITY_COLORS[request.priority]}`, color: PRIORITY_COLORS[request.priority] || 'inherit' }}>
                         {request.priority}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider" style={{ background: STATE_COLORS[request.state], color: 'white' }}>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-light uppercase tracking-wider" style={{ background: STATE_COLORS[request.state], color: 'white' }}>
                         {request.state.replace(/_/g, ' ')}
                       </span>
                     </td>
@@ -596,7 +596,7 @@ export default function SupplyRequestsPage() {
                   {expandedRequestId === request.request_id && (request.items?.length ?? 0) > 0 && (
                     <tr key={`${request.request_id}-items`} className="border-t" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
                       <td colSpan={10} className="px-4 py-3 bg-[var(--color-md-surface-container-low)]">
-                        <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                        <div className="text-xs font-light uppercase tracking-wider mb-2" style={{ color: 'var(--color-md-on-surface-variant)' }}>
                           Requested SKUs
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

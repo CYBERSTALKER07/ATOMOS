@@ -35,7 +35,7 @@ export default function ManifestsPage() {
   return (
     <div className="p-6 space-y-4 md-animate-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-xl font-bold tracking-tight">Manifests</h1>
+        <h1 className="text-xl font-light tracking-tight">Manifests</h1>
         <div className="flex gap-2 items-center">
           <input
             type="date"

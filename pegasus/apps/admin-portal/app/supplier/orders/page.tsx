@@ -1128,7 +1128,7 @@ function OrderDetailDrawer({
                         <div key={s} className="flex items-center gap-0.5 flex-1">
                           <div className="flex flex-col items-center gap-1 flex-1">
                             <div
-                              className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-light shrink-0"
                               style={{
                                 background: done ? 'var(--color-md-primary, #1a1a1a)' : 'var(--color-md-surface-container, #f2f2f2)',
                                 color: done ? 'var(--color-md-on-primary, #fff)' : 'var(--color-md-outline, #999)',

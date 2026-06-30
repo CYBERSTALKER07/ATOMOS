@@ -199,7 +199,7 @@ export default function EmptyState({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="md-typescale-title-large font-bold text-foreground mb-2"
+        className="md-typescale-title-large font-light text-foreground mb-2"
       >
         {headline}
       </motion.h3>

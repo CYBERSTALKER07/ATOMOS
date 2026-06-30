@@ -269,7 +269,7 @@ export default function ProcurementPage() {
               type="button"
               disabled={isRefreshing}
               onClick={refreshAll}
-              className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-bold"
+              className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-light"
             >
               <RefreshCw
                 size={16}
@@ -280,7 +280,7 @@ export default function ProcurementPage() {
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
-              className="portal-btn portal-btn--primary h-11 px-6 rounded-xl font-bold shadow-[var(--shadow-sm)]"
+              className="portal-btn portal-btn--primary h-11 px-6 rounded-xl font-light shadow-[var(--shadow-sm)]"
             >
               <Plus size={18} className="mr-2" /> Connect Vendor
             </button>
@@ -303,14 +303,14 @@ export default function ProcurementPage() {
               size={16}
               className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
             />
-            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+            <span className="md-typescale-body-small font-light uppercase tracking-wide">
               {syncBanner.message}
             </span>
           </div>
           {syncBanner.kind !== "refreshing" && (
             <button
               onClick={refreshAll}
-              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-light uppercase tracking-wide hover:bg-current/10"
             >
               Retry
             </button>
@@ -402,10 +402,10 @@ export default function ProcurementPage() {
         {/* Main: Vendor List */}
         <div className="flex-1 flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+            <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
               Connected Supply Nodes
             </h2>
-            <span className="md-typescale-label-small font-bold uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+            <span className="md-typescale-label-small font-light uppercase tracking-widest text-[var(--desk-text-tertiary)]">
               {supplierList.length} ACTIVE
             </span>
           </div>
@@ -452,19 +452,19 @@ export default function ProcurementPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-1">
-                        <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)] truncate">
+                        <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)] truncate">
                           {vendor.name}
                         </span>
                         <Chip
                           size="sm"
                           color={vendor.is_active ? "success" : "default"}
                           variant="secondary"
-                          className="font-bold text-[9px]"
+                          className="font-light text-[9px]"
                         >
                           {vendor.is_active ? "ACTIVE" : "INACTIVE"}
                         </Chip>
                       </div>
-                      <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase tracking-widest font-bold">
+                      <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase tracking-widest font-light">
                         {vendor.category} · {vendor.order_count} ORDERS
                       </p>
                     </div>
@@ -500,13 +500,13 @@ export default function ProcurementPage() {
             </span>
             <CountUp
               end={totalSpend}
-              className="md-typescale-display-small font-bold tabular-nums"
+              className="md-typescale-display-small font-light tabular-nums"
             />
             <div className="mt-8 pt-6 border-t border-white/10 flex items-center justify-between">
-              <span className="text-xs font-bold opacity-60 uppercase tracking-widest">
+              <span className="text-xs font-light opacity-60 uppercase tracking-widest">
                 Efficiency
               </span>
-              <div className="flex items-center gap-2 text-[var(--desk-success)] font-bold">
+              <div className="flex items-center gap-2 text-[var(--desk-success)] font-light">
                 <ArrowUpRight size={16} />
                 <span>+8.2%</span>
               </div>
@@ -519,7 +519,7 @@ export default function ProcurementPage() {
             </h3>
             {topSuppliers.length === 0 ? (
               <div className="rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-4 text-center">
-                <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase font-bold tracking-widest">
+                <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase font-light tracking-widest">
                   No spend breakdown data yet
                 </p>
               </div>
@@ -531,14 +531,14 @@ export default function ProcurementPage() {
                       {i + 1}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] truncate">
+                      <p className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] truncate">
                         {item.supplier_name}
                       </p>
-                      <p className="text-[10px] text-[var(--desk-text-tertiary)] font-bold uppercase">
+                      <p className="text-[10px] text-[var(--desk-text-tertiary)] font-light uppercase">
                         {item.order_count} TRADES
                       </p>
                     </div>
-                    <span className="md-typescale-body-small font-bold text-[var(--desk-text-primary)]">
+                    <span className="md-typescale-body-small font-light text-[var(--desk-text-primary)]">
                       {item.total.toLocaleString()}
                     </span>
                   </div>
@@ -567,7 +567,7 @@ export default function ProcurementPage() {
               className="relative w-full max-w-lg bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-3xl shadow-2xl overflow-hidden"
             >
               <div className="p-6 border-b border-[var(--desk-border)] flex items-center justify-between">
-                <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
                   Connect Supply Node
                 </h2>
                 <button
@@ -616,10 +616,10 @@ export default function ProcurementPage() {
                             {s.name.charAt(0)}
                           </div>
                           <div>
-                            <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)]">
+                            <p className="md-typescale-body-medium font-light text-[var(--desk-text-primary)]">
                               {s.name}
                             </p>
-                            <p className="text-[10px] text-[var(--desk-text-tertiary)] font-bold uppercase">
+                            <p className="text-[10px] text-[var(--desk-text-tertiary)] font-light uppercase">
                               {s.category}
                             </p>
                           </div>
@@ -628,7 +628,7 @@ export default function ProcurementPage() {
                           type="button"
                           onClick={() => addSupplier(s.id)}
                           disabled={addingId === s.id}
-                          className="portal-btn portal-btn--primary rounded-lg h-9 px-4 font-bold"
+                          className="portal-btn portal-btn--primary rounded-lg h-9 px-4 font-light"
                         >
                           {addingId === s.id ? (
                             <>

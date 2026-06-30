@@ -109,7 +109,7 @@ export default function ContactPage() {
       <div className="container mx-auto px-4 py-20">
         {/* Header */}
         <div ref={headerRef} className="text-center max-w-4xl mx-auto mb-16 pt-16">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-light mb-6">
             Let&apos;s Connect
           </h1>
           <div className="w-24 h-1 bg-white mx-auto mb-8" />
@@ -123,7 +123,7 @@ export default function ContactPage() {
             {/* Contact Form */}
             <div ref={formRef}>
               <div className="border-2 border-white rounded-2xl p-8 bg-[#0D0D0D]">
-                <h2 className="text-3xl font-bold mb-6">Send a Message</h2>
+                <h2 className="text-3xl font-light mb-6">Send a Message</h2>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
@@ -210,7 +210,7 @@ export default function ContactPage() {
               {/* Get in Touch */}
               <div className="border-2 border-white rounded-2xl p-8 hover:bg-[#0D0D0D] transition-all duration-300">
                 <div className="text-4xl mb-4">📧</div>
-                <h3 className="text-2xl font-bold mb-3">Email</h3>
+                <h3 className="text-2xl font-light mb-3">Email</h3>
                 <div className="space-y-2">
                   <a 
                     href="mailto:shsoliyev@aut-edu.uz"
@@ -230,7 +230,7 @@ export default function ContactPage() {
               {/* Response Time */}
               <div className="border-2 border-white rounded-2xl p-8 hover:bg-[#0D0D0D] transition-all duration-300">
                 <div className="text-4xl mb-4">⚡</div>
-                <h3 className="text-2xl font-bold mb-3">Response Time</h3>
+                <h3 className="text-2xl font-light mb-3">Response Time</h3>
                 <p className="text-gray-300 text-lg">
                   We typically respond within 24-48 hours during business days.
                 </p>
@@ -239,7 +239,7 @@ export default function ContactPage() {
               {/* Office Hours */}
               <div className="border-2 border-white rounded-2xl p-8 hover:bg-[#0D0D0D] transition-all duration-300">
                 <div className="text-4xl mb-4">🕐</div>
-                <h3 className="text-2xl font-bold mb-3">Office Hours</h3>
+                <h3 className="text-2xl font-light mb-3">Office Hours</h3>
                 <p className="text-gray-300 text-lg">
                   Monday - Friday: 9:00 AM - 6:00 PM<br />
                   Weekend: By appointment
@@ -249,7 +249,7 @@ export default function ContactPage() {
               {/* Social Links */}
               <div className="border-2 border-white rounded-2xl p-8 hover:bg-[#0D0D0D] transition-all duration-300">
                 <div className="text-4xl mb-4">🌐</div>
-                <h3 className="text-2xl font-bold mb-4">Connect Online</h3>
+                <h3 className="text-2xl font-light mb-4">Connect Online</h3>
                 <div className="flex flex-wrap gap-3">
                   <a href="#" className="editorial-btn editorial-btn--sm">LinkedIn</a>
                   <a href="#" className="editorial-btn editorial-btn--sm">Twitter</a>
@@ -263,7 +263,7 @@ export default function ContactPage() {
         {/* Bottom CTA */}
         <div className="max-w-7xl mx-auto mt-16">
           <div className="border-2 border-white rounded-2xl p-12 text-center bg-[#0D0D0D]">
-            <h2 className="text-4xl font-bold mb-4">Ready to Start Your Project?</h2>
+            <h2 className="text-4xl font-light mb-4">Ready to Start Your Project?</h2>
             <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
               Let&apos;s turn your vision into reality. Reach out today and let&apos;s discuss how we can help.
             </p>

@@ -65,7 +65,7 @@ export default function OrphanAlertsCell() {
         <div className="flex items-center gap-1.5">
           {alerts.length > 0 ? (
             <span
-              className="md-typescale-label-small tabular-nums font-bold"
+              className="md-typescale-label-small tabular-nums font-light"
               style={{ color: 'var(--danger)' }}
             >
               {alerts.length}

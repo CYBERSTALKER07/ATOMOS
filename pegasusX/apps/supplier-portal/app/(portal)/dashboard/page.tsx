@@ -113,7 +113,7 @@ export default function DashboardPage() {
                   strokeDasharray={`${driverPct * 251} 251`}
                 />
               </svg>
-              <div className="md-typescale-title-large font-bold">{metrics.activeDrivers}</div>
+              <div className="md-typescale-title-large font-light">{metrics.activeDrivers}</div>
             </div>
             <p className="md-typescale-label-medium" style={{ color: "var(--desk-text-secondary)" }}>
               of {metrics.totalDrivers} online

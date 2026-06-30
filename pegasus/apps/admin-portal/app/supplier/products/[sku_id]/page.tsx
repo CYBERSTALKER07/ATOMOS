@@ -227,7 +227,7 @@ export default function ProductDetailPage() {
             <h1 className="md-typescale-headline-small">{product.name}</h1>
             <div className="flex items-center gap-2 mt-1">
               <span
-                className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                className="text-[10px] font-light px-2 py-0.5 rounded-full uppercase tracking-wider"
                 style={{
                   background: product.is_active
                     ? 'color-mix(in srgb, var(--success) 15%, transparent)'

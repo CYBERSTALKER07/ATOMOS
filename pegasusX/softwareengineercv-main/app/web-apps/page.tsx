@@ -86,7 +86,7 @@ export default function WebAppsPage() {
         <div className="max-w-6xl mx-auto text-center">
           <h1
             ref={titleRef}
-            className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8"
+            className="text-5xl md:text-7xl lg:text-8xl font-light mb-8"
           >
             Operations Portals
           </h1>
@@ -131,7 +131,7 @@ export default function WebAppsPage() {
 
       <section className="py-20 px-4 md:px-8 bg-black">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold text-center mb-16">Why Pegasus Portals?</h2>
+          <h2 className="text-4xl md:text-5xl font-light text-center mb-16">Why Pegasus Portals?</h2>
           <div ref={featuresRef} className="editorial-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
             <ContentCard variant="vertical" tag="Performance" title="High Performance" description="Optimized ops boards with realtime refresh and efficient caching during peak dispatch." image={EDITORIAL_IMAGES[2]} href="/#contact" ctaLabel="READ MORE" />
             <ContentCard variant="vertical" tone="light" tag="Design" title="Role-Ready UX" description="Interfaces tuned for warehouse, supplier, and retailer teams — not generic admin templates." image={EDITORIAL_IMAGES[3]} href="/#contact" ctaLabel="READ MORE" />

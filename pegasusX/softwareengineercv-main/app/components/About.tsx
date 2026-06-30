@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import TextType from './TextType';
@@ -11,6 +12,8 @@ import { useInView } from '../hooks/useInView';
 const ASCIIText = dynamic(() => import('./ASCIIText'), { ssr: false });
 
 gsap.registerPlugin(ScrollTrigger);
+
+const PEGASUS_LOGO = '/pegasus.jpg';
 
 export default function About() {
   const { isMobile } = useIsMobile();
@@ -49,40 +52,52 @@ export default function About() {
   }, [isMobile]);
 
   return (
-    <section id="about" ref={aboutRef} className="py-20 bg-white text-black">
+    <section id="about" ref={aboutRef} className="py-20 bg-black text-white">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
           <div ref={imageRef} className="relative">
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl border-2 border-black">
-              <div ref={asciiRef} className="max-w-7xl mx-auto">
-                <div className="relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden border-2 border-black bg-black">
-                  {isMobile ? (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
-                      <div className="text-white text-9xl font-black opacity-20">X</div>
-                    </div>
-                  ) : isInView ? (
-                    <ASCIIText
-                      text="X"
-                      asciiFontSize={20}
-                      textFontSize={200}
-                      textColor="#ffffff"
-                      planeBaseHeight={20}
-                      enableWaves={true}
+            <div ref={asciiRef} className="max-w-7xl mx-auto">
+              <div className="relative h-[400px] md:h-[500px] overflow-hidden border border-white/10 bg-black">
+                {isMobile ? (
+                  <div className="relative flex h-full w-full items-center justify-center bg-black p-12">
+                    <Image
+                      src={PEGASUS_LOGO}
+                      alt="Pegasus"
+                      width={320}
+                      height={320}
+                      className="h-auto w-full max-w-[280px] object-contain"
+                      priority
                     />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black" />
-                  )}
-                </div>
+                  </div>
+                ) : isInView ? (
+                  <ASCIIText
+                    imageSrc={PEGASUS_LOGO}
+                    asciiFontSize={10}
+                    planeBaseHeight={14}
+                    enableWaves={false}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-black">
+                    <Image
+                      src={PEGASUS_LOGO}
+                      alt=""
+                      width={200}
+                      height={200}
+                      className="h-auto w-32 object-contain opacity-20"
+                      aria-hidden
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           <div ref={contentRef} className="space-y-6">
             <div>
-              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-black">
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-4 text-white">
                 About Pegasus
               </h2>
-              <div className="w-20 h-1 bg-black rounded-full mb-6" />
+              <div className="w-20 h-[0.5px] bg-white rounded-full mb-6" />
 
               <div className="mb-6">
                 <TextType
@@ -98,24 +113,24 @@ export default function About() {
                   showCursor={true}
                   cursorCharacter="_"
                   loop={true}
-                  textColors={['#000000', '#C0C0C0']}
-                  className="text-xl md:text-2xl font-bold text-black"
-                  cursorClassName="text-black"
+                  textColors={['#ffffff', '#a3a3a3']}
+                  className="text-xl md:text-2xl font-light text-white"
+                  cursorClassName="text-white"
                   startOnVisible={true}
                 />
               </div>
             </div>
 
-            <p className="text-lg md:text-xl text-gray-800 leading-relaxed">
+            <p className="text-lg md:text-xl text-white/65 leading-relaxed font-light">
               Pegasus is the logistics operating system for supplier-led networks. From morning
               dispatch to live fleet tracking and payment reconciliation, every team — supplier,
               warehouse, factory, driver, retailer, and gate — works from the same source of truth.
             </p>
 
             <div className="flex flex-wrap gap-4">
-              <span className="editorial-btn editorial-btn--on-light editorial-btn--sm">Dispatch & Fleet</span>
-              <span className="editorial-btn editorial-btn--on-light editorial-btn--sm">Payments & Treasury</span>
-              <span className="editorial-btn editorial-btn--on-light editorial-btn--sm">Realtime Coordination</span>
+              <span className="editorial-btn editorial-btn--sm">Dispatch & Fleet</span>
+              <span className="editorial-btn editorial-btn--sm">Payments & Treasury</span>
+              <span className="editorial-btn editorial-btn--sm">Realtime Coordination</span>
             </div>
           </div>
         </div>

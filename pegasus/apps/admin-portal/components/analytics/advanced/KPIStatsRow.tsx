@@ -32,7 +32,7 @@ export default function KPIStatsRow({ data }: Props) {
             <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>
               {s.label}
             </span>
-            <span className="md-typescale-headline-small font-bold" style={{ color: s.color }}>
+            <span className="md-typescale-headline-small font-light" style={{ color: s.color }}>
               {s.value}
             </span>
           </div>

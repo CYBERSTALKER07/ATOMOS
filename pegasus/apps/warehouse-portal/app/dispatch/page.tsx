@@ -90,7 +90,7 @@ export default function DispatchPage() {
   return (
     <div className="p-6 space-y-6 md-animate-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-xl font-bold tracking-tight">Dispatch Board</h1>
+        <h1 className="text-xl font-light tracking-tight">Dispatch Board</h1>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-(--border) overflow-hidden">
             {(['kanban', 'list'] as const).map((mode) => (

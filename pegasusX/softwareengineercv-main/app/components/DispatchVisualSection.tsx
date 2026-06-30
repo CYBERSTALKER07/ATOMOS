@@ -10,29 +10,8 @@ import { useReducedMotion } from '@/app/hooks/useDevice';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const DISPATCH_FRAMES = [
-  {
-    src: FLEET_TRUCK_IMAGES[1].src,
-    alt: 'Studio render — single rig ready for dispatch',
-    label: 'Dispatch board',
-    span: 'md:col-span-2 md:row-span-2',
-    tall: true,
-  },
-  {
-    src: FLEET_TRUCK_IMAGES[3].src,
-    alt: 'Fleet lineup — capacity planning',
-    label: 'Fleet lineup',
-    span: '',
-    tall: false,
-  },
-  {
-    src: FLEET_TRUCK_IMAGES[5].src,
-    alt: 'Load-ready trailer configuration',
-    label: 'Gate & seal',
-    span: '',
-    tall: false,
-  },
-] as const;
+const HERO_IMAGE = FLEET_TRUCK_IMAGES[1];
+const CARD_IMAGE = FLEET_TRUCK_IMAGES[3];
 
 export default function DispatchVisualSection() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -70,26 +49,36 @@ export default function DispatchVisualSection() {
 
         <div
           ref={panelRef}
-          className="grid grid-cols-1 gap-3 md:grid-cols-3 md:grid-rows-2"
+          className="bw-visual bw-visual--chamfer relative min-h-[360px] aspect-[16/10] md:min-h-[480px] md:aspect-[21/9]"
           style={reduced ? undefined : { clipPath: 'inset(0 0% 0 0)' }}
         >
-          {DISPATCH_FRAMES.map((frame) => (
-            <div
-              key={frame.label}
-              className={`bw-visual bw-visual--chamfer relative ${frame.span} ${
-                frame.tall ? 'min-h-[320px] md:min-h-full aspect-[4/5] md:aspect-auto' : 'aspect-[16/10]'
-              }`}
-            >
+          <Image
+            src={HERO_IMAGE.src}
+            alt={HERO_IMAGE.alt}
+            fill
+            className="bw-visual__img object-cover"
+            sizes="(max-width: 768px) 100vw, 1280px"
+            priority
+          />
+          <span className="bw-visual__label">{HERO_IMAGE.caption}</span>
+
+          <article className="editorial-card editorial-card--featured absolute right-3 top-3 z-10 w-[min(42%,220px)] overflow-hidden border border-white/20 shadow-2xl sm:right-5 sm:top-5 sm:w-[min(38%,280px)] md:right-8 md:top-8">
+            <div className="editorial-card__media relative aspect-[4/3] w-full">
               <Image
-                src={frame.src}
-                alt={frame.alt}
+                src={CARD_IMAGE.src}
+                alt={CARD_IMAGE.alt}
                 fill
-                className="bw-visual__img object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover grayscale contrast-[1.08]"
+                sizes="280px"
               />
-              <span className="bw-visual__label">{frame.label}</span>
             </div>
-          ))}
+            <div className="editorial-card__body !p-3 sm:!p-4">
+              <p className="editorial-tag !text-[0.6rem]">{CARD_IMAGE.caption}</p>
+              <p className="mt-1 font-mono text-[0.55rem] uppercase tracking-[0.14em] text-black/55 sm:text-[0.625rem]">
+                Gate · seal · depart
+              </p>
+            </div>
+          </article>
         </div>
 
         <p className="mt-8 max-w-2xl font-mono text-xs uppercase tracking-[0.16em] text-white/40">

@@ -98,7 +98,7 @@ export default function NewSupplyRequestPage() {
         <button onClick={() => router.back()} className="p-1 rounded-lg hover:bg-[var(--surface)]">
           <Icon name="left" size={20} />
         </button>
-        <h1 className="text-xl font-bold tracking-tight">New Supply Request</h1>
+        <h1 className="text-xl font-light tracking-tight">New Supply Request</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

@@ -430,7 +430,7 @@ export default function EmptyState({
         transition={{ delay: shouldReduceMotion ? 0 : 0.14, duration: shouldReduceMotion ? 0.01 : 0.24 }}
         className="max-w-md space-y-3"
       >
-        <h3 className="md-typescale-headline-small font-bold tracking-tight text-foreground">
+        <h3 className="md-typescale-headline-small font-light tracking-tight text-foreground">
           {headline}
         </h3>
         {body && (

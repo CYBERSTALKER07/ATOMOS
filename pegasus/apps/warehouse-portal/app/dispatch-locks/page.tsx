@@ -104,7 +104,7 @@ export default function DispatchLocksPage() {
     <div className="p-6 space-y-6 md-animate-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Dispatch Locks</h1>
+          <h1 className="text-xl font-light tracking-tight">Dispatch Locks</h1>
           <p className="text-xs text-[var(--muted)] mt-0.5">
             Prevent concurrent dispatch operations during loading
           </p>

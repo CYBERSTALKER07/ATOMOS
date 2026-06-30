@@ -56,7 +56,7 @@ export default function HalfCircleProgress({
       </svg>
 
       <div className="absolute bottom-6 flex flex-col items-center text-center fade-in-up delay-100">
-        <span className="text-4xl font-bold text-[var(--foreground)]">
+        <span className="text-4xl font-light text-[var(--foreground)]">
           {value.toLocaleString()}
           <span className="text-xl text-[var(--muted)] font-normal ml-1">
             / {max.toLocaleString()}

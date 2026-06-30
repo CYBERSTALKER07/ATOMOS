@@ -36,7 +36,7 @@ function Field({ label, value, editing, onChange, type = 'text' }: {
 }) {
   return (
     <div className="w-full relative group">
-      <label className="absolute -top-3 left-4 bg-[var(--background)] px-2 text-xs font-bold text-[var(--accent)] tracking-wide uppercase z-10">
+      <label className="absolute -top-3 left-4 bg-[var(--background)] px-2 text-xs font-light text-[var(--accent)] tracking-wide uppercase z-10">
         {label}
       </label>
       {editing ? (

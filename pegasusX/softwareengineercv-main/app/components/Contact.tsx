@@ -173,7 +173,7 @@ export default function Contact() {
 
       <div className="container mx-auto px-4 relative z-20">
         <div ref={titleRef} className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-black">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-4 text-black">
             Let&apos;s Talk Logistics
           </h2>
           <div className="w-20 h-1 bg-black rounded-full mx-auto mb-6" />
@@ -211,7 +211,7 @@ export default function Contact() {
             {/* Left: Contact Info */}
             <div ref={infoRef} className="space-y-8 min-w-0">
               <div className="space-y-6">
-                <h3 className="text-2xl md:text-3xl font-bold text-black">
+                <h3 className="text-2xl md:text-3xl font-light text-black">
                   Get in Touch
                 </h3>
                 
@@ -234,7 +234,7 @@ export default function Contact() {
 
               {/* Benefits Card */}
               <div className="editorial-card editorial-card--dark border border-black p-8 text-white relative">
-                <h4 className="text-xl font-bold mb-4">Why Pegasus?</h4>
+                <h4 className="text-xl font-light mb-4">Why Pegasus?</h4>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
                     <span className="mt-1">✓</span>
@@ -266,7 +266,7 @@ export default function Contact() {
                 onSubmit={handleSubmit} 
                 className="border border-black p-8 md:p-10 bg-white"
               >
-                <h3 className="text-2xl md:text-3xl font-bold text-black mb-8">
+                <h3 className="text-2xl md:text-3xl font-light text-black mb-8">
                   {inquiryType === 'general' && 'Send a Message'}
                   {inquiryType === 'client' && 'Request a Demo'}
                   {inquiryType === 'sponsor' && 'Partnership Inquiry'}
@@ -275,7 +275,7 @@ export default function Contact() {
                 <div className="space-y-6">
                   {/* Name Field */}
                   <div>
-                    <label htmlFor="name" className="block text-sm font-bold mb-3 text-black">
+                    <label htmlFor="name" className="block text-sm font-light mb-3 text-black">
                       YOUR NAME *
                     </label>
                     <input
@@ -293,7 +293,7 @@ export default function Contact() {
 
                   {/* Email Field */}
                   <div>
-                    <label htmlFor="email" className="block text-sm font-bold mb-3 text-black">
+                    <label htmlFor="email" className="block text-sm font-light mb-3 text-black">
                       YOUR EMAIL *
                     </label>
                     <input
@@ -313,7 +313,7 @@ export default function Contact() {
                   {(inquiryType === 'client' || inquiryType === 'sponsor') && (
                     <>
                       <div>
-                        <label htmlFor="company" className="block text-sm font-bold mb-3 text-black">
+                        <label htmlFor="company" className="block text-sm font-light mb-3 text-black">
                           COMPANY NAME
                         </label>
                         <input
@@ -331,7 +331,7 @@ export default function Contact() {
                       {inquiryType === 'client' && (
                         <>
                           <div>
-                            <label htmlFor="budget" className="block text-sm font-bold mb-3 text-black">
+                            <label htmlFor="budget" className="block text-sm font-light mb-3 text-black">
                               NETWORK SIZE
                             </label>
                             <select
@@ -351,7 +351,7 @@ export default function Contact() {
                           </div>
 
                           <div>
-                            <label htmlFor="timeline" className="block text-sm font-bold mb-3 text-black">
+                            <label htmlFor="timeline" className="block text-sm font-light mb-3 text-black">
                               ROLLOUT TIMELINE
                             </label>
                             <select
@@ -374,7 +374,7 @@ export default function Contact() {
 
                       {inquiryType === 'sponsor' && (
                         <div>
-                          <label htmlFor="category" className="block text-sm font-bold mb-3 text-black">
+                          <label htmlFor="category" className="block text-sm font-light mb-3 text-black">
                             PARTNERSHIP TYPE
                           </label>
                           <select
@@ -398,7 +398,7 @@ export default function Contact() {
 
                   {/* Message Field */}
                   <div>
-                    <label htmlFor="message" className="block text-sm font-bold mb-3 text-black">
+                    <label htmlFor="message" className="block text-sm font-light mb-3 text-black">
                       YOUR MESSAGE *
                     </label>
                     <textarea
@@ -430,14 +430,14 @@ export default function Contact() {
                   {/* Status Messages */}
                   {submitStatus === 'success' && (
                     <div className="success-message p-4 border-2 border-black bg-[#8DDC96] text-black rounded-lg" role="status">
-                      <p className="font-bold">✓ Inquiry submitted successfully!</p>
+                      <p className="font-light">✓ Inquiry submitted successfully!</p>
                       <p className="text-sm mt-1">Our team will respond within one business day.</p>
                     </div>
                   )}
 
                   {submitStatus === 'error' && (
                     <div className="p-4 border-2 border-black bg-[#FE5934] text-white rounded-lg" role="status">
-                      <p className="font-bold">✗ Failed to submit inquiry</p>
+                      <p className="font-light">✗ Failed to submit inquiry</p>
                       <p className="text-sm mt-1">Please try again or email demo@pegasus.io directly.</p>
                     </div>
                   )}

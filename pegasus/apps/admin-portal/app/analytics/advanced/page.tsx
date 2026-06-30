@@ -95,7 +95,7 @@ export default function AdvancedAnalyticsPage() {
                     <span className="md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>
                       {t('supplier_portal.analytics.advanced.factory.total_transfers')}
                     </span>
-                    <span className="md-typescale-headline-small font-bold" style={{ color: 'var(--color-md-primary)' }}>
+                    <span className="md-typescale-headline-small font-light" style={{ color: 'var(--color-md-primary)' }}>
                       {fo?.total_transfers ?? 0}
                     </span>
                   </div>
@@ -103,7 +103,7 @@ export default function AdvancedAnalyticsPage() {
                     <span className="md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>
                       {t('supplier_portal.analytics.advanced.factory.avg_lead_time')}
                     </span>
-                    <span className="md-typescale-headline-small font-bold" style={{ color: 'var(--color-md-secondary)' }}>
+                    <span className="md-typescale-headline-small font-light" style={{ color: 'var(--color-md-secondary)' }}>
                       {t('supplier_portal.analytics.advanced.factory.minutes_value', { value: Math.round(fo?.avg_lead_time_mins ?? 0) })}
                     </span>
                   </div>
@@ -176,7 +176,7 @@ export default function AdvancedAnalyticsPage() {
             <span className="md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>
               {t('supplier_portal.analytics.advanced.total_revenue')}
             </span>
-            <span className="md-typescale-headline-medium font-bold" style={{ color: 'var(--color-md-primary)' }}>
+            <span className="md-typescale-headline-medium font-light" style={{ color: 'var(--color-md-primary)' }}>
               {totalRevenue >= 1_000_000
                 ? `${(totalRevenue / 1_000_000).toFixed(1)}M`
                 : totalRevenue >= 1_000

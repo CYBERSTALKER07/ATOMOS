@@ -145,7 +145,7 @@ export default function WarehouseDashboard() {
     <PageTransition>
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold tracking-tight text-[var(--foreground)]">Warehouse Dashboard</h1>
+          <h1 className="text-xl font-light tracking-tight text-[var(--foreground)]">Warehouse Dashboard</h1>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -182,15 +182,15 @@ export default function WarehouseDashboard() {
                   <Icon name={kpi.icon} size={20} />
                 </div>
                 {kpi.danger && (
-                  <span className="status-chip status-chip--critical text-[10px] font-bold tracking-tighter">ALERT</span>
+                  <span className="status-chip status-chip--critical text-[10px] font-light tracking-tighter">ALERT</span>
                 )}
                 {kpi.highlight && (
-                  <span className="status-chip status-chip--ready text-[10px] font-bold tracking-tighter">DONE</span>
+                  <span className="status-chip status-chip--ready text-[10px] font-light tracking-tighter">DONE</span>
                 )}
               </div>
               <div>
-                <div className="text-2xl font-bold tracking-tight font-mono">{kpi.value}</div>
-                <div className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] mt-1">{kpi.label}</div>
+                <div className="text-2xl font-light tracking-tight font-mono">{kpi.value}</div>
+                <div className="text-xs font-light uppercase tracking-widest text-[var(--muted)] mt-1">{kpi.label}</div>
               </div>
             </motion.div>
           </Link>
@@ -205,13 +205,13 @@ export default function WarehouseDashboard() {
           transition={{ delay: 0.5 }}
           className="p-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
         >
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-4 text-[var(--muted)]">Fleet Status Tracking</h2>
+          <h2 className="text-xs font-light uppercase tracking-widest mb-4 text-[var(--muted)]">Fleet Status Tracking</h2>
           <div className="flex flex-wrap gap-3">
             {Object.entries(d.fleet_status).map(([status, count]) => (
               <motion.span
                 key={status}
                 whileHover={{ scale: 1.05 }}
-                className="px-4 py-2 rounded-xl text-xs font-bold border border-[var(--border)] bg-[var(--default)] transition-colors hover:border-[var(--primary)]"
+                className="px-4 py-2 rounded-xl text-xs font-light border border-[var(--border)] bg-[var(--default)] transition-colors hover:border-[var(--primary)]"
               >
                 {status.replace(/_/g, ' ')}: <span className="text-[var(--primary)] ml-1">{count}</span>
               </motion.span>

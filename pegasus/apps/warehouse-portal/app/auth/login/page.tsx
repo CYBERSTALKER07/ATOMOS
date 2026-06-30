@@ -47,7 +47,7 @@ export default function WarehouseLogin() {
         className="w-full max-w-sm mx-auto p-8 rounded-xl border border-[var(--border)]"
         style={{ background: 'var(--surface)' }}
       >
-        <h1 className="text-xl font-bold tracking-tight mb-1">Warehouse Portal</h1>
+        <h1 className="text-xl font-light tracking-tight mb-1">Warehouse Portal</h1>
         <p className="text-sm text-[var(--muted)] mb-6">Sign in with your phone and PIN</p>
 
         {error && (

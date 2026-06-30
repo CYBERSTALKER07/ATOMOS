@@ -60,7 +60,7 @@ export default function ShopClosedExceptions() {
         {data.map(item => (
           <div key={item.attempt_id} className="md-card md-elevation-1 p-4 flex flex-col md:flex-row gap-4 items-start md:items-center">
             <div className="flex-1">
-              <p className="md-typescale-title-medium font-bold">Order ID: {item.order_id}</p>
+              <p className="md-typescale-title-medium font-light">Order ID: {item.order_id}</p>
               <p className="text-sm text-(--color-md-on-surface-variant)">Driver: {item.driver_id} | Route: {item.original_route_id}</p>
               <span className={`mt-2 inline-block px-2 py-1 text-xs rounded md-shape-xs bg-yellow-100 text-yellow-800`}>
                 {item.resolution}

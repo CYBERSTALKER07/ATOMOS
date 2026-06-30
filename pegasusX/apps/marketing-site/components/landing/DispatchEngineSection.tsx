@@ -63,7 +63,7 @@ export function DispatchEngineSection() {
           <div className="mt-8 flex flex-wrap gap-3">
             {dispatchStats.map((stat) => (
               <div key={stat.label} className="mkt-card px-4 py-3">
-                <p className="text-xl font-bold tabular-nums">{stat.value}</p>
+                <p className="text-xl font-light tabular-nums">{stat.value}</p>
                 <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--mkt-subtle)]">
                   {stat.label}
                 </p>

@@ -6,6 +6,8 @@ export type LogoItem =
       href?: string;
       title?: string;
       ariaLabel?: string;
+      brandColor?: string;
+      logoClassName?: string;
     }
   | {
       src: string;
@@ -287,9 +289,11 @@ export const LogoLoop = React.memo<LogoLoopProps>(
             className={cx(
               'inline-flex items-center',
               'motion-reduce:transition-none',
+              (item as { logoClassName?: string }).logoClassName,
               scaleOnHover &&
                 'transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] group-hover/item:scale-110'
             )}
+            data-brand-color={(item as { brandColor?: string }).brandColor}
             aria-hidden={!!(item as any).href && !(item as any).ariaLabel}
           >
             {(item as any).node}

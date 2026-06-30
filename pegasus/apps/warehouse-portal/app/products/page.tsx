@@ -41,7 +41,7 @@ export default function ProductsPage() {
     <PageTransition>
       <div className="p-6 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <h1 className="text-xl font-bold tracking-tight text-[var(--foreground)]">Product Catalog</h1>
+          <h1 className="text-xl font-light tracking-tight text-[var(--foreground)]">Product Catalog</h1>
           <div className="flex gap-2 items-center">
             <input
               placeholder="Search products..."

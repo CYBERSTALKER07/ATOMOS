@@ -73,10 +73,10 @@ export default function ProductDetailDrawer({
                   <Package size={22} />
                 </div>
                 <div>
-                  <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                  <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
                     Asset Specs
                   </h2>
-                  <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                  <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                     Network SKU: #{product.id.slice(-8)}
                   </p>
                 </div>
@@ -115,19 +115,19 @@ export default function ProductDetailDrawer({
 
               <div className="p-8 space-y-8">
                 <div>
-                  <h2 className="md-typescale-display-small font-bold text-[var(--desk-text-primary)] tracking-tight">
+                  <h2 className="md-typescale-display-small font-light text-[var(--desk-text-primary)] tracking-tight">
                     {product.name}
                   </h2>
                   <div className="flex items-center gap-2 mt-4">
                     <Chip
                       size="sm"
                       variant="secondary"
-                      className="font-bold text-[10px] tracking-widest"
+                      className="font-light text-[10px] tracking-widest"
                     >
                       {product.category_name?.toUpperCase()}
                     </Chip>
                     <span className="w-1 h-1 rounded-full bg-[var(--desk-border-strong)]" />
-                    <span className="md-typescale-body-small font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                    <span className="md-typescale-body-small font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                       {product.supplier_name}
                     </span>
                   </div>
@@ -163,7 +163,7 @@ export default function ProductDetailDrawer({
             <div className="p-8 border-t border-[var(--desk-border)] bg-[var(--desk-surface-subtle)]">
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                  <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                     Base Node Price
                   </p>
                   <div className="flex items-baseline gap-2 tabular-nums">
@@ -173,7 +173,7 @@ export default function ProductDetailDrawer({
                         <small className="text-xs opacity-40 uppercase">UZS</small>
                       </p>
                     )}
-                    <p className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                    <p className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
                       {productDisplayPrice(product).toLocaleString()}{" "}
                       <small className="text-xs opacity-40 uppercase">UZS</small>
                     </p>
@@ -181,10 +181,10 @@ export default function ProductDetailDrawer({
                 </div>
                 {product.units_per_block && (
                   <div className="text-right">
-                    <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                    <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                       Batch Density
                     </p>
-                    <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)]">
+                    <p className="md-typescale-body-medium font-light text-[var(--desk-text-primary)]">
                       {product.units_per_block} UNITS
                     </p>
                   </div>
@@ -200,7 +200,7 @@ export default function ProductDetailDrawer({
                   }
                 }}
                 disabled={blocked}
-                className="portal-btn portal-btn--primary w-full h-14 font-bold rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                className="portal-btn portal-btn--primary w-full h-14 font-light rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
               >
                 <ShoppingCart size={20} />
                 {blocked
@@ -230,17 +230,17 @@ function VariantRow({
   return (
     <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] hover:border-[var(--desk-border-strong)] transition-all">
       <div className="flex-1 min-w-0">
-        <span className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] block">
+        <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
           {variant.size}
         </span>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-tighter">
+          <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-tighter">
             {variant.pack || "Standard Pack"}
           </span>
           {variant.weight_per_unit && (
             <>
               <span className="w-1 h-1 rounded-full bg-[var(--desk-border)]" />
-              <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-tighter">
+              <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-tighter">
                 {variant.weight_per_unit}
               </span>
             </>
@@ -248,7 +248,7 @@ function VariantRow({
         </div>
       </div>
       <div className="flex items-center gap-4">
-        <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)] tabular-nums">
+        <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)] tabular-nums">
           {variant.price.toLocaleString()}
         </span>
         <button

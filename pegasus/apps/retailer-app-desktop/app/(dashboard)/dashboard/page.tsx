@@ -192,7 +192,7 @@ export default function DashboardPage() {
           >
             <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
+                <h1 className="md-typescale-display-small font-light tracking-tight text-[var(--desk-text-primary)]">
                   Operations Hub
                 </h1>
                 <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
@@ -204,7 +204,7 @@ export default function DashboardPage() {
                   variant="secondary"
                   isDisabled={isRefreshing}
                   onPress={refreshAll}
-                  className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
+                  className="h-10 px-5 rounded-xl font-light text-[var(--desk-text-secondary)]"
                 >
                   <RefreshCw
                     size={16}
@@ -215,7 +215,7 @@ export default function DashboardPage() {
                 <Link href="/orders">
                   <Button
                     variant="secondary"
-                    className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
+                    className="h-10 px-5 rounded-xl font-light text-[var(--desk-text-secondary)]"
                   >
                     Review Orders
                   </Button>
@@ -223,7 +223,7 @@ export default function DashboardPage() {
                 <Link href="/catalog">
                   <Button
                     variant="primary"
-                    className="h-10 px-5 rounded-xl font-bold shadow-[var(--shadow-sm)]"
+                    className="h-10 px-5 rounded-xl font-light shadow-[var(--shadow-sm)]"
                     style={{ background: "var(--desk-accent)", color: "white" }}
                   >
                     Open Catalog
@@ -247,14 +247,14 @@ export default function DashboardPage() {
                     size={16}
                     className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
                   />
-                  <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+                  <span className="md-typescale-body-small font-light uppercase tracking-wide">
                     {syncBanner.message}
                   </span>
                 </div>
                 {syncBanner.kind !== "refreshing" && (
                   <button
                     onClick={refreshAll}
-                    className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+                    className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-light uppercase tracking-wide hover:bg-current/10"
                   >
                     Retry
                   </button>
@@ -273,7 +273,7 @@ export default function DashboardPage() {
                     <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
                       Focus today
                     </span>
-                    <h2 className="mt-2 text-2xl font-bold tracking-tight text-[var(--desk-text-primary)] leading-tight">
+                    <h2 className="mt-2 text-2xl font-light tracking-tight text-[var(--desk-text-primary)] leading-tight">
                       Predictive Replenishment
                     </h2>
                     <p className="mt-2 md-typescale-body-medium text-[var(--desk-text-secondary)]">
@@ -282,7 +282,7 @@ export default function DashboardPage() {
                       run.
                     </p>
                   </div>
-                  <div className="px-3 py-1 rounded-lg bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] font-bold text-xs">
+                  <div className="px-3 py-1 rounded-lg bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] font-light text-xs">
                     {productList.length} SKUS
                   </div>
                 </div>
@@ -339,7 +339,7 @@ export default function DashboardPage() {
 
             <div className="grid gap-8 xl:grid-cols-[1.2fr_0.8fr]">
               <section>
-                <h3 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)] mb-4">
+                <h3 className="md-typescale-title-large font-light text-[var(--desk-text-primary)] mb-4">
                   Quick Reorder
                 </h3>
                 {reorderProducts.length === 0 ? (
@@ -367,7 +367,7 @@ export default function DashboardPage() {
                           <Package size={20} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="md-typescale-title-small font-bold truncate text-[var(--desk-text-primary)]">
+                          <p className="md-typescale-title-small font-light truncate text-[var(--desk-text-primary)]">
                             {p.name}
                           </p>
                           <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] truncate uppercase tracking-widest">
@@ -375,7 +375,7 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                          <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                             {p.price.toLocaleString()}
                           </p>
                           <ArrowUpRight
@@ -391,12 +391,12 @@ export default function DashboardPage() {
 
               <section>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                  <h3 className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
                     AI Restock
                   </h3>
                   <Link
                     href="/insights"
-                    className="text-[var(--desk-accent)] md-typescale-label-small font-bold uppercase tracking-widest hover:underline"
+                    className="text-[var(--desk-accent)] md-typescale-label-small font-light uppercase tracking-widest hover:underline"
                   >
                     View All
                   </Link>
@@ -419,12 +419,12 @@ export default function DashboardPage() {
                         className="p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl flex items-center gap-4"
                       >
                         <div
-                          className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold ${forecast.confidence > 0.8 ? "border-[var(--desk-success)] text-[var(--desk-success)]" : "border-[var(--desk-warning)] text-[var(--desk-warning)]"}`}
+                          className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-light ${forecast.confidence > 0.8 ? "border-[var(--desk-success)] text-[var(--desk-success)]" : "border-[var(--desk-warning)] text-[var(--desk-warning)]"}`}
                         >
                           {Math.round(forecast.confidence * 100)}%
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="md-typescale-title-small font-bold truncate text-[var(--desk-text-primary)]">
+                          <p className="md-typescale-title-small font-light truncate text-[var(--desk-text-primary)]">
                             {forecast.productName}
                           </p>
                           <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] line-clamp-1">
@@ -432,10 +432,10 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                          <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                             {forecast.predictedQuantity}
                           </p>
-                          <p className="text-[10px] text-[var(--desk-text-tertiary)] uppercase font-bold tracking-tighter">
+                          <p className="text-[10px] text-[var(--desk-text-tertiary)] uppercase font-light tracking-tighter">
                             Units
                           </p>
                         </div>
@@ -471,7 +471,7 @@ function QuickAction({
         strokeWidth={1.5}
         className="group-hover:scale-110 transition-transform"
       />
-      <span className="md-typescale-label-small font-bold uppercase tracking-widest">
+      <span className="md-typescale-label-small font-light uppercase tracking-widest">
         {label}
       </span>
     </Link>

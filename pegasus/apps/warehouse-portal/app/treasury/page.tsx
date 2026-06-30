@@ -81,7 +81,7 @@ export default function TreasuryPage() {
   return (
     <div className="p-6 space-y-6 md-animate-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-xl font-bold tracking-tight">Treasury</h1>
+        <h1 className="text-xl font-light tracking-tight">Treasury</h1>
         <div className="flex gap-2">
           {(['overview', 'invoices'] as const).map(v => (
             <button
@@ -99,15 +99,15 @@ export default function TreasuryPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">Total Invoiced</div>
-          <div className="text-2xl font-bold">{fmt(ov.total_invoiced)} UZS</div>
+          <div className="text-2xl font-light">{fmt(ov.total_invoiced)} UZS</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">Paid</div>
-          <div className="text-2xl font-bold text-[var(--success)]">{fmt(ov.total_paid)} UZS</div>
+          <div className="text-2xl font-light text-[var(--success)]">{fmt(ov.total_paid)} UZS</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">Outstanding</div>
-          <div className="text-2xl font-bold" style={{ color: ov.total_outstanding > 0 ? 'var(--danger)' : 'var(--foreground)' }}>
+          <div className="text-2xl font-light" style={{ color: ov.total_outstanding > 0 ? 'var(--danger)' : 'var(--foreground)' }}>
             {fmt(ov.total_outstanding)} UZS
           </div>
         </div>

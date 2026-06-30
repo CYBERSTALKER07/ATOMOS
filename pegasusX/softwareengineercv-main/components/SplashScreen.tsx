@@ -51,16 +51,13 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, duration = 3000
       ref={containerRef}
       className="fixed inset-0 z-[9999] bg-black flex items-center justify-center overflow-hidden"
     >
-      {/* Main Logo with GlitchText */}
+      {/* Main Logo */}
       <div ref={logoRef} className="flex items-center justify-center">
-        <GlitchText
-          speed={0.5}
-          enableShadows={true}
-          enableOnHover={false}
-          className="text-white text-[clamp(3rem,15vw,10rem)] font-black"
-        >
-          PEGASUS
-        </GlitchText>
+        <img 
+          src="/pegasus.jpg" 
+          alt="Pegasus Logo" 
+          className="max-w-[80vw] max-h-[80vh] object-contain rounded-2xl" 
+        />
       </div>
     </div>
   );

@@ -311,7 +311,7 @@ export default function DockPage() {
       style={{ background: "var(--desk-canvas)" }}
     >
       <header className="mb-8">
-        <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
+        <h1 className="md-typescale-display-small font-light tracking-tight text-[var(--desk-text-primary)]">
           Dock Control
         </h1>
         <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
@@ -334,14 +334,14 @@ export default function DockPage() {
               size={16}
               className={syncStatus.kind === "refreshing" ? "animate-spin" : ""}
             />
-            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+            <span className="md-typescale-body-small font-light uppercase tracking-wide">
               {syncStatus.message}
             </span>
           </div>
           {syncStatus.kind !== "refreshing" && (
             <button
               onClick={() => void mutate()}
-              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-light uppercase tracking-wide hover:bg-current/10"
             >
               Retry
             </button>
@@ -454,14 +454,14 @@ export default function DockPage() {
                   className="flex w-full items-center justify-between p-5 hover:bg-[var(--desk-surface-subtle)] transition-colors text-left"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] flex items-center justify-center font-bold text-xl">
+                    <div className="w-12 h-12 rounded-2xl bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] flex items-center justify-center font-light text-xl">
                       {group.supplierName.charAt(0)}
                     </div>
                     <div>
-                      <h3 className="md-typescale-title-medium font-bold text-[var(--desk-text-primary)]">
+                      <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">
                         {group.supplierName}
                       </h3>
-                      <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] font-bold uppercase tracking-widest">
+                      <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] font-light uppercase tracking-widest">
                         {group.orders.length} ACTIVE NODES ·{" "}
                         {formatAmount(group.totalAmount)} UZS
                       </p>
@@ -514,18 +514,18 @@ export default function DockPage() {
                           >
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-3 mb-1">
-                                <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                                <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                                   #{order.order_id.slice(-8)}
                                 </span>
                                 <Chip
                                   size="sm"
                                   variant="secondary"
-                                  className={`font-bold text-[10px] ${statusClass}`}
+                                  className={`font-light text-[10px] ${statusClass}`}
                                 >
                                   {status.label}
                                 </Chip>
                               </div>
-                              <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase tracking-widest font-bold">
+                              <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase tracking-widest font-light">
                                 {formatAmount(order.total_amount)} UZS ·{" "}
                                 {order.items.length} SKUS
                               </p>
@@ -537,7 +537,7 @@ export default function DockPage() {
                                 <>
                                   <button
                                     onClick={() => toggleToken(order.order_id)}
-                                    className={`flex items-center gap-2 px-4 h-10 rounded-xl font-bold transition-all active:scale-95 ${revealedTokens.has(order.order_id) ? "bg-[var(--desk-text-primary)] text-white" : "bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] text-[var(--desk-text-primary)]"}`}
+                                    className={`flex items-center gap-2 px-4 h-10 rounded-xl font-light transition-all active:scale-95 ${revealedTokens.has(order.order_id) ? "bg-[var(--desk-text-primary)] text-white" : "bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] text-[var(--desk-text-primary)]"}`}
                                   >
                                     <QrCode size={18} />
                                     {revealedTokens.has(order.order_id)
@@ -563,7 +563,7 @@ export default function DockPage() {
                               ) : (
                                 <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)] opacity-40">
                                   <Clock size={16} />
-                                  <span className="text-[10px] font-bold uppercase tracking-widest">
+                                  <span className="text-[10px] font-light uppercase tracking-widest">
                                     Locked Until Proximity
                                   </span>
                                 </div>

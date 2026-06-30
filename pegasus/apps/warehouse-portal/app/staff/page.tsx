@@ -82,7 +82,7 @@ export default function StaffPage() {
   return (
     <div className="p-6 space-y-6 md-animate-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight">Staff</h1>
+        <h1 className="text-xl font-light tracking-tight">Staff</h1>
         <button
           onClick={() => setShowForm(!showForm)}
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold button--primary"

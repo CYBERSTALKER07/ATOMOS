@@ -419,7 +419,7 @@ export default function PaymentModal() {
                 <CheckCircle2 size={40} />
               </div>
               <div>
-                <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
                   Payment Settled
                 </h2>
                 <p className="md-typescale-body-medium text-[var(--desk-text-secondary)] mt-1">
@@ -436,10 +436,10 @@ export default function PaymentModal() {
                     <ShieldCheck size={22} />
                   </div>
                   <div>
-                    <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                    <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
                       Payment Required
                     </h2>
-                    <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                    <p className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                       Node ID: #{event.order_id.slice(-8)}
                     </p>
                   </div>
@@ -456,10 +456,10 @@ export default function PaymentModal() {
                 {/* Amount */}
                 <div className="p-6 rounded-2xl bg-[var(--desk-text-primary)] text-white shadow-xl relative overflow-hidden">
                   <div className="absolute right-0 top-0 w-24 h-24 bg-white opacity-5 rotate-12 translate-x-4 -translate-y-4" />
-                  <p className="text-xs font-bold uppercase tracking-widest opacity-60 mb-2">
+                  <p className="text-xs font-light uppercase tracking-widest opacity-60 mb-2">
                     Node Settlement Amount
                   </p>
-                  <h3 className="md-typescale-display-small font-bold tabular-nums">
+                  <h3 className="md-typescale-display-small font-light tabular-nums">
                     {formatAmount(event.amount)}{" "}
                     <small className="text-sm opacity-40 uppercase ml-0.5">
                       UZS
@@ -467,10 +467,10 @@ export default function PaymentModal() {
                   </h3>
                   {amended && (
                     <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
-                      <span className="text-[10px] font-bold opacity-60 uppercase">
+                      <span className="text-[10px] font-light opacity-60 uppercase">
                         Amended Baseline
                       </span>
-                      <span className="text-xs font-bold line-through opacity-40">
+                      <span className="text-xs font-light line-through opacity-40">
                         {formatAmount(event.original_amount!)}
                       </span>
                     </div>
@@ -480,7 +480,7 @@ export default function PaymentModal() {
                 {error && (
                   <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-center gap-3 text-red-600">
                     <AlertTriangle size={18} />
-                    <p className="text-xs font-bold">{error}</p>
+                    <p className="text-xs font-light">{error}</p>
                   </div>
                 )}
 
@@ -491,7 +491,7 @@ export default function PaymentModal() {
                       className="animate-spin text-[var(--desk-accent)]"
                     />
                     <div>
-                      <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)]">
+                      <p className="md-typescale-body-medium font-light text-[var(--desk-text-primary)]">
                         {checkoutUrl
                           ? "Gateway Synchronizing..."
                           : "Initializing..."}
@@ -505,7 +505,7 @@ export default function PaymentModal() {
                         href={checkoutUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-6 h-11 rounded-xl bg-[var(--desk-accent)] text-white font-bold transition-all hover:scale-105"
+                        className="flex items-center gap-2 px-6 h-11 rounded-xl bg-[var(--desk-accent)] text-white font-light transition-all hover:scale-105"
                       >
                         Open Payment Portal <ExternalLink size={16} />
                       </a>
@@ -515,7 +515,7 @@ export default function PaymentModal() {
                   <div className="flex flex-col items-center gap-4 py-8 text-center">
                     <Banknote size={40} className="text-[var(--desk-warning)]" />
                     <div>
-                      <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)]">
+                      <p className="md-typescale-body-medium font-light text-[var(--desk-text-primary)]">
                         Awaiting driver cash collection
                       </p>
                       <p className="text-xs text-[var(--desk-text-tertiary)] mt-1">
@@ -526,10 +526,10 @@ export default function PaymentModal() {
                 ) : state === "confirm-cash" ? (
                   <div className="space-y-4">
                     <div className="rounded-2xl border border-[var(--desk-warning)]/30 bg-[var(--desk-warning)]/10 p-4 text-left">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--desk-warning)]">
+                      <p className="text-[10px] font-light uppercase tracking-widest text-[var(--desk-warning)]">
                         Cash Payment
                       </p>
-                      <p className="mt-2 text-sm font-bold text-[var(--desk-text-primary)]">
+                      <p className="mt-2 text-sm font-light text-[var(--desk-text-primary)]">
                         Confirm you will pay {formatAmount(event.amount)} UZS in cash. The driver will collect and complete the delivery.
                       </p>
                     </div>
@@ -537,13 +537,13 @@ export default function PaymentModal() {
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <button
                         onClick={() => setState("choosing")}
-                        className="flex h-12 items-center justify-center rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] font-bold text-[var(--desk-text-primary)] transition-all hover:border-[var(--desk-border-strong)]"
+                        className="flex h-12 items-center justify-center rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] font-light text-[var(--desk-text-primary)] transition-all hover:border-[var(--desk-border-strong)]"
                       >
                         Back
                       </button>
                       <button
                         onClick={handleCash}
-                        className="flex h-12 items-center justify-center rounded-2xl bg-[var(--desk-warning)] px-4 font-bold text-white transition-all hover:scale-[1.01]"
+                        className="flex h-12 items-center justify-center rounded-2xl bg-[var(--desk-warning)] px-4 font-light text-white transition-all hover:scale-[1.01]"
                       >
                         Pay with Cash
                       </button>
@@ -559,7 +559,7 @@ export default function PaymentModal() {
                         <Banknote size={24} />
                       </div>
                       <div className="text-left">
-                        <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                        <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                           Physical Cash Settlement
                         </p>
                         <p className="md-typescale-body-small text-[var(--desk-text-tertiary)]">
@@ -578,7 +578,7 @@ export default function PaymentModal() {
                           <CreditCard size={24} />
                         </div>
                         <div className="text-left">
-                          <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                          <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                             Pay via {gw.replace(/_/g, " ")}
                           </p>
                           <p className="md-typescale-body-small text-[var(--desk-text-tertiary)]">
@@ -591,7 +591,7 @@ export default function PaymentModal() {
                     <button
                       type="button"
                       onClick={handleAddCard}
-                      className="w-full py-3 text-sm font-bold text-[var(--desk-accent)] underline underline-offset-4"
+                      className="w-full py-3 text-sm font-light text-[var(--desk-accent)] underline underline-offset-4"
                     >
                       Add payment method
                     </button>

@@ -42,7 +42,7 @@ export function MobileMenu({ open, onClose, links }: MobileMenuProps) {
               key={item.id}
               href={`/#${item.id}` as Route}
               data-menu-link
-              className="border-b border-white/20 py-4 text-2xl font-bold uppercase tracking-wide"
+              className="border-b border-white/20 py-4 text-2xl font-light uppercase tracking-wide"
               onClick={onClose}
             >
               {item.label}
@@ -52,7 +52,7 @@ export function MobileMenu({ open, onClose, links }: MobileMenuProps) {
               key={item.id}
               href={item.href}
               data-menu-link
-              className="border-b border-white/20 py-4 text-2xl font-bold uppercase tracking-wide"
+              className="border-b border-white/20 py-4 text-2xl font-light uppercase tracking-wide"
               onClick={onClose}
             >
               {item.label}
@@ -62,7 +62,7 @@ export function MobileMenu({ open, onClose, links }: MobileMenuProps) {
         <Link
           href="/contact"
           data-menu-link
-          className="mkt-btn mkt-btn-primary mt-6 w-full border-2 border-white font-bold uppercase"
+          className="mkt-btn mkt-btn-primary mt-6 w-full border-2 border-white font-light uppercase"
           onClick={onClose}
         >
           Request demo

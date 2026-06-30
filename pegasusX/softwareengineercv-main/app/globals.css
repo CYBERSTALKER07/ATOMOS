@@ -1435,6 +1435,18 @@ a:hover .editorial-btn--inverted,
   visibility: hidden;
 }
 
+/* Platform Stack — mono by default, brand color revealed via cursor spotlight */
+.platform-stack-logo {
+  color: #ffffff;
+  filter: grayscale(1) brightness(1.85);
+  transition: color 0.15s ease, filter 0.15s ease;
+}
+
+.platform-stack-logo svg {
+  width: 1em;
+  height: 1em;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

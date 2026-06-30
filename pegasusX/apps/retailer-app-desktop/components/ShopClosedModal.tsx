@@ -153,7 +153,7 @@ export default function ShopClosedModal() {
           >
             <div className="mb-4 flex items-center gap-2 text-[var(--desk-warning)]">
               <AlertTriangle size={18} />
-              <h2 className="md-typescale-title-medium font-bold text-[var(--desk-text-primary)]">
+              <h2 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">
                 Shop Status Required
               </h2>
             </div>
@@ -171,7 +171,7 @@ export default function ShopClosedModal() {
                   type="button"
                   disabled={submitting}
                   onClick={() => void respond(option)}
-                  className="portal-btn portal-btn--primary h-11 rounded-xl font-bold disabled:opacity-60"
+                  className="portal-btn portal-btn--primary h-11 rounded-xl font-light disabled:opacity-60"
                 >
                   {submitting ? (
                     <span className="inline-flex items-center gap-2">

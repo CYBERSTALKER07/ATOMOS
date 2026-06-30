@@ -61,7 +61,7 @@ export default function AllProjectsPage() {
       <div className="container mx-auto px-4 py-20 md:py-32">
         {/* Header */}
         <div ref={headerRef} className="text-center mb-12 md:mb-16">
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-4 md:mb-6 text-white">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-light mb-4 md:mb-6 text-white">
             All Modules
           </h1>
           <div className="w-20 h-1 bg-white rounded-full mx-auto mb-6 md:mb-8" />

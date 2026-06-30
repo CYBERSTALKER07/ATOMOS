@@ -123,7 +123,7 @@ export default function DesktopAppsPage() {
         <div className="max-w-6xl mx-auto text-center">
           <h1
             ref={titleRef}
-            className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8"
+            className="text-5xl md:text-7xl lg:text-8xl font-light mb-8"
           >
             Retailer Desktop
           </h1>

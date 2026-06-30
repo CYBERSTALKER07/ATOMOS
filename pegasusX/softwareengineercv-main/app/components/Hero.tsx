@@ -115,7 +115,7 @@ export default function Hero() {
             <div>
               <h1 
                 ref={titleRef} 
-                className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-4 text-white"
+                className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light mb-4 text-white"
               >
                 Pegasus
               </h1>

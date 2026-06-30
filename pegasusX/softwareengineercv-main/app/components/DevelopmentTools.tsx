@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import LogoLoop from './LogoLoop';
+import LogoLoop, { type LogoItem } from './LogoLoop';
 import { useInView } from '../hooks/useInView';
 import {
-  SiReact, 
-  SiNextdotjs, 
-  SiVuedotjs, 
-  SiSvelte, 
+  SiReact,
+  SiNextdotjs,
+  SiVuedotjs,
+  SiSvelte,
   SiAngular,
   SiNodedotjs,
   SiExpress,
@@ -32,21 +32,105 @@ import {
   SiTailwindcss,
   SiPython,
   SiDjango,
-  SiFastapi
+  SiFastapi,
 } from 'react-icons/si';
 import { VscCode } from 'react-icons/vsc';
 import { FaAws } from 'react-icons/fa6';
 
 gsap.registerPlugin(ScrollTrigger);
 
+const SPOTLIGHT_RADIUS = 140;
+const MONO_FILTER = 'grayscale(1) brightness(1.85)';
+
+function icon(node: ReactNode, brandColor: string, title: string, href: string): LogoItem {
+  return {
+    node,
+    brandColor,
+    title,
+    href,
+    logoClassName: 'platform-stack-logo',
+  };
+}
+
+const carouselRows: { logos: LogoItem[]; direction: 'left' | 'right' }[] = [
+  {
+    direction: 'left',
+    logos: [
+      icon(<SiReact />, '#61DAFB', 'React', 'https://react.dev'),
+      icon(<SiNextdotjs />, '#FFFFFF', 'Next.js', 'https://nextjs.org'),
+      icon(<SiVuedotjs />, '#4FC08D', 'Vue.js', 'https://vuejs.org'),
+      icon(<SiSvelte />, '#FF3E00', 'Svelte', 'https://svelte.dev'),
+      icon(<SiAngular />, '#DD0031', 'Angular', 'https://angular.io'),
+      icon(<SiTypescript />, '#3178C6', 'TypeScript', 'https://www.typescriptlang.org'),
+      icon(<SiTailwindcss />, '#06B6D4', 'Tailwind CSS', 'https://tailwindcss.com'),
+    ],
+  },
+  {
+    direction: 'right',
+    logos: [
+      icon(<SiNodedotjs />, '#339933', 'Node.js', 'https://nodejs.org'),
+      icon(<SiExpress />, '#FFFFFF', 'Express', 'https://expressjs.com'),
+      icon(<SiGraphql />, '#E10098', 'GraphQL', 'https://graphql.org'),
+      icon(<SiSocketdotio />, '#FFFFFF', 'Socket.io', 'https://socket.io'),
+      icon(<SiPython />, '#3776AB', 'Python', 'https://python.org'),
+      icon(<SiDjango />, '#44B78B', 'Django', 'https://djangoproject.com'),
+      icon(<SiFastapi />, '#009688', 'FastAPI', 'https://fastapi.tiangolo.com'),
+    ],
+  },
+  {
+    direction: 'left',
+    logos: [
+      icon(<SiPostgresql />, '#4169E1', 'PostgreSQL', 'https://postgresql.org'),
+      icon(<SiMongodb />, '#47A248', 'MongoDB', 'https://mongodb.com'),
+      icon(<SiRedis />, '#DC382D', 'Redis', 'https://redis.io'),
+      icon(<SiFirebase />, '#FFCA28', 'Firebase', 'https://firebase.google.com'),
+      icon(<SiSupabase />, '#3FCF8E', 'Supabase', 'https://supabase.com'),
+    ],
+  },
+  {
+    direction: 'right',
+    logos: [
+      icon(<SiDocker />, '#2496ED', 'Docker', 'https://docker.com'),
+      icon(<FaAws />, '#FF9900', 'AWS', 'https://aws.amazon.com'),
+      icon(<SiVercel />, '#FFFFFF', 'Vercel', 'https://vercel.com'),
+      icon(<SiGithubactions />, '#2088FF', 'GitHub Actions', 'https://github.com/features/actions'),
+      icon(<SiKubernetes />, '#326CE5', 'Kubernetes', 'https://kubernetes.io'),
+    ],
+  },
+  {
+    direction: 'left',
+    logos: [
+      icon(<SiGit />, '#F05032', 'Git', 'https://git-scm.com'),
+      icon(<VscCode />, '#007ACC', 'VS Code', 'https://code.visualstudio.com'),
+      icon(<SiFigma />, '#F24E1E', 'Figma', 'https://figma.com'),
+      icon(<SiPostman />, '#FF6C37', 'Postman', 'https://postman.com'),
+      icon(<SiJest />, '#C21325', 'Jest', 'https://jestjs.io'),
+    ],
+  },
+];
+
+function setLogoMono(el: HTMLElement) {
+  el.style.color = '#ffffff';
+  el.style.filter = MONO_FILTER;
+}
+
+function revealLogo(el: HTMLElement) {
+  const brand = el.dataset.brandColor;
+  el.style.color = brand ?? '#ffffff';
+  el.style.filter = 'none';
+}
+
 export default function DevelopmentTools() {
   const { ref: sectionRef, isInView } = useInView<HTMLElement>({ rootMargin: '0px' });
   const titleRef = useRef<HTMLDivElement>(null);
-  const row1Ref = useRef<HTMLDivElement>(null);
-  const row2Ref = useRef<HTMLDivElement>(null);
-  const row3Ref = useRef<HTMLDivElement>(null);
-  const row4Ref = useRef<HTMLDivElement>(null);
-  const row5Ref = useRef<HTMLDivElement>(null);
+  const stackRef = useRef<HTMLDivElement>(null);
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const pointerRef = useRef<{ x: number; y: number; active: boolean }>({
+    x: 0,
+    y: 0,
+    active: false,
+  });
 
   useEffect(() => {
     if (!sectionRef.current) return;
@@ -62,116 +146,112 @@ export default function DevelopmentTools() {
       });
 
       timeline.fromTo(titleRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8 });
-
-      const rows = [row1Ref.current, row2Ref.current, row3Ref.current, row4Ref.current, row5Ref.current];
       timeline.fromTo(
-        rows,
-        { opacity: 0, y: 50 },
-        { opacity: 1, y: 0, duration: 0.6, stagger: 0.15 },
-        '-=0.4'
+        rowsRef.current,
+        { opacity: 0, y: 40 },
+        { opacity: 1, y: 0, duration: 0.7 },
+        '-=0.45'
       );
     }, sectionRef);
 
     return () => ctx.revert();
+  }, [sectionRef]);
+
+  useEffect(() => {
+    const stack = stackRef.current;
+    if (!stack) return;
+
+    stack.querySelectorAll<HTMLElement>('.platform-stack-logo').forEach(setLogoMono);
+
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
   }, []);
 
-  const frontendLogos = [
-    { node: <SiReact className="text-white" />, title: "React", href: "https://react.dev" },
-    { node: <SiNextdotjs className="text-white" />, title: "Next.js", href: "https://nextjs.org" },
-    { node: <SiVuedotjs className="text-white" />, title: "Vue.js", href: "https://vuejs.org" },
-    { node: <SiSvelte className="text-white" />, title: "Svelte", href: "https://svelte.dev" },
-    { node: <SiAngular className="text-white" />, title: "Angular", href: "https://angular.io" },
-    { node: <SiTypescript className="text-white" />, title: "TypeScript", href: "https://www.typescriptlang.org" },
-    { node: <SiTailwindcss className="text-white" />, title: "Tailwind CSS", href: "https://tailwindcss.com" },
-  ];
+  const applySpotlight = useCallback(() => {
+    const stack = stackRef.current;
+    if (!stack) return;
 
-  const backendLogos = [
-    { node: <SiNodedotjs className="text-white" />, title: "Node.js", href: "https://nodejs.org" },
-    { node: <SiExpress className="text-white" />, title: "Express", href: "https://expressjs.com" },
-    { node: <SiGraphql className="text-white" />, title: "GraphQL", href: "https://graphql.org" },
-    { node: <SiSocketdotio className="text-white" />, title: "Socket.io", href: "https://socket.io" },
-    { node: <SiPython className="text-white" />, title: "Python", href: "https://python.org" },
-    { node: <SiDjango className="text-white" />, title: "Django", href: "https://djangoproject.com" },
-    { node: <SiFastapi className="text-white" />, title: "FastAPI", href: "https://fastapi.tiangolo.com" },
-  ];
+    const { x, y, active } = pointerRef.current;
+    const logos = stack.querySelectorAll<HTMLElement>('.platform-stack-logo');
+    const radiusSq = SPOTLIGHT_RADIUS * SPOTLIGHT_RADIUS;
 
-  const databaseLogos = [
-    { node: <SiPostgresql className="text-white" />, title: "PostgreSQL", href: "https://postgresql.org" },
-    { node: <SiMongodb className="text-white" />, title: "MongoDB", href: "https://mongodb.com" },
-    { node: <SiRedis className="text-white" />, title: "Redis", href: "https://redis.io" },
-    { node: <SiFirebase className="text-white" />, title: "Firebase", href: "https://firebase.google.com" },
-    { node: <SiSupabase className="text-white" />, title: "Supabase", href: "https://supabase.com" },
-  ];
+    logos.forEach((el) => {
+      if (!active) {
+        setLogoMono(el);
+        return;
+      }
 
-  const devopsLogos = [
-    { node: <SiDocker className="text-white" />, title: "Docker", href: "https://docker.com" },
-    { node: <FaAws className="text-white" />, title: "AWS", href: "https://aws.amazon.com" },
-    { node: <SiVercel className="text-white" />, title: "Vercel", href: "https://vercel.com" },
-    { node: <SiGithubactions className="text-white" />, title: "GitHub Actions", href: "https://github.com/features/actions" },
-    { node: <SiKubernetes className="text-white" />, title: "Kubernetes", href: "https://kubernetes.io" },
-  ];
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = x - cx;
+      const dy = y - cy;
 
-  const toolsLogos = [
-    { node: <SiGit className="text-white" />, title: "Git", href: "https://git-scm.com" },
-    { node: <VscCode className="text-white" />, title: "VS Code", href: "https://code.visualstudio.com" },
-    { node: <SiFigma className="text-white" />, title: "Figma", href: "https://figma.com" },
-    { node: <SiPostman className="text-white" />, title: "Postman", href: "https://postman.com" },
-    { node: <SiJest className="text-white" />, title: "Jest", href: "https://jestjs.io" },
-  ];
+      if (dx * dx + dy * dy <= radiusSq) {
+        revealLogo(el);
+      } else {
+        setLogoMono(el);
+      }
+    });
+  }, []);
 
-  const toolCategories = [
-    { title: 'Client Applications', logos: frontendLogos, direction: 'left' as const },
-    { title: 'Platform Services', logos: backendLogos, direction: 'right' as const },
-    { title: 'Data & Events', logos: databaseLogos, direction: 'left' as const },
-    { title: 'Infrastructure', logos: devopsLogos, direction: 'right' as const },
-    { title: 'Operations Toolkit', logos: toolsLogos, direction: 'left' as const },
-  ];
+  const handlePointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      pointerRef.current = { x: event.clientX, y: event.clientY, active: true };
 
-  const rowRefs = [row1Ref, row2Ref, row3Ref, row4Ref, row5Ref];
+      if (rafRef.current !== null) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        applySpotlight();
+      });
+    },
+    [applySpotlight]
+  );
+
+  const handlePointerLeave = useCallback(() => {
+    pointerRef.current.active = false;
+    applySpotlight();
+  }, [applySpotlight]);
 
   return (
-    <section ref={sectionRef} className="py-20 bg-white text-black" id="tools">
+    <section ref={sectionRef} className="py-20 bg-black text-white" id="tools">
       <div className="container mx-auto px-4">
-        <div ref={titleRef} className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-black">
+        <div ref={titleRef} className="text-center mb-12">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-4 text-white">
             Platform Stack
           </h2>
-          <div className="w-20 h-1 bg-black rounded-full mx-auto mb-6" />
-          <p className="text-lg md:text-xl text-black max-w-2xl mx-auto">
+          <div className="w-20 h-1 bg-white rounded-full mx-auto mb-6" />
+          <p className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto">
             The technologies powering Pegasus across web, mobile, and backend services
           </p>
         </div>
 
-        <div className="max-w-7xl mx-auto space-y-12">
-          {toolCategories.map((category, index) => (
-            <div
-              key={index}
-              ref={rowRefs[index]}
-              className="group"
-            >
-              <div className="bg-black border border-black overflow-hidden shadow-lg p-8 md:p-10">
-                <h3 className="text-2xl md:text-3xl font-bold mb-8 text-center text-white">
-                  {category.title}
-                </h3>
-                
-                <div className="relative h-[120px] md:h-[140px]">
-                  <LogoLoop
-                    logos={category.logos}
-                    speed={50}
-                    direction={category.direction}
-                    logoHeight={64}
-                    gap={60}
-                    pauseOnHover
-                    scaleOnHover
-                    fadeOut
-                    fadeOutColor="#000000"
-                    active={isInView}
-                    ariaLabel={`${category.title} logos`}
-                  />
-                </div>
+        <div
+          ref={stackRef}
+          className="max-w-7xl mx-auto border border-white/10 bg-black overflow-hidden"
+          onPointerMove={handlePointerMove}
+          onPointerLeave={handlePointerLeave}
+        >
+          <div ref={rowsRef} className="flex flex-col gap-2 py-6 md:py-8">
+            {carouselRows.map((row, index) => (
+              <div key={index} className="relative h-[96px] md:h-[108px]">
+                <LogoLoop
+                  logos={row.logos}
+                  speed={50}
+                  direction={row.direction}
+                  logoHeight={56}
+                  gap={28}
+                  pauseOnHover={false}
+                  scaleOnHover
+                  fadeOut
+                  fadeOutColor="#000000"
+                  active={isInView}
+                  ariaLabel="Platform stack technologies"
+                />
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>

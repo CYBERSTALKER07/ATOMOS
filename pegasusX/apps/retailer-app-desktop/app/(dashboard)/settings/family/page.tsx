@@ -125,7 +125,7 @@ export default function FamilyMembersPage() {
           type="button"
           disabled={saving || !name.trim()}
           onClick={() => void addMember()}
-          className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-bold inline-flex items-center gap-2 disabled:opacity-60"
+          className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-light inline-flex items-center gap-2 disabled:opacity-60"
         >
           {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
           Add Member
@@ -143,7 +143,7 @@ export default function FamilyMembersPage() {
       ) : members.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[var(--desk-border)] p-10 text-center">
           <Users size={28} className="mx-auto mb-3 text-[var(--desk-text-tertiary)]" />
-          <p className="font-bold text-[var(--desk-text-primary)]">No family members yet</p>
+          <p className="font-light text-[var(--desk-text-primary)]">No family members yet</p>
           <p className="text-sm text-[var(--desk-text-secondary)] mt-1">
             Add members to delegate ordering access.
           </p>
@@ -159,7 +159,7 @@ export default function FamilyMembersPage() {
               className="flex items-center justify-between rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] px-4 py-3"
             >
               <div>
-                <p className="font-bold text-[var(--desk-text-primary)]">{member.name}</p>
+                <p className="font-light text-[var(--desk-text-primary)]">{member.name}</p>
                 {member.phone && (
                   <p className="text-xs text-[var(--desk-text-tertiary)]">{member.phone}</p>
                 )}

@@ -61,7 +61,7 @@ export default function DemandForecastPage() {
     <div className="p-6 space-y-6 md-animate-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Demand Forecast</h1>
+          <h1 className="text-xl font-light tracking-tight">Demand Forecast</h1>
           <p className="text-xs text-[var(--muted)] mt-0.5">
             AI-powered stock recommendations from 4 data sources
           </p>
@@ -95,17 +95,17 @@ export default function DemandForecastPage() {
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--surface)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">Critical Items</div>
-          <div className="text-2xl font-bold text-[var(--danger)]">{critical.length}</div>
+          <div className="text-2xl font-light text-[var(--danger)]">{critical.length}</div>
           <div className="text-xs text-[var(--muted)]">&lt; 2 days to stockout</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--surface)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">Urgent Items</div>
-          <div className="text-2xl font-bold text-[var(--warning)]">{urgent.length}</div>
+          <div className="text-2xl font-light text-[var(--warning)]">{urgent.length}</div>
           <div className="text-xs text-[var(--muted)]">&lt; 5 days to stockout</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--surface)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">Healthy Items</div>
-          <div className="text-2xl font-bold text-[var(--success)]">{normal.length}</div>
+          <div className="text-2xl font-light text-[var(--success)]">{normal.length}</div>
           <div className="text-xs text-[var(--muted)]">5+ days of stock</div>
         </div>
       </div>

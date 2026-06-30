@@ -307,7 +307,7 @@ export default function CatalogDashboard() {
       {/* ─── Product Ledger ─── */}
       <div className="mt-10 rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
-          <h3 className="text-base font-bold tracking-tight" style={{ color: 'var(--foreground)' }}>Active Product Ledger</h3>
+          <h3 className="text-base font-light tracking-tight" style={{ color: 'var(--foreground)' }}>Active Product Ledger</h3>
           <span className="text-xs font-medium px-3 py-1 rounded-full" style={{ background: 'var(--accent-soft)', color: 'var(--accent-soft-foreground)' }}>
             {filtered.length} products
           </span>
@@ -374,7 +374,7 @@ export default function CatalogDashboard() {
                       {formatAmount(p.base_price)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}>
+                      <span className="text-xs font-light px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--accent)' }}>
                         {p.volumetric_unit}
                       </span>
                     </td>
@@ -445,7 +445,7 @@ export default function CatalogDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="w-full max-w-lg rounded-2xl p-6 m-4 max-h-[90vh] overflow-y-auto" style={{ background: 'var(--surface)', color: 'var(--foreground)' }}>
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-base font-bold">Edit Product</h2>
+              <h2 className="text-base font-light">Edit Product</h2>
               <button type="button" onClick={() => setEditProduct(null)} className="text-xs font-medium px-3 py-1 rounded-lg" style={{ background: 'var(--surface)', color: 'var(--muted)' }}>Close</button>
             </div>
 

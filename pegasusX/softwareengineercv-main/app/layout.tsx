@@ -105,7 +105,7 @@ export default function RootLayout({
       >
         <a
           href="#main-content"
-          className="fixed top-4 left-4 z-[10001] bg-white text-black px-4 py-2 rounded-md transition-transform -translate-y-20 focus:translate-y-0 font-bold border-2 border-black"
+          className="fixed top-4 left-4 z-[10001] bg-white text-black px-4 py-2 rounded-md transition-transform -translate-y-20 focus:translate-y-0 font-light border-2 border-black"
         >
           Skip to content
         </a>

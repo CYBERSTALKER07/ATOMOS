@@ -151,7 +151,7 @@ export default function AdminPage() {
               <span className="text-xl md:text-2xl">🎉</span>
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-bold text-base md:text-lg mb-1 text-[#8DDC96]">New Application!</h4>
+              <h4 className="font-light text-base md:text-lg mb-1 text-[#8DDC96]">New Application!</h4>
               <p className="text-white font-semibold text-sm md:text-base truncate">{notification.name}</p>
               <p className="text-gray-400 text-xs md:text-sm truncate">{notification.position}</p>
               <button
@@ -183,7 +183,7 @@ export default function AdminPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light mb-4">
                 Admin Dashboard
               </h1>
               <div className="w-24 h-1 bg-white mb-4" />
@@ -194,7 +194,7 @@ export default function AdminPage() {
             
             {unreadCount > 0 && (
               <div className="bg-[#FE5934] text-white px-4 py-2 md:px-6 md:py-3 rounded-2xl border-2 border-[#FE5934] self-start sm:self-center">
-                <span className="text-xl md:text-2xl font-bold">{unreadCount}</span>
+                <span className="text-xl md:text-2xl font-light">{unreadCount}</span>
                 <span className="ml-2 text-xs md:text-sm">New</span>
               </div>
             )}
@@ -208,7 +208,7 @@ export default function AdminPage() {
           {applications.length === 0 ? (
             <div className="border-2 border-white rounded-2xl p-8 md:p-12 text-center">
               <div className="text-4xl md:text-6xl mb-4">📭</div>
-              <h3 className="text-xl md:text-2xl font-bold mb-2">No Applications Yet</h3>
+              <h3 className="text-xl md:text-2xl font-light mb-2">No Applications Yet</h3>
               <p className="text-gray-400 text-sm md:text-base">
                 Applications will appear here when someone submits the form
               </p>
@@ -231,9 +231,9 @@ export default function AdminPage() {
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
-                        <h3 className="text-xl md:text-2xl font-bold truncate">{app.name}</h3>
+                        <h3 className="text-xl md:text-2xl font-light truncate">{app.name}</h3>
                         {!app.read && (
-                          <span className="bg-[#FBFF63] text-black px-3 py-1 rounded-lg text-xs font-bold self-start">
+                          <span className="bg-[#FBFF63] text-black px-3 py-1 rounded-lg text-xs font-light self-start">
                             NEW
                           </span>
                         )}
@@ -268,7 +268,7 @@ export default function AdminPage() {
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
           <div className="modal-content bg-[#0D0D0D] border-2 border-white rounded-2xl p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold">Application Details</h2>
+              <h2 className="text-2xl md:text-3xl font-light">Application Details</h2>
               <button
                 onClick={closeModal}
                 className="text-white hover:text-[#FE5934] transition-colors text-xl md:text-2xl flex-shrink-0 ml-4"
@@ -280,14 +280,14 @@ export default function AdminPage() {
             <div className="space-y-6">
               <div>
                 <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">Name</label>
-                <p className="text-lg md:text-xl font-bold mt-1 break-words">{selectedApp.name}</p>
+                <p className="text-lg md:text-xl font-light mt-1 break-words">{selectedApp.name}</p>
               </div>
 
               <div>
                 <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">Email</label>
                 <a 
                   href={`mailto:${selectedApp.email}`}
-                  className="text-lg md:text-xl font-bold mt-1 block text-[#A9EBF9] hover:text-white transition-colors break-all"
+                  className="text-lg md:text-xl font-light mt-1 block text-[#A9EBF9] hover:text-white transition-colors break-all"
                 >
                   {selectedApp.email}
                 </a>
@@ -295,7 +295,7 @@ export default function AdminPage() {
 
               <div>
                 <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">Position</label>
-                <p className="text-lg md:text-xl font-bold mt-1 break-words">{selectedApp.position}</p>
+                <p className="text-lg md:text-xl font-light mt-1 break-words">{selectedApp.position}</p>
               </div>
 
               {selectedApp.portfolio && (
@@ -305,7 +305,7 @@ export default function AdminPage() {
                     href={selectedApp.portfolio}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-lg md:text-xl font-bold mt-1 block text-[#A9EBF9] hover:text-white transition-colors break-all"
+                    className="text-lg md:text-xl font-light mt-1 block text-[#A9EBF9] hover:text-white transition-colors break-all"
                   >
                     {selectedApp.portfolio}
                   </a>

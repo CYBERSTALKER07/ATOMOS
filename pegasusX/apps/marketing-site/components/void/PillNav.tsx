@@ -47,7 +47,7 @@ export function PillNav({ activeSection }: PillNavProps) {
     <>
       <a
         href="#main-content"
-        className="fixed left-4 top-4 z-[10001] -translate-y-20 rounded-md border-2 border-white bg-white px-4 py-2 font-bold text-black transition-transform focus:translate-y-0"
+        className="fixed left-4 top-4 z-[10001] -translate-y-20 rounded-md border-2 border-white bg-white px-4 py-2 font-light text-black transition-transform focus:translate-y-0"
       >
         Skip to content
       </a>

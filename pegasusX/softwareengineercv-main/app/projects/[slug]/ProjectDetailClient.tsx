@@ -83,7 +83,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
 
             {/* Status Badge */}
             <div className="mb-4 md:mb-6">
-              <span className={`inline-block px-4 md:px-6 py-2 border-2 border-white rounded-2xl font-bold text-xs md:text-sm ${
+              <span className={`inline-block px-4 md:px-6 py-2 border-2 border-white rounded-2xl font-light text-xs md:text-sm ${
                 project.status === 'completed' ? 'bg-white text-black' :
                 project.status === 'in-progress' ? 'bg-[#FBFF63] text-black border-[#FBFF63]' :
                 'bg-black text-white opacity-70'
@@ -95,7 +95,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
             </div>
 
             {/* Title */}
-            <h1 className="text-3xl md:text-5xl lg:text-7xl font-bold mb-4 md:mb-6">
+            <h1 className="text-3xl md:text-5xl lg:text-7xl font-light mb-4 md:mb-6">
               {project.title}
             </h1>
 
@@ -109,7 +109,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
             {/* Category & Date */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 mb-8 md:mb-12">
               <span 
-                className="px-4 py-2 text-black font-bold rounded-2xl"
+                className="px-4 py-2 text-black font-light rounded-2xl"
                 style={{ backgroundColor: project.color }}
               >
                 {project.category}
@@ -148,7 +148,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
         <div className="container mx-auto px-4">
           <div ref={contentRef} className="max-w-5xl mx-auto">
             <div className="mb-12 md:mb-16">
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 md:mb-6">About This Project</h2>
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-light mb-4 md:mb-6">About This Project</h2>
               <div className="w-20 h-1 bg-black rounded-full mb-4 md:mb-6" />
               <p className="text-base md:text-lg lg:text-xl leading-relaxed text-gray-800">
                 {project.longDescription}
@@ -156,7 +156,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
             </div>
 
             <div className="mb-12 md:mb-16">
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-6 md:mb-8">Technologies Used</h2>
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-light mb-6 md:mb-8">Technologies Used</h2>
               <div className="w-20 h-1 bg-black rounded-full mb-6 md:mb-8" />
               <div ref={techRef} className="flex flex-wrap gap-2 md:gap-3">
                 {project.technologies.map((tech, index) => (
@@ -171,7 +171,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
             </div>
 
             <div className="mb-12 md:mb-16">
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-6 md:mb-8">Tags</h2>
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-light mb-6 md:mb-8">Tags</h2>
               <div className="w-20 h-1 bg-black rounded-full mb-6 md:mb-8" />
               <div className="flex flex-wrap gap-2 md:gap-3">
                 {project.tags.map((tag, index) => (
@@ -193,7 +193,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12 md:mb-16">
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">Key Features</h2>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-light mb-4">Key Features</h2>
               <div className="w-20 h-1 bg-white rounded-full mx-auto" />
             </div>
 
@@ -220,7 +220,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
           <div className="max-w-5xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
               <div>
-                <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 md:mb-6">Challenges</h2>
+                <h2 className="text-2xl md:text-3xl lg:text-4xl font-light mb-4 md:mb-6">Challenges</h2>
                 <div className="w-20 h-1 bg-black rounded-full mb-6 md:mb-8" />
                 <ul className="space-y-3 md:space-y-4">
                   {project.challenges.map((challenge, index) => (
@@ -233,7 +233,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
               </div>
 
               <div>
-                <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 md:mb-6">Key Learnings</h2>
+                <h2 className="text-2xl md:text-3xl lg:text-4xl font-light mb-4 md:mb-6">Key Learnings</h2>
                 <div className="w-20 h-1 bg-black rounded-full mb-6 md:mb-8" />
                 <ul className="space-y-3 md:space-y-4">
                   {project.learnings.map((learning, index) => (
@@ -254,7 +254,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12 md:mb-16">
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">More Projects</h2>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-light mb-4">More Projects</h2>
               <div className="w-20 h-1 bg-white rounded-full mx-auto mb-4 md:mb-6" />
               <p className="text-sm md:text-lg text-gray-300">
                 Check out other projects in the {project.category} category

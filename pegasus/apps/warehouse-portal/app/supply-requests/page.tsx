@@ -87,7 +87,7 @@ export default function SupplyRequestsPage() {
     <PageTransition>
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold tracking-tight text-[var(--foreground)]">Supply Requests</h1>
+          <h1 className="text-xl font-light tracking-tight text-[var(--foreground)]">Supply Requests</h1>
           <div className="flex items-center gap-2">
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -121,7 +121,7 @@ export default function SupplyRequestsPage() {
               <button
                 key={s}
                 onClick={() => setFilter(s)}
-                className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
+                className={`px-4 py-2 rounded-full text-xs font-light uppercase tracking-wider whitespace-nowrap transition-all ${
                   filter === s
                     ? 'bg-[var(--primary)] text-white'
                     : 'text-[var(--muted)] hover:bg-[var(--default)]'
@@ -214,7 +214,7 @@ export default function SupplyRequestsPage() {
                       <span className={`status-chip ${chipClass(req.state)}`}>{req.state}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-light uppercase tracking-wider border ${
                         req.priority === 'CRITICAL' ? 'border-[var(--danger)] text-[var(--danger)]' :
                         req.priority === 'URGENT' ? 'border-[var(--warning)] text-[var(--warning)]' : 
                         'border-[var(--border)] text-[var(--muted)]'

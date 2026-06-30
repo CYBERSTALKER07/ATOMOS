@@ -18,10 +18,7 @@ export default function OrderCycleVisualSection() {
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="editorial-eyebrow">Order cycle</p>
-              <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-                Retailer → warehouse → gate → driver → payment
-              </h2>
-              <p className="mt-3 max-w-xl text-sm text-white/55">
+              <p className="mt-2 max-w-xl text-sm text-white/55">
                 Line-art animation made with Gemini — hover to play with sound.
               </p>
             </div>

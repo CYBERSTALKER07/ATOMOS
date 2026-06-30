@@ -49,7 +49,7 @@ export default function ClientPolicyBanner() {
     <div className="mx-6 mt-4 mb-0 flex items-start gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-orange-900">
       <AlertTriangle size={18} className="shrink-0 mt-0.5" />
       <div className="text-sm">
-        <p className="font-bold">
+        <p className="font-light">
           {policy.forceUpdate ? "Update required" : "Update available"}
         </p>
         <p className="mt-1 opacity-90">
@@ -59,7 +59,7 @@ export default function ClientPolicyBanner() {
         {policy.updateUrl && (
           <a
             href={policy.updateUrl}
-            className="mt-2 inline-block font-bold underline"
+            className="mt-2 inline-block font-light underline"
             target="_blank"
             rel="noreferrer"
           >

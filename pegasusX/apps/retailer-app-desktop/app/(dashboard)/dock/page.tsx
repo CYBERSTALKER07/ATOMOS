@@ -368,10 +368,10 @@ export default function DockPage() {
               className="w-full max-w-sm rounded-3xl border border-[var(--desk-border)] bg-white p-6 text-center shadow-2xl"
               onClick={(event) => event.stopPropagation()}
             >
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+              <p className="text-[10px] font-light uppercase tracking-widest text-[var(--desk-text-tertiary)]">
                 Driver Approaching
               </p>
-              <h2 className="mt-2 md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+              <h2 className="mt-2 md-typescale-title-large font-light text-[var(--desk-text-primary)]">
                 Order #{activeQrOrder.order_id.slice(-8)}
               </h2>
               <p className="mt-1 text-sm text-[var(--desk-text-secondary)]">
@@ -387,7 +387,7 @@ export default function DockPage() {
               </div>
               <button
                 onClick={() => setActiveQrOrderId(null)}
-                className="mt-6 h-11 w-full rounded-2xl bg-[var(--desk-text-primary)] font-bold text-white"
+                className="mt-6 h-11 w-full rounded-2xl bg-[var(--desk-text-primary)] font-light text-white"
               >
                 Close
               </button>
@@ -419,14 +419,14 @@ export default function DockPage() {
               size={16}
               className={syncStatus.kind === "refreshing" ? "animate-spin" : ""}
             />
-            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+            <span className="md-typescale-body-small font-light uppercase tracking-wide">
               {syncStatus.message}
             </span>
           </div>
           {syncStatus.kind !== "refreshing" && (
             <button
               onClick={() => void mutate()}
-              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-light uppercase tracking-wide hover:bg-current/10"
             >
               Retry
             </button>
@@ -539,14 +539,14 @@ export default function DockPage() {
                   className="flex w-full items-center justify-between p-5 hover:bg-[var(--desk-surface-subtle)] transition-colors text-left"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] flex items-center justify-center font-bold text-xl">
+                    <div className="w-12 h-12 rounded-2xl bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] flex items-center justify-center font-light text-xl">
                       {group.supplierName.charAt(0)}
                     </div>
                     <div>
-                      <h3 className="md-typescale-title-medium font-bold text-[var(--desk-text-primary)]">
+                      <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">
                         {group.supplierName}
                       </h3>
-                      <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] font-bold uppercase tracking-widest">
+                      <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] font-light uppercase tracking-widest">
                         {group.orders.length} ACTIVE NODES ·{" "}
                         {formatAmount(group.totalAmount)} UZS
                       </p>
@@ -599,18 +599,18 @@ export default function DockPage() {
                           >
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-3 mb-1">
-                                <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                                <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
                                   #{order.order_id.slice(-8)}
                                 </span>
                                 <Chip
                                   size="sm"
                                   variant="secondary"
-                                  className={`font-bold text-[10px] ${statusClass}`}
+                                  className={`font-light text-[10px] ${statusClass}`}
                                 >
                                   {status.label}
                                 </Chip>
                               </div>
-                              <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase tracking-widest font-bold">
+                              <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase tracking-widest font-light">
                                 {formatAmount(order.total_amount)} UZS ·{" "}
                                 {order.items.length} SKUS
                               </p>
@@ -622,7 +622,7 @@ export default function DockPage() {
                                 <>
                                   <button
                                     onClick={() => toggleToken(order.order_id)}
-                                    className={`flex items-center gap-2 px-4 h-10 rounded-xl font-bold transition-all active:scale-95 ${revealedTokens.has(order.order_id) ? "bg-[var(--desk-text-primary)] text-white" : "bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] text-[var(--desk-text-primary)]"}`}
+                                    className={`flex items-center gap-2 px-4 h-10 rounded-xl font-light transition-all active:scale-95 ${revealedTokens.has(order.order_id) ? "bg-[var(--desk-text-primary)] text-white" : "bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] text-[var(--desk-text-primary)]"}`}
                                   >
                                     <QrCode size={18} />
                                     {revealedTokens.has(order.order_id)
@@ -648,7 +648,7 @@ export default function DockPage() {
                               ) : (
                                 <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)] opacity-40">
                                   <Clock size={16} />
-                                  <span className="text-[10px] font-bold uppercase tracking-widest">
+                                  <span className="text-[10px] font-light uppercase tracking-widest">
                                     Locked Until Proximity
                                   </span>
                                 </div>

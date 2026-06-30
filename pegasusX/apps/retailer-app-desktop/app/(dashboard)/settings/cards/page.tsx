@@ -196,7 +196,7 @@ function SavedCardsPageContent() {
           <button
             type="button"
             onClick={returnToPayment}
-            className="px-4 h-10 rounded-xl bg-[var(--desk-accent)] text-white text-sm font-bold"
+            className="px-4 h-10 rounded-xl bg-[var(--desk-accent)] text-white text-sm font-light"
           >
             Return to payment
           </button>
@@ -228,7 +228,7 @@ function SavedCardsPageContent() {
               className="flex items-center justify-between rounded-xl border border-[var(--desk-border)] px-4 py-3 gap-3"
             >
               <div>
-                <p className="font-bold text-[var(--desk-text-primary)]">
+                <p className="font-light text-[var(--desk-text-primary)]">
                   {card.pan || card.pan_mask || "Card"}
                 </p>
                 <p className="text-xs text-[var(--desk-text-tertiary)] uppercase">
@@ -242,7 +242,7 @@ function SavedCardsPageContent() {
                     type="button"
                     disabled={cardActionId === card.id}
                     onClick={() => void handleSetDefault(card.id)}
-                    className="px-3 h-9 rounded-lg border border-[var(--desk-border)] text-xs font-bold"
+                    className="px-3 h-9 rounded-lg border border-[var(--desk-border)] text-xs font-light"
                   >
                     Set default
                   </button>
@@ -251,7 +251,7 @@ function SavedCardsPageContent() {
                   type="button"
                   disabled={cardActionId === card.id}
                   onClick={() => void handleDeactivate(card.id)}
-                  className="px-3 h-9 rounded-lg border border-red-200 text-xs font-bold text-red-700"
+                  className="px-3 h-9 rounded-lg border border-red-200 text-xs font-light text-red-700"
                 >
                   Remove
                 </button>
@@ -266,7 +266,7 @@ function SavedCardsPageContent() {
           type="button"
           onClick={() => void initiateCard()}
           disabled={adding}
-          className="flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-[var(--desk-accent)] text-white font-bold disabled:opacity-60"
+          className="flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-[var(--desk-accent)] text-white font-light disabled:opacity-60"
         >
           {adding ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
           Add payment method
@@ -290,7 +290,7 @@ function SavedCardsPageContent() {
                 setPendingToken(null);
                 setOtpCode("");
               }}
-              className="flex-1 h-11 rounded-xl border border-[var(--desk-border)] font-bold"
+              className="flex-1 h-11 rounded-xl border border-[var(--desk-border)] font-light"
             >
               Cancel
             </button>
@@ -298,7 +298,7 @@ function SavedCardsPageContent() {
               type="button"
               onClick={() => void confirmCard()}
               disabled={adding || !otpCode.trim()}
-              className="flex-1 h-11 rounded-xl bg-[var(--desk-accent)] text-white font-bold disabled:opacity-60"
+              className="flex-1 h-11 rounded-xl bg-[var(--desk-accent)] text-white font-light disabled:opacity-60"
             >
               {adding ? "Confirming..." : "Confirm"}
             </button>

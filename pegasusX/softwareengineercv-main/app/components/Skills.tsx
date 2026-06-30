@@ -48,31 +48,37 @@ export default function Skills() {
       title: 'Dispatch Engine',
       description: 'Visual warehouse boards with smart truck-and-order matching at peak hours',
       tag: 'Operations',
+      href: '/projects/dispatch-engine',
     },
     {
       title: 'Fleet Telemetry',
       description: 'Live maps with planned-vs-actual routes and deviation alerts',
       tag: 'Visibility',
+      href: '/projects/fleet-telemetry',
     },
     {
       title: 'Payment Integrity',
       description: 'Checkout, cash collection, and supplier reconciliation in one flow',
       tag: 'Finance',
+      href: '/projects/payment-integrity',
     },
     {
       title: 'Network Topology',
       description: 'One connected structure for sites, zones, and delivery rules',
       tag: 'Network',
+      href: '/projects/network-topology',
     },
     {
       title: 'Realtime Sync',
       description: 'Instant updates across dispatch boards, apps, and tracking',
       tag: 'Live Ops',
+      href: '/projects/realtime-coordination',
     },
     {
       title: 'Role Parity',
       description: 'Six role apps — portal, mobile, and desktop — on shared contracts',
       tag: 'Platform',
+      href: '/roles/role-parity-matrix',
     },
   ];
 
@@ -98,7 +104,7 @@ export default function Skills() {
 
       <div className="container mx-auto px-4 relative z-10">
         <div ref={titleRef} className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-white">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-4 text-white">
             Platform Capabilities
           </h2>
           <div className="w-20 h-1 bg-white mx-auto mb-6" />
@@ -116,7 +122,7 @@ export default function Skills() {
               title={card.title}
               description={card.description}
               image={EDITORIAL_IMAGES[(index + 2) % EDITORIAL_IMAGES.length]}
-              href="#projects"
+              href={card.href}
               ctaLabel="READ MORE"
               ctaStyle="link"
               className={bentoPlacement(index)}

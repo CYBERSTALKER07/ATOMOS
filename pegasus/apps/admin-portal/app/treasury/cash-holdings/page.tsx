@@ -239,7 +239,7 @@ function SummaryCard({ label, value, count, accent, accentBg }: {
     >
       <div className="absolute top-0 left-0 w-1 h-full" style={{ background: accent }} />
       <p className="md-typescale-label-small mb-1" style={{ color: 'var(--desk-text-secondary)' }}>{label}</p>
-      <p className="md-typescale-headline-small font-bold" style={{ color: 'var(--desk-text-primary)' }}>{value}</p>
+      <p className="md-typescale-headline-small font-light" style={{ color: 'var(--desk-text-primary)' }}>{value}</p>
       <span
         className="inline-flex items-center mt-2 px-2 py-0.5 md-shape-full md-typescale-label-small"
         style={{ background: accentBg, color: accent }}

@@ -142,7 +142,7 @@ export default function ManifestExceptionsPage() {
                   <td className="px-4 py-3">{reasonBadge(ex.reason)}</td>
                   <td className="md-typescale-body-small px-4 py-3">
                     <span
-                      className={ex.attempt_count >= 3 ? 'font-bold' : ''}
+                      className={ex.attempt_count >= 3 ? 'font-light' : ''}
                       style={{ color: ex.attempt_count >= 3 ? 'var(--color-md-error)' : 'var(--color-md-on-surface)' }}
                     >
                       {ex.attempt_count}

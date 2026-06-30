@@ -81,7 +81,7 @@ export default function Licensing() {
         <div className="max-w-6xl mx-auto">
           <div ref={titleRef} className="text-center mb-12 md:mb-16">
             {isMobile ? (
-              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white">DEPLOYMENT</h2>
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-6 text-white">DEPLOYMENT</h2>
             ) : (
               <GlitchText speed={1} enableShadows={true} enableOnHover={true} className="mb-6">
                 DEPLOYMENT

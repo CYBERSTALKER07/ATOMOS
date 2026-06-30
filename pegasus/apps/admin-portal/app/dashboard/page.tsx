@@ -42,7 +42,7 @@ export default function SupplierDashboard() {
           <motion.h1 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="md-typescale-display-small font-bold tracking-tight mb-2"
+            className="md-typescale-display-small font-light tracking-tight mb-2"
           >
             Global Supply
           </motion.h1>
@@ -120,7 +120,7 @@ export default function SupplierDashboard() {
         className="grid grid-cols-1 md:grid-cols-2 gap-6"
       >
         <div className="h-64 desk-card p-8 flex flex-col justify-center">
-           <h3 className="md-typescale-title-large font-bold mb-2">Production Capacity</h3>
+           <h3 className="md-typescale-title-large font-light mb-2">Production Capacity</h3>
            <p className="md-typescale-body-medium mb-6" style={{ color: 'var(--desk-text-secondary)' }}>Real-time analysis of assembly lines across all regions.</p>
            <div className="flex gap-2 items-center">
              <div className="h-2 flex-1 rounded-full overflow-hidden" style={{ background: 'var(--desk-surface-alt)' }}>
@@ -137,7 +137,7 @@ export default function SupplierDashboard() {
         </div>
 
         <div className="h-64 desk-card p-8 flex flex-col justify-center">
-           <h3 className="md-typescale-title-large font-bold mb-2">Regional Logistics</h3>
+           <h3 className="md-typescale-title-large font-light mb-2">Regional Logistics</h3>
            <p className="md-typescale-body-medium mb-6" style={{ color: 'var(--desk-text-secondary)' }}>Dispatch efficiency tracking and route optimization.</p>
            <div className="flex gap-2 items-center">
              <div className="h-2 flex-1 rounded-full overflow-hidden" style={{ background: 'var(--desk-surface-alt)' }}>
