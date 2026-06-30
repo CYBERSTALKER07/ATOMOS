@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { LaserFlowOptimized } from './Optimized3D';
 import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
+import ChamferButton from './ChamferButton';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
 
 export default function Hero() {
@@ -146,13 +147,13 @@ export default function Hero() {
             </div>
 
             {/* CTA Buttons */}
-            <div ref={ctaRef} className="flex flex-col sm:flex-row gap-4">
-              <button type="button" onClick={scrollToNext} className="editorial-btn">
+            <div ref={ctaRef} className="flex flex-col sm:flex-row gap-3">
+              <ChamferButton onClick={scrollToNext} variant="fill">
                 Explore Platform
-              </button>
-              <a href="/join" className="editorial-btn">
+              </ChamferButton>
+              <ChamferButton href="/join" variant="ghost">
                 Request Demo
-              </a>
+              </ChamferButton>
             </div>
           </div>
 

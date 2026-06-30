@@ -1,0 +1,171 @@
+import { seedContent, defaultHowItWorks } from './helpers';
+
+export const rolesTopics = {
+  supplier: seedContent({
+    title: 'Supplier',
+    summary: 'Run your entire network from one place — vetting, topology, treasury, and dispatch preview.',
+    problem: 'Orders sit between retailer requests and warehouse dispatch with no single oversight view.',
+    outcomes: [
+      'Approve or reject orders before fulfillment',
+      'Preview dispatch assignments before trucks roll',
+      'Catalog, topology, and treasury in one portal',
+    ],
+    howItWorks: defaultHowItWorks([
+      ['Review new orders', 'Retailer places order; you vet eligibility and stock.'],
+      ['Oversee dispatch', 'Preview warehouse loads; override when needed.'],
+      ['Track earnings', 'Treasury and disputes in one dashboard.'],
+    ]),
+    flow: 'roleJourney',
+    flowConfig: { roles: ['Supplier', 'Review orders', 'Preview dispatch', 'Treasury & disputes'] },
+    relatedProjectSlug: 'supplier-control-plane',
+    crossRole: [
+      { role: 'Retailer', touchpoint: 'Orders wait for your approval' },
+      { role: 'Warehouse', touchpoint: 'Your topology shapes their dispatch board' },
+    ],
+  }),
+  warehouse: seedContent({
+    title: 'Warehouse',
+    summary: 'Dispatch with confidence, every morning — visual boards, fleet maps, and stock commitments.',
+    problem: 'Peak dispatch windows leave no room for misloads or radio-driven chaos.',
+    outcomes: [
+      'Visual truck selector with order checkboxes',
+      'Optional smart dispatch suggestions',
+      'Live fleet map after trucks leave',
+    ],
+    howItWorks: defaultHowItWorks([
+      ['Open dispatch board', 'See eligible orders and available trucks.'],
+      ['Load and commit', 'Assign orders; handle overflow across trucks.'],
+      ['Track departure', 'Fleet map shows live progress vs plan.'],
+    ]),
+    flow: 'roleJourney',
+    flowConfig: { roles: ['Warehouse', 'Open board', 'Load trucks', 'Track fleet'] },
+    relatedProjectSlug: 'warehouse-operations',
+  }),
+  factory: seedContent({
+    title: 'Factory',
+    summary: 'Keep production and loading in sync with supply requests and manifest lifecycle.',
+    problem: 'Loading bay teams lose track of which manifest belongs on which truck.',
+    outcomes: [
+      'Supply request ACK → production → FULFILL path',
+      'Manifest sealing before handoff to payload',
+      'Co-locate mode for internal transfers',
+    ],
+    howItWorks: defaultHowItWorks([
+      ['Acknowledge supply', 'Warehouse requests appear on your queue.'],
+      ['Produce & stage', 'Move supply through IN_PRODUCTION to READY.'],
+      ['Fulfill & manifest', 'Create manifest; payload seals at gate.'],
+    ]),
+    flow: 'roleJourney',
+    flowConfig: { roles: ['Factory', 'Ack supply', 'Stage goods', 'Seal manifest'] },
+    relatedProjectSlug: 'factory-loading',
+  }),
+  driver: seedContent({
+    title: 'Driver',
+    summary: 'Clear routes. Simple stops. On-time delivery with geofenced arrival and COD.',
+    problem: 'Drivers need turn-by-turn guidance and simple cash collection — not another ERP.',
+    outcomes: [
+      'Stop-by-stop mission view with OSRM geometry',
+      'Geofenced arrival and shop-closed flows',
+      'Cash and card collection at the door',
+    ],
+    howItWorks: defaultHowItWorks([
+      ['Receive manifest', 'Assignment appears after gate seal.'],
+      ['Execute route', 'Navigate stops; report telemetry.'],
+      ['Complete delivery', 'Arrive, collect payment, attach proof.'],
+    ]),
+    flow: 'roleJourney',
+    flowConfig: { roles: ['Driver', 'Get manifest', 'Run route', 'Collect & complete'] },
+    relatedProjectSlug: 'driver-execution-app',
+  }),
+  retailer: seedContent({
+    title: 'Retailer',
+    summary: 'Order, pay, and track — without phone calls to the warehouse.',
+    problem: 'Store managers waste hours calling to check order status and delivery windows.',
+    outcomes: [
+      'Unified checkout with zone and stock validation',
+      'Live tracking with plain-language status',
+      'Pay-at-delivery — cash or card at the door',
+    ],
+    howItWorks: defaultHowItWorks([
+      ['Browse and order', 'Catalog from your suppliers; checkout validates zone.'],
+      ['Track live', 'See truck progress without calling support.'],
+      ['Receive and pay', 'Confirm delivery; pay driver on arrival.'],
+    ]),
+    flow: 'roleJourney',
+    flowConfig: { roles: ['Retailer', 'Place order', 'Track delivery', 'Pay at door'] },
+    relatedProjectSlug: 'retailer-commerce',
+  }),
+  'payload-gate': seedContent({
+    title: 'Payload / Gate',
+    summary: 'Gate control that keeps every load accountable before wheels roll.',
+    problem: 'Wrong truck sealed means the wrong driver leaves with the wrong manifest.',
+    outcomes: [
+      'Per-truck seal with driver gate match',
+      'Manifest lifecycle through terminal and tablet',
+      'Reassign and override with capacity checks',
+    ],
+    howItWorks: defaultHowItWorks([
+      ['Scan manifest', 'Verify truck, driver, and order list.'],
+      ['Seal load', 'Lock manifest; notify driver and warehouse.'],
+      ['Handle exceptions', 'Reassign driver; rebalance across manifests.'],
+    ]),
+    flow: 'roleJourney',
+    flowConfig: { roles: ['Payload', 'Verify manifest', 'Seal truck', 'Gate release'] },
+    relatedProjectSlug: 'payload-gate-control',
+  }),
+  'order-vetting': seedContent({
+    title: 'Order Vetting',
+    summary: 'Supplier approves before warehouse dispatch — no surprise loads on the floor.',
+    problem: 'Warehouses discover ineligible orders only after picking has started.',
+    outcomes: [
+      'Orders held in vetting state until supplier acts',
+      'Reject path releases stock reservation',
+      'Warehouse board shows only approved orders',
+    ],
+    howItWorks: defaultHowItWorks([
+      ['Retailer submits', 'Order created in pending vetting.'],
+      ['Supplier reviews', 'Approve, reject, or request changes.'],
+      ['Warehouse dispatches', 'Only vetted orders appear on the board.'],
+    ]),
+    flow: 'orderLifecycle',
+    flowConfig: { highlightStep: 1 },
+    relatedProjectSlug: 'supplier-control-plane',
+  }),
+  'cash-collection': seedContent({
+    title: 'Cash Collection',
+    summary: 'Driver COD flows with treasury reconciliation and exception handling.',
+    problem: 'Cash at the door without system tracking creates end-of-day reconciliation nightmares.',
+    outcomes: [
+      'Geofenced collect-cash on arrival',
+      'Card-at-door sessions when retailers prefer cards',
+      'Treasury ties collection to order and driver',
+    ],
+    howItWorks: defaultHowItWorks([
+      ['Arrive at stop', 'Geofence confirms driver is at retailer.'],
+      ['Collect payment', 'Cash entry or card session at door.'],
+      ['Reconcile', 'Supplier treasury reflects completed collection.'],
+    ]),
+    flow: 'paymentFlow',
+    flowConfig: { highlightStep: 3 },
+    relatedProjectSlug: 'payment-integrity',
+  }),
+  'role-parity-matrix': seedContent({
+    title: 'Role Parity Matrix',
+    summary: 'Portal, mobile, and desktop for every team — same contracts, every surface.',
+    problem: 'Warehouse gets a great app while retailers are stuck on a broken mobile web wrapper.',
+    outcomes: [
+      'Shared types and API client across clients',
+      'Silent WS refresh on every platform',
+      'Role-row parity tracked in ecosystem matrix',
+    ],
+    howItWorks: defaultHowItWorks([
+      ['Define contracts', 'packages/types and api-client lead every feature.'],
+      ['Ship per role row', 'Portal, Android, iOS, desktop as applicable.'],
+      ['Verify parity', 'SSMR markers gate cross-role flows.'],
+    ]),
+    flow: 'appsMatrix',
+    crossRole: [
+      { role: 'All roles', touchpoint: 'Each row ships on every required client' },
+    ],
+  }),
+};

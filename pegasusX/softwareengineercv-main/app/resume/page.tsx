@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { projects } from '../data/projects';
-import PillNav from '../components/PillNav';
+import SiteNav from '../components/explore/SiteNav';
 import Link from 'next/link';
 
 // Note: Metadata export won't work in client components
@@ -79,26 +79,7 @@ export default function ResumePage() {
   return (
     <>
       <div className="min-h-screen bg-black text-white no-print">
-        <PillNav
-          logo=""
-          logoAlt="Pegasus Logo"
-          items={[
-            { label: 'Home', href: '/' },
-            { label: 'About', href: '/#about' },
-            { label: 'Skills', href: '/#skills' },
-            { label: 'Projects', href: '/projects' },
-            { label: 'Mobile Apps', href: '/mobile-apps' },
-            { label: 'Web Apps', href: '/web-apps' },
-            { label: 'Desktop Apps', href: '/desktop-apps' },
-            { label: 'Resume', href: '/resume' },
-            { label: 'Contact', href: '/#contact' }
-          ]}
-          activeHref="/resume"
-          baseColor="#000000"
-          pillColor="#ffffff"
-          hoveredPillTextColor="#ffffff"
-          pillTextColor="#000000"
-        />
+        <SiteNav activeHref="/resume" />
 
         {/* Action Buttons */}
         <div className="fixed top-24 right-8 z-50 flex flex-col gap-4 no-print">

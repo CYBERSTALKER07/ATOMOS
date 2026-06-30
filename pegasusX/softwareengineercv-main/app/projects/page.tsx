@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { projects, getAllCategories } from '../data/projects';
-import PillNav from '../components/PillNav';
+import SiteNav from '../components/explore/SiteNav';
 import Footer from '../components/Footer';
 import ContentCard, { EDITORIAL_IMAGES } from '../components/ContentCard';
 import { bentoPlacement, bentoVariant } from '../lib/bento';
@@ -48,23 +48,7 @@ export default function AllProjectsPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <PillNav
-        logo=""
-        logoAlt="Pegasus Logo"
-        items={[
-          { label: 'Home', href: '/' },
-          { label: 'About', href: '/#about' },
-          { label: 'Skills', href: '/#skills' },
-          { label: 'Projects', href: '/projects' },
-          { label: 'Resume', href: '/resume' },
-          { label: 'Contact', href: '/#contact' }
-        ]}
-        activeHref="/projects"
-        baseColor="#000000"
-        pillColor="#ffffff"
-        hoveredPillTextColor="#ffffff"
-        pillTextColor="#000000"
-      />
+      <SiteNav activeHref="/projects" />
 
       {/* Floating "Join Us" Button */}
       <Link

@@ -7,7 +7,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { projects } from '@/app/data/projects';
 import ContentCard, { EDITORIAL_IMAGES } from '../../components/ContentCard';
 import { BENTO_THREE } from '../../lib/bento';
-import PillNav from '@/app/components/PillNav';
+import SiteNav from '@/app/components/explore/SiteNav';
 import Footer from '@/app/components/Footer';
 import type { Project } from '@/app/data/projects';
 
@@ -70,23 +70,7 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
 
   return (
     <main className="min-h-screen bg-black text-white">
-      <PillNav
-        logo=""
-        logoAlt="Pegasus Logo"
-        items={[
-          { label: 'Home', href: '/' },
-          { label: 'About', href: '/#about' },
-          { label: 'Skills', href: '/#skills' },
-          { label: 'Projects', href: '/projects' },
-          { label: 'Resume', href: '/resume' },
-          { label: 'Contact', href: '/#contact' }
-        ]}
-        activeHref="/projects"
-        baseColor="#000000"
-        pillColor="#ffffff"
-        hoveredPillTextColor="#ffffff"
-        pillTextColor="#000000"
-      />
+      <SiteNav activeHref="/projects" />
 
       {/* Hero Section */}
       <section className="min-h-screen relative flex items-center justify-center overflow-hidden pt-20">

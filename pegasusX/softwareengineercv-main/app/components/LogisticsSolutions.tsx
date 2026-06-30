@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
+import FleetVisualPanel from './fleet/FleetVisualPanel';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -39,7 +40,7 @@ const SOLUTIONS: Solution[] = [
     title: 'Visual Dispatch Engine',
     description:
       'Match trucks to orders at peak hours with live warehouse boards, gate seals, and instant updates when plans change on the floor.',
-    href: '/projects/dispatch-engine',
+    href: '/solutions/visual-dispatch-engine',
     chartLabel: 'DISPATCH LOAD',
     bars: [55, 72, 64, 91],
     line: [48, 65, 70, 85],
@@ -50,7 +51,7 @@ const SOLUTIONS: Solution[] = [
     title: 'Fleet Telemetry',
     description:
       'Planned-vs-actual routes, deviation alerts, and retailer self-serve tracking — one honest picture of where every truck is.',
-    href: '/projects/fleet-telemetry',
+    href: '/solutions/fleet-visibility',
     chartLabel: 'ON-TIME RATE',
     bars: [68, 74, 79, 86],
     line: [62, 70, 76, 84],
@@ -319,7 +320,11 @@ export default function LogisticsSolutions() {
                 LEARN MORE
               </Link>
             </div>
-            <DispatchChart key={active.id} solution={active} />
+            {active.id === 'fleet' || active.id === 'dispatch' ? (
+              <FleetVisualPanel key={active.id} mode={active.id === 'fleet' ? 'fleet' : 'dispatch'} />
+            ) : (
+              <DispatchChart key={active.id} solution={active} />
+            )}
           </div>
         </div>
       </div>

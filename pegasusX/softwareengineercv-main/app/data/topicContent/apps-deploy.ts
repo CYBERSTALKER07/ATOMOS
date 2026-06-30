@@ -1,0 +1,108 @@
+import { seedContent, defaultHowItWorks } from './helpers';
+
+export const appsDeployTopics = {
+  'mobile-apps': seedContent({
+    title: 'Mobile Apps',
+    summary: 'Driver, warehouse, factory, retailer, and payload — native Android and iOS per role.',
+    problem: 'Floor teams need offline-tolerant native apps, not mobile web tabs.',
+    outcomes: ['Kotlin and Swift apps per role row', 'Firebase OTP for field roles', 'WS silent refresh'],
+    howItWorks: defaultHowItWorks([
+      ['Install per role', 'Driver, warehouse, factory, retailer, payload builds.'],
+      ['Authenticate', 'Phone OTP or portal SSO as appropriate.'],
+      ['Execute workflows', 'Dispatch, manifest, delivery, gate seal.'],
+    ]),
+    flow: 'appsMatrix',
+    flowConfig: { highlightStep: 1 },
+  }),
+  'desktop-apps': seedContent({
+    title: 'Desktop Apps',
+    summary: 'Retailer Tauri desktop for store counters — catalog, checkout, and tracking.',
+    problem: 'Shared store PCs need a fast desktop client, not a browser bookmark.',
+    outcomes: ['Tauri retailer desktop', 'Same API contracts as mobile', 'Counter-optimized UX'],
+    howItWorks: defaultHowItWorks([
+      ['Install on counter PC', 'Tauri bundle for Windows/macOS.'],
+      ['Login retailer', 'Store-scoped session.'],
+      ['Order and track', 'Checkout and live tracking in one window.'],
+    ]),
+    flow: 'appsMatrix',
+    flowConfig: { highlightStep: 2 },
+  }),
+  'web-apps': seedContent({
+    title: 'Web Apps',
+    summary: 'Supplier and warehouse portals — control plane and dispatch on the web.',
+    problem: 'Ops leads need large-screen dispatch boards in the browser.',
+    outcomes: ['Supplier portal for network oversight', 'Warehouse portal for dispatch and fleet', 'Next.js with live WS'],
+    howItWorks: defaultHowItWorks([
+      ['Supplier login', 'Topology, vetting, treasury dashboards.'],
+      ['Warehouse login', 'Dispatch board and fleet map.'],
+      ['Live updates', 'WebSocket-driven refresh.'],
+    ]),
+    flow: 'appsMatrix',
+    flowConfig: { highlightStep: 0 },
+  }),
+  'dispatch-fleet': seedContent({
+    title: 'Dispatch & Fleet',
+    summary: 'Visual load planning at peak hours — the warehouse ops centerpiece.',
+    problem: 'Peak dispatch is the highest-stakes minute of the logistics day.',
+    outcomes: ['Visual dispatch module', 'Fleet CRUD and assign guards', 'Live map after departure'],
+    howItWorks: defaultHowItWorks([
+      ['Plan loads', 'Board shows trucks and eligible orders.'],
+      ['Manage fleet', 'Trucks, capacity, driver assignment.'],
+      ['Depart & track', 'Seal triggers manifest; map goes live.'],
+    ]),
+    flow: 'dispatchBoard',
+    relatedProjectSlug: 'dispatch-engine',
+  }),
+  'payments-treasury': seedContent({
+    title: 'Payments & Treasury',
+    summary: 'Financial integrity across the network — pay-at-delivery and supplier settlement.',
+    problem: 'Finance cannot close books when payment state lives outside the order system.',
+    outcomes: ['Pay-at-delivery only', 'Supplier treasury dashboard', 'Dispute and exception SOPs'],
+    howItWorks: defaultHowItWorks([
+      ['Collect at door', 'Driver tools geofenced on arrival.'],
+      ['Ledger update', 'Order completion ties to payment row.'],
+      ['Supplier settlement', 'Treasury view with export.'],
+    ]),
+    flow: 'paymentFlow',
+    relatedProjectSlug: 'payment-integrity',
+  }),
+  'realtime-coordination': seedContent({
+    title: 'Realtime Coordination',
+    summary: 'Live updates across every surface after mutations commit.',
+    problem: 'Stale UI during peak order days causes duplicate actions.',
+    outcomes: ['Outbox + Kafka + WS pipeline', 'Silent refresh on all clients', 'Notification inbox'],
+    howItWorks: defaultHowItWorks([
+      ['Mutate in Spanner', 'Transactional write with outbox.'],
+      ['Publish events', 'Kafka consumers invalidate cache.'],
+      ['Push to clients', 'WS envelopes per role room.'],
+    ]),
+    flow: 'realtimePipeline',
+    relatedProjectSlug: 'realtime-coordination',
+  }),
+  'enterprise-rollout': seedContent({
+    title: 'Enterprise Rollout',
+    summary: 'Multi-site networks and deployment pillars for supplier-led scale.',
+    problem: 'Rolling out site two should not require re-architecting site one.',
+    outcomes: ['Multi-warehouse topology', 'Per-site fleet and zones', 'Phased role-row enablement'],
+    howItWorks: defaultHowItWorks([
+      ['Model sites', 'Topology nodes per warehouse and factory.'],
+      ['Enable roles', 'Portal and mobile per site wave.'],
+      ['Verify parity', 'SSMR smoke checks per go-live.'],
+    ]),
+    flow: 'controlPlane',
+    flowConfig: { highlightStep: 0 },
+  }),
+  'request-demo': seedContent({
+    title: 'Request Demo',
+    summary: 'Live walkthrough with the Pegasus team — see dispatch, fleet, and payments in action.',
+    problem: 'Reading docs cannot replace seeing your network model in the product.',
+    outcomes: ['Guided platform tour', 'Role-specific scenarios', 'Deployment planning session'],
+    howItWorks: defaultHowItWorks([
+      ['Tell us your network', 'Sites, roles, and peak dispatch profile.'],
+      ['Live demo', 'Dispatch board, fleet map, and payment flow.'],
+      ['Next steps', 'Pilot scope and rollout timeline.'],
+    ]),
+    flow: 'orderLifecycle',
+    flowConfig: { highlightStep: 0 },
+  }),
+};

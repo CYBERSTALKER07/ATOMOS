@@ -3,10 +3,13 @@ import Hero from './components/Hero';
 import About from './components/About';
 import PlatformValue from './components/PlatformValue';
 import Skills from './components/Skills';
-import PillNav from './components/PillNav';
+import SiteNav from './components/explore/SiteNav';
 import type { Metadata } from 'next';
 
 const LogisticsSolutions = dynamic(() => import('./components/LogisticsSolutions'));
+const SignalFeatureCards = dynamic(() => import('./components/SignalFeatureCards'));
+const OrderCycleVisualSection = dynamic(() => import('./components/OrderCycleVisualSection'));
+const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualSection'));
 const DevelopmentTools = dynamic(() => import('./components/DevelopmentTools'));
 const Projects = dynamic(() => import('./components/Projects'));
 const Companies = dynamic(() => import('./components/Companies'));
@@ -77,27 +80,14 @@ export default function Home() {
       />
 
       <div>
-        <PillNav
-          logo=""
-          logoAlt="Pegasus Logo"
-          showMenuButton
-          items={[
-            { label: 'Home', href: '#' },
-            { label: 'About', href: '#about' },
-            { label: 'Solutions', href: '#solutions' },
-            { label: 'Projects', href: '#projects' },
-            { label: 'Demo', href: '/join' },
-          ]}
-          activeHref="#"
-          baseColor="#000000"
-          pillColor="#ffffff"
-          hoveredPillTextColor="#ffffff"
-          pillTextColor="#000000"
-        />
+        <SiteNav activeHref="/" />
 
         <Hero />
         <About />
         <PlatformValue />
+        <SignalFeatureCards />
+        <OrderCycleVisualSection />
+        <DispatchVisualSection />
         <Skills />
         <LogisticsSolutions />
         <DevelopmentTools />
