@@ -128,10 +128,41 @@ export default function FleetLiveMap({ routes, className, loading, error }: Flee
           </Source>
         ) : null}
         {pointCollection.features.length > 0 ? (
-          <Source id="warehouse-fleet-live-drivers" type="geojson" data={pointCollection}>
+          <Source 
+            id="warehouse-fleet-live-drivers" 
+            type="geojson" 
+            data={pointCollection}
+            cluster={true}
+            clusterMaxZoom={14}
+            clusterRadius={40}
+          >
+            <Layer
+              id="warehouse-fleet-live-driver-clusters"
+              type="circle"
+              filter={['has', 'point_count']}
+              paint={{
+                'circle-color': '#111827',
+                'circle-radius': ['step', ['get', 'point_count'], 14, 10, 18, 30, 22],
+                'circle-stroke-color': '#ffffff',
+                'circle-stroke-width': 2,
+              }}
+            />
+            <Layer
+              id="warehouse-fleet-live-driver-cluster-count"
+              type="symbol"
+              filter={['has', 'point_count']}
+              layout={{
+                'text-field': '{point_count_abbreviated}',
+                'text-size': 11,
+              }}
+              paint={{
+                'text-color': '#ffffff'
+              }}
+            />
             <Layer
               id="warehouse-fleet-live-driver-points"
               type="circle"
+              filter={['!', ['has', 'point_count']]}
               paint={{
                 'circle-color': ['get', 'color'],
                 'circle-radius': 7,

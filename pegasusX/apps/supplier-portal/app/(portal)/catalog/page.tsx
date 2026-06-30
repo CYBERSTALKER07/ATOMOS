@@ -7,6 +7,7 @@ import { ListToolbar } from "@/components/ListToolbar";
 import { usePagination } from "@/lib/use-pagination";
 import { PageChrome } from "@/components/PageChrome";
 import { normalizeEanBarcode } from "@pegasusx/validation";
+import { BulkImportWizard } from "@/components/BulkImportWizard";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -68,6 +69,7 @@ export default function CatalogPage() {
   const [draftUnitsPerCase, setDraftUnitsPerCase] = useState<Record<string, string>>({});
   const [draftSaleUnit, setDraftSaleUnit] = useState<Record<string, SaleUnit>>({});
   const [showCreate, setShowCreate] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createForm, setCreateForm] = useState<CreateProductForm>(EMPTY_CREATE_FORM);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -355,18 +357,36 @@ export default function CatalogPage() {
       error={error}
       empty={!showCreate && products.length === 0}
       actions={
-        <button
-          type="button"
-          onClick={() => {
-            setShowCreate(value => !value);
-            setCreateError(null);
-          }}
-          className="md-btn md-btn-filled md-typescale-label-large px-4 py-2"
-        >
-          {showCreate ? "Close" : "Add product"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowBulkImport(true)}
+            className="md-btn md-btn-outlined md-typescale-label-large px-4 py-2"
+          >
+            Bulk import
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowCreate(value => !value);
+              setCreateError(null);
+            }}
+            className="md-btn md-btn-filled md-typescale-label-large px-4 py-2"
+          >
+            {showCreate ? "Close" : "Add product"}
+          </button>
+        </div>
       }
     >
+      <BulkImportWizard
+        isOpen={showBulkImport}
+        onClose={() => setShowBulkImport(false)}
+        onImport={(rows) => {
+          // Future integration: send rows to API
+          setShowBulkImport(false);
+          alert(`Successfully initiated import for ${rows.length} products`);
+        }}
+      />
       {showCreate && (
         <div className="md-card p-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="flex flex-col gap-1 md-typescale-body-medium">

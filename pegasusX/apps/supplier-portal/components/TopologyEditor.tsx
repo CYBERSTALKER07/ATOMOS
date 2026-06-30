@@ -12,6 +12,7 @@ import type {
 } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
 import { LocationPicker } from "@/components/LocationPicker";
+import { useToast } from "@/components/Toast";
 
 const api = createSupplierApi();
 
@@ -213,6 +214,7 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
   const [factories, setFactories] = useState(baseline.factories);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { push } = useToast();
 
   const factoryOptions = useMemo(
     () =>
@@ -293,7 +295,20 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
               title={warehouse.warehouse_id ? `Warehouse ${warehouse.name}` : `New warehouse ${index + 1}`}
               onRemove={
                 warehouses.length > 1
-                  ? () => setWarehouses((prev) => prev.filter((row) => row.key !== warehouse.key))
+                  ? () => {
+                      const idx = warehouses.findIndex(w => w.key === warehouse.key);
+                      setWarehouses((prev) => prev.filter((row) => row.key !== warehouse.key));
+                      push(`Removed warehouse ${warehouse.name || "Untitled"}`, "info", {
+                        label: "Undo",
+                        onClick: () => {
+                          setWarehouses((prev) => {
+                            const copy = [...prev];
+                            copy.splice(idx, 0, warehouse);
+                            return copy;
+                          });
+                        }
+                      });
+                    }
                   : undefined
               }
             >
@@ -537,7 +552,20 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
             <NodeCard
               key={factory.key}
               title={factory.factory_id ? `Factory ${factory.name}` : `New factory ${index + 1}`}
-              onRemove={() => setFactories((prev) => prev.filter((row) => row.key !== factory.key))}
+              onRemove={() => {
+                const idx = factories.findIndex(f => f.key === factory.key);
+                setFactories((prev) => prev.filter((row) => row.key !== factory.key));
+                push(`Removed factory ${factory.name || "Untitled"}`, "info", {
+                  label: "Undo",
+                  onClick: () => {
+                    setFactories((prev) => {
+                      const copy = [...prev];
+                      copy.splice(idx, 0, factory);
+                      return copy;
+                    });
+                  }
+                });
+              }}
             >
               <Field
                 label="Name"

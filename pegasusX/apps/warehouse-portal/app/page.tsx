@@ -25,6 +25,9 @@ interface DashboardData {
   low_stock_count: number;
   total_staff: number;
   fleet_status: FleetStatusRow[];
+  sparkline_active_orders?: number[];
+  sparkline_revenue?: number[];
+  sparkline_completed?: number[];
 }
 
 type FleetStatusRow = { status: string; count: number };
@@ -56,12 +59,15 @@ export default function WarehouseDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadIssue, setLoadIssue] = useState<DashboardLoadIssue | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [dateRange, setDateRange] = useState<'today' | '7d' | '30d'>('today');
 
   useEffect(() => {
     setLoading(true);
     async function load() {
       try {
-        const dashboard = await warehouseApi.getWarehouseOpsDashboard();
+        const dashboard = await warehouseApi.getWarehouseOpsDashboard({
+          range: dateRange
+        } as any);
         const row = dashboard as unknown as Record<string, unknown>;
         setData({
           active_orders: Number(row.active_orders ?? 0),
@@ -75,6 +81,9 @@ export default function WarehouseDashboard() {
           low_stock_count: Number(row.low_stock_count ?? 0),
           total_staff: Number(row.total_staff ?? 0),
           fleet_status: normalizeFleetStatus(row.fleet_status),
+          sparkline_active_orders: Array.isArray(row.sparkline_active_orders) ? row.sparkline_active_orders.map(Number) : undefined,
+          sparkline_revenue: Array.isArray(row.sparkline_revenue) ? row.sparkline_revenue.map(Number) : undefined,
+          sparkline_completed: Array.isArray(row.sparkline_completed) ? row.sparkline_completed.map(Number) : undefined,
         });
         setLoadIssue(null);
       } catch (err) {
@@ -89,7 +98,7 @@ export default function WarehouseDashboard() {
       finally { setLoading(false); }
     }
     load();
-  }, [reloadToken]);
+  }, [reloadToken, dateRange]);
 
   if (!data && loadIssue) {
     const stateContent: Record<DashboardLoadIssue, { headline: string; body: string }> = {
@@ -159,11 +168,12 @@ export default function WarehouseDashboard() {
     href: string;
     bay: 'ops' | 'inventory' | 'fleet' | 'finance';
     flag?: 'alert' | 'ok';
+    sparkline?: number[];
   }[] = [
-    { label: 'Active orders', value: fmt(d.active_orders), icon: 'orders', href: '/orders', bay: 'ops' },
-    { label: 'Completed today', value: fmt(d.completed_today), icon: 'check', href: '/orders', bay: 'ops', flag: d.completed_today > 0 ? 'ok' : undefined },
+    { label: 'Active orders', value: fmt(d.active_orders), icon: 'orders', href: '/orders', bay: 'ops', sparkline: d.sparkline_active_orders },
+    { label: 'Completed today', value: fmt(d.completed_today), icon: 'check', href: '/orders', bay: 'ops', flag: d.completed_today > 0 ? 'ok' : undefined, sparkline: d.sparkline_completed },
     { label: 'Pending dispatch', value: fmt(d.pending_dispatch), icon: 'dispatch', href: '/dispatch', bay: 'ops', flag: d.pending_dispatch > 5 ? 'alert' : undefined },
-    { label: 'Today revenue', value: fmtCurrency(d.today_revenue), icon: 'treasury', href: '/treasury', bay: 'finance' },
+    { label: 'Today revenue', value: fmtCurrency(d.today_revenue), icon: 'treasury', href: '/treasury', bay: 'finance', sparkline: d.sparkline_revenue },
     { label: 'Drivers on route', value: `${d.on_route_drivers} / ${d.total_drivers}`, icon: 'fleet', href: '/drivers', bay: 'fleet' },
     { label: 'Idle drivers', value: fmt(d.idle_drivers), icon: 'fleet', href: '/drivers', bay: 'fleet' },
     { label: 'Vehicles', value: fmt(d.total_vehicles), icon: 'fleet', href: '/vehicles', bay: 'fleet' },
@@ -180,15 +190,26 @@ export default function WarehouseDashboard() {
         loading={loading}
         skeletonVariant="dashboard"
         actions={
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setReloadToken((v) => v + 1)}
-            className="desk-icon-btn"
-            aria-label="Refresh dashboard"
-          >
-            <Icon name="refresh" size={18} />
-          </motion.button>
+          <div className="flex items-center gap-3">
+            <select
+              className="h-8 rounded-lg border border-[var(--wh-border)] bg-[var(--wh-surface)] px-2 text-xs text-[var(--wh-ink-main)] outline-none"
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value as 'today' | '7d' | '30d')}
+            >
+              <option value="today">Today</option>
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+            </select>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setReloadToken((v) => v + 1)}
+              className="desk-icon-btn"
+              aria-label="Refresh dashboard"
+            >
+              <Icon name="refresh" size={18} />
+            </motion.button>
+          </div>
         }
       >
       <KpiStatGrid columns={4}>
@@ -201,6 +222,7 @@ export default function WarehouseDashboard() {
             href={kpi.href}
             bay={kpi.bay}
             flag={kpi.flag}
+            sparkline={kpi.sparkline}
           />
         ))}
       </KpiStatGrid>

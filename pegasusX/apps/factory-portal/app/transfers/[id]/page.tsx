@@ -17,6 +17,12 @@ interface TransferItem {
   volume_m3: number;
 }
 
+interface FleetDriver {
+  driver_id: string;
+  name: string;
+  on_shift: boolean;
+}
+
 interface TransferDetail {
   id: string;
   source_factory_id: string;
@@ -26,6 +32,7 @@ interface TransferDetail {
   priority: string;
   total_items: number;
   total_volume_m3: number;
+  driver_id?: string;
   notes: string;
   created_at: string;
   updated_at: string;
@@ -58,6 +65,7 @@ export default function TransferDetailPage() {
   const [transfer, setTransfer] = useState<TransferDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [progressing, setProgressing] = useState(false);
+  const [drivers, setDrivers] = useState<FleetDriver[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
@@ -65,7 +73,16 @@ export default function TransferDetailPage() {
     setError(null);
     setNotFound(false);
     try {
-      const res = await apiFetch(`/v1/factory/transfers/${id}`);
+      const [res, driversRes] = await Promise.all([
+        apiFetch(`/v1/factory/transfers/${id}`),
+        apiFetch('/v1/factory/fleet/drivers'),
+      ]);
+
+      if (driversRes.ok) {
+        const d = await driversRes.json();
+        setDrivers(d.drivers || []);
+      }
+
       if (res.ok) {
         setTransfer(await res.json());
       } else if (res.status === 404) {
@@ -90,6 +107,25 @@ export default function TransferDetailPage() {
     }
     void load();
   });
+
+  async function handleAssignDriver(newDriver: string) {
+    if (!transfer) return;
+    try {
+      const res = await apiFetch(`/v1/factory/transfers/${id}/driver`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driver_id: newDriver })
+      });
+      if (res.ok) {
+        toast('Driver assigned', 'success');
+        setTransfer({ ...transfer, driver_id: newDriver });
+      } else {
+        toast('Failed to assign driver', 'error');
+      }
+    } catch {
+      toast('Network error', 'error');
+    }
+  }
 
   async function handleProgress() {
     if (!transfer) return;
@@ -267,6 +303,23 @@ export default function TransferDetailPage() {
                   <p className="mt-2 break-all text-sm font-medium leading-6 text-[var(--foreground)]">{row.value}</p>
                 </div>
               ))}
+              
+              <div className="rounded-2xl bg-[var(--surface)] p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)] mb-2">Driver Assignment</p>
+                <select
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  value={transfer.driver_id || ''}
+                  onChange={(e) => void handleAssignDriver(e.target.value)}
+                  disabled={transfer.state === 'CANCELLED' || transfer.state === 'RECEIVED'}
+                >
+                  <option value="">Unassigned</option>
+                  {drivers.map((drv) => (
+                    <option key={drv.driver_id} value={drv.driver_id}>
+                      {drv.name} {drv.on_shift ? '(on shift)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </section>
 

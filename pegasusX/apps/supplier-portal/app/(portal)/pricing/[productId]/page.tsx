@@ -23,6 +23,7 @@ export default function ProductPricingPage() {
   const [priceMajor, setPriceMajor] = useState("");
   const [saleEnabled, setSaleEnabled] = useState(false);
   const [saleDiscountBps, setSaleDiscountBps] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     if (!productId) return;
@@ -61,7 +62,22 @@ export default function ProductPricingPage() {
       setError("Enter a valid list price.");
       return;
     }
+    if (saleEnabled) {
+      const bps = Number.parseInt(saleDiscountBps, 10);
+      if (!Number.isFinite(bps) || bps <= 0) {
+        setError("Sale discount must be greater than zero.");
+        return;
+      }
+    }
+    setShowPreview(true);
+  };
+
+  const commitSave = async () => {
+    if (!product) return;
+    const parsed = Number.parseFloat(priceMajor.replace(",", "."));
+    
     setSaving(true);
+    setShowPreview(false);
     setError(null);
     try {
       const priceMinor = Math.round(parsed * 100);
@@ -161,10 +177,73 @@ export default function ProductPricingPage() {
             </label>
           ) : null}
           <button type="button" className="md-btn md-btn-filled px-4 py-2" disabled={saving} onClick={() => void save()}>
-            {saving ? "Saving…" : "Save pricing"}
+            {saving ? "Saving…" : "Preview impact"}
           </button>
         </div>
       ) : null}
+      
+      {showPreview && product && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-[var(--surface)] w-full max-w-md rounded-xl shadow-xl overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-[var(--border)]">
+              <h2 className="text-xl font-semibold">Preview Pricing Impact</h2>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              {(() => {
+                const oldList = product.price_minor;
+                const oldSale = activeSale ? oldList * (1 - activeSale.discount_bps / 10000) : oldList;
+                
+                const parsedList = Number.parseFloat(priceMajor.replace(",", "."));
+                const newList = Math.round(parsedList * 100);
+                const parsedBps = Number.parseInt(saleDiscountBps, 10);
+                const newSale = saleEnabled && Number.isFinite(parsedBps) ? newList * (1 - parsedBps / 10000) : newList;
+                
+                const formatMinor = (m: number) => (m / 100).toFixed(2) + " " + product.currency;
+                
+                return (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-[var(--field-background)] rounded-lg">
+                        <div className="text-sm text-[var(--muted)]">Old List Price</div>
+                        <div className="font-mono mt-1">{formatMinor(oldList)}</div>
+                      </div>
+                      <div className="p-3 bg-[var(--field-background)] rounded-lg">
+                        <div className="text-sm text-[var(--muted)]">New List Price</div>
+                        <div className="font-mono mt-1">{formatMinor(newList)}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-[var(--field-background)] rounded-lg">
+                        <div className="text-sm text-[var(--muted)]">Old Sale Price</div>
+                        <div className="font-mono mt-1">{formatMinor(oldSale)}</div>
+                      </div>
+                      <div className="p-3 bg-[var(--field-background)] rounded-lg">
+                        <div className="text-sm text-[var(--muted)]">New Sale Price</div>
+                        <div className="font-mono mt-1 font-bold text-[var(--primary)]">{formatMinor(newSale)}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="pt-2 border-t border-[var(--border)] text-sm">
+                      Effective immediately upon commit.
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+            
+            <div className="px-6 py-4 border-t border-[var(--border)] flex justify-end gap-3 bg-[var(--field-background)]">
+              <button type="button" onClick={() => setShowPreview(false)} className="md-btn md-btn-outlined px-4 py-2">
+                Cancel
+              </button>
+              <button type="button" onClick={() => void commitSave()} className="md-btn md-btn-filled px-4 py-2">
+                Commit rule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageChrome>
   );
 }

@@ -15,6 +15,9 @@ export default function DispatchSettingsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewData, setPreviewData] = useState<any | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -50,6 +53,25 @@ export default function DispatchSettingsPage() {
       setSaving(false);
     }
   }, []);
+
+  const handleToggle = async (next: boolean) => {
+    if (next) {
+      // Enabling auto-dispatch -> show impact preview
+      setPreviewLoading(true);
+      setShowPreviewModal(true);
+      try {
+        const data = await warehouseApi.previewWarehouseDispatch({ warehouse_id: warehouseHomeNodeId() || undefined }, {});
+        setPreviewData(data);
+      } catch (err) {
+        setPreviewData({ error: err instanceof ApiError ? err.message : 'Failed to load preview' });
+      } finally {
+        setPreviewLoading(false);
+      }
+    } else {
+      // Just disable directly
+      void save(false);
+    }
+  };
 
   return (
     <PageTransition>
@@ -90,7 +112,7 @@ export default function DispatchSettingsPage() {
             <button
               type="button"
               disabled={saving || autoDispatchEnabled === null}
-              onClick={() => void save(!(autoDispatchEnabled ?? false))}
+              onClick={() => void handleToggle(!(autoDispatchEnabled ?? false))}
               className={`relative h-8 w-14 rounded-full transition-colors disabled:opacity-50 ${autoDispatchEnabled ? 'bg-(--accent)' : 'bg-(--border)'}`}
               aria-pressed={autoDispatchEnabled ?? false}
               aria-label="Toggle auto dispatch"
@@ -104,6 +126,56 @@ export default function DispatchSettingsPage() {
             Current state: {autoDispatchEnabled === null ? '—' : autoDispatchEnabled ? 'ENABLED' : 'DISABLED'}
           </p>
         </div>
+
+        {showPreviewModal && (
+          <div className="md-dialog-scrim fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity">
+            <div className="md-dialog flex w-full max-w-md flex-col overflow-hidden rounded-[24px] bg-[var(--background)] shadow-2xl">
+              <div className="px-6 pb-2 pt-6">
+                <h2 className="md-dialog-title text-xl font-semibold tracking-tight text-[var(--foreground)]">
+                  Enable Auto Dispatch
+                </h2>
+              </div>
+              <div className="flex-1 overflow-y-auto px-6 py-2 text-sm text-[var(--muted)]">
+                {previewLoading ? (
+                  <p>Loading impact preview...</p>
+                ) : previewData?.error ? (
+                  <p className="text-(--error)">{previewData.error}</p>
+                ) : (
+                  <div className="space-y-4">
+                    <p>Enabling auto dispatch will immediately schedule available drivers. Based on the current queue:</p>
+                    <ul className="list-disc pl-5">
+                      <li>{previewData?.undispatched_orders?.length || 0} orders waiting</li>
+                      <li>{previewData?.available_drivers?.length || 0} drivers available</li>
+                      <li>{previewData?.window_constrained_count || 0} constrained by delivery windows</li>
+                    </ul>
+                    <p>Are you sure you want to enable auto dispatch?</p>
+                  </div>
+                )}
+              </div>
+              <div className="md-dialog-actions flex items-center justify-end gap-2 p-6">
+                <button
+                  type="button"
+                  className="button--secondary px-4 py-2"
+                  onClick={() => setShowPreviewModal(false)}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="button--primary px-4 py-2"
+                  onClick={() => {
+                    void save(true);
+                    setShowPreviewModal(false);
+                  }}
+                  disabled={previewLoading || saving}
+                >
+                  {saving ? 'Enabling...' : 'Confirm'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </PageChrome>
     </PageTransition>
   );

@@ -103,6 +103,8 @@ export default function SupplyRequestsPage() {
   const [fulfillModal, setFulfillModal] = useState<{ request: SupplyRequest; options: SupplyFulfillOptions } | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [isOffline, setIsOffline] = useState(() => (typeof navigator === 'undefined' ? false : !navigator.onLine));
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchTransitioning, setBatchTransitioning] = useState<string | null>(null);
   const previousSignatureRef = useRef('');
 
   const fetchRequests = useCallback(async (options?: { background?: boolean; silent?: boolean }) => {
@@ -216,6 +218,7 @@ export default function SupplyRequestsPage() {
 
   useEffect(() => {
     reset();
+    setSelectedIds(new Set());
   }, [filter, reset]);
 
   const exportCsv = () => {
@@ -298,6 +301,54 @@ export default function SupplyRequestsPage() {
     } finally {
       setTransitioning(null);
     }
+  };
+
+  const handleToggleAll = () => {
+    if (selectedIds.size === pageItems.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(pageItems.map(r => r.request_id)));
+    }
+  };
+
+  const handleToggleOne = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const runBatchTransition = async (action: string) => {
+    setBatchTransitioning(action);
+    const selectedRequests = requests.filter(r => selectedIds.has(r.request_id));
+    const validRequests = selectedRequests.filter(r => ACTIONS[r.state]?.some(a => a.action === action));
+    
+    if (validRequests.length === 0) {
+      toast(`No selected requests are eligible for ${action.replace(/_/g, ' ').toLowerCase()}`, 'warning');
+      setBatchTransitioning(null);
+      return;
+    }
+
+    let successCount = 0;
+    for (const request of validRequests) {
+      try {
+        const body: Record<string, unknown> = { action };
+        const res = await apiFetch(`/v1/factory/supply-requests/${request.request_id}`, {
+          method: 'PATCH',
+          headers: {
+            'Idempotency-Key': factorySupplyRequestTransitionKey(request.request_id, action),
+          },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) successCount++;
+      } catch {}
+    }
+    
+    toast(`Batch completed: ${successCount}/${validRequests.length} succeeded`, successCount > 0 ? 'success' : 'error');
+    setSelectedIds(new Set());
+    setBatchTransitioning(null);
+    await fetchRequests({ background: true, silent: true });
   };
 
   const submittedCount = useMemo(() => requests.filter((r) => r.state === 'SUBMITTED').length, [requests]);
@@ -428,6 +479,25 @@ export default function SupplyRequestsPage() {
               onNext={next}
               onExport={exportCsv}
             />
+            {selectedIds.size > 0 && (
+              <div className="mb-4 flex items-center justify-between rounded-lg border bg-(--color-md-surface-container) p-3" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
+                <span className="text-sm font-semibold">{selectedIds.size} selected</span>
+                <div className="flex gap-2">
+                  <button type="button" disabled={!!batchTransitioning} onClick={() => runBatchTransition('ACKNOWLEDGE')} className="portal-btn portal-btn--primary text-xs">
+                    {batchTransitioning === 'ACKNOWLEDGE' ? '...' : 'Acknowledge'}
+                  </button>
+                  <button type="button" disabled={!!batchTransitioning} onClick={() => runBatchTransition('START_PRODUCTION')} className="portal-btn portal-btn--primary text-xs !bg-(--color-md-warning)">
+                    {batchTransitioning === 'START_PRODUCTION' ? '...' : 'Start Production'}
+                  </button>
+                  <button type="button" disabled={!!batchTransitioning} onClick={() => runBatchTransition('MARK_READY')} className="portal-btn portal-btn--primary text-xs !bg-(--color-md-success)">
+                    {batchTransitioning === 'MARK_READY' ? '...' : 'Mark Ready'}
+                  </button>
+                  <button type="button" disabled={!!batchTransitioning} onClick={() => runBatchTransition('CANCEL')} className="portal-btn portal-btn--primary text-xs !bg-(--color-md-error)">
+                    {batchTransitioning === 'CANCEL' ? '...' : 'Cancel'}
+                  </button>
+                </div>
+              </div>
+            )}
             <PageSection title="Demand queue" description="Advance requests through ACK → production → ready → fulfill.">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -437,6 +507,14 @@ export default function SupplyRequestsPage() {
                 <table className="desk-table w-full text-sm">
               <thead>
                 <tr style={{ background: 'var(--color-md-surface-container)' }}>
+                  <th className="text-left px-4 py-3 font-medium w-10">
+                    <input 
+                      type="checkbox" 
+                      className="rounded border-(--color-md-outline) bg-transparent"
+                      checked={pageItems.length > 0 && selectedIds.size === pageItems.length}
+                      onChange={handleToggleAll}
+                    />
+                  </th>
                   <th className="text-left px-4 py-3 font-medium">Warehouse</th>
                   <th className="text-left px-4 py-3 font-medium">Priority</th>
                   <th className="text-left px-4 py-3 font-medium">State</th>
@@ -459,6 +537,15 @@ export default function SupplyRequestsPage() {
                     style={{ borderColor: 'var(--color-md-outline-variant)' }}
                     onClick={() => setExpandedRequestId(expandedRequestId === request.request_id ? null : request.request_id)}
                   >
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input 
+                        type="checkbox" 
+                        className="rounded border-(--color-md-outline) bg-transparent"
+                        checked={selectedIds.has(request.request_id)}
+                        onChange={(e) => handleToggleOne(request.request_id, e)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="font-medium">{request.warehouse_name || request.warehouse_id.slice(0, 8)}</div>
                       <div className="text-xs font-mono" style={{ color: 'var(--color-md-on-surface-variant)' }}>
@@ -508,7 +595,7 @@ export default function SupplyRequestsPage() {
                   </motion.tr>
                   {expandedRequestId === request.request_id && (request.items?.length ?? 0) > 0 && (
                     <tr key={`${request.request_id}-items`} className="border-t" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
-                      <td colSpan={9} className="px-4 py-3 bg-[var(--color-md-surface-container-low)]">
+                      <td colSpan={10} className="px-4 py-3 bg-[var(--color-md-surface-container-low)]">
                         <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--color-md-on-surface-variant)' }}>
                           Requested SKUs
                         </div>

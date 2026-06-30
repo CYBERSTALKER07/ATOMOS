@@ -14,7 +14,26 @@ type KpiStatCardProps = {
   bay?: "ops" | "inventory" | "fleet" | "finance";
   className?: string;
   align?: "start" | "center";
+  sparkline?: number[];
 };
+
+function Sparkline({ data }: { data: number[] }) {
+  if (!data || data.length < 2) return null;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const points = data.map((d, i) => {
+    const x = (i / (data.length - 1)) * 100;
+    const y = 100 - ((d - min) / range) * 100;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <svg className="h-8 w-16 opacity-50" viewBox="0 -10 100 120" preserveAspectRatio="none">
+      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 const BAY_CLASS: Record<NonNullable<KpiStatCardProps["bay"]>, string> = {
   ops: "wh-bay--ops",
@@ -33,6 +52,7 @@ export function KpiStatCard({
   bay = "ops",
   className = "",
   align = "start",
+  sparkline,
 }: KpiStatCardProps) {
   const body = (
     <>
@@ -47,14 +67,22 @@ export function KpiStatCard({
         {flag === "alert" ? <span className="wh-kpi-flag wh-kpi-flag--alert">Alert</span> : null}
         {flag === "ok" ? <span className="wh-kpi-flag wh-kpi-flag--ok">Done</span> : null}
       </div>
-      <div className={align === "center" ? "w-full" : undefined}>
-        <p className="wh-kpi-label">{label}</p>
-        <div className="wh-kpi-value mt-2">{value}</div>
-        {sub ? (
-          <p className="text-xs mt-1" style={{ color: "var(--wh-ink-faint)" }}>
-            {sub}
-          </p>
-        ) : null}
+      </div>
+      <div className={`mt-2 flex items-end justify-between ${align === "center" ? "w-full flex-col items-center" : ""}`}>
+        <div>
+          <p className="wh-kpi-label">{label}</p>
+          <div className="wh-kpi-value mt-1">{value}</div>
+          {sub ? (
+            <p className="mt-1 text-xs" style={{ color: "var(--wh-ink-faint)" }}>
+              {sub}
+            </p>
+          ) : null}
+        </div>
+        {sparkline && (
+          <div className="text-(--accent) shrink-0 ml-2">
+            <Sparkline data={sparkline} />
+          </div>
+        )}
       </div>
     </>
   );

@@ -897,7 +897,22 @@ export default function DispatchPage() {
               {proposedRoutes.map((route, index) => (
                 <div key={`${route.driver_id || 'route'}-${index}`} className="rounded-lg border border-(--border) p-3">
                   <div className="flex items-center justify-between gap-3 mb-2">
-                    <div className="text-sm font-medium">{route.driver_name || route.driver_id || 'Driver'}</div>
+                    <div className="text-sm font-medium">
+                      {route.driver_name || route.driver_id || 'Driver'}
+                      {(() => {
+                        const driver = drivers.find(d => d.driver_id === route.driver_id);
+                        if (!driver) return null;
+                        const capacity = driver.free_volume_vu != null && driver.free_volume_vu > 0 ? driver.free_volume_vu : driver.max_volume_vu ?? 0;
+                        if (capacity > 0 && routeVolumeVU(route) > capacity * TETRIS_BUFFER) {
+                          return (
+                            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[color-mix(in_srgb,var(--warning)_15%,transparent)] text-[var(--warning)] border border-[color-mix(in_srgb,var(--warning)_30%,transparent)]">
+                              Over capacity
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                     <div className="text-xs text-(--muted)">
                       {(route.stop_count ?? route.order_ids?.length ?? route.stops?.length ?? 0)} stops
                       {routeVolumeVU(route) > 0 && ` · ${formatVU(routeVolumeVU(route))} VU`}

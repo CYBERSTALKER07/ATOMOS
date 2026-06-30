@@ -90,7 +90,12 @@ export default function OrderDetailPage() {
       setReason('');
       await load();
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : `${label} failed`, 'error');
+      if (err instanceof ApiError && err.status === 409) {
+        toast('Order was updated elsewhere. Refreshing...', 'error');
+        await load();
+      } else {
+        toast(err instanceof ApiError ? err.message : `${label} failed`, 'error');
+      }
     } finally {
       setActing(false);
     }

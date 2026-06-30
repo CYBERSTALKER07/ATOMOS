@@ -10,6 +10,9 @@ import {
   reverseGeocode,
   type ResolvedLocation,
 } from "@/lib/geocode";
+import MapGL, { Marker, NavigationControl } from 'react-map-gl/maplibre';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
 export type LocationValue = {
   address: string;
@@ -155,6 +158,24 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
 
   const pinned = hasValidCoordinates(value.lat, value.lng);
 
+  const handleMapClick = async (e: maplibregl.MapMouseEvent) => {
+    const lat = e.lngLat.lat;
+    const lng = e.lngLat.lng;
+    setResolving(true);
+    setError(null);
+    try {
+      const loc = await reverseGeocode(lat, lng);
+      if (loc) {
+        applyResolved(loc);
+      } else {
+        onChange({ ...value, lat: String(lat), lng: String(lng) });
+        setQuery(`Pinned location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+      }
+    } finally {
+      setResolving(false);
+    }
+  };
+
   return (
     <div className="space-y-2">
       <label className="portal-label">{label}</label>
@@ -206,6 +227,35 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
         ) : null}
       </div>
       {error ? <p className="md-helper" data-error="true">{error}</p> : null}
+
+      <div className="h-64 w-full mt-2 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
+        <MapGL
+          initialViewState={{
+            longitude: pinned ? parseFloat(value.lng) : -122.4194,
+            latitude: pinned ? parseFloat(value.lat) : 37.7749,
+            zoom: pinned ? 14 : 10,
+          }}
+          longitude={pinned ? parseFloat(value.lng) : undefined}
+          latitude={pinned ? parseFloat(value.lat) : undefined}
+          mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+          style={{ width: '100%', height: '100%' }}
+          mapLib={maplibregl}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onClick={(e) => void handleMapClick(e as any)}
+          interactiveLayerIds={[]}
+          cursor="crosshair"
+        >
+          <NavigationControl position="top-right" showCompass={false} />
+          {pinned && (
+            <Marker longitude={parseFloat(value.lng)} latitude={parseFloat(value.lat)} anchor="bottom">
+              <div className="flex flex-col items-center">
+                <div className="w-4 h-4 rounded-full bg-[var(--color-md-primary)] shadow-lg" />
+                <div className="w-1 h-3 bg-[var(--color-md-primary)]" />
+              </div>
+            </Marker>
+          )}
+        </MapGL>
+      </div>
     </div>
   );
 }

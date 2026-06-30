@@ -85,10 +85,64 @@ func (s *Service) iosTransferPayload(row TransferRow) map[string]any {
 		"total_volume_m3":          volumeVU,
 		"total_volume_vu":          volumeVU,
 		"notes":                    "",
+		"driver_id":                row.DriverID,
 		"created_at":               row.CreatedAt,
 		"updated_at":               row.UpdatedAt,
 		"items":                    []any{},
 	}
+}
+
+// HandleTransferDriverUpdate serves POST /v1/factory/transfers/{transferID}/driver.
+func (s *Service) HandleTransferDriverUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	transferID := strings.TrimSpace(chi.URLParam(r, "transferID"))
+	if transferID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "transfer_id_required"})
+		return
+	}
+
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	var req struct {
+		DriverID string `json:"driver_id"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+
+	err = s.apply(r.Context(), func() error {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.ensureDemoDataLocked()
+		idx := -1
+		for i := range s.transfers {
+			if s.transfers[i].TransferID == transferID {
+				idx = i
+				break
+			}
+		}
+		if idx < 0 {
+			return errors.New("not_found")
+		}
+		s.transfers[idx].DriverID = req.DriverID
+		return nil
+	}, nil)
+	if err != nil {
+		if err.Error() == "not_found" {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "transfer_not_found"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (s *Service) iosFleetVehiclesLocked() []map[string]any {

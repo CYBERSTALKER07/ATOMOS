@@ -8,10 +8,14 @@ type ToastMessage = {
   id: string;
   message: string;
   tone: ToastTone;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 };
 
 type ToastContextValue = {
-  push: (message: string, tone?: ToastTone) => void;
+  push: (message: string, tone?: ToastTone, action?: ToastMessage["action"]) => void;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -19,12 +23,12 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ToastMessage[]>([]);
 
-  const push = useCallback((message: string, tone: ToastTone = "info") => {
+  const push = useCallback((message: string, tone: ToastTone = "info", action?: ToastMessage["action"]) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    setMessages((current) => [...current, { id, message, tone }]);
+    setMessages((current) => [...current, { id, message, tone, action }]);
     window.setTimeout(() => {
       setMessages((current) => current.filter((entry) => entry.id !== id));
-    }, 4000);
+    }, 5000);
   }, []);
 
   const value = useMemo(() => ({ push }), [push]);
@@ -36,7 +40,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {messages.map((toast) => (
           <div
             key={toast.id}
-            className="md-card px-4 py-3 md-typescale-body-medium border"
+            className="md-card px-4 py-3 md-typescale-body-medium border flex items-center justify-between gap-4"
             style={{
               borderColor:
                 toast.tone === "error"
@@ -46,7 +50,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     : "var(--color-md-outline-variant)",
             }}
           >
-            {toast.message}
+            <div>{toast.message}</div>
+            {toast.action ? (
+              <button
+                type="button"
+                className="md-btn md-btn-text text-[var(--color-md-primary)] font-medium whitespace-nowrap"
+                onClick={() => {
+                  toast.action!.onClick();
+                  setMessages((current) => current.filter((entry) => entry.id !== toast.id));
+                }}
+              >
+                {toast.action.label}
+              </button>
+            ) : null}
           </div>
         ))}
       </div>

@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
+import EmptyState from '@/components/EmptyState';
 
 interface Retailer {
   retailer_id: string;
@@ -51,10 +52,11 @@ export default function CRMPage() {
           {Array.from({ length: 5 }).map((_, i) => <div key={i} className="md-skeleton md-skeleton-row" />)}
         </div>
       ) : retailers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-[var(--muted)]">
-          <Icon name="crm" size={48} className="mb-3 opacity-40" />
-          <p className="text-sm">No retailer relationships yet</p>
-        </div>
+        <EmptyState 
+          variant="no-data" 
+          headline="No buyer data to analyze yet" 
+          body="Retailer relationships and purchase histories will appear here once orders are fulfilled by this node." 
+        />
       ) : (
         <div className="overflow-x-auto">
           <table className="desk-table w-full text-sm">

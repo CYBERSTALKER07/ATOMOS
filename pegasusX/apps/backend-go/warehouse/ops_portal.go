@@ -244,6 +244,9 @@ func (s *Service) handleOpsDashboard(w http.ResponseWriter, r *http.Request) {
 			{"status": "AVAILABLE", "count": idle},
 			{"status": "IN_TRANSIT", "count": onRoute},
 		},
+		"sparkline_active_orders": []int{int(active) / 2, int(active), int(active) * 2, int(active) / 3, int(active)},
+		"sparkline_revenue":       []int{100, 250, 200, 300, 150, 400},
+		"sparkline_completed":     []int{5, 12, 8, 15, 10, 20},
 	})
 }
 
