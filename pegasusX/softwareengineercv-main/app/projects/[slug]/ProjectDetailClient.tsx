@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { projects } from '@/app/data/projects';
+import ContentCard, { EDITORIAL_IMAGES } from '../../components/ContentCard';
+import { BENTO_THREE } from '../../lib/bento';
 import PillNav from '@/app/components/PillNav';
 import Footer from '@/app/components/Footer';
 import type { Project } from '@/app/data/projects';
@@ -278,57 +280,32 @@ export default function ProjectDetailClient({ project }: { project: Project }) {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 mb-8 md:mb-12">
+            <div className="editorial-bento max-w-6xl mx-auto mb-8 md:mb-12">
               {projects
                 .filter(p => p.category === project.category && p.id !== project.id)
                 .slice(0, 3)
-                .map((relatedProject) => (
-                  <Link
+                .map((relatedProject, index) => (
+                  <ContentCard
                     key={relatedProject.id}
+                    variant={index === 1 ? 'split' : 'vertical'}
+                    tone={index === 1 ? 'light' : 'dark'}
+                    tag={relatedProject.category}
+                    title={relatedProject.title}
+                    description={relatedProject.description}
+                    image={relatedProject.image || EDITORIAL_IMAGES[index % EDITORIAL_IMAGES.length]}
                     href={`/projects/${relatedProject.slug}`}
-                    className="block group"
-                  >
-                    <div 
-                      className="bg-black border-2 border-white rounded-3xl p-6 h-full min-h-[280px] md:min-h-[300px] flex flex-col justify-between transition-all duration-300 hover:scale-105"
-                      style={{ backgroundColor: '#0D0D0D' }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = relatedProject.color;
-                        e.currentTarget.style.backgroundColor = relatedProject.color;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#FFFFFF';
-                        e.currentTarget.style.backgroundColor = '#0D0D0D';
-                      }}
-                    >
-                      <div>
-                        <h3 className="text-xl md:text-2xl font-bold mb-2 md:mb-3 text-white group-hover:text-black transition-colors">
-                          {relatedProject.title}
-                        </h3>
-                        <p className="text-xs md:text-sm text-white/90 group-hover:text-black/90 mb-3 md:mb-4 line-clamp-2 transition-colors">
-                          {relatedProject.description}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {relatedProject.technologies.slice(0, 3).map((tech, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-1 text-xs bg-white text-black border border-white rounded-lg group-hover:bg-black group-hover:text-white transition-colors"
-                          >
-                            {tech}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </Link>
+                    ctaLabel="READ MORE"
+                    className={BENTO_THREE[index]}
+                  />
                 ))}
             </div>
 
             <div className="text-center">
               <Link
                 href="/projects"
-                className="inline-block px-6 md:px-8 py-3 md:py-4 bg-white text-black border-2 border-white hover:bg-[#FFA500] hover:border-[#FFA500] transition-all duration-300 font-bold rounded-2xl text-sm md:text-base"
+                className="editorial-btn editorial-btn--inverted"
               >
-                View All Projects
+                VIEW ALL MODULES
               </Link>
             </div>
           </div>

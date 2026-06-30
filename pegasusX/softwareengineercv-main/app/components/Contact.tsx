@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import CurvedLoop from './CurvedLoop';
+import ContentCard from './ContentCard';
 import { useIsMobile } from '../hooks/useDevice';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -39,7 +40,8 @@ export default function Contact() {
     if (isMobile) {
       gsap.set([titleRef.current, tabsRef.current, formRef.current, infoRef.current], {
         opacity: 1,
-        y: 0
+        y: 0,
+        clearProps: 'transform',
       });
       return;
     }
@@ -50,14 +52,22 @@ export default function Contact() {
         trigger: sectionRef.current,
         start: 'top 80%',
         end: 'bottom 20%',
-        toggleActions: 'play none none reverse'
-      }
+        toggleActions: 'play none none reverse',
+      },
+      onComplete: () => {
+        gsap.set([formRef.current, infoRef.current], { clearProps: 'transform' });
+      },
     });
 
     timeline
-      .fromTo(titleRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8 })
-      .fromTo(tabsRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, '-=0.4')
-      .fromTo([formRef.current, infoRef.current], { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, stagger: 0.2 }, '-=0.4');
+      .fromTo(titleRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, clearProps: 'transform' })
+      .fromTo(tabsRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, clearProps: 'transform' }, '-=0.4')
+      .fromTo(
+        [formRef.current, infoRef.current],
+        { opacity: 0 },
+        { opacity: 1, duration: 0.8, stagger: 0.2 },
+        '-=0.4'
+      );
   }, [isMobile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -147,7 +157,7 @@ export default function Contact() {
     <section 
       ref={sectionRef} 
       id="contact" 
-      className="min-h-screen py-20 bg-white text-black relative overflow-hidden flex items-center"
+      className="py-20 md:py-28 bg-white text-black relative overflow-x-hidden"
     >
       {/* Corner Curved Loops - Hidden on mobile */}
       {!isMobile && (
@@ -156,13 +166,7 @@ export default function Contact() {
             <CurvedLoop marqueeText="CONNECT ✦ " speed={1.8} curveAmount={200} direction="right" interactive={false} className="fill-black/30" />
           </div>
           <div className="absolute top-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-20 z-10 scale-x-[-1]">
-            <CurvedLoop marqueeText="CONNECT ✦ " speed={1.8} curveAmount={200} direction="left" interactive={false} className="fill-black/30" />
-          </div>
-          <div className="absolute bottom-0 left-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-20 z-10 rotate-180">
             <CurvedLoop marqueeText="GET IN TOUCH ✦ " speed={1.8} curveAmount={200} direction="left" interactive={false} className="fill-black/30" />
-          </div>
-          <div className="absolute bottom-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-20 z-10 rotate-180 scale-x-[-1]">
-            <CurvedLoop marqueeText="GET IN TOUCH ✦ " speed={1.8} curveAmount={200} direction="right" interactive={false} className="fill-black/30" />
           </div>
         </>
       )}
@@ -205,39 +209,33 @@ export default function Contact() {
         </div>
 
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-[30px]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 lg:items-start">
             {/* Left: Contact Info */}
-            <div ref={infoRef} className="space-y-[30px]">
+            <div ref={infoRef} className="space-y-8 min-w-0">
               <div className="space-y-6">
                 <h3 className="text-2xl md:text-3xl font-bold text-black">
                   Get in Touch
                 </h3>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="editorial-grid editorial-grid--light grid grid-cols-1 sm:grid-cols-2">
                   {contactInfo.map((info, index) => (
-                    <a
+                    <ContentCard
                       key={index}
+                      variant="vertical"
+                      tone={index % 2 === 0 ? 'dark' : 'light'}
+                      tag={info.title}
+                      title={info.detail}
                       href={info.link}
-                      target={info.link.startsWith('http') ? '_blank' : undefined}
-                      rel={info.link.startsWith('http') ? 'noreferrer noopener' : undefined}
-                      className={`group border-2 border-black p-6 transition-all duration-300 rounded-2xl focus-visible:outline-none ${
-                        index === 0 ? 'hover-cyan' :
-                        index === 1 ? 'hover-blue' :
-                        index === 2 ? 'hover-purple' :
-                        'hover-green'
-                      } hover:border-black`}
-                    >
-                      <h4 className="text-lg font-bold mb-2">{info.title}</h4>
-                      <p className="text-sm text-gray-600 group-hover:text-black transition-colors">
-                        {info.detail}
-                      </p>
-                    </a>
+                      ctaLabel="CONTACT"
+                      ctaStyle="link"
+                      className="min-h-[14rem]"
+                    />
                   ))}
                 </div>
               </div>
 
               {/* Benefits Card */}
-              <div className="border-2 border-black p-8 bg-black text-white rounded-2xl hover:bg-[#FFA500] hover:border-[#FFA500] transition-all duration-300 group">
+              <div className="editorial-card editorial-card--dark border border-black p-8 text-white relative">
                 <h4 className="text-xl font-bold mb-4">Why Pegasus?</h4>
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
@@ -261,14 +259,14 @@ export default function Contact() {
             </div>
 
             {/* Right: Dynamic Form */}
-            <div>
+            <div className="min-w-0">
               <form 
                 ref={formRef}
                 id="contact-form"
                 role="tabpanel"
                 aria-labelledby={`tab-${inquiryType}`}
                 onSubmit={handleSubmit} 
-                className="border-2 border-black p-8 md:p-10 bg-white rounded-2xl"
+                className="border border-black p-8 md:p-10 bg-white"
               >
                 <h3 className="text-2xl md:text-3xl font-bold text-black mb-8">
                   {inquiryType === 'general' && 'Send a Message'}
@@ -452,7 +450,7 @@ export default function Contact() {
         </div>
 
         {/* Bottom CTA */}
-        <div className="text-center mt-[30px] pt-[30px] border-t-2 border-black">
+        <div className="relative z-10 text-center mt-16 pt-10 border-t-2 border-black">
           <p className="text-lg md:text-xl text-black mb-6">
             Prefer a live walkthrough? Book a demo call
           </p>

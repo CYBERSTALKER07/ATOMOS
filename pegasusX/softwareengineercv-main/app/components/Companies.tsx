@@ -83,7 +83,7 @@ interface VelocityScrollProps {
   numCopies?: number;
 }
 
-function VelocityScroll({ companies, velocity, numCopies = 4 }: VelocityScrollProps) {
+function VelocityScroll({ companies, velocity, numCopies = 2 }: VelocityScrollProps) {
   const baseX = useMotionValue(0);
   const { scrollY } = useScroll();
   const scrollVelocity = useVelocity(scrollY);
@@ -99,7 +99,21 @@ function VelocityScroll({ companies, velocity, numCopies = 4 }: VelocityScrollPr
   );
 
   const copyRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const copyWidth = useElementWidth(copyRef);
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    const node = trackRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { rootMargin: '120px' }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   function wrap(min: number, max: number, v: number): number {
     const range = max - min;
@@ -114,6 +128,8 @@ function VelocityScroll({ companies, velocity, numCopies = 4 }: VelocityScrollPr
 
   const directionFactor = useRef<number>(1);
   useAnimationFrame((t, delta) => {
+    if (!isVisible || copyWidth === 0) return;
+
     let moveBy = directionFactor.current * velocity * (delta / 1000);
 
     if (velocityFactor.get() < 0) {
@@ -127,9 +143,9 @@ function VelocityScroll({ companies, velocity, numCopies = 4 }: VelocityScrollPr
   });
 
   return (
-    <div className="relative overflow-hidden py-4">
+    <div ref={trackRef} className="relative overflow-hidden py-4">
       <motion.div
-        className="flex whitespace-nowrap"
+        className="flex whitespace-nowrap will-change-transform"
         style={{ x }}
       >
         {Array.from({ length: numCopies }).map((_, copyIndex) => (
@@ -281,10 +297,10 @@ export default function Companies() {
       </div>
 
       {/* Row 1 - Scrolling Right */}
-      <VelocityScroll companies={rowOneCompanies} velocity={30} numCopies={4} />
+      <VelocityScroll companies={rowOneCompanies} velocity={30} numCopies={2} />
 
       {/* Row 2 - Scrolling Left */}
-      <VelocityScroll companies={rowTwoCompanies} velocity={-30} numCopies={4} />
+      <VelocityScroll companies={rowTwoCompanies} velocity={-30} numCopies={2} />
     </section>
   );
 }

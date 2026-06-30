@@ -96,6 +96,424 @@
   outline: none !important;
 }
 
+/* Editorial card system (o9-inspired) */
+.editorial-tag,
+.editorial-eyebrow {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+.editorial-tag {
+  color: #9ca3af;
+  margin: 0 0 1rem;
+}
+
+.editorial-eyebrow {
+  color: #6b7280;
+  margin: 0 0 1.25rem;
+}
+
+.editorial-card--light .editorial-tag,
+.editorial-card--light .editorial-eyebrow {
+  color: #6b7280;
+}
+
+.editorial-card__title {
+  font-size: clamp(1.35rem, 2.2vw, 2rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+}
+
+.editorial-card__description {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  margin: 0;
+  max-width: 42ch;
+}
+
+.editorial-card__cta {
+  margin-top: auto;
+  padding-top: 1.75rem;
+}
+
+.editorial-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.75rem 1.25rem;
+  background: #000;
+  color: #fff;
+  border: 0;
+  border-radius: 0;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.editorial-btn:hover {
+  opacity: 0.82;
+}
+
+.editorial-btn--inverted {
+  background: #fff;
+  color: #000;
+}
+
+.editorial-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.editorial-link:hover {
+  opacity: 0.7;
+}
+
+.editorial-card--interactive {
+  text-decoration: none;
+  color: inherit;
+}
+
+.editorial-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-radius: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  text-decoration: none;
+  contain: layout paint;
+}
+
+.editorial-card__media {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  isolation: isolate;
+}
+
+.editorial-card__media::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.38);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.editorial-card__image {
+  transform: translateZ(0);
+}
+
+.card-hover-action {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.card-hover-action__control {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 2px;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+
+.card-hover-action__icon,
+.card-hover-action__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  color: #000000;
+  border-radius: 0;
+}
+
+.card-hover-action__icon {
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+}
+
+.card-hover-action__play {
+  width: 0;
+  height: 0;
+  border-top: 0.45rem solid transparent;
+  border-bottom: 0.45rem solid transparent;
+  border-left: 0.72rem solid currentColor;
+  margin-left: 0.12rem;
+}
+
+.card-hover-action__label {
+  min-width: 7.25rem;
+  height: 3rem;
+  padding: 0 1.35rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .editorial-card--interactive {
+    transition: border-color 0.2s ease;
+  }
+
+  .editorial-card--interactive:hover {
+    border-color: rgba(255, 255, 255, 0.45);
+  }
+
+  .card-hover-action {
+    display: flex;
+    pointer-events: auto;
+    transition: opacity 0.18s ease;
+  }
+
+  .editorial-card--interactive:hover .editorial-card__media::before {
+    opacity: 1;
+  }
+
+  .editorial-card--interactive:hover .card-hover-action {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editorial-card__media::before,
+  .card-hover-action {
+    transition: none;
+  }
+
+  .card-hover-action__control {
+    will-change: auto;
+    transform: none !important;
+  }
+}
+
+.editorial-card--dark {
+  background: #000;
+  color: #fff;
+}
+
+.editorial-card--dark .editorial-card__description {
+  color: #d1d5db;
+}
+
+.editorial-card--light,
+.editorial-card--featured {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+
+.editorial-card--light .editorial-card__description,
+.editorial-card--featured .editorial-card__description {
+  color: #4b5563;
+}
+
+.editorial-card__media--placeholder {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+}
+
+.editorial-card--light .editorial-card__media--placeholder,
+.editorial-card--featured .editorial-card__media--placeholder {
+  background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+}
+
+.editorial-card--vertical .editorial-card__media {
+  aspect-ratio: 16 / 10;
+  margin: 0.75rem 0.75rem 0;
+  width: calc(100% - 1.5rem);
+}
+
+.editorial-card--vertical .editorial-card__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.editorial-card--split {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 22rem;
+}
+
+@media (min-width: 768px) {
+  .editorial-card--split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    min-height: 18rem;
+  }
+}
+
+.editorial-card--split .editorial-card__media {
+  min-height: 14rem;
+}
+
+@media (min-width: 768px) {
+  .editorial-card--split .editorial-card__media {
+    min-height: 100%;
+  }
+}
+
+.editorial-card--split .editorial-card__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .editorial-card--split .editorial-card__body {
+    padding: 2rem 2rem 2rem 1.75rem;
+  }
+}
+
+.editorial-card--featured {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 24rem;
+  border-width: 2px;
+}
+
+@media (min-width: 1024px) {
+  .editorial-card--featured {
+    grid-template-columns: 1.1fr 0.9fr;
+    min-height: 20rem;
+  }
+}
+
+.editorial-card--featured .editorial-card__media {
+  min-height: 16rem;
+}
+
+@media (min-width: 1024px) {
+  .editorial-card--featured .editorial-card__media {
+    min-height: 100%;
+  }
+}
+
+.editorial-card--featured .editorial-card__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .editorial-card--featured .editorial-card__body {
+    padding: 2.5rem 3rem;
+  }
+}
+
+.editorial-card--featured .editorial-card__title {
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+}
+
+.editorial-grid {
+  display: grid;
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+
+.editorial-grid--light {
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+
+/* Asymmetric bento layout for editorial cards */
+.editorial-bento {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(1rem, 2vw, 1.5rem);
+  align-items: stretch;
+}
+
+.editorial-bento > * {
+  height: 100%;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .editorial-bento {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-auto-rows: minmax(9.5rem, auto);
+    grid-auto-flow: dense;
+  }
+
+  .editorial-bento__2-1 {
+    grid-column: span 2;
+  }
+
+  .editorial-bento__3-1 {
+    grid-column: span 3;
+  }
+
+  .editorial-bento__3-2 {
+    grid-column: span 3;
+    grid-row: span 2;
+  }
+
+  .editorial-bento__4-1 {
+    grid-column: span 4;
+  }
+
+  .editorial-bento__4-2 {
+    grid-column: span 4;
+    grid-row: span 2;
+  }
+
+  .editorial-bento__6-1 {
+    grid-column: span 6;
+  }
+
+  .editorial-bento__2-2 {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+}
+
+.editorial-bento .editorial-card--vertical {
+  min-height: 18rem;
+}
+
+.editorial-bento .editorial-card--split,
+.editorial-bento .editorial-card--featured {
+  min-height: 100%;
+}
+
+.editorial-card--dark .editorial-link {
+  color: #fff;
+}
+
+.editorial-card--light .editorial-link,
+.editorial-card--featured .editorial-link {
+  color: #000;
+}
+
+
 .hover-gold:hover,
 .hover-gold:focus-visible {
   background: #FFDA6F !important;

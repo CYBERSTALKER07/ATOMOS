@@ -94,17 +94,6 @@ export default function Hero() {
             />
           </div>
 
-          <div className="absolute bottom-0 left-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-30 z-10 rotate-230">
-            <CurvedLoop
-              marqueeText="PEGASUS  "
-              speed={1.5}
-              curveAmount={900}
-              direction="left"
-              interactive={false}
-              className="fill-white"
-            />
-          </div>
-
           <div className="absolute bottom-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-30 z-10 rotate-180 scale-x-[-1]">
             <CurvedLoop
               marqueeText="PEGASUS  "
@@ -145,11 +134,11 @@ export default function Hero() {
                 />
               </div>
               
-              <div className="w-24 h-1 bg-white mb-6" />
+              <div className="w-90 h-[0.5px] bg-white mb-6" />
               
               <p 
                 ref={descRef} 
-                className="text-base md:text-lg lg:text-xl text-white leading-relaxed max-w-xl"
+                className="text-base md:text-lg font-extralight lg:text-xl text-white leading-relaxed max-w-xl"
               >
                 Run supplier-led logistics from one platform — dispatch, tracking, payments,
                 and coordination across every team in your network.
@@ -160,14 +149,14 @@ export default function Hero() {
             <div ref={ctaRef} className="flex flex-col sm:flex-row gap-4">
               <button 
                 onClick={scrollToNext}
-                className="px-8 py-4 bg-white text-black font-semibold text-base md:text-lg border-2 border-white transition-all duration-300 rounded-2xl hover:bg-[#A9EBF9] hover:border-[#A9EBF9] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
+                className="px-8 py-4 bg-black text-white font-semibold text-base md:text-lg border-1 border-white transition-all duration-300 rounded-0 hover:bg-[black] hover:border-[white] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
               >
                 Explore Platform
               </button>
               
               <a 
-                href="#contact"
-                className="px-8 py-4 border-2 bg-black border-white text-white font-semibold text-base md:text-lg transition-all duration-300 text-center rounded-2xl hover:bg-[#FFA500] hover:border-[#FFA500] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
+                href="/join"
+                className="px-8 py-4 border-1 bg-black border-white text-white font-semibold text-base md:text-lg transition-all duration-300 text-center rounded-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
               >
                 Request Demo
               </a>

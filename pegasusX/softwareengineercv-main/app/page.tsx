@@ -1,15 +1,18 @@
+import dynamic from 'next/dynamic';
 import Hero from './components/Hero';
 import About from './components/About';
+import PlatformValue from './components/PlatformValue';
 import Skills from './components/Skills';
-import DevelopmentTools from './components/DevelopmentTools';
-import Projects from './components/Projects';
-import Companies from './components/Companies';
-import Licensing from './components/Licensing';
-import Contact from './components/Contact';
-import Footer from './components/Footer';
 import PillNav from './components/PillNav';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+
+const LogisticsSolutions = dynamic(() => import('./components/LogisticsSolutions'));
+const DevelopmentTools = dynamic(() => import('./components/DevelopmentTools'));
+const Projects = dynamic(() => import('./components/Projects'));
+const Companies = dynamic(() => import('./components/Companies'));
+const Licensing = dynamic(() => import('./components/Licensing'));
+const Footer = dynamic(() => import('./components/Footer'));
 
 export const metadata: Metadata = {
   title: 'Home',
@@ -30,7 +33,6 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
-  // Structured Data (JSON-LD) for SEO
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -66,7 +68,6 @@ export default function Home() {
 
   return (
     <>
-      {/* Structured Data */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
@@ -83,15 +84,13 @@ export default function Home() {
           items={[
             { label: 'Home', href: '#' },
             { label: 'About', href: '#about' },
+            { label: 'Solutions', href: '#solutions' },
             { label: 'Skills', href: '#skills' },
-            { label: 'Tools', href: '#tools' },
             { label: 'Projects', href: '#projects' },
-            { label: 'Mobile Apps', href: '/mobile-apps' },
-            { label: 'Web Apps', href: '/web-apps' },
-            { label: 'Desktop Apps', href: '/desktop-apps' },
             { label: 'Roles', href: '#companies' },
             { label: 'Deploy', href: '#licensing' },
-            { label: 'Contact', href: '#contact' }
+            { label: 'Apps', href: '/mobile-apps' },
+            { label: 'Demo', href: '/join' },
           ]}
           activeHref="#"
           baseColor="#000000"
@@ -99,8 +98,7 @@ export default function Home() {
           hoveredPillTextColor="#ffffff"
           pillTextColor="#000000"
         />
-        
-        {/* Floating "Join Us" Button */}
+
         <Link 
           href="/join"
           className="fixed bottom-8 right-8 z-50 px-8 py-4 bg-white text-black border-2 border-white hover:bg-black hover:text-white transition-all duration-300 font-bold text-lg shadow-lg rounded-3xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black outline-none"
@@ -111,12 +109,13 @@ export default function Home() {
         
         <Hero />
         <About />
+        <PlatformValue />
         <Skills />
+        <LogisticsSolutions />
         <DevelopmentTools />
         <Projects />
         <Companies />
         <Licensing />
-        <Contact />
         <Footer />
       </div>
     </>

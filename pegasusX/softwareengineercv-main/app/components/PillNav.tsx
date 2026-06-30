@@ -129,9 +129,10 @@ const PillNav: React.FC<PillNavProps> = ({
       }
 
       if (navItems) {
-        gsap.set(navItems, { width: 0, overflow: 'hidden' });
+        gsap.set(navItems, { opacity: 0, x: -8 });
         gsap.to(navItems, {
-          width: 'auto',
+          opacity: 1,
+          x: 0,
           duration: 0.6,
           ease
         });
@@ -242,14 +243,15 @@ const PillNav: React.FC<PillNavProps> = ({
     ['--pill-text']: resolvedPillTextColor,
     ['--nav-h']: '42px',
     ['--logo']: '36px',
-    ['--pill-pad-x']: '18px',
-    ['--pill-gap']: '3px'
+    ['--pill-pad-x']: '14px',
+    ['--pill-gap']: '2px'
   } as React.CSSProperties;
 
   return (
-    <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-7xl px-4">
+    <div className="fixed top-4 left-4 right-4 z-[1000]">
+      <div className="relative pointer-events-none">
       <nav
-        className={`w-full md:w-max flex items-center justify-between md:justify-start box-border ${className}`}
+        className={`pointer-events-auto w-full flex items-center gap-2 min-w-0 ${className}`}
         aria-label="Primary"
         style={cssVars}
       >
@@ -261,7 +263,7 @@ const PillNav: React.FC<PillNavProps> = ({
           ref={el => {
             logoRef.current = el;
           }}
-          className="rounded-full p-1 inline-flex items-center justify-center overflow-hidden border-2 border-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
+          className="shrink-0 rounded-full p-1 inline-flex items-center justify-center overflow-hidden border-2 border-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
           style={{
             width: 'var(--nav-h)',
             height: 'var(--nav-h)',
@@ -278,7 +280,7 @@ const PillNav: React.FC<PillNavProps> = ({
 
         <div
           ref={navItemsRef}
-          className="relative items-center rounded-full hidden md:flex ml-2"
+          className="relative hidden md:flex min-w-0 flex-1 items-center rounded-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           style={{
             height: 'var(--nav-h)',
             background: 'var(--base, #000)'
@@ -286,7 +288,7 @@ const PillNav: React.FC<PillNavProps> = ({
         >
           <ul
             role="menubar"
-            className="list-none flex items-stretch m-0 p-[3px] h-full"
+            className="list-none flex items-stretch m-0 p-[3px] h-full w-max"
             style={{ gap: 'var(--pill-gap)' }}
           >
             {items.map((item, i) => {
@@ -341,7 +343,7 @@ const PillNav: React.FC<PillNavProps> = ({
               );
 
               const basePillClasses =
-                'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-full box-border font-semibold text-[16px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
+                'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-full box-border font-semibold text-[13px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
 
               return (
                 <li key={item.href} role="none" className="flex h-full">
@@ -387,7 +389,7 @@ const PillNav: React.FC<PillNavProps> = ({
           onClick={toggleMobileMenu}
           aria-label="Toggle menu"
           aria-expanded={isMobileMenuOpen}
-          className="md:hidden rounded-full border-0 flex flex-col items-center justify-center gap-1 cursor-pointer p-0 relative focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
+          className="md:hidden shrink-0 ml-auto rounded-full border-0 flex flex-col items-center justify-center gap-1 cursor-pointer p-0 relative focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
           style={{
             width: 'var(--nav-h)',
             height: 'var(--nav-h)',
@@ -407,7 +409,7 @@ const PillNav: React.FC<PillNavProps> = ({
 
       <div
         ref={mobileMenuRef}
-        className="md:hidden absolute top-[3em] left-0 right-0 rounded-[27px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-[998] origin-top"
+        className="md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-[27px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-[998] origin-top max-h-[70vh] overflow-y-auto"
         style={{
           ...cssVars,
           background: 'var(--base, #000)'
@@ -464,6 +466,7 @@ const PillNav: React.FC<PillNavProps> = ({
             );
           })}
         </ul>
+      </div>
       </div>
     </div>
   );

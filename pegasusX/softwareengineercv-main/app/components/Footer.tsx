@@ -5,50 +5,43 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import InfiniteScroll from './InfiniteScroll';
 import { useIsMobile } from '../hooks/useDevice';
+import { useInView } from '../hooks/useInView';
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function Footer() {
   const { isMobile } = useIsMobile();
-  const footerRef = useRef<HTMLDivElement>(null);
+  const { ref: footerRef, isInView } = useInView<HTMLElement>({ exit: true, rootMargin: '0px' });
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!footerRef.current || !contentRef.current) return;
 
-    // Mobile: Simple fade-in
     if (isMobile) {
       gsap.set(contentRef.current, { opacity: 1, y: 0 });
       return;
     }
 
-    // Desktop: Scroll animation
-    const timeline = gsap.timeline({
-      scrollTrigger: {
-        trigger: footerRef.current,
-        start: 'top 90%',
-        end: 'bottom bottom',
-        toggleActions: 'play none none reverse'
-      }
-    });
+    const ctx = gsap.context(() => {
+      gsap.timeline({
+        scrollTrigger: {
+          trigger: footerRef.current,
+          start: 'top 90%',
+          end: 'bottom bottom',
+          toggleActions: 'play none none reverse',
+        },
+      }).fromTo(contentRef.current, { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 1 });
+    }, footerRef);
 
-    timeline.fromTo(
-      contentRef.current,
-      { opacity: 0, y: 50 },
-      { opacity: 1, y: 0, duration: 1 }
-    );
+    return () => ctx.revert();
   }, [isMobile]);
 
   // Large text items for full-width background coverage
   const scrollItems = [
-    { content: <div className="text-white/30 text-[10rem] md:text-[15rem] lg:text-[20rem] font-black leading-none tracking-tighter">DISPATCH</div> },
-    { content: <div className="text-white/30 text-[10rem] md:text-[15rem] lg:text-[20rem] font-black leading-none tracking-tighter">TRACK</div> },
-    { content: <div className="text-white/30 text-[10rem] md:text-[15rem] lg:text-[20rem] font-black leading-none tracking-tighter">DELIVER</div> },
-    { content: <div className="text-white/30 text-[10rem] md:text-[15rem] lg:text-[20rem] font-black leading-none tracking-tighter">COORDINATE</div> },
-    { content: <div className="text-white/30 text-[10rem] md:text-[15rem] lg:text-[20rem] font-black leading-none tracking-tighter">RECONCILE</div> },
-    { content: <div className="text-white/30 text-[10rem] md:text-[15rem] lg:text-[20rem] font-black leading-none tracking-tighter">SEAL</div> },
-    { content: <div className="text-white/30 text-[10rem] md:text-[15rem] lg:text-[20rem] font-black leading-none tracking-tighter">SCALE</div> },
-    { content: <div className="text-white/30 text-[10rem] md:text-[15rem] lg:text-[20rem] font-black leading-none tracking-tighter">PEGASUS</div> },
+    { content: <div className="text-white/25 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">DISPATCH</div> },
+    { content: <div className="text-white/25 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">TRACK</div> },
+    { content: <div className="text-white/25 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">DELIVER</div> },
+    { content: <div className="text-white/25 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">PEGASUS</div> },
   ];
 
   const quickLinks = [
@@ -56,7 +49,7 @@ export default function Footer() {
     { name: 'About', href: '#about' },
     { name: 'Skills', href: '#skills' },
     { name: 'Projects', href: '#projects' },
-    { name: 'Contact', href: '#contact' }
+    { name: 'Demo', href: '/join' }
   ];
 
   const socialLinks = [
@@ -70,77 +63,41 @@ export default function Footer() {
     <footer ref={footerRef} className="relative bg-black text-white overflow-hidden min-h-screen flex items-center">
       
       {/* Infinite Scroll Background - Hidden on mobile */}
-      {!isMobile && (
+      {!isMobile && isInView ? (
         <div className="absolute inset-0 pointer-events-none z-0 flex">
-          {/* Column 1 - Scrolling Down Left Tilt */}
           <div className="flex-1 h-full">
             <InfiniteScroll
               items={scrollItems}
               isTilted={true}
               tiltDirection="left"
               autoplay={true}
-              autoplaySpeed={0.5}
+              autoplaySpeed={0.45}
               autoplayDirection="down"
-              pauseOnHover={false}
+              pauseOnHover={true}
               width="100%"
               maxHeight="100%"
-              itemMinHeight={250}
-              negativeMargin="-2rem"
+              itemMinHeight={180}
+              negativeMargin="-1.5rem"
             />
           </div>
 
-          {/* Column 2 - Scrolling Up Right Tilt */}
-          <div className="flex-1 h-full">
-            <InfiniteScroll
-              items={scrollItems}
-              isTilted={true}
-              tiltDirection="right"
-              autoplay={true}
-              autoplaySpeed={0.6}
-              autoplayDirection="up"
-              pauseOnHover={false}
-              width="100%"
-              maxHeight="100%"
-              itemMinHeight={250}
-              negativeMargin="-2rem"
-            />
-          </div>
-
-          {/* Column 3 - Scrolling Down Left Tilt */}
           <div className="flex-1 h-full hidden md:block">
             <InfiniteScroll
               items={scrollItems}
               isTilted={true}
-              tiltDirection="left"
-              autoplay={true}
-              autoplaySpeed={0.4}
-              autoplayDirection="down"
-              pauseOnHover={false}
-              width="100%"
-              maxHeight="100%"
-              itemMinHeight={250}
-              negativeMargin="-2rem"
-            />
-          </div>
-
-          {/* Column 4 - Scrolling Up Right Tilt (Desktop Only) */}
-          <div className="flex-1 h-full hidden lg:block">
-            <InfiniteScroll
-              items={scrollItems}
-              isTilted={true}
               tiltDirection="right"
               autoplay={true}
-              autoplaySpeed={0.7}
+              autoplaySpeed={0.55}
               autoplayDirection="up"
-              pauseOnHover={false}
+              pauseOnHover={true}
               width="100%"
               maxHeight="100%"
-              itemMinHeight={250}
-              negativeMargin="-2rem"
+              itemMinHeight={180}
+              negativeMargin="-1.5rem"
             />
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Footer Content */}
       <div ref={contentRef} className="relative z-20 container mx-auto px-4 py-20">
@@ -157,7 +114,7 @@ export default function Footer() {
                 Dispatch, tracking, payments, and coordination for supplier-led logistics — one platform, six roles, every site connected.
               </p>
               <a
-                href="#contact"
+                href="/join"
                 className="inline-block px-8 py-4 bg-white text-black border-2 border-white hover:bg-black hover:text-white transition-all duration-300 font-bold rounded-2xl"
               >
                 GET A DEMO →

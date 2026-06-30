@@ -4,7 +4,8 @@ import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import LogoLoop from './LogoLoop';
-import { 
+import { useInView } from '../hooks/useInView';
+import {
   SiReact, 
   SiNextdotjs, 
   SiVuedotjs, 
@@ -39,7 +40,7 @@ import { FaAws } from 'react-icons/fa6';
 gsap.registerPlugin(ScrollTrigger);
 
 export default function DevelopmentTools() {
-  const sectionRef = useRef<HTMLDivElement>(null);
+  const { ref: sectionRef, isInView } = useInView<HTMLElement>({ rootMargin: '0px' });
   const titleRef = useRef<HTMLDivElement>(null);
   const row1Ref = useRef<HTMLDivElement>(null);
   const row2Ref = useRef<HTMLDivElement>(null);
@@ -50,30 +51,28 @@ export default function DevelopmentTools() {
   useEffect(() => {
     if (!sectionRef.current) return;
 
-    const timeline = gsap.timeline({
-      scrollTrigger: {
-        trigger: sectionRef.current,
-        start: 'top 80%',
-        end: 'bottom 20%',
-        toggleActions: 'play none none reverse'
-      }
-    });
+    const ctx = gsap.context(() => {
+      const timeline = gsap.timeline({
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: 'top 80%',
+          end: 'bottom 20%',
+          toggleActions: 'play none none reverse',
+        },
+      });
 
-    // Title animation
-    timeline.fromTo(
-      titleRef.current,
-      { opacity: 0, y: 30 },
-      { opacity: 1, y: 0, duration: 0.8 }
-    );
+      timeline.fromTo(titleRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8 });
 
-    // Rows with stagger
-    const rows = [row1Ref.current, row2Ref.current, row3Ref.current, row4Ref.current, row5Ref.current];
-    timeline.fromTo(
-      rows,
-      { opacity: 0, y: 50 },
-      { opacity: 1, y: 0, duration: 0.6, stagger: 0.15 },
-      '-=0.4'
-    );
+      const rows = [row1Ref.current, row2Ref.current, row3Ref.current, row4Ref.current, row5Ref.current];
+      timeline.fromTo(
+        rows,
+        { opacity: 0, y: 50 },
+        { opacity: 1, y: 0, duration: 0.6, stagger: 0.15 },
+        '-=0.4'
+      );
+    }, sectionRef);
+
+    return () => ctx.revert();
   }, []);
 
   const frontendLogos = [
@@ -150,7 +149,7 @@ export default function DevelopmentTools() {
               ref={rowRefs[index]}
               className="group"
             >
-              <div className="bg-black border-2 border-black rounded-lg overflow-hidden shadow-lg p-8 md:p-10">
+              <div className="bg-black border border-black overflow-hidden shadow-lg p-8 md:p-10">
                 <h3 className="text-2xl md:text-3xl font-bold mb-8 text-center text-white">
                   {category.title}
                 </h3>
@@ -166,6 +165,7 @@ export default function DevelopmentTools() {
                     scaleOnHover
                     fadeOut
                     fadeOutColor="#000000"
+                    active={isInView}
                     ariaLabel={`${category.title} logos`}
                   />
                 </div>

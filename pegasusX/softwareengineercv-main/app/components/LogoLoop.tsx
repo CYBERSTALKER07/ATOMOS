@@ -29,6 +29,7 @@ export interface LogoLoopProps {
   fadeOut?: boolean;
   fadeOutColor?: string;
   scaleOnHover?: boolean;
+  active?: boolean;
   ariaLabel?: string;
   className?: string;
   style?: React.CSSProperties;
@@ -118,9 +119,11 @@ const useAnimationLoop = (
   targetVelocity: number,
   seqWidth: number,
   isHovered: boolean,
-  pauseOnHover: boolean
+  pauseOnHover: boolean,
+  active = true
 ) => {
   const rafRef = useRef<number | null>(null);
+  const idleRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
   const offsetRef = useRef(0);
   const velocityRef = useRef(0);
@@ -147,6 +150,13 @@ const useAnimationLoop = (
     }
 
     const animate = (timestamp: number) => {
+      if (!active) {
+        idleRef.current = window.setTimeout(() => {
+          rafRef.current = requestAnimationFrame(animate);
+        }, 400);
+        return;
+      }
+
       if (lastTimestampRef.current === null) {
         lastTimestampRef.current = timestamp;
       }
@@ -178,9 +188,13 @@ const useAnimationLoop = (
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
+      if (idleRef.current !== null) {
+        clearTimeout(idleRef.current);
+        idleRef.current = null;
+      }
       lastTimestampRef.current = null;
     };
-  }, [targetVelocity, seqWidth, isHovered, pauseOnHover]);
+  }, [targetVelocity, seqWidth, isHovered, pauseOnHover, active]);
 };
 
 export const LogoLoop = React.memo<LogoLoopProps>(
@@ -195,6 +209,7 @@ export const LogoLoop = React.memo<LogoLoopProps>(
     fadeOut = false,
     fadeOutColor,
     scaleOnHover = false,
+    active = true,
     ariaLabel = 'Partner logos',
     className,
     style
@@ -229,7 +244,7 @@ export const LogoLoop = React.memo<LogoLoopProps>(
 
     useImageLoader(seqRef, updateDimensions, [logos, gap, logoHeight]);
 
-    useAnimationLoop(trackRef, targetVelocity, seqWidth, isHovered, pauseOnHover);
+    useAnimationLoop(trackRef, targetVelocity, seqWidth, isHovered, pauseOnHover, active);
 
     const cssVariables = useMemo(
       () =>

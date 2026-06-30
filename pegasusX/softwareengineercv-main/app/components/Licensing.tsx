@@ -4,7 +4,9 @@ import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import GlitchText from './GlitchText';
+import ContentCard, { EDITORIAL_IMAGES } from './ContentCard';
 import { useIsMobile } from '../hooks/useDevice';
+import { BENTO_THREE } from '../lib/bento';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -147,58 +149,40 @@ export default function Licensing() {
           </div>
 
           {/* License Cards */}
-          <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-3 gap-[30px]">
+          <div ref={cardsRef} className="editorial-bento max-w-6xl mx-auto">
             {licenses.map((license, index) => (
-              <div
-                key={index}
-                className={`group relative bg-black border-2 border-white rounded-2xl transition-all duration-300 p-8 ${
-                  index === 0 ? 'hover:bg-[#A9EBF9]' : 
-                  index === 1 ? 'hover:bg-[#FFDA6F]' : 
-                  'hover:bg-[#FE5934]'
-                } hover:text-black`}
+              <ContentCard
+                key={license.title}
+                variant={index === 1 ? 'split' : 'vertical'}
+                tone={index === 1 ? 'light' : 'dark'}
+                tag="Deployment"
+                title={license.title}
+                description={license.description}
+                image={EDITORIAL_IMAGES[(index + 4) % EDITORIAL_IMAGES.length]}
+                href="/join"
+                ctaLabel="REQUEST DEMO"
+                ctaStyle="button"
+                className={BENTO_THREE[index]}
               >
-                {/* Title */}
-                <h3 className="text-2xl font-bold mb-4 text-center">
-                  {license.title}
-                </h3>
-                
-                {/* Description */}
-                <p className="text-sm mb-6 text-center text-gray-300 group-hover:text-black">
-                  {license.description}
-                </p>
-                
-                {/* Features List */}
-                <ul className="space-y-3 mb-8">
-                  {license.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-start gap-3">
-                      <span className="text-white group-hover:text-black mt-1">✓</span>
-                      <span className="text-sm">{feature}</span>
+                <ul className="mt-5 space-y-2 text-sm text-inherit opacity-90">
+                  {license.features.map((feature) => (
+                    <li key={feature} className="flex gap-2">
+                      <span aria-hidden="true">—</span>
+                      <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
-                
-                {/* CTA Button */}
-                <button className="w-full py-3 px-6 rounded-2xl bg-white text-black border-2 border-white group-hover:bg-black group-hover:text-white transition-all duration-300 font-semibold">
-                  Request Demo
-                </button>
-
-                {/* Corner decoration */}
-                <div className="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-white opacity-50 rounded-tr-2xl" />
-                <div className="absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 border-white opacity-50 rounded-bl-2xl" />
-              </div>
+              </ContentCard>
             ))}
           </div>
 
           {/* Bottom CTA */}
-          <div className="text-center mt-[30px]">
+          <div className="text-center mt-12">
             <p className="text-lg text-gray-300 mb-6">
               Have questions about deployment or enterprise rollout?
             </p>
-            <a 
-              href="#contact"
-              className="inline-block px-8 py-4 rounded-2xl bg-white text-black border-2 border-white hover:bg-[#FBFF63] hover:text-black transition-all duration-300 font-semibold text-lg"
-            >
-              Get In Touch
+            <a href="/join" className="editorial-btn editorial-btn--inverted">
+              GET IN TOUCH
             </a>
           </div>
         </div>

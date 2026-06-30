@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import Link from 'next/link';
-import { LanyardOptimized } from '../components/Optimized3D';
+import ContentCard, { EDITORIAL_IMAGES } from '../components/ContentCard';
 import { useIsMobile } from '../hooks/useDevice';
 import Lanyard from '../components/Lanyard';
 
@@ -155,31 +155,35 @@ export default function JoinPage() {
               </p>
             </div>
 
-            <div ref={contentRef} className="space-y-6">
-              <div className="border-2 border-white rounded-2xl p-6 hover:bg-[#FFA500] hover:border-[#FFA500] transition-all duration-300 group">
-                <h3 className="text-2xl font-bold mb-3">Dispatch Accuracy</h3>
-                <p className="text-gray-300 group-hover:text-black">
-                  Visual warehouse boards with smart truck-and-order matching at peak hours.
-                </p>
-              </div>
-
-              <div className="border-2 border-white rounded-2xl p-6 hover:bg-[#8DDC96] hover:border-[#8DDC96] transition-all duration-300 group">
-                <h3 className="text-2xl font-bold mb-3">Fleet Visibility</h3>
-                <p className="text-gray-300 group-hover:text-black">
-                  Live maps with planned-vs-actual routes and deviation alerts before complaints.
-                </p>
-              </div>
-
-              <div className="border-2 border-white rounded-2xl p-6 hover:bg-[#A9EBF9] hover:border-[#A9EBF9] transition-all duration-300 group">
-                <h3 className="text-2xl font-bold mb-3">Payment Confidence</h3>
-                <p className="text-gray-300 group-hover:text-black">
-                  Checkout through driver collection to supplier treasury — one reconciled flow.
-                </p>
-              </div>
+            <div ref={contentRef} className="editorial-grid grid grid-cols-1">
+              <ContentCard
+                variant="split"
+                tone="dark"
+                tag="Dispatch"
+                title="Dispatch Accuracy"
+                description="Visual warehouse boards with smart truck-and-order matching at peak hours."
+                image={EDITORIAL_IMAGES[0]}
+              />
+              <ContentCard
+                variant="split"
+                tone="light"
+                tag="Visibility"
+                title="Fleet Visibility"
+                description="Live maps with planned-vs-actual routes and deviation alerts before complaints."
+                image={EDITORIAL_IMAGES[1]}
+              />
+              <ContentCard
+                variant="split"
+                tone="dark"
+                tag="Finance"
+                title="Payment Confidence"
+                description="Checkout through driver collection to supplier treasury — one reconciled flow."
+                image={EDITORIAL_IMAGES[2]}
+              />
             </div>
 
             {/* Application Form */}
-            <div ref={formRef} className="border-2 border-white rounded-2xl p-8 bg-[#0D0D0D]">
+            <div ref={formRef} className="editorial-card editorial-card--dark border border-white/20 p-8">
               <h3 className="text-2xl font-bold mb-6">Book Your Walkthrough</h3>
               
               <form onSubmit={handleSubmit} className="space-y-6">

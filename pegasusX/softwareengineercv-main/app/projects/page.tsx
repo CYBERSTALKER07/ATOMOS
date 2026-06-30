@@ -5,6 +5,8 @@ import { gsap } from 'gsap';
 import { projects, getAllCategories } from '../data/projects';
 import PillNav from '../components/PillNav';
 import Footer from '../components/Footer';
+import ContentCard, { EDITORIAL_IMAGES } from '../components/ContentCard';
+import { bentoPlacement, bentoVariant } from '../lib/bento';
 import Link from 'next/link';
 
 export default function AllProjectsPage() {
@@ -102,89 +104,21 @@ export default function AllProjectsPage() {
         </div>
 
         {/* Projects Grid */}
-        <div 
-          ref={gridRef}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8"
-        >
-          {filteredProjects.map((project) => (
-            <Link
+        <div ref={gridRef} className="editorial-bento max-w-7xl mx-auto">
+          {filteredProjects.map((project, index) => (
+            <ContentCard
               key={project.id}
+              variant={bentoVariant(index)}
+              tone={index % 7 === 0 ? 'light' : 'dark'}
+              tag={project.category}
+              title={project.title}
+              description={project.description}
+              image={project.image || EDITORIAL_IMAGES[index % EDITORIAL_IMAGES.length]}
               href={`/projects/${project.slug}`}
-              className="group block"
-            >
-              <div 
-                className="bg-black border-2 border-white rounded-3xl p-6 md:p-8 h-full min-h-[320px] md:min-h-[380px] flex flex-col justify-between transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-                style={{
-                  backgroundColor: '#0D0D0D',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = project.color;
-                  e.currentTarget.style.backgroundColor = project.color;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#FFFFFF';
-                  e.currentTarget.style.backgroundColor = '#0D0D0D';
-                }}
-              >
-                <div>
-                  {/* Status Badge */}
-                  <div className="mb-4">
-                    <span className={`inline-block px-3 py-1 text-xs font-bold rounded-xl border-2 ${
-                      project.status === 'completed' 
-                        ? 'bg-white text-black border-white' 
-                        : project.status === 'in-progress'
-                        ? 'bg-[#FBFF63] text-black border-[#FBFF63]'
-                        : 'bg-black text-white border-white'
-                    }`}>
-                      {project.status === 'completed' ? '✓ COMPLETED' :
-                       project.status === 'in-progress' ? '⚡ IN PROGRESS' :
-                       '📦 ARCHIVED'}
-                    </span>
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="text-xl md:text-2xl font-bold mb-3 text-white group-hover:text-black transition-colors">
-                    {project.title}
-                  </h3>
-
-                  {/* Description */}
-                  <p className="text-sm md:text-base text-gray-300 mb-4 line-clamp-3 group-hover:text-black transition-colors">
-                    {project.description}
-                  </p>
-
-                  {/* Category & Date */}
-                  <div className="flex items-center gap-3 mb-4 text-xs md:text-sm">
-                    <span className="px-3 py-1 bg-white text-black rounded-lg font-semibold group-hover:bg-black group-hover:text-white transition-colors">
-                      {project.category}
-                    </span>
-                    <span className="text-gray-400 group-hover:text-black transition-colors">{project.date}</span>
-                  </div>
-                </div>
-
-                {/* Technologies */}
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {project.technologies.slice(0, 3).map((tech, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2 py-1 text-xs border border-white rounded-lg text-white group-hover:border-black group-hover:text-black transition-colors"
-                    >
-                      {tech}
-                    </span>
-                  ))}
-                  {project.technologies.length > 3 && (
-                    <span className="px-2 py-1 text-xs text-gray-400 group-hover:text-black transition-colors">
-                      +{project.technologies.length - 3} more
-                    </span>
-                  )}
-                </div>
-
-                {/* View Details Arrow */}
-                <div className="mt-6 flex items-center gap-2 text-white group-hover:text-black transition-colors">
-                  <span className="font-bold text-sm">View Details</span>
-                  <span className="transform group-hover:translate-x-2 transition-transform">→</span>
-                </div>
-              </div>
-            </Link>
+              ctaLabel="READ MORE"
+              ctaStyle="link"
+              className={bentoPlacement(index)}
+            />
           ))}
         </div>
 

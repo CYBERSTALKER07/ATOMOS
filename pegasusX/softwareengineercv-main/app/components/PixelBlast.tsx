@@ -351,8 +351,34 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
   noiseAmount = 0
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const visibilityRef = useRef({ visible: true });
+  const visibilityRef = useRef({ visible: false });
   const speedRef = useRef(speed);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !autoPauseOffscreen) {
+      visibilityRef.current.visible = true;
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        visibilityRef.current.visible = entry.isIntersecting && !document.hidden;
+      },
+      { rootMargin: '60px', threshold: 0.05 }
+    );
+    observer.observe(container);
+
+    const onVisibility = () => {
+      if (document.hidden) visibilityRef.current.visible = false;
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [autoPauseOffscreen]);
 
   const threeRef = useRef<{
     renderer: THREE.WebGLRenderer;
@@ -552,9 +578,12 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
         passive: true
       });
       let raf = 0;
+      let idleTimer = 0;
       const animate = () => {
         if (autoPauseOffscreen && !visibilityRef.current.visible) {
-          raf = requestAnimationFrame(animate);
+          idleTimer = window.setTimeout(() => {
+            raf = requestAnimationFrame(animate);
+          }, 300);
           return;
         }
         uniforms.uTime.value = timeOffset + clock.getElapsedTime() * speedRef.current;
