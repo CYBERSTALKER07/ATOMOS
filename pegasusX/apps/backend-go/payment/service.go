@@ -40,6 +40,11 @@ type Repository interface {
 
 	ListLedgerEntries(ctx context.Context, q LedgerQuery) ([]LedgerEntryRecord, error)
 	SummarizeLedgerEntries(ctx context.Context, q SettlementAuthorityQuery) ([]SettlementAuthorityRow, error)
+
+	CreatePayer(ctx context.Context, p Payer) error
+	GetPayer(ctx context.Context, payerID string) (Payer, error)
+	UpdatePayer(ctx context.Context, p Payer) error
+	ListPayers(ctx context.Context, limit, offset int) ([]Payer, error)
 }
 
 // SessionRecord is the persisted checkout-session aggregate.

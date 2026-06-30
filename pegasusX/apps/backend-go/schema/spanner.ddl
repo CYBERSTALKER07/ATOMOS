@@ -1076,3 +1076,15 @@ CREATE TABLE WarehouseBroadcastTemplates (
 CREATE INDEX Idx_WarehouseBroadcastTemplates_ByWarehouseUpdated
   ON WarehouseBroadcastTemplates(WarehouseId, UpdatedAt DESC);
 ALTER TABLE Orders ADD COLUMN CancelLockExpiresAt TIMESTAMP;
+
+CREATE TABLE Payers (
+  PayerId          STRING(36)    NOT NULL,
+  Name             STRING(255)   NOT NULL,
+  Email            STRING(255)   NOT NULL,
+  Phone            STRING(32),
+  BillingAddress   STRING(MAX),
+  TaxId            STRING(64),
+  IsActive         BOOL          NOT NULL,
+  CreatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (PayerId);

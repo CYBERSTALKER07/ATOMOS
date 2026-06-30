@@ -22,6 +22,7 @@ Single-tenant logistics stack. Sibling project to `pegasus/`.
 | WAREHOUSE | warehouse-portal, warehouse-app-android, warehouse-app-ios |
 | FACTORY | factory-portal, factory-app-android, factory-app-ios |
 | PAYLOAD | payload-terminal, payload-app-ios, payload-app-android |
+| MARKETING | marketing-site (Next.js, port 3004) |
 | SYSTEM | backend-go, ai-worker |
 
 **Repo Layout**

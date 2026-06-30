@@ -13,6 +13,14 @@ import (
 // Repository is the persistence seam for the driver module.
 type Repository interface {
 	Apply(ctx context.Context, mutate func() error, emit func(outbox.TxnBuffer) error) error
+	CreateDriver(ctx context.Context, d Driver) error
+	GetDriver(ctx context.Context, driverID string) (Driver, error)
+	UpdateDriver(ctx context.Context, d Driver) error
+	ListDrivers(ctx context.Context, supplierID string, limit, offset int) ([]Driver, error)
+	CreateVehicle(ctx context.Context, v Vehicle) error
+	GetVehicle(ctx context.Context, vehicleID string) (Vehicle, error)
+	UpdateVehicle(ctx context.Context, v Vehicle) error
+	ListVehicles(ctx context.Context, supplierID string, limit, offset int) ([]Vehicle, error)
 }
 
 // AvailabilityUpdate is the durable driver shift/offline row patch.
@@ -184,18 +192,30 @@ func (b *inMemoryTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) erro
 	return nil
 }
 
+func (b *inMemoryTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) error {
+	return nil
+}
+
 func (r *inMemoryRepository) Apply(ctx context.Context, mutate func() error, emit func(outbox.TxnBuffer) error) error {
 	if mutate != nil {
 		if err := mutate(); err != nil {
 			return err
 		}
 	}
-	buf := &inMemoryTxnBuffer{}
 	if emit != nil {
-		_ = emit(buf)
+		return emit(&inMemoryTxnBuffer{})
 	}
 	return nil
 }
+
+func (r *inMemoryRepository) CreateDriver(ctx context.Context, d Driver) error { return nil }
+func (r *inMemoryRepository) GetDriver(ctx context.Context, driverID string) (Driver, error) { return Driver{}, nil }
+func (r *inMemoryRepository) UpdateDriver(ctx context.Context, d Driver) error { return nil }
+func (r *inMemoryRepository) ListDrivers(ctx context.Context, supplierID string, limit, offset int) ([]Driver, error) { return nil, nil }
+func (r *inMemoryRepository) CreateVehicle(ctx context.Context, v Vehicle) error { return nil }
+func (r *inMemoryRepository) GetVehicle(ctx context.Context, vehicleID string) (Vehicle, error) { return Vehicle{}, nil }
+func (r *inMemoryRepository) UpdateVehicle(ctx context.Context, v Vehicle) error { return nil }
+func (r *inMemoryRepository) ListVehicles(ctx context.Context, supplierID string, limit, offset int) ([]Vehicle, error) { return nil, nil }
 
 func (r *inMemoryRepository) ApplyAvailability(ctx context.Context, upd AvailabilityUpdate, emit func(outbox.TxnBuffer) error) error {
 	return r.Apply(ctx, nil, emit)

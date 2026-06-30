@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev
+.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
 
 help:
 	@echo "pegasusX make targets"
@@ -32,6 +32,7 @@ help:
 	@echo "  backend-run           run backend-go locally"
 	@echo "  backend-build         build all Go binaries"
 	@echo "  supplier-portal-dev   run supplier portal Next.js dev server"
+	@echo "  marketing-site-dev    run PegasusX marketing site (port 3004)"
 	@echo "  terraform-init        initialize terraform working dir"
 	@echo "  terraform-plan        preview infra changes"
 	@echo "  terraform-apply       apply infra changes"
@@ -133,6 +134,9 @@ backend-build:
 
 supplier-portal-dev:
 	cd apps/supplier-portal && pnpm dev
+
+marketing-site-dev:
+	cd apps/marketing-site && pnpm dev
 
 terraform-init:
 	cd infra/terraform && terraform init

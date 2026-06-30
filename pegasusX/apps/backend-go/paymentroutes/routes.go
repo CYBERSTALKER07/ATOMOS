@@ -38,6 +38,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/payment/global_pay/initiate", d.Service.HandleDeprecatedGlobalPayInitiate)
 	}
 
+	mountPayers := func(rr chi.Router) {
+		rr.Post("/v1/payers", d.Service.HandleCreatePayer)
+		rr.Get("/v1/payers", d.Service.HandleListPayers)
+		rr.Get("/v1/payers/{payerId}", d.Service.HandleGetPayer)
+		rr.Put("/v1/payers/{payerId}", d.Service.HandleUpdatePayer)
+	}
+
 	guard := auth.MutationGuardConfig{
 		FirebaseEnabled:  d.FirebaseAuthEnabled,
 		FirebaseVerifier: d.FirebaseVerifier,
@@ -45,20 +52,20 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}
 
 	if d.AllowAuthBypass {
-		mountCheckout(r)
+		r.Group(func(rr chi.Router) {
+			mountCheckout(rr)
+			mountAdminPayment(rr)
+			mountPayers(rr)
+		})
+	} else {
+		auth.ProtectMutations(r, guard, func(gr chi.Router) {
+			mountCheckout(gr)
+			mountPayers(gr)
+		})
 		r.Group(func(gr chi.Router) {
 			gr.Use(auth.CookieAuth(d.JWTSecret))
 			gr.Use(auth.RequireRole(auth.RoleAdmin))
 			mountAdminPayment(gr)
 		})
-		return
 	}
-
-	auth.ProtectMutations(r, guard, func(gr chi.Router) {
-		mountCheckout(gr)
-	})
-	auth.ProtectMutations(r, guard, func(gr chi.Router) {
-		gr.Use(auth.CookieAuth(d.JWTSecret))
-		mountAdminPayment(gr)
-	})
 }

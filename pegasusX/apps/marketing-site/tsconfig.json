@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "paths": {
+      "@/*": ["./*"],
+      "@pegasusx/types": ["../../packages/types/index.ts"],
+      "@pegasusx/types/*": ["../../packages/types/*"],
+      "@pegasusx/motion-tokens": ["../../packages/motion-tokens/index.ts"],
+      "@pegasusx/ui-kit/portal": ["../../packages/ui-kit/src/portal/index.ts"],
+      "@pegasusx/ui-kit/*": ["../../packages/ui-kit/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

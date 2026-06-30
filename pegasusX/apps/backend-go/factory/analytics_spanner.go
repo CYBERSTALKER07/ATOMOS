@@ -110,6 +110,8 @@ func (s *Service) loadAnalyticsOverview(ctx context.Context) (analyticsOverview,
 			"date":      day,
 			"transfers": count,
 		})
+	}
+
 	productIter := txn.Query(readCtx, spanner.Statement{
 		SQL: `SELECT i.ProductId, SUM(i.RequestedQuantity) AS total_req, SUM(i.ShippedQuantity) AS total_shipped
 		      FROM WarehouseSupplyRequestItems i

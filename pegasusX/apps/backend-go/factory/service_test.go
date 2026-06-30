@@ -1111,6 +1111,23 @@ func (r *factoryRepoSpy) UpdateSupplyRequestState(ctx context.Context, requestID
 	return nil
 }
 
+func (r *factoryRepoSpy) CreateFactory(ctx context.Context, f Factory) error {
+	return nil
+}
+
+func (r *factoryRepoSpy) GetFactory(ctx context.Context, factoryID string) (Factory, error) {
+	return Factory{}, nil
+}
+
+func (r *factoryRepoSpy) UpdateFactory(ctx context.Context, f Factory) error {
+	return nil
+}
+
+func (r *factoryRepoSpy) ListFactories(ctx context.Context, supplierID string, limit, offset int) ([]Factory, error) {
+	return nil, nil
+}
+
+
 type factoryCacheBackendSpy struct {
 	deletedKeys [][]string
 }

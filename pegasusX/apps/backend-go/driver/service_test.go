@@ -829,6 +829,39 @@ func (r *driverRepoSpy) ApplyAvailability(ctx context.Context, _ AvailabilityUpd
 	return nil
 }
 
+func (r *driverRepoSpy) CreateDriver(ctx context.Context, d Driver) error {
+	return nil
+}
+
+func (r *driverRepoSpy) GetDriver(ctx context.Context, driverID string) (Driver, error) {
+	return Driver{}, nil
+}
+
+func (r *driverRepoSpy) UpdateDriver(ctx context.Context, d Driver) error {
+	return nil
+}
+
+func (r *driverRepoSpy) ListDrivers(ctx context.Context, supplierID string, limit, offset int) ([]Driver, error) {
+	return nil, nil
+}
+
+func (r *driverRepoSpy) CreateVehicle(ctx context.Context, v Vehicle) error {
+	return nil
+}
+
+func (r *driverRepoSpy) GetVehicle(ctx context.Context, vehicleID string) (Vehicle, error) {
+	return Vehicle{}, nil
+}
+
+func (r *driverRepoSpy) UpdateVehicle(ctx context.Context, v Vehicle) error {
+	return nil
+}
+
+func (r *driverRepoSpy) ListVehicles(ctx context.Context, supplierID string, limit, offset int) ([]Vehicle, error) {
+	return nil, nil
+}
+
+
 type driverTxnBufferSpy struct {
 	events []outbox.Event
 }

@@ -341,3 +341,19 @@ func (b *paymentTxnBufferStub) BufferOutbox(_ context.Context, e outbox.Event) e
 	b.events = append(b.events, e)
 	return nil
 }
+
+func (r *paymentRepoStub) CreatePayer(ctx context.Context, p Payer) error {
+	return nil
+}
+
+func (r *paymentRepoStub) GetPayer(ctx context.Context, payerID string) (Payer, error) {
+	return Payer{}, nil
+}
+
+func (r *paymentRepoStub) UpdatePayer(ctx context.Context, p Payer) error {
+	return nil
+}
+
+func (r *paymentRepoStub) ListPayers(ctx context.Context, limit, offset int) ([]Payer, error) {
+	return nil, nil
+}

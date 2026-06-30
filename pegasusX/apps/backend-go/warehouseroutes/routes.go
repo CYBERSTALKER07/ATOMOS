@@ -30,6 +30,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Post("/v1/auth/warehouse/refresh", d.Service.HandleWarehouseRefresh)
 	r.Post("/v1/warehouse/setup", d.Service.HandleWarehouseSetup)
 
+	// Ecosystem CRUD
+	r.Post("/v1/warehouses", d.Service.HandleCreateWarehouse)
+	r.Get("/v1/warehouses/{warehouseId}", d.Service.HandleGetWarehouse)
+	r.Put("/v1/warehouses/{warehouseId}", d.Service.HandleUpdateWarehouse)
+	r.Get("/v1/warehouses", d.Service.HandleListWarehouses)
+
 	mountReplenishmentInsights := func(rr chi.Router) {
 		rr.Get("/v1/warehouse/replenishment/insights", d.Service.HandleReplenishmentInsights)
 		rr.Post("/v1/warehouse/replenishment/insights/{id}/{action}", d.Service.HandleReplenishmentInsightAction)

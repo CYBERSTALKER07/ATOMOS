@@ -399,3 +399,19 @@ func (r *inMemoryPaymentRepo) GetSessionByOrderID(_ context.Context, orderID str
 	}
 	return payment.SessionRecord{}, false, nil
 }
+
+func (r *inMemoryPaymentRepo) CreatePayer(ctx context.Context, p payment.Payer) error {
+	return nil
+}
+
+func (r *inMemoryPaymentRepo) GetPayer(ctx context.Context, payerID string) (payment.Payer, error) {
+	return payment.Payer{}, nil
+}
+
+func (r *inMemoryPaymentRepo) UpdatePayer(ctx context.Context, p payment.Payer) error {
+	return nil
+}
+
+func (r *inMemoryPaymentRepo) ListPayers(ctx context.Context, limit, offset int) ([]payment.Payer, error) {
+	return nil, nil
+}

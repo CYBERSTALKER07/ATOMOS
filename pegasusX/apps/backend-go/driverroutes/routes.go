@@ -42,6 +42,17 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	r.Post("/v1/auth/driver/login", d.Service.HandleDriverLogin)
 
+	// Ecosystem CRUD
+	r.Post("/v1/drivers", d.Service.HandleCreateDriver)
+	r.Get("/v1/drivers/{driverId}", d.Service.HandleGetDriver)
+	r.Put("/v1/drivers/{driverId}", d.Service.HandleUpdateDriver)
+	r.Get("/v1/drivers", d.Service.HandleListDrivers)
+
+	r.Post("/v1/vehicles", d.Service.HandleCreateVehicle)
+	r.Get("/v1/vehicles/{vehicleId}", d.Service.HandleGetVehicle)
+	r.Put("/v1/vehicles/{vehicleId}", d.Service.HandleUpdateVehicle)
+	r.Get("/v1/vehicles", d.Service.HandleListVehicles)
+
 	mountProtected := func(rr chi.Router) {
 		rr.Get("/v1/driver/profile", d.Service.HandleProfile)
 		rr.Get("/v1/driver/history", d.Service.HandleHistory)

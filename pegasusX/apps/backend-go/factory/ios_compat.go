@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"errors"
 	"encoding/json"
 	"fmt"
 	"net/http"

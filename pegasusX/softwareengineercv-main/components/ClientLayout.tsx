@@ -1,0 +1,23 @@
+'use client';
+
+import React, { useState } from 'react';
+import SplashScreen from './SplashScreen';
+import InstallPWA from './InstallPWA';
+
+interface ClientLayoutProps {
+  children: React.ReactNode;
+}
+
+const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
+  const [showSplash, setShowSplash] = useState(true);
+
+  return (
+    <>
+      {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} duration={3000} />}
+      {children}
+      <InstallPWA />
+    </>
+  );
+};
+
+export default ClientLayout;

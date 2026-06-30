@@ -601,6 +601,23 @@ func (r *warehouseRepoSpy) UpdateTransferState(ctx context.Context, transferID, 
 	return nil
 }
 
+func (r *warehouseRepoSpy) CreateWarehouse(ctx context.Context, w Warehouse) error {
+	return nil
+}
+
+func (r *warehouseRepoSpy) GetWarehouse(ctx context.Context, warehouseID string) (Warehouse, error) {
+	return Warehouse{}, nil
+}
+
+func (r *warehouseRepoSpy) UpdateWarehouse(ctx context.Context, w Warehouse) error {
+	return nil
+}
+
+func (r *warehouseRepoSpy) ListWarehouses(ctx context.Context, supplierID string, limit, offset int) ([]Warehouse, error) {
+	return nil, nil
+}
+
+
 type warehouseTxnBufferSpy struct {
 	events []outbox.Event
 }
