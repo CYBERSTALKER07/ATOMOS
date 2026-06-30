@@ -70,6 +70,8 @@ func (s *Service) HandleRetailerCancel(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
 		case errors.Is(err, ErrOrderForbidden):
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		case errors.Is(err, ErrOrderCancelLocked):
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "cancel_locked"})
 		case errors.Is(err, ErrInvalidStatusTransition):
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_status_transition"})
 		default:

@@ -18,6 +18,7 @@ type NegotiationProposalDTO struct {
 	DriverID   string                    `json:"driver_id"`
 	Items      []ProposedNegotiationItem `json:"items"`
 	CreatedAt  time.Time                 `json:"created_at"`
+	ExpiresAt  time.Time                 `json:"expires_at"`
 }
 
 // HandleListPendingNegotiations serves GET /v1/supplier/negotiations/pending.
@@ -52,7 +53,7 @@ func (s *Service) HandleListPendingNegotiations(w http.ResponseWriter, r *http.R
 	ctx := r.Context()
 	limit, offset := httppagination.ParseLimitOffset(r, 100, 500)
 	stmt := spanner.Statement{
-		SQL: `SELECT n.ProposalId, n.OrderId, n.DriverId, n.ProposedItems, n.CreatedAt
+		SQL: `SELECT n.ProposalId, n.OrderId, n.DriverId, n.ProposedItems, n.CreatedAt, n.ExpiresAt
 		      FROM NegotiationProposals n
 		      JOIN Orders o ON n.OrderId = o.OrderId
 		      WHERE o.SupplierId = @supplierId
@@ -83,7 +84,7 @@ func (s *Service) HandleListPendingNegotiations(w http.ResponseWriter, r *http.R
 
 		var dto NegotiationProposalDTO
 		var itemsJSON string
-		if err := row.Columns(&dto.ProposalID, &dto.OrderID, &dto.DriverID, &itemsJSON, &dto.CreatedAt); err != nil {
+		if err := row.Columns(&dto.ProposalID, &dto.OrderID, &dto.DriverID, &itemsJSON, &dto.CreatedAt, &dto.ExpiresAt); err != nil {
 			s.log.ErrorContext(ctx, "parse negotiation row failed", "err", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "parse_negotiation_failed"})
 			return

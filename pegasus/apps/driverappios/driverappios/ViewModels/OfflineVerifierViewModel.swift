@@ -196,7 +196,8 @@ final class OfflineVerifierViewModel {
                 orderId: $0.orderId,
                 signature: $0.signature,
                 timestamp: $0.timestamp,
-                status: $0.status
+                status: $0.status,
+                idempotencyKey: $0.idempotencyKey
             )
         }
 

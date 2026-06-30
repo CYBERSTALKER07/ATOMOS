@@ -101,6 +101,10 @@ func HandleLegacyOrdersPath(svc *OrderService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
+			if _, ok := legacyOrderActivityTarget(r.URL.Path); ok {
+				svc.HandleOrderActivity(w, r)
+				return
+			}
 			if orderID, ok := legacyOrderEventsTarget(r.URL.Path); ok {
 				svc.handleLegacyOrderEvents(w, r, orderID)
 				return
@@ -659,6 +663,17 @@ func legacyOrderEventsTarget(path string) (string, bool) {
 		return "", false
 	}
 	if parts[1] != "events" {
+		return "", false
+	}
+	return parts[0], true
+}
+
+func legacyOrderActivityTarget(path string) (string, bool) {
+	parts := legacyOrderPathParts(path)
+	if len(parts) != 2 || parts[0] == "" {
+		return "", false
+	}
+	if parts[1] != "activity" {
 		return "", false
 	}
 	return parts[0], true

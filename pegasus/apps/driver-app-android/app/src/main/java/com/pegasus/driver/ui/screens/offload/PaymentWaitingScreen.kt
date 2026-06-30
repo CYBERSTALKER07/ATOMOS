@@ -137,6 +137,27 @@ fun PaymentWaitingScreen(
 
         Spacer(modifier = Modifier.height(40.dp))
 
+        if (state.podPhotoStubUrl == null) {
+            Button(
+                onClick = { viewModel.markPodPhotoCaptured() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp),
+                shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+            ) {
+                Text("Add POD Photo (optional)", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        } else {
+            Text(
+                text = "POD photo attached",
+                fontSize = 12.sp,
+                color = StatusGreen,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+        }
+
         Button(
             onClick = { viewModel.completeOrder() },
             enabled = state.paymentSettled && !state.isCompleting,

@@ -140,7 +140,11 @@ func (s *SessionService) CreateSession(ctx context.Context, req CreateSessionReq
 	sessionID := uuid.New().String()
 	now := time.Now().UTC()
 	currencyCode := normalizeCurrencyCode(req.Currency)
-	provider, providerErr := NewProviderClient(req.Gateway)
+	gateway := SelectHealthyGateway(ctx, []string{req.Gateway})
+	if gateway == "" {
+		gateway = req.Gateway
+	}
+	provider, providerErr := NewProviderClient(gateway)
 	if providerErr != nil {
 		return nil, providerErr
 	}

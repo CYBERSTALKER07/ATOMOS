@@ -461,8 +461,20 @@ func writeOrderEvent(ctx context.Context, client *spanner.Client, orderID, actor
 				vals = append(vals, gpsLat, gpsLng)
 			}
 
+			activityCols := []string{"ActivityId", "OrderId", "ActorId", "ActorRole", "EventType", "Summary", "CreatedAt"}
+			activityVals := []interface{}{eventID, orderID, actorID, actorRole, eventType, eventType, spanner.CommitTimestamp}
+			if len(metaJSON) > 0 {
+				activityCols = append(activityCols, "Metadata")
+				activityVals = append(activityVals, string(metaJSON))
+			}
+			if gpsLat != 0 || gpsLng != 0 {
+				activityCols = append(activityCols, "GPSLat", "GPSLng")
+				activityVals = append(activityVals, gpsLat, gpsLng)
+			}
+
 			return txn.BufferWrite([]*spanner.Mutation{
 				spanner.InsertOrUpdate("OrderEvents", cols, vals),
+				spanner.InsertOrUpdate("OrderActivityEvents", activityCols, activityVals),
 			})
 		})
 		if err != nil {

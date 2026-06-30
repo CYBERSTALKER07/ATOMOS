@@ -194,7 +194,7 @@ func (s *Service) queryBoardOrders(ctx context.Context, stmt spanner.Statement, 
 			t := proposed.Time
 			o.ProposedDeliveryDate = &t
 		}
-		exp := order.ComputeDeliveryExpectation(now, o)
+		exp := order.ComputeDeliveryExpectation(now, time.UTC, o)
 		out = append(out, OpsBoardOrder{
 			OrderID:             orderID,
 			Status:              status,

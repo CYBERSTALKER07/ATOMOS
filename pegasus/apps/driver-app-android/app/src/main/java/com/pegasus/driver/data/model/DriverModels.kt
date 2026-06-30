@@ -166,7 +166,8 @@ data class ConfirmOffloadResponse(
 data class CompleteOrderRequest(
     @SerialName("order_id") val orderId: String,
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    @SerialName("pod_photo_url") val podPhotoUrl: String? = null
 )
 
 // ── Collect Cash (geofenced) ──

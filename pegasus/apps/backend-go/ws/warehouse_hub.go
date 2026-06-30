@@ -58,6 +58,13 @@ func (h *WarehouseHub) HandleConnection(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	h.mu.RLock()
+	active := len(h.clients[warehouseID])
+	h.mu.RUnlock()
+	if !EnforceWSConnectionLimits(w, r, "warehouse", warehouseID, active) {
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "warehouse hub websocket upgrade failed",

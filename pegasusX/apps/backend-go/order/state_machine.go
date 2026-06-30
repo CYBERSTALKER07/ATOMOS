@@ -34,6 +34,8 @@ func ValidateStatusTransition(current Status, next Status) error {
 		allowed = next == StatusReconciliationRequired
 	case StatusReconciliationRequired:
 		allowed = next == StatusCompleted || next == StatusCancelled
+	case StatusBackordered:
+		allowed = next == StatusPending || next == StatusScheduled || next == StatusCancelled
 	default:
 		allowed = false
 	}

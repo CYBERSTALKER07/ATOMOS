@@ -39,6 +39,7 @@ import (
 // UnifiedCheckoutRequest is the single payload from the native app's checkout.
 type UnifiedCheckoutRequest struct {
 	RetailerID     string               `json:"retailer_id"`
+	FamilyMemberID string               `json:"family_member_id,omitempty"`
 	PaymentGateway string               `json:"payment_gateway"` // optional client hint; backend resolves the effective gateway
 	Latitude       float64              `json:"latitude"`
 	Longitude      float64              `json:"longitude"`
@@ -137,6 +138,17 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	for _, item := range req.Items {
 		if item.SkuId == "" || item.Quantity <= 0 {
 			http.Error(w, `{"error":"each item must have sku_id and positive quantity"}`, http.StatusUnprocessableEntity)
+			return
+		}
+	}
+
+	if req.FamilyMemberID != "" {
+		var orderTotal int64
+		for _, item := range req.Items {
+			orderTotal += item.UnitPrice * item.Quantity
+		}
+		if err := auth.CheckFamilySpendingLimit(r.Context(), s.Client, req.RetailerID, req.FamilyMemberID, orderTotal); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusForbidden)
 			return
 		}
 	}
@@ -371,6 +383,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	shortfallBySku := make(map[string]int64, len(req.Items))
 	processedPlans := make([]supplierOrderPlan, 0, len(plans))
 	processedTotals := make(map[string]int64, len(plans)) // OrderID → effective total
+	processedStates := make(map[string]string, len(plans)) // OrderID → initial state
 	var effectiveGrandTotal int64
 
 	_, err = s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -720,6 +733,43 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			}
 			planVolumeVU := dispatch.ComputeOrderVolume(planQuantities, planVolumes)
 
+			orderState := "PENDING"
+			capStmt := spanner.Statement{
+				SQL:    `SELECT DailyOrderCap FROM Suppliers WHERE SupplierId = @sid`,
+				Params: map[string]interface{}{"sid": plan.SupplierID},
+			}
+			capIter := txn.Query(ctx, capStmt)
+			capRow, capErr := capIter.Next()
+			capIter.Stop()
+			if capErr == nil {
+				var dailyCap spanner.NullInt64
+				if capRow.Columns(&dailyCap) == nil && dailyCap.Valid && dailyCap.Int64 > 0 {
+					nowTKT := proximity.TashkentNow()
+					dayStart := time.Date(nowTKT.Year(), nowTKT.Month(), nowTKT.Day(), 0, 0, 0, 0, proximity.TashkentLocation)
+					countStmt := spanner.Statement{
+						SQL: `SELECT COUNT(*) FROM Orders
+						      WHERE SupplierId = @sid AND CreatedAt >= @start AND CreatedAt < @end
+						        AND State NOT IN ('CANCELLED', 'REFUNDED')`,
+						Params: map[string]interface{}{
+							"sid":   plan.SupplierID,
+							"start": dayStart,
+							"end":   dayStart.AddDate(0, 0, 1),
+						},
+					}
+					countIter := txn.Query(ctx, countStmt)
+					countRow, countErr := countIter.Next()
+					countIter.Stop()
+					if countErr == nil {
+						var todayCount int64
+						if countRow.Columns(&todayCount) == nil && todayCount >= dailyCap.Int64 {
+							orderState = "WAITLISTED"
+						}
+					}
+				}
+			}
+
+			processedStates[plan.OrderID] = orderState
+
 			mutations = append(mutations, spanner.Insert("Orders",
 				[]string{
 					"OrderId", "RetailerId", "SupplierId", "InvoiceId",
@@ -729,12 +779,24 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 				},
 				[]interface{}{
 					plan.OrderID, req.RetailerID, plan.SupplierID, invoiceID,
-					planEffectiveTotal, plan.Currency, req.PaymentGateway, "PENDING", hotspot.ShardForKey(plan.OrderID),
+					planEffectiveTotal, plan.Currency, req.PaymentGateway, orderState, hotspot.ShardForKey(plan.OrderID),
 					wkt, "UNIFIED_CHECKOUT",
 					spanner.NullString{Valid: false}, // JIT: token generated at dispatch, not checkout
 					plan.WarehouseID,
 					planVolumeVU,
 					spanner.CommitTimestamp,
+				},
+			))
+
+			auditID := hotspot.NewOrderID()
+			mutations = append(mutations, spanner.Insert("PricingAuditLog",
+				[]string{"AuditId", "OrderId", "InvoiceId", "SupplierId", "ActorId", "ActorType",
+					"FeePolicyVersion", "SelectedTierKey", "FeeBasisPoints", "FeeCapApplied",
+					"GrossAmount", "FeeAmount", "NetAmount", "CreatedAt"},
+				[]interface{}{
+					auditID, plan.OrderID, invoiceID, plan.SupplierID, req.RetailerID, "RETAILER",
+					feeComputation.PolicyVersion, feeComputation.SelectedTierKey, feeComputation.BasisPoints, feeComputation.CapApplied,
+					planEffectiveTotal, feeComputation.FeeAmount, feeComputation.NetPayoutAmount, spanner.CommitTimestamp,
 				},
 			))
 
@@ -792,6 +854,16 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			}
 			if err := outbox.EmitJSON(txn, "Order", plan.OrderID, string(kafkaEvents.EventOrderCreated), kafkaEvents.TopicMain, event, telemetry.TraceIDFromContext(ctx)); err != nil {
 				return err
+			}
+			if processedStates[plan.OrderID] == "WAITLISTED" {
+				if err := outbox.EmitJSON(txn, "Order", plan.OrderID, kafkaEvents.EventOrderWaitlisted, kafkaEvents.TopicMain, map[string]interface{}{
+					"order_id":    plan.OrderID,
+					"supplier_id": plan.SupplierID,
+					"retailer_id": req.RetailerID,
+					"timestamp":   now.Format(time.RFC3339),
+				}, telemetry.TraceIDFromContext(ctx)); err != nil {
+					return err
+				}
 			}
 		}
 		return outbox.EmitJSON(txn, "Invoice", invoiceID, string(kafkaEvents.EventUnifiedCheckoutCompleted), kafkaEvents.TopicMain, kafkaEvents.UnifiedCheckoutCompletedEvent{

@@ -45,6 +45,7 @@ import (
 	internalKafka "backend-go/kafka"
 	"backend-go/notifications"
 	"backend-go/order"
+	"backend-go/outbox"
 	"backend-go/payment"
 	"backend-go/proximity"
 	"backend-go/replenishment"
@@ -193,6 +194,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(adminOnly, log(dlqListHandler(d.KafkaBrokerAddress))))
 	r.HandleFunc("/v1/admin/dlq/replay",
 		auth.RequireRole(adminOnly, log(dlqReplayHandler(d.KafkaBrokerAddress))))
+
+	// Outbox DLQ (Spanner relay failures)
+	r.HandleFunc("/v1/admin/outbox-dlq",
+		auth.RequireRole(adminOnly, log(outboxDLQListHandler(d.Spanner))))
+	r.HandleFunc("/v1/admin/outbox-dlq/replay",
+		auth.RequireRole(adminOnly, log(outboxDLQReplayHandler(d.Spanner))))
 
 	// 21. Operator-triggered manual Global Pay reconciliation.
 	r.HandleFunc("/v1/admin/payment/reconcile",
@@ -390,5 +397,54 @@ func paymentReconcileHandler(sessionSvc *payment.SessionService, gp *payment.Glo
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(result)
+	}
+}
+
+func outboxDLQListHandler(client *spanner.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		limit := int64(50)
+		if raw := r.URL.Query().Get("limit"); raw != "" {
+			if parsed, err := strconv.ParseInt(raw, 10, 64); err == nil && parsed > 0 {
+				limit = parsed
+			}
+		}
+		entries, err := outbox.ListDLQ(r.Context(), client, limit)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		body, err := outbox.MarshalDLQEntries(entries)
+		if err != nil {
+			http.Error(w, `{"error":"marshal failed"}`, http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(body)
+	}
+}
+
+func outboxDLQReplayHandler(client *spanner.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			EventID string `json:"event_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.EventID == "" {
+			http.Error(w, `{"error":"event_id is required"}`, http.StatusBadRequest)
+			return
+		}
+		if err := outbox.ReplayDLQ(r.Context(), client, req.EventID); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"REPLAYED"}`))
 	}
 }

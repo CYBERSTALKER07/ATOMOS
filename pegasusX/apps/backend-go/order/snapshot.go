@@ -56,3 +56,29 @@ func snapshotReceivingWindowsInTxn(ctx context.Context, txn *spanner.ReadWriteTr
 	}
 	return SnapshotReceivingWindowsOnOrder(o, open.StringVal, closeWindow.StringVal)
 }
+
+func snapshotWarehousePolicyInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, o *Order) error {
+	if o == nil {
+		return fmt.Errorf("snapshot warehouse policy: nil order")
+	}
+	warehouseID := strings.TrimSpace(o.WarehouseID)
+	if warehouseID == "" {
+		return fmt.Errorf("snapshot warehouse policy: warehouse_id required")
+	}
+	row, err := txn.ReadRow(ctx, "Warehouses", spanner.Key{warehouseID}, []string{"OperatingSchedule"})
+	if err != nil {
+		return fmt.Errorf("read warehouse %s operating schedule: %w", warehouseID, err)
+	}
+	var scheduleRaw spanner.NullJSON
+	if err := row.Columns(&scheduleRaw); err != nil {
+		return fmt.Errorf("scan warehouse %s operating schedule: %w", warehouseID, err)
+	}
+	if scheduleRaw.Valid && scheduleRaw.Value != nil {
+		str, ok := scheduleRaw.Value.(string)
+		if ok && str != "" {
+			sched := ParseOperatingSchedule([]byte(str))
+			o.Timezone = sched.Timezone
+		}
+	}
+	return nil
+}

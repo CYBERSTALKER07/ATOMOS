@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasus.retailer.data.api.PegasusApi
 import com.pegasus.retailer.data.api.RetailerWebSocket
+import com.pegasus.retailer.data.local.CachedCartLine
+import com.pegasus.retailer.data.local.CartCacheDao
+import com.pegasus.retailer.data.local.CartCacheEntity
 import com.pegasus.retailer.data.local.PendingOrderDao
 import com.pegasus.retailer.data.local.TokenManager
 import com.pegasus.retailer.data.model.CartItem
@@ -23,6 +26,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -96,6 +101,7 @@ class CartViewModel @Inject constructor(
     private val tokenManager: TokenManager,
     private val retailerWebSocket: RetailerWebSocket,
     private val pendingOrderDao: PendingOrderDao,
+    private val cartCacheDao: CartCacheDao,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CartUiState())
@@ -107,6 +113,7 @@ class CartViewModel @Inject constructor(
     private var lastCartSignature: String = ""
 
 init { 
+        loadCartFromLocalCache()
         flushPendingOrders()
         fetchPaymentOptions()
         refreshCartFromServer()
@@ -116,6 +123,70 @@ init {
     fun retrySync() {
         refreshCartFromServer()
         fetchPaymentOptions()
+    }
+
+    private fun persistCartToLocalCache(items: List<CartItem>) {
+        val retailerId = tokenManager.getUserId() ?: return
+        viewModelScope.launch {
+            val lines = items.map { item ->
+                val skuId = if (item.variant.id.isNotBlank()) item.variant.id else item.product.id
+                CachedCartLine(
+                    id = item.id,
+                    skuId = skuId,
+                    supplierId = item.product.supplierId.orEmpty(),
+                    quantity = item.quantity,
+                    unitPrice = item.variant.price,
+                    productName = item.product.name,
+                    variantId = item.variant.id,
+                    variantSize = item.variant.size,
+                    variantPack = item.variant.pack,
+                )
+            }
+            cartCacheDao.upsert(
+                CartCacheEntity(
+                    retailerId = retailerId,
+                    itemsJson = Json.encodeToString(lines),
+                )
+            )
+        }
+    }
+
+    private fun loadCartFromLocalCache() {
+        val retailerId = tokenManager.getUserId() ?: return
+        viewModelScope.launch {
+            val cached = cartCacheDao.getForRetailer(retailerId) ?: return@launch
+            if (_uiState.value.items.isNotEmpty()) return@launch
+            val lines = runCatching {
+                Json.decodeFromString<List<CachedCartLine>>(cached.itemsJson)
+            }.getOrNull() ?: return@launch
+            val restored = lines.map { line ->
+                val variant = Variant(
+                    id = line.variantId.ifBlank { line.skuId },
+                    size = line.variantSize,
+                    pack = line.variantPack,
+                    packCount = 1,
+                    weightPerUnit = "1 unit",
+                    price = line.unitPrice,
+                )
+                val product = Product(
+                    id = line.skuId,
+                    name = line.productName,
+                    variants = listOf(variant),
+                    supplierId = line.supplierId,
+                    price = line.unitPrice.toInt(),
+                )
+                CartItem(
+                    id = line.id,
+                    product = product,
+                    variant = variant,
+                    quantity = line.quantity,
+                )
+            }
+            if (restored.isNotEmpty()) {
+                _uiState.update { it.copy(items = restored) }
+                lastCartSignature = cartSignature(restored)
+            }
+        }
     }
 
     private fun cartSignature(items: List<CartItem>): String {
@@ -279,6 +350,7 @@ init {
                 api.postCartSync(body = mapOf("items" to syncItems))
                 lastCartSignature = snapshotSignature
                 _uiState.update { it.copy(syncError = null, loadIssue = null) }
+                persistCartToLocalCache(snapshot)
             } catch (e: Exception) {
                 val issue = resolveLoadIssue(e)
                 _uiState.update {
@@ -362,6 +434,7 @@ init {
             }
         }
         scheduleCartSyncPush()
+        persistCartToLocalCache(_uiState.value.items)
     }
 
     fun updateQuantity(itemId: String, quantity: Int) {
@@ -373,6 +446,7 @@ init {
             state.copy(items = state.items.map { if (it.id == itemId) it.copy(quantity = quantity) else it })
         }
         scheduleCartSyncPush()
+        persistCartToLocalCache(_uiState.value.items)
     }
 
     fun removeItem(itemId: String) {
@@ -384,6 +458,7 @@ init {
             )
         }
         scheduleCartSyncPush()
+        persistCartToLocalCache(_uiState.value.items)
     }
 
     fun clearRemovedItemMessage() {
@@ -393,6 +468,7 @@ init {
     fun clearCart() {
         _uiState.update { it.copy(items = emptyList()) }
         scheduleCartSyncPush()
+        persistCartToLocalCache(emptyList())
     }
 
     fun showCheckout() {

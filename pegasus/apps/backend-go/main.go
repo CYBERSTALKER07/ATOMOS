@@ -731,6 +731,7 @@ func main() {
 
 	// 6. Quarantine Protocol — Stale Order Auditor (15min sweep)
 	StartStaleOrderAuditor(spannerClient, refundSvc)
+	StartWaitlistedOrderPromoter(spannerClient)
 
 	// 7. Edge 4: Orphaned AIPredictionItems Cleanup (daily)
 	StartOrphanedPredictionCleaner(spannerClient)

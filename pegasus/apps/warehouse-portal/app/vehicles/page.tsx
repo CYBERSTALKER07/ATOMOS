@@ -9,6 +9,7 @@ import type {
 } from '@pegasus/types';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
+import VuCapacityBar from '@/components/VuCapacityBar';
 
 const VEHICLE_UNAVAILABLE_REASONS: WarehouseVehicleUnavailableReason[] = [
   'MAINTENANCE',
@@ -186,6 +187,7 @@ export default function VehiclesPage() {
                 <th className="text-left py-2 px-3 font-medium">Class</th>
                 <th className="text-left py-2 px-3 font-medium">Assigned Driver</th>
                 <th className="text-right py-2 px-3 font-medium">Capacity</th>
+                <th className="text-left py-2 px-3 font-medium min-w-40">VU Load</th>
                 <th className="text-left py-2 px-3 font-medium">Status</th>
                 <th className="text-left py-2 px-3 font-medium">Action</th>
               </tr>
@@ -198,6 +200,9 @@ export default function VehiclesPage() {
                   <td className="py-2.5 px-3">{v.vehicle_class}</td>
                   <td className="py-2.5 px-3 text-(--muted)">{v.assigned_driver_name || 'Unassigned'}</td>
                   <td className="py-2.5 px-3 text-right font-mono">{v.capacity_vu} VU</td>
+                  <td className="py-2.5 px-3 min-w-40">
+                    <VuCapacityBar used={0} max={v.capacity_vu || v.max_volume_vu || 50} compact />
+                  </td>
                   <td className="py-2.5 px-3">
                     <div className="space-y-1">
                       <span className={`status-chip ${v.is_active ? 'status-chip--stable' : 'status-chip--draft'}`}>

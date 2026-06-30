@@ -562,6 +562,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		orderSvc.SetGatewayPolicyReader(gatewayPolicyReader)
 	}
 	order.StartPreorderSweeper(orderSvc)
+	go orderSvc.StartNegotiationSweeper(context.Background())
+	go orderSvc.StartDeferredPaymentSweeper(context.Background(), 5*time.Minute)
 	if spannerClient != nil {
 		if n, err := orderSvc.BackfillScheduledReservations(context.Background(), 500); err != nil {
 			log.Warn("scheduled reservation backfill failed", "err", err)

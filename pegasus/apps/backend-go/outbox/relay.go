@@ -157,7 +157,9 @@ func (r *Relay) tick(ctx context.Context) error {
 	resultCh := make(chan shardResult, len(events))
 
 	// Fan out: dispatch each event to its shard worker.
+	eventIndex := make(map[string]batchEvent, len(events))
 	for _, ev := range events {
+		eventIndex[ev.eventID] = ev
 		shard := r.shardFor(ev.aggregateID)
 		r.shardChs[shard] <- shardJob{
 			eventID:     ev.eventID,
@@ -175,7 +177,11 @@ func (r *Relay) tick(ctx context.Context) error {
 	for range events {
 		res := <-resultCh
 		if res.err != nil {
-			// already logged by runShard; callback still fires here for metrics
+			if ev, ok := eventIndex[res.eventID]; ok {
+				if dlqErr := r.recordFailure(ctx, ev, res.err); dlqErr != nil {
+					slog.Error("outbox.relay.record_failure", "event_id", res.eventID, "err", dlqErr)
+				}
+			}
 			continue
 		}
 		published = append(published, res.eventID)
@@ -196,18 +202,23 @@ func (r *Relay) tick(ctx context.Context) error {
 
 // batchEvent is the scan target for readBatch.
 type batchEvent struct {
-	eventID, aggregateID, eventType, topic, traceID string
-	payload                                         []byte
+	eventID, aggregateType, aggregateID, eventType, topic, traceID string
+	payload                                                         []byte
+	retryCount                                                      int64
+	createdAt                                                       time.Time
 }
 
 func (r *Relay) readBatch(ctx context.Context) ([]batchEvent, error) {
+	maxRetries := int64(MaxRelayRetries())
 	stmt := spanner.Statement{
-		SQL: `SELECT EventId, AggregateId, EventType, TopicName, Payload, TraceID
+		SQL: `SELECT EventId, AggregateType, AggregateId, EventType, TopicName, Payload, TraceID,
+		             COALESCE(RetryCount, 0), CreatedAt
 		      FROM OutboxEvents
 		      WHERE PublishedAt IS NULL
+		        AND COALESCE(RetryCount, 0) < @maxRetries
 		      ORDER BY CreatedAt
 		      LIMIT @lim`,
-		Params: map[string]interface{}{"lim": r.batchSize},
+		Params: map[string]interface{}{"lim": r.batchSize, "maxRetries": maxRetries},
 	}
 	iter := r.spanner.Single().Query(ctx, stmt)
 	defer iter.Stop()
@@ -223,7 +234,7 @@ func (r *Relay) readBatch(ctx context.Context) ([]batchEvent, error) {
 		}
 		var ev batchEvent
 		var traceID spanner.NullString
-		if err := row.Columns(&ev.eventID, &ev.aggregateID, &ev.eventType, &ev.topic, &ev.payload, &traceID); err != nil {
+		if err := row.Columns(&ev.eventID, &ev.aggregateType, &ev.aggregateID, &ev.eventType, &ev.topic, &ev.payload, &traceID, &ev.retryCount, &ev.createdAt); err != nil {
 			slog.Error("outbox.relay.row_scan", "err", err)
 			continue
 		}
@@ -310,6 +321,40 @@ func (r *Relay) batchMarkPublished(ctx context.Context, eventIDs []string) error
 	}
 	_, err := r.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return txn.BufferWrite(muts)
+	})
+	return err
+}
+
+func (r *Relay) recordFailure(ctx context.Context, ev batchEvent, publishErr error) error {
+	maxRetries := int64(MaxRelayRetries())
+	newCount := ev.retryCount + 1
+	errMsg := publishErr.Error()
+	now := time.Now().UTC()
+
+	_, err := r.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if newCount >= maxRetries {
+			muts := []*spanner.Mutation{
+				spanner.Insert("OutboxDLQ",
+					[]string{"EventId", "AggregateType", "AggregateId", "EventType", "TopicName", "Payload", "TraceID", "RetryCount", "LastError", "CreatedAt", "MovedAt"},
+					[]interface{}{ev.eventID, ev.aggregateType, ev.aggregateID, ev.eventType, ev.topic, ev.payload, ev.traceID, newCount, errMsg, ev.createdAt, spanner.CommitTimestamp},
+				),
+				spanner.Delete("OutboxEvents", spanner.Key{ev.eventID}),
+			}
+			slog.Warn("outbox.relay.moved_to_dlq",
+				"event_id", ev.eventID,
+				"aggregate_id", ev.aggregateID,
+				"topic", ev.topic,
+				"retry_count", newCount,
+				"err", publishErr,
+			)
+			return txn.BufferWrite(muts)
+		}
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Update("OutboxEvents",
+				[]string{"EventId", "RetryCount", "LastError", "LastErrorAt"},
+				[]interface{}{ev.eventID, newCount, errMsg, now},
+			),
+		})
 	})
 	return err
 }

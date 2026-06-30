@@ -33,6 +33,11 @@ type Repository interface {
 	SaveChargeback(ctx context.Context, c ChargebackRecord, emit func(outbox.TxnBuffer) error) error
 	SaveReversal(ctx context.Context, rev ReversalRecord, emit func(outbox.TxnBuffer) error) error
 	SaveWebhook(ctx context.Context, w WebhookRecord, emit func(outbox.TxnBuffer) error) error
+	FindStuckSessions(ctx context.Context, cutoff time.Time, limit int) ([]SessionRecord, error)
+	GetSession(ctx context.Context, sessionID string) (SessionRecord, bool, error)
+	GetSessionByOrderID(ctx context.Context, orderID string) (SessionRecord, bool, error)
+	HasChargebackForOrder(ctx context.Context, orderID string) (bool, error)
+
 	ListLedgerEntries(ctx context.Context, q LedgerQuery) ([]LedgerEntryRecord, error)
 	SummarizeLedgerEntries(ctx context.Context, q SettlementAuthorityQuery) ([]SettlementAuthorityRow, error)
 }
@@ -547,6 +552,27 @@ func (s *Service) HandleChargebackReversal(w http.ResponseWriter, r *http.Reques
 		writeJSONError(w, http.StatusBadRequest, "invalid_request", "session_id is required", "/v1/payment/chargeback/reversal", false, "")
 		return
 	}
+
+	session, found, err := s.repo.GetSession(r.Context(), req.SessionID)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "internal_error", "Failed to retrieve session", "/v1/payment/chargeback/reversal", false, "")
+		return
+	}
+	if !found {
+		writeJSONError(w, http.StatusNotFound, "session_not_found", "Session not found", "/v1/payment/chargeback/reversal", false, "")
+		return
+	}
+
+	hasChargeback, err := s.repo.HasChargebackForOrder(r.Context(), session.OrderID)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "internal_error", "Failed to verify chargeback status", "/v1/payment/chargeback/reversal", false, "")
+		return
+	}
+	if !hasChargeback {
+		writeJSONError(w, http.StatusConflict, "chargeback_required", "Cannot reverse a chargeback that has not been recorded", "/v1/payment/chargeback/reversal", false, "")
+		return
+	}
+
 	executionResult, err := s.execution.Execute(r.Context(), ExecutionRequest{
 		Action:    ExecutionActionChargebackReversal,
 		SessionID: req.SessionID,

@@ -238,3 +238,20 @@ export interface AmendOrderResponse {
   new_total: number; // Recalculated after rejections
   currency: string;
 }
+
+// ─── Order Activity Timeline ────────────────────────────────────────────────
+// Returned by GET /v1/orders/{id}/activity
+export interface OrderActivityEntry {
+  activity_id: string;
+  order_id: string;
+  actor_id: string;
+  actor_role: string;
+  event_type: string;
+  summary?: string;
+  metadata?: string;
+  created_at: string;
+}
+
+export interface OrderActivityResponse {
+  activity: OrderActivityEntry[];
+}

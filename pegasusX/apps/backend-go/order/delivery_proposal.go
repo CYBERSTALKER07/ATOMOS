@@ -28,30 +28,30 @@ func clearDeliveryProposal(o *Order) {
 	o.DeliveryProposalReason = ""
 }
 
-func hasFutureDeliveryAnchor(now time.Time, o Order) bool {
-	today := proximity.TashkentTodayStart(now)
+func hasFutureDeliveryAnchor(now time.Time, loc *time.Location, o Order) bool {
+	today := proximity.TodayStart(now, loc)
 	if o.RequestedDeliveryDate != nil {
-		if calendarDaysBetween(today, proximity.TashkentTodayStart(*o.RequestedDeliveryDate)) >= 0 {
+		if calendarDaysBetween(today, proximity.TodayStart(*o.RequestedDeliveryDate, loc), loc) >= 0 {
 			return true
 		}
 	}
 	if o.DeliverBefore != nil {
-		if calendarDaysBetween(today, proximity.TashkentTodayStart(*o.DeliverBefore)) >= 0 {
+		if calendarDaysBetween(today, proximity.TodayStart(*o.DeliverBefore, loc), loc) >= 0 {
 			return true
 		}
 	}
 	return false
 }
 
-func orderEligibleForDeliveryProposal(now time.Time, o Order) error {
+func orderEligibleForDeliveryProposal(now time.Time, loc *time.Location, o Order) error {
 	switch o.Status {
 	case StatusCompleted, StatusCancelled, StatusLoaded, StatusInTransit:
 		return fmt.Errorf("%w: %s cannot receive delivery proposal", ErrInvalidStatusTransition, o.Status)
 	}
-	if !hasFutureDeliveryAnchor(now, o) {
+	if !hasFutureDeliveryAnchor(now, loc, o) {
 		return fmt.Errorf("%w: order has no future delivery date", ErrInvalidStatusTransition)
 	}
-	if IsScheduledPreorder(o) && PreorderEditLocked(now, o) {
+	if IsScheduledPreorder(o) && PreorderEditLocked(now, loc, o) {
 		return fmt.Errorf("%w: preorder edit locked", ErrInvalidStatusTransition)
 	}
 	return nil
@@ -96,7 +96,15 @@ func (s *Service) WarehouseProposeDeliveryDate(ctx context.Context, ops *auth.Wa
 	if err := assertWarehouseOrderScope(current, resolvedOps); err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}
-	if err := orderEligibleForDeliveryProposal(s.now(), current); err != nil {
+	
+	loc := proximity.TashkentLocation
+	if current.Timezone != "" {
+		if l, err := time.LoadLocation(current.Timezone); err == nil {
+			loc = l
+		}
+	}
+
+	if err := orderEligibleForDeliveryProposal(s.now(), loc, current); err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}
 

@@ -9,6 +9,7 @@ package supplierroutes
 
 import (
 	"net/http"
+	"strings"
 
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
@@ -66,6 +67,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	withRegionScope := auth.RequireRegionScopeWithClient(d.Spanner)
 	withWarehouseScope := auth.RequireWarehouseScopeWithClient(d.Spanner)
 
+	r.HandleFunc("/v1/supplier/onboarding-progress",
+		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleOnboardingProgress(d.Spanner)))))
+	r.HandleFunc("/v1/supplier/drivers/*",
+		auth.RequireRole(supplierRole, log(withRegionScope(supplierDriverSubresourceHandler(d)))))
+	r.HandleFunc("/v1/supplier/reports/monthly-summary",
+		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleMonthlySummaryReport(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/configure",
 		auth.RequireRole(supplierRole, log(withRegionScope(idem(supplier.HandleSupplierConfigure(d.Spanner))))))
 	r.HandleFunc("/v1/supplier/billing/setup",
@@ -126,6 +133,17 @@ func withMethodIdempotency(next http.HandlerFunc, middleware Middleware, methods
 			return
 		}
 		next(w, r)
+	}
+}
+
+func supplierDriverSubresourceHandler(d Deps) http.HandlerFunc {
+	scorecard := supplier.HandleDriverScorecard(d.Spanner)
+	return func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/scorecard") {
+			scorecard(w, r)
+			return
+		}
+		http.Error(w, "Not Found", http.StatusNotFound)
 	}
 }
 

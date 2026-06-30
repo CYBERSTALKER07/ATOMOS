@@ -8,10 +8,11 @@ TMP_SCHEMA="$(mktemp)"
 
 cd "$BACKEND_DIR"
 go run ./cmd/gen-contracts \
-  -source events/events.go \
+  -source events \
   -mode json-schema \
   -schema-out "$TMP_SCHEMA" \
-  -pretty=true
+  -pretty=true \
+  -strict=true
 
 if ! diff -q "$TMP_SCHEMA" "$SCHEMA_PATH" >/dev/null 2>&1; then
   echo "gen-contracts gate failed: $SCHEMA_PATH is out of date" >&2

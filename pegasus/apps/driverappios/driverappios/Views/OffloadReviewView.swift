@@ -22,6 +22,9 @@ struct OffloadReviewView: View {
     @State private var rejectionReasons: [String: RejectionReason] = [:]
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+    @State private var deliveryLatitude: Double?
+    @State private var deliveryLongitude: Double?
+    @State private var deliveryAddress: String = ""
 
     private let fleetService: FleetServiceProtocol = FleetServiceLive.shared
 
@@ -69,12 +72,34 @@ struct OffloadReviewView: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(LabTheme.fg)
                 Spacer()
+                if let lat = deliveryLatitude, let lng = deliveryLongitude {
+                    Button {
+                        if let url = URL(string: "maps://?d=\(lat),\(lng)") {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        Text("Navigate")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(LabTheme.buttonFg)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(LabTheme.transit)
+                            .clipShape(.rect(cornerRadius: 8))
+                    }
+                }
                 Text(response.totalAmount.formattedAmount)
                     .font(.system(size: 15, weight: .bold, design: .monospaced))
                     .foregroundStyle(LabTheme.fg)
             }
             .padding(.horizontal, LabTheme.s24)
             .padding(.bottom, LabTheme.s16)
+            .task {
+                if let order = try? await APIClient.shared.getOrder(id: response.orderId) {
+                    deliveryLatitude = order.latitude
+                    deliveryLongitude = order.longitude
+                    deliveryAddress = order.deliveryAddress
+                }
+            }
 
             // MARK: - Line Items
             ScrollView {

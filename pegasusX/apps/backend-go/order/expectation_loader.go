@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"google.golang.org/api/iterator"
 )
 
@@ -22,7 +23,7 @@ func LoadDeliveryExpectations(ctx context.Context, client *spanner.Client, now t
 	stmt := spanner.Statement{
 		SQL: `SELECT OrderId, Status, Source, ConfirmationStatus, DeliveryPriority,
 		             DeliverBefore, RequestedDeliveryDate, ProposedDeliveryDate,
-		             ReceivingWindowOpen, ReceivingWindowClose
+		             ReceivingWindowOpen, ReceivingWindowClose, Timezone
 		      FROM Orders
 		      WHERE OrderId IN UNNEST(@ids)`,
 		Params: map[string]any{"ids": ids},
@@ -41,7 +42,12 @@ func LoadDeliveryExpectations(ctx context.Context, client *spanner.Client, now t
 		if !ok {
 			continue
 		}
-		out[orderID] = ComputeDeliveryExpectation(now, o)
+		
+		loc, err := time.LoadLocation(o.Timezone)
+		if err != nil || o.Timezone == "" {
+			loc = proximity.TashkentLocation
+		}
+		out[orderID] = ComputeDeliveryExpectation(now, loc, o)
 	}
 	return out
 }
@@ -67,10 +73,10 @@ func scanOrderForExpectation(row *spanner.Row) (Order, string, bool) {
 	var (
 		orderID, status, source, confirmation, priority string
 		deliverBefore, requested, proposed              spanner.NullTime
-		windowOpen, windowClose                         spanner.NullString
+		windowOpen, windowClose, timezone               spanner.NullString
 	)
 	if err := row.Columns(&orderID, &status, &source, &confirmation, &priority,
-		&deliverBefore, &requested, &proposed, &windowOpen, &windowClose); err != nil {
+		&deliverBefore, &requested, &proposed, &windowOpen, &windowClose, &timezone); err != nil {
 		return Order{}, "", false
 	}
 	o := Order{
@@ -81,6 +87,7 @@ func scanOrderForExpectation(row *spanner.Row) (Order, string, bool) {
 		DeliveryPriority:     DeliveryPriority(priority),
 		ReceivingWindowOpen:  windowOpen.StringVal,
 		ReceivingWindowClose: windowClose.StringVal,
+		Timezone:             timezone.StringVal,
 	}
 	if deliverBefore.Valid {
 		t := deliverBefore.Time

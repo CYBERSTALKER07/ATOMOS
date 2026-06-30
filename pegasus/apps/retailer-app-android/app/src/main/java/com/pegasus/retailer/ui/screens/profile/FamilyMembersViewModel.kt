@@ -27,7 +27,8 @@ enum class FamilyMembersLoadIssue {
 data class FamilyMember(
     val id: String,
     val name: String,
-    val phone: String
+    val phone: String,
+    val spendingLimitUzs: Long = 0,
 )
 
 data class FamilyMembersUiState(
@@ -78,6 +79,7 @@ class FamilyMembersViewModel @Inject constructor(
                             ?: obj["name"]?.jsonPrimitive?.contentOrNull
                             ?: "Unknown",
                         phone = obj["phone"]?.jsonPrimitive?.contentOrNull ?: "",
+                        spendingLimitUzs = obj["spending_limit_uzs"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 0L,
                     )
                 }
                 _uiState.update { it.copy(isLoading = false, members = membersList, error = null, loadIssue = null) }
@@ -94,10 +96,14 @@ class FamilyMembersViewModel @Inject constructor(
         }
     }
 
-    fun addMember(name: String, phone: String) {
+    fun addMember(name: String, phone: String, spendingLimitUzs: Long = 0) {
         viewModelScope.launch {
             try {
-                val map = mapOf("nickname" to name, "phone" to phone)
+                val map = buildMap {
+                    put("nickname", name)
+                    if (phone.isNotBlank()) put("phone", phone)
+                    if (spendingLimitUzs > 0) put("spending_limit_uzs", spendingLimitUzs)
+                }
                 api.createFamilyMember(map)
                 loadData()
             } catch (e: Exception) {
@@ -105,6 +111,23 @@ class FamilyMembersViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         error = resolveErrorMessage(e, issue, "Could not add member"),
+                        loadIssue = issue,
+                    )
+                }
+            }
+        }
+    }
+
+    fun updateSpendingLimit(memberId: String, spendingLimitUzs: Long) {
+        viewModelScope.launch {
+            try {
+                api.updateFamilyMember(memberId, mapOf("spending_limit_uzs" to spendingLimitUzs))
+                loadData()
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(
+                        error = resolveErrorMessage(e, issue, "Could not update spending limit"),
                         loadIssue = issue,
                     )
                 }

@@ -16,11 +16,12 @@ import (
 
 // FamilyMember represents a cosmetic sub-profile for family-run shops.
 type FamilyMember struct {
-	MemberID   string `json:"member_id" spanner:"MemberId"`
-	RetailerID string `json:"retailer_id" spanner:"RetailerId"`
-	Nickname   string `json:"nickname" spanner:"Nickname"`
-	PhotoURL   string `json:"photo_url,omitempty" spanner:"PhotoUrl"`
-	CreatedAt  string `json:"created_at" spanner:"CreatedAt"`
+	MemberID         string `json:"member_id" spanner:"MemberId"`
+	RetailerID       string `json:"retailer_id" spanner:"RetailerId"`
+	Nickname         string `json:"nickname" spanner:"Nickname"`
+	PhotoURL         string `json:"photo_url,omitempty" spanner:"PhotoUrl"`
+	SpendingLimitUzs int64  `json:"spending_limit_uzs,omitempty" spanner:"SpendingLimitUzs"`
+	CreatedAt        string `json:"created_at" spanner:"CreatedAt"`
 }
 
 // HandleListFamilyMembers returns all family members for the logged-in retailer.
@@ -41,7 +42,7 @@ func HandleListFamilyMembers(client *spanner.Client) http.HandlerFunc {
 		defer cancel()
 
 		stmt := spanner.Statement{
-			SQL:    `SELECT MemberId, RetailerId, Nickname, PhotoUrl, CreatedAt FROM RetailerFamilyMembers WHERE RetailerId = @rid ORDER BY CreatedAt`,
+			SQL:    `SELECT MemberId, RetailerId, Nickname, PhotoUrl, SpendingLimitUzs, CreatedAt FROM RetailerFamilyMembers WHERE RetailerId = @rid ORDER BY CreatedAt`,
 			Params: map[string]interface{}{"rid": claims.UserID},
 		}
 		iter := client.Single().Query(ctx, stmt)
@@ -55,12 +56,16 @@ func HandleListFamilyMembers(client *spanner.Client) http.HandlerFunc {
 			}
 			var m FamilyMember
 			var photo spanner.NullString
+			var spendingLimit spanner.NullInt64
 			var createdAt time.Time
-			if err := row.Columns(&m.MemberID, &m.RetailerID, &m.Nickname, &photo, &createdAt); err != nil {
+			if err := row.Columns(&m.MemberID, &m.RetailerID, &m.Nickname, &photo, &spendingLimit, &createdAt); err != nil {
 				continue
 			}
 			if photo.Valid {
 				m.PhotoURL = photo.StringVal
+			}
+			if spendingLimit.Valid {
+				m.SpendingLimitUzs = spendingLimit.Int64
 			}
 			m.CreatedAt = createdAt.Format(time.RFC3339)
 			members = append(members, m)
@@ -92,8 +97,9 @@ func HandleCreateFamilyMember(client *spanner.Client, invalidate func(context.Co
 		}
 
 		var req struct {
-			Nickname string `json:"nickname"`
-			PhotoURL string `json:"photo_url"`
+			Nickname         string `json:"nickname"`
+			PhotoURL         string `json:"photo_url"`
+			SpendingLimitUzs int64  `json:"spending_limit_uzs"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Nickname == "" {
 			http.Error(w, `{"error":"nickname required"}`, http.StatusBadRequest)
@@ -130,6 +136,10 @@ func HandleCreateFamilyMember(client *spanner.Client, invalidate func(context.Co
 		if req.PhotoURL != "" {
 			cols = append(cols, "PhotoUrl")
 			vals = append(vals, req.PhotoURL)
+		}
+		if req.SpendingLimitUzs > 0 {
+			cols = append(cols, "SpendingLimitUzs")
+			vals = append(vals, req.SpendingLimitUzs)
 		}
 
 		_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -209,8 +219,103 @@ func HandleDeleteFamilyMember(client *spanner.Client, invalidate func(context.Co
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{
+		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":    "DELETED",
+			"member_id": memberID,
+		})
+	}
+}
+
+// CheckFamilySpendingLimit rejects checkout when a family sub-profile exceeds its cap.
+// SpendingLimitUzs == 0 means unlimited.
+func CheckFamilySpendingLimit(ctx context.Context, client *spanner.Client, retailerID, memberID string, orderTotal int64) error {
+	if client == nil || retailerID == "" || memberID == "" || orderTotal <= 0 {
+		return nil
+	}
+	row, err := client.Single().ReadRow(ctx, "RetailerFamilyMembers",
+		spanner.Key{retailerID, memberID},
+		[]string{"SpendingLimitUzs"},
+	)
+	if err != nil {
+		return fmt.Errorf("family member not found")
+	}
+	var limit spanner.NullInt64
+	if err := row.Columns(&limit); err != nil {
+		return fmt.Errorf("family member limit lookup failed")
+	}
+	if !limit.Valid || limit.Int64 <= 0 {
+		return nil
+	}
+	if orderTotal > limit.Int64 {
+		return fmt.Errorf("order total exceeds family member spending limit")
+	}
+	return nil
+}
+
+// HandleUpdateFamilyMember updates cosmetic fields for a family sub-profile.
+// PATCH /v1/retailer/family-members/{id}
+func HandleUpdateFamilyMember(client *spanner.Client, invalidate func(context.Context, ...string)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		claims, ok := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
+		if !ok || claims == nil {
+			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+
+		parts := strings.Split(strings.TrimRight(r.URL.Path, "/"), "/")
+		memberID := ""
+		if len(parts) > 0 {
+			memberID = parts[len(parts)-1]
+		}
+		if memberID == "" || memberID == "family-members" {
+			http.Error(w, `{"error":"member_id required"}`, http.StatusBadRequest)
+			return
+		}
+
+		var req struct {
+			SpendingLimitUzs *int64 `json:"spending_limit_uzs"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"error":"invalid payload"}`, http.StatusBadRequest)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+
+		cols := []string{"RetailerId", "MemberId"}
+		vals := []interface{}{claims.UserID, memberID}
+		if req.SpendingLimitUzs != nil {
+			cols = append(cols, "SpendingLimitUzs")
+			vals = append(vals, *req.SpendingLimitUzs)
+		}
+		if len(cols) == 2 {
+			http.Error(w, `{"error":"no fields to update"}`, http.StatusBadRequest)
+			return
+		}
+
+		_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{
+				spanner.Update("RetailerFamilyMembers", cols, vals),
+			})
+		})
+		if err != nil {
+			log.Printf("[FAMILY_MEMBER] Update failed: %v", err)
+			http.Error(w, `{"error":"update failed"}`, http.StatusInternalServerError)
+			return
+		}
+
+		if invalidate != nil {
+			invalidate(ctx, "profile:retailer:"+claims.UserID)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"status":    "UPDATED",
 			"member_id": memberID,
 		})
 	}

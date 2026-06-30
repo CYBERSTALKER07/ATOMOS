@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
@@ -353,4 +354,48 @@ func (r *inMemoryPaymentRepo) SummarizeLedgerEntries(_ context.Context, q paymen
 		rows = rows[:groupLimit]
 	}
 	return rows, nil
+}
+
+func (r *inMemoryPaymentRepo) FindStuckSessions(_ context.Context, cutoff time.Time, limit int) ([]payment.SessionRecord, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var stuck []payment.SessionRecord
+	for _, s := range r.sessions {
+		if s.Status == "AWAITING_PAYMENT" && s.UpdatedAt.Before(cutoff) {
+			stuck = append(stuck, s)
+		}
+	}
+	if len(stuck) > limit {
+		stuck = stuck[:limit]
+	}
+	return stuck, nil
+}
+
+func (r *inMemoryPaymentRepo) GetSession(_ context.Context, sessionID string) (payment.SessionRecord, bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	s, ok := r.sessions[sessionID]
+	return s, ok, nil
+}
+
+func (r *inMemoryPaymentRepo) HasChargebackForOrder(_ context.Context, orderID string) (bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, c := range r.chargebacks {
+		if c.OrderID == orderID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (r *inMemoryPaymentRepo) GetSessionByOrderID(_ context.Context, orderID string) (payment.SessionRecord, bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, s := range r.sessions {
+		if s.OrderID == orderID {
+			return s, true, nil
+		}
+	}
+	return payment.SessionRecord{}, false, nil
 }

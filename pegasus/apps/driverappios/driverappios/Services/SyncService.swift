@@ -20,6 +20,7 @@ struct SyncDeliveryDTO: Sendable {
     let signature: String
     let timestamp: Double
     let status: String
+    let idempotencyKey: String
 }
 
 // MARK: - Protocol

@@ -132,6 +132,12 @@ interface PegasusApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): JsonElement
 
+    @PATCH("/v1/retailer/family-members/{memberID}")
+    suspend fun updateFamilyMember(
+        @Path("memberID") memberId: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+    ): JsonElement
+
     // ── Analytics ──
     @GET("/v1/retailer/analytics/expenses")
     suspend fun getRetailerExpenses(): RetailerAnalytics

@@ -161,7 +161,7 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 			Mode:            ExecutionModeDirect,
 			PolicySource:    "SUPPLIER_DEFAULT",
 		}, nil
-	case ExecutionActionCheckoutInit, ExecutionActionCheckoutCapture:
+	case ExecutionActionCheckoutInit, ExecutionActionCheckoutCapture, ExecutionActionStatusCheck:
 		// handled below
 	default:
 		return ExecutionResult{}, &GatewayPolicyError{
@@ -232,6 +232,56 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 			Mode:            ExecutionModeDirect,
 			PolicySource:    "SUPPLIER_DEFAULT",
 			ProviderRef:     ref,
+		}, nil
+	}
+
+	if req.Action == ExecutionActionStatusCheck {
+		if e.username == "" || e.password == "" {
+			return ExecutionResult{
+				ResolvedGateway: "GLOBAL_PAY",
+				Mode:            ExecutionModeDirect,
+				PolicySource:    "SUPPLIER_DEFAULT",
+				ProviderRef:     "gp_status_stub_paid", // Stub paid status
+			}, nil
+		}
+		token, err := e.authenticate(ctx)
+		if err != nil {
+			return ExecutionResult{}, err
+		}
+		paymentID := strings.TrimSpace(req.SessionID)
+		if paymentID == "" {
+			paymentID = strings.TrimSpace(req.OrderID)
+		}
+		url := fmt.Sprintf("%s/payments/v2/payment/%s", e.getBackofficeBaseURL(), paymentID)
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return ExecutionResult{}, err
+		}
+		httpReq.Header.Set("Authorization", "Bearer "+token)
+		var statusResp struct {
+			Status string `json:"status"`
+		}
+		err = e.doHTTP(ctx, func(callCtx context.Context) error {
+			resp, err := e.httpClient.Do(httpReq.WithContext(callCtx))
+			if err != nil {
+				return MarkRetryable(fmt.Errorf("globalpay status request failed: %w", err))
+			}
+			defer resp.Body.Close()
+			respBody, _ := io.ReadAll(resp.Body)
+			if resp.StatusCode != http.StatusOK {
+				return fmt.Errorf("globalpay status failed with status %d: %s", resp.StatusCode, string(respBody))
+			}
+			_ = json.Unmarshal(respBody, &statusResp)
+			return nil
+		})
+		if err != nil {
+			return ExecutionResult{}, err
+		}
+		return ExecutionResult{
+			ResolvedGateway: "GLOBAL_PAY",
+			Mode:            ExecutionModeDirect,
+			PolicySource:    "SUPPLIER_DEFAULT",
+			ProviderRef:     statusResp.Status, // Using ProviderRef to carry status
 		}, nil
 	}
 

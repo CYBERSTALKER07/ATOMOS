@@ -223,3 +223,8 @@ func (s *Service) invalidate(ctx context.Context, supplierID string) {
 	}
 	s.cache.Invalidate(ctx, "promotions:supplier:"+supplierID)
 }
+
+// RedeemPromotion atomically increments a promotion's redemption count.
+func (s *Service) RedeemPromotion(ctx context.Context, promotionID string) error {
+	return s.repo.RedeemPromotion(ctx, promotionID)
+}

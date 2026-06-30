@@ -1176,7 +1176,7 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 	tracking.DeliveryToken = trackingDeliveryToken(tracking.OrderID, storedDeliveryToken, tracking.Status)
 	tracking.PaymentStatus = trackingPaymentStatus(tracking.Status)
 	orderRow := orderRowForExpectation(tracking, source, deliverBefore, requestedDelivery, deliveryPriority, confirmationStatus, proposedDelivery, receivingOpen, receivingClose)
-	exp := order.ComputeDeliveryExpectation(time.Now().UTC(), orderRow)
+	exp := order.ComputeDeliveryExpectation(time.Now().UTC(), time.UTC, orderRow)
 	tracking.DeliveryExpectation = &exp
 	return tracking, nil
 }

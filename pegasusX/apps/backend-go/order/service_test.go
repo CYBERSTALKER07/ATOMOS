@@ -98,6 +98,23 @@ func (r *testRepo) UpdateOrder(ctx context.Context, o Order, proofs []DeliveryPr
 	return nil
 }
 
+func (r *testRepo) ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error) error {
+	if r.updateErr != nil {
+		return r.updateErr
+	}
+	r.updateCalls++
+	if emit != nil {
+		buf := &testTxnBuffer{}
+		if err := emit(buf); err != nil {
+			return err
+		}
+		r.bufferedEvents += len(buf.events)
+		r.lastEvents = append(r.lastEvents, buf.events...)
+	}
+	return nil
+}
+
+
 func (r *testRepo) GetOrder(_ context.Context, _ string) (Order, bool, error) {
 	if r.getErr != nil {
 		return Order{}, false, r.getErr
@@ -119,6 +136,26 @@ func (r *testRepo) ListRetailerOrders(_ context.Context, retailerID string, limi
 }
 
 func (r *testRepo) ListWarehouseOrdersByDeliveryWindow(_ context.Context, warehouseID string, from, to time.Time, limit int) ([]Order, error) {
+	if r.getErr != nil {
+		return nil, r.getErr
+	}
+	if !r.found {
+		return nil, nil
+	}
+	return []Order{r.order}, nil
+}
+
+func (r *testRepo) ListOrdersByStatus(ctx context.Context, supplierID string, status string, limit int) ([]Order, error) {
+	if r.getErr != nil {
+		return nil, r.getErr
+	}
+	if !r.found {
+		return nil, nil
+	}
+	return []Order{r.order}, nil
+}
+
+func (r *testRepo) ListBackorderedOrders(ctx context.Context, limit int) ([]Order, error) {
 	if r.getErr != nil {
 		return nil, r.getErr
 	}

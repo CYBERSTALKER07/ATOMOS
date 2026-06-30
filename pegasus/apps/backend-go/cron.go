@@ -429,7 +429,7 @@ func StartStaleOrderAuditor(spannerClient *spanner.Client, refundSvc *payment.Re
 
 			quarIter := spannerClient.Single().Query(ctx, quarStmt)
 			type quarantineOrder struct {
-				orderID            string
+				orderID           string
 				hasSettledPayment bool
 			}
 			var quarantineOrders []quarantineOrder

@@ -35,14 +35,19 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ShieldMoon
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -69,6 +74,7 @@ import com.pegasus.driver.ui.theme.PegasusSpacing
 import com.pegasus.driver.ui.theme.LocalPegasusColors
 import com.pegasus.driver.ui.theme.MotionTokens
 import com.pegasus.driver.ui.theme.formattedAmount
+import com.pegasus.driver.util.BatteryGuard
 import com.pegasus.driver.ui.theme.pressable
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -381,9 +387,63 @@ private fun TransitControlCard(
 ) {
     val lab = LocalPegasusColors.current
     val context = LocalContext.current
+    var showBatteryWarn by remember { mutableStateOf(false) }
+    var batteryBlockMessage by remember { mutableStateOf<String?>(null) }
     val loadedOrders = orders.filter { it.state == OrderState.LOADED }
     val inTransitOrders = orders.filter {
         it.state == OrderState.IN_TRANSIT || it.state == OrderState.ARRIVING
+    }
+
+    fun attemptDepart() {
+        when (BatteryGuard.departGate(context)) {
+            BatteryGuard.DepartGate.BLOCK_CRITICAL -> {
+                val level = BatteryGuard.currentLevelPercent(context)
+                batteryBlockMessage = "Battery too low ($level%). Charge above ${BatteryGuard.BLOCK_THRESHOLD}% before starting route."
+            }
+            BatteryGuard.DepartGate.WARN_LOW -> showBatteryWarn = true
+            BatteryGuard.DepartGate.OK -> {
+                val intent =
+                    Intent(context, TelemetryService::class.java).apply {
+                        action = TelemetryService.ACTION_START
+                    }
+                context.startForegroundService(intent)
+                onDepart()
+            }
+        }
+    }
+
+    batteryBlockMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { batteryBlockMessage = null },
+            title = { Text("Cannot Start Route") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { batteryBlockMessage = null }) { Text("OK") }
+            }
+        )
+    }
+
+    if (showBatteryWarn) {
+        val level = BatteryGuard.currentLevelPercent(context)
+        AlertDialog(
+            onDismissRequest = { showBatteryWarn = false },
+            title = { Text("Low Battery") },
+            text = { Text("Battery is at $level%. Field ops work best above ${BatteryGuard.WARN_THRESHOLD}%. Start route anyway?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showBatteryWarn = false
+                    val intent =
+                        Intent(context, TelemetryService::class.java).apply {
+                            action = TelemetryService.ACTION_START
+                        }
+                    context.startForegroundService(intent)
+                    onDepart()
+                }) { Text("Start Anyway") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBatteryWarn = false }) { Text("Cancel") }
+            }
+        )
     }
 
     PegasusCard {
@@ -437,14 +497,7 @@ private fun TransitControlCard(
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                     Button(
-                        onClick = {
-                            val intent =
-                                Intent(context, TelemetryService::class.java).apply {
-                                    action = TelemetryService.ACTION_START
-                                }
-                            context.startForegroundService(intent)
-                            onDepart()
-                        },
+                        onClick = { attemptDepart() },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(PegasusSpacing.s48),

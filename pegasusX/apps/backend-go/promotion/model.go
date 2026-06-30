@@ -35,6 +35,8 @@ type Promotion struct {
 	MinOrderAmountMinor int64         `json:"min_order_amount_minor,omitempty"`
 	StartsAt            *time.Time    `json:"starts_at,omitempty"`
 	EndsAt              *time.Time    `json:"ends_at,omitempty"`
+	MaxRedemptions      int64         `json:"max_redemptions,omitempty"`
+	CurrentRedemptions  int64         `json:"current_redemptions"`
 	IsActive            bool          `json:"is_active"`
 	Priority            int64         `json:"priority"`
 	Version             int64         `json:"version"`

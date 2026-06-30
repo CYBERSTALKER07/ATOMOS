@@ -174,6 +174,127 @@ func (r *SpannerRepository) SaveWebhook(ctx context.Context, w WebhookRecord, em
 	return r.writeWithOutbox(ctx, emit, base, ledgerMutation(buildWebhookLedgerEntry(w)))
 }
 
+// FindStuckSessions reads sessions in AWAITING_PAYMENT state older than cutoff.
+func (r *SpannerRepository) FindStuckSessions(ctx context.Context, cutoff time.Time, limit int) ([]SessionRecord, error) {
+	if r == nil || r.client == nil {
+		return nil, fmt.Errorf("spanner payment repository: nil client")
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 100
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT SessionId, OrderId, SupplierId, RetailerId, Gateway, Currency, AmountMinor, Mode, Status, CreatedAt, UpdatedAt
+		      FROM PaymentSessions
+		      WHERE Status = 'AWAITING_PAYMENT' AND UpdatedAt < @cutoff
+		      LIMIT @lim`,
+		Params: map[string]any{
+			"cutoff": cutoff,
+			"lim":    int64(limit),
+		},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	var sessions []SessionRecord
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var s SessionRecord
+		if err := row.Columns(&s.SessionID, &s.OrderID, &s.SupplierID, &s.RetailerID, &s.Gateway, &s.Currency, &s.AmountMinor, &s.Mode, &s.Status, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, s)
+	}
+	return sessions, nil
+}
+
+// GetSession reads a single session by its SessionID.
+func (r *SpannerRepository) GetSession(ctx context.Context, sessionID string) (SessionRecord, bool, error) {
+	if r == nil || r.client == nil {
+		return SessionRecord{}, false, fmt.Errorf("spanner payment repository: nil client")
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT SessionId, OrderId, SupplierId, RetailerId, Gateway, Currency, AmountMinor, Mode, Status, CreatedAt, UpdatedAt
+		      FROM PaymentSessions
+		      WHERE SessionId = @sid`,
+		Params: map[string]any{"sid": sessionID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return SessionRecord{}, false, nil
+	}
+	if err != nil {
+		return SessionRecord{}, false, err
+	}
+	var s SessionRecord
+	if err := row.Columns(&s.SessionID, &s.OrderID, &s.SupplierID, &s.RetailerID, &s.Gateway, &s.Currency, &s.AmountMinor, &s.Mode, &s.Status, &s.CreatedAt, &s.UpdatedAt); err != nil {
+		return SessionRecord{}, false, err
+	}
+	return s, true, nil
+}
+
+// HasChargebackForOrder checks if a chargeback exists for a given OrderID.
+func (r *SpannerRepository) HasChargebackForOrder(ctx context.Context, orderID string) (bool, error) {
+	if r == nil || r.client == nil {
+		return false, fmt.Errorf("spanner payment repository: nil client")
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT 1
+		      FROM PaymentChargebacks
+		      WHERE OrderId = @oid
+		      LIMIT 1`,
+		Params: map[string]any{"oid": orderID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	_, err := iter.Next()
+	if err == iterator.Done {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// GetSessionByOrderID retrieves the latest session for a given order ID., if any.
+func (r *SpannerRepository) GetSessionByOrderID(ctx context.Context, orderID string) (SessionRecord, bool, error) {
+	if r == nil || r.client == nil {
+		return SessionRecord{}, false, fmt.Errorf("spanner payment repository: nil client")
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT SessionId, OrderId, SupplierId, RetailerId, Gateway, Currency, AmountMinor, Mode, Status, CreatedAt, UpdatedAt
+		      FROM PaymentSessions
+		      WHERE OrderId = @order_id
+		      ORDER BY CreatedAt DESC LIMIT 1`,
+		Params: map[string]any{"order_id": orderID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return SessionRecord{}, false, nil
+	}
+	if err != nil {
+		return SessionRecord{}, false, err
+	}
+	var s SessionRecord
+	if err := row.Columns(&s.SessionID, &s.OrderID, &s.SupplierID, &s.RetailerID, &s.Gateway, &s.Currency, &s.AmountMinor, &s.Mode, &s.Status, &s.CreatedAt, &s.UpdatedAt); err != nil {
+		return SessionRecord{}, false, err
+	}
+	return s, true, nil
+}
+
 // ListLedgerEntries reads bounded payment ledger entries using index-backed
 // filters and stale reads for low-contention operational access.
 func (r *SpannerRepository) ListLedgerEntries(ctx context.Context, q LedgerQuery) ([]LedgerEntryRecord, error) {

@@ -25,9 +25,9 @@ const (
 type DeliveryPriority string
 
 // ClassifyDelivery decides order source/status from mode and requested dates (Tashkent calendar days).
-func ClassifyDelivery(now time.Time, mode string, requestedDelivery *time.Time, deliverBefore *time.Time, minLeadDays, maxLeadDays int64) (OrderSource, Status, ConfirmationStatus, *time.Time, *time.Time, error) {
+func ClassifyDelivery(now time.Time, loc *time.Location, mode string, requestedDelivery *time.Time, deliverBefore *time.Time, minLeadDays, maxLeadDays int64) (OrderSource, Status, ConfirmationStatus, *time.Time, *time.Time, error) {
 	mode = normalizeDeliveryMode(mode)
-	today := proximity.TashkentTodayStart(now)
+	today := proximity.TodayStart(now, loc)
 	if minLeadDays <= 0 {
 		minLeadDays = PreorderMinScheduledLeadDays
 	}
@@ -40,8 +40,8 @@ func ClassifyDelivery(now time.Time, mode string, requestedDelivery *time.Time, 
 		if requestedDelivery == nil {
 			return "", "", "", nil, nil, errors.New("requested_delivery_date required for SCHEDULED mode")
 		}
-		deliveryDay := proximity.TashkentTodayStart(*requestedDelivery)
-		leadDays := calendarDaysBetween(today, deliveryDay)
+		deliveryDay := proximity.TodayStart(*requestedDelivery, loc)
+		leadDays := calendarDaysBetween(today, deliveryDay, loc)
 		if leadDays < int(minLeadDays) {
 			return "", "", "", nil, nil, fmt.Errorf("scheduled pre-order requires delivery at least %d calendar days ahead (got %d)", minLeadDays, leadDays)
 		}
@@ -59,8 +59,8 @@ func ClassifyDelivery(now time.Time, mode string, requestedDelivery *time.Time, 
 			latest = requestedDelivery
 		}
 		if latest != nil {
-			latestDay := proximity.TashkentTodayStart(*latest)
-			leadDays := calendarDaysBetween(today, latestDay)
+			latestDay := proximity.TodayStart(*latest, loc)
+			leadDays := calendarDaysBetween(today, latestDay, loc)
 			if leadDays < PreorderMinStandardLeadDays {
 				return "", "", "", nil, nil, fmt.Errorf("standard delivery earliest is T+%d (no same-day)", PreorderMinStandardLeadDays)
 			}
@@ -85,34 +85,42 @@ func normalizeDeliveryPriority(p string) DeliveryPriority {
 	return DeliveryPriorityStandard
 }
 
-func calendarDaysBetween(from, to time.Time) int {
-	from = proximity.TashkentTodayStart(from)
-	to = proximity.TashkentTodayStart(to)
+func calendarDaysBetween(from, to time.Time, loc *time.Location) int {
+	from = proximity.TodayStart(from, loc)
+	to = proximity.TodayStart(to, loc)
 	return int(to.Sub(from).Hours() / 24)
 }
 
 // PreorderLeadDays returns calendar days from now until requested delivery.
-func PreorderLeadDays(now time.Time, requestedDelivery *time.Time) int {
+func PreorderLeadDays(now time.Time, requestedDelivery *time.Time, loc *time.Location) int {
 	if requestedDelivery == nil {
 		return 0
 	}
-	return calendarDaysBetween(now, *requestedDelivery)
+	return calendarDaysBetween(now, *requestedDelivery, loc)
 }
 
 // PreorderEditLocked is true when retailer/warehouse edits are blocked (T-2).
-func PreorderEditLocked(now time.Time, o Order) bool {
+func PreorderEditLocked(now time.Time, loc *time.Location, o Order) bool {
 	if o.RequestedDeliveryDate == nil {
 		return false
 	}
 	if o.CancelLockedAt != nil && !o.CancelLockedAt.After(now) {
-		return true
+		if o.CancelLockExpiresAt == nil || !o.CancelLockExpiresAt.Before(now) {
+			return true
+		}
 	}
-	return PreorderLeadDays(now, o.RequestedDeliveryDate) <= PreorderEditLockDays
+	return PreorderLeadDays(now, o.RequestedDeliveryDate, loc) <= PreorderEditLockDays
 }
 
 // PreorderCancelLocked is true when retailer cancel is blocked.
 func PreorderCancelLocked(now time.Time, o Order) bool {
-	return o.CancelLockedAt != nil && !o.CancelLockedAt.After(now)
+	if o.CancelLockedAt == nil || o.CancelLockedAt.After(now) {
+		return false
+	}
+	if o.CancelLockExpiresAt != nil && o.CancelLockExpiresAt.Before(now) {
+		return false
+	}
+	return true
 }
 
 // PreorderGuardPhase returns long (L>=7) or compressed (3<=L<7) guard profile.

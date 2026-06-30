@@ -109,17 +109,18 @@ final class APIClient: @unchecked Sendable {
         try await get("v1/orders/\(id)")
     }
 
-    func submitDelivery(orderId: String, qrToken: String, latitude: Double, longitude: Double) async throws -> DeliverySubmitResponse {
+    func submitDelivery(orderId: String, qrToken: String, latitude: Double, longitude: Double, idempotencyKey: String? = nil) async throws -> DeliverySubmitResponse {
         let body = DeliverySubmitRequest(
             orderId: orderId,
             qrToken: qrToken,
             latitude: latitude,
             longitude: longitude
         )
+        let key = idempotencyKey ?? deterministicIdempotencyKey(action: "submit-delivery", orderId: orderId)
         return try await post(
             "v1/order/deliver",
             body: body,
-            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "submit-delivery", orderId: orderId)]
+            headers: ["Idempotency-Key": key]
         )
     }
 
@@ -141,9 +142,12 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
-    func completeOrder(orderId: String) async throws {
+    func completeOrder(orderId: String, podPhotoUrl: String? = nil) async throws {
         struct Resp: Decodable { let status: String }
-        let body = ["order_id": orderId]
+        var body: [String: String] = ["order_id": orderId]
+        if let podPhotoUrl, !podPhotoUrl.isEmpty {
+            body["pod_photo_url"] = podPhotoUrl
+        }
         let _: Resp = try await post(
             "v1/order/complete",
             body: body,

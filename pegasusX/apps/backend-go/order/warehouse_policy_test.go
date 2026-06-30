@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,15 +48,20 @@ func TestComputeOrderDeliveryFee_Tiers(t *testing.T) {
 }
 
 func TestClassifyDelivery_WarehouseLeadWindow(t *testing.T) {
-	now, err := time.Parse(time.RFC3339, "2026-06-17T10:00:00Z")
-	require.NoError(t, err)
-	tooSoon := now.AddDate(0, 0, 1)
-	_, _, _, _, _, err = ClassifyDelivery(now, DeliveryModeScheduled, &tooSoon, nil, 3, 90)
-	require.Error(t, err)
+	now := proximity.TashkentTodayStart(time.Now().UTC())
+	tooSoon := now.AddDate(0, 0, 2)
+	okDate := now.AddDate(0, 0, 4)
+	loc := proximity.TashkentLocation
 
-	okDate := now.AddDate(0, 0, 5)
-	source, status, _, _, _, err := ClassifyDelivery(now, DeliveryModeScheduled, &okDate, nil, 3, 90)
-	require.NoError(t, err)
+	_, _, _, _, _, err := ClassifyDelivery(now, loc, DeliveryModeScheduled, &tooSoon, nil, 3, 90)
+	if err == nil {
+		t.Errorf("expected error for T+2 scheduling against 3-day lead")
+	}
+
+	source, status, _, _, _, err := ClassifyDelivery(now, loc, DeliveryModeScheduled, &okDate, nil, 3, 90)
+	if err != nil {
+		t.Fatalf("unexpected error for T+4 scheduling: %v", err)
+	}
 	require.Equal(t, OrderSourceManualPreorder, source)
 	require.Equal(t, StatusScheduled, status)
 }

@@ -414,13 +414,14 @@ func handleOrderComplete(d Deps) http.HandlerFunc {
 			return
 		}
 		var req struct {
-			OrderID string `json:"order_id"`
+			OrderID     string `json:"order_id"`
+			PodPhotoURL string `json:"pod_photo_url"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" {
 			http.Error(w, "order_id required", http.StatusBadRequest)
 			return
 		}
-		supplierID, err := d.Order.CompleteOrder(r.Context(), req.OrderID)
+		supplierID, err := d.Order.CompleteOrder(r.Context(), req.OrderID, req.PodPhotoURL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return

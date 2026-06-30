@@ -111,6 +111,9 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 
 	driverRouteMap := make(map[string]int)
 
+	availableFleet := make([]AvailableDriver, len(fleet))
+	copy(availableFleet, fleet)
+
 	for _, cell := range cellOrder {
 		group := cellGroups[cell]
 		sort.Slice(group, func(i, j int) bool {
@@ -137,7 +140,7 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 					result.Routes[bestRoute].LoadedVolume += o.VolumeVU
 					placed = true
 				} else {
-					match, ok := SelectBestVehicle(0, fleet)
+					match, ok := SelectBestVehicle(0, availableFleet)
 					if ok {
 						geo.Assigned = true
 						driverRouteMap[match.Driver.DriverID] = len(result.Routes)
@@ -147,6 +150,14 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 							LoadedVolume: o.VolumeVU,
 							Orders:       []GeoOrder{geo},
 						})
+						
+						// Remove from available fleet
+						for i, d := range availableFleet {
+							if d.DriverID == match.Driver.DriverID {
+								availableFleet = append(availableFleet[:i], availableFleet[i+1:]...)
+								break
+							}
+						}
 						placed = true
 					}
 				}
@@ -171,7 +182,7 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 				continue
 			}
 
-			match, ok := SelectBestVehicle(o.VolumeVU, fleet)
+			match, ok := SelectBestVehicle(o.VolumeVU, availableFleet)
 			if !ok {
 				result.Orphans = append(result.Orphans, geo)
 				continue
@@ -185,16 +196,6 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 				continue
 			}
 
-			if ri, exists := driverRouteMap[match.Driver.DriverID]; exists {
-				remaining := result.Routes[ri].MaxVolume - result.Routes[ri].LoadedVolume
-				if remaining >= o.VolumeVU {
-					geo.Assigned = true
-					result.Routes[ri].Orders = append(result.Routes[ri].Orders, geo)
-					result.Routes[ri].LoadedVolume += o.VolumeVU
-					continue
-				}
-			}
-
 			geo.Assigned = true
 			driverRouteMap[match.Driver.DriverID] = len(result.Routes)
 			result.Routes = append(result.Routes, DispatchRoute{
@@ -203,6 +204,14 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 				LoadedVolume: o.VolumeVU,
 				Orders:       []GeoOrder{geo},
 			})
+			
+			// Remove from available fleet
+			for i, d := range availableFleet {
+				if d.DriverID == match.Driver.DriverID {
+					availableFleet = append(availableFleet[:i], availableFleet[i+1:]...)
+					break
+				}
+			}
 		}
 	}
 

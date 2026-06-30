@@ -138,6 +138,7 @@ func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Reques
 				"Status":        "PENDING",
 				"ProposedItems": string(itemsJSON),
 				"CreatedAt":     now.UTC(),
+				"ExpiresAt":     now.Add(10 * time.Minute).UTC(),
 			}),
 		}
 		for _, e := range buf.events {

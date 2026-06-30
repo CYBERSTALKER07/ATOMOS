@@ -22,7 +22,7 @@ func TestPreorderPromoteAtTMinusOne(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			lead := PreorderLeadDays(tc.now, &delivery)
+			lead := PreorderLeadDays(tc.now, &delivery, loc)
 			promote := lead <= 1
 			if promote != tc.want {
 				t.Fatalf("lead=%d promote=%v want %v", lead, promote, tc.want)

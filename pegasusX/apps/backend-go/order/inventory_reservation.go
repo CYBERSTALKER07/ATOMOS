@@ -17,11 +17,17 @@ func ReserveLineItemsInTxn(ctx context.Context, txn *spanner.ReadWriteTransactio
 		return nil
 	}
 	supplierID = strings.TrimSpace(supplierID)
+	// Aggregate quantities by SKU to avoid double-read/overwrite issues for duplicate SKUs
+	skuQuantities := make(map[string]int64)
 	for _, item := range lineItems {
 		sku := strings.TrimSpace(item.SKU)
 		if sku == "" || item.Quantity <= 0 {
 			continue
 		}
+		skuQuantities[sku] += item.Quantity
+	}
+
+	for sku, quantity := range skuQuantities {
 		row, err := txn.ReadRow(ctx, "SupplierInventoryV2",
 			spanner.Key{supplierID, warehouseID, sku},
 			[]string{"QuantityOnHand", "QuantityReserved"})
@@ -35,14 +41,14 @@ func ReserveLineItemsInTxn(ctx context.Context, txn *spanner.ReadWriteTransactio
 		if err := row.Columns(&qoh, &qr); err != nil {
 			return fmt.Errorf("decode inventory columns: %w", err)
 		}
-		if qoh-qr < item.Quantity {
-			return fmt.Errorf("%w: sku %s has %d available, requested %d", ErrInventoryExhausted, sku, qoh-qr, item.Quantity)
+		if qoh-qr < quantity {
+			return fmt.Errorf("%w: sku %s has %d available, requested %d", ErrInventoryExhausted, sku, qoh-qr, quantity)
 		}
 		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("SupplierInventoryV2", map[string]any{
 			"SupplierId":       supplierID,
 			"WarehouseId":      warehouseID,
 			"ProductId":        sku,
-			"QuantityReserved": qr + item.Quantity,
+			"QuantityReserved": qr + quantity,
 			"UpdatedAt":        spanner.CommitTimestamp,
 		})}); err != nil {
 			return fmt.Errorf("buffer inventory update: %w", err)

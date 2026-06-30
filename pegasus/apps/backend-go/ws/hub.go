@@ -115,6 +115,13 @@ func (h *FleetHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 		traceID = r.Header.Get("X-Request-Id")
 	}
 
+	h.mu.Lock()
+	active := len(h.clients)
+	h.mu.Unlock()
+	if !EnforceWSConnectionLimits(w, r, "fleet", clientIP(r), active) {
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "fleet hub websocket upgrade failed",

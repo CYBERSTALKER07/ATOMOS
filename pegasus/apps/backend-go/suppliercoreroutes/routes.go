@@ -50,6 +50,7 @@ type Deps struct {
 //	GET /v1/supplier/inventory/audit — inventory audit log
 //	GET /v1/supplier/orders          — supplier order queue
 //	POST /v1/supplier/orders/vet     — approve/reject supplier order
+//	POST /v1/supplier/orders/delay   — bulk delay active or scheduled orders
 func RegisterRoutes(r chi.Router, d Deps) {
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 	log := d.Log
@@ -73,6 +74,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierRole, log(withRegionScope(d.Vetting.HandleSupplierOrders))))
 	r.HandleFunc("/v1/supplier/orders/vet",
 		auth.RequireRole(supplierRole, log(withRegionScope(idem(d.Vetting.HandleVetOrder)))))
+	r.HandleFunc("/v1/supplier/orders/delay",
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(d.Vetting.HandleBulkOrderDelay)))))
 }
 
 func withMethodIdempotency(next http.HandlerFunc, middleware Middleware, methods ...string) http.HandlerFunc {

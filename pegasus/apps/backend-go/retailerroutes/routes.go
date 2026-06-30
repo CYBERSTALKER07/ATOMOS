@@ -20,6 +20,7 @@ import (
 	"backend-go/order"
 	"backend-go/payment"
 	"backend-go/proximity"
+	"backend-go/retailer"
 	"backend-go/settings"
 	"backend-go/supplier"
 	"backend-go/ws"
@@ -76,6 +77,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	retailerRole := []string{"RETAILER"}
 	log := d.Log
 
+	r.HandleFunc("/v1/retailer/loyalty/tier",
+		auth.RequireRole(retailerRole, log(retailer.HandleLoyaltyTier(d.Spanner))))
+	r.HandleFunc("/v1/retailer/orders/{orderID}/rating",
+		auth.RequireRole(retailerRole, log(retailer.HandleSubmitOrderRating(d.Spanner))))
 	r.HandleFunc("/v1/retailer/analytics/expenses",
 		auth.RequireRole(retailerRole, log(analytics.HandleGetRetailerExpenses(d.Spanner, d.ReadRouter))))
 	r.HandleFunc("/v1/retailer/analytics/detailed",
@@ -95,7 +100,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/retailer/family-members",
 		auth.RequireRole(retailerRole, log(familyMembersHandler(d))))
 	r.HandleFunc("/v1/retailer/family-members/{memberID}",
-		auth.RequireRole(retailerRole, log(auth.HandleDeleteFamilyMember(d.Spanner, retailerProfileInvalidator(d.Cache)))))
+		auth.RequireRole(retailerRole, log(familyMemberByIDHandler(d))))
 	r.HandleFunc("/v1/retailer/orders/confirm-ai",
 		auth.RequireRole(retailerRole, log(order.HandleConfirmAiOrder(d.Order))))
 	r.HandleFunc("/v1/retailer/orders/reject-ai",
@@ -144,6 +149,22 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(retailerRole, log(d.Empathy.HandleGetAutoOrderSettings)))
 	r.HandleFunc("/v1/ws/retailer",
 		auth.RequireRole(retailerRole, d.RetailerHub.HandleConnection))
+}
+
+func familyMemberByIDHandler(d Deps) http.HandlerFunc {
+	deleteMember := auth.HandleDeleteFamilyMember(d.Spanner, retailerProfileInvalidator(d.Cache))
+	updateMember := auth.HandleUpdateFamilyMember(d.Spanner, retailerProfileInvalidator(d.Cache))
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodDelete:
+			deleteMember(w, r)
+		case http.MethodPatch:
+			updateMember(w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}
 }
 
 func familyMembersHandler(d Deps) http.HandlerFunc {

@@ -124,9 +124,15 @@ fun FamilyMembersScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column {
+                                    Column(modifier = Modifier.weight(1f)) {
                                         Text(member.name, style = MaterialTheme.typography.titleMedium)
                                         Text(member.phone, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        val limitLabel = if (member.spendingLimitUzs > 0) {
+                                            "Limit: ${"%,d".format(member.spendingLimitUzs)} UZS"
+                                        } else {
+                                            "Limit: unlimited"
+                                        }
+                                        Text(limitLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     IconButton(onClick = { viewModel.deleteMember(member.id) }) {
                                         Icon(Icons.Rounded.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
@@ -143,6 +149,7 @@ fun FamilyMembersScreen(
     if (showAddDialog) {
         var name by remember { mutableStateOf("") }
         var phone by remember { mutableStateOf("") }
+        var spendingLimit by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
             title = { Text("Add Member") },
@@ -160,12 +167,19 @@ fun FamilyMembersScreen(
                         label = { Text("Phone") },
                         modifier = Modifier.fillMaxWidth()
                     )
+                    OutlinedTextField(
+                        value = spendingLimit,
+                        onValueChange = { spendingLimit = it.filter(Char::isDigit) },
+                        label = { Text("Spending limit (UZS, 0 = unlimited)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    if (name.isNotBlank() && phone.isNotBlank()) {
-                        viewModel.addMember(name, phone)
+                    if (name.isNotBlank()) {
+                        val limit = spendingLimit.toLongOrNull() ?: 0L
+                        viewModel.addMember(name, phone, spendingLimitUzs = limit)
                         showAddDialog = false
                     }
                 }) {

@@ -14,6 +14,9 @@ struct HomeView: View {
 
     @State private var appeared = false
     @State private var showNotificationInbox = false
+    @State private var showBatteryWarn = false
+    @State private var showBatteryBlock = false
+    @State private var batteryLevel = 100
 
     var body: some View {
         ScrollView {
@@ -107,6 +110,31 @@ struct HomeView: View {
         }
         .task {
             await vm.loadMissions()
+        }
+        .alert("Cannot Start Route", isPresented: $showBatteryBlock) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Battery too low (\(batteryLevel)%). Charge above \(BatteryGuard.blockThreshold)% before starting route.")
+        }
+        .alert("Low Battery", isPresented: $showBatteryWarn) {
+            Button("Start Anyway") {
+                Task { await vm.departRoute() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Battery is at \(batteryLevel)%. Field ops work best above \(BatteryGuard.warnThreshold)%.")
+        }
+    }
+
+    private func attemptDepart() {
+        batteryLevel = BatteryGuard.levelPercent
+        switch BatteryGuard.departGate() {
+        case .blockCritical:
+            showBatteryBlock = true
+        case .warnLow:
+            showBatteryWarn = true
+        case .ok:
+            Task { await vm.departRoute() }
         }
     }
 
@@ -278,7 +306,7 @@ struct HomeView: View {
                 }
 
                 Button {
-                    Task { await vm.departRoute() }
+                    attemptDepart()
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "truck.box.fill")

@@ -343,3 +343,74 @@ type PlatformEvent struct {
 	BaseEvent
 	SystemID string `json:"system_id,omitempty"`
 }
+
+// SupplyRequestEvent handles warehouse supply requests.
+type SupplyRequestEvent struct {
+	BaseEvent
+	RequestID   string `json:"request_id"`
+	WarehouseID string `json:"warehouse_id,omitempty"`
+	FactoryID   string `json:"factory_id,omitempty"`
+	Status      string `json:"status,omitempty"`
+	ItemCount   int    `json:"item_count,omitempty"`
+}
+
+// SystemEvent handles system-wide locks and updates.
+type SystemEvent struct {
+	BaseEvent
+	SystemID string `json:"system_id,omitempty"`
+	Version  string `json:"version,omitempty"`
+	LockName string `json:"lock_name,omitempty"`
+}
+
+// WarehouseTransferEvent handles inventory transfers.
+type WarehouseTransferEvent struct {
+	BaseEvent
+	TransferID    string `json:"transfer_id"`
+	FromWarehouse string `json:"from_warehouse,omitempty"`
+	ToWarehouse   string `json:"to_warehouse,omitempty"`
+	Status        string `json:"status,omitempty"`
+}
+
+// DeliverySessionEvent handles driver delivery sessions.
+type DeliverySessionEvent struct {
+	BaseEvent
+	SessionID string `json:"session_id"`
+	DriverID  string `json:"driver_id"`
+	Status    string `json:"status,omitempty"`
+}
+
+// ShopClosedEvent handles shop closure reporting.
+type ShopClosedEvent struct {
+	BaseEvent
+	ReportID   string `json:"report_id"`
+	RetailerID string `json:"retailer_id"`
+	DriverID   string `json:"driver_id"`
+	Status     string `json:"status,omitempty"`
+}
+
+// NegotiationEvent handles order price negotiations.
+type NegotiationEvent struct {
+	BaseEvent
+	NegotiationID string `json:"negotiation_id"`
+	OrderID       string `json:"order_id"`
+	RetailerID    string `json:"retailer_id"`
+	Status        string `json:"status,omitempty"`
+}
+
+// ReturnEvent handles product returns.
+type ReturnEvent struct {
+	BaseEvent
+	ReturnID   string `json:"return_id"`
+	OrderID    string `json:"order_id"`
+	RetailerID string `json:"retailer_id"`
+	Status     string `json:"status,omitempty"`
+}
+
+// PreOrderEvent handles pre-order lifecycle.
+type PreOrderEvent struct {
+	BaseEvent
+	PreOrderID string `json:"pre_order_id"`
+	RetailerID string `json:"retailer_id"`
+	SupplierID string `json:"supplier_id"`
+	Status     string `json:"status,omitempty"`
+}

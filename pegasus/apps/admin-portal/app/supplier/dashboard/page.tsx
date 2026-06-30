@@ -1,9 +1,11 @@
 'use client';
 
 import VelocityChart from '@/components/VelocityChart';
+import Sparkline from '@/components/Sparkline';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { apiFetch } from '@/lib/auth';
+import type { SLAEntry, LoadBucket, NodeMetric } from '@/hooks/useAnalytics';
 
 interface SkuVelocity {
   sku_id: string;
@@ -23,6 +25,10 @@ interface DemandSummary {
 export default function SupplierDashboard() {
   const [velocityData, setVelocityData] = useState<SkuVelocity[]>([]);
   const [demand, setDemand] = useState<DemandSummary | null>(null);
+  const [slaHealth, setSlaHealth] = useState<SLAEntry[]>([]);
+  const [loadDistribution, setLoadDistribution] = useState<LoadBucket[]>([]);
+  const [nodeEfficiency, setNodeEfficiency] = useState<NodeMetric[]>([]);
+  const [returnCount, setReturnCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -34,6 +40,21 @@ export default function SupplierDashboard() {
       apiFetch('/v1/supplier/analytics/demand/today')
         .then(res => res.ok ? res.json() : null)
         .then(json => { if (json) setDemand(json); }),
+      apiFetch('/v1/supplier/analytics/sla-health')
+        .then(res => res.ok ? res.json() : [])
+        .then(json => setSlaHealth(Array.isArray(json) ? json : [])),
+      apiFetch('/v1/supplier/analytics/load-distribution')
+        .then(res => res.ok ? res.json() : [])
+        .then(json => setLoadDistribution(Array.isArray(json) ? json : [])),
+      apiFetch('/v1/supplier/analytics/node-efficiency')
+        .then(res => res.ok ? res.json() : [])
+        .then(json => setNodeEfficiency(Array.isArray(json) ? json : [])),
+      apiFetch('/v1/supplier/returns?limit=1')
+        .then(res => res.ok ? res.json() : null)
+        .then(json => {
+          if (json && typeof json.total === 'number') setReturnCount(json.total);
+          else if (json?.data) setReturnCount(json.data.length);
+        }),
     ])
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -45,6 +66,31 @@ export default function SupplierDashboard() {
     ? velocityData.reduce((top, cur) => cur.gross_volume > top.gross_volume ? cur : top)
     : null;
   const avgVelocity = velocityData.length > 0 ? Math.round(totalPallets / velocityData.length) : 0;
+
+  const slaBreachPct = useMemo(() => {
+    const breached = slaHealth.reduce((sum, d) => sum + d.breached, 0);
+    const total = slaHealth.reduce((sum, d) => sum + d.total_orders, 0);
+    return total > 0 ? (breached / total) * 100 : 0;
+  }, [slaHealth]);
+
+  const avgDeliveryHours = useMemo(() => {
+    if (nodeEfficiency.length === 0) return 0;
+    const avgMin = nodeEfficiency.reduce((sum, n) => sum + n.avg_cycle_min, 0) / nodeEfficiency.length;
+    return avgMin / 60;
+  }, [nodeEfficiency]);
+
+  const returnRatePct = useMemo(() => {
+    const completed = slaHealth.reduce((sum, d) => sum + d.on_time + d.late + d.breached, 0);
+    return completed > 0 ? (returnCount / completed) * 100 : 0;
+  }, [returnCount, slaHealth]);
+
+  const fleetUtilSparkline = useMemo(
+    () => loadDistribution.map((b) => b.avg_load_pct),
+    [loadDistribution],
+  );
+  const fleetUtilAvg = fleetUtilSparkline.length
+    ? fleetUtilSparkline.reduce((a, b) => a + b, 0) / fleetUtilSparkline.length
+    : 0;
 
   if (loading) {
     return (
@@ -153,6 +199,31 @@ export default function SupplierDashboard() {
           </div>
         </div>
       )}
+
+      {/* Operational KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        {[
+          { label: 'SLA Breach %', value: `${slaBreachPct.toFixed(1)}%`, sub: '30-day window' },
+          { label: 'Avg Delivery Time', value: avgDeliveryHours > 0 ? `${avgDeliveryHours.toFixed(1)}h` : '—', sub: 'order cycle' },
+          { label: 'Return Rate', value: `${returnRatePct.toFixed(1)}%`, sub: `${returnCount} open returns` },
+          {
+            label: 'Fleet Utilization',
+            value: fleetUtilAvg > 0 ? `${fleetUtilAvg.toFixed(0)}%` : '—',
+            spark: fleetUtilSparkline,
+          },
+        ].map(({ label, value, sub, spark }, i) => (
+          <div key={label} className="md-card md-card-elevated p-6 flex flex-col justify-between md-animate-in" style={{ animationDelay: `${i * 50}ms` }}>
+            <p className="md-typescale-label-small mb-4" style={{ color: 'var(--muted)' }}>{label}</p>
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="md-typescale-headline-small" style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+                {sub && <p className="md-typescale-label-small mt-1" style={{ color: 'var(--border)' }}>{sub}</p>}
+              </div>
+              {spark && spark.length > 0 && <Sparkline values={spark} />}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* KPI Grid — M3 Filled Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">

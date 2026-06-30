@@ -3,6 +3,8 @@ package order
 import (
 	"testing"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 )
 
 func tashkentDate(y, m, d int) time.Time {
@@ -17,7 +19,8 @@ func TestComputeDeliveryExpectation_standard(t *testing.T) {
 		Status:        StatusPending,
 		DeliverBefore: &deliver,
 	}
-	exp := ComputeDeliveryExpectation(now, o)
+	loc := proximity.TashkentLocation
+	exp := ComputeDeliveryExpectation(now, loc, o)
 	if exp.Kind != ExpectationKindStandard {
 		t.Fatalf("kind=%s", exp.Kind)
 	}
@@ -38,7 +41,8 @@ func TestComputeDeliveryExpectation_express(t *testing.T) {
 		DeliveryPriority: DeliveryPriorityExpress,
 		DeliverBefore:    &deliver,
 	}
-	exp := ComputeDeliveryExpectation(now, o)
+	loc := proximity.TashkentLocation
+	exp := ComputeDeliveryExpectation(now, loc, o)
 	if exp.Kind != ExpectationKindExpress {
 		t.Fatalf("kind=%s", exp.Kind)
 	}
@@ -55,7 +59,8 @@ func TestComputeDeliveryExpectation_preorder_scheduled_far(t *testing.T) {
 		Status:                StatusScheduled,
 		RequestedDeliveryDate: &requested,
 	}
-	exp := ComputeDeliveryExpectation(now, o)
+	loc := proximity.TashkentLocation
+	exp := ComputeDeliveryExpectation(now, loc, o)
 	if exp.Kind != ExpectationKindScheduledPreorder {
 		t.Fatalf("kind=%s", exp.Kind)
 	}
@@ -73,7 +78,8 @@ func TestComputeDeliveryExpectation_proposal_pending(t *testing.T) {
 		ConfirmationStatus:   ConfirmationStatusPendingWarehouse,
 		ProposedDeliveryDate: &proposed,
 	}
-	exp := ComputeDeliveryExpectation(now, o)
+	loc := proximity.TashkentLocation
+	exp := ComputeDeliveryExpectation(now, loc, o)
 	if exp.Kind != ExpectationKindProposalPending {
 		t.Fatalf("kind=%s", exp.Kind)
 	}
@@ -90,7 +96,8 @@ func TestComputeDeliveryExpectation_delayed_standard(t *testing.T) {
 		Status:        StatusPending,
 		DeliverBefore: &deliver,
 	}
-	exp := ComputeDeliveryExpectation(now, o)
+	loc := proximity.TashkentLocation
+	exp := ComputeDeliveryExpectation(now, loc, o)
 	if !exp.Delayed {
 		t.Fatal("expected delayed")
 	}
@@ -107,7 +114,8 @@ func TestComputeDeliveryExpectation_warehouse_delayed_status(t *testing.T) {
 		Status:        StatusDelayed,
 		DeliverBefore: &deliver,
 	}
-	exp := ComputeDeliveryExpectation(now, o)
+	loc := proximity.TashkentLocation
+	exp := ComputeDeliveryExpectation(now, loc, o)
 	if !exp.Delayed || exp.DelayReason == "" {
 		t.Fatal("expected warehouse delay reason")
 	}
@@ -121,7 +129,8 @@ func TestComputeDeliveryExpectation_completed_not_delayed(t *testing.T) {
 		Status:        StatusCompleted,
 		DeliverBefore: &deliver,
 	}
-	exp := ComputeDeliveryExpectation(now, o)
+	loc := proximity.TashkentLocation
+	exp := ComputeDeliveryExpectation(now, loc, o)
 	if exp.Delayed {
 		t.Fatal("completed orders must not be delayed")
 	}

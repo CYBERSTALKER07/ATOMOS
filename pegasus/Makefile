@@ -42,7 +42,7 @@ require-env:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 .PHONY: help env-up env-down env-status optimizer-sim-up optimizer-sim-down optimizer-sim-bootstrap spanner-init seed simulate test-e2e \
-	build clean nuke full-reset dev-ip dev-devices sprint1-gate \
+	build clean nuke full-reset dev-ip dev-devices sprint1-gate gen-contracts-gate \
 	desktop-dev desktop-build desktop-build-mac desktop-build-win desktop-check desktop-clean
 
 ## ── help: Display available targets ────────────────────────────────────────
@@ -185,6 +185,11 @@ sprint1-gate: ## Run Sprint-1 enterprise execution gate and emit report JSON
 	if [ -n "$$head" ]; then args="$$args --head-sha $$head"; fi; \
 	/usr/bin/python3 scripts/sprint1_execution_gate.py $$args
 	@echo "═══ Sprint-1 gate report written to pegasus/.execution/sprint1/gate-report.json ═══"
+
+## ── gen-contracts-gate: Verify events.schema.json matches gen-contracts ───
+gen-contracts-gate: ## Verify contracts/events.schema.json matches backend gen-contracts output
+	@chmod +x scripts/parity/gen_contracts_gate.sh
+	@bash scripts/parity/gen_contracts_gate.sh
 
 ## ── clean: Remove build artifacts ─────────────────────────────────────────
 clean: ## Clean build artifacts

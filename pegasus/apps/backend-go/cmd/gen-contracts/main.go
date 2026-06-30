@@ -199,20 +199,23 @@ func main() {
 
 func resolveSourcePath(explicit string) (string, error) {
 	if explicit != "" {
-		if fileExists(explicit) {
+		info, err := os.Stat(explicit)
+		if err == nil {
+			if info.IsDir() {
+				return explicit, nil
+			}
 			return explicit, nil
 		}
 		return "", fmt.Errorf("source not found: %s", explicit)
 	}
 
 	candidates := []string{
-		"internal/events/events.go",
-		"kafka/events.go",
-		"pegasus/apps/backend-go/internal/events/events.go",
-		"pegasus/apps/backend-go/kafka/events.go",
+		"events",
+		"internal/events",
+		"kafka",
 	}
 	for _, candidate := range candidates {
-		if fileExists(candidate) {
+		if _, err := os.Stat(candidate); err == nil {
 			return candidate, nil
 		}
 	}
@@ -230,11 +233,38 @@ func fileExists(path string) bool {
 
 func extractRegistry(source string) (Registry, error) {
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, source, nil, parser.ParseComments)
+	
+	var files []*ast.File
+	info, err := os.Stat(source)
 	if err != nil {
 		return Registry{}, err
 	}
-	syncMode := fileHasSyncDirective(file)
+	
+	if info.IsDir() {
+		pkgs, err := parser.ParseDir(fset, source, nil, parser.ParseComments)
+		if err != nil {
+			return Registry{}, err
+		}
+		for _, pkg := range pkgs {
+			for _, file := range pkg.Files {
+				files = append(files, file)
+			}
+		}
+	} else {
+		file, err := parser.ParseFile(fset, source, nil, parser.ParseComments)
+		if err != nil {
+			return Registry{}, err
+		}
+		files = append(files, file)
+	}
+
+	syncMode := false
+	for _, file := range files {
+		if fileHasSyncDirective(file) {
+			syncMode = true
+			break
+		}
+	}
 
 	registry := Registry{
 		Source:      source,
@@ -244,17 +274,19 @@ func extractRegistry(source string) (Registry, error) {
 		Warnings:    make([]string, 0),
 	}
 
-	for _, decl := range file.Decls {
-		genDecl, ok := decl.(*ast.GenDecl)
-		if !ok {
-			continue
-		}
+	for _, file := range files {
+		for _, decl := range file.Decls {
+			genDecl, ok := decl.(*ast.GenDecl)
+			if !ok {
+				continue
+			}
 
-		switch genDecl.Tok {
-		case token.CONST:
-			extractConstants(genDecl, &registry, syncMode)
-		case token.TYPE:
-			extractStructs(fset, genDecl, &registry, syncMode)
+			switch genDecl.Tok {
+			case token.CONST:
+				extractConstants(genDecl, &registry, syncMode)
+			case token.TYPE:
+				extractStructs(fset, genDecl, &registry, syncMode)
+			}
 		}
 	}
 
@@ -313,6 +345,7 @@ func extractRegistry(source string) (Registry, error) {
 
 func extractConstants(genDecl *ast.GenDecl, registry *Registry, syncMode bool) {
 	declDir := parseSyncDirective(genDecl.Doc)
+	var lastSpecDir syncDirective
 
 	for _, spec := range genDecl.Specs {
 		valueSpec, ok := spec.(*ast.ValueSpec)
@@ -321,6 +354,12 @@ func extractConstants(genDecl *ast.GenDecl, registry *Registry, syncMode bool) {
 		}
 
 		specDir := parseSyncDirective(valueSpec.Doc, valueSpec.Comment)
+		if specDir.Enabled {
+			lastSpecDir = specDir
+		} else {
+			specDir = lastSpecDir
+		}
+		
 		active := declDir.Enabled || specDir.Enabled
 		if syncMode && !active {
 			continue
@@ -367,7 +406,7 @@ func extractStructs(fset *token.FileSet, genDecl *ast.GenDecl, registry *Registr
 
 		specDir := parseSyncDirective(typeSpec.Doc, typeSpec.Comment)
 		active := declDir.Enabled || specDir.Enabled
-		if syncMode && !active {
+		if syncMode && !active && !isLikelyPayloadStruct(typeSpec.Name.Name) {
 			continue
 		}
 		if !syncMode && !isLikelyPayloadStruct(typeSpec.Name.Name) {

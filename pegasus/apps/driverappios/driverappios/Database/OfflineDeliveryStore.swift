@@ -18,12 +18,29 @@ final class OfflineDeliveryStore {
 
     // MARK: - Create
 
-    func enqueue(orderId: String, signature: String, status: String) {
+    func enqueue(
+        orderId: String,
+        signature: String,
+        status: String,
+        deliverySessionId: String,
+        action: String = "deliver"
+    ) {
+        let pending = fetchPending()
+        let seq = pending.count + 1
+        let key = DriverIdempotency.offlineMutation(
+            deliverySessionId: deliverySessionId,
+            action: action,
+            seq: seq
+        )
         let delivery = OfflineDelivery(
             orderId: orderId,
             signature: signature,
             timestamp: Date().timeIntervalSince1970 * 1000,
-            status: status
+            status: status,
+            deliverySessionId: deliverySessionId,
+            action: action,
+            seq: seq,
+            idempotencyKey: key
         )
         modelContext.insert(delivery)
         try? modelContext.save()

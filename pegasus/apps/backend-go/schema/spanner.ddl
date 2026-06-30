@@ -127,7 +127,7 @@ CREATE TABLE Orders (
     CONSTRAINT CHK_Order_State CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'DISPATCHED', 'IN_TRANSIT',
                      'ARRIVING', 'ARRIVED', 'ARRIVED_SHOP_CLOSED', 'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION',
                      'COMPLETED', 'CANCELLED', 'CANCEL_REQUESTED', 'NO_CAPACITY', 'DELIVERED_ON_CREDIT',
-                     'SCHEDULED', 'AUTO_ACCEPTED', 'QUARANTINE', 'STALE_AUDIT', 'REFUNDED')),
+                     'SCHEDULED', 'AUTO_ACCEPTED', 'QUARANTINE', 'STALE_AUDIT', 'REFUNDED', 'WAITLISTED', 'PARTIALLY_DELIVERED')),
     CONSTRAINT CHK_GlobalPayntStatus CHECK (GlobalPayntStatus IN ('PENDING', 'AUTHORIZED', 'PENDING_CASH_COLLECTION', 'AWAITING_GATEWAY_WEBHOOK', 'PAID', 'FAILED'))
 ) PRIMARY KEY (OrderId);
 
@@ -474,6 +474,8 @@ CREATE TABLE Suppliers (
     PalletizationStandard    STRING(30),               -- LOOSE_CARTONS | EURO_PALLETS | MIXED
     CreatedAt                TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
 ) PRIMARY KEY (SupplierId);
+
+ALTER TABLE Suppliers ADD COLUMN DailyOrderCap INT64;
 
 CREATE INDEX Idx_Suppliers_ByPhone ON Suppliers(Phone);
 
@@ -1622,6 +1624,10 @@ CREATE TABLE RetailerFamilyMembers (
 -- ── II.5: CREDIT DELIVERY PHOTO PROOF (Edge 32) ─────────────────────────────
 -- Store photo proof URL on the order when delivered on credit.
 ALTER TABLE Orders ADD COLUMN CreditPhotoProofUrl STRING(MAX);
+ALTER TABLE Orders ADD COLUMN PodPhotoProofUrl STRING(MAX);
+
+-- Family member per-order spending caps (0 = unlimited)
+ALTER TABLE RetailerFamilyMembers ADD COLUMN SpendingLimitUzs INT64;
 
 -- ── II.6: EARLY ROUTE COMPLETE METADATA (Edge 27) ───────────────────────────
 -- Track fatigue/early-complete reason on the order for supplier analytics.
@@ -1727,6 +1733,16 @@ CREATE TABLE SupplyRequests (
 CREATE INDEX Idx_SupplyRequests_ByWarehouse ON SupplyRequests(WarehouseId, State);
 CREATE INDEX Idx_SupplyRequests_ByFactory ON SupplyRequests(FactoryId, State);
 CREATE INDEX Idx_SupplyRequests_BySupplierId ON SupplyRequests(SupplierId);
+
+-- Factory QC pass/fail inspection recorded per supply request.
+CREATE TABLE FactorySupplyRequestQC (
+    RequestId   STRING(36) NOT NULL,
+    Result      STRING(10) NOT NULL,
+    Notes       STRING(MAX),
+    InspectedBy STRING(36),
+    InspectedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+    CONSTRAINT CHK_FactoryQC_Result CHECK (Result IN ('PASS', 'FAIL'))
+) PRIMARY KEY (RequestId);
 
 -- ── IV.4: SUPPLY REQUEST ITEMS ──────────────────────────────────────────────
 -- Per-SKU line items within a supply request.
@@ -2147,6 +2163,50 @@ CREATE TABLE OutboxEvents (
 CREATE INDEX Idx_OutboxEvents_Unpublished
     ON OutboxEvents(PublishedAt, CreatedAt);
 
+-- Outbox relay retry metadata (Phase 1 audit item 8)
+ALTER TABLE OutboxEvents ADD COLUMN RetryCount INT64 NOT NULL DEFAULT (0);
+ALTER TABLE OutboxEvents ADD COLUMN LastError STRING(MAX);
+ALTER TABLE OutboxEvents ADD COLUMN LastErrorAt TIMESTAMP;
+
+CREATE TABLE OutboxDLQ (
+    EventId       STRING(36)   NOT NULL,
+    AggregateType STRING(30)   NOT NULL,
+    AggregateId   STRING(36)   NOT NULL,
+    EventType     STRING(60)   NOT NULL,
+    TopicName     STRING(100)  NOT NULL,
+    Payload       BYTES(MAX)   NOT NULL,
+    TraceID       STRING(36),
+    RetryCount    INT64        NOT NULL,
+    LastError     STRING(MAX),
+    CreatedAt     TIMESTAMP    NOT NULL,
+    MovedAt       TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (EventId);
+
+CREATE INDEX Idx_OutboxDLQ_MovedAt ON OutboxDLQ(MovedAt DESC);
+
+-- Pricing audit trail (Phase 1 audit item 12)
+CREATE TABLE PricingAuditLog (
+    AuditId          STRING(36)  NOT NULL,
+    OrderId          STRING(36),
+    InvoiceId        STRING(36),
+    SupplierId       STRING(36),
+    ActorId          STRING(64),
+    ActorType        STRING(20),
+    FeePolicyVersion STRING(40),
+    SelectedTierKey  STRING(60),
+    FeeBasisPoints   INT64,
+    FeeCapApplied    BOOL,
+    GrossAmount      INT64,
+    FeeAmount        INT64,
+    NetAmount        INT64,
+    BeforeSnapshot   JSON,
+    AfterSnapshot    JSON,
+    CreatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (AuditId);
+
+CREATE INDEX Idx_PricingAuditLog_OrderId ON PricingAuditLog(OrderId);
+CREATE INDEX Idx_PricingAuditLog_InvoiceId ON PricingAuditLog(InvoiceId);
+
 -- ── Phase XI: Asynchronous Optimization Job Substrate ─────────────────────
 -- OptimizationJobs is the durable ledger for externally queued solver work.
 -- The live supplier dispatch path still executes synchronously in this
@@ -2268,3 +2328,46 @@ ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State CHECK (State IN (
 -- pool. Clarke-Wright solver reads this to add a priority savings boost
 -- (recovery orders get first dibs on vehicle volume).
 ALTER TABLE Orders ADD COLUMN IsRecovery BOOL;
+
+-- ══ PHASE IV-V: ORDER ACTIVITY TIMELINE ═══════════════════════════════════════
+
+CREATE TABLE OrderActivityEvents (
+    ActivityId  STRING(36)  NOT NULL,
+    OrderId     STRING(36)  NOT NULL,
+    ActorId     STRING(36)  NOT NULL,
+    ActorRole   STRING(20)  NOT NULL,
+    EventType   STRING(50)  NOT NULL,
+    Summary     STRING(MAX),
+    Metadata    STRING(MAX),
+    GPSLat      FLOAT64,
+    GPSLng      FLOAT64,
+    CreatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (ActivityId);
+
+CREATE INDEX Idx_OrderActivityEvents_ByOrder ON OrderActivityEvents(OrderId, CreatedAt DESC);
+
+-- ══ PHASE V: RETAILER LOYALTY + POST-DELIVERY RATINGS ═══════════════════════
+
+CREATE TABLE RetailerLoyaltyTiers (
+    TierId        STRING(36)  NOT NULL,
+    RetailerId    STRING(36)  NOT NULL,
+    TierKey       STRING(30)  NOT NULL,
+    TierLabel     STRING(50)  NOT NULL,
+    PointsBalance INT64       NOT NULL DEFAULT (0),
+    UpdatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (TierId);
+
+CREATE UNIQUE INDEX Idx_RetailerLoyaltyTiers_ByRetailer ON RetailerLoyaltyTiers(RetailerId);
+
+CREATE TABLE RetailerRatings (
+    RatingId    STRING(36)  NOT NULL,
+    OrderId     STRING(36)  NOT NULL,
+    RetailerId  STRING(36)  NOT NULL,
+    SupplierId  STRING(36)  NOT NULL,
+    DriverId    STRING(36),
+    Stars       INT64       NOT NULL,
+    Comment     STRING(MAX),
+    CreatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (RatingId);
+
+CREATE UNIQUE INDEX Idx_RetailerRatings_ByOrder ON RetailerRatings(OrderId);

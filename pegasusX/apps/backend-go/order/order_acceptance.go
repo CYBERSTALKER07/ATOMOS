@@ -1,6 +1,7 @@
 package order
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -133,5 +134,6 @@ func findNextOpen(sched OperatingSchedule, from time.Time, loc *time.Location) *
 // AcceptanceWindowHash fingerprints the schedule for checkout policy tokens.
 func AcceptanceWindowHash(sched OperatingSchedule) string {
 	raw, _ := json.Marshal(sched)
-	return fmt.Sprintf("%x", raw)
+	hash := sha256.Sum256(raw)
+	return fmt.Sprintf("%x", hash)
 }

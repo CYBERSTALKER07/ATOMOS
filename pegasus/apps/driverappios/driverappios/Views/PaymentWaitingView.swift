@@ -19,6 +19,7 @@ struct PaymentWaitingView: View {
     @State private var isSettled = false
     @State private var isCompleting = false
     @State private var errorMessage: String?
+    @State private var podPhotoStubUrl: String?
     @State private var driverSocketState = DriverSocketState.shared
 
     var body: some View {
@@ -71,6 +72,26 @@ struct PaymentWaitingView: View {
             }
 
             // MARK: - Complete Button
+            if podPhotoStubUrl == nil {
+                Button {
+                    podPhotoStubUrl = "stub://pod/\(orderId)/\(Int(Date().timeIntervalSince1970 * 1000))"
+                } label: {
+                    Text("Add POD Photo (optional)")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(LabTheme.fg)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(LabTheme.fg.opacity(0.08), in: .rect(cornerRadius: LabTheme.buttonRadius))
+                }
+                .padding(.horizontal, LabTheme.s24)
+                .padding(.bottom, LabTheme.s12)
+            } else {
+                Text("POD photo attached")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(LabTheme.success)
+                    .padding(.bottom, LabTheme.s12)
+            }
+
             Button {
                 completeDelivery()
             } label: {
@@ -121,7 +142,7 @@ struct PaymentWaitingView: View {
         errorMessage = nil
         Task {
             do {
-                try await FleetServiceLive.shared.completeOrder(orderId: orderId)
+                try await APIClient.shared.completeOrder(orderId: orderId, podPhotoUrl: podPhotoStubUrl)
                 Haptics.success()
                 onCompleted()
             } catch {

@@ -114,6 +114,23 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 			gpsLat, gpsLng = orderLat, orderLng
 		}
 
+		// Check for max retries
+		countStmt := spanner.Statement{
+			SQL:    `SELECT COUNT(*) FROM ShopClosedAttempts WHERE OrderId = @oid`,
+			Params: map[string]any{"oid": req.OrderID},
+		}
+		countIter := txn.Query(ctx, countStmt)
+		countRow, countErr := countIter.Next()
+		countIter.Stop()
+		if countErr == nil {
+			var attemptsCount int64
+			if err := countRow.Columns(&attemptsCount); err == nil {
+				if attemptsCount >= 3 {
+					return fmt.Errorf("shop_closed_max_retries")
+				}
+			}
+		}
+
 		buf := &spannerTxnBuffer{}
 		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, req.OrderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:  events.BaseEvent{Type: events.EventShopClosed, Timestamp: now.Format(time.RFC3339Nano)},
@@ -151,6 +168,14 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		return txn.BufferWrite(mutations)
 	})
 	if err != nil {
+		if err.Error() == "shop_closed_max_retries" {
+			updateClaims := auth.Claims{Role: auth.RoleAdmin, Subject: "system"}
+			updateReq := UpdateStatusRequest{Status: string(StatusCancelled), Reason: "shop_closed_max_retries"}
+			s.UpdateStatus(ctx, updateClaims, req.OrderID, updateReq)
+			s.log.WarnContext(ctx, "shop closed max retries reached, order cancelled", "order_id", req.OrderID)
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "max_retries_reached_order_cancelled"})
+			return
+		}
 		s.log.ErrorContext(ctx, "shop closed report failed", "order_id", req.OrderID, "err", err)
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return

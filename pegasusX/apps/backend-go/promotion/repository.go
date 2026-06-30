@@ -22,6 +22,7 @@ type Repository interface {
 	LookupProductCategories(ctx context.Context, productIDs []string) (map[string]string, error)
 	LookupListPrices(ctx context.Context, productIDs []string) (map[string]int64, error)
 	LookupActivePriceOverrides(ctx context.Context, supplierID, retailerID string, productIDs []string, now time.Time) (map[string]int64, error)
+	RedeemPromotion(ctx context.Context, promotionID string) error
 }
 
 // SpannerRepository implements Repository.
@@ -39,11 +40,12 @@ func (r *SpannerRepository) ListActiveBySupplier(ctx context.Context, supplierID
 	stmt := spanner.Statement{
 		SQL: `SELECT PromotionId, SupplierId, Name, Description, DiscountBps, ScopeType,
 			ScopeProductId, ScopeCategoryId, RetailerScope, RetailerIdsJson,
-			MinLineQuantity, MinOrderAmountMinor, StartsAt, EndsAt, IsActive, Priority, Version, CreatedAt, UpdatedAt
+			MinLineQuantity, MinOrderAmountMinor, StartsAt, EndsAt, MaxRedemptions, CurrentRedemptions, IsActive, Priority, Version, CreatedAt, UpdatedAt
 			FROM SupplierPromotions
 			WHERE SupplierId = @sid AND IsActive = TRUE
 			AND (StartsAt IS NULL OR StartsAt <= @now)
 			AND (EndsAt IS NULL OR EndsAt > @now)
+			AND (MaxRedemptions IS NULL OR MaxRedemptions = 0 OR CurrentRedemptions < MaxRedemptions)
 			ORDER BY Priority DESC, UpdatedAt DESC`,
 		Params: map[string]any{"sid": supplierID, "now": now},
 	}
@@ -55,7 +57,7 @@ func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID strin
 	stmt := spanner.Statement{
 		SQL: `SELECT PromotionId, SupplierId, Name, Description, DiscountBps, ScopeType,
 			ScopeProductId, ScopeCategoryId, RetailerScope, RetailerIdsJson,
-			MinLineQuantity, MinOrderAmountMinor, StartsAt, EndsAt, IsActive, Priority, Version, CreatedAt, UpdatedAt
+			MinLineQuantity, MinOrderAmountMinor, StartsAt, EndsAt, MaxRedemptions, CurrentRedemptions, IsActive, Priority, Version, CreatedAt, UpdatedAt
 			FROM SupplierPromotions
 			WHERE SupplierId = @sid
 			ORDER BY UpdatedAt DESC`,
@@ -69,7 +71,7 @@ func (r *SpannerRepository) GetByID(ctx context.Context, supplierID, promotionID
 	row, err := r.client.Single().ReadRow(ctx, "SupplierPromotions", spanner.Key{promotionID},
 		[]string{"PromotionId", "SupplierId", "Name", "Description", "DiscountBps", "ScopeType",
 			"ScopeProductId", "ScopeCategoryId", "RetailerScope", "RetailerIdsJson",
-			"MinLineQuantity", "MinOrderAmountMinor", "StartsAt", "EndsAt", "IsActive", "Priority", "Version", "CreatedAt", "UpdatedAt"})
+			"MinLineQuantity", "MinOrderAmountMinor", "StartsAt", "EndsAt", "MaxRedemptions", "CurrentRedemptions", "IsActive", "Priority", "Version", "CreatedAt", "UpdatedAt"})
 	if err != nil {
 		if errors.Is(err, spanner.ErrRowNotFound) {
 			return Promotion{}, false, nil
@@ -141,6 +143,8 @@ func (r *SpannerRepository) Upsert(ctx context.Context, p Promotion, emit func(*
 			"MinOrderAmountMinor": nullInt64(p.MinOrderAmountMinor),
 			"StartsAt":            nullTime(p.StartsAt),
 			"EndsAt":              nullTime(p.EndsAt),
+			"MaxRedemptions":      p.MaxRedemptions,
+			"CurrentRedemptions":  p.CurrentRedemptions,
 			"IsActive":            p.IsActive,
 			"Priority":            p.Priority,
 			"Version":             p.Version,
@@ -192,6 +196,32 @@ func (r *SpannerRepository) SetActive(ctx context.Context, supplierID, promotion
 	return err
 }
 
+// RedeemPromotion atomically increments CurrentRedemptions if MaxRedemptions allows it.
+func (r *SpannerRepository) RedeemPromotion(ctx context.Context, promotionID string) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, readErr := txn.ReadRow(ctx, "SupplierPromotions", spanner.Key{promotionID}, []string{"MaxRedemptions", "CurrentRedemptions"})
+		if readErr != nil {
+			return readErr
+		}
+		var maxRedemptions, currentRedemptions spanner.NullInt64
+		if err := row.Columns(&maxRedemptions, &currentRedemptions); err != nil {
+			return err
+		}
+		if maxRedemptions.Valid && maxRedemptions.Int64 > 0 {
+			if currentRedemptions.Int64 >= maxRedemptions.Int64 {
+				return fmt.Errorf("promotion redemption limit reached")
+			}
+		}
+		m := spanner.UpdateMap("SupplierPromotions", map[string]any{
+			"PromotionId":        promotionID,
+			"CurrentRedemptions": currentRedemptions.Int64 + 1,
+			"UpdatedAt":          spanner.CommitTimestamp,
+		})
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	})
+	return err
+}
+
 func (r *SpannerRepository) queryPromotions(ctx context.Context, stmt spanner.Statement) ([]Promotion, error) {
 	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
@@ -221,10 +251,11 @@ func scanPromotionRow(row *spanner.Row) (Promotion, error) {
 	var retailerJSON []byte
 	var minQty, minOrder spanner.NullInt64
 	var startsAt, endsAt spanner.NullTime
+	var maxRedemptions, currentRedemptions spanner.NullInt64
 	if err := row.Columns(
 		&p.PromotionID, &p.SupplierID, &p.Name, &desc, &p.DiscountBps, &p.ScopeType,
 		&scopeProduct, &scopeCategory, &retailerScope, &retailerJSON,
-		&minQty, &minOrder, &startsAt, &endsAt, &p.IsActive, &p.Priority, &p.Version, &p.CreatedAt, &p.UpdatedAt,
+		&minQty, &minOrder, &startsAt, &endsAt, &maxRedemptions, &currentRedemptions, &p.IsActive, &p.Priority, &p.Version, &p.CreatedAt, &p.UpdatedAt,
 	); err != nil {
 		return Promotion{}, err
 	}
@@ -249,6 +280,8 @@ func scanPromotionRow(row *spanner.Row) (Promotion, error) {
 		t := endsAt.Time
 		p.EndsAt = &t
 	}
+	p.MaxRedemptions = maxRedemptions.Int64
+	p.CurrentRedemptions = currentRedemptions.Int64
 	p.ScopeType = ScopeType(strings.TrimSpace(string(p.ScopeType)))
 	return p, nil
 }

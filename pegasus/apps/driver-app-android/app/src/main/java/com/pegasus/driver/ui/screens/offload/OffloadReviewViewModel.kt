@@ -36,7 +36,10 @@ data class OffloadReviewUiState(
     val audits: List<OffloadLineAudit> = emptyList(),
     val isSubmitting: Boolean = false,
     val error: String? = null,
-    val offloadResult: ConfirmOffloadResponse? = null
+    val offloadResult: ConfirmOffloadResponse? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val deliveryAddress: String = "",
 ) {
     val originalTotal: Long get() = audits.sumOf { it.item.lineTotal }
     val adjustedTotal: Long get() = audits.sumOf { it.acceptedTotal }
@@ -68,7 +71,10 @@ class OffloadReviewViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         retailerName = order.retailerName.ifBlank { retailerName },
-                        audits = audits
+                        audits = audits,
+                        latitude = order.latitude,
+                        longitude = order.longitude,
+                        deliveryAddress = order.deliveryAddress,
                     )
                 }
             } catch (e: Exception) {

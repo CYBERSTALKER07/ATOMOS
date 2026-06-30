@@ -1,0 +1,2759 @@
+{
+  "source": "events",
+  "generated_at": "2026-06-30T01:24:22.090271Z",
+  "events": [
+    {
+      "name": "EventAIRecommendationCreated",
+      "value": "AI_RECOMMENDATION_CREATED",
+      "payload": "AIRecommendationEvent"
+    },
+    {
+      "name": "EventAIRecommendationDecided",
+      "value": "AI_RECOMMENDATION_DECIDED",
+      "payload": "AIRecommendationEvent"
+    },
+    {
+      "name": "EventCartSyncUpdated",
+      "value": "CART_SYNC_UPDATED",
+      "payload": "SyncEvent"
+    },
+    {
+      "name": "EventCommandDispatched",
+      "value": "COMMAND_DISPATCHED",
+      "payload": "CommandEvent"
+    },
+    {
+      "name": "EventCommandReceived",
+      "value": "COMMAND_RECEIVED",
+      "payload": "CommandEvent"
+    },
+    {
+      "name": "EventCommandSettled",
+      "value": "COMMAND_SETTLED",
+      "payload": "CommandEvent"
+    },
+    {
+      "name": "EventDeliveryDisputed",
+      "value": "DELIVERY_DISPUTED"
+    },
+    {
+      "name": "EventDeliverySessionUpdated",
+      "value": "DELIVERY_SESSION_UPDATED"
+    },
+    {
+      "name": "EventDriverAvailabilityChanged",
+      "value": "DRIVER_AVAILABILITY_CHANGED",
+      "payload": "DriverEvent"
+    },
+    {
+      "name": "EventDriverCreated",
+      "value": "DRIVER_CREATED",
+      "payload": "DriverEvent"
+    },
+    {
+      "name": "EventDriverLocationUpdated",
+      "value": "DRIVER_LOCATION_UPDATED",
+      "payload": "DriverEvent"
+    },
+    {
+      "name": "EventDriverReturnApproaching",
+      "value": "DRIVER_RETURN_APPROACHING"
+    },
+    {
+      "name": "EventFactoryCreated",
+      "value": "FACTORY_CREATED",
+      "payload": "FactoryEvent"
+    },
+    {
+      "name": "EventFactoryLocationUpdated",
+      "value": "FACTORY_LOCATION_UPDATED",
+      "payload": "FactoryEvent"
+    },
+    {
+      "name": "EventFactorySupplyRequestUpdate",
+      "value": "FACTORY_SUPPLY_REQUEST_UPDATE"
+    },
+    {
+      "name": "EventFreezeLockAcquired",
+      "value": "FREEZE_LOCK_ACQUIRED"
+    },
+    {
+      "name": "EventFreezeLockReleased",
+      "value": "FREEZE_LOCK_RELEASED"
+    },
+    {
+      "name": "EventInventoryImportStatusUpdate",
+      "value": "INVENTORY_IMPORT_STATUS_UPDATE",
+      "payload": "InventoryImportEvent"
+    },
+    {
+      "name": "EventInventoryImportUploaded",
+      "value": "INVENTORY_IMPORT_UPLOADED",
+      "payload": "InventoryImportEvent"
+    },
+    {
+      "name": "EventInventorySyncComplete",
+      "value": "INVENTORY_SYNC_COMPLETE",
+      "payload": "SyncEvent"
+    },
+    {
+      "name": "EventManifestCancelled",
+      "value": "MANIFEST_CANCELLED",
+      "payload": "ManifestEvent"
+    },
+    {
+      "name": "EventManifestCompleted",
+      "value": "MANIFEST_COMPLETED",
+      "payload": "ManifestEvent"
+    },
+    {
+      "name": "EventManifestDispatched",
+      "value": "MANIFEST_DISPATCHED",
+      "payload": "ManifestEvent"
+    },
+    {
+      "name": "EventManifestDLQEscalation",
+      "value": "MANIFEST_DLQ_ESCALATION",
+      "payload": "ManifestEvent"
+    },
+    {
+      "name": "EventManifestDraftCreated",
+      "value": "MANIFEST_DRAFT_CREATED",
+      "payload": "ManifestEvent"
+    },
+    {
+      "name": "EventManifestLoadingStarted",
+      "value": "MANIFEST_LOADING_STARTED",
+      "payload": "ManifestEvent"
+    },
+    {
+      "name": "EventManifestOrderException",
+      "value": "MANIFEST_ORDER_EXCEPTION",
+      "payload": "ManifestEvent"
+    },
+    {
+      "name": "EventManifestOrderInjected",
+      "value": "MANIFEST_ORDER_INJECTED",
+      "payload": "ManifestEvent"
+    },
+    {
+      "name": "EventManifestRebalanced",
+      "value": "MANIFEST_REBALANCED",
+      "payload": "ManifestEvent"
+    },
+    {
+      "name": "EventManifestSealed",
+      "value": "MANIFEST_SEALED",
+      "payload": "ManifestEvent"
+    },
+    {
+      "name": "EventMissingItemsReported",
+      "value": "MISSING_ITEMS_REPORTED",
+      "payload": "OrderEvent"
+    },
+    {
+      "name": "EventNegotiationProposed",
+      "value": "NEGOTIATION_PROPOSED"
+    },
+    {
+      "name": "EventNegotiationResolved",
+      "value": "NEGOTIATION_RESOLVED"
+    },
+    {
+      "name": "EventOrderAmended",
+      "value": "ORDER_AMENDED",
+      "payload": "OrderEvent"
+    },
+    {
+      "name": "EventOrderAssigned",
+      "value": "ORDER_ASSIGNED",
+      "payload": "OrderEvent"
+    },
+    {
+      "name": "EventOrderCreated",
+      "value": "ORDER_CREATED",
+      "payload": "OrderEvent"
+    },
+    {
+      "name": "EventOrderFinalized",
+      "value": "ORDER_FINALIZED",
+      "payload": "OrderEvent"
+    },
+    {
+      "name": "EventOrderReassigned",
+      "value": "ORDER_REASSIGNED",
+      "payload": "OrderEvent"
+    },
+    {
+      "name": "EventOrderStatusChanged",
+      "value": "ORDER_STATUS_CHANGED",
+      "payload": "OrderEvent"
+    },
+    {
+      "name": "EventOrderValidationFailed",
+      "value": "ORDER_VALIDATION_FAILED",
+      "payload": "OrderEvent"
+    },
+    {
+      "name": "EventPaymentCleared",
+      "value": "PAYMENT_CLEARED",
+      "payload": "FinanceEvent"
+    },
+    {
+      "name": "EventPaymentRequired",
+      "value": "PAYMENT_REQUIRED",
+      "payload": "FinanceEvent"
+    },
+    {
+      "name": "EventPreOrderAutoAccepted",
+      "value": "PRE_ORDER_AUTO_ACCEPTED"
+    },
+    {
+      "name": "EventPreOrderCancelled",
+      "value": "PRE_ORDER_CANCELLED"
+    },
+    {
+      "name": "EventPreOrderConfirmation",
+      "value": "PRE_ORDER_CONFIRMATION"
+    },
+    {
+      "name": "EventPreOrderConfirmed",
+      "value": "PRE_ORDER_CONFIRMED"
+    },
+    {
+      "name": "EventPreOrderDateAccepted",
+      "value": "PRE_ORDER_DATE_ACCEPTED"
+    },
+    {
+      "name": "EventPreOrderDateProposed",
+      "value": "PRE_ORDER_DATE_PROPOSED"
+    },
+    {
+      "name": "EventPreOrderDateRejected",
+      "value": "PRE_ORDER_DATE_REJECTED"
+    },
+    {
+      "name": "EventPreOrderEdited",
+      "value": "PRE_ORDER_EDITED"
+    },
+    {
+      "name": "EventPreOrderNotified",
+      "value": "PRE_ORDER_NOTIFIED"
+    },
+    {
+      "name": "EventPreOrderNudge",
+      "value": "PRE_ORDER_NUDGE"
+    },
+    {
+      "name": "EventPromotionChanged",
+      "value": "PROMOTION_CHANGED",
+      "payload": "PromotionEvent"
+    },
+    {
+      "name": "EventRetailerPriceOverride",
+      "value": "RETAILER_PRICE_OVERRIDE",
+      "payload": "RetailerPriceOverrideEvent"
+    },
+    {
+      "name": "EventRetailerRegistered",
+      "value": "RETAILER_REGISTERED",
+      "payload": "RetailerEvent"
+    },
+    {
+      "name": "EventReturnReceivedAtWarehouse",
+      "value": "RETURN_RECEIVED_AT_WAREHOUSE"
+    },
+    {
+      "name": "EventRouteCreated",
+      "value": "ROUTE_CREATED",
+      "payload": "RouteEvent"
+    },
+    {
+      "name": "EventRouteReordered",
+      "value": "ROUTE_REORDERED",
+      "payload": "RouteEvent"
+    },
+    {
+      "name": "EventSettlementRequired",
+      "value": "SETTLEMENT_REQUIRED",
+      "payload": "FinanceEvent"
+    },
+    {
+      "name": "EventShopClosed",
+      "value": "SHOP_CLOSED"
+    },
+    {
+      "name": "EventShopClosedEscalated",
+      "value": "SHOP_CLOSED_ESCALATED"
+    },
+    {
+      "name": "EventShopClosedResolved",
+      "value": "SHOP_CLOSED_RESOLVED"
+    },
+    {
+      "name": "EventShopClosedResponse",
+      "value": "SHOP_CLOSED_RESPONSE"
+    },
+    {
+      "name": "EventSplitPaymentCreated",
+      "value": "SPLIT_PAYMENT_CREATED",
+      "payload": "FinanceEvent"
+    },
+    {
+      "name": "EventSupplierBillingConfigured",
+      "value": "SUPPLIER_BILLING_CONFIGURED",
+      "payload": "SupplierEvent"
+    },
+    {
+      "name": "EventSupplierBillingUpdated",
+      "value": "SUPPLIER_BILLING_UPDATED",
+      "payload": "SupplierEvent"
+    },
+    {
+      "name": "EventSupplierCreated",
+      "value": "SUPPLIER_CREATED",
+      "payload": "SupplierEvent"
+    },
+    {
+      "name": "EventSupplierMemberAdded",
+      "value": "SUPPLIER_MEMBER_ADDED",
+      "payload": "SupplierEvent"
+    },
+    {
+      "name": "EventSupplierProfileUpdated",
+      "value": "SUPPLIER_PROFILE_UPDATED",
+      "payload": "SupplierEvent"
+    },
+    {
+      "name": "EventSupplierReturnCreated",
+      "value": "SUPPLIER_RETURN_CREATED"
+    },
+    {
+      "name": "EventSupplierReturnResolved",
+      "value": "SUPPLIER_RETURN_RESOLVED"
+    },
+    {
+      "name": "EventSupplierUpdated",
+      "value": "SUPPLIER_UPDATED",
+      "payload": "SupplierEvent"
+    },
+    {
+      "name": "EventSupplyRequestAccepted",
+      "value": "SUPPLY_REQUEST_ACCEPTED"
+    },
+    {
+      "name": "EventSupplyRequestUpdate",
+      "value": "SUPPLY_REQUEST_UPDATE"
+    },
+    {
+      "name": "EventSupplyTransferApproaching",
+      "value": "SUPPLY_TRANSFER_APPROACHING"
+    },
+    {
+      "name": "EventSystemAppOutdated",
+      "value": "SYSTEM_APP_OUTDATED"
+    },
+    {
+      "name": "EventVehicleAvailabilityChanged",
+      "value": "VEHICLE_AVAILABILITY_CHANGED",
+      "payload": "VehicleEvent"
+    },
+    {
+      "name": "EventVehicleCreated",
+      "value": "VEHICLE_CREATED",
+      "payload": "VehicleEvent"
+    },
+    {
+      "name": "EventWarehouseCreated",
+      "value": "WAREHOUSE_CREATED",
+      "payload": "WarehouseEvent"
+    },
+    {
+      "name": "EventWarehouseDispatchLockChanged",
+      "value": "WAREHOUSE_DISPATCH_LOCK_CHANGED",
+      "payload": "WarehouseEvent"
+    },
+    {
+      "name": "EventWarehouseLocationUpdated",
+      "value": "WAREHOUSE_LOCATION_UPDATED",
+      "payload": "WarehouseEvent"
+    },
+    {
+      "name": "EventWarehouseSupplyRequestOpened",
+      "value": "WAREHOUSE_SUPPLY_REQUEST_OPENED"
+    },
+    {
+      "name": "EventWarehouseTransferCreated",
+      "value": "WAREHOUSE_TRANSFER_CREATED"
+    },
+    {
+      "name": "EventWarehouseTransferReceived",
+      "value": "WAREHOUSE_TRANSFER_RECEIVED"
+    }
+  ],
+  "payloads": [
+    {
+      "name": "AIRecommendationEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RecommendationID",
+          "json_name": "recommendation_id",
+          "json_tag": "recommendation_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "AggregateID",
+          "json_name": "aggregate_id",
+          "json_tag": "aggregate_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AggregateType",
+          "json_name": "aggregate_type",
+          "json_tag": "aggregate_type,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Decision",
+          "json_name": "decision",
+          "json_tag": "decision,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "DecidedBy",
+          "json_name": "decided_by",
+          "json_tag": "decided_by,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Note",
+          "json_name": "note",
+          "json_tag": "note,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "BaseEvent",
+      "fields": [
+        {
+          "name": "Type",
+          "json_name": "type",
+          "json_tag": "type,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Version",
+          "json_name": "version",
+          "json_tag": "version",
+          "go_type": "int64",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Timestamp",
+          "json_name": "timestamp",
+          "json_tag": "timestamp,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "CommandEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "CommandID",
+          "json_name": "command_id",
+          "json_tag": "command_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "LegalName",
+          "json_name": "legal_name",
+          "json_tag": "legal_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ContactName",
+          "json_name": "contact_name",
+          "json_tag": "contact_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Email",
+          "json_name": "email",
+          "json_tag": "email,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "BankName",
+          "json_name": "bank_name",
+          "json_tag": "bank_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AccountHolder",
+          "json_name": "account_holder",
+          "json_tag": "account_holder,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SelectedGateways",
+          "json_name": "selected_gateways",
+          "json_tag": "selected_gateways,omitempty",
+          "json_omitempty": true,
+          "go_type": "[]string",
+          "optional": true,
+          "nullable": true
+        },
+        {
+          "name": "UserID",
+          "json_name": "user_id",
+          "json_tag": "user_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SupplierRole",
+          "json_name": "supplier_role",
+          "json_tag": "supplier_role,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AssignedWarehouseID",
+          "json_name": "assigned_warehouse_id",
+          "json_tag": "assigned_warehouse_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "DispatchLockEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "LockID",
+          "json_name": "lock_id",
+          "json_tag": "lock_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "WarehouseID",
+          "json_name": "warehouse_id",
+          "json_tag": "warehouse_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "FactoryID",
+          "json_name": "factory_id",
+          "json_tag": "factory_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "LockType",
+          "json_name": "lock_type",
+          "json_tag": "lock_type",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "LockedBy",
+          "json_name": "locked_by",
+          "json_tag": "locked_by",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "EntityType",
+          "json_name": "entity_type",
+          "json_tag": "entity_type,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "EntityID",
+          "json_name": "entity_id",
+          "json_tag": "entity_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "TTLSeconds",
+          "json_name": "ttl_seconds",
+          "json_tag": "ttl_seconds,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "DriverEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "DriverID",
+          "json_name": "driver_id",
+          "json_tag": "driver_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "HomeNodeID",
+          "json_name": "home_node_id",
+          "json_tag": "home_node_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "HomeNodeType",
+          "json_name": "home_node_type",
+          "json_tag": "home_node_type,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Available",
+          "json_name": "available",
+          "json_tag": "available,omitempty",
+          "json_omitempty": true,
+          "go_type": "bool",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "OnShift",
+          "json_name": "on_shift",
+          "json_tag": "on_shift,omitempty",
+          "json_omitempty": true,
+          "go_type": "bool",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Reason",
+          "json_name": "reason",
+          "json_tag": "reason,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Note",
+          "json_name": "note",
+          "json_tag": "note,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "FactoryEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "FactoryID",
+          "json_name": "factory_id",
+          "json_tag": "factory_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Lat",
+          "json_name": "lat",
+          "json_tag": "lat,omitempty",
+          "json_omitempty": true,
+          "go_type": "float64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Lng",
+          "json_name": "lng",
+          "json_tag": "lng,omitempty",
+          "json_omitempty": true,
+          "go_type": "float64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "H3Cell",
+          "json_name": "h3_cell",
+          "json_tag": "h3_cell,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "LegalName",
+          "json_name": "legal_name",
+          "json_tag": "legal_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ContactName",
+          "json_name": "contact_name",
+          "json_tag": "contact_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Email",
+          "json_name": "email",
+          "json_tag": "email,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "BankName",
+          "json_name": "bank_name",
+          "json_tag": "bank_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AccountHolder",
+          "json_name": "account_holder",
+          "json_tag": "account_holder,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SelectedGateways",
+          "json_name": "selected_gateways",
+          "json_tag": "selected_gateways,omitempty",
+          "json_omitempty": true,
+          "go_type": "[]string",
+          "optional": true,
+          "nullable": true
+        },
+        {
+          "name": "UserID",
+          "json_name": "user_id",
+          "json_tag": "user_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SupplierRole",
+          "json_name": "supplier_role",
+          "json_tag": "supplier_role,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AssignedWarehouseID",
+          "json_name": "assigned_warehouse_id",
+          "json_tag": "assigned_warehouse_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "FinanceEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SessionID",
+          "json_name": "session_id",
+          "json_tag": "session_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "OrderID",
+          "json_name": "order_id",
+          "json_tag": "order_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "LegalName",
+          "json_name": "legal_name",
+          "json_tag": "legal_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ContactName",
+          "json_name": "contact_name",
+          "json_tag": "contact_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Email",
+          "json_name": "email",
+          "json_tag": "email,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "BankName",
+          "json_name": "bank_name",
+          "json_tag": "bank_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AccountHolder",
+          "json_name": "account_holder",
+          "json_tag": "account_holder,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SelectedGateways",
+          "json_name": "selected_gateways",
+          "json_tag": "selected_gateways,omitempty",
+          "json_omitempty": true,
+          "go_type": "[]string",
+          "optional": true,
+          "nullable": true
+        },
+        {
+          "name": "UserID",
+          "json_name": "user_id",
+          "json_tag": "user_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SupplierRole",
+          "json_name": "supplier_role",
+          "json_tag": "supplier_role,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AssignedWarehouseID",
+          "json_name": "assigned_warehouse_id",
+          "json_tag": "assigned_warehouse_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AttemptID",
+          "json_name": "attempt_id",
+          "json_tag": "attempt_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Gateway",
+          "json_name": "gateway",
+          "json_tag": "gateway,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ExecutionAction",
+          "json_name": "execution_action",
+          "json_tag": "execution_action,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ExecutionMode",
+          "json_name": "execution_mode",
+          "json_tag": "execution_mode,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "PolicySource",
+          "json_name": "policy_source",
+          "json_tag": "policy_source,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ProviderReference",
+          "json_name": "provider_reference",
+          "json_tag": "provider_reference,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AmountMinor",
+          "json_name": "amount_minor",
+          "json_tag": "amount_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Currency",
+          "json_name": "currency",
+          "json_tag": "currency,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "TransactionID",
+          "json_name": "transaction_id",
+          "json_tag": "transaction_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Source",
+          "json_name": "source",
+          "json_tag": "source,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "InventoryImportEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SessionID",
+          "json_name": "session_id",
+          "json_tag": "session_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "GCSPath",
+          "json_name": "gcs_path",
+          "json_tag": "gcs_path,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SuggestedMappings",
+          "json_name": "suggested_mappings",
+          "json_tag": "suggested_mappings,omitempty",
+          "json_omitempty": true,
+          "go_type": "int",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "ManifestEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "ManifestID",
+          "json_name": "manifest_id",
+          "json_tag": "manifest_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "FactoryID",
+          "json_name": "factory_id",
+          "json_tag": "factory_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "WarehouseID",
+          "json_name": "warehouse_id",
+          "json_tag": "warehouse_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "DriverID",
+          "json_name": "driver_id",
+          "json_tag": "driver_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "OrderID",
+          "json_name": "order_id",
+          "json_tag": "order_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "State",
+          "json_name": "state",
+          "json_tag": "state,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "VehicleID",
+          "json_name": "vehicle_id",
+          "json_tag": "vehicle_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "TransferCount",
+          "json_name": "transfer_count",
+          "json_tag": "transfer_count,omitempty",
+          "json_omitempty": true,
+          "go_type": "int",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "TotalVolumeVU",
+          "json_name": "total_volume_vu",
+          "json_tag": "total_volume_vu,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RouteID",
+          "json_name": "route_id",
+          "json_tag": "route_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Reason",
+          "json_name": "reason",
+          "json_tag": "reason,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Action",
+          "json_name": "action",
+          "json_tag": "action,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "TransferID",
+          "json_name": "transfer_id",
+          "json_tag": "transfer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "FromDriverID",
+          "json_name": "from_driver_id",
+          "json_tag": "from_driver_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ToDriverID",
+          "json_name": "to_driver_id",
+          "json_tag": "to_driver_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "FromVehicleID",
+          "json_name": "from_vehicle_id",
+          "json_tag": "from_vehicle_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ToVehicleID",
+          "json_name": "to_vehicle_id",
+          "json_tag": "to_vehicle_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Depth",
+          "json_name": "depth",
+          "json_tag": "depth,omitempty",
+          "json_omitempty": true,
+          "go_type": "int",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AttemptCount",
+          "json_name": "attempt_count",
+          "json_tag": "attempt_count,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Escalated",
+          "json_name": "escalated",
+          "json_tag": "escalated,omitempty",
+          "json_omitempty": true,
+          "go_type": "bool",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "StopCount",
+          "json_name": "stop_count",
+          "json_tag": "stop_count,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "FromManifestID",
+          "json_name": "from_manifest_id",
+          "json_tag": "from_manifest_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ToManifestID",
+          "json_name": "to_manifest_id",
+          "json_tag": "to_manifest_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "FromRouteID",
+          "json_name": "from_route_id",
+          "json_tag": "from_route_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ToRouteID",
+          "json_name": "to_route_id",
+          "json_tag": "to_route_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "OrderCount",
+          "json_name": "order_count",
+          "json_tag": "order_count,omitempty",
+          "json_omitempty": true,
+          "go_type": "int",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "OrderEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "OrderID",
+          "json_name": "order_id",
+          "json_tag": "order_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "DriverID",
+          "json_name": "driver_id",
+          "json_tag": "driver_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "WarehouseID",
+          "json_name": "warehouse_id",
+          "json_tag": "warehouse_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "VehicleID",
+          "json_name": "vehicle_id",
+          "json_tag": "vehicle_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RouteID",
+          "json_name": "route_id",
+          "json_tag": "route_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ManifestID",
+          "json_name": "manifest_id",
+          "json_tag": "manifest_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ToDriverID",
+          "json_name": "to_driver_id",
+          "json_tag": "to_driver_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "FromDriverID",
+          "json_name": "from_driver_id",
+          "json_tag": "from_driver_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "OrderSource",
+          "json_name": "order_source",
+          "json_tag": "order_source,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ConfirmationStatus",
+          "json_name": "confirmation_status",
+          "json_tag": "confirmation_status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "TotalMinor",
+          "json_name": "total_minor",
+          "json_tag": "total_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Currency",
+          "json_name": "currency",
+          "json_tag": "currency,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "H3Cell",
+          "json_name": "h3_cell",
+          "json_tag": "h3_cell,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Lat",
+          "json_name": "lat",
+          "json_tag": "lat,omitempty",
+          "json_omitempty": true,
+          "go_type": "float64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Lng",
+          "json_name": "lng",
+          "json_tag": "lng,omitempty",
+          "json_omitempty": true,
+          "go_type": "float64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RequestedDeliveryDate",
+          "json_name": "requested_delivery_date",
+          "json_tag": "requested_delivery_date,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ReceivingWindowOpen",
+          "json_name": "receiving_window_open",
+          "json_tag": "receiving_window_open,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ReceivingWindowClose",
+          "json_name": "receiving_window_close",
+          "json_tag": "receiving_window_close,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "LineItems",
+          "json_name": "line_items",
+          "json_tag": "line_items,omitempty",
+          "json_omitempty": true,
+          "go_type": "any",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "PreviousStatus",
+          "json_name": "previous_status",
+          "json_tag": "previous_status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Reason",
+          "json_name": "reason",
+          "json_tag": "reason,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Action",
+          "json_name": "action",
+          "json_tag": "action,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ActorRole",
+          "json_name": "actor_role",
+          "json_tag": "actor_role,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ActorID",
+          "json_name": "actor_id",
+          "json_tag": "actor_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Version",
+          "json_name": "version",
+          "json_tag": "version,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ToRouteID",
+          "json_name": "to_route_id",
+          "json_tag": "to_route_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "FromRouteID",
+          "json_name": "from_route_id",
+          "json_tag": "from_route_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "PaymentMethod",
+          "json_name": "payment_method",
+          "json_tag": "payment_method,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ProposedPriceMinor",
+          "json_name": "proposed_price_minor",
+          "json_tag": "proposed_price_minor,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "NegotiationID",
+          "json_name": "negotiation_id",
+          "json_tag": "negotiation_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ProposalID",
+          "json_name": "proposal_id",
+          "json_tag": "proposal_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AttemptID",
+          "json_name": "attempt_id",
+          "json_tag": "attempt_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Response",
+          "json_name": "response",
+          "json_tag": "response,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Resolution",
+          "json_name": "resolution",
+          "json_tag": "resolution,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "EscalatedTo",
+          "json_name": "escalated_to",
+          "json_tag": "escalated_to,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "GPSLat",
+          "json_name": "gps_lat",
+          "json_tag": "gps_lat,omitempty",
+          "json_omitempty": true,
+          "go_type": "float64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "GPSLng",
+          "json_name": "gps_lng",
+          "json_tag": "gps_lng,omitempty",
+          "json_omitempty": true,
+          "go_type": "float64",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "PlatformEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SystemID",
+          "json_name": "system_id",
+          "json_tag": "system_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "PromotionEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "PromotionID",
+          "json_name": "promotion_id",
+          "json_tag": "promotion_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerScope",
+          "json_name": "retailer_scope",
+          "json_tag": "retailer_scope",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerIDs",
+          "json_name": "retailer_ids",
+          "json_tag": "retailer_ids,omitempty",
+          "json_omitempty": true,
+          "go_type": "[]string",
+          "optional": true,
+          "nullable": true
+        },
+        {
+          "name": "Action",
+          "json_name": "action",
+          "json_tag": "action",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "RetailerEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Phone",
+          "json_name": "phone",
+          "json_tag": "phone,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Name",
+          "json_name": "name",
+          "json_tag": "name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "LegalName",
+          "json_name": "legal_name",
+          "json_tag": "legal_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ContactName",
+          "json_name": "contact_name",
+          "json_tag": "contact_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Email",
+          "json_name": "email",
+          "json_tag": "email,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "BankName",
+          "json_name": "bank_name",
+          "json_tag": "bank_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AccountHolder",
+          "json_name": "account_holder",
+          "json_tag": "account_holder,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SelectedGateways",
+          "json_name": "selected_gateways",
+          "json_tag": "selected_gateways,omitempty",
+          "json_omitempty": true,
+          "go_type": "[]string",
+          "optional": true,
+          "nullable": true
+        },
+        {
+          "name": "UserID",
+          "json_name": "user_id",
+          "json_tag": "user_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SupplierRole",
+          "json_name": "supplier_role",
+          "json_tag": "supplier_role,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AssignedWarehouseID",
+          "json_name": "assigned_warehouse_id",
+          "json_tag": "assigned_warehouse_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Lat",
+          "json_name": "lat",
+          "json_tag": "lat,omitempty",
+          "json_omitempty": true,
+          "go_type": "float64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Lng",
+          "json_name": "lng",
+          "json_tag": "lng,omitempty",
+          "json_omitempty": true,
+          "go_type": "float64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "H3Cell",
+          "json_name": "h3_cell",
+          "json_tag": "h3_cell,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "CountryCode",
+          "json_name": "country_code",
+          "json_tag": "country_code,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "RetailerPriceOverrideEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "OverrideID",
+          "json_name": "override_id",
+          "json_tag": "override_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "ProductID",
+          "json_name": "product_id",
+          "json_tag": "product_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "PriceMinor",
+          "json_name": "price_minor",
+          "json_tag": "price_minor",
+          "go_type": "int64",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "Action",
+          "json_name": "action",
+          "json_tag": "action",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SetBy",
+          "json_name": "set_by",
+          "json_tag": "set_by",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SetByRole",
+          "json_name": "set_by_role",
+          "json_tag": "set_by_role",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "RouteEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "RouteID",
+          "json_name": "route_id",
+          "json_tag": "route_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "DriverID",
+          "json_name": "driver_id",
+          "json_tag": "driver_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "WarehouseID",
+          "json_name": "warehouse_id",
+          "json_tag": "warehouse_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ManifestID",
+          "json_name": "manifest_id",
+          "json_tag": "manifest_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "VehicleID",
+          "json_name": "vehicle_id",
+          "json_tag": "vehicle_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "OrderIDs",
+          "json_name": "order_ids",
+          "json_tag": "order_ids,omitempty",
+          "json_omitempty": true,
+          "go_type": "[]string",
+          "optional": true,
+          "nullable": true
+        },
+        {
+          "name": "OrderCount",
+          "json_name": "order_count",
+          "json_tag": "order_count,omitempty",
+          "json_omitempty": true,
+          "go_type": "int",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "SupplierEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "LegalName",
+          "json_name": "legal_name",
+          "json_tag": "legal_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ContactName",
+          "json_name": "contact_name",
+          "json_tag": "contact_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Email",
+          "json_name": "email",
+          "json_tag": "email,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "BankName",
+          "json_name": "bank_name",
+          "json_tag": "bank_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AccountHolder",
+          "json_name": "account_holder",
+          "json_tag": "account_holder,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SelectedGateways",
+          "json_name": "selected_gateways",
+          "json_tag": "selected_gateways,omitempty",
+          "json_omitempty": true,
+          "go_type": "[]string",
+          "optional": true,
+          "nullable": true
+        },
+        {
+          "name": "UserID",
+          "json_name": "user_id",
+          "json_tag": "user_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SupplierRole",
+          "json_name": "supplier_role",
+          "json_tag": "supplier_role,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AssignedWarehouseID",
+          "json_name": "assigned_warehouse_id",
+          "json_tag": "assigned_warehouse_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AssignedFactoryID",
+          "json_name": "assigned_factory_id",
+          "json_tag": "assigned_factory_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Phone",
+          "json_name": "phone",
+          "json_tag": "phone,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Country",
+          "json_name": "country",
+          "json_tag": "country,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Categories",
+          "json_name": "categories",
+          "json_tag": "categories,omitempty",
+          "json_omitempty": true,
+          "go_type": "[]string",
+          "optional": true,
+          "nullable": true
+        },
+        {
+          "name": "IsRegistered",
+          "json_name": "is_registered",
+          "json_tag": "is_registered,omitempty",
+          "json_omitempty": true,
+          "go_type": "bool",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "IsConfigured",
+          "json_name": "is_configured",
+          "json_tag": "is_configured,omitempty",
+          "json_omitempty": true,
+          "go_type": "bool",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Action",
+          "json_name": "action",
+          "json_tag": "action,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "SyncEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "LegalName",
+          "json_name": "legal_name",
+          "json_tag": "legal_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "ContactName",
+          "json_name": "contact_name",
+          "json_tag": "contact_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Email",
+          "json_name": "email",
+          "json_tag": "email,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "BankName",
+          "json_name": "bank_name",
+          "json_tag": "bank_name,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AccountHolder",
+          "json_name": "account_holder",
+          "json_tag": "account_holder,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SelectedGateways",
+          "json_name": "selected_gateways",
+          "json_tag": "selected_gateways,omitempty",
+          "json_omitempty": true,
+          "go_type": "[]string",
+          "optional": true,
+          "nullable": true
+        },
+        {
+          "name": "UserID",
+          "json_name": "user_id",
+          "json_tag": "user_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "SupplierRole",
+          "json_name": "supplier_role",
+          "json_tag": "supplier_role,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "AssignedWarehouseID",
+          "json_name": "assigned_warehouse_id",
+          "json_tag": "assigned_warehouse_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RetailerID",
+          "json_name": "retailer_id",
+          "json_tag": "retailer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "VehicleEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "VehicleID",
+          "json_name": "vehicle_id",
+          "json_tag": "vehicle_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "HomeNodeID",
+          "json_name": "home_node_id",
+          "json_tag": "home_node_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "HomeNodeType",
+          "json_name": "home_node_type",
+          "json_tag": "home_node_type,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "IsActive",
+          "json_name": "is_active",
+          "json_tag": "is_active,omitempty",
+          "json_omitempty": true,
+          "go_type": "bool",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "UnavailableReason",
+          "json_name": "unavailable_reason",
+          "json_tag": "unavailable_reason,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "UnavailableNote",
+          "json_name": "unavailable_note",
+          "json_tag": "unavailable_note,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "name": "WarehouseEvent",
+      "fields": [
+        {
+          "name": "BaseEvent",
+          "go_type": "BaseEvent",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "WarehouseID",
+          "json_name": "warehouse_id",
+          "json_tag": "warehouse_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "SupplierID",
+          "json_name": "supplier_id",
+          "json_tag": "supplier_id",
+          "go_type": "string",
+          "optional": false,
+          "nullable": false
+        },
+        {
+          "name": "FactoryID",
+          "json_name": "factory_id",
+          "json_tag": "factory_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "TransferMode",
+          "json_name": "transfer_mode",
+          "json_tag": "transfer_mode,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "LinkedTransferID",
+          "json_name": "linked_transfer_id",
+          "json_tag": "linked_transfer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "TransferID",
+          "json_name": "transfer_id",
+          "json_tag": "transfer_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "LockID",
+          "json_name": "lock_id",
+          "json_tag": "lock_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RequestID",
+          "json_name": "request_id",
+          "json_tag": "request_id,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Status",
+          "json_name": "status",
+          "json_tag": "status,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Units",
+          "json_name": "requested_units",
+          "json_tag": "requested_units,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Projected",
+          "json_name": "projected_units",
+          "json_tag": "projected_units,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Committed",
+          "json_name": "committed_units",
+          "json_tag": "committed_units,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Pending",
+          "json_name": "pending_confirmation_units",
+          "json_tag": "pending_confirmation_units,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "State",
+          "json_name": "state",
+          "json_tag": "state,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "RequestedBy",
+          "json_name": "requested_by",
+          "json_tag": "requested_by,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "CoverageStartDate",
+          "json_name": "coverage_start_date",
+          "json_tag": "coverage_start_date,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "CoverageDays",
+          "json_name": "coverage_days",
+          "json_tag": "coverage_days,omitempty",
+          "json_omitempty": true,
+          "go_type": "int64",
+          "optional": true,
+          "nullable": false
+        },
+        {
+          "name": "Action",
+          "json_name": "action",
+          "json_tag": "action,omitempty",
+          "json_omitempty": true,
+          "go_type": "string",
+          "optional": true,
+          "nullable": false
+        }
+      ]
+    }
+  ],
+  "warnings": [
+    "event EventWarehouseSupplyRequestOpened references missing payload SupplyRequestEvent",
+    "event EventSupplyRequestAccepted references missing payload SupplyRequestEvent",
+    "event EventSupplyRequestUpdate references missing payload SupplyRequestEvent",
+    "event EventFactorySupplyRequestUpdate references missing payload SupplyRequestEvent",
+    "event EventFreezeLockAcquired references missing payload SystemEvent",
+    "event EventFreezeLockReleased references missing payload SystemEvent",
+    "event EventSystemAppOutdated references missing payload SystemEvent",
+    "event EventWarehouseTransferCreated references missing payload WarehouseTransferEvent",
+    "event EventWarehouseTransferReceived references missing payload WarehouseTransferEvent",
+    "event EventSupplyTransferApproaching references missing payload WarehouseTransferEvent",
+    "event EventDeliverySessionUpdated references missing payload DeliverySessionEvent",
+    "event EventDeliveryDisputed references missing payload DeliverySessionEvent",
+    "event EventShopClosed references missing payload ShopClosedEvent",
+    "event EventShopClosedResponse references missing payload ShopClosedEvent",
+    "event EventShopClosedEscalated references missing payload ShopClosedEvent",
+    "event EventShopClosedResolved references missing payload ShopClosedEvent",
+    "event EventNegotiationProposed references missing payload NegotiationEvent",
+    "event EventNegotiationResolved references missing payload NegotiationEvent",
+    "event EventSupplierReturnCreated references missing payload ReturnEvent",
+    "event EventSupplierReturnResolved references missing payload ReturnEvent",
+    "event EventDriverReturnApproaching references missing payload ReturnEvent",
+    "event EventReturnReceivedAtWarehouse references missing payload ReturnEvent",
+    "event EventPreOrderNotified references missing payload PreOrderEvent",
+    "event EventPreOrderNudge references missing payload PreOrderEvent",
+    "event EventPreOrderConfirmation references missing payload PreOrderEvent",
+    "event EventPreOrderConfirmed references missing payload PreOrderEvent",
+    "event EventPreOrderEdited references missing payload PreOrderEvent",
+    "event EventPreOrderCancelled references missing payload PreOrderEvent",
+    "event EventPreOrderAutoAccepted references missing payload PreOrderEvent",
+    "event EventPreOrderDateProposed references missing payload PreOrderEvent",
+    "event EventPreOrderDateAccepted references missing payload PreOrderEvent",
+    "event EventPreOrderDateRejected references missing payload PreOrderEvent"
+  ]
+}

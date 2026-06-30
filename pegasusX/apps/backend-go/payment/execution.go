@@ -19,6 +19,7 @@ const (
 	ExecutionActionCheckoutCapture    ExecutionAction = "CHECKOUT_CAPTURE"
 	ExecutionActionChargebackRecord   ExecutionAction = "CHARGEBACK_RECORD"
 	ExecutionActionChargebackReversal ExecutionAction = "CHARGEBACK_REVERSAL"
+	ExecutionActionStatusCheck        ExecutionAction = "STATUS_CHECK"
 )
 
 // ExecutionMode describes the execution branch selected by a provider adapter.

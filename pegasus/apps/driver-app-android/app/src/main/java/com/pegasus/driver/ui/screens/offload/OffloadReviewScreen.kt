@@ -38,6 +38,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +53,7 @@ import com.pegasus.driver.ui.theme.StatusGreen
 import com.pegasus.driver.ui.theme.StatusOrange
 import com.pegasus.driver.ui.theme.StatusRed
 import com.pegasus.driver.ui.theme.StatusBlue
+import com.pegasus.driver.util.MapNavigation
 import com.pegasus.driver.ui.theme.formattedAmount
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -66,6 +68,7 @@ fun OffloadReviewScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val lab = LocalPegasusColors.current
+    val context = LocalContext.current
 
     // If offload confirmed, route to next screen
     state.offloadResult?.let { result ->
@@ -112,20 +115,45 @@ fun OffloadReviewScreen(
                 .fillMaxWidth()
                 .background(lab.card)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text("Original", fontSize = 10.sp, color = lab.fgTertiary, fontFamily = FontFamily.Monospace)
-                Text(state.originalTotal.formattedAmount(), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = lab.fg)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Original", fontSize = 10.sp, color = lab.fgTertiary, fontFamily = FontFamily.Monospace)
+                        Text(state.originalTotal.formattedAmount(), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = lab.fg)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Adjusted", fontSize = 10.sp, color = lab.fgTertiary, fontFamily = FontFamily.Monospace)
+                        Text(
+                            state.adjustedTotal.formattedAmount(),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (state.hasRejections) StatusRed else StatusGreen
+                        )
+                    }
+                }
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("Adjusted", fontSize = 10.sp, color = lab.fgTertiary, fontFamily = FontFamily.Monospace)
-                Text(
-                    state.adjustedTotal.formattedAmount(),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (state.hasRejections) StatusRed else StatusGreen
-                )
+            if (state.latitude != null && state.longitude != null) {
+                Spacer(modifier = Modifier.width(12.dp))
+                Button(
+                    onClick = {
+                        MapNavigation.openDeliveryLocation(
+                            context = context,
+                            latitude = state.latitude,
+                            longitude = state.longitude,
+                            label = state.deliveryAddress.ifBlank { state.retailerName }
+                        )
+                    },
+                    modifier = Modifier.height(40.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = StatusBlue)
+                ) {
+                    Text("Navigate", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
 

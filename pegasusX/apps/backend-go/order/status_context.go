@@ -4,10 +4,12 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 )
 
 // HandleGetOrderStatusContext serves GET /v1/order/{orderID}/status-context.
@@ -43,7 +45,13 @@ func (s *Service) HandleGetOrderStatusContext(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	exp := ComputeDeliveryExpectation(s.now(), o)
+	loc := proximity.TashkentLocation
+	if o.Timezone != "" {
+		if l, err := time.LoadLocation(o.Timezone); err == nil {
+			loc = l
+		}
+	}
+	exp := ComputeDeliveryExpectation(s.now(), loc, o)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"order_id":             orderID,
 		"status":               o.Status,

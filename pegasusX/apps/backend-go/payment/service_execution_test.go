@@ -117,7 +117,7 @@ func TestHandleChargeback_EmitsSupplierScopedEvent(t *testing.T) {
 func TestHandleChargebackReversal_EmitsSupplierScopedEvent(t *testing.T) {
 	t.Parallel()
 
-	repo := &paymentRepoStub{}
+	repo := &paymentRepoStub{hasChargeback: true}
 	svc := newPaymentServiceForExecutionTest(repo)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payment/chargeback/reversal", strings.NewReader(`{"session_id":"sess-1"}`))
@@ -140,6 +140,21 @@ func TestHandleChargebackReversal_EmitsSupplierScopedEvent(t *testing.T) {
 	}
 	if payload.Status != "CHARGEBACK_REVERSAL_RECORDED" {
 		t.Fatalf("status = %q, want CHARGEBACK_REVERSAL_RECORDED", payload.Status)
+	}
+}
+
+func TestHandleChargebackReversal_FailsWhenNoChargeback(t *testing.T) {
+	t.Parallel()
+
+	repo := &paymentRepoStub{hasChargeback: false}
+	svc := newPaymentServiceForExecutionTest(repo)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payment/chargeback/reversal", strings.NewReader(`{"session_id":"sess-1"}`))
+	res := httptest.NewRecorder()
+
+	svc.HandleChargebackReversal(res, req)
+	if res.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d", res.Code, http.StatusConflict)
 	}
 }
 
@@ -189,6 +204,7 @@ type paymentRepoStub struct {
 	settlementRows         []SettlementAuthorityRow
 	lastSettlementQuery    SettlementAuthorityQuery
 	lastOutboxEvents       []outbox.Event
+	hasChargeback          bool
 }
 
 func (r *paymentRepoStub) CreateSession(ctx context.Context, s SessionRecord, emit func(outbox.TxnBuffer) error) error {
@@ -275,6 +291,32 @@ func (r *paymentRepoStub) SaveWebhook(ctx context.Context, w WebhookRecord, emit
 	_ = w
 	_ = ctx
 	return nil
+}
+
+func (r *paymentRepoStub) GetSession(ctx context.Context, sessionID string) (SessionRecord, bool, error) {
+	if sessionID == "sess-1" {
+		return SessionRecord{
+			SessionID: "sess-1",
+			OrderID:   "o-3",
+		}, true, nil
+	}
+	return SessionRecord{}, false, nil
+}
+
+func (r *paymentRepoStub) HasChargebackForOrder(ctx context.Context, orderID string) (bool, error) {
+	return r.hasChargeback, nil
+}
+
+
+func (r *paymentRepoStub) FindStuckSessions(ctx context.Context, cutoff time.Time, limit int) ([]SessionRecord, error) {
+	return nil, nil
+}
+
+func (r *paymentRepoStub) GetSessionByOrderID(ctx context.Context, orderID string) (SessionRecord, bool, error) {
+	if r.created.OrderID == orderID {
+		return r.created, true, nil
+	}
+	return SessionRecord{}, false, nil
 }
 
 func (r *paymentRepoStub) ListLedgerEntries(_ context.Context, q LedgerQuery) ([]LedgerEntryRecord, error) {

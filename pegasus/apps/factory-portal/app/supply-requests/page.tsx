@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import Link from 'next/link';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
@@ -284,6 +285,12 @@ export default function SupplyRequestsPage() {
           >
             <Icon name="refresh" size={16} /> Refresh
           </motion.button>
+          <Link
+            href="/supply-requests/calendar"
+            className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium hover-lift"
+          >
+            <Icon name="schedule" size={16} /> Calendar
+          </Link>
         </div>
 
         <FactoryRuntimeBanner tone={runtimeTone} message={runtimeMessage} />
@@ -348,9 +355,9 @@ export default function SupplyRequestsPage() {
                   >
                     <td className="px-4 py-3">
                       <div className="font-medium">{request.warehouse_name || request.warehouse_id.slice(0, 8)}</div>
-                      <div className="text-xs font-mono" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                      <Link href={`/supply-requests/${request.request_id}`} className="text-xs font-mono hover:underline" style={{ color: 'var(--color-md-primary)' }}>
                         {request.request_id.slice(0, 8)}
-                      </div>
+                      </Link>
                     </td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ border: `1px solid ${PRIORITY_COLORS[request.priority]}`, color: PRIORITY_COLORS[request.priority] || 'inherit' }}>

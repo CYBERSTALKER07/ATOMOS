@@ -38,6 +38,9 @@ func (s *Service) RejectPreorder(ctx context.Context, retailerID string, req Rej
 	if current.ConfirmationStatus == ConfirmationStatusPendingWarehouse {
 		return RetailerOrderLifecycleResponse{}, ErrDeliveryProposalPending
 	}
+	if PreorderCancelLocked(s.now(), current) {
+		return RetailerOrderLifecycleResponse{}, ErrOrderCancelLocked
+	}
 	return s.cancelOrderWithReason(ctx, &current, retailerID, string(auth.RoleRetailer), strings.TrimSpace(req.Reason), events.EventPreOrderCancelled)
 }
 

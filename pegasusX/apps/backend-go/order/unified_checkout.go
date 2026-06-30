@@ -308,10 +308,11 @@ func (s *Service) authoritativeCheckoutLines(
 		lineItems := make([]LineItem, 0, len(quote.Lines))
 		for _, line := range quote.Lines {
 			lineItems = append(lineItems, LineItem{
-				SKU:       line.ProductID,
-				Name:      line.ProductID,
-				Quantity:  line.Quantity,
-				UnitPrice: line.UnitPrice,
+				SKU:         line.ProductID,
+				Name:        line.ProductID,
+				Quantity:    line.Quantity,
+				UnitPrice:   line.UnitPrice,
+				PromotionID: line.PromotionID,
 			})
 		}
 		return s.enrichLineItemVolumes(ctx, lineItems)

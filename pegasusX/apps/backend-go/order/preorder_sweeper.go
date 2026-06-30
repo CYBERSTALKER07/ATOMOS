@@ -22,10 +22,11 @@ func StartPreorderSweeper(svc *Service) {
 	ticker := time.NewTicker(5 * time.Minute)
 	go func() {
 		for range ticker.C {
-			ctx := context.Background()
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			if err := svc.RunPreorderSweeperOnce(ctx); err != nil {
 				svc.log.Warn("preorder sweeper tick failed", "err", err)
 			}
+			cancel()
 		}
 	}()
 }
@@ -58,21 +59,28 @@ func preorderSweeperNowOverride() *time.Time {
 }
 
 func (s *Service) sweepPreorderNotifications(ctx context.Context, now time.Time) error {
-	today := proximity.TashkentTodayStart(now)
 	orders, err := s.listScheduledPreorders(ctx, 200)
 	if err != nil {
 		return err
 	}
 	for _, o := range orders {
+		loc := proximity.TashkentLocation
+		if o.Timezone != "" {
+			if l, err := time.LoadLocation(o.Timezone); err == nil {
+				loc = l
+			}
+		}
+		today := proximity.TodayStart(now, loc)
+
 		if o.RequestedDeliveryDate == nil {
 			continue
 		}
-		lead := PreorderLeadDays(now, o.RequestedDeliveryDate)
+		lead := PreorderLeadDays(now, o.RequestedDeliveryDate, loc)
 		phase := PreorderGuardPhase(lead)
 		if phase == "" {
 			continue
 		}
-		deliveryDay := proximity.TashkentTodayStart(*o.RequestedDeliveryDate)
+		deliveryDay := proximity.TodayStart(*o.RequestedDeliveryDate, loc)
 		if phase == "long" {
 			if lead >= 7 && (o.PreorderReminderSentAt == nil || now.Sub(*o.PreorderReminderSentAt) >= 48*time.Hour) {
 				if err := s.patchPreorderNotify(ctx, o, now, events.EventPreOrderNudge, func(u *Order) {
@@ -129,7 +137,6 @@ func (s *Service) sweepPreorderNotifications(ctx context.Context, now time.Time)
 }
 
 func (s *Service) sweepPreorderAutoAccept(ctx context.Context, now time.Time) error {
-	today := proximity.TashkentTodayStart(now)
 	orders, err := s.listScheduledPreorders(ctx, 200)
 	if err != nil {
 		return err
@@ -138,8 +145,15 @@ func (s *Service) sweepPreorderAutoAccept(ctx context.Context, now time.Time) er
 		if o.Status != StatusScheduled || o.RequestedDeliveryDate == nil {
 			continue
 		}
-		lead := PreorderLeadDays(now, o.RequestedDeliveryDate)
-		deliveryDay := proximity.TashkentTodayStart(*o.RequestedDeliveryDate)
+		loc := proximity.TashkentLocation
+		if o.Timezone != "" {
+			if l, err := time.LoadLocation(o.Timezone); err == nil {
+				loc = l
+			}
+		}
+		today := proximity.TodayStart(now, loc)
+		lead := PreorderLeadDays(now, o.RequestedDeliveryDate, loc)
+		deliveryDay := proximity.TodayStart(*o.RequestedDeliveryDate, loc)
 		shouldAccept := false
 		if PreorderGuardPhase(lead) == "long" {
 			t4 := today.AddDate(0, 0, 4)
@@ -198,7 +212,13 @@ func (s *Service) sweepPreorderPromote(ctx context.Context, now time.Time) error
 		if o.RequestedDeliveryDate == nil {
 			continue
 		}
-		lead := PreorderLeadDays(now, o.RequestedDeliveryDate)
+		loc := proximity.TashkentLocation
+		if o.Timezone != "" {
+			if l, err := time.LoadLocation(o.Timezone); err == nil {
+				loc = l
+			}
+		}
+		lead := PreorderLeadDays(now, o.RequestedDeliveryDate, loc)
 		// Promote at T-1 (day before delivery) or on delivery day if a tick was missed.
 		if lead > 1 {
 			continue

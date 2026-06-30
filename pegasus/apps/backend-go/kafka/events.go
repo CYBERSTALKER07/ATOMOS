@@ -146,6 +146,8 @@ const (
 	// Checkout Events
 	EventStockBackordered         = "STOCK_BACKORDERED"
 	EventOrderCreated             = "ORDER_CREATED"
+	EventOrderPartiallyDelivered  = "ORDER_PARTIALLY_DELIVERED"
+	EventOrderWaitlisted          = "ORDER_WAITLISTED"
 	EventUnifiedCheckoutCompleted = "UNIFIED_CHECKOUT_COMPLETED"
 
 	// Payment Events
@@ -706,6 +708,24 @@ type UnifiedCheckoutCompletedEvent struct {
 	Total      int64     `json:"total"`
 	Currency   string    `json:"currency"`
 	OrderCount int       `json:"order_count"`
+	Timestamp  time.Time `json:"timestamp"`
+}
+
+// OrderPartiallyDeliveredEvent is emitted when a driver amends an order with partial delivery.
+type OrderPartiallyDeliveredEvent struct {
+	OrderID    string    `json:"order_id"`
+	RetailerID string    `json:"retailer_id"`
+	SupplierID string    `json:"supplier_id,omitempty"`
+	DriverID   string    `json:"driver_id,omitempty"`
+	NewAmount  int64     `json:"new_amount"`
+	Timestamp  time.Time `json:"timestamp"`
+}
+
+// OrderWaitlistedEvent is emitted when unified checkout creates a WAITLISTED order.
+type OrderWaitlistedEvent struct {
+	OrderID    string    `json:"order_id"`
+	SupplierID string    `json:"supplier_id"`
+	RetailerID string    `json:"retailer_id"`
 	Timestamp  time.Time `json:"timestamp"`
 }
 

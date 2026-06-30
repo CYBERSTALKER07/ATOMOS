@@ -42,6 +42,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(auth.RequireRole(auth.RoleRetailer)).Get("/v1/order/{orderID}/qr-payload", d.Service.HandleGetQRPayload)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/scan-qr", d.Service.HandleDeliveryScanQR)
 		gr.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/delivery/confirm-cash", d.Service.HandleRetailerConfirmCash)
+
+		gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/reconciliation", d.Service.HandleListReconciliationOrders)
+		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/reconciliation/resolve", d.Service.HandleResolveReconciliation)
 	}
 
 	auth.ProtectMutations(r, auth.MutationGuardConfig{

@@ -20,7 +20,8 @@ data class PaymentWaitingUiState(
     val paymentSettled: Boolean = false,
     val isCompleting: Boolean = false,
     val completed: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val podPhotoStubUrl: String? = null,
 )
 
 @HiltViewModel
@@ -60,12 +61,21 @@ class PaymentWaitingViewModel @Inject constructor(
         }
     }
 
+    fun markPodPhotoCaptured() {
+        _state.update {
+            it.copy(podPhotoStubUrl = "stub://pod/${orderId}/${System.currentTimeMillis()}")
+        }
+    }
+
     fun completeOrder() {
         viewModelScope.launch {
             _state.update { it.copy(isCompleting = true, error = null) }
             try {
                 api.completeOrder(
-                    request = CompleteOrderRequest(orderId = orderId),
+                    request = CompleteOrderRequest(
+                        orderId = orderId,
+                        podPhotoUrl = _state.value.podPhotoStubUrl,
+                    ),
                     idempotencyKey = "driver-complete-order-$orderId"
                 )
                 _state.update { it.copy(isCompleting = false, completed = true) }

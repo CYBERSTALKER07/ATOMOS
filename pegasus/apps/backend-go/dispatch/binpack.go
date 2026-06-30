@@ -135,6 +135,7 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 		sort.Slice(group, func(i, j int) bool {
 			return group[i].VolumeVU > group[j].VolumeVU
 		})
+		sortByWindowStart(group)
 
 		for _, o := range group {
 			geo := o.ToGeo()
@@ -175,10 +176,10 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 				continue
 			}
 
-			// Consolidation: try existing route.
+			// Consolidation: try existing route (volume + receiving window).
 			for ri := range result.Routes {
 				remaining := result.Routes[ri].MaxVolume - result.Routes[ri].LoadedVolume
-				if remaining >= o.VolumeVU {
+				if remaining >= o.VolumeVU && routeWindowsCompatible(result.Routes[ri].Orders, o) {
 					geo.Assigned = true
 					result.Routes[ri].Orders = append(result.Routes[ri].Orders, geo)
 					result.Routes[ri].LoadedVolume += o.VolumeVU
@@ -205,11 +206,14 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 
 			if ri, exists := driverRouteMap[match.Driver.DriverID]; exists {
 				remaining := result.Routes[ri].MaxVolume - result.Routes[ri].LoadedVolume
-				if remaining >= o.VolumeVU || o.IgnoreCapacity {
+				if (remaining >= o.VolumeVU || o.IgnoreCapacity) && routeWindowsCompatible(result.Routes[ri].Orders, o) {
 					geo.Assigned = true
 					result.Routes[ri].Orders = append(result.Routes[ri].Orders, geo)
 					result.Routes[ri].LoadedVolume += o.VolumeVU
 					continue
+				}
+				if remaining >= o.VolumeVU || o.IgnoreCapacity {
+					result.Warnings = append(result.Warnings, windowMismatchWarning(o.OrderID, match.Driver.DriverID))
 				}
 			}
 

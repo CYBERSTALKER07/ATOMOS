@@ -159,7 +159,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/factory/supply-requests",
 		auth.RequireRole(factoryRole, log(withScope(d.SupplyRequestSvc.HandleListSupplyRequests))))
 
-	// 14. Supply-request detail + state transition (wildcard path).
+	// 14. Supply-request QC (must register before wildcard detail route).
+	r.HandleFunc("/v1/factory/supply-requests/*/qc",
+		auth.RequireRole(factoryRole, log(withScope(idempotency.Guard(d.SupplyRequestSvc.HandleSupplyRequestQC)))))
+
+	// 15. Supply-request detail + state transition (wildcard path).
 	r.HandleFunc("/v1/factory/supply-requests/*",
 		auth.RequireRole(factoryRole, log(withScope(supplyRequestByID(d.SupplyRequestSvc)))))
 

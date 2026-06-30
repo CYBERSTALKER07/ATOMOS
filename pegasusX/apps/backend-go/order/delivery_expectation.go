@@ -36,7 +36,7 @@ type DeliveryExpectation struct {
 }
 
 // ComputeDeliveryExpectation derives human-readable delivery timing from the order row.
-func ComputeDeliveryExpectation(now time.Time, o Order) DeliveryExpectation {
+func ComputeDeliveryExpectation(now time.Time, loc *time.Location, o Order) DeliveryExpectation {
 	out := DeliveryExpectation{
 		ModeLabel:            deliveryModeLabel(o),
 		ReceivingWindowOpen:  strings.TrimSpace(o.ReceivingWindowOpen),
@@ -47,20 +47,20 @@ func ComputeDeliveryExpectation(now time.Time, o Order) DeliveryExpectation {
 
 	if o.ConfirmationStatus == ConfirmationStatusPendingWarehouse && o.ProposedDeliveryDate != nil {
 		out.Kind = ExpectationKindProposalPending
-		out.TargetDate = isoDatePtr(o.ProposedDeliveryDate)
-		out.TargetLabel = fmt.Sprintf("Warehouse proposed %s — awaiting retailer", formatDateLabel(*o.ProposedDeliveryDate))
-		out.Urgency = urgencyForTarget(now, *o.ProposedDeliveryDate, o)
-		out.Delayed, out.DelayReason = delayedState(now, o, o.ProposedDeliveryDate)
+		out.TargetDate = isoDatePtr(o.ProposedDeliveryDate, loc)
+		out.TargetLabel = fmt.Sprintf("Warehouse proposed %s — awaiting retailer", formatDateLabel(*o.ProposedDeliveryDate, loc))
+		out.Urgency = urgencyForTarget(now, *o.ProposedDeliveryDate, loc, o)
+		out.Delayed, out.DelayReason = delayedState(now, o, loc, o.ProposedDeliveryDate)
 		return out
 	}
 
 	if o.DeliveryPriority == DeliveryPriorityExpress {
 		out.Kind = ExpectationKindExpress
 		if o.DeliverBefore != nil {
-			out.TargetDate = isoDatePtr(o.DeliverBefore)
-			out.TargetLabel = fmt.Sprintf("Express — deliver by %s", formatDateLabel(*o.DeliverBefore))
-			out.Urgency = urgencyForTarget(now, *o.DeliverBefore, o)
-			out.Delayed, out.DelayReason = delayedState(now, o, o.DeliverBefore)
+			out.TargetDate = isoDatePtr(o.DeliverBefore, loc)
+			out.TargetLabel = fmt.Sprintf("Express — deliver by %s", formatDateLabel(*o.DeliverBefore, loc))
+			out.Urgency = urgencyForTarget(now, *o.DeliverBefore, loc, o)
+			out.Delayed, out.DelayReason = delayedState(now, o, loc, o.DeliverBefore)
 		} else {
 			out.TargetLabel = "Express delivery"
 		}
@@ -70,15 +70,15 @@ func ComputeDeliveryExpectation(now time.Time, o Order) DeliveryExpectation {
 	if IsScheduledPreorder(o) || (o.Source == OrderSourceManualPreorder && (o.Status == StatusScheduled || o.Status == StatusAutoAccepted)) {
 		out.Kind = ExpectationKindScheduledPreorder
 		if o.RequestedDeliveryDate != nil {
-			out.TargetDate = isoDatePtr(o.RequestedDeliveryDate)
-			out.TargetLabel = fmt.Sprintf("Scheduled for %s", formatDateLabel(*o.RequestedDeliveryDate))
-			lead := PreorderLeadDays(now, o.RequestedDeliveryDate)
+			out.TargetDate = isoDatePtr(o.RequestedDeliveryDate, loc)
+			out.TargetLabel = fmt.Sprintf("Scheduled for %s", formatDateLabel(*o.RequestedDeliveryDate, loc))
+			lead := PreorderLeadDays(now, o.RequestedDeliveryDate, loc)
 			if lead >= 7 {
 				out.Urgency = ExpectationUrgencyScheduledFar
 			} else {
-				out.Urgency = urgencyForTarget(now, *o.RequestedDeliveryDate, o)
+				out.Urgency = urgencyForTarget(now, *o.RequestedDeliveryDate, loc, o)
 			}
-			out.Delayed, out.DelayReason = delayedState(now, o, o.RequestedDeliveryDate)
+			out.Delayed, out.DelayReason = delayedState(now, o, loc, o.RequestedDeliveryDate)
 		} else {
 			out.TargetLabel = "Pre-order"
 		}
@@ -87,23 +87,23 @@ func ComputeDeliveryExpectation(now time.Time, o Order) DeliveryExpectation {
 
 	out.Kind = ExpectationKindStandard
 	if o.DeliverBefore != nil {
-		out.TargetDate = isoDatePtr(o.DeliverBefore)
-		out.TargetLabel = fmt.Sprintf("Deliver by %s", formatDateLabel(*o.DeliverBefore))
-		out.Urgency = urgencyForTarget(now, *o.DeliverBefore, o)
-		out.Delayed, out.DelayReason = delayedState(now, o, o.DeliverBefore)
+		out.TargetDate = isoDatePtr(o.DeliverBefore, loc)
+		out.TargetLabel = fmt.Sprintf("Deliver by %s", formatDateLabel(*o.DeliverBefore, loc))
+		out.Urgency = urgencyForTarget(now, *o.DeliverBefore, loc, o)
+		out.Delayed, out.DelayReason = delayedState(now, o, loc, o.DeliverBefore)
 	} else {
 		out.TargetLabel = "Standard delivery"
 	}
 	return out
 }
 
-func urgencyForTarget(now time.Time, target time.Time, o Order) string {
+func urgencyForTarget(now time.Time, target time.Time, loc *time.Location, o Order) string {
 	if isTerminalStatus(o.Status) {
 		return ExpectationUrgencyOnTrack
 	}
-	today := proximity.TashkentTodayStart(now)
-	targetDay := proximity.TashkentTodayStart(target)
-	days := calendarDaysBetween(today, targetDay)
+	today := proximity.TodayStart(now, loc)
+	targetDay := proximity.TodayStart(target, loc)
+	days := calendarDaysBetween(today, targetDay, loc)
 	if days < 0 {
 		return ExpectationUrgencyOverdue
 	}
@@ -113,7 +113,7 @@ func urgencyForTarget(now time.Time, target time.Time, o Order) string {
 	return ExpectationUrgencyOnTrack
 }
 
-func delayedState(now time.Time, o Order, target *time.Time) (bool, string) {
+func delayedState(now time.Time, o Order, loc *time.Location, target *time.Time) (bool, string) {
 	if isTerminalStatus(o.Status) {
 		return false, ""
 	}
@@ -126,8 +126,8 @@ func delayedState(now time.Time, o Order, target *time.Time) (bool, string) {
 	if target == nil {
 		return false, ""
 	}
-	targetDay := proximity.TashkentTodayStart(*target)
-	today := proximity.TashkentTodayStart(now)
+	targetDay := proximity.TodayStart(*target, loc)
+	today := proximity.TodayStart(now, loc)
 	if today.After(targetDay) && isPreDeliveryStatus(o.Status) {
 		switch {
 		case IsScheduledPreorder(o):
@@ -151,14 +151,14 @@ func isPreDeliveryStatus(s Status) bool {
 	}
 }
 
-func isoDatePtr(t *time.Time) *string {
+func isoDatePtr(t *time.Time, loc *time.Location) *string {
 	if t == nil {
 		return nil
 	}
-	s := proximity.TashkentTodayStart(*t).Format("2006-01-02")
+	s := proximity.TodayStart(*t, loc).Format("2006-01-02")
 	return &s
 }
 
-func formatDateLabel(t time.Time) string {
-	return proximity.TashkentTodayStart(t).Format("Jan 2, 2006")
+func formatDateLabel(t time.Time, loc *time.Location) string {
+	return proximity.TodayStart(t, loc).Format("Jan 2")
 }

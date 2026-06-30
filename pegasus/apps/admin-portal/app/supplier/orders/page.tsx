@@ -145,6 +145,7 @@ export default function OrdersPage() {
 
   // Bulk dispatch
   const [dispatching, setDispatching] = useState(false);
+  const [bulkActing, setBulkActing] = useState<'approve' | 'delay' | 'cancel' | null>(null);
 
   // Reassignment modal
   const [reassignOpen, setReassignOpen] = useState(false);
@@ -457,6 +458,12 @@ export default function OrdersPage() {
   const selectedOrders = orders.filter(o => selected.has(o.order_id));
   const canReassign = selectedOrders.length > 0 && selectedOrders.every(o => ['PENDING', 'LOADED', 'DISPATCHED'].includes(o.state) && o.route_id);
   const canDispatch = selectedOrders.length > 0 && selectedOrders.every(o => o.state === 'PENDING');
+  const canBulkApprove = selectedOrders.length > 0 && selectedOrders.every(o => o.state === 'PENDING');
+  const canBulkCancel = selectedOrders.length > 0 && selectedOrders.every(o => o.state === 'CANCEL_REQUESTED');
+  const canBulkDelay = selectedOrders.length > 0 && selectedOrders.every(o =>
+    (tab === 'scheduled' && o.state === 'SCHEDULED') ||
+    (tab === 'active' && !showHistory && ['PENDING', 'LOADED', 'NO_CAPACITY'].includes(o.state))
+  );
 
   async function dispatchSelected() {
     setDispatching(true);
@@ -487,6 +494,76 @@ export default function OrdersPage() {
       toast((err as Error).message || 'Dispatch failed', 'error');
     } finally {
       setDispatching(false);
+    }
+  }
+
+  async function bulkApproveSelected() {
+    setBulkActing('approve');
+    const ids = Array.from(selected);
+    let ok = 0;
+    try {
+      for (const orderId of ids) {
+        const res = await apiFetch('/v1/supplier/orders/vet', {
+          method: 'POST',
+          headers: {
+            'Idempotency-Key': buildOrderVettingIdempotencyKey(orderId, 'APPROVED'),
+          },
+          body: JSON.stringify({ order_id: orderId, decision: 'APPROVED' }),
+        });
+        if (res.ok) ok++;
+      }
+      toast(`Approved ${ok}/${ids.length} order(s)`, ok > 0 ? 'success' : 'error');
+      setSelected(new Set());
+      fetchOrders();
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBulkActing(null);
+    }
+  }
+
+  async function bulkCancelSelected() {
+    setBulkActing('cancel');
+    const ids = Array.from(selected);
+    let ok = 0;
+    try {
+      for (const orderId of ids) {
+        const res = await apiFetch('/v1/admin/orders/approve-cancel', {
+          method: 'POST',
+          headers: {
+            'Idempotency-Key': buildSupplierApproveCancelIdempotencyKey(orderId),
+          },
+          body: JSON.stringify({ order_id: orderId }),
+        });
+        if (res.ok) ok++;
+      }
+      toast(`Cancelled ${ok}/${ids.length} order(s)`, ok > 0 ? 'success' : 'error');
+      setSelected(new Set());
+      fetchOrders();
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBulkActing(null);
+    }
+  }
+
+  async function bulkDelaySelected() {
+    setBulkActing('delay');
+    const ids = Array.from(selected);
+    try {
+      const res = await apiFetch('/v1/supplier/orders/delay', {
+        method: 'POST',
+        body: JSON.stringify({ order_ids: ids, reason: 'SUPPLIER_BULK_DELAY' }),
+      });
+      const data = await res.json().catch(() => ({} as { delayed?: number; total?: number; error?: string }));
+      if (!res.ok) throw new Error(data.error || 'Bulk delay failed');
+      toast(`Delayed ${data.delayed ?? 0}/${data.total ?? ids.length} order(s)`, 'success');
+      setSelected(new Set());
+      fetchOrders();
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setBulkActing(null);
     }
   }
 
@@ -647,7 +724,22 @@ export default function OrdersPage() {
           className="mb-4 px-4 py-3 md-shape-md flex items-center justify-between bg-accent-soft text-accent-soft-foreground"
         >
           <span className="md-typescale-label-large">{selected.size} selected</span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {canBulkApprove && (
+              <Button variant="primary" isDisabled={bulkActing !== null} onPress={bulkApproveSelected}>
+                {bulkActing === 'approve' ? 'Approving…' : 'Approve Selected'}
+              </Button>
+            )}
+            {canBulkDelay && (
+              <Button variant="secondary" isDisabled={bulkActing !== null} onPress={bulkDelaySelected}>
+                {bulkActing === 'delay' ? 'Delaying…' : 'Delay Selected'}
+              </Button>
+            )}
+            {canBulkCancel && (
+              <Button variant="danger" isDisabled={bulkActing !== null} onPress={bulkCancelSelected}>
+                {bulkActing === 'cancel' ? 'Cancelling…' : 'Approve Cancel'}
+              </Button>
+            )}
             {canDispatch && (
               <Button variant="primary" isDisabled={dispatching} onPress={dispatchSelected}>
                 {dispatching ? 'Dispatching…' : 'Dispatch Selected'}

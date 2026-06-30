@@ -74,8 +74,8 @@ final class FleetServiceLive: FleetServiceProtocol {
         try await api.confirmOffload(orderId: orderId)
     }
 
-    func completeOrder(orderId: String) async throws {
-        try await api.completeOrder(orderId: orderId)
+    func completeOrder(orderId: String, podPhotoUrl: String? = nil) async throws {
+        try await api.completeOrder(orderId: orderId, podPhotoUrl: podPhotoUrl)
     }
 
     /// Collect cash from retailer with geofence validation.
@@ -142,10 +142,17 @@ final class FleetServiceLive: FleetServiceProtocol {
     // MARK: - Offline Delivery Queue
 
     @MainActor
-    private func enqueueOfflineDelivery(orderId: String, scannedToken: String) {
+    private func enqueueOfflineDelivery(orderId: String, scannedToken: String, routeId: String? = nil) {
         guard let context = modelContainer?.mainContext else { return }
         let store = OfflineDeliveryStore(modelContext: context)
-        store.enqueue(orderId: orderId, signature: scannedToken, status: "DELIVERED")
+        let sessionId = DriverIdempotency.activeDeliverySessionId(routeId: routeId)
+        store.enqueue(
+            orderId: orderId,
+            signature: scannedToken,
+            status: "DELIVERED",
+            deliverySessionId: sessionId,
+            action: "deliver"
+        )
     }
 
     /// Attempt to flush all pending offline deliveries to the server.
@@ -164,7 +171,8 @@ final class FleetServiceLive: FleetServiceProtocol {
                     orderId: delivery.orderId,
                     qrToken: delivery.signature,
                     latitude: location.latitude,
-                    longitude: location.longitude
+                    longitude: location.longitude,
+                    idempotencyKey: delivery.idempotencyKey
                 )
                 if response.success {
                     await MainActor.run {

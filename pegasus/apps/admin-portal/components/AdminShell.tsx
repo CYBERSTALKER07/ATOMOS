@@ -17,6 +17,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 type NavEntry = { href: string; icon: string; label: string; globalOnly?: boolean; factoryHidden?: boolean };
 type NavSection = { label?: string; items: NavEntry[] };
 
+type CommandAction = {
+  id: string;
+  label: string;
+  href: string;
+  icon: string;
+  keywords: string[];
+};
+
 const NAV: NavSection[] = [
   {
     items: [
@@ -48,6 +56,7 @@ const NAV: NavSection[] = [
       { href: '/supplier/products', icon: 'inventory', label: 'My Products' },
       { href: '/supplier/inventory', icon: 'inventory', label: 'Inventory' },
       { href: '/supplier/orders', icon: 'orders', label: 'Orders' },
+      { href: '/notifications', icon: 'notifications', label: 'Notifications' },
       { href: '/supplier/dispatch', icon: 'dispatch', label: 'Dispatch', factoryHidden: true },
       { href: '/supplier/manifests', icon: 'manifests', label: 'Manifests', factoryHidden: true },
       { href: '/supplier/manifest-exceptions', icon: 'dlq', label: 'Manifest Exceptions', factoryHidden: true },
@@ -163,6 +172,17 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
 
 /* ── Static nav flat list for search ── */
 const ALL_NAV_ITEMS = NAV.flatMap(s => s.items);
+
+const COMMAND_ACTIONS: CommandAction[] = [
+  { id: 'orders', label: 'Open Orders — bulk approve/dispatch', href: '/supplier/orders', icon: 'orders', keywords: ['approve', 'dispatch', 'cancel', 'delay', 'bulk'] },
+  { id: 'dispatch', label: 'Dispatch Control Room', href: '/supplier/dispatch', icon: 'dispatch', keywords: ['fleet', 'manifest', 'truck'] },
+  { id: 'notifications', label: 'Notifications Inbox', href: '/notifications', icon: 'notifications', keywords: ['alerts', 'inbox', 'unread'] },
+  { id: 'dashboard', label: 'Demand Dashboard', href: '/supplier/dashboard', icon: 'overview', keywords: ['sla', 'metrics', 'analytics'] },
+  { id: 'manifests', label: 'Manifest Exceptions', href: '/supplier/manifest-exceptions', icon: 'dlq', keywords: ['dlq', 'exception'] },
+  { id: 'returns', label: 'Returns Queue', href: '/supplier/returns', icon: 'returns', keywords: ['damaged', 'dispute'] },
+  { id: 'inventory', label: 'Inventory', href: '/supplier/inventory', icon: 'inventory', keywords: ['stock', 'sku'] },
+  { id: 'catalog', label: 'Catalog', href: '/supplier/catalog', icon: 'catalog', keywords: ['products', 'pricing'] },
+];
 
 const THEME_META: Record<ThemeMode, { icon: string; label: string; next: ThemeMode }> = {
   system: { icon: 'autoMode', label: 'System theme', next: 'light' },
@@ -454,13 +474,19 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname), [pathname]);
 
   /* ── Filtered search results ── */
-  const searchResults = useMemo(() =>
-    searchQuery.trim()
-      ? ALL_NAV_ITEMS.filter(item =>
-          item.label.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-    : []
-  , [searchQuery]);
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    const pages = ALL_NAV_ITEMS.filter(item =>
+      item.label.toLowerCase().includes(q) || item.href.toLowerCase().includes(q)
+    );
+    const actions = COMMAND_ACTIONS.filter(item =>
+      item.label.toLowerCase().includes(q) ||
+      item.keywords.some(k => k.includes(q) || q.includes(k))
+    );
+    const merged = [...actions, ...pages.filter(p => !actions.some(a => a.href === p.href))];
+    return merged;
+  }, [searchQuery]);
 
   if (isBare) return <>{children}</>;
 
@@ -660,7 +686,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   <input
                     ref={searchRef}
                     type="text"
-                    placeholder="Search pages..."
+                    placeholder="Search pages and actions..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     autoFocus
@@ -677,20 +703,25 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 </div>
                 {searchResults.length > 0 && (
                   <div className="py-1" style={{ borderTop: '1px solid var(--border)' }}>
-                    {searchResults.slice(0, 8).map(item => (
+                    {searchResults.slice(0, 10).map(item => {
+                      const href = 'href' in item ? item.href : (item as NavEntry).href;
+                      const label = 'label' in item ? item.label : (item as NavEntry).label;
+                      const icon = 'icon' in item ? item.icon : (item as NavEntry).icon;
+                      const isAction = COMMAND_ACTIONS.some(a => a.href === href && a.label === label);
+                      return (
                       <Link
-                        key={item.href}
-                        href={item.href}
+                        key={`${href}-${label}`}
+                        href={href}
                         className="md-menu-item active-press"
                         onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
                       >
-                        <Icon name={item.icon} />
-                        <span>{item.label}</span>
+                        <Icon name={icon} />
+                        <span>{label}</span>
                         <span className="ml-auto md-typescale-label-small text-muted">
-                          {item.href}
+                          {isAction ? 'Action' : href}
                         </span>
                       </Link>
-                    ))}
+                    );})}
                   </div>
                 )}
                 {searchQuery.trim() && searchResults.length === 0 && (

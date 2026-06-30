@@ -59,6 +59,13 @@ func (h *PayloaderHub) HandleConnection(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	h.mu.RLock()
+	active := len(h.clients[supplierID])
+	h.mu.RUnlock()
+	if !EnforceWSConnectionLimits(w, r, "payloader", supplierID, active) {
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "payloader hub websocket upgrade failed",

@@ -5,9 +5,23 @@ import SwiftUI
 
 @Observable
 final class CartManager {
-    var items: [CartItem] = []
+    var items: [CartItem] = [] {
+        didSet {
+            if !isHydratingCache {
+                persistToLocalCache()
+            }
+        }
+    }
     var supplierIsActive: Bool = true
     private var lastSyncedSignature: String = ""
+    private let cacheKey = "pegasus.retailer.cart.cache"
+    private var isHydratingCache = false
+
+    init() {
+        isHydratingCache = true
+        loadFromLocalCache()
+        isHydratingCache = false
+    }
 
     var totalItems: Int {
         items.reduce(0) { $0 + $1.quantity }
@@ -159,6 +173,74 @@ struct CheckoutResponse: Codable {
 }
 
 extension CartManager {
+    private struct CachedCartLine: Codable {
+        let id: String
+        let skuId: String
+        let supplierId: String
+        let quantity: Int
+        let unitPrice: Double
+        let productName: String
+        let variantId: String
+    }
+
+    private func persistToLocalCache() {
+        let lines = items.map { item in
+            CachedCartLine(
+                id: item.id,
+                skuId: item.variant.id.isEmpty ? item.product.id : item.variant.id,
+                supplierId: item.product.supplierID ?? "",
+                quantity: item.quantity,
+                unitPrice: item.variant.price,
+                productName: item.product.name,
+                variantId: item.variant.id
+            )
+        }
+        if let data = try? JSONEncoder().encode(lines) {
+            UserDefaults.standard.set(data, forKey: cacheKey)
+        }
+    }
+
+    private func loadFromLocalCache() {
+        guard let data = UserDefaults.standard.data(forKey: cacheKey),
+              let lines = try? JSONDecoder().decode([CachedCartLine].self, from: data),
+              !lines.isEmpty else { return }
+
+        items = lines.map { line in
+            let variant = Variant(
+                id: line.variantId.isEmpty ? line.skuId : line.variantId,
+                size: "Standard",
+                pack: "Per unit",
+                packCount: 1,
+                weightPerUnit: "1 unit",
+                price: line.unitPrice
+            )
+            let product = Product(
+                id: line.skuId,
+                name: line.productName,
+                description: "",
+                nutrition: "",
+                imageURL: nil,
+                variants: [variant],
+                supplierID: line.supplierId,
+                supplierName: nil,
+                supplierCategory: nil,
+                categoryID: nil,
+                categoryName: nil,
+                sellByBlock: false,
+                unitsPerBlock: nil,
+                price: Int(line.unitPrice),
+                availableStock: nil
+            )
+            return CartItem(
+                id: line.id,
+                product: product,
+                variant: variant,
+                quantity: line.quantity
+            )
+        }
+        lastSyncedSignature = signature(for: items)
+    }
+
     private func signature(for cartItems: [CartItem]) -> String {
         cartItems
             .sorted {

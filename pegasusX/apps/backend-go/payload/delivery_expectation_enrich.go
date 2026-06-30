@@ -31,7 +31,7 @@ func (s *Service) enrichManifestWireExpectations(ctx context.Context, wire manif
 		if err != nil || !ok {
 			continue
 		}
-		exp := order.ComputeDeliveryExpectation(now, o)
+		exp := order.ComputeDeliveryExpectation(now, time.UTC, o)
 		w := manifest.DeliveryExpectationWire{
 			Kind:                 exp.Kind,
 			TargetDate:           exp.TargetDate,

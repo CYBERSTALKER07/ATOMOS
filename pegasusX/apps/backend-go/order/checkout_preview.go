@@ -71,6 +71,12 @@ func (s *Service) HandleCheckoutPreview(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Rate limit checkout preview by RetailerID to prevent scraping.
+	if !s.previewRateLimiter.Allow(claims.Subject) {
+		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "rate_limit_exceeded"})
+		return
+	}
+
 	resp, err := s.PreviewCheckout(r.Context(), claims.Subject, req)
 	if err != nil {
 		switch {

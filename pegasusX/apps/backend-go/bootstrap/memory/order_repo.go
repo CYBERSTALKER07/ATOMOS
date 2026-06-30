@@ -243,6 +243,48 @@ func (r *inMemoryOrderRepo) ListOrdersForStockCommitment(_ context.Context, ware
 	return out, nil
 }
 
+func (r *inMemoryOrderRepo) ClearBackorder(ctx context.Context, id string, emit func(outbox.TxnBuffer) error) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	o, exists := r.byID[id]
+	if !exists {
+		return fmt.Errorf("order not found")
+	}
+	o.Status = order.StatusPending
+	r.byID[id] = o
+	return nil
+}
+
+func (r *inMemoryOrderRepo) ListBackorderedOrders(ctx context.Context, limit int) ([]order.Order, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var out []order.Order
+	for _, o := range r.byID {
+		if o.Status == order.StatusBackordered {
+			out = append(out, o)
+		}
+	}
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
+func (r *inMemoryOrderRepo) ListOrdersByStatus(ctx context.Context, supplierID, status string, limit int) ([]order.Order, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var out []order.Order
+	for _, o := range r.byID {
+		if o.SupplierID == supplierID && string(o.Status) == status {
+			out = append(out, o)
+		}
+	}
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
 func (r *inMemoryOrderRepo) UpdateOrder(ctx context.Context, o order.Order, _ []order.DeliveryProofArtifact, emit func(outbox.TxnBuffer) error) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

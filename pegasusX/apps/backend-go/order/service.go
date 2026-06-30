@@ -19,6 +19,7 @@ import (
 	"math"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -87,6 +88,7 @@ const (
 var (
 	ErrOrderNotFound             = errors.New("order_not_found")
 	ErrOrderForbidden            = errors.New("order_forbidden")
+	ErrOrderCancelLocked         = errors.New("order_cancel_locked")
 	ErrInvalidStatusTransition   = errors.New("invalid_status_transition")
 	ErrGeofenceViolation         = errors.New("geofence_violation")
 	ErrZoneMiss                  = errors.New("zone_miss")
@@ -104,6 +106,7 @@ type LineItem struct {
 	Quantity     int64   `json:"quantity"`
 	UnitPrice    int64   `json:"unit_price_minor"` // minor units (tiyin / cents)
 	UnitVolumeVU float64 `json:"unit_volume_vu,omitempty"`
+	PromotionID  string  `json:"promotion_id,omitempty"`
 }
 
 // Order is the persisted aggregate.
@@ -134,6 +137,7 @@ type Order struct {
 	DerivedFromOrderID    string
 	ReceivingWindowOpen   string
 	ReceivingWindowClose  string
+	Timezone              string
 	DeliverBefore         *time.Time
 	DeliveryPriority      DeliveryPriority
 	DeliveryFeeMinor      int64
@@ -143,6 +147,7 @@ type Order struct {
 	ConfirmationNotifiedAt *time.Time
 	CancelLockedAt        *time.Time
 	CancelLockReason      string
+	CancelLockExpiresAt   *time.Time
 	ProposedDeliveryDate  *time.Time
 	DeliveryProposalAt    *time.Time
 	DeliveryProposalBy    string
@@ -194,6 +199,9 @@ type Repository interface {
 	ListManifestOrders(ctx context.Context, manifestID string) ([]Order, error)
 	ListWarehousePreorders(ctx context.Context, warehouseID string, limit, offset int) ([]Order, error)
 	ListOrdersForStockCommitment(ctx context.Context, warehouseID string, limit int) ([]Order, error)
+	ListBackorderedOrders(ctx context.Context, limit int) ([]Order, error)
+	ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error) error
+	ListOrdersByStatus(ctx context.Context, supplierID, status string, limit int) ([]Order, error)
 }
 
 // WarehouseResolver resolves the best supplier warehouse for retailer
@@ -205,6 +213,36 @@ type WarehouseResolver interface {
 // PaymentCapturer allows the order service to trigger synchronous card captures.
 type PaymentCapturer interface {
 	CaptureCardPayment(ctx context.Context, orderID string, amountMinor int64, currency string) error
+}
+
+// RateLimiter is a simple interface for rate limiting.
+type RateLimiter interface {
+	Allow(key string) bool
+}
+
+// simpleRateLimiter is a basic in-memory token bucket rate limiter.
+type simpleRateLimiter struct {
+	mu       sync.Mutex
+	lastTime map[string]time.Time
+	interval time.Duration
+}
+
+func (r *simpleRateLimiter) Allow(key string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	now := time.Now()
+	if last, ok := r.lastTime[key]; ok && now.Sub(last) < r.interval {
+		return false
+	}
+	r.lastTime[key] = now
+	return true
+}
+
+func newSimpleRateLimiter(interval time.Duration) *simpleRateLimiter {
+	return &simpleRateLimiter{
+		lastTime: make(map[string]time.Time),
+		interval: interval,
+	}
 }
 
 // Service wires repository + cache + ws hubs + supplier scope.
@@ -232,6 +270,7 @@ type Service struct {
 	handoff       *handoff.Engine
 	gatewayPolicy GatewayPolicyReader
 	dispatchPlanWarm func(ctx context.Context, warehouseID string)
+	previewRateLimiter RateLimiter
 }
 
 // ServiceConfig is the constructor input.
@@ -896,8 +935,15 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		deliveryFeeMinor, _ = ComputeOrderDeliveryFee(whPolicy, req.Lat, req.Lng)
 	}
 
+	loc := proximity.TashkentLocation
+	if whPolicy.OperatingSchedule.Timezone != "" {
+		if l, err := time.LoadLocation(whPolicy.OperatingSchedule.Timezone); err == nil {
+			loc = l
+		}
+	}
+
 	source, status, confirmation, committedDate, latestDelivery, classifyErr := ClassifyDelivery(
-		now, req.DeliveryMode, requestedDeliveryDate, deliverBefore,
+		now, loc, req.DeliveryMode, requestedDeliveryDate, deliverBefore,
 		whPolicy.PreorderMinLeadDays, whPolicy.PreorderMaxLeadDays,
 	)
 	if classifyErr != nil {
@@ -1150,6 +1196,9 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 	if claims.Role == auth.RoleRetailer {
 		if claims.Subject == "" || claims.Subject != current.RetailerID || nextStatus != StatusCancelled {
 			return UpdateStatusResponse{}, ErrOrderForbidden
+		}
+		if PreorderCancelLocked(s.now(), current) {
+			return UpdateStatusResponse{}, ErrOrderCancelLocked
 		}
 	}
 

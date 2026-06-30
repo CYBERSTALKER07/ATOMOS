@@ -63,6 +63,13 @@ type SLAEntry struct {
 	TotalOrders int64  `json:"total_orders"`
 }
 
+type SLABreachAlert struct {
+	OrderID     string `json:"order_id"`
+	RetailerID  string `json:"retailer_id"`
+	BreachHours int64  `json:"breach_hours"`
+	DetectedAt  string `json:"detected_at"`
+}
+
 // ── Helper: extract claims + scope ─────────────────────────────────────────
 
 func extractScope(r *http.Request) (*auth.PegasusClaims, *auth.WarehouseScope) {
@@ -410,6 +417,66 @@ func HandleSLAHealth(client *spanner.Client, readRouter proximity.ReadRouter) ht
 		if entries == nil {
 			entries = []SLAEntry{}
 		}
-		writeJSON(w, entries)
+
+		alerts, err := fetchSLABreachAlerts(ctx, getReadClient(r.Context(), client, readRouter, ws), scopeClause, scopeParams, dr)
+		if err != nil {
+			http.Error(w, "SLA breach alert query fault", http.StatusInternalServerError)
+			return
+		}
+		if alerts == nil {
+			alerts = []SLABreachAlert{}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"timestamp":     time.Now().Unix(),
+			"data":          entries,
+			"breach_alerts": alerts,
+		})
 	}
+}
+
+func fetchSLABreachAlerts(ctx context.Context, readClient *spanner.Client, scopeClause string, scopeParams map[string]interface{}, dr DateRange) ([]SLABreachAlert, error) {
+	sql := fmt.Sprintf(`
+		SELECT o.OrderId, o.RetailerId, TIMESTAMP_DIFF(o.UpdatedAt, o.CreatedAt, HOUR), o.UpdatedAt
+		FROM Orders o
+		WHERE o.State = 'COMPLETED'
+		  AND TIMESTAMP_DIFF(o.UpdatedAt, o.CreatedAt, HOUR) > 48
+		  AND o.CreatedAt >= @_from AND o.CreatedAt <= @_to
+		  %s
+		ORDER BY o.UpdatedAt DESC
+		LIMIT 25`, scopeClause)
+	params := make(map[string]interface{}, len(scopeParams)+2)
+	for k, v := range scopeParams {
+		params[k] = v
+	}
+	params["_from"] = dr.From
+	params["_to"] = dr.To
+
+	iter := readClient.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	defer iter.Stop()
+
+	var alerts []SLABreachAlert
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var orderID, retailerID string
+		var breachHours int64
+		var detectedAt time.Time
+		if err := row.Columns(&orderID, &retailerID, &breachHours, &detectedAt); err != nil {
+			return nil, err
+		}
+		alerts = append(alerts, SLABreachAlert{
+			OrderID:     orderID,
+			RetailerID:  retailerID,
+			BreachHours: breachHours,
+			DetectedAt:  detectedAt.Format(time.RFC3339),
+		})
+	}
+	return alerts, nil
 }

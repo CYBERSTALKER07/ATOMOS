@@ -267,7 +267,7 @@ func exceptionOrderIsDelayed(now time.Time, status, confirmation string, request
 		t := requested.Time
 		o.RequestedDeliveryDate = &t
 	}
-	exp := order.ComputeDeliveryExpectation(now, o)
+	exp := order.ComputeDeliveryExpectation(now, time.UTC, o)
 	return exp.Urgency == order.ExpectationUrgencyOverdue || exp.Delayed
 }
 

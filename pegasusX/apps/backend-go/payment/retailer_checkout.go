@@ -15,6 +15,9 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
+// ErrGatewayMismatch is returned when a session exists but the requested gateway differs.
+var ErrGatewayMismatch = errors.New("gateway mismatch")
+
 // OrderCheckoutReader loads persisted order totals for retailer payment flows.
 type OrderCheckoutReader interface {
 	CheckoutSnapshot(ctx context.Context, orderID, retailerID string) (totalMinor int64, currency string, err error)
@@ -133,6 +136,10 @@ func (s *Service) HandleOrderCardCheckout(w http.ResponseWriter, r *http.Request
 	}
 	session, attempt, executionResult, err := s.initCheckoutSession(r.Context(), "CARD", checkoutReq)
 	if err != nil {
+		if errors.Is(err, ErrGatewayMismatch) {
+			writeJSONError(w, http.StatusConflict, "gateway_mismatch", "cannot change gateway for an active session", "/v1/order/card-checkout", false, "")
+			return
+		}
 		s.writeExecutionError(w, "/v1/order/card-checkout", err)
 		return
 	}
@@ -277,6 +284,14 @@ func (s *Service) initCheckoutSession(ctx context.Context, mode string, req Chec
 	if mode != "CASH" {
 		if err := policy.ValidateCardGateway(req.Gateway); err != nil {
 			return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err
+		}
+	}
+
+	if existing, ok, err := s.repo.GetSessionByOrderID(ctx, req.OrderID); err == nil && ok {
+		if existing.Status == "PAYMENT_REQUIRED" || existing.Status == "AWAITING_PAYMENT" {
+			if existing.Gateway != "" && req.Gateway != "" && !strings.EqualFold(existing.Gateway, req.Gateway) {
+				return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, ErrGatewayMismatch
+			}
 		}
 	}
 

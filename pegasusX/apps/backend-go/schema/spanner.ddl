@@ -135,6 +135,8 @@ CREATE TABLE Retailers (
   PlaceId                 STRING(128),
   ReceivingWindowOpen     STRING(10),
   ReceivingWindowClose    STRING(10),
+  Timezone              STRING(64),
+
   RegionId                STRING(36),
   CreatedAt               TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (RetailerId);
@@ -169,6 +171,8 @@ CREATE TABLE Orders (
   DerivedFromOrderId STRING(36),
   ReceivingWindowOpen  STRING(10),
   ReceivingWindowClose STRING(10),
+  Timezone              STRING(64),
+
   ProposedDeliveryDate TIMESTAMP,
   DeliveryProposalAt TIMESTAMP,
   DeliveryProposalBy STRING(128),
@@ -678,11 +682,13 @@ CREATE TABLE NegotiationProposals (
   Resolution    STRING(200),
   ResolvedBy    STRING(36),
   ResolvedAt    TIMESTAMP,
+  ExpiresAt     TIMESTAMP,
   CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (ProposalId);
 
 CREATE INDEX Idx_NegotiationProposals_ByOrderId ON NegotiationProposals(OrderId);
 CREATE INDEX Idx_NegotiationProposals_Pending ON NegotiationProposals(Status);
+CREATE INDEX Idx_NegotiationProposals_Expiry ON NegotiationProposals(Status, ExpiresAt);
 
 -- LEO loading gate: supplier truck manifests (warehouse outbound).
 CREATE TABLE SupplierTruckManifests (
@@ -1069,3 +1075,4 @@ CREATE TABLE WarehouseBroadcastTemplates (
 
 CREATE INDEX Idx_WarehouseBroadcastTemplates_ByWarehouseUpdated
   ON WarehouseBroadcastTemplates(WarehouseId, UpdatedAt DESC);
+ALTER TABLE Orders ADD COLUMN CancelLockExpiresAt TIMESTAMP;

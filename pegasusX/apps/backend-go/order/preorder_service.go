@@ -10,6 +10,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 )
 
 // ConfirmAIOrder confirms an AI-created future order for the retailer.
@@ -158,7 +159,13 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 	if current.Source != OrderSourceManualPreorder || current.Status != StatusScheduled {
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
-	if PreorderEditLocked(s.now(), current) {
+	loc := proximity.TashkentLocation
+	if current.Timezone != "" {
+		if l, err := time.LoadLocation(current.Timezone); err == nil {
+			loc = l
+		}
+	}
+	if PreorderEditLocked(s.now(), loc, current) {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("%w: preorder edit locked within %d days of delivery", ErrInvalidStatusTransition, PreorderEditLockDays)
 	}
 	if current.ConfirmationStatus == ConfirmationStatusRejected {

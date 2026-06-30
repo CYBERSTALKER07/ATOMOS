@@ -25,6 +25,7 @@ val goBinary: String = localProps.getProperty("go.path", "go")
 
 val contractsSchemaFile = rootProject.file("../../contracts/events.schema.json")
 val backendGoDir = rootProject.file("../../apps/backend-go")
+val i18nAndroidDir = rootProject.file("../../packages/i18n/generated/android")
 val generatedWsModelFile = rootProject.file(
     "app/src/main/java/com/pegasus/retailer/generated/contracts/PegasusWSEventEnvelope.kt"
 )
@@ -95,8 +96,16 @@ val generateWsEventModels by tasks.registering(Exec::class) {
     )
 }
 
+val copyI18nAndroidStrings by tasks.registering(Copy::class) {
+    group = "codegen"
+    description = "Copy shared i18n Android string resources into the app module"
+    from(i18nAndroidDir)
+    into("src/main/res")
+    include("**/strings.xml")
+}
+
 tasks.named("preBuild") {
-    dependsOn(generateWsEventModels)
+    dependsOn(generateWsEventModels, copyI18nAndroidStrings)
 }
 
 android {

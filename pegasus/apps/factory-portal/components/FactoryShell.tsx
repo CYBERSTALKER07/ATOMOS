@@ -32,6 +32,7 @@ const NAV: NavSection[] = [
     label: 'Supply Chain',
     items: [
       { href: '/supply-requests', icon: 'transfers', label: 'Supply Requests' },
+      { href: '/supply-requests/calendar', icon: 'schedule', label: 'Production Schedule' },
       { href: '/payload-override', icon: 'loadingBay', label: 'Payload Override' },
     ],
   },
@@ -47,6 +48,7 @@ const PAGE_SUMMARIES: Record<string, string> = {
   '/staff': 'Track shifts, assigned operators, and coverage gaps.',
   '/insights': 'Review alerts and operational drift before it becomes a delay.',
   '/supply-requests': 'Review inbound warehouse demand and plan outbound work.',
+  '/supply-requests/calendar': 'Calendar view of supply requests by delivery date.',
   '/payload-override': 'Handle controlled manual overrides for payload automation.',
 };
 

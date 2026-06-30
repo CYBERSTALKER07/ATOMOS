@@ -2,6 +2,7 @@ package payment
 
 import (
 	"crypto/md5"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -115,5 +116,13 @@ func verifyClickSignature(req clickWebhookRequest, secret string) bool {
 		strings.TrimSpace(req.SignTime)
 	sum := md5.Sum([]byte(payload))
 	expected := hex.EncodeToString(sum[:])
-	return strings.EqualFold(provided, expected)
+	
+	// Convert both to lowercase byte slices for safe constant-time comparison
+	bProvided := []byte(strings.ToLower(provided))
+	bExpected := []byte(expected)
+	
+	if len(bProvided) != len(bExpected) {
+		return false
+	}
+	return subtle.ConstantTimeCompare(bProvided, bExpected) == 1
 }

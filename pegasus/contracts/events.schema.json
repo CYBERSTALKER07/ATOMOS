@@ -1657,6 +1657,38 @@
       "title": "OrderModifiedPayload",
       "type": "object"
     },
+    "OrderPartiallyDeliveredPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "driver_id": {
+          "type": "string"
+        },
+        "new_amount": {
+          "type": "integer"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "new_amount",
+        "order_id",
+        "retailer_id",
+        "timestamp"
+      ],
+      "title": "OrderPartiallyDeliveredPayload",
+      "type": "object"
+    },
     "OrderReassignedPayload": {
       "additionalProperties": true,
       "properties": {
@@ -1815,6 +1847,32 @@
         "timestamp"
       ],
       "title": "OrderValidationFailedPayload",
+      "type": "object"
+    },
+    "OrderWaitlistedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "retailer_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "OrderWaitlistedPayload",
       "type": "object"
     },
     "OutOfStockPayload": {
@@ -4743,6 +4801,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/OrderPartiallyDeliveredPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_PARTIALLY_DELIVERED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderPartiallyDeliveredEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/OrderReassignedPayload"
         },
         {
@@ -4872,6 +4949,25 @@
         }
       ],
       "title": "OrderValidationFailedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderWaitlistedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_WAITLISTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderWaitlistedEnvelope"
     },
     {
       "allOf": [
@@ -6194,6 +6290,7 @@
         "ORDER_DISPATCHED",
         "ORDER_FINALIZED",
         "ORDER_MODIFIED",
+        "ORDER_PARTIALLY_DELIVERED",
         "ORDER_REASSIGNED",
         "ORDER_REJECTED_BY_SUPPLIER",
         "ORDER_REROUTED",
@@ -6201,6 +6298,7 @@
         "ORDER_STATUS_CHANGED",
         "ORDER_SYNC",
         "ORDER_VALIDATION_FAILED",
+        "ORDER_WAITLISTED",
         "OUTBOX_FAILED",
         "OUT_OF_STOCK",
         "PAYLOAD_OVERFLOW",
@@ -6358,6 +6456,7 @@
     "ORDER_DISPATCHED": "OrderDispatchedPayload",
     "ORDER_FINALIZED": "OrderFinalizedPayload",
     "ORDER_MODIFIED": "OrderModifiedPayload",
+    "ORDER_PARTIALLY_DELIVERED": "OrderPartiallyDeliveredPayload",
     "ORDER_REASSIGNED": "OrderReassignedPayload",
     "ORDER_REJECTED_BY_SUPPLIER": "UnknownEventPayload",
     "ORDER_REROUTED": "OrderReroutedPayload",
@@ -6365,6 +6464,7 @@
     "ORDER_STATUS_CHANGED": "OrderStatusChangedPayload",
     "ORDER_SYNC": "UnknownEventPayload",
     "ORDER_VALIDATION_FAILED": "OrderValidationFailedPayload",
+    "ORDER_WAITLISTED": "OrderWaitlistedPayload",
     "OUTBOX_FAILED": "UnknownEventPayload",
     "OUT_OF_STOCK": "OutOfStockPayload",
     "PAYLOAD_OVERFLOW": "PayloadOverflowPayload",

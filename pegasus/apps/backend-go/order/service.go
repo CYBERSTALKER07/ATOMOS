@@ -2210,14 +2210,26 @@ func (s *OrderService) AmendOrder(ctx context.Context, req AmendOrderRequest) (*
 			newVolumeVU = nullVolumeVU.Float64
 		}
 
-		// 4. Update Orders: new total + new VolumeVU + version-guarded OCC + clear freeze lock (state stays ARRIVED)
+		// 4. Update Orders: new total + new VolumeVU + version-guarded OCC + clear freeze lock
+		hasPartial := false
+		for _, item := range req.Items {
+			if item.AcceptedQty > 0 && item.RejectedQty > 0 {
+				hasPartial = true
+				break
+			}
+		}
+		newState := state
+		if hasPartial {
+			newState = "PARTIALLY_DELIVERED"
+		}
 		newVersion := orderVersion + 1
 		rowCount, updateErr := txn.Update(ctx, spanner.Statement{
-			SQL: `UPDATE Orders SET Amount = @total, VolumeVU = @volumeVU, Version = @newVersion, LockedUntil = NULL
+			SQL: `UPDATE Orders SET Amount = @total, VolumeVU = @volumeVU, State = @state, Version = @newVersion, LockedUntil = NULL
 			      WHERE OrderId = @id AND Version = @version`,
 			Params: map[string]interface{}{
 				"total":      newTotal,
 				"volumeVU":   newVolumeVU,
+				"state":      newState,
 				"id":         req.OrderID,
 				"newVersion": newVersion,
 				"version":    orderVersion,
@@ -2293,6 +2305,18 @@ func (s *OrderService) AmendOrder(ctx context.Context, req AmendOrderRequest) (*
 			Timestamp:   time.Now().UTC(),
 		}, telemetry.TraceIDFromContext(ctx)); err != nil {
 			return fmt.Errorf("outbox emit ORDER_MODIFIED: %w", err)
+		}
+		if hasPartial {
+			if err := outbox.EmitJSON(txn, "Order", req.OrderID, kafkaEvents.EventOrderPartiallyDelivered, topicLogisticsEvents, map[string]interface{}{
+				"order_id":    req.OrderID,
+				"retailer_id": retailerID,
+				"supplier_id": supplierID,
+				"driver_id":   driverID,
+				"new_amount":  newTotal,
+				"timestamp":   time.Now().UTC().Format(time.RFC3339),
+			}, telemetry.TraceIDFromContext(ctx)); err != nil {
+				return fmt.Errorf("outbox emit ORDER_PARTIALLY_DELIVERED: %w", err)
+			}
 		}
 
 		return nil
@@ -3177,10 +3201,14 @@ func normalizeCardGateway(gateway string) string {
 // For GlobalPay: verifies the MasterInvoice is SETTLED before allowing completion.
 // For Cash: trusts the driver's confirmation.
 // Returns the owning supplierID for WebSocket push notification.
-func (s *OrderService) CompleteOrder(ctx context.Context, orderId string) (string, error) {
+func (s *OrderService) CompleteOrder(ctx context.Context, orderId string, podPhotoURL ...string) (string, error) {
 	var retailerId string
 	var supplierID string
 	var warehouseId string
+	var podURL string
+	if len(podPhotoURL) > 0 {
+		podURL = strings.TrimSpace(podPhotoURL[0])
+	}
 
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderId},
@@ -3288,14 +3316,22 @@ func (s *OrderService) CompleteOrder(ctx context.Context, orderId string) (strin
 
 		// Transition to COMPLETED
 		newVersion := version + 1
+		updateSQL := `UPDATE Orders SET State = 'COMPLETED', PaymentStatus = 'PAID', Version = @newVersion, LockedUntil = NULL
+			      WHERE OrderId = @id AND Version = @version`
+		updateParams := map[string]interface{}{
+			"id":         orderId,
+			"newVersion": newVersion,
+			"version":    version,
+		}
+		if podURL != "" {
+			updateSQL = `UPDATE Orders SET State = 'COMPLETED', PaymentStatus = 'PAID', Version = @newVersion, LockedUntil = NULL,
+			             PodPhotoProofUrl = @podPhotoUrl
+			             WHERE OrderId = @id AND Version = @version`
+			updateParams["podPhotoUrl"] = podURL
+		}
 		rowCount, err := txn.Update(ctx, spanner.Statement{
-			SQL: `UPDATE Orders SET State = 'COMPLETED', PaymentStatus = 'PAID', Version = @newVersion, LockedUntil = NULL
-			      WHERE OrderId = @id AND Version = @version`,
-			Params: map[string]interface{}{
-				"id":         orderId,
-				"newVersion": newVersion,
-				"version":    version,
-			},
+			SQL:    updateSQL,
+			Params: updateParams,
 		})
 		if err != nil {
 			return fmt.Errorf("completion failed: %w", err)
