@@ -1,7 +1,7 @@
 {
-  "name": "visuals",
+  "name": "@pegasusx/visuals",
   "version": "1.0.0",
-  "description": "My Remotion video",
+  "description": "Remotion monochrome line-art videos for Pegasus marketing site",
   "repository": {},
   "license": "UNLICENSED",
   "private": true,
@@ -25,7 +25,11 @@
     "dev": "remotion studio",
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
-    "lint": "eslint src && tsc"
+    "lint": "eslint src && tsc",
+    "ensure-media-dirs": "bash scripts/ensure-media-dirs.sh",
+    "reset-chrome": "bash scripts/reset-chrome.sh",
+    "render:order-lifecycle": "npm run ensure-media-dirs && remotion render OrderLifecycle ../softwareengineercv-main/public/media/platform/order-lifecycle.mp4",
+    "render:ecosystem": "npm run ensure-media-dirs && remotion render PegasusEcosystemFlow ../softwareengineercv-main/public/media/platform/pegasus-ecosystem-flow.mp4"
   },
   "sideEffects": [
     "*.css"

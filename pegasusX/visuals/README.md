@@ -1,54 +1,82 @@
-# Remotion video
+# PegasusX Visuals (Remotion)
 
-<p align="center">
-  <a href="https://github.com/remotion-dev/logo">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/remotion-dev/logo/raw/main/animated-logo-banner-dark.apng">
-      <img alt="Animated Remotion Logo" src="https://github.com/remotion-dev/logo/raw/main/animated-logo-banner-light.gif">
-    </picture>
-  </a>
-</p>
+Monochrome line-art marketing videos for the Pegasus site (`softwareengineercv-main`).
 
-Welcome to your Remotion project!
+## Quick start
 
-## Commands
-
-**Install Dependencies**
-
-```console
+```bash
+cd pegasusX/visuals
 npm i
+npm run dev          # Remotion Studio
 ```
 
-**Start Preview**
+## Render to marketing site
 
-```console
-npm run dev
+Outputs land in `softwareengineercv-main/public/media/{category}/{slug}.mp4`:
+
+```bash
+npm run render:order-lifecycle
+npm run render:ecosystem   # ~10 min, 14400 frames — expect several minutes
 ```
 
-**Render video**
+### Troubleshooting: `Z_BUF_ERROR` / `unexpected end of file`
 
-```console
-npx remotion render
+First render downloads Chrome Headless Shell (~150MB). A interrupted download causes:
+
+```
+Error: unexpected end of file
+code: 'Z_BUF_ERROR'
 ```
 
-**Upgrade Remotion**
+Fix:
 
-```console
-npx remotion upgrade
+```bash
+npm run reset-chrome
+npm run render:order-lifecycle
 ```
 
-## Docs
+Or manually delete `node_modules/.remotion/chrome-headless-shell` and re-run render.
 
-Get started with Remotion by reading the [fundamentals page](https://www.remotion.dev/docs/the-fundamentals).
+## Project layout
 
-## Help
+```
+visuals/
+├── src/
+│   ├── compositions/     # One file per Remotion composition
+│   ├── components/       # LineCanvas, StrokeDraw, MonoLabel
+│   ├── style/tokens.ts   # #000 / #FFF, 1920×1080, 24fps
+│   └── lib/
+│       ├── compositions.ts  # Registry + durations
+│       └── paths.ts         # Export paths to Next.js public/
+├── public/                 # Static assets for Remotion
+├── topics-manifest.json    # All nav topic slugs → output paths
+└── .agents/skills/remotion-best-practices/  # Upstream Remotion skill
+```
 
-We provide help on our [Discord server](https://discord.gg/6VzzNDwUwV).
+## Compositions
 
-## Issues
+| ID | Duration | Output |
+|---|---|---|
+| `OrderLifecycle` | 10s | `public/media/platform/order-lifecycle.mp4` |
+| `PegasusEcosystemFlow` | 10 min | `public/media/platform/pegasus-ecosystem-flow.mp4` |
 
-Found an issue with Remotion? [File an issue here](https://github.com/remotion-dev/remotion/issues/new).
+## Agent skills
 
-## License
+- **Project skill:** `.agents/skills/pegasus-remotion-visuals/` (repo root) — Pegasus visual language + topic map
+- **Remotion skill:** `visuals/.agents/skills/remotion-best-practices/` — Remotion APIs and patterns
 
-Note that for some entities a company license is needed. [Read the terms here](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md).
+When prompting a coding agent:
+
+```
+cd pegasusX/visuals && npm run dev
+Use pegasus-remotion-visuals + remotion-best-practices skills.
+```
+
+## Visual rules
+
+- Black `#000000` background, white `#FFFFFF` 1–2px strokes only
+- Stroke-draw reveals via `StrokeDraw` + `interpolate()` (no CSS transitions)
+- 1920×1080, 24fps, silent
+- End each clip with 0.5s hold frame
+
+See `.agents/skills/pegasus-remotion-visuals/reference.md` for the full topic catalog and chapter map.

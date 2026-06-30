@@ -1,0 +1,135 @@
+{
+  "globalStyle": {
+    "background": "#000000",
+    "stroke": "#FFFFFF",
+    "resolution": "1920x1080",
+    "fps": 24,
+    "audio": "silent"
+  },
+  "outputRoot": "../softwareengineercv-main/public/media",
+  "categories": [
+    {
+      "id": "platform",
+      "topics": [
+        "atomos-control-plane",
+        "how-pegasus-works",
+        "order-lifecycle",
+        "supplier-control-plane",
+        "mutating-handler-contract",
+        "reliable-updates",
+        "network-topology",
+        "trust-reliability"
+      ]
+    },
+    {
+      "id": "solutions",
+      "topics": [
+        "dispatch-the-right-load",
+        "visual-dispatch-engine",
+        "fleet-visibility",
+        "live-fleet-tracking",
+        "payment-confidence",
+        "treasury-integrity",
+        "network-coordination",
+        "warehouse-operations",
+        "factory-loading"
+      ]
+    },
+    {
+      "id": "roles",
+      "topics": [
+        "supplier",
+        "warehouse",
+        "factory",
+        "driver",
+        "retailer",
+        "payload-gate",
+        "order-vetting",
+        "cash-collection",
+        "role-parity-matrix"
+      ]
+    },
+    {
+      "id": "capabilities",
+      "topics": [
+        "smarter-dispatch",
+        "reliable-updates",
+        "payment-confidence",
+        "live-fleet-tracking",
+        "instant-coordination",
+        "connected-network",
+        "returns-barcode-gate",
+        "dispatch-preview"
+      ]
+    },
+    {
+      "id": "technology",
+      "topics": [
+        "go-backend-platform",
+        "cloud-spanner",
+        "redis-kafka",
+        "websocket-hubs",
+        "osrm-routing",
+        "firebase-otp",
+        "next-js-surfaces",
+        "native-mobile-desktop"
+      ]
+    },
+    {
+      "id": "ai-vision",
+      "topics": [
+        "smart-dispatch-assist",
+        "ai-worker-vrp",
+        "ai-recommendations",
+        "pulse-timeline",
+        "explain-status-banners",
+        "exception-weather-map",
+        "override-impact-preview",
+        "future-operating-model"
+      ]
+    },
+    {
+      "id": "operations",
+      "topics": [
+        "zone-miss-handling",
+        "concurrent-stock-reject",
+        "truck-too-small",
+        "partial-dispatch-commit",
+        "wrong-truck-sealed",
+        "driver-reassignment",
+        "shop-closed-at-delivery",
+        "cash-at-door-cod",
+        "returns-wrong-barcode",
+        "live-tracking-expectations"
+      ]
+    },
+    {
+      "id": "apps-deploy",
+      "topics": [
+        "mobile-apps",
+        "desktop-apps",
+        "web-apps",
+        "dispatch-fleet",
+        "payments-treasury",
+        "realtime-coordination",
+        "enterprise-rollout",
+        "request-demo"
+      ]
+    }
+  ],
+  "ecosystemFilm": {
+    "compositionId": "PegasusEcosystemFlow",
+    "durationSeconds": 600,
+    "output": "platform/pegasus-ecosystem-flow.mp4",
+    "chapters": [
+      "ONE CONTROL PLANE",
+      "HOW PEGASUS WORKS",
+      "SIX ROLES, ONE ORDER",
+      "MORNING DISPATCH",
+      "WHEN THINGS BREAK",
+      "PAYMENT & TREASURY",
+      "RELIABLE UPDATES",
+      "UNDER THE HOOD"
+    ]
+  }
+}
