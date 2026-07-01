@@ -48,18 +48,28 @@ export default function SmartDispatchArcade() {
         </div>
 
         <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12 max-w-6xl mx-auto">
-          <div className="border border-white/10 p-2 md:p-4 bg-[#111] hover:bg-[#1a1a1a] transition-colors rounded-none">
-            <img 
-              src="/Gemini_Generated_Image_un3te4un3te4un3t.png" 
-              alt="Smart Dispatch Preview 1" 
-              className="w-full h-auto object-cover border border-white/10"
-            />
+          <div className="border border-white/10 p-8 md:p-12 bg-[#111] hover:bg-[#1a1a1a] transition-colors rounded-none flex flex-col justify-center min-h-[300px]">
+             <h3 className="text-2xl font-light mb-6">Key Capabilities</h3>
+             <ul className="space-y-4 text-white/70">
+                <li className="flex items-start gap-3">
+                  <span className="text-green-500 mt-1">✓</span>
+                  <span className="text-base">Real-time visibility into supply chain operations</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-green-500 mt-1">✓</span>
+                  <span className="text-base">Predictive analytics powered by AI/ML</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-green-500 mt-1">✓</span>
+                  <span className="text-base">Seamless integration with existing ERP systems</span>
+                </li>
+             </ul>
           </div>
-          <div className="border border-white/10 p-2 md:p-4 bg-[#111] hover:bg-[#1a1a1a] transition-colors rounded-none">
+          <div className="border border-white/10 p-2 md:p-4 bg-[#111] hover:bg-[#1a1a1a] transition-colors rounded-none flex items-center justify-center">
             <img 
               src="/Gemini_Generated_Image_un3te4un3te4un3t.png" 
-              alt="Smart Dispatch Preview 2" 
-              className="w-full h-auto object-cover border border-white/10"
+              alt="Supplier Control Panel Preview" 
+              className="w-full h-full object-cover border border-white/10"
             />
           </div>
         </div>

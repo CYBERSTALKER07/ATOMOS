@@ -44,38 +44,40 @@ export default async function SolutionDetailPage({ params }: { params: Promise<{
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
-          <div className="flex flex-col justify-center">
-             <h3 className="text-2xl md:text-3xl font-light mb-6">Key Capabilities</h3>
-             <ul className="space-y-4 text-white/70">
-                <li className="flex items-start gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+          {/* Text Card */}
+          <div className="border border-white/10 p-8 md:p-12 bg-[#111] hover:bg-[#1a1a1a] transition-colors rounded-none flex flex-col justify-center">
+             <h3 className="text-2xl md:text-3xl font-light mb-8">Key Capabilities</h3>
+             <ul className="space-y-6 text-white/70">
+                <li className="flex items-start gap-4">
                   <span className="text-green-500 mt-1">✓</span>
-                  <span>Real-time visibility into supply chain operations</span>
+                  <span className="text-lg">Real-time visibility into supply chain operations</span>
                 </li>
-                <li className="flex items-start gap-3">
+                <li className="flex items-start gap-4">
                   <span className="text-green-500 mt-1">✓</span>
-                  <span>Predictive analytics powered by AI/ML</span>
+                  <span className="text-lg">Predictive analytics powered by AI/ML</span>
                 </li>
-                <li className="flex items-start gap-3">
+                <li className="flex items-start gap-4">
                   <span className="text-green-500 mt-1">✓</span>
-                  <span>Seamless integration with existing ERP systems</span>
+                  <span className="text-lg">Seamless integration with existing ERP systems</span>
                 </li>
              </ul>
              <div className="mt-12">
                <Link 
                   href="/contact"
-                  className="inline-flex items-center justify-center bg-white text-black px-6 py-3 text-sm font-bold tracking-wider uppercase hover:bg-gray-200 transition-colors"
+                  className="inline-flex items-center justify-center border border-white/20 bg-transparent text-white px-8 py-4 text-sm font-bold tracking-wider uppercase hover:bg-white hover:text-black transition-colors w-full md:w-auto"
                 >
                   Request Demo
                 </Link>
              </div>
           </div>
 
-          <div className="border border-white/10 p-2 md:p-4 bg-[#111] hover:bg-[#1a1a1a] transition-colors rounded-none flex items-center justify-center">
+          {/* Image Card */}
+          <div className="border border-white/10 p-2 md:p-4 bg-[#111] hover:bg-[#1a1a1a] transition-colors rounded-none flex items-center justify-center min-h-[400px]">
             <img 
               src={imageUrl} 
               alt={useCaseData.title} 
-              className="w-full h-auto object-cover border border-white/10"
+              className="w-full h-full object-cover border border-white/10"
             />
           </div>
         </div>
