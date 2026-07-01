@@ -146,7 +146,8 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		events.EventDriverReturnApproaching, events.EventReturnReceivedAtWarehouse:
 		return d.handleReturnGateEvent(ctx, msg.Value, traceID)
 	case events.EventDispatchZoneOverride, events.EventPlanningMEIORecommendation, events.EventDemandBaselineUpdated,
-		events.EventReplenishmentAutoApproved, events.EventPlanningAgentBroadcast:
+		events.EventReplenishmentAutoApproved, events.EventPlanningAgentBroadcast,
+		events.EventPlanningForecastUpdated, events.EventPlanningPromoSimulationReady, events.EventPlanningConfidenceDowngraded:
 		return d.handlePlanningEvent(ctx, msg.Value, traceID)
 	default:
 		if strings.HasPrefix(envelope.Type, "MANIFEST_") {

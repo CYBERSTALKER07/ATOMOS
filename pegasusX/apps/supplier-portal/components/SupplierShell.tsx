@@ -29,6 +29,7 @@ const NAV: NavSection[] = [
       { href: "/fleet", icon: "fleet", label: "Fleet" },
       { href: "/fleet/orders", icon: "orders", label: "Fleet Orders" },
       { href: "/operations", icon: "dispatch", label: "Operations" },
+      { href: "/operations/replenishment-policies", icon: "inventory", label: "Replenishment Policies" },
       { href: "/exceptions", icon: "warning", label: "Exceptions" },
     ],
   },
@@ -59,6 +60,7 @@ const NAV: NavSection[] = [
     items: [
       { href: "/analytics", icon: "overview", label: "Analytics" },
       { href: "/analytics/demand", icon: "overview", label: "Demand Forecast" },
+      { href: "/analytics/knowledge-graph", icon: "topology", label: "Knowledge Graph" },
       { href: "/ai/recommendations", icon: "overview", label: "AI Recommendations" },
     ],
   },
@@ -75,6 +77,7 @@ const NAV: NavSection[] = [
     label: "Settings",
     items: [
       { href: "/profile", icon: "supplier", label: "Profile" },
+      { href: "/settings/planning", icon: "overview", label: "Planning" },
       { href: "/org-fleet", icon: "person-add", label: "Org & Fleet" },
       { href: "/returns", icon: "returns", label: "Returns" },
     ],

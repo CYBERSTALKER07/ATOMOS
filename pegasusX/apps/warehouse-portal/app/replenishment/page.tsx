@@ -202,6 +202,12 @@ function formatDemandWhy(
   if (!breakdown || typeof breakdown !== 'object') {
     return reasonCode?.replaceAll('_', ' ') ?? 'Threshold breach';
   }
+  const blockedReason = typeof breakdown.blocked_reason === 'string' ? breakdown.blocked_reason : '';
+  if (blockedReason) {
+    return blockedReason === 'insufficient_history'
+      ? 'Insufficient history — forecast blocked'
+      : blockedReason.replaceAll('_', ' ');
+  }
   const parts: string[] = [];
   const burn = breakdown.burn_rate_7d ?? breakdown.burn_rate;
   if (typeof burn === 'number') parts.push(`Burn ${burn.toFixed(1)}/d`);

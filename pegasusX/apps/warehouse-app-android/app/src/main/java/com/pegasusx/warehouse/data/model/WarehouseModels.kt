@@ -2,6 +2,7 @@ package com.pegasusx.warehouse.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 // ── Auth ──
 @Serializable
@@ -596,6 +597,7 @@ data class DemandForecastProduct(
     val priority: String = "",
     val unit: String = "",
     val sources: DemandForecastSources = DemandForecastSources(),
+    @SerialName("demand_breakdown") val demandBreakdown: JsonObject? = null,
 )
 
 @Serializable

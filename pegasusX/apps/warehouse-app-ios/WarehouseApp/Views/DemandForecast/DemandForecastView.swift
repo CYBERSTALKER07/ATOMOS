@@ -208,7 +208,8 @@ private func demandForecastFromInsights(_ insights: [ReplenishmentInsight], hori
             daysUntilStockout: Double(insight.daysUntilStockout),
             priority: priority,
             unit: "VU",
-            sources: DemandForecastSources(burnRate: insight.avgDailyVelocity)
+            sources: DemandForecastSources(burnRate: insight.avgDailyVelocity),
+            demandBreakdown: insight.demandBreakdown
         )
     }
     return DemandForecastResponse(
@@ -273,6 +274,10 @@ private struct ForecastProductRow: View {
                 sourceChip(label: "AI", value: "\(product.sources.aiPrediction)")
                 sourceChip(label: "Pre", value: "\(product.sources.preOrders)")
                 sourceChip(label: "Burn", value: String(format: "%.1f", product.sources.burnRate))
+            }
+
+            if let confidence = parseForecastConfidence(product.demandBreakdown) {
+                ForecastConfidenceView(confidence: confidence, compact: true)
             }
         }
         .labCard()

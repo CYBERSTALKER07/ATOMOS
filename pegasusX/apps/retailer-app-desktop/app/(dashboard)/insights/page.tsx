@@ -31,6 +31,7 @@ import { correctPrediction } from "../../../lib/api";
 import { retailerOrderCreateKey } from "@pegasusx/api-client";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import type { Prediction, RetailerAnalytics } from "../../../lib/types";
+import { isPredictionBlocked } from "../../../lib/types";
 
 type LoadIssue = "restricted" | "offline" | "error";
 
@@ -565,11 +566,17 @@ export default function InsightsPage() {
                               item.productName ??
                               "Predicted Item"}
                           </span>
-                          <span
-                            className={`text-[9px] font-black tracking-tighter px-2 py-0.5 rounded bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] text-[var(--desk-text-tertiary)]`}
-                          >
-                            {cfg.label}
-                          </span>
+                          {isPredictionBlocked(item) ? (
+                            <span className="text-[9px] font-black tracking-tighter px-2 py-0.5 rounded bg-amber-100 border border-amber-200 text-amber-800">
+                              INSUFFICIENT HISTORY
+                            </span>
+                          ) : (
+                            <span
+                              className={`text-[9px] font-black tracking-tighter px-2 py-0.5 rounded bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] text-[var(--desk-text-tertiary)]`}
+                            >
+                              {cfg.label}
+                            </span>
+                          )}
                         </div>
                         <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] line-clamp-1">
                           {item.reasoning}

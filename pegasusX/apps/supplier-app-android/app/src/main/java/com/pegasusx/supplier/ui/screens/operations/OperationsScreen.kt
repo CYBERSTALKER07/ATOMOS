@@ -28,7 +28,11 @@ private val broadcastRoles = listOf("ALL", "DRIVER", "RETAILER", "PAYLOAD")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OperationsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
+fun OperationsScreen(
+    ops: SupplierOperationsRepository,
+    onBack: () -> Unit,
+    onOpenReplenishmentPolicies: () -> Unit = {},
+) {
     var loading by remember { mutableStateOf(true) }
     var empathy by remember { mutableStateOf<SupplierEmpathyAdoption?>(null) }
     var title by remember { mutableStateOf("") }
@@ -262,6 +266,9 @@ fun OperationsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            OutlinedButton(onClick = onOpenReplenishmentPolicies, modifier = Modifier.fillMaxWidth()) {
+                Text("View replenishment policies")
+            }
             Button(onClick = { triggerReplenishment() }, enabled = !replenishing, modifier = Modifier.fillMaxWidth()) {
                 Text(if (replenishing) "Triggering…" else "Trigger replenishment")
             }

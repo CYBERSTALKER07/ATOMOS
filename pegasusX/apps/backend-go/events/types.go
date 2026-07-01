@@ -427,8 +427,15 @@ type PlanningEvent struct {
 	Action       string  `json:"action,omitempty"`
 	Polygon      string  `json:"polygon_geojson,omitempty"`
 	TTLSeconds   int64   `json:"ttl_seconds,omitempty"`
-	BaselineQty  int64   `json:"baseline_qty,omitempty"`
-	Confidence   float64 `json:"confidence,omitempty"`
-	NetworkNodes int     `json:"network_nodes,omitempty"`
-	Transfers    int     `json:"transfer_recommendations,omitempty"`
+	BaselineQty    int64   `json:"baseline_qty,omitempty"`
+	LowUnits       int64   `json:"low_units,omitempty"`
+	HighUnits      int64   `json:"high_units,omitempty"`
+	Confidence     float64 `json:"confidence,omitempty"`
+	ConfidencePct  int64   `json:"confidence_pct,omitempty"`
+	BaselineSource string  `json:"baseline_source,omitempty"`
+	BlockedReason  string  `json:"blocked_reason,omitempty"`
+	NetworkNodes   int     `json:"network_nodes,omitempty"`
+	Transfers      int     `json:"transfer_recommendations,omitempty"`
+	SignalID       string  `json:"signal_id,omitempty"`
+	SimulationID   string  `json:"simulation_id,omitempty"`
 }

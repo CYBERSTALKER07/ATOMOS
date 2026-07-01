@@ -70,6 +70,10 @@ import com.pegasusx.supplier.ui.screens.treasury.PaymentsScreen
 import com.pegasusx.supplier.ui.screens.treasury.ReconciliationScreen
 import com.pegasusx.supplier.ui.screens.analytics.AnalyticsScreen
 import com.pegasusx.supplier.ui.screens.analytics.DemandHistoryScreen
+import com.pegasusx.supplier.ui.screens.planning.KnowledgeGraphScreen
+import com.pegasusx.supplier.ui.screens.planning.PlanningBrainScreen
+import com.pegasusx.supplier.ui.screens.planning.PlanningSettingsScreen
+import com.pegasusx.supplier.ui.screens.planning.ReplenishmentPoliciesScreen
 import com.pegasusx.supplier.ui.screens.ai.AIRecommendationsScreen
 import com.pegasusx.supplier.ui.screens.network.DeliveryZonesScreen
 import com.pegasusx.supplier.ui.screens.network.FactoriesScreen
@@ -105,6 +109,10 @@ object SupplierRoutes {
     const val INVENTORY_IMPORT = "inventory_import"
     const val TREASURY_HUB = "treasury_hub"
     const val DEMAND_HISTORY = "demand_history"
+    const val PLANNING_BRAIN = "planning_brain"
+    const val PLANNING_SETTINGS = "planning_settings"
+    const val KNOWLEDGE_GRAPH = "knowledge_graph"
+    const val REPLENISHMENT_POLICIES = "replenishment_policies"
     const val FACTORIES = "factories"
     const val WAREHOUSES = "warehouses"
     const val EARLY_COMPLETE = "early_complete"
@@ -426,10 +434,21 @@ fun SupplierNavigation(
                  LedgerScreen(ops) { navController.popBackStack() } 
             }
             composable(SupplierRoutes.OPERATIONS) {
-                 OperationsScreen(ops) { navController.popBackStack() } 
+                 OperationsScreen(
+                    ops = ops,
+                    onBack = { navController.popBackStack() },
+                    onOpenReplenishmentPolicies = { navController.navigate(SupplierRoutes.REPLENISHMENT_POLICIES) },
+                 ) 
             }
             composable(SupplierRoutes.ANALYTICS) {
-                 AnalyticsScreen(ops, realtimeSignals) { navController.popBackStack() } 
+                 AnalyticsScreen(
+                    ops = ops,
+                    realtimeSignals = realtimeSignals,
+                    onBack = { navController.popBackStack() },
+                    onOpenPlanningBrain = { navController.navigate(SupplierRoutes.PLANNING_BRAIN) },
+                    onOpenKnowledgeGraph = { navController.navigate(SupplierRoutes.KNOWLEDGE_GRAPH) },
+                    onOpenPlanningSettings = { navController.navigate(SupplierRoutes.PLANNING_SETTINGS) },
+                 ) 
             }
             composable(SupplierRoutes.AI_RECOMMENDATIONS) {
                  AIRecommendationsScreen(ops) { navController.popBackStack() } 
@@ -505,6 +524,18 @@ fun SupplierNavigation(
             }
             composable(SupplierRoutes.DEMAND_HISTORY) {
                  DemandHistoryScreen(ops) { navController.popBackStack() } 
+            }
+            composable(SupplierRoutes.PLANNING_BRAIN) {
+                PlanningBrainScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.PLANNING_SETTINGS) {
+                PlanningSettingsScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.KNOWLEDGE_GRAPH) {
+                KnowledgeGraphScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.REPLENISHMENT_POLICIES) {
+                ReplenishmentPoliciesScreen(ops) { navController.popBackStack() }
             }
             composable(SupplierRoutes.FACTORIES) {
                  FactoriesScreen(ops, geocodeApi) { navController.popBackStack() } 

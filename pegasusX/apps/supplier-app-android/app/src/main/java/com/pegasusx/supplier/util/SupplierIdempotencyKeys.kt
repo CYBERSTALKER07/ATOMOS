@@ -101,6 +101,15 @@ object SupplierIdempotencyKeys {
     fun promotionDeactivate(scopeId: String, promotionId: String): String =
         "supplier-promotion-deactivate:$scopeId:$promotionId"
 
+    fun planningScenario(scopeId: String, factoryDowntimeHours: Int, demandDeltaPct: Double): String =
+        "supplier-planning-scenario:$scopeId:$factoryDowntimeHours:$demandDeltaPct"
+
+    fun seasonalOverrideCreate(scopeId: String, startDate: String, endDate: String): String =
+        "supplier-seasonal-override:$scopeId:${stableHash("$startDate:$endDate")}"
+
+    fun controlTowerZoneOverride(scopeId: String, action: String, polygonFingerprint: String): String =
+        "supplier-control-tower-override:$scopeId:${stableHash("$action:$polygonFingerprint")}"
+
     /** FNV-1a 32-bit — matches api-client `stableHash`. */
     private fun stableHash(input: String): String {
         var hash = 2166136261L

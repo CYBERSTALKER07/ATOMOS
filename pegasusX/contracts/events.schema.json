@@ -2095,6 +2095,82 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PLANNING_FORECAST_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PlanningForecastUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PLANNING_PROMO_SIMULATION_READY"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PlanningPromoSimulationReadyEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PLANNING_CONFIDENCE_DOWNGRADED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PlanningConfidenceDowngradedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "planning.signal.ingest.v1"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PlanningSignalIngestEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/PreOrderPayload"
         },
         {
@@ -2977,6 +3053,10 @@
         "PAYMENT_CLEARED",
         "PAYMENT_REQUIRED",
         "PLANNING_AGENT_BROADCAST",
+        "PLANNING_CONFIDENCE_DOWNGRADED",
+        "PLANNING_FORECAST_UPDATED",
+        "PLANNING_PROMO_SIMULATION_READY",
+        "planning.signal.ingest.v1",
         "PRE_ORDER_AUTO_ACCEPTED",
         "PRE_ORDER_CANCELLED",
         "PRE_ORDER_CONFIRMATION",
@@ -3076,6 +3156,10 @@
     "PAYMENT_CLEARED": "FinancePayload",
     "PAYMENT_REQUIRED": "FinancePayload",
     "PLANNING_AGENT_BROADCAST": "PlanningPayload",
+    "PLANNING_CONFIDENCE_DOWNGRADED": "PlanningPayload",
+    "PLANNING_FORECAST_UPDATED": "PlanningPayload",
+    "PLANNING_PROMO_SIMULATION_READY": "PlanningPayload",
+    "planning.signal.ingest.v1": "PlanningPayload",
     "PRE_ORDER_AUTO_ACCEPTED": "PreOrderPayload",
     "PRE_ORDER_CANCELLED": "PreOrderPayload",
     "PRE_ORDER_CONFIRMATION": "PreOrderPayload",

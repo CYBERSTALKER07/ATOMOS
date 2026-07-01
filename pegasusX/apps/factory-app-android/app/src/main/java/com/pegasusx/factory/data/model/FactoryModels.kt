@@ -2,6 +2,7 @@ package com.pegasusx.factory.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 // ── Auth ──
 @Serializable
@@ -303,6 +304,8 @@ data class Insight(
     @SerialName("days_until_stockout") val daysUntilStockout: Int = 0,
     @SerialName("reorder_quantity") val reorderQuantity: Int = 0,
     val status: String = "",
+    @SerialName("reason_code") val reasonCode: String? = null,
+    @SerialName("demand_breakdown") val demandBreakdown: JsonObject? = null,
 )
 
 @Serializable

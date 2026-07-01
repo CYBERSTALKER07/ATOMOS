@@ -719,6 +719,180 @@ struct ControlTowerZoneOverridesResponse: Decodable {
     let overrides: [ControlTowerZoneOverride]
 }
 
+struct PlanningSAndOPSnapshot: Decodable {
+    let supplierId: String
+    let horizonDays: Int
+    let factoryCapacityUnits: Int64
+    let warehouseInboundCapUnits: Int64
+    let warehouseOutboundCapUnits: Int64
+    let utilizationPct: Double
+    let capacityAlert: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case supplierId = "supplier_id"
+        case horizonDays = "horizon_days"
+        case factoryCapacityUnits = "factory_capacity_units"
+        case warehouseInboundCapUnits = "warehouse_inbound_cap_units"
+        case warehouseOutboundCapUnits = "warehouse_outbound_cap_units"
+        case utilizationPct = "utilization_pct"
+        case capacityAlert = "capacity_alert"
+    }
+}
+
+struct PlanningScenarioInput: Encodable {
+    let factoryDowntimeHours: Int
+    let demandDeltaPct: Double
+    let horizonDays: Int
+
+    enum CodingKeys: String, CodingKey {
+        case factoryDowntimeHours = "factory_downtime_hours"
+        case demandDeltaPct = "demand_delta_pct"
+        case horizonDays = "horizon_days"
+    }
+}
+
+struct PlanningScenarioResult: Decodable {
+    let scenarioId: String
+    let slaRiskPct: Double
+    let fleetVolumeOrders: Int64
+    let stockoutSkus: [String]
+    let capacityBreach: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case scenarioId = "scenario_id"
+        case slaRiskPct = "sla_risk_pct"
+        case fleetVolumeOrders = "fleet_volume_orders"
+        case stockoutSkus = "stockout_skus"
+        case capacityBreach = "capacity_breach"
+    }
+}
+
+struct ForecastConfidence: Decodable {
+    let lowUnits: Int64?
+    let highUnits: Int64?
+    let confidencePct: Int?
+    let baselineSource: String?
+    let blockedReason: String?
+    let label: String?
+
+    enum CodingKeys: String, CodingKey {
+        case lowUnits = "low_units"
+        case highUnits = "high_units"
+        case confidencePct = "confidence_pct"
+        case baselineSource = "baseline_source"
+        case blockedReason = "blocked_reason"
+        case label
+    }
+}
+
+struct SeasonalOverrideInput: Encodable {
+    let templateId: String?
+    let startDate: String
+    let endDate: String
+    let name: String?
+
+    enum CodingKeys: String, CodingKey {
+        case templateId = "template_id"
+        case startDate = "start_date"
+        case endDate = "end_date"
+        case name
+    }
+}
+
+struct SeasonalOverrideRow: Decodable, Identifiable {
+    var id: String { overrideId }
+    let overrideId: String
+    let supplierId: String
+    let templateId: String
+    let name: String?
+    let startDate: String
+    let endDate: String
+    let isActive: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case overrideId = "override_id"
+        case supplierId = "supplier_id"
+        case templateId = "template_id"
+        case name
+        case startDate = "start_date"
+        case endDate = "end_date"
+        case isActive = "is_active"
+    }
+}
+
+struct SeasonalBuiltinTemplate: Decodable, Identifiable {
+    var id: String
+    let name: String
+}
+
+struct SeasonalTemplatesResponse: Decodable {
+    let builtinTemplates: [SeasonalBuiltinTemplate]
+    let overrides: [SeasonalOverrideRow]
+
+    enum CodingKeys: String, CodingKey {
+        case builtinTemplates = "builtin_templates"
+        case overrides
+    }
+}
+
+struct KnowledgeGraphNode: Decodable, Identifiable {
+    var id: String
+    let type: String
+    let name: String?
+}
+
+struct KnowledgeGraphEdge: Decodable, Identifiable {
+    var id: String { "\(from)-\(to)-\(relation)" }
+    let from: String
+    let to: String
+    let relation: String
+}
+
+struct SupplierKnowledgeGraph: Decodable {
+    let supplierId: String
+    let nodes: [KnowledgeGraphNode]
+    let edges: [KnowledgeGraphEdge]
+
+    enum CodingKeys: String, CodingKey {
+        case supplierId = "supplier_id"
+        case nodes
+        case edges
+    }
+}
+
+struct SupplierReplenishmentPolicy: Decodable {
+    let supplierId: String
+    let autoApproveStable: Bool
+    let autoApprovePredictivePush: Bool
+    let maxDailyTransferUnits: Int64
+    let minConfidenceScore: Double
+
+    enum CodingKeys: String, CodingKey {
+        case supplierId = "supplier_id"
+        case autoApproveStable = "auto_approve_stable"
+        case autoApprovePredictivePush = "auto_approve_predictive_push"
+        case maxDailyTransferUnits = "max_daily_transfer_units"
+        case minConfidenceScore = "min_confidence_score"
+    }
+}
+
+struct GeoJSONPolygonPayload: Encodable {
+    let type: String = "Polygon"
+    let coordinates: [[[Double]]]
+}
+
+struct ControlTowerZoneOverrideCreateRequest: Encodable {
+    let action: String
+    let ttlSeconds: Int
+    let polygonGeojson: GeoJSONPolygonPayload
+
+    enum CodingKeys: String, CodingKey {
+        case action
+        case ttlSeconds = "ttl_seconds"
+        case polygonGeojson = "polygon_geojson"
+    }
+}
+
 struct SupplierWsSessionResponse: Decodable {
     let token: String
     let expiresAt: String
@@ -1151,6 +1325,7 @@ struct SupplierDemandSummaryResponse: Decodable {
     let totalValue: Int64
     let predictionCount: Int
     let generatedAt: String
+    let baselineSource: String?
 
     enum CodingKeys: String, CodingKey {
         case totalRetailers = "total_retailers"
@@ -1158,6 +1333,7 @@ struct SupplierDemandSummaryResponse: Decodable {
         case totalValue = "total_value"
         case predictionCount = "prediction_count"
         case generatedAt = "generated_at"
+        case baselineSource = "baseline_source"
     }
 }
 

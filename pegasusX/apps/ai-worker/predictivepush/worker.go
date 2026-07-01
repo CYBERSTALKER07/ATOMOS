@@ -3,6 +3,8 @@ package predictivepush
 import (
 	"context"
 	"log/slog"
+	"os"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -35,6 +37,12 @@ func Run(ctx context.Context, client *spanner.Client) error {
 	}
 
 	slog.Info("identified predictive push events", "count", len(events), "date", targetDate.Format("2006-01-02"))
+
+	shadow := strings.EqualFold(strings.TrimSpace(os.Getenv("PLANNING_BRAIN_SHADOW")), "true")
+	if shadow {
+		slog.Info("planning brain shadow mode: baseline projection only")
+		return allocator.writeDemandBaselines(ctx, events)
+	}
 
 	// 2. Proactively allocate stock (generate ReplenishmentInsights)
 	if err := allocator.Allocate(ctx, events); err != nil {

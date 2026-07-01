@@ -169,6 +169,14 @@ struct SupplierAdaptiveShell: View {
             InventoryImportView()
         case .demandForecast:
             DemandHistoryView()
+        case .planningBrain:
+            PlanningBrainView()
+        case .planningSettings:
+            PlanningSettingsView()
+        case .knowledgeGraph:
+            KnowledgeGraphView()
+        case .replenishmentPolicies:
+            ReplenishmentPoliciesView()
         case .factories:
             FactoriesView()
         case .warehouses:

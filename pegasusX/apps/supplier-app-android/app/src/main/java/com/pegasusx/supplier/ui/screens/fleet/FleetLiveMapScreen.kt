@@ -12,6 +12,9 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.SupplierFleetLiveRoute
 import com.pegasusx.supplier.data.model.ExceptionMapCell
 import com.pegasusx.supplier.data.model.ControlTowerZoneOverride
+import com.pegasusx.supplier.data.model.ControlTowerZoneOverrideCreateRequest
+import com.pegasusx.supplier.data.model.GeoJSONPolygonPayload
+import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import com.pegasusx.supplier.ui.components.FleetLiveMapLibre
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
@@ -35,6 +38,11 @@ fun FleetLiveMapScreen(
     var zoneOverrides by remember { mutableStateOf<List<ControlTowerZoneOverride>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var showPublishSheet by remember { mutableStateOf(false) }
+    var publishAction by remember { mutableStateOf("REROUTE") }
+    var publishStatus by remember { mutableStateOf<String?>(null) }
+    var publishing by remember { mutableStateOf(false) }
+    val publishActions = listOf("REROUTE", "FREEZE_DISPATCH", "PRIORITY_BOOST")
     val scope = rememberCoroutineScope()
 
     suspend fun load(silent: Boolean = false) {
@@ -79,11 +87,60 @@ fun FleetLiveMapScreen(
                     }
                 },
                 actions = {
+                    TextButton(onClick = { showPublishSheet = true }) { Text("Publish zone") }
                     TextButton(onClick = { scope.launch { load() } }) { Text("Refresh") }
                 },
             )
         },
     ) { padding ->
+        if (showPublishSheet) {
+            ModalBottomSheet(onDismissRequest = { showPublishSheet = false }) {
+                Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                    Text("Control tower", style = MaterialTheme.typography.titleMedium)
+                    publishActions.forEach { action ->
+                        FilterChip(
+                            selected = publishAction == action,
+                            onClick = { publishAction = action },
+                            label = { Text(action) },
+                        )
+                    }
+                    Button(
+                        enabled = !publishing,
+                        onClick = {
+                            scope.launch {
+                                publishing = true
+                                publishStatus = null
+                                val polygon = defaultControlTowerPolygon()
+                                val scopeId = SupplierIdempotencyKeys.supplierScopeId()
+                                val key = SupplierIdempotencyKeys.controlTowerZoneOverride(
+                                    scopeId,
+                                    publishAction,
+                                    polygon.coordinates.toString(),
+                                )
+                                val resp = ops.createControlTowerZoneOverride(
+                                    ControlTowerZoneOverrideCreateRequest(
+                                        action = publishAction,
+                                        ttlSeconds = 1800,
+                                        polygonGeojson = polygon,
+                                    ),
+                                    key,
+                                )
+                                publishing = false
+                                if (resp.isSuccessful) {
+                                    publishStatus = "Override active"
+                                    load(silent = true)
+                                } else {
+                                    publishStatus = "Failed (${resp.code()})"
+                                }
+                            }
+                        },
+                    ) { Text(if (publishing) "Publishing…" else "Publish viewport zone") }
+                    publishStatus?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
         when {
             loading && routes.isEmpty() -> SupplierLoadingState(
                 "Loading live fleet…",
@@ -158,6 +215,18 @@ fun FleetLiveMapScreen(
         }
     }
 }
+
+private fun defaultControlTowerPolygon(): GeoJSONPolygonPayload = GeoJSONPolygonPayload(
+    coordinates = listOf(
+        listOf(
+            listOf(69.24, 41.31),
+            listOf(69.28, 41.31),
+            listOf(69.28, 41.34),
+            listOf(69.24, 41.34),
+            listOf(69.24, 41.31),
+        ),
+    ),
+)
 
 @Composable
 private fun FleetLiveRouteCard(route: SupplierFleetLiveRoute) {

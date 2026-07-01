@@ -12,6 +12,8 @@ struct AnalyticsView: View {
     @State private var predictionCount = 0
     @State private var forecastUnits = 0
     @State private var velocityCreated = 0
+    @State private var demandGeneratedAt: String?
+    @State private var demandConfidence: ForecastConfidence?
 
     private var gridMin: CGFloat {
         horizontalSizeClass == .regular ? 200 : 150
@@ -87,6 +89,33 @@ struct AnalyticsView: View {
                                     tint: .accentColor
                                 )
                             }
+
+                            PlanningBrainSection()
+
+                            if let demandConfidence {
+                                ForecastConfidenceView(
+                                    confidence: demandConfidence,
+                                    updatedAt: ForecastConfidenceSupport.formatForecastUpdatedAt(generatedAt: demandGeneratedAt),
+                                    stale: ForecastConfidenceSupport.isForecastStale(generatedAt: demandGeneratedAt)
+                                )
+                            }
+
+                            SupplierSectionHeader(
+                                title: "Planning tools",
+                                subtitle: "Sandbox, graph, and seasonal settings"
+                            )
+
+                            VStack(spacing: SupplierTheme.spacingSM) {
+                                NavigationLink { PlanningBrainView() } label: {
+                                    Label("Planning sandbox", systemImage: "brain.head.profile")
+                                }
+                                NavigationLink { KnowledgeGraphView() } label: {
+                                    Label("Knowledge graph", systemImage: "point.3.connected.trianglepath.dotted")
+                                }
+                                NavigationLink { PlanningSettingsView() } label: {
+                                    Label("Planning settings", systemImage: "calendar")
+                                }
+                            }
                         }
                         .supplierReadableWidth()
                         .padding()
@@ -134,11 +163,117 @@ struct AnalyticsView: View {
             revenueLabel = MoneyFormat.minor(revenueValue.totalMinor, currency: revenueValue.currency)
             predictionCount = demandValue.predictionCount
             forecastUnits = demandValue.totalPallets
+            demandGeneratedAt = demandValue.generatedAt
+            demandConfidence = ForecastConfidenceSupport.fromDemand(demandValue)
             velocityCreated = velocityValue.points.reduce(0) { $0 + $1.ordersCreated }
             hasSnapshot = true
         } catch {
             if !silent { self.error = error.localizedDescription }
         }
         loading = false
+    }
+}
+
+private struct PlanningBrainSection: View {
+    @State private var sandop: PlanningSAndOPSnapshot?
+    @State private var scenario: PlanningScenarioResult?
+    @State private var downtimeHours = 8.0
+    @State private var demandDeltaPct = 10.0
+    @State private var loading = true
+    @State private var running = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: SupplierTheme.spacingMD) {
+            SupplierSectionHeader(
+                title: "Planning sandbox",
+                subtitle: "Read-only what-if and lightweight S&OP"
+            )
+
+            if let error {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(SupplierTheme.destructive)
+            }
+
+            if loading {
+                ProgressView("Loading S&OP…")
+            } else if let sandop {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 140), spacing: SupplierTheme.spacingMD)],
+                    spacing: SupplierTheme.spacingMD
+                ) {
+                    KpiTile(title: "Factory cap (7d)", value: "\(sandop.factoryCapacityUnits)", systemImage: "building.2", tint: .accentColor)
+                    KpiTile(title: "WH inbound", value: "\(sandop.warehouseInboundCapUnits)", systemImage: "arrow.down.to.line", tint: SupplierTheme.secondaryLabel)
+                    KpiTile(title: "Utilization", value: "\(Int(sandop.utilizationPct))%", systemImage: "gauge", tint: SupplierTheme.warning)
+                    KpiTile(
+                        title: "Capacity",
+                        value: sandop.capacityAlert ? "Breach" : "OK",
+                        systemImage: sandop.capacityAlert ? "exclamationmark.triangle" : "checkmark.circle",
+                        tint: sandop.capacityAlert ? SupplierTheme.destructive : SupplierTheme.success
+                    )
+                }
+            }
+
+            VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
+                Text("Scenario run")
+                    .font(.subheadline.bold())
+                HStack {
+                    Stepper("Downtime \(Int(downtimeHours))h", value: $downtimeHours, in: 0...168, step: 1)
+                }
+                HStack {
+                    Stepper("Demand \(Int(demandDeltaPct))%", value: $demandDeltaPct, in: -50...200, step: 5)
+                }
+                Button(running ? "Running…" : "Run scenario") {
+                    Task { await runScenario() }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(running)
+
+                if let scenario {
+                    Text("SLA risk \(Int(scenario.slaRiskPct))% · fleet \(scenario.fleetVolumeOrders) · stockouts \(scenario.stockoutSkus.count)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding()
+            .background(SupplierTheme.card)
+            .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG))
+        }
+        .task { await loadSandop() }
+    }
+
+    @MainActor
+    private func loadSandop() async {
+        loading = true
+        error = nil
+        defer { loading = false }
+        do {
+            sandop = try await SupplierOperationsService.planningSAndOP()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func runScenario() async {
+        running = true
+        error = nil
+        defer { running = false }
+        do {
+            let scope = SupplierIdempotencyKeys.supplierScopeId()
+            let key = SupplierIdempotencyKeys.planningScenario(
+                scopeId: scope,
+                factoryDowntimeHours: Int(downtimeHours),
+                demandDeltaPct: Int(demandDeltaPct)
+            )
+            scenario = try await SupplierOperationsService.runPlanningScenario(
+                factoryDowntimeHours: Int(downtimeHours),
+                demandDeltaPct: demandDeltaPct,
+                idempotencyKey: key
+            )
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 }

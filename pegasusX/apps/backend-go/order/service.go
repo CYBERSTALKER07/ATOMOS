@@ -328,7 +328,8 @@ func NewService(c ServiceConfig) *Service {
 		newID:         c.NewID,
 		jwtSecret:     c.JWTSecret,
 		handoff:       c.Handoff,
-		idem:          c.Idem,
+		idem:               c.Idem,
+		previewRateLimiter: newSimpleRateLimiter(time.Second),
 	}
 	if svc.handoff == nil {
 		svc.handoff = handoff.FromEnv()

@@ -27,6 +27,10 @@ import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasusx.supplier.ui.screens.planning.ForecastConfidenceView
+import com.pegasusx.supplier.util.formatForecastUpdatedAt
+import com.pegasusx.supplier.util.forecastConfidenceFromDemand
+import com.pegasusx.supplier.util.isForecastStale
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
@@ -45,6 +49,9 @@ fun AnalyticsScreen(
     ops: SupplierOperationsRepository,
     realtimeSignals: SupplierRealtimeSignals,
     onBack: () -> Unit,
+    onOpenPlanningBrain: () -> Unit = {},
+    onOpenKnowledgeGraph: () -> Unit = {},
+    onOpenPlanningSettings: () -> Unit = {},
 ) {
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -55,6 +62,8 @@ fun AnalyticsScreen(
     var predictionCount by remember { mutableIntStateOf(0) }
     var forecastUnits by remember { mutableIntStateOf(0) }
     var velocityCreated by remember { mutableIntStateOf(0) }
+    var demandGeneratedAt by remember { mutableStateOf<String?>(null) }
+    var demandConfidence by remember { mutableStateOf<com.pegasusx.supplier.data.model.ForecastConfidence?>(null) }
     val scope = rememberCoroutineScope()
     val fmt = remember { NumberFormat.getInstance(Locale.getDefault()) }
 
@@ -95,6 +104,8 @@ fun AnalyticsScreen(
                 demandResp.body()?.let {
                     predictionCount = it.predictionCount
                     forecastUnits = it.totalPallets
+                    demandGeneratedAt = it.generatedAt
+                    demandConfidence = forecastConfidenceFromDemand(it)
                 }
                 velocityResp.body()?.let { velocity ->
                     velocityCreated = velocity.points.sumOf { point -> point.ordersCreated }
@@ -184,6 +195,34 @@ fun AnalyticsScreen(
                 }
                 items(operationalKpis, key = { it.label }) { kpi ->
                     SupplierKpiTile(label = kpi.label, value = kpi.value(), icon = kpi.icon)
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    PlanningBrainSection(ops)
+                }
+                demandConfidence?.let { confidence ->
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        ForecastConfidenceView(
+                            confidence = confidence,
+                            updatedAt = formatForecastUpdatedAt(demandGeneratedAt),
+                            stale = isForecastStale(demandGeneratedAt),
+                        )
+                    }
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    SupplierSectionTitle("Planning tools")
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                        OutlinedButton(onClick = onOpenPlanningBrain, modifier = Modifier.fillMaxWidth()) {
+                            Text("Planning sandbox")
+                        }
+                        OutlinedButton(onClick = onOpenKnowledgeGraph, modifier = Modifier.fillMaxWidth()) {
+                            Text("Knowledge graph")
+                        }
+                        OutlinedButton(onClick = onOpenPlanningSettings, modifier = Modifier.fillMaxWidth()) {
+                            Text("Planning settings")
+                        }
+                    }
                 }
             }
         }

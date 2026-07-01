@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
+import { createSupplierApi } from "@/lib/api";
+import { ForecastConfidenceCard } from "@/components/ForecastConfidenceCard";
+import {
+  forecastConfidenceFromDemand,
+  formatForecastUpdatedAt,
+  isForecastStale,
+} from "@/lib/forecast-confidence";
+
+const api = createSupplierApi();
 
 type MEIOSummary = {
   warehouses_scanned: number;
@@ -18,18 +27,27 @@ type MEIOSummary = {
 
 export default function MeioNetworkPanel() {
   const [summary, setSummary] = useState<MEIOSummary | null>(null);
+  const [demandGeneratedAt, setDemandGeneratedAt] = useState<string | undefined>();
+  const [demandConfidence, setDemandConfidence] = useState<ReturnType<typeof forecastConfidenceFromDemand> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await supplierFetch("/v1/supplier/meio/network-summary");
-        if (!res.ok) {
-          throw new Error(`MEIO summary ${res.status}`);
+        const [meioRes, demandResp] = await Promise.all([
+          supplierFetch("/v1/supplier/meio/network-summary"),
+          api.getSupplierDemandToday(),
+        ]);
+        if (!meioRes.ok) {
+          throw new Error(`MEIO summary ${meioRes.status}`);
         }
-        const data = (await res.json()) as MEIOSummary;
-        if (!cancelled) setSummary(data);
+        const data = (await meioRes.json()) as MEIOSummary;
+        if (!cancelled) {
+          setSummary(data);
+          setDemandGeneratedAt(demandResp.generated_at);
+          setDemandConfidence(forecastConfidenceFromDemand(demandResp));
+        }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "MEIO unavailable");
       }
@@ -54,12 +72,21 @@ export default function MeioNetworkPanel() {
           {error}
         </p>
       ) : summary ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Stat label="Warehouses" value={summary.warehouses_scanned} />
-          <Stat label="SKUs" value={summary.skus_analyzed} />
-          <Stat label="Insights" value={summary.insights_generated} />
-          <Stat label="Transfers" value={summary.transfer_recommendations} />
-        </div>
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Stat label="Warehouses" value={summary.warehouses_scanned} />
+            <Stat label="SKUs" value={summary.skus_analyzed} />
+            <Stat label="Insights" value={summary.insights_generated} />
+            <Stat label="Transfers" value={summary.transfer_recommendations} />
+          </div>
+          {demandConfidence ? (
+            <ForecastConfidenceCard
+              confidence={demandConfidence}
+              updatedAt={formatForecastUpdatedAt(demandGeneratedAt)}
+              stale={isForecastStale(demandGeneratedAt)}
+            />
+          ) : null}
+        </>
       ) : (
         <p className="md-typescale-body-small" style={{ color: "var(--desk-text-secondary)" }}>
           Loading network scan…

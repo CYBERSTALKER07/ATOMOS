@@ -2,6 +2,8 @@ import SwiftUI
 
 struct DemandHistoryView: View {
     @State private var history: SupplierDemandHistoryResponse?
+    @State private var demandConfidence: ForecastConfidence?
+    @State private var demandGeneratedAt: String?
     @State private var loading = true
     @State private var error: String?
 
@@ -13,6 +15,15 @@ struct DemandHistoryView: View {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else if let history {
                 List {
+                    if let demandConfidence {
+                        Section {
+                            ForecastConfidenceView(
+                                confidence: demandConfidence,
+                                updatedAt: ForecastConfidenceSupport.formatForecastUpdatedAt(generatedAt: demandGeneratedAt),
+                                stale: ForecastConfidenceSupport.isForecastStale(generatedAt: demandGeneratedAt)
+                            )
+                        }
+                    }
                     if !history.timeSeries.isEmpty {
                         Section("Historical accuracy") {
                             ForEach(history.timeSeries) { point in
@@ -56,7 +67,12 @@ struct DemandHistoryView: View {
         error = nil
         defer { loading = false }
         do {
-            history = try await SupplierService.getDemandHistory()
+            async let historyValue = SupplierService.getDemandHistory()
+            async let demandValue = SupplierOperationsService.demandToday()
+            history = try await historyValue
+            let demand = try await demandValue
+            demandGeneratedAt = demand.generatedAt
+            demandConfidence = ForecastConfidenceSupport.fromDemand(demand)
         } catch {
             if !silent { self.error = error.localizedDescription }
         }

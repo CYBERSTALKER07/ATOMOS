@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { ForecastConfidence, WarehouseReplenishmentInsight } from '@pegasusx/types';
 import { warehouseApi } from '@/lib/warehouse-api';
+import { parseForecastConfidence } from '@/lib/forecast-confidence';
+import { ForecastConfidenceView } from '@/components/ForecastConfidenceView';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -21,6 +24,7 @@ interface ForecastProduct {
     pre_orders: number;
     burn_rate: number;
   };
+  confidence?: ForecastConfidence;
 }
 
 interface Forecast {
@@ -50,13 +54,21 @@ export default function DemandForecastPage() {
           warehouse_id: portalForecast.warehouse_id || '',
           forecast_days: portalForecast.forecast_days ?? days,
           generated_at: portalForecast.generated_at || new Date().toISOString(),
-          products: portalForecast.products,
+          products: portalForecast.products.map((product) => ({
+            ...product,
+            confidence:
+              product.confidence
+              ?? parseForecastConfidence(
+                (product as ForecastProduct & { demand_breakdown?: Record<string, unknown> }).demand_breakdown,
+              )
+              ?? undefined,
+          })),
         });
         return;
       }
 
       const insightsData = await warehouseApi.getWarehouseReplenishmentInsights().catch(() => null);
-      const insightRows = insightsData?.insights || insightsData?.data || [];
+      const insightRows: WarehouseReplenishmentInsight[] = insightsData?.insights || insightsData?.data || [];
       const products: ForecastProduct[] = insightRows.map((insight) => {
         const urgency = insight.urgency.toUpperCase();
         const priority =
@@ -79,6 +91,7 @@ export default function DemandForecastPage() {
             pre_orders: 0,
             burn_rate: insight.avg_daily_velocity,
           },
+          confidence: parseForecastConfidence(insight.demand_breakdown) ?? undefined,
         };
       });
       setForecast({
@@ -170,6 +183,7 @@ export default function DemandForecastPage() {
                 <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">Recommended</th>
                 <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">Stockout</th>
                 <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Priority</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Confidence</th>
                 <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">Incoming</th>
                 <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">AI Pred</th>
                 <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">Pre-Orders</th>
@@ -195,6 +209,13 @@ export default function DemandForecastPage() {
                       p.priority === 'CRITICAL' ? 'text-[var(--danger)]' :
                       p.priority === 'URGENT' ? 'text-[var(--warning)]' : 'text-[var(--muted)]'
                     }`}>{p.priority}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {p.confidence ? (
+                      <ForecastConfidenceView confidence={p.confidence} compact />
+                    ) : (
+                      <span className="text-xs text-[var(--muted)]">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-xs">{p.sources?.incoming_orders || 0}</td>
                   <td className="px-4 py-3 text-right font-mono text-xs">{p.sources?.ai_prediction || 0}</td>

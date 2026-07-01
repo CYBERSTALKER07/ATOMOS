@@ -60,6 +60,8 @@ func (p *CompositeSignalProvider) Collect(ctx context.Context, supplierID string
 	}
 	out = append(out, stubPreorderCalendarSignals(supplierID, targetDay)...)
 	out = append(out, stubSeasonalitySignals(supplierID, targetDay)...)
+	out = append(out, externalWeatherSignals(supplierID, targetDay)...)
+	out = append(out, externalPOSSignals(supplierID, targetDay)...)
 	if out == nil {
 		out = []DemandSignal{}
 	}
@@ -86,6 +88,43 @@ func stubSeasonalitySignals(supplierID string, targetDay time.Time) []DemandSign
 		Qty:        1,
 		Confidence: 0.35,
 		Source:     "seasonality_stub",
+		TargetDate: targetDay,
+	}}
+}
+
+// externalWeatherSignals is a placeholder for pegasus weather-ingest (low confidence until wired).
+func externalWeatherSignals(supplierID string, targetDay time.Time) []DemandSignal {
+	if supplierID == "" {
+		return nil
+	}
+	month := targetDay.Month()
+	if month < time.June || month > time.August {
+		return nil
+	}
+	return []DemandSignal{{
+		SupplierID: supplierID,
+		Qty:        2,
+		Confidence: 0.4,
+		Source:     "weather_forecast_stub",
+		TargetDate: targetDay,
+	}}
+}
+
+// externalPOSSignals is a placeholder for retailer POS calendar feeds.
+func externalPOSSignals(supplierID string, targetDay time.Time) []DemandSignal {
+	if supplierID == "" {
+		return nil
+	}
+	day := targetDay.Day()
+	lastDay := time.Date(targetDay.Year(), targetDay.Month()+1, 0, 0, 0, 0, 0, targetDay.Location()).Day()
+	if day != 1 && day != 15 && day != lastDay {
+		return nil
+	}
+	return []DemandSignal{{
+		SupplierID: supplierID,
+		Qty:        3,
+		Confidence: 0.45,
+		Source:     "pos_calendar_stub",
 		TargetDate: targetDay,
 	}}
 }

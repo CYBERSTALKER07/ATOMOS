@@ -224,9 +224,20 @@ struct InsightsView: View {
                         ForEach(vm.predictions) { forecast in
                             HStack(spacing: AppTheme.spacingMD) {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(forecast.productName)
-                                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                                        .foregroundStyle(AppTheme.textPrimary)
+                                    HStack(spacing: 6) {
+                                        Text(forecast.productName)
+                                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                            .foregroundStyle(AppTheme.textPrimary)
+                                        if forecast.isBlocked {
+                                            Text("Insufficient history")
+                                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                                .foregroundStyle(AppTheme.warning)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 3)
+                                                .background(AppTheme.warning.opacity(0.12))
+                                                .clipShape(Capsule())
+                                        }
+                                    }
                                     Text("\(forecast.predictedQuantity) units · \(forecast.confidencePercent)")
                                         .font(.system(.caption, design: .rounded))
                                         .foregroundStyle(AppTheme.textTertiary)

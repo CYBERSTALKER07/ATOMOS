@@ -30,10 +30,15 @@ export const SESSION_RECONCILE_ENDPOINTS: Record<SessionReconcileRole, SessionRe
   supplier: [
     { path: "/v1/supplier/dispatch/preview", label: "dispatch_preview" },
     { path: "/v1/supplier/manifests", label: "manifests" },
+    { path: "/v1/supplier/analytics/demand/today", label: "demand_today" },
+    { path: "/v1/supplier/meio/network-summary", label: "meio_network" },
+    { path: "/v1/supplier/planning/s-and-op", label: "planning_sandop" },
   ],
   warehouse: [
     { path: "/v1/warehouse/ops/dispatch/preview", label: "dispatch_preview" },
     { path: "/v1/warehouse/dispatch-locks", label: "dispatch_locks" },
+    { path: "/v1/warehouse/demand/forecast", label: "demand_forecast" },
+    { path: "/v1/warehouse/replenishment/insights", label: "replenishment_insights" },
   ],
   factory: [
     { path: "/v1/factory/manifests", label: "manifests" },

@@ -14,15 +14,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"google.golang.org/api/iterator"
 )
 
 // Service implements PX90 planning read models and sandbox APIs.
 type Service struct {
 	Spanner *spanner.Client
+	Cache   *cache.Cache
 	Now     func() time.Time
 
-	scenarioCache sync.Map // key -> scenarioResult
+	scenarioCache sync.Map // fallback when Redis unavailable
 }
 
 func NewService(client *spanner.Client) *Service {
@@ -32,6 +34,14 @@ func NewService(client *spanner.Client) *Service {
 			return time.Now().UTC()
 		},
 	}
+}
+
+// WithCache attaches a Redis cache for scenario and forecast aggregates.
+func (s *Service) WithCache(c *cache.Cache) *Service {
+	if s != nil {
+		s.Cache = c
+	}
+	return s
 }
 
 // ScenarioInput is the what-if sandbox request body.
@@ -65,7 +75,16 @@ func (s *Service) RunScenario(ctx context.Context, supplierID string, in Scenari
 	if in.HorizonDays <= 0 {
 		in.HorizonDays = 7
 	}
-	cacheKey := fmt.Sprintf("%s:%d:%.2f:%d", supplierID, in.FactoryDowntimeHours, in.DemandDeltaPct, in.HorizonDays)
+	cacheKey := fmt.Sprintf("%d:%.2f:%d", in.FactoryDowntimeHours, in.DemandDeltaPct, in.HorizonDays)
+	redisKey := ScenarioCacheKey(supplierID, cacheKey)
+	if s.Cache != nil {
+		if raw, found, err := s.Cache.Get(ctx, redisKey); err == nil && found {
+			var result ScenarioResult
+			if json.Unmarshal(raw, &result) == nil {
+				return result, nil
+			}
+		}
+	}
 	if raw, ok := s.scenarioCache.Load(cacheKey); ok {
 		entry := raw.(cachedScenario)
 		if time.Now().Before(entry.expiresAt) {
@@ -73,14 +92,14 @@ func (s *Service) RunScenario(ctx context.Context, supplierID string, in Scenari
 		}
 	}
 
-	warehouseCount, orderVolume, criticalSKUs, err := s.scenarioSignals(ctx, supplierID)
+	warehouseCount, orderVolume, criticalSKUs, deliveryVolume, err := s.scenarioSignals(ctx, supplierID, in.HorizonDays)
 	if err != nil {
 		return ScenarioResult{}, err
 	}
 	downtimeFactor := 1.0 - math.Min(float64(in.FactoryDowntimeHours)/168.0, 0.9)
 	demandFactor := 1.0 + in.DemandDeltaPct/100.0
 	slaRisk := math.Min(95, (float64(criticalSKUs)*12+float64(in.FactoryDowntimeHours)*2)*demandFactor)
-	fleetVolume := int64(float64(orderVolume) * demandFactor)
+	fleetVolume := int64(float64(orderVolume+deliveryVolume) * demandFactor)
 	capacityBreach := in.FactoryDowntimeHours > 24 && warehouseCount > 0
 
 	result := ScenarioResult{
@@ -93,10 +112,18 @@ func (s *Service) RunScenario(ctx context.Context, supplierID string, in Scenari
 		CachedUntil:    s.Now().Add(15 * time.Minute).Format(time.RFC3339Nano),
 	}
 	s.scenarioCache.Store(cacheKey, cachedScenario{result: result, expiresAt: s.Now().Add(15 * time.Minute)})
+	if s.Cache != nil {
+		if raw, err := json.Marshal(result); err == nil {
+			_ = s.Cache.Set(ctx, redisKey, raw, time.Duration(scenarioCacheTTL)*time.Second)
+		}
+	}
 	return result, nil
 }
 
-func (s *Service) scenarioSignals(ctx context.Context, supplierID string) (warehouseCount, orderVolume, criticalSKUs int, err error) {
+func (s *Service) scenarioSignals(ctx context.Context, supplierID string, horizonDays int) (warehouseCount, orderVolume, criticalSKUs, deliveryVolume int, err error) {
+	if horizonDays <= 0 {
+		horizonDays = 7
+	}
 	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
 		SQL:    `SELECT COUNT(*) FROM Warehouses WHERE SupplierId = @sid AND IsActive = true`,
 		Params: map[string]any{"sid": supplierID},
@@ -131,6 +158,19 @@ func (s *Service) scenarioSignals(ctx context.Context, supplierID string) (wareh
 		return
 	}
 	_ = row3.Columns(&criticalSKUs)
+
+	iter4 := s.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT COUNT(*) FROM OrderDeliveryProofs
+		      WHERE SupplierId = @sid
+		        AND CapturedAt >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @days DAY)`,
+		Params: map[string]any{"sid": supplierID, "days": horizonDays},
+	})
+	defer iter4.Stop()
+	row4, err := iter4.Next()
+	if err != nil {
+		return
+	}
+	_ = row4.Columns(&deliveryVolume)
 	return
 }
 
@@ -370,40 +410,28 @@ func (s *Service) WriteDemandBaseline(ctx context.Context, supplierID, warehouse
 	if s == nil || s.Spanner == nil {
 		return errors.New("planning unavailable")
 	}
-	today := s.Now().UTC().Truncate(24 * time.Hour)
-	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		mutations := []*spanner.Mutation{
-			spanner.InsertOrUpdateMap("DemandForecastBaseline", map[string]any{
-				"SupplierId":   supplierID,
-				"ForecastDate": today,
-				"WarehouseId":  warehouseID,
-				"ProductId":    productID,
-				"BaselineQty":  qty,
-				"Confidence":   confidence,
-				"Source":       source,
-				"CreatedAt":    spanner.CommitTimestamp,
-			}),
-		}
-		payload := events.PlanningEvent{
-			BaseEvent: events.BaseEvent{
-				Type:      events.EventDemandBaselineUpdated,
-				Timestamp: s.Now().Format(time.RFC3339Nano),
-			},
-			SupplierID:  supplierID,
-			WarehouseID: warehouseID,
-			ProductID:   productID,
-			BaselineQty: qty,
-			Confidence:  confidence,
-			Action:      source,
-		}
-		buf := &planningTxnBuffer{}
-		if emitErr := outbox.EmitJSON(ctx, buf, events.AggregatePlanning, supplierID, events.TopicMain, payload); emitErr != nil {
-			return emitErr
-		}
-		mutations = append(mutations, planningOutboxMutations(buf.events)...)
-		return txn.BufferWrite(mutations)
+	err := WriteBaselineWithOutbox(ctx, s.Spanner, s.Now(), BaselineWriteInput{
+		SupplierID:  supplierID,
+		WarehouseID: warehouseID,
+		ProductID:   productID,
+		BaselineQty: qty,
+		Confidence:  confidence,
+		Source:      source,
 	})
+	if err == nil {
+		s.invalidateForecastAgg(ctx, supplierID)
+	}
 	return err
+}
+
+func (s *Service) invalidateForecastAgg(ctx context.Context, supplierID string) {
+	if s == nil || s.Cache == nil {
+		return
+	}
+	for _, granularity := range []string{"macro", "regional", "micro"} {
+		s.Cache.Invalidate(ctx, ForecastAggCacheKey(supplierID, granularity, "7d"))
+		s.Cache.Invalidate(ctx, ForecastAggCacheKey(supplierID, granularity, "14d"))
+	}
 }
 
 // ReadDemandBaseline returns baseline rows for warehouse forecast (one-number path).

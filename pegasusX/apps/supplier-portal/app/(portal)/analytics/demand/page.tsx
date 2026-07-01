@@ -14,7 +14,13 @@ import {
   YAxis,
 } from "recharts";
 import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
+import { ForecastConfidenceCard } from "@/components/ForecastConfidenceCard";
 import { createSupplierApi } from "@/lib/api";
+import {
+  forecastConfidenceFromDemand,
+  formatForecastUpdatedAt,
+  isForecastStale,
+} from "@/lib/forecast-confidence";
 import type { SupplierDemandHistoryResponse, SupplierDemandSummaryResponse } from "@pegasusx/types";
 import { PageChrome } from '@/components/PageChrome';
 
@@ -70,11 +76,20 @@ export default function DemandAnalyticsPage() {
       }
     >
       {summary ? (
-        <KpiStatGrid columns={3}>
-          <KpiStatCard label="Predictions" value={summary.prediction_count} />
-          <KpiStatCard label="Retailers" value={summary.total_retailers} />
-          <KpiStatCard label="Forecast units" value={summary.total_pallets} />
-        </KpiStatGrid>
+        <>
+          <KpiStatGrid columns={3}>
+            <KpiStatCard label="Predictions" value={summary.prediction_count} />
+            <KpiStatCard label="Retailers" value={summary.total_retailers} />
+            <KpiStatCard label="Forecast units" value={summary.total_pallets} />
+          </KpiStatGrid>
+          <div className="mt-6">
+            <ForecastConfidenceCard
+              confidence={forecastConfidenceFromDemand(summary)}
+              updatedAt={formatForecastUpdatedAt(summary.generated_at)}
+              stale={isForecastStale(summary.generated_at)}
+            />
+          </div>
+        </>
       ) : null}
 
       <section className="desk-card p-6 mt-6">

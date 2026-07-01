@@ -37,6 +37,10 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     case businessSetup = "Business setup"
     case inventoryImport = "Import inventory"
     case demandForecast = "Demand forecast"
+    case planningBrain = "Planning sandbox"
+    case planningSettings = "Planning settings"
+    case knowledgeGraph = "Knowledge graph"
+    case replenishmentPolicies = "Replenishment policies"
     case factories = "Factories"
     case warehouses = "Warehouses"
     case catalogDetail = "Catalog detail"
@@ -81,6 +85,10 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         case .businessSetup: "gearshape.2"
         case .inventoryImport: "square.and.arrow.down"
         case .demandForecast: "chart.xyaxis.line"
+        case .planningBrain: "brain.head.profile"
+        case .planningSettings: "calendar"
+        case .knowledgeGraph: "point.3.connected.trianglepath.dotted"
+        case .replenishmentPolicies: "doc.text"
         case .factories: "building.2"
         case .warehouses: "shippingbox.fill"
         case .catalogDetail: "square.grid.2x2.fill"
@@ -101,12 +109,12 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         [
             .manifests, .dispatchPreview, .activity,
             .fleetOrders, .orgFleet, .treasury, .ledger, .payments, .chargebacks,
-            .reconciliation, .operations,
+            .reconciliation, .operations, .replenishmentPolicies,
         ]
     }
 
     static var intelligenceSections: [SupplierSection] {
-        [.analytics, .aiRecommendations, .geoReport, .demandForecast]
+        [.analytics, .aiRecommendations, .geoReport, .demandForecast, .planningBrain, .knowledgeGraph, .planningSettings]
     }
 
     static var networkSections: [SupplierSection] {

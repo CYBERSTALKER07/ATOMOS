@@ -472,8 +472,13 @@ data class DemandForecast(
     @SerialName("confidence") val confidence: Double = 0.85,
     @SerialName("reasoning") val reasoning: String = "",
     @SerialName("suggested_order_date") val suggestedOrderDate: String = "",
+    @SerialName("blocked") val blocked: Boolean = false,
+    @SerialName("blocked_reason") val blockedReason: String? = null,
+    @SerialName("label") val label: String? = null,
 ) {
     val confidencePercent: String get() = "${(confidence * 100).toInt()}%"
+    val isBlocked: Boolean
+        get() = blocked || label == "insufficient_history" || !blockedReason.isNullOrBlank()
 }
 
 // ── Retailer Expense Analytics ──

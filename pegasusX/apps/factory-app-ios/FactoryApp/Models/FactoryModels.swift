@@ -538,6 +538,8 @@ struct Insight: Decodable, Identifiable {
     let daysUntilStockout: Int
     let reorderQuantity: Int
     let status: String
+    let reasonCode: String?
+    let demandBreakdown: [String: AnyCodable]?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -551,6 +553,8 @@ struct Insight: Decodable, Identifiable {
         case daysUntilStockout = "days_until_stockout"
         case reorderQuantity = "reorder_quantity"
         case status
+        case reasonCode = "reason_code"
+        case demandBreakdown = "demand_breakdown"
     }
 
     init(from decoder: Decoder) throws {
@@ -566,6 +570,8 @@ struct Insight: Decodable, Identifiable {
         daysUntilStockout = try c.decodeIfPresent(Int.self, forKey: .daysUntilStockout) ?? 0
         reorderQuantity = try c.decodeIfPresent(Int.self, forKey: .reorderQuantity) ?? 0
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        reasonCode = try c.decodeIfPresent(String.self, forKey: .reasonCode)
+        demandBreakdown = try c.decodeIfPresent([String: AnyCodable].self, forKey: .demandBreakdown)
     }
 }
 

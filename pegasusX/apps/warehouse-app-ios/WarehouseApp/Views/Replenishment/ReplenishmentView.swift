@@ -149,6 +149,11 @@ struct ReplenishmentView: View {
 
     private func demandWhyText(_ insight: ReplenishmentInsight) -> String? {
         if let breakdown = insight.demandBreakdown, !breakdown.isEmpty {
+            if let blocked = string(from: breakdown["blocked_reason"]), !blocked.isEmpty {
+                return blocked == "insufficient_history"
+                    ? "Insufficient history — forecast blocked"
+                    : blocked.replacingOccurrences(of: "_", with: " ")
+            }
             var parts: [String] = []
             if let burn = number(from: breakdown["burn_rate_7d"]) ?? number(from: breakdown["burn_rate"]) {
                 parts.append(String(format: "Burn %.1f/d", burn))
@@ -172,6 +177,12 @@ struct ReplenishmentView: View {
         if let d = codable.value as? Double { return d }
         if let i = codable.value as? Int { return Double(i) }
         if let s = codable.value as? String, let d = Double(s) { return d }
+        return nil
+    }
+
+    private func string(from codable: AnyCodable?) -> String? {
+        guard let codable else { return nil }
+        if let s = codable.value as? String, !s.isEmpty { return s }
         return nil
     }
 }

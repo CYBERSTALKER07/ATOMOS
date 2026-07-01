@@ -23,6 +23,8 @@ interface InsightRow {
   days_to_empty?: number;
   status?: string;
   created_at?: string;
+  reason_code?: string;
+  demand_breakdown?: Record<string, unknown> | null;
 }
 
 interface Insight {
@@ -37,6 +39,8 @@ interface Insight {
   days_to_empty: number;
   status: string;
   created_at: string;
+  reason_code?: string;
+  demand_breakdown?: Record<string, unknown> | null;
 }
 
 function normalizeInsight(row: InsightRow): Insight {
@@ -52,7 +56,33 @@ function normalizeInsight(row: InsightRow): Insight {
     days_to_empty: row.days_until_stockout ?? row.days_to_empty ?? 0,
     status: row.status || 'OPEN',
     created_at: row.created_at || '',
+    reason_code: row.reason_code,
+    demand_breakdown: row.demand_breakdown,
   };
+}
+
+function formatDemandWhy(
+  breakdown: Insight['demand_breakdown'],
+  reasonCode?: string,
+): string {
+  if (!breakdown || typeof breakdown !== 'object') {
+    return reasonCode?.replaceAll('_', ' ') ?? 'Threshold breach';
+  }
+  const blockedReason = typeof breakdown.blocked_reason === 'string' ? breakdown.blocked_reason : '';
+  if (blockedReason) {
+    return blockedReason === 'insufficient_history'
+      ? 'Insufficient history — forecast blocked'
+      : blockedReason.replaceAll('_', ' ');
+  }
+  const parts: string[] = [];
+  const burn = breakdown.burn_rate_7d ?? breakdown.burn_rate;
+  if (typeof burn === 'number') parts.push(`Burn ${burn.toFixed(1)}/d`);
+  if (typeof breakdown.days_cover === 'number') parts.push(`${breakdown.days_cover.toFixed(1)}d cover`);
+  if (typeof breakdown.confidence === 'number') parts.push(`${Math.round(breakdown.confidence * 100)}% conf`);
+  if (breakdown.mei_network) parts.push('MEIO network transfer');
+  if (typeof breakdown.source_warehouse === 'string') parts.push(`from ${breakdown.source_warehouse.slice(0, 8)}…`);
+  if (parts.length === 0 && reasonCode) return reasonCode.replaceAll('_', ' ');
+  return parts.join(' · ') || 'Demand signal';
 }
 
 export default function InsightsPage() {
@@ -158,6 +188,7 @@ export default function InsightsPage() {
               <tr className="table__header border-b border-[var(--border)] bg-[var(--default)]">
                 <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Warehouse</th>
                 <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Product</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Why</th>
                 <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Urgency</th>
                 <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Stock</th>
                 <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Velocity/day</th>
@@ -178,6 +209,9 @@ export default function InsightsPage() {
                 >
                   <td className="py-3 px-4 font-medium">{ins.warehouse_name}</td>
                   <td className="py-3 px-4">{ins.product_name}</td>
+                  <td className="py-3 px-4 text-xs text-[var(--muted)] max-w-[220px]">
+                    {formatDemandWhy(ins.demand_breakdown, ins.reason_code)}
+                  </td>
                   <td className="py-3 px-4">
                     <span className={`status-chip ${urgencyClass(ins.urgency)}`}>{ins.urgency}</span>
                   </td>

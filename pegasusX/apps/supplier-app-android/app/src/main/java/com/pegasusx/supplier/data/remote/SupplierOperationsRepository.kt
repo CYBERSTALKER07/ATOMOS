@@ -120,6 +120,29 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun getControlTowerZoneOverrides(): Response<ControlTowerZoneOverridesResponse> =
         api.getControlTowerZoneOverrides()
 
+    suspend fun getPlanningSAndOP(): Response<PlanningSAndOPSnapshot> = api.getPlanningSAndOP()
+
+    suspend fun runPlanningScenario(
+        body: PlanningScenarioInput,
+        idempotencyKey: String,
+    ): Response<PlanningScenarioResult> = api.runPlanningScenario(body, idempotencyKey)
+
+    suspend fun getSeasonalOverrides(): Response<SeasonalTemplatesResponse> = api.getSeasonalOverrides()
+
+    suspend fun createSeasonalOverride(
+        body: SeasonalOverrideInput,
+        idempotencyKey: String,
+    ): Response<SeasonalOverrideRow> = api.createSeasonalOverride(body, idempotencyKey)
+
+    suspend fun getKnowledgeGraph(): Response<SupplierKnowledgeGraph> = api.getKnowledgeGraph()
+
+    suspend fun getReplenishmentPolicies(): Response<SupplierReplenishmentPolicy> = api.getReplenishmentPolicies()
+
+    suspend fun createControlTowerZoneOverride(
+        body: ControlTowerZoneOverrideCreateRequest,
+        idempotencyKey: String,
+    ): Response<ControlTowerZoneOverride> = api.createControlTowerZoneOverride(body, idempotencyKey)
+
     suspend fun getExceptionMap(windowHours: Int = 24): Response<ExceptionMapResponse> =
         api.getExceptionMap(windowHours)
 

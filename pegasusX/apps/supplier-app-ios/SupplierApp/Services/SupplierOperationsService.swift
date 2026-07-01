@@ -201,6 +201,58 @@ enum SupplierOperationsService {
         return resp.overrides
     }
 
+    static func planningSAndOP() async throws -> PlanningSAndOPSnapshot {
+        try await APIClient.shared.get("v1/supplier/planning/s-and-op")
+    }
+
+    static func runPlanningScenario(
+        factoryDowntimeHours: Int,
+        demandDeltaPct: Double,
+        idempotencyKey: String
+    ) async throws -> PlanningScenarioResult {
+        let body = PlanningScenarioInput(
+            factoryDowntimeHours: factoryDowntimeHours,
+            demandDeltaPct: demandDeltaPct,
+            horizonDays: 7
+        )
+        return try await APIClient.shared.post(
+            "v1/supplier/planning/scenarios/run",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func seasonalOverrides() async throws -> SeasonalTemplatesResponse {
+        try await APIClient.shared.get("v1/supplier/planning/seasonal-overrides")
+    }
+
+    static func createSeasonalOverride(_ request: SeasonalOverrideInput, idempotencyKey: String) async throws -> SeasonalOverrideRow {
+        try await APIClient.shared.post(
+            "v1/supplier/planning/seasonal-overrides",
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
+    static func knowledgeGraph() async throws -> SupplierKnowledgeGraph {
+        try await APIClient.shared.get("v1/supplier/knowledge-graph")
+    }
+
+    static func replenishmentPolicies() async throws -> SupplierReplenishmentPolicy {
+        try await APIClient.shared.get("v1/supplier/replenishment/policies")
+    }
+
+    static func createControlTowerZoneOverride(
+        _ body: ControlTowerZoneOverrideCreateRequest,
+        idempotencyKey: String
+    ) async throws -> ControlTowerZoneOverride {
+        try await APIClient.shared.post(
+            "v1/supplier/control-tower/zone-overrides",
+            body: body,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
     static func wsSession() async throws -> SupplierWsSessionResponse {
         try await APIClient.shared.get("v1/supplier/ws-session")
     }

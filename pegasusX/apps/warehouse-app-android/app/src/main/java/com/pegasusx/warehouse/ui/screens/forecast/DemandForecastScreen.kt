@@ -50,7 +50,9 @@ import com.pegasusx.warehouse.data.model.DemandForecastResponse
 import com.pegasusx.warehouse.data.model.DemandForecastSources
 import com.pegasusx.warehouse.data.model.ReplenishmentInsight
 import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.ui.components.ForecastConfidenceView
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasusx.warehouse.util.parseForecastConfidence
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.Instant
@@ -402,6 +404,9 @@ private fun ForecastProductCard(
                     Modifier.weight(1f),
                 )
             }
+            parseForecastConfidence(product.demandBreakdown)?.let { confidence ->
+                ForecastConfidenceView(confidence = confidence, compact = true)
+            }
         }
     }
 }
@@ -462,6 +467,7 @@ private fun demandForecastFromInsights(
             priority = mapInsightPriority(insight.urgency),
             unit = "VU",
             sources = DemandForecastSources(burnRate = insight.avgDailyVelocity),
+            demandBreakdown = insight.demandBreakdown,
         )
     }
     return DemandForecastResponse(

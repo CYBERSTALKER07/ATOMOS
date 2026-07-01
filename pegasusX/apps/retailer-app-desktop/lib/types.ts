@@ -170,6 +170,17 @@ export interface Prediction {
   confidence: number;
   reasoning: string;
   suggestedOrderDate: string;
+  blocked?: boolean;
+  blocked_reason?: string;
+  label?: "insufficient_history" | "early_signal" | "standard" | string;
+}
+
+export function isPredictionBlocked(
+  item: Pick<Prediction, "blocked" | "blocked_reason" | "label">,
+): boolean {
+  return item.blocked === true
+    || item.label === "insufficient_history"
+    || Boolean(item.blocked_reason);
 }
 
 /* ── Auto-Order Settings ── */

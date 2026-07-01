@@ -15,6 +15,16 @@ struct FleetLiveMapView: View {
         )
     )
     @State private var animator = FleetDriverMarkerAnimator()
+    @State private var publishAction = "REROUTE"
+    @State private var publishStatus: String?
+    @State private var publishing = false
+    @State private var showPublishSheet = false
+    @State private var mapRegion = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 41.2995, longitude: 69.2401),
+        span: MKCoordinateSpan(latitudeDelta: 0.18, longitudeDelta: 0.18)
+    )
+
+    private let publishActions = ["REROUTE", "FREEZE_DISPATCH", "PRIORITY_BOOST"]
 
     var body: some View {
         Group {
@@ -79,6 +89,9 @@ struct FleetLiveMapView: View {
                     }
                     .mapStyle(.standard(elevation: .realistic))
                     .frame(maxHeight: exceptionCells.isEmpty ? .infinity : 320)
+                    .onMapCameraChange(frequency: .onEnd) { context in
+                        mapRegion = context.region
+                    }
                 }
                 if !exceptionCells.isEmpty {
                     List(exceptionCells) { cell in
@@ -96,6 +109,42 @@ struct FleetLiveMapView: View {
             }
         }
         .navigationTitle("Live fleet")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Publish zone", systemImage: "map") {
+                    showPublishSheet = true
+                }
+            }
+        }
+        .sheet(isPresented: $showPublishSheet) {
+            NavigationStack {
+                Form {
+                    Picker("Action", selection: $publishAction) {
+                        ForEach(publishActions, id: \.self) { action in
+                            Text(action).tag(action)
+                        }
+                    }
+                    if let publishStatus {
+                        Text(publishStatus)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .navigationTitle("Control tower")
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(publishing ? "Publishing…" : "Publish") {
+                            Task { await publishZoneOverride() }
+                        }
+                        .disabled(publishing)
+                    }
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") { showPublishSheet = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
         .task {
             await load()
             await startPolling()
@@ -175,5 +224,46 @@ struct FleetLiveMapView: View {
             try? await Task.sleep(nanoseconds: 15_000_000_000)
             await load(silent: true)
         }
+    }
+
+    @MainActor
+    private func publishZoneOverride() async {
+        publishing = true
+        publishStatus = nil
+        defer { publishing = false }
+        let polygon = polygonFromCurrentCamera()
+        let fingerprint = polygon.coordinates.description
+        let scope = SupplierIdempotencyKeys.supplierScopeId()
+        let key = SupplierIdempotencyKeys.controlTowerZoneOverride(
+            scopeId: scope,
+            action: publishAction,
+            polygonFingerprint: fingerprint
+        )
+        let body = ControlTowerZoneOverrideCreateRequest(
+            action: publishAction,
+            ttlSeconds: 1800,
+            polygonGeojson: polygon
+        )
+        do {
+            let row = try await SupplierOperationsService.createControlTowerZoneOverride(body, idempotencyKey: key)
+            publishStatus = "Override \(row.overrideId.prefix(8)) active"
+            zoneOverrides = (try? await SupplierOperationsService.controlTowerZoneOverrides()) ?? zoneOverrides
+        } catch {
+            publishStatus = error.localizedDescription
+        }
+    }
+
+    private func polygonFromCurrentCamera() -> GeoJSONPolygonPayload {
+        let center = mapRegion.center
+        let latD = mapRegion.span.latitudeDelta / 2
+        let lngD = mapRegion.span.longitudeDelta / 2
+        let ring: [[Double]] = [
+            [center.longitude - lngD, center.latitude - latD],
+            [center.longitude + lngD, center.latitude - latD],
+            [center.longitude + lngD, center.latitude + latD],
+            [center.longitude - lngD, center.latitude + latD],
+            [center.longitude - lngD, center.latitude - latD],
+        ]
+        return GeoJSONPolygonPayload(coordinates: [ring])
     }
 }

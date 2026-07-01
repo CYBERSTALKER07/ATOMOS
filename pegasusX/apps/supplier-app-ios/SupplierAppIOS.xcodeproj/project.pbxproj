@@ -38,6 +38,12 @@
 		649C90AD9033C647D7EE7AFC /* PortalHandoffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79496B57AA981DE595569C3A /* PortalHandoffView.swift */; };
 		69FDB2558C5E6875F592F02A /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16AD9B5B8116C01AD3B2F0AC /* ProfileView.swift */; };
 		6AD660B59B98E994D6BB08D6 /* SupplierIdempotencyKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE40541A99DD009CC716F88 /* SupplierIdempotencyKeys.swift */; };
+		6B11A0012F91000100PLAN01 /* ForecastConfidenceSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B11A0022F91000100PLAN01 /* ForecastConfidenceSupport.swift */; };
+		6B11A0032F91000100PLAN01 /* ForecastConfidenceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B11A0042F91000100PLAN01 /* ForecastConfidenceView.swift */; };
+		6B11A0052F91000100PLAN01 /* PlanningBrainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B11A0062F91000100PLAN01 /* PlanningBrainView.swift */; };
+		6B11A0072F91000100PLAN01 /* PlanningSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B11A0082F91000100PLAN01 /* PlanningSettingsView.swift */; };
+		6B11A0092F91000100PLAN01 /* KnowledgeGraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B11A00A2F91000100PLAN01 /* KnowledgeGraphView.swift */; };
+		6B11A00B2F91000100PLAN01 /* ReplenishmentPoliciesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B11A00C2F91000100PLAN01 /* ReplenishmentPoliciesView.swift */; };
 		6B31CD2BD204166C4AB39FAC /* ProductPricingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17DD0A7A3484EA4793D1FF15 /* ProductPricingDetailView.swift */; };
 		6C9B1797D27D63C1CA4F9496 /* OrderLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FFFF933A914E3A7678D4310 /* OrderLifecycleTests.swift */; };
 		703E5C9B8F8CAFD5006AB690 /* SupplierAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD70AC3EC5317F4B0403154 /* SupplierAppTests.swift */; };
@@ -208,6 +214,12 @@
 		ED5ED8EEE8140BCE4C66F49F /* OnboardingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViewModel.swift; sourceTree = "<group>"; };
 		EE20CFC9300E04F74A699D62 /* TopologyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopologyView.swift; sourceTree = "<group>"; };
 		EEE40541A99DD009CC716F88 /* SupplierIdempotencyKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierIdempotencyKeys.swift; sourceTree = "<group>"; };
+		6B11A0022F91000100PLAN01 /* ForecastConfidenceSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForecastConfidenceSupport.swift; sourceTree = "<group>"; };
+		6B11A0042F91000100PLAN01 /* ForecastConfidenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForecastConfidenceView.swift; sourceTree = "<group>"; };
+		6B11A0062F91000100PLAN01 /* PlanningBrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanningBrainView.swift; sourceTree = "<group>"; };
+		6B11A0082F91000100PLAN01 /* PlanningSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanningSettingsView.swift; sourceTree = "<group>"; };
+		6B11A00A2F91000100PLAN01 /* KnowledgeGraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeGraphView.swift; sourceTree = "<group>"; };
+		6B11A00C2F91000100PLAN01 /* ReplenishmentPoliciesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplenishmentPoliciesView.swift; sourceTree = "<group>"; };
 		F0B618FA26B0FB76D293158E /* PricingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PricingView.swift; sourceTree = "<group>"; };
 		F51C636CB14CF4B20F955061 /* MoreHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreHubView.swift; sourceTree = "<group>"; };
 		F63DA2C0F3385B834F584716 /* CatalogDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogDetailView.swift; sourceTree = "<group>"; };
@@ -568,6 +580,7 @@
 				7415E9D5624BAF1D7013B831 /* Profile */,
 				003C4EDED51407CBBB843A96 /* Promotions */,
 				417671D0CCC32C7ED1156456 /* Returns */,
+				6B11A00D2F91000100PLAN01 /* Planning */,
 				B532738DD3A8F6DA50A7192A /* Treasury */,
 			);
 			path = Views;
@@ -618,10 +631,23 @@
 			path = More;
 			sourceTree = "<group>";
 		};
+		6B11A00D2F91000100PLAN01 /* Planning */ = {
+			isa = PBXGroup;
+			children = (
+				6B11A0042F91000100PLAN01 /* ForecastConfidenceView.swift */,
+				6B11A0062F91000100PLAN01 /* PlanningBrainView.swift */,
+				6B11A0082F91000100PLAN01 /* PlanningSettingsView.swift */,
+				6B11A00A2F91000100PLAN01 /* KnowledgeGraphView.swift */,
+				6B11A00C2F91000100PLAN01 /* ReplenishmentPoliciesView.swift */,
+			);
+			path = Planning;
+			sourceTree = "<group>";
+		};
 		E2212DFF39FD136C4FC48AF4 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
 				15A513992A121CDF2127E0CE /* FleetDriverMarkerAnimator.swift */,
+				6B11A0022F91000100PLAN01 /* ForecastConfidenceSupport.swift */,
 				EEE40541A99DD009CC716F88 /* SupplierIdempotencyKeys.swift */,
 				D55573AE3AFD23706DCEFB42 /* SupplierPortalFeature.swift */,
 				BF9EA6455252E35434B06DCE /* SupplierPortalLinks.swift */,
@@ -811,6 +837,12 @@
 				77770F511CFEDCD5FAD0374E /* ShopClosedView.swift in Sources */,
 				E7261CA63E53EC71DC811156 /* SupplierAdaptiveShell.swift in Sources */,
 				6AD660B59B98E994D6BB08D6 /* SupplierIdempotencyKeys.swift in Sources */,
+				6B11A0012F91000100PLAN01 /* ForecastConfidenceSupport.swift in Sources */,
+				6B11A0032F91000100PLAN01 /* ForecastConfidenceView.swift in Sources */,
+				6B11A0052F91000100PLAN01 /* PlanningBrainView.swift in Sources */,
+				6B11A0072F91000100PLAN01 /* PlanningSettingsView.swift in Sources */,
+				6B11A0092F91000100PLAN01 /* KnowledgeGraphView.swift in Sources */,
+				6B11A00B2F91000100PLAN01 /* ReplenishmentPoliciesView.swift in Sources */,
 				20C422227E8F7DFED18655A5 /* SupplierModels.swift in Sources */,
 				D07D3F16F0C813D5B51CD864 /* SupplierOperationsService.swift in Sources */,
 				48232690F3F221461CC1F8E1 /* SupplierOpsModels.swift in Sources */,

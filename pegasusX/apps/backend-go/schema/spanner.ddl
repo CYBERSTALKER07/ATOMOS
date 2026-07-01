@@ -112,6 +112,8 @@ CREATE TABLE SupplierPromotions (
   MinOrderAmountMinor INT64,
   StartsAt            TIMESTAMP,
   EndsAt              TIMESTAMP,
+  MaxRedemptions      INT64,
+  CurrentRedemptions  INT64         NOT NULL DEFAULT (0),
   IsActive            BOOL          NOT NULL,
   Priority            INT64         NOT NULL DEFAULT (0),
   Version             INT64         NOT NULL DEFAULT (1),
@@ -1124,8 +1126,46 @@ CREATE TABLE DemandForecastBaseline (
   BaselineQty   INT64       NOT NULL,
   Confidence    FLOAT64     NOT NULL DEFAULT (0),
   Source        STRING(32)  NOT NULL,
+  LowUnits      INT64,
+  HighUnits     INT64,
+  ConfidencePct INT64,
+  BaselineSource STRING(32),
+  BlockedReason STRING(64),
   CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SupplierId, ForecastDate, WarehouseId, ProductId);
 
 CREATE INDEX Idx_DemandBaseline_ByWarehouseDate
   ON DemandForecastBaseline(WarehouseId, ForecastDate DESC);
+
+CREATE TABLE SeasonalTemplateOverrides (
+  SupplierId   STRING(36) NOT NULL,
+  OverrideId   STRING(36) NOT NULL,
+  TemplateId   STRING(64) NOT NULL,
+  Name         STRING(128),
+  StartDate    DATE        NOT NULL,
+  EndDate      DATE        NOT NULL,
+  IsActive     BOOL        NOT NULL,
+  CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SupplierId, OverrideId);
+
+CREATE INDEX Idx_SeasonalOverrides_Active
+  ON SeasonalTemplateOverrides(SupplierId, IsActive, StartDate DESC);
+
+CREATE TABLE PlanningSignalProjections (
+  SupplierId   STRING(36) NOT NULL,
+  SignalId     STRING(36) NOT NULL,
+  Source       STRING(64) NOT NULL,
+  PayloadJson  STRING(MAX) NOT NULL,
+  IngestedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SupplierId, SignalId);
+
+CREATE TABLE PlanningPromoSimulations (
+  SupplierId     STRING(36) NOT NULL,
+  SimulationId   STRING(36) NOT NULL,
+  PromotionId    STRING(36) NOT NULL,
+  ResultJson     STRING(MAX) NOT NULL,
+  CreatedAt      TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SupplierId, SimulationId);
+
+CREATE INDEX Idx_PlanningPromoSim_ByPromotion
+  ON PlanningPromoSimulations(SupplierId, PromotionId, CreatedAt DESC);

@@ -105,6 +105,10 @@ type Deps struct {
 //	POST  /v1/admin/dlq/replay                 — DLQ replay by offset
 //	POST  /v1/admin/payment/reconcile          — manual Global Pay reconcile
 //	POST  /v1/admin/replenishment/trigger      — manual replenishment cycle
+//	GET   /v1/admin/planning/tenants/{supplier_id}/baseline
+//	GET   /v1/admin/planning/tenants/{supplier_id}/meio
+//	GET   /v1/admin/planning/tenants/{supplier_id}/knowledge-graph
+//	GET   /v1/admin/planning/control-tower/rollup — cross-tenant zone overrides (GLOBAL_ADMIN)
 func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	adminOnly := []string{"ADMIN"}
@@ -208,6 +212,16 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	// 22. Manual replenishment cycle trigger.
 	r.HandleFunc("/v1/admin/replenishment/trigger",
 		auth.RequireRole(adminOrSupplier, log(d.ReplenishEngine.HandleManualTrigger)))
+
+	// 23-26. Multi-supplier planning federation (platform ADMIN).
+	r.HandleFunc("/v1/admin/planning/tenants/{supplier_id}/baseline",
+		auth.RequireRole(adminOnly, log(admin.HandleGetTenantBaseline(d.Spanner))))
+	r.HandleFunc("/v1/admin/planning/tenants/{supplier_id}/meio",
+		auth.RequireRole(adminOnly, log(admin.HandleGetTenantMEIO(d.Spanner))))
+	r.HandleFunc("/v1/admin/planning/tenants/{supplier_id}/knowledge-graph",
+		auth.RequireRole(adminOnly, log(admin.HandleGetTenantKnowledgeGraph(d.Spanner))))
+	r.HandleFunc("/v1/admin/planning/control-tower/rollup",
+		auth.RequireRole(adminOnly, log(admin.HandleGetControlTowerRollup(d.Spanner))))
 }
 
 // platformFeeHandler implements GET/PATCH /v1/admin/config/platform-fee.

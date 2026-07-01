@@ -14,6 +14,13 @@
 2. Inspect notification dispatcher logs: `trace_id`, `event_type`, DLQ topic.
 3. Scale `ai-worker` / fix stuck partition; replay DLQ after root-cause fix.
 
+## Planning brain DLQ replay
+
+1. Symptom: `planning.signal.ingest.v1` lag or warehouse/supplier forecast stale.
+2. Inspect ai-worker `planningingest` consumer logs and `PlanningSignalProjections` row growth.
+3. Replay DLQ only after fixing projector idempotency; use `signal_id` dedup on `PlanningSignalProjections` PK.
+4. Set `PLANNING_BRAIN_SHADOW=true` on ai-worker to validate baseline writes without touchless side effects.
+
 ## WebSocket / Redis pubsub
 
 1. Symptom: clients on different pods see different state.

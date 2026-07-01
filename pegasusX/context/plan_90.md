@@ -51,9 +51,9 @@ flowchart TB
 
 | Capability | pegasusX (90d) | pegasus (later) | Verdict | Status |
 |---|---|---|---|---|
-| Actionable Control Tower | Upgrade PX1-A3 → map + zone override | Per-tenant command center | **P0** | **shipped** — portal publish; native read-only |
+| Actionable Control Tower | Upgrade PX1-A3 → map + zone override | Per-tenant command center | **P0** | **shipped** — portal + native publish (map viewport polygon) |
 | MEIO | Network inventory optimization | Per-tenant MEIO | **P0** | **shipped** |
-| AI demand sensing / predictive push | Extend ai-worker | Per-tenant + cross-tenant signals | **P0** | **partial** — history + baseline + seasonality stub; weather/POS still stubbed |
+| AI demand sensing / predictive push | Extend ai-worker | Per-tenant + cross-tenant signals | **P0** | **shipped** — order history + baseline + seasonality/weather/POS stub drivers |
 | Touchless exception planning | Auto-approve stable SKUs | Tenant policy knobs | **P0** | **shipped** — policy gate + auto-approve + factory transfer + outbox |
 | One-number forecast | `DemandForecastBaseline` table | Reconciled tenant baseline | **P1** | **shipped** — warehouse forecast + supplier analytics |
 | Scenario sandbox | Read-only what-if API | Tenant admin scenarios | **P1** | **shipped** — API + `PlanningBrainPanel` on supplier analytics |
@@ -103,7 +103,7 @@ flowchart TB
 | `PX90-B2` | `POST/GET /v1/supplier/control-tower/zone-overrides` | **implemented** |
 | `PX90-B3` | `DISPATCH_ZONE_OVERRIDE` event + WS fanout | **implemented** — supplier, warehouse, driver rooms |
 | `PX90-B4` | Dispatch preview/execute respects active overrides | **implemented** — `dispatch/zone_override.go`, warehouse dispatch paths |
-| `PX90-B5` | Control-tower UI | **partial** — portal: `ControlTowerCommandPanel` (publish); iOS/Android: read-only active zones on fleet |
+| `PX90-B5` | Control-tower UI | **shipped** — portal `ControlTowerCommandPanel`; iOS/Android publish from fleet live map |
 | `PX90-B6` | SSMR: `PX_E2E_CONTROL_TOWER_OVERRIDE_OK` | **wired**; **pending** infra verify |
 
 ### Wave 3 — Days 61–90: Demand brain + EKG (P1) — **shipped**
@@ -113,8 +113,8 @@ flowchart TB
 | `PX90-C1` | `DemandForecastBaseline` DDL + writer | **implemented** — predictive push allocator + warehouse insight seed path |
 | `PX90-C2` | `DemandSignalProvider` stub in ai-worker | **implemented** — `predictivepush/signals.go` (order history + seasonality stub) |
 | `PX90-C3` | One-number: warehouse + supplier analytics read baseline | **implemented** — `warehouse/demand_products.go`, `supplier/analytics_baseline.go` |
-| `PX90-C4` | `POST /v1/supplier/planning/scenarios/run` | **shipped** — API + `PlanningBrainPanel` on supplier analytics |
-| `PX90-C5` | `GET /v1/supplier/planning/s-and-op` | **shipped** — API + portal panel |
+| `PX90-C4` | `POST /v1/supplier/planning/scenarios/run` | **shipped** — API + portal + iOS/Android analytics; uses driver delivery history in signals |
+| `PX90-C5` | `GET /v1/supplier/planning/s-and-op` | **shipped** — API + portal + iOS/Android analytics |
 | `PX90-C6` | `GET /v1/supplier/knowledge-graph` EKG-lite | **shipped** — topology, SKUs, drivers, vehicles, retailers, active orders |
 | `PX90-C7` | Governed agent allowlist (`planning/agents.go`) | **shipped** — `planning/executor.go` synchronous allowlisted mutations |
 | `PX90-C8` | SSMR: `PX_E2E_DEMAND_BASELINE_OK`, `PX_E2E_SCENARIO_SANDBOX_OK`, `PX_E2E_KG_READ_OK` | **wired**; **pending** infra verify |
@@ -187,7 +187,7 @@ pegasusX remains **execution + single-supplier planning**. pegasus adds tenant i
 | # | Criterion | Status |
 |---|---|---|
 | 1 | MEIO recommends network transfers; touchless on stable SKUs; humans on exceptions | **shipped** — CRITICAL auto-transfer; WARNING touchless path; humans on dismiss |
-| 2 | Supplier draws zone and publishes dispatch override via WS within seconds | **shipped** (portal); native read-only |
+| 2 | Supplier draws zone and publishes dispatch override via WS within seconds | **shipped** (portal + native fleet publish) |
 | 3 | One demand baseline powers warehouse forecast + supplier analytics | **shipped** |
 | 4 | Scenario sandbox answers factory-down / demand-spike without production mutation | **shipped** |
 | 5 | EKG-lite documents supplier network for pegasus federation | **shipped** |
@@ -200,7 +200,5 @@ pegasusX remains **execution + single-supplier planning**. pegasus adds tenant i
 | Item | Owner | Priority |
 |---|---|---|
 | Fix `MaxRedemptions` schema drift so `make test-ssmr-infra` reaches plan90 markers | promotions / schema | P0 ops |
-| Native scenario + S&OP screens (portal is canonical) | supplier iOS/Android | P2 |
-| Native control-tower polygon draw (portal stays canonical publish) | supplier iOS/Android | P2 |
-| External weather/POS demand drivers (replace stubs) | ai-worker/predictivepush | P2 |
-| Driver delivery history → scenario sandbox inputs | `planning/` + `Orders` aggregates | P2 |
+| Replace weather/POS stubs with live pegasus ingest feeds | ai-worker/predictivepush | P3 |
+| Native map polygon draw UX polish (corner taps vs viewport bbox) | supplier iOS/Android | P3 |

@@ -246,6 +246,10 @@ export function supplierPlanningScenarioKey(supplierId: string, factoryDowntimeH
   return `supplier-planning-scenario:${supplierId}:${factoryDowntimeHours}:${demandDeltaPct}`;
 }
 
+export function supplierSeasonalOverrideCreateKey(supplierId: string, startDate: string, endDate: string): string {
+  return `supplier-seasonal-override:${supplierId}:${stableHash(`${startDate}:${endDate}`)}`;
+}
+
 export function supplierGovernedAgentKey(supplierId: string, action: string, idempotencyKey: string): string {
   return `supplier-planning-agent:${supplierId}:${action}:${stableHash(idempotencyKey)}`;
 }

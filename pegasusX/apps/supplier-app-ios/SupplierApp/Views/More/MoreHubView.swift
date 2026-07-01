@@ -21,6 +21,15 @@ struct MoreHubView: View {
                 NavigationLink { DemandHistoryView() } label: {
                     Label("Demand forecast", systemImage: "chart.xyaxis.line")
                 }
+                NavigationLink { PlanningBrainView() } label: {
+                    Label("Planning sandbox", systemImage: "brain.head.profile")
+                }
+                NavigationLink { KnowledgeGraphView() } label: {
+                    Label("Knowledge graph", systemImage: "point.3.connected.trianglepath.dotted")
+                }
+                NavigationLink { PlanningSettingsView() } label: {
+                    Label("Planning settings", systemImage: "calendar")
+                }
                 NavigationLink { ActivityView() } label: {
                     Label("Activity", systemImage: "clock.arrow.circlepath")
                 }
@@ -66,6 +75,9 @@ struct MoreHubView: View {
                 }
                 NavigationLink { OperationsView() } label: {
                     Label("Operations", systemImage: "wrench.and.screwdriver")
+                }
+                NavigationLink { ReplenishmentPoliciesView() } label: {
+                    Label("Replenishment policies", systemImage: "doc.text")
                 }
             }
             Section("Account") {

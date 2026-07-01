@@ -327,9 +327,20 @@ struct DashboardView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(forecast.productName)
-                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                        .foregroundStyle(AppTheme.textPrimary)
+                    HStack(spacing: 6) {
+                        Text(forecast.productName)
+                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        if forecast.isBlocked {
+                            Text("Insufficient history")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundStyle(AppTheme.warning)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(AppTheme.warning.opacity(0.12))
+                                .clipShape(Capsule())
+                        }
+                    }
 
                     Text(forecast.reasoning)
                         .font(.caption)

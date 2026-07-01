@@ -70,6 +70,9 @@ services:
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_WEBHOOKS}" --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_FREEZE_LOCKS}" --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_INVENTORY_IMPORT}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic planning.signal.ingest.v1 --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic planning.forecast.request.v1 --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic planning.forecast.result.v1 --partitions 3 --replication-factor 1
     restart: "no"
 
   kafka-ui:

@@ -733,7 +733,28 @@ internal fun AiPlannedCard(
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(forecast.productName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            forecast.productName,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (forecast.isBlocked) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Insufficient history",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                                color = StatusOrange,
+                                modifier = Modifier
+                                    .clip(PillShape)
+                                    .background(StatusOrange.copy(alpha = 0.12f), PillShape)
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                            )
+                        }
+                    }
                     Text("${forecast.predictedQuantity} units", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
                 Spacer(modifier = Modifier.width(8.dp))

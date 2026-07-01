@@ -119,6 +119,9 @@ struct OperationsView: View {
                 )
             }
             Section {
+                NavigationLink { ReplenishmentPoliciesView() } label: {
+                    Label("View replenishment policies", systemImage: "doc.text")
+                }
                 Button(replenishing ? "Triggering…" : "Trigger replenishment") {
                     runReplenishment()
                 }

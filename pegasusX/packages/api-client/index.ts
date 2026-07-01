@@ -84,6 +84,14 @@ import type {
   SupplierKnowledgeGraph,
   GovernedAgentInvocation,
   GovernedAgentInvocationResponse,
+  SeasonalOverrideInput,
+  SeasonalOverrideRow,
+  SeasonalTemplatesResponse,
+  PlanningSignalIngestInput,
+  SparsityGateResult,
+  PromoSimulateInput,
+  PromoSimulateResult,
+  PromoPerformanceResult,
   SupplierInventoryImportResult,
   SupplierImportApplyResponse,
   SupplierImportIngestResponse,
@@ -904,6 +912,51 @@ export class ApiClient {
       body: request,
       idempotencyKey,
     });
+  }
+
+  async getSeasonalOverrides(): Promise<SeasonalTemplatesResponse> {
+    return this.request<SeasonalTemplatesResponse>("/v1/supplier/planning/seasonal-overrides", "GET");
+  }
+
+  async createSeasonalOverride(
+    request: SeasonalOverrideInput,
+    idempotencyKey: string,
+  ): Promise<SeasonalOverrideRow> {
+    return this.request<SeasonalOverrideRow>("/v1/supplier/planning/seasonal-overrides", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async ingestPlanningSignal(
+    request: PlanningSignalIngestInput,
+    idempotencyKey: string,
+  ): Promise<{ signal_id: string; status: string }> {
+    return this.request<{ signal_id: string; status: string }>("/v1/supplier/planning/signals/ingest", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async checkPlanningSparsity(retailerId: string): Promise<SparsityGateResult> {
+    return this.request<SparsityGateResult>(`/v1/supplier/planning/sparsity/${encodeURIComponent(retailerId)}`, "GET");
+  }
+
+  async simulatePromotionPandL(
+    request: PromoSimulateInput,
+    idempotencyKey: string,
+  ): Promise<PromoSimulateResult> {
+    return this.request<PromoSimulateResult>("/v1/supplier/planning/promotions/simulate", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async getPromotionPerformance(promotionId: string): Promise<PromoPerformanceResult> {
+    return this.request<PromoPerformanceResult>(
+      `/v1/supplier/planning/promotions/${encodeURIComponent(promotionId)}/performance`,
+      "GET",
+    );
   }
 
   async getSupplierFleetOrders(): Promise<SupplierFleetOrderRow[]> {

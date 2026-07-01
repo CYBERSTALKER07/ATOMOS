@@ -415,6 +415,7 @@ data class SupplierDemandSummaryResponse(
     @SerialName("total_value") val totalValue: Long = 0,
     @SerialName("prediction_count") val predictionCount: Int = 0,
     @SerialName("generated_at") val generatedAt: String = "",
+    @SerialName("baseline_source") val baselineSource: String? = null,
 )
 
 @Serializable
@@ -754,4 +755,115 @@ data class ControlTowerZoneOverride(
 @Serializable
 data class ControlTowerZoneOverridesResponse(
     val overrides: List<ControlTowerZoneOverride> = emptyList(),
+)
+
+@Serializable
+data class PlanningSAndOPSnapshot(
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("horizon_days") val horizonDays: Int = 7,
+    @SerialName("factory_capacity_units") val factoryCapacityUnits: Long = 0,
+    @SerialName("warehouse_inbound_cap_units") val warehouseInboundCapUnits: Long = 0,
+    @SerialName("warehouse_outbound_cap_units") val warehouseOutboundCapUnits: Long = 0,
+    @SerialName("utilization_pct") val utilizationPct: Double = 0.0,
+    @SerialName("capacity_alert") val capacityAlert: Boolean = false,
+)
+
+@Serializable
+data class PlanningScenarioInput(
+    @SerialName("factory_downtime_hours") val factoryDowntimeHours: Int = 0,
+    @SerialName("demand_delta_pct") val demandDeltaPct: Double = 0.0,
+    @SerialName("horizon_days") val horizonDays: Int = 7,
+)
+
+@Serializable
+data class PlanningScenarioResult(
+    @SerialName("scenario_id") val scenarioId: String = "",
+    @SerialName("sla_risk_pct") val slaRiskPct: Double = 0.0,
+    @SerialName("fleet_volume_orders") val fleetVolumeOrders: Long = 0,
+    @SerialName("stockout_skus") val stockoutSkus: List<String> = emptyList(),
+    @SerialName("capacity_breach") val capacityBreach: Boolean = false,
+)
+
+@Serializable
+data class ForecastConfidence(
+    @SerialName("low_units") val lowUnits: Long? = null,
+    @SerialName("high_units") val highUnits: Long? = null,
+    @SerialName("confidence_pct") val confidencePct: Int? = null,
+    @SerialName("baseline_source") val baselineSource: String? = null,
+    @SerialName("blocked_reason") val blockedReason: String? = null,
+    val label: String? = null,
+)
+
+@Serializable
+data class SeasonalOverrideInput(
+    @SerialName("template_id") val templateId: String? = null,
+    @SerialName("start_date") val startDate: String,
+    @SerialName("end_date") val endDate: String,
+    val name: String? = null,
+)
+
+@Serializable
+data class SeasonalOverrideRow(
+    @SerialName("override_id") val overrideId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("template_id") val templateId: String = "",
+    val name: String? = null,
+    @SerialName("start_date") val startDate: String = "",
+    @SerialName("end_date") val endDate: String = "",
+    @SerialName("is_active") val isActive: Boolean = true,
+)
+
+@Serializable
+data class SeasonalBuiltinTemplate(
+    val id: String = "",
+    val name: String = "",
+)
+
+@Serializable
+data class SeasonalTemplatesResponse(
+    @SerialName("builtin_templates") val builtinTemplates: List<SeasonalBuiltinTemplate> = emptyList(),
+    val overrides: List<SeasonalOverrideRow> = emptyList(),
+)
+
+@Serializable
+data class KnowledgeGraphNode(
+    val id: String = "",
+    val type: String = "",
+    val name: String? = null,
+)
+
+@Serializable
+data class KnowledgeGraphEdge(
+    val from: String = "",
+    val to: String = "",
+    val relation: String = "",
+)
+
+@Serializable
+data class SupplierKnowledgeGraph(
+    @SerialName("supplier_id") val supplierId: String = "",
+    val nodes: List<KnowledgeGraphNode> = emptyList(),
+    val edges: List<KnowledgeGraphEdge> = emptyList(),
+)
+
+@Serializable
+data class SupplierReplenishmentPolicy(
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("auto_approve_stable") val autoApproveStable: Boolean = false,
+    @SerialName("auto_approve_predictive_push") val autoApprovePredictivePush: Boolean = false,
+    @SerialName("max_daily_transfer_units") val maxDailyTransferUnits: Long = 0,
+    @SerialName("min_confidence_score") val minConfidenceScore: Double = 0.0,
+)
+
+@Serializable
+data class GeoJSONPolygonPayload(
+    val type: String = "Polygon",
+    val coordinates: List<List<List<Double>>>,
+)
+
+@Serializable
+data class ControlTowerZoneOverrideCreateRequest(
+    val action: String,
+    @SerialName("ttl_seconds") val ttlSeconds: Int = 1800,
+    @SerialName("polygon_geojson") val polygonGeojson: GeoJSONPolygonPayload,
 )

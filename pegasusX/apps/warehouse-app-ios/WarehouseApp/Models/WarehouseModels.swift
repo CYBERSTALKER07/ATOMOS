@@ -1466,6 +1466,7 @@ struct DemandForecastProduct: Decodable, Identifiable {
     let priority: String
     let unit: String
     let sources: DemandForecastSources
+    let demandBreakdown: [String: AnyCodable]?
 
     enum CodingKeys: String, CodingKey {
         case productId = "product_id"
@@ -1476,6 +1477,42 @@ struct DemandForecastProduct: Decodable, Identifiable {
         case priority
         case unit
         case sources
+        case demandBreakdown = "demand_breakdown"
+    }
+
+    init(
+        productId: String,
+        productName: String,
+        currentStock: Int64,
+        recommendedQty: Int64,
+        daysUntilStockout: Double,
+        priority: String,
+        unit: String,
+        sources: DemandForecastSources,
+        demandBreakdown: [String: AnyCodable]? = nil
+    ) {
+        self.productId = productId
+        self.productName = productName
+        self.currentStock = currentStock
+        self.recommendedQty = recommendedQty
+        self.daysUntilStockout = daysUntilStockout
+        self.priority = priority
+        self.unit = unit
+        self.sources = sources
+        self.demandBreakdown = demandBreakdown
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        productId = try container.decodeIfPresent(String.self, forKey: .productId) ?? ""
+        productName = try container.decodeIfPresent(String.self, forKey: .productName) ?? ""
+        currentStock = try container.decodeIfPresent(Int64.self, forKey: .currentStock) ?? 0
+        recommendedQty = try container.decodeIfPresent(Int64.self, forKey: .recommendedQty) ?? 0
+        daysUntilStockout = try container.decodeIfPresent(Double.self, forKey: .daysUntilStockout) ?? 0
+        priority = try container.decodeIfPresent(String.self, forKey: .priority) ?? ""
+        unit = try container.decodeIfPresent(String.self, forKey: .unit) ?? ""
+        sources = try container.decodeIfPresent(DemandForecastSources.self, forKey: .sources) ?? DemandForecastSources()
+        demandBreakdown = try container.decodeIfPresent([String: AnyCodable].self, forKey: .demandBreakdown)
     }
 }
 

@@ -88,6 +88,18 @@ enum SupplierIdempotencyKeys {
         "supplier-promotion-deactivate:\(scopeId):\(promotionId)"
     }
 
+    static func planningScenario(scopeId: String, factoryDowntimeHours: Int, demandDeltaPct: Double) -> String {
+        "supplier-planning-scenario:\(scopeId):\(factoryDowntimeHours):\(demandDeltaPct)"
+    }
+
+    static func seasonalOverrideCreate(scopeId: String, startDate: String, endDate: String) -> String {
+        "supplier-seasonal-override:\(scopeId):\(stableHash("\(startDate):\(endDate)"))"
+    }
+
+    static func controlTowerZoneOverride(scopeId: String, action: String, polygonFingerprint: String) -> String {
+        "supplier-control-tower-override:\(scopeId):\(stableHash("\(action):\(polygonFingerprint)"))"
+    }
+
     private static func stableHash(_ input: String) -> String {
         var hash: UInt32 = 2166136261
         for scalar in input.unicodeScalars {

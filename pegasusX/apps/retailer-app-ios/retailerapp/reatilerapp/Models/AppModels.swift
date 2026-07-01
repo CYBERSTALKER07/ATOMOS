@@ -50,6 +50,9 @@ struct DemandForecast: Codable, Identifiable, Hashable {
     let confidence: Double
     let reasoning: String
     let suggestedOrderDate: String
+    let blocked: Bool?
+    let blockedReason: String?
+    let label: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -59,18 +62,25 @@ struct DemandForecast: Codable, Identifiable, Hashable {
         case confidence
         case reasoning
         case suggestedOrderDate = "suggested_order_date"
+        case blocked
+        case blockedReason = "blocked_reason"
+        case label
     }
 
     var confidencePercent: String {
         String(format: "%.0f%%", confidence * 100)
     }
+
+    var isBlocked: Bool {
+        blocked == true || label == "insufficient_history" || (blockedReason?.isEmpty == false)
+    }
 }
 
 extension DemandForecast {
     static let samples: [DemandForecast] = [
-        DemandForecast(id: "fc-001", productId: "prod-001", productName: "Organic Whole Milk", predictedQuantity: 24, confidence: 0.89, reasoning: "Steady weekly demand, slight uptick on weekends.", suggestedOrderDate: "2026-03-19"),
-        DemandForecast(id: "fc-002", productId: "prod-003", productName: "Free-Range Eggs", predictedQuantity: 12, confidence: 0.76, reasoning: "Holiday season approaching, expect higher traffic.", suggestedOrderDate: "2026-03-18"),
-        DemandForecast(id: "fc-003", productId: "prod-005", productName: "Sparkling Water", predictedQuantity: 36, confidence: 0.92, reasoning: "Trending product with repeat buyers.", suggestedOrderDate: "2026-03-20")
+        DemandForecast(id: "fc-001", productId: "prod-001", productName: "Organic Whole Milk", predictedQuantity: 24, confidence: 0.89, reasoning: "Steady weekly demand, slight uptick on weekends.", suggestedOrderDate: "2026-03-19", blocked: nil, blockedReason: nil, label: nil),
+        DemandForecast(id: "fc-002", productId: "prod-003", productName: "Free-Range Eggs", predictedQuantity: 12, confidence: 0.76, reasoning: "Holiday season approaching, expect higher traffic.", suggestedOrderDate: "2026-03-18", blocked: nil, blockedReason: nil, label: nil),
+        DemandForecast(id: "fc-003", productId: "prod-005", productName: "Sparkling Water", predictedQuantity: 36, confidence: 0.92, reasoning: "Trending product with repeat buyers.", suggestedOrderDate: "2026-03-20", blocked: nil, blockedReason: nil, label: nil)
     ]
 }
 

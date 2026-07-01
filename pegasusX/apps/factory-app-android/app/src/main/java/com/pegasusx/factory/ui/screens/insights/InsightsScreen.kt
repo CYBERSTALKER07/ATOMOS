@@ -164,8 +164,37 @@ private fun InsightCard(insight: Insight) {
                 MetricItem("Days left", "${insight.daysUntilStockout}")
                 MetricItem("Reorder", "${insight.reorderQuantity}")
             }
+
+            insight.demandBreakdown?.let { breakdown ->
+                Text(
+                    text = formatDemandWhy(breakdown, insight.reasonCode),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
+}
+
+private fun formatDemandWhy(breakdown: kotlinx.serialization.json.JsonObject?, reasonCode: String?): String {
+    if (breakdown == null || breakdown.isEmpty()) {
+        return reasonCode?.replace('_', ' ') ?: "Threshold breach"
+    }
+    breakdown["blocked_reason"]?.toString()?.trim('"')?.takeIf { it.isNotBlank() }?.let { blocked ->
+        return if (blocked == "insufficient_history") {
+            "Insufficient history — forecast blocked"
+        } else {
+            blocked.replace('_', ' ')
+        }
+    }
+    val parts = mutableListOf<String>()
+    breakdown["burn_rate_7d"]?.toString()?.trim('"')?.toDoubleOrNull()?.let { parts.add("Burn ${"%.1f".format(it)}/d") }
+    breakdown["days_cover"]?.toString()?.trim('"')?.toDoubleOrNull()?.let { parts.add("${"%.1f".format(it)}d cover") }
+    breakdown["confidence"]?.toString()?.trim('"')?.toDoubleOrNull()?.let {
+        parts.add("${(it * 100).toInt()}% conf")
+    }
+    if (breakdown.containsKey("mei_network")) parts.add("MEIO network transfer")
+    return parts.joinToString(" · ").ifBlank { reasonCode?.replace('_', ' ') ?: "Demand signal" }
 }
 
 @Composable

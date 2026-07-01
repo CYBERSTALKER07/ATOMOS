@@ -132,9 +132,20 @@ struct FutureDemandView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(forecast.productName)
-                            .font(.system(.headline, design: .rounded))
-                            .foregroundStyle(AppTheme.textPrimary)
+                        HStack(spacing: 6) {
+                            Text(forecast.productName)
+                                .font(.system(.headline, design: .rounded))
+                                .foregroundStyle(AppTheme.textPrimary)
+                            if forecast.isBlocked {
+                                Text("Insufficient history")
+                                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                                    .foregroundStyle(AppTheme.warning)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(AppTheme.warning.opacity(0.12))
+                                    .clipShape(Capsule())
+                            }
+                        }
                         Text("Order by \(forecast.suggestedOrderDate)")
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)

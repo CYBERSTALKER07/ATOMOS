@@ -187,6 +187,36 @@ interface SupplierApi {
     @GET("v1/supplier/control-tower/zone-overrides")
     suspend fun getControlTowerZoneOverrides(): Response<ControlTowerZoneOverridesResponse>
 
+    @GET("v1/supplier/planning/s-and-op")
+    suspend fun getPlanningSAndOP(): Response<PlanningSAndOPSnapshot>
+
+    @POST("v1/supplier/planning/scenarios/run")
+    suspend fun runPlanningScenario(
+        @Body body: PlanningScenarioInput,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<PlanningScenarioResult>
+
+    @GET("v1/supplier/planning/seasonal-overrides")
+    suspend fun getSeasonalOverrides(): Response<SeasonalTemplatesResponse>
+
+    @POST("v1/supplier/planning/seasonal-overrides")
+    suspend fun createSeasonalOverride(
+        @Body body: SeasonalOverrideInput,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<SeasonalOverrideRow>
+
+    @GET("v1/supplier/knowledge-graph")
+    suspend fun getKnowledgeGraph(): Response<SupplierKnowledgeGraph>
+
+    @GET("v1/supplier/replenishment/policies")
+    suspend fun getReplenishmentPolicies(): Response<SupplierReplenishmentPolicy>
+
+    @POST("v1/supplier/control-tower/zone-overrides")
+    suspend fun createControlTowerZoneOverride(
+        @Body body: ControlTowerZoneOverrideCreateRequest,
+        @Header("X-Idempotency-Key") idempotencyKey: String,
+    ): Response<ControlTowerZoneOverride>
+
     @GET("v1/catalog/products")
     suspend fun listCatalogProducts(): Response<List<CatalogProduct>>
 

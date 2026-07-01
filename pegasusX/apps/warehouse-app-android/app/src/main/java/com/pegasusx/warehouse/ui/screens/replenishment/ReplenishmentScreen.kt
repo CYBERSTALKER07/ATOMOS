@@ -224,6 +224,13 @@ private fun formatDemandWhy(breakdown: kotlinx.serialization.json.JsonObject?, r
     if (breakdown == null || breakdown.isEmpty()) {
         return reasonCode?.replace('_', ' ') ?: "Threshold breach"
     }
+    breakdown["blocked_reason"]?.toString()?.trim('"')?.takeIf { it.isNotBlank() }?.let { blocked ->
+        return if (blocked == "insufficient_history") {
+            "Insufficient history — forecast blocked"
+        } else {
+            blocked.replace('_', ' ')
+        }
+    }
     val parts = mutableListOf<String>()
     breakdown["burn_rate_7d"]?.toString()?.trim('"')?.toDoubleOrNull()?.let { parts.add("Burn ${"%.1f".format(it)}/d") }
     breakdown["days_cover"]?.toString()?.trim('"')?.toDoubleOrNull()?.let { parts.add("${"%.1f".format(it)}d cover") }

@@ -24,10 +24,11 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/pegasusx/pegasusx/apps/ai-worker/optimizer"
+	"github.com/pegasusx/pegasusx/apps/ai-worker/planningingest"
+	"github.com/pegasusx/pegasusx/apps/ai-worker/predictivepush"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	contract "github.com/pegasusx/pegasusx/packages/optimizer-contract"
-	"github.com/pegasusx/pegasusx/apps/ai-worker/predictivepush"
 )
 
 type EventEnvelope struct {
@@ -289,6 +290,14 @@ func main() {
 			defer importRuntime.Close()
 			defer importOpener.Close()
 			importRuntime.Run(gCtx, metrics)
+			return nil
+		})
+	}
+
+	if planningIngest := planningingest.NewRuntime(brokers, spannerClient, logger); planningIngest != nil {
+		g.Go(func() error {
+			defer planningIngest.Close()
+			planningIngest.Run(gCtx)
 			return nil
 		})
 	}

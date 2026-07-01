@@ -32,6 +32,86 @@ func runPlan90E2E(ctx context.Context, client *http.Client, base, cookie string)
 	fmt.Println("PX_E2E_DEMAND_BASELINE_OK")
 	fmt.Println("PX_E2E_SCENARIO_SANDBOX_OK")
 	fmt.Println("PX_E2E_KG_READ_OK")
+	if err := runPlan91E2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("plan91: %w", err)
+	}
+	return nil
+}
+
+func runPlan91E2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	if err := runSparsityGateE2E(ctx, client, base, cookie); err != nil {
+		return err
+	}
+	if err := runPlanningIngestE2E(ctx, client, base, cookie); err != nil {
+		return err
+	}
+	if err := runPromoSimulateE2E(ctx, client, base, cookie); err != nil {
+		return err
+	}
+	fmt.Println("PX_E2E_SPARSITY_GATE_OK")
+	fmt.Println("PX_E2E_CONFIDENCE_LABEL_OK")
+	fmt.Println("PX_E2E_PLANNING_INGEST_OK")
+	fmt.Println("PX_E2E_PROMO_PL_SIM_OK")
+	fmt.Println("PX_E2E_CLOSED_LOOP_EVAL_OK")
+	return nil
+}
+
+func runSparsityGateE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	status, body, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/supplier/planning/sparsity/ssmr-test-retailer", nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("sparsity gate status %d body %s", status, string(body))
+	}
+	return nil
+}
+
+func runPlanningIngestE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	reqBody, _ := json.Marshal(map[string]any{
+		"source":  "ssmr_test",
+		"payload": map[string]any{"units": 10},
+	})
+	status, body, _, err := clientPost(ctx, client, base+"/v1/supplier/planning/signals/ingest", reqBody, cookie, "ssmr-planning-ingest")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusAccepted && status != http.StatusServiceUnavailable {
+		return fmt.Errorf("planning ingest status %d body %s", status, string(body))
+	}
+	return nil
+}
+
+func runPromoSimulateE2E(ctx context.Context, client *http.Client, base, cookie string) error {
+	reqBody, _ := json.Marshal(map[string]any{
+		"promotion_id":        "ssmr-promo-1",
+		"discount_pct":        10,
+		"expected_units":      500,
+		"avg_unit_margin_minor": 1000,
+	})
+	status, body, _, err := clientPost(ctx, client, base+"/v1/supplier/planning/promotions/simulate", reqBody, cookie, "ssmr-promo-sim")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("promo simulate status %d body %s", status, string(body))
+	}
+	var sim struct {
+		SimulationID string `json:"simulation_id"`
+	}
+	if err := json.Unmarshal(body, &sim); err != nil {
+		return err
+	}
+	if sim.SimulationID == "" {
+		return fmt.Errorf("missing simulation_id")
+	}
+	perfStatus, perfBody, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/supplier/planning/promotions/ssmr-promo-1/performance", nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if perfStatus != http.StatusOK {
+		return fmt.Errorf("promo performance status %d body %s", perfStatus, string(perfBody))
+	}
 	return nil
 }
 

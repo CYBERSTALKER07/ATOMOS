@@ -166,6 +166,16 @@ const (
 	EventPlanningMEIORecommendation   = "planning.meio.recommendation.v1"
 	EventDemandBaselineUpdated        = "DEMAND_BASELINE_UPDATED"
 	EventPlanningAgentBroadcast       = "PLANNING_AGENT_BROADCAST"
+	EventPlanningForecastUpdated      = "PLANNING_FORECAST_UPDATED"
+	EventPlanningPromoSimulationReady = "PLANNING_PROMO_SIMULATION_READY"
+	EventPlanningConfidenceDowngraded = "PLANNING_CONFIDENCE_DOWNGRADED"
+	EventPlanningSignalIngest         = "planning.signal.ingest.v1"
+)
+
+const (
+	TopicPlanningSignalIngest  = "planning.signal.ingest.v1"
+	TopicPlanningForecastRequest = "planning.forecast.request.v1"
+	TopicPlanningForecastResult  = "planning.forecast.result.v1"
 )
 
 // AggregateTypes used in OutboxEvents.AggregateType.

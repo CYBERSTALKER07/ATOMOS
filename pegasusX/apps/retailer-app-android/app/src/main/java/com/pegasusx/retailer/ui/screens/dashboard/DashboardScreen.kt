@@ -61,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Product
@@ -71,6 +72,7 @@ import com.pegasusx.retailer.ui.components.RetailerSectionHeader
 import com.pegasusx.retailer.ui.components.modifiers.bounceCash
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
 import com.pegasusx.retailer.ui.theme.HexagonShape
+import com.pegasusx.retailer.ui.theme.PillShape
 import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusOrange
 import com.pegasusx.retailer.ui.theme.StatusRed
@@ -552,13 +554,28 @@ private fun PredictionCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(
-                    text = forecast.productName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = forecast.productName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (forecast.isBlocked) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Insufficient history",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                            color = StatusOrange,
+                            modifier = Modifier
+                                .clip(PillShape)
+                                .background(StatusOrange.copy(alpha = 0.12f), PillShape)
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        )
+                    }
+                }
                 Text(
                     text = forecast.reasoning,
                     style = MaterialTheme.typography.bodySmall,

@@ -639,6 +639,80 @@ export interface GovernedAgentInvocationResponse {
   result_id?: string;
 }
 
+export interface ForecastConfidence {
+  low_units?: number;
+  high_units?: number;
+  confidence_pct?: number;
+  baseline_source?: "ml" | "moving_average" | "seasonal_template" | "mixed" | string;
+  blocked_reason?: string;
+  label?: "insufficient_history" | "early_signal" | "standard" | string;
+}
+
+export interface SparsityGateResult {
+  allowed: boolean;
+  completed_orders: number;
+  confidence_cap_pct?: number;
+  blocked_reason?: string;
+  label: string;
+}
+
+export interface SeasonalOverrideInput {
+  template_id?: string;
+  start_date: string;
+  end_date: string;
+  name?: string;
+}
+
+export interface SeasonalOverrideRow {
+  override_id: string;
+  supplier_id: SupplierId;
+  template_id: string;
+  name?: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+}
+
+export interface SeasonalTemplatesResponse {
+  builtin_templates: Array<{ id: string; name: string }>;
+  overrides: SeasonalOverrideRow[];
+}
+
+export interface PlanningSignalIngestInput {
+  signal_id?: string;
+  source: string;
+  warehouse_id?: string;
+  retailer_id?: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface PromoSimulateInput {
+  promotion_id?: string;
+  discount_pct?: number;
+  expected_units?: number;
+  avg_unit_margin_minor?: number;
+}
+
+export interface PromoSimulateResult {
+  simulation_id: string;
+  promotion_id?: string;
+  projected_volume: number;
+  projected_revenue_minor: number;
+  projected_margin_minor: number;
+  margin_delta_pct: number;
+  sandbox_only: boolean;
+}
+
+export interface PromoPerformanceResult {
+  promotion_id: string;
+  predicted_volume: number;
+  actual_volume: number;
+  volume_accuracy_pct: number;
+  predicted_margin_minor: number;
+  actual_margin_minor: number;
+  closed_loop_score: number;
+}
+
 export interface SupplierDemandHistoryPoint {
   date: string;
   predicted: number;
@@ -2296,6 +2370,24 @@ export interface WarehouseDemandForecastProduct {
   priority: string;
   unit: string;
   sources: WarehouseDemandForecastProductSources;
+  confidence?: ForecastConfidence;
+  demand_breakdown?: Record<string, unknown> | null;
+}
+
+/** Mobile/desktop retailer AI prediction card (GET /v1/ai/predictions). */
+export interface RetailerDemandPrediction {
+  id: string;
+  product_id?: string;
+  product_name?: string;
+  predicted_quantity?: number;
+  predicted_amount?: number;
+  confidence?: number;
+  reasoning?: string;
+  suggested_order_date?: string;
+  status?: string;
+  blocked?: boolean;
+  blocked_reason?: string;
+  label?: "insufficient_history" | "early_signal" | "standard" | string;
 }
 
 export interface WarehouseDemandForecastResponse {

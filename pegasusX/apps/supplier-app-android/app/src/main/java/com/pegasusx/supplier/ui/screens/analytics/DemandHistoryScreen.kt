@@ -10,12 +10,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.DemandHistoryPoint
 import com.pegasusx.supplier.data.model.DemandUpcomingRow
+import com.pegasusx.supplier.data.model.ForecastConfidence
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasusx.supplier.ui.screens.planning.ForecastConfidenceView
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.util.formatForecastUpdatedAt
+import com.pegasusx.supplier.util.forecastConfidenceFromDemand
+import com.pegasusx.supplier.util.isForecastStale
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,6 +33,8 @@ fun DemandHistoryScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var timeSeries by remember { mutableStateOf<List<DemandHistoryPoint>>(emptyList()) }
     var upcoming by remember { mutableStateOf<List<DemandUpcomingRow>>(emptyList()) }
+    var demandConfidence by remember { mutableStateOf<ForecastConfidence?>(null) }
+    var demandGeneratedAt by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     fun load() {
@@ -36,12 +43,19 @@ fun DemandHistoryScreen(
             error = null
             try {
                 val resp = ops.getDemandHistory()
+                val demandResp = ops.getDemandToday()
                 if (resp.isSuccessful) {
                     val body = resp.body()
                     timeSeries = body?.timeSeries.orEmpty()
                     upcoming = body?.upcoming.orEmpty()
                 } else {
                     error = "Failed (${resp.code()})"
+                }
+                if (demandResp.isSuccessful) {
+                    demandResp.body()?.let {
+                        demandGeneratedAt = it.generatedAt
+                        demandConfidence = forecastConfidenceFromDemand(it)
+                    }
                 }
             } catch (e: Exception) {
                 error = e.message
@@ -86,6 +100,15 @@ fun DemandHistoryScreen(
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
+                demandConfidence?.let { confidence ->
+                    item {
+                        ForecastConfidenceView(
+                            confidence = confidence,
+                            updatedAt = formatForecastUpdatedAt(demandGeneratedAt),
+                            stale = isForecastStale(demandGeneratedAt),
+                        )
+                    }
+                }
                 item {
                     Text("Time series", style = MaterialTheme.typography.titleSmall)
                 }
