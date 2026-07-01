@@ -1,13 +1,47 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { SiGithub, SiLinkedin } from 'react-icons/si';
+import { HiOutlineMail } from 'react-icons/hi';
+import { FaXTwitter } from 'react-icons/fa6';
 import InfiniteScroll from './InfiniteScroll';
 import { useIsMobile } from '../hooks/useDevice';
 import { useInView } from '../hooks/useInView';
 
 gsap.registerPlugin(ScrollTrigger);
+
+const PLATFORM_LINKS = [
+  { name: 'Platform overview', href: '/platform' },
+  { name: 'Order lifecycle', href: '/platform/order-lifecycle' },
+  { name: 'How Pegasus works', href: '/platform/how-pegasus-works' },
+  { name: 'Trust & reliability', href: '/platform/trust-reliability' },
+];
+
+const SOLUTION_LINKS = [
+  { name: 'Dispatch engine', href: '/solutions/visual-dispatch-engine' },
+  { name: 'Fleet visibility', href: '/solutions/fleet-visibility' },
+  { name: 'Payment confidence', href: '/capabilities/payment-confidence' },
+  { name: 'Live coordination', href: '/capabilities/instant-coordination' },
+];
+
+const EXPLORE_LINKS = [
+  { name: 'Roles', href: '/roles' },
+  { name: 'Technology', href: '/technology' },
+  { name: 'Open source stack', href: '/technology/go-backend-platform' },
+  { name: 'Apps & deploy', href: '/apps-deploy' },
+  { name: 'Contact', href: '/contact' },
+  { name: 'Request demo', href: '/join' },
+];
+
+const SOCIAL_LINKS = [
+  { name: 'GitHub', href: 'https://github.com', Icon: SiGithub },
+  { name: 'LinkedIn', href: 'https://linkedin.com/company/pegasus', Icon: SiLinkedin },
+  { name: 'X', href: 'https://twitter.com', Icon: FaXTwitter },
+  { name: 'Email', href: 'mailto:demo@pegasus.io', Icon: HiOutlineMail },
+] as const;
 
 export default function Footer() {
   const { isMobile } = useIsMobile();
@@ -34,164 +68,133 @@ export default function Footer() {
     }, footerRef);
 
     return () => ctx.revert();
-  }, [isMobile]);
+  }, [isMobile, footerRef]);
 
-  // Large text items for full-width background coverage
   const scrollItems = [
-    { content: <div className="text-white/25 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">DISPATCH</div> },
-    { content: <div className="text-white/25 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">TRACK</div> },
-    { content: <div className="text-white/25 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">DELIVER</div> },
-    { content: <div className="text-white/25 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">PEGASUS</div> },
-  ];
-
-  const quickLinks = [
-    { name: 'Home', href: '#hero' },
-    { name: 'About', href: '#about' },
-    { name: 'Skills', href: '#skills' },
-    { name: 'Projects', href: '#projects' },
-    { name: 'Demo', href: '/join' }
-  ];
-
-  const socialLinks = [
-    { name: 'GitHub', href: 'https://github.com', icon: '💻' },
-    { name: 'LinkedIn', href: 'https://linkedin.com', icon: '💼' },
-    { name: 'Twitter', href: 'https://twitter.com', icon: '🐦' },
-    { name: 'Email', href: 'mailto:demo@pegasus.io', icon: '📧' }
+    { content: <div className="text-white/20 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">DISPATCH</div> },
+    { content: <div className="text-white/20 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">TRACK</div> },
+    { content: <div className="text-white/20 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">DELIVER</div> },
+    { content: <div className="text-white/20 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">PEGASUS</div> },
   ];
 
   return (
     <footer ref={footerRef} className="relative bg-black text-white overflow-hidden min-h-screen flex items-center">
-      
-      {/* Infinite Scroll Background - Hidden on mobile */}
       {!isMobile && isInView ? (
-        <div className="absolute inset-0 pointer-events-none z-0 flex">
-          <div className="flex-1 h-full">
-            <InfiniteScroll
-              items={scrollItems}
-              isTilted={true}
-              tiltDirection="left"
-              autoplay={true}
-              autoplaySpeed={0.45}
-              autoplayDirection="down"
-              pauseOnHover={true}
-              width="100%"
-              maxHeight="100%"
-              itemMinHeight={180}
-              negativeMargin="-1.5rem"
-            />
-          </div>
-
-          <div className="flex-1 h-full hidden md:block">
-            <InfiniteScroll
-              items={scrollItems}
-              isTilted={true}
-              tiltDirection="right"
-              autoplay={true}
-              autoplaySpeed={0.55}
-              autoplayDirection="up"
-              pauseOnHover={true}
-              width="100%"
-              maxHeight="100%"
-              itemMinHeight={180}
-              negativeMargin="-1.5rem"
-            />
-          </div>
+        <div className="absolute inset-0 pointer-events-none z-0">
+          <InfiniteScroll
+            items={scrollItems}
+            isTilted
+            tiltDirection="left"
+            autoplay
+            autoplaySpeed={0.45}
+            autoplayDirection="down"
+            pauseOnHover
+            width="100%"
+            maxHeight="100%"
+            itemMinHeight={180}
+            negativeMargin="-1.5rem"
+          />
         </div>
       ) : null}
 
-      {/* Footer Content */}
       <div ref={contentRef} className="relative z-20 container mx-auto px-4 py-20">
         <div className="max-w-7xl mx-auto">
-          {/* Main Footer Content */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-            
-            {/* Brand Section */}
-            <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12 mb-16">
+            <div className="lg:col-span-4">
               <h3 className="text-3xl md:text-4xl font-light mb-6 text-white">
-                Run Your Network on Pegasus
+                Run your network on Pegasus
               </h3>
-              <p className="text-white text-lg mb-6 max-w-md leading-relaxed">
-                Dispatch, tracking, payments, and coordination for supplier-led logistics — one platform, six roles, every site connected.
+              <p className="text-white/70 text-lg mb-6 max-w-md leading-relaxed">
+                Dispatch, tracking, payments, and coordination for supplier-led logistics — one platform,
+                six roles, every site connected.
               </p>
-              <a href="/join" className="editorial-btn">
+              <Link href="/join" className="editorial-btn">
                 GET A DEMO →
-              </a>
+              </Link>
             </div>
 
-            {/* Quick Links */}
-            <div>
-              <h4 className="text-xl font-light mb-6 text-white">Quick Links</h4>
+            <div className="lg:col-span-2">
+              <h4 className="editorial-eyebrow mb-6">Platform</h4>
               <ul className="space-y-3">
-                {quickLinks.map((link, index) => (
-                  <li key={index}>
-                    <a
-                      href={link.href}
-                      className="text-white hover:text-gray-300 transition-colors duration-300 text-lg"
-                    >
+                {PLATFORM_LINKS.map((link) => (
+                  <li key={link.name}>
+                    <Link href={link.href} className="text-white/75 hover:text-white transition-colors text-base">
                       {link.name}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
             </div>
 
-            {/* Social Links */}
-            <div>
-              <h4 className="text-xl font-light mb-6 text-white">Connect</h4>
+            <div className="lg:col-span-2">
+              <h4 className="editorial-eyebrow mb-6">Solutions</h4>
+              <ul className="space-y-3">
+                {SOLUTION_LINKS.map((link) => (
+                  <li key={link.name}>
+                    <Link href={link.href} className="text-white/75 hover:text-white transition-colors text-base">
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="lg:col-span-2">
+              <h4 className="editorial-eyebrow mb-6">Explore</h4>
+              <ul className="space-y-3">
+                {EXPLORE_LINKS.map((link) => (
+                  <li key={link.name}>
+                    <Link href={link.href} className="text-white/75 hover:text-white transition-colors text-base">
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="lg:col-span-2">
+              <h4 className="editorial-eyebrow mb-6">Connect</h4>
               <div className="space-y-4">
-                {socialLinks.map((social, index) => (
+                {SOCIAL_LINKS.map(({ name, href, Icon }) => (
                   <a
-                    key={index}
-                    href={social.href}
-                    target={social.href.startsWith('http') ? '_blank' : undefined}
-                    rel={social.href.startsWith('http') ? 'noreferrer noopener' : undefined}
-                    className="flex items-center gap-3 text-white hover:text-gray-300 transition-colors duration-300 group"
+                    key={name}
+                    href={href}
+                    target={href.startsWith('http') ? '_blank' : undefined}
+                    rel={href.startsWith('http') ? 'noreferrer noopener' : undefined}
+                    className="flex items-center gap-3 text-white/75 hover:text-white transition-colors group"
                   >
-                    <span className="text-2xl group-hover:scale-110 transition-transform duration-300">
-                      {social.icon}
+                    <span className="flex h-10 w-10 items-center justify-center border border-white/20 group-hover:border-white/50 transition-colors">
+                      <Icon className="h-4 w-4" aria-hidden />
                     </span>
-                    <span className="text-lg">{social.name}</span>
+                    <span className="text-base">{name}</span>
                   </a>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="border-t-2 border-white/20 mb-8"></div>
+          <div className="border-t border-white/15 mb-8" />
 
-          {/* Bottom Footer */}
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="text-white/60 text-center md:text-left">
-              <p className="text-lg">
-                © {new Date().getFullYear()} Pegasus. All rights reserved.
-              </p>
-            </div>
-
+            <p className="text-white/50 text-center md:text-left">
+              © {new Date().getFullYear()} Pegasus. All rights reserved.
+            </p>
             <div className="flex gap-8">
-              <a
-                href="#"
-                className="text-white/60 hover:text-white transition-colors duration-300 text-lg"
-              >
-                Privacy Policy
-              </a>
-              <a
-                href="#"
-                className="text-white/60 hover:text-white transition-colors duration-300 text-lg"
-              >
-                Terms of Service
-              </a>
+              <Link href="/contact" className="text-white/50 hover:text-white transition-colors">
+                Privacy & data requests
+              </Link>
+              <Link href="/contact" className="text-white/50 hover:text-white transition-colors">
+                Terms of use
+              </Link>
             </div>
           </div>
 
-          {/* Back to Top Button */}
           <div className="mt-12 text-center">
             <a href="#hero" className="editorial-btn editorial-btn--sm">
               <span>↑</span>
               <span>BACK TO TOP</span>
             </a>
           </div>
-          
         </div>
       </div>
     </footer>

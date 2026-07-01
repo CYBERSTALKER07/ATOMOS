@@ -277,9 +277,51 @@
   color: #fff !important;
 }
 
-/* On light backgrounds — black border, same white sweep */
+/* On light backgrounds — black border, white sweep, black text on hover */
 .editorial-btn--on-light {
   border-color: #000;
+  color: #000;
+  background: transparent;
+}
+
+.editorial-btn--on-light::before {
+  background: #fff;
+}
+
+.editorial-btn--on-light:hover,
+.editorial-btn--on-light:focus-visible {
+  color: #000 !important;
+}
+
+.editorial-btn--on-light:hover > *,
+.editorial-btn--on-light:focus-visible > * {
+  color: #000 !important;
+}
+
+.editorial-card--light .editorial-btn,
+.editorial-card--featured .editorial-btn {
+  border-color: #000;
+  color: #000;
+  background: transparent;
+}
+
+.editorial-card--light .editorial-btn::before,
+.editorial-card--featured .editorial-btn::before {
+  background: #fff;
+}
+
+.editorial-card--light .editorial-btn:hover,
+.editorial-card--light .editorial-btn:focus-visible,
+.editorial-card--featured .editorial-btn:hover,
+.editorial-card--featured .editorial-btn:focus-visible {
+  color: #000 !important;
+}
+
+.editorial-card--light .editorial-btn:hover > *,
+.editorial-card--light .editorial-btn:focus-visible > *,
+.editorial-card--featured .editorial-btn:hover > *,
+.editorial-card--featured .editorial-btn:focus-visible > * {
+  color: #000 !important;
 }
 
 .editorial-btn--on-light:focus-visible {
@@ -325,20 +367,40 @@
   color: #000 !important;
 }
 
-/* Card link hover propagates fill to nested button label */
-a:hover .editorial-btn::before,
-.editorial-card--interactive:hover .editorial-btn::before,
-a:hover .chamfer-btn::before,
-.editorial-card--interactive:hover .chamfer-btn::before {
+/* Nested buttons animate on their own hover — not when the parent card is hovered */
+.editorial-card__cta .editorial-btn:hover::before,
+.editorial-card__cta .editorial-btn:focus-visible::before,
+.editorial-card__cta .chamfer-btn:hover::before,
+.editorial-card__cta .chamfer-btn:focus-visible::before {
   transform: scaleX(1);
 }
 
-a:hover .editorial-btn,
-.editorial-card--interactive:hover .editorial-btn,
-a:hover .editorial-btn--inverted,
-.editorial-card--interactive:hover .editorial-btn--inverted,
-a:hover .chamfer-btn,
-.editorial-card--interactive:hover .chamfer-btn {
+.editorial-card__cta .editorial-btn:hover,
+.editorial-card__cta .editorial-btn:focus-visible,
+.editorial-card__cta .chamfer-btn:hover,
+.editorial-card__cta .chamfer-btn:focus-visible {
+  color: #000 !important;
+}
+
+.editorial-card--light .editorial-card__cta .editorial-btn:hover,
+.editorial-card--light .editorial-card__cta .editorial-btn:focus-visible,
+.editorial-card--featured .editorial-card__cta .editorial-btn:hover,
+.editorial-card--featured .editorial-card__cta .editorial-btn:focus-visible {
+  color: #000 !important;
+}
+
+/* Full-card links still sweep nested link-style CTAs on card hover */
+a.editorial-card--interactive:hover .editorial-link {
+  color: #fff;
+}
+
+a.editorial-card--interactive:not(.editorial-card--split-cta):hover .editorial-btn::before,
+a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn::before {
+  transform: scaleX(1);
+}
+
+a.editorial-card--interactive:not(.editorial-card--split-cta):hover .editorial-btn,
+a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn {
   color: #000 !important;
 }
 
@@ -372,7 +434,7 @@ a:hover .chamfer-btn,
   transform: scaleX(0);
   transform-origin: left center;
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: -1;
+  z-index: 0;
 }
 
 .chamfer-btn:hover::before,
@@ -412,6 +474,7 @@ a:hover .chamfer-btn,
 .chamfer-btn--ghost:focus-visible {
   border-color: rgba(255, 255, 255, 0.85);
   color: #000 !important;
+  background: transparent;
 }
 
 .chamfer-btn--ghost:hover > *,
@@ -459,6 +522,20 @@ a:hover .chamfer-btn,
 .chamfer-card:hover {
   border-color: rgba(255, 255, 255, 0.28);
   background: #111;
+}
+
+.chamfer-card:hover .chamfer-btn::before {
+  transform: scaleX(0);
+}
+
+.chamfer-card .chamfer-btn:hover::before,
+.chamfer-card .chamfer-btn:focus-visible::before {
+  transform: scaleX(1);
+}
+
+.chamfer-card .chamfer-btn:hover,
+.chamfer-card .chamfer-btn:focus-visible {
+  color: #000 !important;
 }
 
 .chamfer-card__ascii {
@@ -685,6 +762,36 @@ a:hover .chamfer-btn,
   contain: layout paint;
 }
 
+/* Editorial card media */
+.editorial-card__media--linked {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  flex-shrink: 0;
+  isolation: isolate;
+  text-decoration: none;
+  color: inherit;
+}
+
+.editorial-card--split-cta {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.editorial-card--split-cta.editorial-card--light {
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.editorial-card__media--linked::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.38);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
 .editorial-card__media {
   position: relative;
   overflow: hidden;
@@ -770,17 +877,24 @@ a:hover .chamfer-btn,
     border-color: rgba(255, 255, 255, 0.45);
   }
 
+  .editorial-card--light.editorial-card--interactive:hover,
+  .editorial-card--featured.editorial-card--interactive:hover {
+    border-color: rgba(0, 0, 0, 0.35);
+  }
+
   .card-hover-action {
     display: flex;
     pointer-events: auto;
     transition: opacity 0.18s ease;
   }
 
-  .editorial-card--interactive:hover .editorial-card__media::before {
+  .editorial-card__media--linked:hover::before,
+  .editorial-card--interactive:hover .editorial-card__media:not(.editorial-card__media--linked)::before {
     opacity: 1;
   }
 
-  .editorial-card--interactive:hover .card-hover-action {
+  .editorial-card__media--linked:hover .card-hover-action,
+  .editorial-card--interactive:hover .editorial-card__media:not(.editorial-card__media--linked) .card-hover-action {
     opacity: 1;
   }
 }

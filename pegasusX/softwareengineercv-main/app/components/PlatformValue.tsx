@@ -102,7 +102,7 @@ export default function PlatformValue() {
                   <input type="checkbox" required className="mt-1" />
                   <span>I agree to be contacted about Pegasus.</span>
                 </label>
-                <button type="submit" className="editorial-btn w-full sm:w-auto">
+                <button type="submit" className="editorial-btn editorial-btn--on-light w-full sm:w-auto">
                   REQUEST A DEMO
                 </button>
               </form>
@@ -111,8 +111,8 @@ export default function PlatformValue() {
         </div>
 
         <div className="text-center mt-12">
-          <Link href="/resume" className="editorial-btn">
-            EXPLORE PLATFORM OVERVIEW
+          <Link href="/platform" className="editorial-btn">
+            EXPLORE THE PLATFORM
           </Link>
         </div>
       </div>

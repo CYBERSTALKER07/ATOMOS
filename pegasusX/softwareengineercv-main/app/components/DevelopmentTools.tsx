@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import Link from 'next/link';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import LogoLoop, { type LogoItem } from './LogoLoop';
@@ -218,13 +219,23 @@ export default function DevelopmentTools() {
     <section ref={sectionRef} className="py-20 bg-black text-white" id="tools">
       <div className="container mx-auto px-4">
         <div ref={titleRef} className="text-center mb-12">
+          <p className="editorial-eyebrow mb-4">Under the hood</p>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-4 text-white">
-            Platform Stack
+            Built to run at network scale
           </h2>
           <div className="w-20 h-1 bg-white rounded-full mx-auto mb-6" />
           <p className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto">
-            The technologies powering Pegasus across web, mobile, and backend services
+            Production-grade infrastructure keeps your operation reliable — explore the full technology
+            stack, open-source components, and architecture on our technology pages.
           </p>
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link href="/technology" className="editorial-btn">
+              VIEW TECHNOLOGY
+            </Link>
+            <Link href="/technology/go-backend-platform" className="editorial-btn editorial-btn--sm">
+              OPEN SOURCE STACK →
+            </Link>
+          </div>
         </div>
 
         <div

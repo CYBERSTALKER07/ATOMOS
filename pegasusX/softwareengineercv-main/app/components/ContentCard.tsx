@@ -233,6 +233,8 @@ export interface ContentCardProps {
   href?: string;
   ctaLabel?: string;
   ctaStyle?: 'button' | 'link';
+  /** When true, media and CTA are separate targets — button hover is independent of card/media hover */
+  splitCta?: boolean;
   className?: string;
   imagePriority?: boolean;
   hoverLabel?: string;
@@ -251,6 +253,7 @@ function ContentCard({
   href,
   ctaLabel,
   ctaStyle = 'link',
+  splitCta = false,
   className = '',
   imagePriority = false,
   hoverLabel,
@@ -258,23 +261,33 @@ function ContentCard({
 }: ContentCardProps) {
   const isLight = tone === 'light' || variant === 'featured';
   const actionLabel = resolveHoverLabel(ctaLabel, hoverLabel);
+  const useSplitCta = splitCta && Boolean(href) && ctaStyle === 'button';
   const shellClass = [
     'editorial-card',
-    'editorial-card--interactive',
+    useSplitCta ? '' : 'editorial-card--interactive',
     `editorial-card--${variant}`,
     isLight ? 'editorial-card--light' : 'editorial-card--dark',
+    useSplitCta ? 'editorial-card--split-cta' : '',
     className,
   ]
     .filter(Boolean)
     .join(' ');
 
+  const buttonClass = isLight ? 'editorial-btn editorial-btn--on-light' : 'editorial-btn';
+
   const cta =
     ctaLabel ? (
       ctaStyle === 'button' ? (
         href ? (
-          <span className="editorial-btn">{ctaLabel}</span>
+          useSplitCta ? (
+            <ContentCardButton href={href} className={isLight ? 'editorial-btn--on-light' : ''}>
+              {ctaLabel}
+            </ContentCardButton>
+          ) : (
+            <span className={buttonClass}>{ctaLabel}</span>
+          )
         ) : (
-          <ContentCardButton>{ctaLabel}</ContentCardButton>
+          <ContentCardButton className={isLight ? 'editorial-btn--on-light' : ''}>{ctaLabel}</ContentCardButton>
         )
       ) : href ? (
         <span className="editorial-link">
@@ -294,8 +307,8 @@ function ContentCard({
     </div>
   );
 
-  const media = (
-    <div className="editorial-card__media">
+  const mediaInner = (
+    <>
       {image ? (
         <Image
           src={image}
@@ -310,8 +323,21 @@ function ContentCard({
         <div className="editorial-card__media--placeholder absolute inset-0" aria-hidden="true" />
       )}
       {image ? <CardHoverOverlay label={actionLabel} /> : null}
-    </div>
+    </>
   );
+
+  const media =
+    useSplitCta && href ? (
+      <Link
+        href={href as Route}
+        prefetch={false}
+        className="editorial-card__media editorial-card__media--linked"
+      >
+        {mediaInner}
+      </Link>
+    ) : (
+      <div className="editorial-card__media">{mediaInner}</div>
+    );
 
   const inner = (
     <>
@@ -320,7 +346,7 @@ function ContentCard({
     </>
   );
 
-  if (href) {
+  if (href && !useSplitCta) {
     return (
       <Link href={href as Route} prefetch={false} className={shellClass}>
         {inner}

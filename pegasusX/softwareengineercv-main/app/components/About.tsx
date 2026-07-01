@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
+import Link from 'next/link';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import TextType from './TextType';
@@ -128,9 +129,15 @@ export default function About() {
             </p>
 
             <div className="flex flex-wrap gap-4">
-              <span className="editorial-btn editorial-btn--sm">Dispatch & Fleet</span>
-              <span className="editorial-btn editorial-btn--sm">Payments & Treasury</span>
-              <span className="editorial-btn editorial-btn--sm">Realtime Coordination</span>
+              <Link href="/solutions/visual-dispatch-engine" className="editorial-btn editorial-btn--sm">
+                Dispatch & Fleet
+              </Link>
+              <Link href="/capabilities/payment-confidence" className="editorial-btn editorial-btn--sm">
+                Payments & Treasury
+              </Link>
+              <Link href="/capabilities/instant-coordination" className="editorial-btn editorial-btn--sm">
+                Live Coordination
+              </Link>
             </div>
           </div>
         </div>

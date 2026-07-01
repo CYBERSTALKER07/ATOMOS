@@ -1,19 +1,54 @@
 import { notFound } from 'next/navigation';
 import { ROLES_DATA } from '@/app/data/rolesData';
+import { getTopicByPath } from '@/app/data/topicPages';
+import { getTopicContent } from '@/app/data/topicContent';
+import { rolesTopics } from '@/app/data/topicContent/roles';
+import type { TopicPage } from '@/app/data/topicTypes';
+import { topicHref } from '@/app/data/topicTypes';
+import TopicPageClient from '@/app/components/explore/TopicPageClient';
 import RoleDetailClient from './RoleDetailClient';
 
-export function generateStaticParams() {
-  return ROLES_DATA.map((role) => ({
-    role: role.id,
-  }));
+function getRoleTopic(roleId: string): TopicPage | undefined {
+  const fromNav = getTopicByPath('roles', roleId);
+  if (fromNav) return fromNav;
+
+  const content = getTopicContent('roles', roleId);
+  if (!content) return undefined;
+
+  return {
+    categoryId: 'roles',
+    categoryLabel: 'Roles',
+    slug: roleId,
+    label: content.title,
+    href: topicHref('roles', roleId),
+    content,
+  };
 }
 
-export function generateMetadata({ params }: { params: { role: string } }) {
-  const role = ROLES_DATA.find((r) => r.id === params.role);
-  if (!role) {
+export function generateStaticParams() {
+  const roleParams = ROLES_DATA.map((role) => ({ role: role.id }));
+  const topicParams = Object.keys(rolesTopics).map((slug) => ({ role: slug }));
+  const seen = new Set<string>();
+  return [...roleParams, ...topicParams].filter((p) => {
+    if (seen.has(p.role)) return false;
+    seen.add(p.role);
+    return true;
+  });
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ role: string }> }) {
+  const { role: roleId } = await params;
+  const topic = getRoleTopic(roleId);
+  if (topic) {
     return {
-      title: 'Role Not Found',
+      title: `${topic.content.title} | Pegasus Roles`,
+      description: topic.content.summary,
     };
+  }
+
+  const role = ROLES_DATA.find((r) => r.id === roleId);
+  if (!role) {
+    return { title: 'Role Not Found' };
   }
   return {
     title: `${role.name} | Pegasus Roles`,
@@ -21,9 +56,14 @@ export function generateMetadata({ params }: { params: { role: string } }) {
   };
 }
 
-export default function RolePage({ params }: { params: { role: string } }) {
-  const role = ROLES_DATA.find((r) => r.id === params.role);
+export default async function RolePage({ params }: { params: Promise<{ role: string }> }) {
+  const { role: roleId } = await params;
+  const topic = getRoleTopic(roleId);
+  if (topic) {
+    return <TopicPageClient topic={topic} />;
+  }
 
+  const role = ROLES_DATA.find((r) => r.id === roleId);
   if (!role) {
     notFound();
   }
@@ -31,20 +71,11 @@ export default function RolePage({ params }: { params: { role: string } }) {
   return (
     <div className="bg-[var(--bg)] min-h-screen pt-[calc(var(--nav-h)+2rem)] pb-24 text-[var(--text)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Header Section */}
         <div className="mb-16">
-          <h1 className="text-5xl font-bold mb-6 tracking-tight text-[var(--text)]">
-            {role.name}
-          </h1>
-          <p className="text-xl text-[var(--text-secondary)] max-w-3xl">
-            {role.description}
-          </p>
+          <h1 className="text-5xl font-bold mb-6 tracking-tight text-[var(--text)]">{role.name}</h1>
+          <p className="text-xl text-[var(--text-secondary)] max-w-3xl">{role.description}</p>
         </div>
-
-        {/* Client Component handles Animations, Presentations & Subtopics */}
         <RoleDetailClient role={role} />
-
       </div>
     </div>
   );

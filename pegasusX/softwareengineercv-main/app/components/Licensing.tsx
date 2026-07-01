@@ -74,7 +74,7 @@ export default function Licensing() {
   return (
     <section
       ref={sectionRef}
-      id="licensing"
+      id="deployment"
       className="min-h-screen py-20 bg-black text-white relative overflow-hidden flex items-center"
     >
       <div className="container mx-auto px-4 relative z-10">
@@ -92,8 +92,8 @@ export default function Licensing() {
 
           <div ref={contentRef} className="text-center mb-12 md:mb-16 max-w-3xl mx-auto">
             <p className="text-lg md:text-xl text-gray-300 leading-relaxed">
-              Platform pillars built for physical logistics — dispatch accuracy, fleet visibility,
-              payment confidence, and network scale
+              Deploy Pegasus across your network with guided onboarding, live demos, and expert
+              walkthroughs tailored to how your teams run dispatch and delivery today.
             </p>
           </div>
 
@@ -110,6 +110,7 @@ export default function Licensing() {
                 href={card.href}
                 ctaLabel={card.ctaLabel}
                 ctaStyle="button"
+                splitCta
                 className="deployment-card min-h-[28rem]"
                 hoverLabel={card.ctaLabel.includes('TOUR') ? 'VIEW' : 'DEMO'}
               />

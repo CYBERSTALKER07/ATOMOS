@@ -25,7 +25,7 @@ const CARDS = [
   {
     title: 'Fleet truth on the map',
     description:
-      'Planned vs actual routes, loss-tolerant telemetry, and honest ETAs — ops and retailers see the same picture.',
+      'Loss-tolerant telemetry, and honest ETAs — ops and retailers see the same picture.',
     meta: 'Solutions · Fleet Telemetry',
     href: '/solutions/fleet-visibility',
     ascii: '001\n110\n010',
@@ -73,7 +73,7 @@ export default function SignalFeatureCards() {
               Signal over noise
             </h2>
             <p className="mt-4 max-w-xl text-white/60">
-              Three pillars of the Pegasus network — line-art clarity, black and white only.
+              Three outcomes every network needs — clearer operations, fewer surprises, faster decisions.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
