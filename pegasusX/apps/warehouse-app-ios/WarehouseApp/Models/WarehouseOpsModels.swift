@@ -46,6 +46,7 @@ struct ReplenishmentInsight: Decodable, Identifiable {
     let reorderQuantity: Int64
     let status: String
     let createdAt: String
+    let reasonCode: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -60,6 +61,7 @@ struct ReplenishmentInsight: Decodable, Identifiable {
         case reorderQuantity = "reorder_quantity"
         case status
         case createdAt = "created_at"
+        case reasonCode = "reason_code"
     }
 }
 

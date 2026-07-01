@@ -25,8 +25,19 @@ struct ReplenishmentView: View {
             } else {
                 List(insights) { insight in
                     VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-                        Text(insight.productName)
-                            .font(.headline)
+                        HStack(spacing: LabTheme.spacingXS) {
+                            Text(insight.productName)
+                                .font(.headline)
+                            if insight.reasonCode == "PREDICTIVE_PUSH" {
+                                Label("AI PUSH", systemImage: "sparkles")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.purple.opacity(0.15))
+                                    .foregroundColor(.purple)
+                                    .clipShape(Capsule())
+                            }
+                        }
                         HStack(spacing: LabTheme.spacingSM) {
                             WarehouseStatusBadge(text: insight.urgency, tint: urgencyTint(insight.urgency))
                             WarehouseStatusBadge(text: insight.status)
@@ -92,6 +103,7 @@ struct ReplenishmentView: View {
 
     private func urgencyTint(_ urgency: String) -> Color {
         switch urgency.uppercased() {
+        case "PROACTIVE": return .purple
         case "CRITICAL": return LabTheme.destructive
         case "URGENT": return LabTheme.warning
         default: return LabTheme.secondaryLabel

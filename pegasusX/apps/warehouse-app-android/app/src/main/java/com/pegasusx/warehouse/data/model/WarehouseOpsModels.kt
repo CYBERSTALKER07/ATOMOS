@@ -37,6 +37,7 @@ data class ReplenishmentInsight(
     @SerialName("reorder_quantity") val reorderQuantity: Long = 0,
     val status: String = "",
     @SerialName("created_at") val createdAt: String = "",
+    @SerialName("reason_code") val reasonCode: String? = null,
 )
 
 @Serializable

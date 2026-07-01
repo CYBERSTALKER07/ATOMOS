@@ -35,6 +35,7 @@ type replenishmentInsight struct {
 	ReorderQuantity   int64   `json:"reorder_quantity"`
 	Status            string  `json:"status"`
 	CreatedAt         string  `json:"created_at"`
+	ReasonCode        string  `json:"reason_code,omitempty"`
 }
 
 func insightWireStatus(dbStatus string) string {
@@ -151,7 +152,8 @@ func (s *Service) listReplenishmentInsightsSpanner(ctx context.Context, warehous
 	sql := `SELECT ri.InsightId, ri.WarehouseId, COALESCE(w.Name, ri.WarehouseId),
 	               ri.ProductId, COALESCE(p.Name, ri.ProductId),
 	               ri.CurrentStock, ri.DailyBurnRate, ri.TimeToEmptyDays,
-	               ri.SuggestedQuantity, ri.UrgencyLevel, ri.Status, ri.CreatedAt
+	               ri.SuggestedQuantity, ri.UrgencyLevel, ri.Status, ri.CreatedAt,
+	               ri.ReasonCode
 	        FROM ReplenishmentInsights ri
 	        LEFT JOIN Warehouses w ON ri.WarehouseId = w.WarehouseId
 	        LEFT JOIN Products p ON ri.ProductId = p.ProductId
@@ -181,14 +183,17 @@ func (s *Service) listReplenishmentInsightsSpanner(ctx context.Context, warehous
 		var item replenishmentInsight
 		var createdAt time.Time
 		var daysFloat float64
+		var reasonCode spanner.NullString
 		if err := row.Columns(
 			&item.ID, &item.WarehouseID, &item.WarehouseName,
 			&item.ProductID, &item.ProductName,
 			&item.CurrentStock, &item.AvgDailyVelocity, &daysFloat,
 			&item.ReorderQuantity, &item.Urgency, &item.Status, &createdAt,
+			&reasonCode,
 		); err != nil {
 			return nil, fmt.Errorf("scan replenishment insight: %w", err)
 		}
+		item.ReasonCode = reasonCode.StringVal
 		item.Urgency = insightWireUrgency(item.Urgency)
 		item.Status = insightWireStatus(item.Status)
 		item.DaysUntilStockout = int(math.Round(daysFloat))
@@ -410,5 +415,6 @@ func (s *Service) ensureReplenishmentInsightsLocked(warehouseID string) {
 		ReorderQuantity:   48,
 		Status:            "OPEN",
 		CreatedAt:         now,
+		ReasonCode:        "PREDICTIVE_PUSH",
 	}}
 }

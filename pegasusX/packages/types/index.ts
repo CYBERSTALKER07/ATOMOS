@@ -2383,6 +2383,7 @@ export interface WarehouseReplenishmentInsight {
   reorder_quantity: number;
   status: string;
   created_at: string;
+  reason_code?: string;
 }
 
 export interface WarehouseReplenishmentInsightsResponse {

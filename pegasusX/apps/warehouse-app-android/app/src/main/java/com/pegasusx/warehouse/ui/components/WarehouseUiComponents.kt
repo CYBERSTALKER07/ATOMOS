@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -123,6 +124,11 @@ fun WarehouseStatusChip(
 ) {
     val normalized = status.trim().ifBlank { "—" }.uppercase(Locale.US)
     val colors = when {
+        normalized in setOf("PROACTIVE") ->
+            AssistChipDefaults.assistChipColors(
+                disabledContainerColor = Color(0xFFE9D5FF),
+                disabledLabelColor = Color(0xFF6B21A8),
+            )
         normalized in setOf("CANCELLED", "FAILED", "ERROR", "REJECTED", "UNAVAILABLE", "CRITICAL") ->
             AssistChipDefaults.assistChipColors(
                 disabledContainerColor = MaterialTheme.colorScheme.errorContainer,

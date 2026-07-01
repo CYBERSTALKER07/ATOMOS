@@ -5,11 +5,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pegasusx.warehouse.data.model.ReplenishmentInsight
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
@@ -167,7 +171,34 @@ private fun InsightCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(insight.productName, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Text(insight.productName, style = MaterialTheme.typography.titleMedium)
+                    if (insight.reasonCode == "PREDICTIVE_PUSH") {
+                        Spacer(Modifier.width(PegasusSpacing.xs))
+                        Surface(
+                            color = Color(0xFFE9D5FF),
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = "AI Push",
+                                    tint = Color(0xFF6B21A8),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(Modifier.width(2.dp))
+                                Text(
+                                    "AI PUSH",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = Color(0xFF6B21A8)
+                                )
+                            }
+                        }
+                    }
+                }
                 WarehouseStatusChip(status = insight.urgency)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
