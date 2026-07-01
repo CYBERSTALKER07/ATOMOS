@@ -5,18 +5,8 @@ import Link from 'next/link';
 import { gsap } from 'gsap';
 
 import GigaMenuDropdown from './GigaMenuDropdown';
-import StaggeredMenu from './StaggeredMenu';
+import MegaMenuOverlay from './MegaMenuOverlay';
 import { MEGA_NAV_CATEGORIES, MEGA_NAV_FOOTER_LINKS, type MegaNavCategory } from '../data/megaNavigation';
-
-const staggeredMenuItems = MEGA_NAV_CATEGORIES.map(cat => ({
-  label: cat.label,
-  link: cat.viewAllHref,
-}));
-
-const staggeredSocialItems = MEGA_NAV_FOOTER_LINKS.map(link => ({
-  label: link.label,
-  link: link.href,
-}));
 
 export type PillNavItem = {
   label: string;
@@ -488,14 +478,10 @@ const PillNav: React.FC<PillNavProps> = ({
         )}
 
         {showMenuButton ? (
-          <StaggeredMenu
-            isOpen={megaMenuOpen}
+          <MegaMenuOverlay
+            open={megaMenuOpen}
             onClose={() => setMegaMenuOpen(false)}
-            position="top"
-            items={staggeredMenuItems}
-            socialItems={staggeredSocialItems}
-            displaySocials={true}
-            displayItemNumbering={true}
+            categories={categories || MEGA_NAV_CATEGORIES}
           />
         ) : null}
 
