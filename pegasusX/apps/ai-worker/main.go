@@ -27,6 +27,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	contract "github.com/pegasusx/pegasusx/packages/optimizer-contract"
+	"github.com/pegasusx/pegasusx/apps/ai-worker/predictivepush"
 )
 
 type EventEnvelope struct {
@@ -220,6 +221,14 @@ func main() {
 		os.Exit(1)
 	}
 	defer spannerClient.Close()
+
+	if os.Getenv("AI_WORKER_MODE") == "predictive-push-cron" {
+		if err := predictivepush.Run(ctx, spannerClient); err != nil {
+			slog.Error("predictive push cron failed", "err", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 
 	brokers := []string{"localhost:9092"}
 	if cfg.KafkaBrokers != "" {

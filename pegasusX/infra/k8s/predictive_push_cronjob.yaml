@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pegasusx-predictive-push
+  namespace: pegasusx-production
+spec:
+  schedule: "0 1 * * *" # Run daily at 1:00 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: pegasusx-predictive-push
+        spec:
+          containers:
+          - name: ai-worker
+            image: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/ai-worker:latest
+            command:
+            - "/app/ai-worker"
+            env:
+            - name: AI_WORKER_MODE
+              value: "predictive-push-cron"
+            envFrom:
+            - secretRef:
+                name: pegasusx-spanner-credentials
+            - configMapRef:
+                name: pegasusx-backend-config
+            resources:
+              requests:
+                cpu: "500m"
+                memory: "1Gi"
+              limits:
+                cpu: "1"
+                memory: "2Gi"
+          restartPolicy: OnFailure
