@@ -311,33 +311,40 @@ export default function MegaMenuOverlay({
           </div>
         </header>
 
-        <div className="mega-menu__content-wrap">
-          <ul ref={railRef} className="mega-menu__rail" role="tablist" aria-label="Navigation categories">
-            {categories.map((category) => {
-              const isActive = category.id === activeId;
-              return (
-                <li key={category.id} className="mega-menu__rail-item" role="presentation">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    className={`mega-menu__rail-btn${isActive ? ' mega-menu__rail-btn--active' : ''}`}
-                    onMouseEnter={() => setActiveId(category.id)}
-                    onFocus={() => setActiveId(category.id)}
-                    onClick={() => setActiveId(category.id)}
-                  >
-                    <span className="mega-menu__rail-chevron" aria-hidden="true">
-                      ›
-                    </span>
-                    {category.label}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+        <div className="flex flex-1 min-h-0 flex-col lg:flex-row gap-8 lg:gap-16 w-full max-w-7xl mx-auto pt-8">
+          {/* Left Column: Rail + Promo */}
+          <div className="w-full lg:w-[20rem] flex-shrink-0 flex flex-col justify-between min-h-0">
+            <ul ref={railRef} className="mega-menu__rail flex-1" role="tablist" aria-label="Navigation categories">
+              {categories.map((category) => {
+                const isActive = category.id === activeId;
+                return (
+                  <li key={category.id} className="mega-menu__rail-item" role="presentation">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      className={`mega-menu__rail-btn${isActive ? ' mega-menu__rail-btn--active' : ''}`}
+                      onMouseEnter={() => setActiveId(category.id)}
+                      onFocus={() => setActiveId(category.id)}
+                      onClick={() => setActiveId(category.id)}
+                    >
+                      <span className="mega-menu__rail-chevron" aria-hidden="true">
+                        ›
+                      </span>
+                      {category.label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="hidden lg:block mt-auto pt-8">
+              <PromoBlock promo={promo} onNavigate={handleNavigate} />
+            </div>
+          </div>
 
-          <div ref={panelRef} className="mega-menu__panels" role="tabpanel">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full auto-rows-fr h-fit max-h-[100%] overflow-y-auto pb-8 pr-4">
+          {/* Right Column: Panels */}
+          <div ref={panelRef} className="flex-1 overflow-y-auto pb-12 pr-4 min-h-0" role="tabpanel">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 w-full auto-rows-fr h-fit">
               {activeCategory?.links.map((link) => (
                 <div key={`${activeId}-${link.label}`} className="h-full">
                   <NavLink {...link} onNavigate={handleNavigate} />
@@ -354,10 +361,12 @@ export default function MegaMenuOverlay({
                 </Link>
               </div>
             </div>
+            {/* Mobile Promo */}
+            <div className="block lg:hidden mt-12 shrink-0">
+              <PromoBlock promo={promo} onNavigate={handleNavigate} />
+            </div>
           </div>
         </div>
-
-        <PromoBlock promo={promo} onNavigate={handleNavigate} />
       </div>
 
       <footer className="mega-menu__footer">
