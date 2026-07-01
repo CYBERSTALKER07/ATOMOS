@@ -7,7 +7,7 @@ import TextType from './TextType';
 import ChamferButton from './ChamferButton';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
 
-const HERO_VIDEO_PAUSE_AT = 4;
+const HERO_VIDEO_PAUSE_AT = 5;
 
 export default function Hero() {
   const { isMobile } = useIsMobile();
@@ -20,18 +20,15 @@ export default function Hero() {
   const ctaRef = useRef<HTMLDivElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const introFinishedRef = useRef(false);
 
   const clampAndPauseAtMark = useCallback((video: HTMLVideoElement) => {
     if (video.currentTime >= HERO_VIDEO_PAUSE_AT) {
       video.pause();
       video.currentTime = HERO_VIDEO_PAUSE_AT;
-      introFinishedRef.current = true;
     }
   }, []);
 
   const playIntro = useCallback(async (video: HTMLVideoElement) => {
-    introFinishedRef.current = false;
     video.currentTime = 0;
     try {
       await video.play();
@@ -45,8 +42,6 @@ export default function Hero() {
     const video = videoRef.current;
     if (!video) return;
 
-    const onTimeUpdate = () => clampAndPauseAtMark(video);
-
     if (prefersReducedMotion) {
       video.pause();
       video.currentTime = 0;
@@ -54,26 +49,27 @@ export default function Hero() {
     }
 
     video.muted = true;
-    void playIntro(video);
+
+    const onTimeUpdate = () => clampAndPauseAtMark(video);
+    const startIntro = () => {
+      void playIntro(video);
+    };
+
     video.addEventListener('timeupdate', onTimeUpdate);
 
-    return () => video.removeEventListener('timeupdate', onTimeUpdate);
-  }, [prefersReducedMotion, clampAndPauseAtMark, playIntro]);
-
-  const handlePointerEnter = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || prefersReducedMotion) return;
-    void playIntro(video);
-  }, [prefersReducedMotion, playIntro]);
-
-  const handlePointerLeave = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.pause();
-    if (introFinishedRef.current || video.currentTime >= HERO_VIDEO_PAUSE_AT) {
-      video.currentTime = HERO_VIDEO_PAUSE_AT;
+    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      startIntro();
+    } else {
+      video.addEventListener('loadeddata', startIntro, { once: true });
+      video.addEventListener('canplay', startIntro, { once: true });
     }
-  }, []);
+
+    return () => {
+      video.removeEventListener('timeupdate', onTimeUpdate);
+      video.removeEventListener('loadeddata', startIntro);
+      video.removeEventListener('canplay', startIntro);
+    };
+  }, [prefersReducedMotion, clampAndPauseAtMark, playIntro]);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -220,17 +216,14 @@ export default function Hero() {
           <div ref={visualRef} className="relative order-1 lg:order-2">
             <div className="relative h-[400px] md:h-[500px] lg:h-[600px]  overflow-hidden shadow-2xl bg-black rounded-tl-[200px]  rounded-br-[100px] border-none">
               {/* Video replacing Atom image and LaserFlow */}
-              <div 
-                className="absolute inset-0"
-                onPointerEnter={handlePointerEnter}
-                onPointerLeave={handlePointerLeave}
-              >
+              <div className="absolute inset-0">
                 <video
                   ref={videoRef}
                   src="https://www.dropbox.com/scl/fi/ngrk0vg3lslfx7ca9d69y/DURATION_Exactly_seconds.mp4?rlkey=kdv4tlmsg67jhzzn1ucw642lh&st=eaw7cpxw&raw=1"
+                  autoPlay
                   muted
                   playsInline
-                  preload="metadata"
+                  preload="auto"
                   poster="/electric_semi_truck_tesla_with_trailer_rigged_362-1.jpg"
                   className="h-full w-full object-cover"
                 />
