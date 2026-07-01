@@ -1,0 +1,11 @@
+# Optional remote state — copy to backend.tf and set bucket name.
+#
+#   gsutil mb -l asia-south1 gs://your-terraform-state-bucket
+#   gsutil versioning set on gs://your-terraform-state-bucket
+
+terraform {
+  backend "gcs" {
+    bucket = "your-terraform-state-bucket"
+    prefix = "pegasusx/staging"
+  }
+}

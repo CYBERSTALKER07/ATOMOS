@@ -5,12 +5,37 @@ namespace: pegasusx-staging
 
 resources:
   - ../prod
+  - ../../ai-worker/configmap.yaml
+  - ../../ai-worker/deployment.yaml
+  - ../../ai-worker/service.yaml
+  - ../../optimizer-core/configmap.yaml
+  - ../../optimizer-core/deployment.yaml
+  - ../../optimizer-core/service.yaml
+  - ../../external-secrets/backend-go-externalsecret.yaml
+
+patches:
+  - target:
+      kind: Deployment
+      name: backend-go
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target:
+      kind: Deployment
+      name: backend-go-worker
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
 
 configMapGenerator:
   - name: backend-go-config
     behavior: merge
     literals:
       - PEGASUSX_ENV=staging
+      - REQUIRE_INFRA_ADAPTERS=true
+      - GLOBAL_PAY_ENV=staging
       - KAFKA_TOPIC_DUAL_WRITE=true
       - KAFKA_TOPIC_CONSUME_DOMAIN=true
 

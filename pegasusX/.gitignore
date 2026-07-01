@@ -16,6 +16,11 @@ vendor/
 .env
 .env.local
 .env.*.local
+.env.k8s
+.env.k8s.generated
+.env.staging.secrets
+infra/terraform/staging.tfvars
+infra/terraform/*.auto.tfvars
 
 # logs
 *.log

@@ -11,6 +11,25 @@ This module provisions baseline cloud infrastructure for an isolated pegasusX SS
 
 ## Usage
 
+### Staging (Phase 0 — PX-PROD-0)
+
+```bash
+cd pegasusX
+make terraform-init
+cp infra/terraform/staging.tfvars.example infra/terraform/staging.tfvars
+# Edit staging.tfvars + copy .env.staging.secrets.example → .env.staging.secrets
+
+make phase0-preflight
+make phase0-plan
+make phase0-apply
+make phase0-sync-secrets
+make phase0-migrate
+```
+
+See [`docs/PHASE_0_CLOUD_FOUNDATION_RUNBOOK.md`](../../docs/PHASE_0_CLOUD_FOUNDATION_RUNBOOK.md).
+
+### Sandbox / custom tenant
+
 ```bash
 cd infra/terraform
 terraform init

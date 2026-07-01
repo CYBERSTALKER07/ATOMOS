@@ -58,6 +58,12 @@ ADYEN_GSM="${ADYEN_GSM:-pegasusx-prod-adyen-webhook-secret}"
 STRIPE_GSM="${STRIPE_GSM:-pegasusx-prod-stripe-webhook-secret}"
 GOOGLE_MAPS_GSM="${GOOGLE_MAPS_GSM:-pegasusx-prod-google-maps-api-key}"
 
+SPANNER_PROJECT_VAL="${SPANNER_PROJECT:-pegasusx-prod}"
+SPANNER_INSTANCE_VAL="${SPANNER_INSTANCE:-pegasusx-instance}"
+SPANNER_DATABASE_VAL="${SPANNER_DATABASE:-pegasusx-db}"
+REDIS_ADDR_VAL="${REDIS_ADDR:-redis.pegasusx.svc.cluster.local:6379}"
+KAFKA_BROKERS_VAL="${KAFKA_BROKERS:-kafka.pegasusx.svc.cluster.local:9092}"
+
 OUT_DIR="${OUT_DIR:-${ROOT}/artifacts/k8s-rendered}"
 mkdir -p "$OUT_DIR"
 
@@ -74,6 +80,11 @@ render() {
     -e "s|PEGASUSX_ADYEN_WEBHOOK_GSM_NAME_PLACEHOLDER|${ADYEN_GSM}|g" \
     -e "s|PEGASUSX_STRIPE_WEBHOOK_GSM_NAME_PLACEHOLDER|${STRIPE_GSM}|g" \
     -e "s|PEGASUSX_GOOGLE_MAPS_API_KEY_GSM_NAME_PLACEHOLDER|${GOOGLE_MAPS_GSM}|g" \
+    -e "s|SPANNER_PROJECT: \"pegasusx-prod\"|SPANNER_PROJECT: \"${SPANNER_PROJECT_VAL}\"|g" \
+    -e "s|SPANNER_INSTANCE: \"pegasusx-instance\"|SPANNER_INSTANCE: \"${SPANNER_INSTANCE_VAL}\"|g" \
+    -e "s|SPANNER_DATABASE: \"pegasusx-db\"|SPANNER_DATABASE: \"${SPANNER_DATABASE_VAL}\"|g" \
+    -e "s|REDIS_ADDR: \"redis.pegasusx.svc.cluster.local:6379\"|REDIS_ADDR: \"${REDIS_ADDR_VAL}\"|g" \
+    -e "s|KAFKA_BROKERS: \"kafka.pegasusx.svc.cluster.local:9092\"|KAFKA_BROKERS: \"${KAFKA_BROKERS_VAL}\"|g" \
     "$src" >"$dest"
 }
 

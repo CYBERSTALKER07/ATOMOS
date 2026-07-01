@@ -26,17 +26,19 @@ PUBLIC_BASE_URL=https://api.staging.example.com make p1-pilot-weekly
 
 ## Staging GCP wire (Boss / ops)
 
+**Full Phase 0 playbook:** [`PHASE_0_CLOUD_FOUNDATION_RUNBOOK.md`](./PHASE_0_CLOUD_FOUNDATION_RUNBOOK.md)
+
 Prerequisites: GCP project, `billing_account_id`, WIF for GitHub Actions ([`pegasusx-deploy-gke.yml`](../../.github/workflows/pegasusx-deploy-gke.yml)).
 
 ```bash
-cd pegasusX/infra/terraform
-terraform init
-terraform apply \
-  -var="project_id=YOUR_PROJECT" \
-  -var="tenant_slug=staging" \
-  -var="enable_gke=true" \
-  -var="billing_account_id=XXXXXX-XXXXXX-XXXXXX" \
-  -var='budget_alert_emails=["ops@example.com"]'
+cd pegasusX
+make phase0-preflight
+cp infra/terraform/staging.tfvars.example infra/terraform/staging.tfvars
+make phase0-plan
+make phase0-apply
+make phase0-sync-secrets
+make phase0-migrate
+make render-k8s-from-terraform IMAGE_TAG=staging-$(git rev-parse --short HEAD)
 ```
 
 Populate Secret Manager per [`CLOUD_CREDENTIALS_CHECKLIST.md`](./CLOUD_CREDENTIALS_CHECKLIST.md).

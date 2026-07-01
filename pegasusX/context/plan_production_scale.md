@@ -61,13 +61,17 @@ flowchart TB
 
 **Goal:** Production-shaped infra with real adapters; no emulator fallbacks.
 
+**Runbook:** [`PHASE_0_CLOUD_FOUNDATION_RUNBOOK.md`](../docs/PHASE_0_CLOUD_FOUNDATION_RUNBOOK.md)
+
 | Task | Owner | Exit |
 |---|---|---|
-| Terraform apply + GSM secrets sync | Platform | LC-01 closed per [`PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md`](../docs/PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md) |
-| Spanner prod instance + migrations through `20260702` | Backend | All PX90/PX91 DDL applied |
+| Terraform apply + GSM secrets sync | Platform | `make phase0-apply` + `make phase0-sync-secrets` → `phase0-secrets-ok` |
+| Spanner prod instance + migrations through `20260702` | Backend | `make phase0-migrate` → `phase0-migrate-ok` |
 | Managed Kafka + Redis (or Memorystore) | Platform | `REQUIRE_INFRA_ADAPTERS=true` boot succeeds |
 | K8s deploy backend-go + ai-worker + optimizer-core | Platform | `make validate-ai-worker-k8s` green |
 | Staging URL + TLS + `PUBLIC_BASE_URL` | Platform | `validate_staging_credentials.sh` → `staging-credentials-ok` |
+
+**Makefile:** `phase0-preflight` → `phase0-plan` → `phase0-apply` → `phase0-sync-secrets` → `phase0-migrate` → `render-k8s-from-terraform`
 
 **Anchor:** `PX-PROD-0` — infra adapters live on staging.
 
@@ -186,7 +190,7 @@ flowchart TB
 
 | Anchor | Phase | Scope | Status |
 |---|---|---|---|
-| `PX-PROD-0` | 0 | Cloud infra + staging adapters | **pending** |
+| `PX-PROD-0` | 0 | Cloud infra + staging adapters | **in progress** — runbook + `make phase0-*`; needs GCP apply |
 | `PX-PROD-1` | 1 | SSMR + credential + QA sign-off | **in progress** — `make test-ssmr-infra` green locally (PX90/PX91 markers); staging LC-01–LC-06 pending |
 | `PX-PROD-2` | 2 | Math-only planning contract enforced | **shipped** — `NormalizeBaselineSource`; warehouse badges; predictive-push breakdown |
 | `PX-PROD-3` | 3 | ML data export pipeline (no training) | **in progress** — export cmd, CronJob, `planning-export-validate`; needs 7 green days on staging |

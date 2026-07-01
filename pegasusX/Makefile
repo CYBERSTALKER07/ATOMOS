@@ -1,4 +1,4 @@
-|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate planning-training-export planning-export-validate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
+|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate planning-training-export planning-export-validate phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
 
 help:
 	@echo "pegasusX make targets"
@@ -9,6 +9,11 @@ help:
 	@echo "  test-ssmr-infra       run isolated SSMR smoke + full-ecosystem PX_E2E marker gate"
 	@echo "  planning-training-export  PX-PROD-3 baseline export for ML collect-later (Spanner required)"
 	@echo "  planning-export-validate  PX-PROD-3 post-export QA (FILE=path [MIN_ROWS=1])"
+	@echo "  phase0-preflight          PX-PROD-0 gates before terraform (PHASE0_SKIP_WIRE=1 to skip Docker)"
+	@echo "  phase0-plan               terraform plan with infra/terraform/staging.tfvars"
+	@echo "  phase0-apply              terraform apply with staging.tfvars"
+	@echo "  phase0-sync-secrets       sync .env.staging.secrets → GSM (post-apply)"
+	@echo "  phase0-migrate            apply Spanner migrations through 20260702 on cloud"
 	@echo "  (hybrid)              merge .env.ssmr.hybrid.example for free cloud APIs + local Docker"
 	@echo "  ssmr-ecosystem-marker-gate validate PX_E2E log against contracts/ssmr_ecosystem_markers.json"
 	@echo "  load-cert             PX9-F load certification (smoke profile, backend must be up)"
@@ -63,6 +68,23 @@ planning-training-export:
 planning-export-validate:
 	@test -n "$(FILE)" || (echo "usage: make planning-export-validate FILE=export.jsonl [MIN_ROWS=1]" >&2; exit 1)
 	bash scripts/planning_export_validate.sh "$(FILE)" "$(MIN_ROWS)"
+
+phase0-preflight:
+	bash scripts/phase0_preflight.sh
+
+phase0-plan:
+	@test -f infra/terraform/staging.tfvars || (echo "copy infra/terraform/staging.tfvars.example to staging.tfvars" >&2; exit 1)
+	cd infra/terraform && terraform plan -var-file=staging.tfvars
+
+phase0-apply:
+	@test -f infra/terraform/staging.tfvars || (echo "copy infra/terraform/staging.tfvars.example to staging.tfvars" >&2; exit 1)
+	cd infra/terraform && terraform apply -var-file=staging.tfvars
+
+phase0-sync-secrets:
+	bash scripts/phase0_sync_gsm_secrets.sh
+
+phase0-migrate:
+	bash scripts/phase0_apply_spanner_migrations.sh
 
 ssmr-ecosystem-marker-gate:
 	@test -n "$(LOG)" || (echo "usage: make ssmr-ecosystem-marker-gate LOG=path/to/ssmr-e2e.log" >&2; exit 1)
