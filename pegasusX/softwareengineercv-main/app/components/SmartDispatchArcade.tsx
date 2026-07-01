@@ -36,7 +36,7 @@ export default function SmartDispatchArcade() {
           <div>
             <p className="editorial-eyebrow">Smart dispatch</p>
             <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              Arcade assist — warehouse always in control
+              Supplier Control Panel
             </h2>
             <p className="mt-3 max-w-xl text-sm text-white/55">
               Ranked truck suggestions, never auto-commit. The floor lead confirms every load.
