@@ -58,7 +58,6 @@ const PillNav: React.FC<PillNavProps> = ({
   const tlRefs = useRef<Array<gsap.core.Timeline | null>>([]);
   const activeTweenRefs = useRef<Array<gsap.core.Tween | null>>([]);
   const logoImgRef = useRef<HTMLImageElement | null>(null);
-  const logoTweenRef = useRef<gsap.core.Tween | null>(null);
   const hamburgerRef = useRef<HTMLButtonElement | null>(null);
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const navItemsRef = useRef<HTMLDivElement | null>(null);
@@ -208,18 +207,7 @@ const PillNav: React.FC<PillNavProps> = ({
     });
   };
 
-  const handleLogoEnter = () => {
-    const img = logoImgRef.current;
-    if (!img) return;
-    logoTweenRef.current?.kill();
-    gsap.set(img, { rotate: 0 });
-    logoTweenRef.current = gsap.to(img, {
-      rotate: 360,
-      duration: 0.2,
-      ease,
-      overwrite: 'auto'
-    });
-  };
+
 
   const openMegaMenu = () => {
     setMegaMenuOpen(true);
@@ -319,15 +307,13 @@ const PillNav: React.FC<PillNavProps> = ({
           <Link
             href="/"
             aria-label="Home"
-            onMouseEnter={handleLogoEnter}
-            onFocus={handleLogoEnter}
             ref={el => {
               logoRef.current = el;
             }}
             className="shrink-0 inline-flex items-center justify-center overflow-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
             style={{
-              width: 'var(--nav-h)',
-              height: 'var(--nav-h)',
+              width: '64px',
+              height: '64px',
               background: 'var(--base, #000)'
             }}
           >
@@ -451,17 +437,17 @@ const PillNav: React.FC<PillNavProps> = ({
               className={`${showMenuButton ? '' : 'md:hidden'} flex items-center gap-3 px-4 py-2 border border-white text-white hover:bg-white hover:text-black transition-colors group outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white`}
             >
               <span className="text-sm font-medium tracking-wider">MENU</span>
-              <div className="flex flex-col items-center justify-center gap-[4px]">
+              <div className="flex flex-col items-center justify-center gap-[4px] w-5">
                 <span
-                  className="hamburger-line w-5 h-[2px] origin-center transition-all duration-300"
+                  className={`hamburger-line w-5 h-[2px] origin-center transition-all duration-300 ${(showMenuButton ? megaMenuOpen : isMobileMenuOpen) ? 'rotate-45 translate-y-[6px]' : ''}`}
                   style={{ background: 'currentColor' }}
                 />
                 <span
-                  className="hamburger-line w-5 h-[2px] origin-center transition-all duration-300"
+                  className={`hamburger-line w-5 h-[2px] origin-center transition-all duration-300 ${(showMenuButton ? megaMenuOpen : isMobileMenuOpen) ? 'opacity-0' : ''}`}
                   style={{ background: 'currentColor' }}
                 />
                 <span
-                  className="hamburger-line w-5 h-[2px] origin-center transition-all duration-300"
+                  className={`hamburger-line w-5 h-[2px] origin-center transition-all duration-300 ${(showMenuButton ? megaMenuOpen : isMobileMenuOpen) ? '-rotate-45 -translate-y-[6px]' : ''}`}
                   style={{ background: 'currentColor' }}
                 />
               </div>

@@ -95,7 +95,7 @@ const SOLUTIONS: Solution[] = [
     title: 'Six-Role Coordination',
     description:
       'Supplier, warehouse, factory, driver, retailer, and gate teams on shared contracts — every role sees the same live state.',
-    href: '/roles/role-parity-matrix',
+    href: '/roles',
     chartLabel: 'ROLE PARITY',
     bars: [72, 78, 82, 90],
     line: [68, 74, 80, 88],
