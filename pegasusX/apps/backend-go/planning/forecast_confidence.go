@@ -49,7 +49,8 @@ func AggregateDemandConfidence(ctx context.Context, client *spanner.Client, supp
 		COALESCE(SUM(BaselineQty), 0),
 		COALESCE(SUM(COALESCE(LowUnits, BaselineQty)), 0),
 		COALESCE(SUM(COALESCE(HighUnits, BaselineQty)), 0),
-		COALESCE(AVG(COALESCE(ConfidencePct, CAST(ROUND(Confidence * 100) AS INT64))), 0),
+		COALESCE(AVG(Confidence), 0),
+		COALESCE(AVG(ConfidencePct), 0),
 		MAX(COALESCE(BaselineSource, Source))
 	FROM DemandForecastBaseline
 	WHERE SupplierId = @sid AND ForecastDate = @day`
@@ -68,10 +69,18 @@ func AggregateDemandConfidence(ctx context.Context, client *spanner.Client, supp
 	if err != nil {
 		return ForecastConfidence{}, err
 	}
-	var mid, low, high, confidencePct int64
+	var mid, low, high int64
+	var avgConfidence float64
+	var avgConfidencePct spanner.NullInt64
 	var baselineSource spanner.NullString
-	if err := row.Columns(&mid, &low, &high, &confidencePct, &baselineSource); err != nil {
+	if err := row.Columns(&mid, &low, &high, &avgConfidence, &avgConfidencePct, &baselineSource); err != nil {
 		return ForecastConfidence{}, err
+	}
+	confidencePct := int64(0)
+	if avgConfidencePct.Valid && avgConfidencePct.Int64 > 0 {
+		confidencePct = avgConfidencePct.Int64
+	} else if avgConfidence > 0 {
+		confidencePct = int64(math.Round(avgConfidence * 100))
 	}
 	if mid <= 0 {
 		return FallbackDemandConfidence(q.FallbackQty, q.SourceHint, q.PredictionCount), nil

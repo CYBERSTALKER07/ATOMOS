@@ -154,13 +154,49 @@ assert_redis() {
 	return 0
 }
 
+wait_for_compose_healthy() {
+	local service=$1
+	local attempts=${2:-40}
+	local delay=${3:-3}
+	local attempt
+	for ((attempt = 1; attempt <= attempts; attempt++)); do
+		if "${COMPOSE[@]}" ps --status running --format json "$service" 2>/dev/null | grep -q '"Health":"healthy"'; then
+			return 0
+		fi
+		sleep "$delay"
+	done
+	echo "Timed out waiting for ${service} compose healthcheck" >&2
+	return 1
+}
+
+compose_up_with_retry() {
+	local attempts=${1:-5}
+	local delay=${2:-3}
+	local attempt
+	shift 2
+	for ((attempt = 1; attempt <= attempts; attempt++)); do
+		if "${COMPOSE[@]}" up -d "$@"; then
+			return 0
+		fi
+		echo "compose up retry ${attempt} for: $*" >&2
+		sleep "$delay"
+	done
+	return 1
+}
+
 log_step "Tearing down any prior SSMR stack (including Kafka/Zookeeper volumes)"
 CURRENT_STEP="compose-down"
 "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
 
-log_step "Starting isolated SSMR compose stack"
+log_step "Starting isolated SSMR compose stack (staged: infra → kafka → apps)"
 CURRENT_STEP="compose-up"
-"${COMPOSE[@]}" up -d
+"${COMPOSE[@]}" up -d spanner-emulator redis optimizer-core
+compose_up_with_retry 5 3 zookeeper
+wait_for_tcp "Zookeeper" "localhost" "22181" 60 2
+wait_for_compose_healthy zookeeper 40 3
+sleep 3
+compose_up_with_retry 8 4 kafka
+"${COMPOSE[@]}" up -d backend-setup kafka-ui
 
 log_step "Waiting for Spanner emulator, Redis, Zookeeper, and Kafka"
 CURRENT_STEP="wait-infra"

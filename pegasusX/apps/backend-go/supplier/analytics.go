@@ -115,6 +115,9 @@ func (s *Service) HandleAnalyticsDemandToday(w http.ResponseWriter, r *http.Requ
 	query := parseDemandAnalyticsQuery(r)
 	resp, err := s.buildDemandToday(r.Context(), sid, now, query)
 	if err != nil {
+		if s.log != nil {
+			s.log.Warn("build demand today failed", "supplier_id", sid, "err", err)
+		}
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_demand_summary_failed"})
 		return
 	}
@@ -141,7 +144,10 @@ func (s *Service) HandleAnalyticsDemandHistory(w http.ResponseWriter, r *http.Re
 func (s *Service) buildDemandToday(ctx context.Context, supplierID string, now time.Time, query demandAnalyticsQuery) (demandSummaryResponse, error) {
 	recs, err := s.listAIRecommendations(ctx, supplierID, AIRecommendationQuery{Status: "PENDING", Limit: 100})
 	if err != nil {
-		return demandSummaryResponse{}, err
+		if s.log != nil {
+			s.log.Warn("demand today ai recommendations read failed", "supplier_id", supplierID, "err", err)
+		}
+		recs = nil
 	}
 	items := make([]demandSummaryItem, 0)
 	retailers := map[string]struct{}{}
@@ -216,7 +222,10 @@ func (s *Service) buildDemandToday(ctx context.Context, supplierID string, now t
 		PredictionCount: predictionCount,
 	})
 	if confErr != nil {
-		return demandSummaryResponse{}, confErr
+		if s.log != nil {
+			s.log.Warn("demand today confidence aggregation failed", "supplier_id", supplierID, "err", confErr)
+		}
+		conf = planning.FallbackDemandConfidence(totalQty, source, predictionCount)
 	}
 	return demandSummaryResponse{
 		TotalRetailers:  int64(len(retailers)),
