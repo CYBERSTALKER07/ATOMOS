@@ -3,6 +3,7 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -153,15 +154,22 @@ func (s *Service) HandleGovernedAgentHook(w http.ResponseWriter, r *http.Request
 		return
 	}
 	inv.SupplierID = s.scopedSupplierID(r)
-	if err := planning.ValidateAgentInvocation(inv); err != nil {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+	ex := planning.NewExecutor(s.portalSpanner)
+	if ex == nil || ex.Spanner == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "agent_executor_unavailable"})
 		return
 	}
-	writeJSON(w, http.StatusAccepted, map[string]any{
-		"status":          "queued",
-		"action":          inv.Action,
-		"idempotency_key": inv.IdempotencyKey,
-	})
+	result, err := ex.Execute(r.Context(), inv)
+	if err != nil {
+		switch {
+		case errors.Is(err, planning.ErrAgentActionDenied), errors.Is(err, planning.ErrAgentInvocationInvalid):
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+		default:
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
 }
 
 // HandleReplenishmentPolicies serves GET /v1/supplier/replenishment/policies.

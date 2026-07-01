@@ -1,6 +1,6 @@
 # pegasusX plan_90 — Planning Brain (o9-inspired, Pegasus-ready)
 
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 **Authority:** Subordinate to [`plan.md`](plan.md). Does not replace execution-phase anchors (PX0–PX12). This track adds the **planning brain** on top of the existing execution muscle.
 
@@ -12,15 +12,15 @@ Last updated: 2026-06-30
 
 ---
 
-## Implementation snapshot (2026-06-30)
+## Implementation snapshot (2026-07-01)
 
 | Wave | Theme | Overall | Notes |
 |---|---|---|---|
-| **Wave 1** | MEIO + touchless | **shipped** | Backend, migration DDL, contracts, SSMR, supplier 3-platform MEIO; warehouse insight `demand_breakdown` |
+| **Wave 1** | MEIO + touchless | **shipped** | Touchless opens factory transfer + events; WARNING path in replenishment cycle |
 | **Wave 2** | Actionable control tower | **shipped** | Zone override API + dispatch integration + portal command UI; native **read-only** override status on fleet |
-| **Wave 3** | Demand brain + EKG | **partial** | Baseline, scenarios, S&OP, agent hooks shipped; EKG-lite v1 is topology+SKU only (no drivers/retailers/orders graph yet) |
+| **Wave 3** | Demand brain + EKG | **shipped** | EKG v2 graph, governed agent executor, scenario + S&OP portal panel on analytics |
 
-**Apply before SSMR:** `schema/migrations/20260630_plan90_planning_brain.ddl` on Spanner.
+**SSMR migration:** `schema/migrations/20260630_plan90_planning_brain.ddl` is applied automatically by `backend-setup` in `make test-ssmr-infra`. Full marker green run is **pending** until unrelated e2e blocker (`MaxRedemptions` catalog query) is fixed.
 
 **Not in scope (unchanged):** Retail planning UI, full IBP, cross-supplier collaboration, merchandise planning.
 
@@ -53,17 +53,17 @@ flowchart TB
 |---|---|---|---|---|
 | Actionable Control Tower | Upgrade PX1-A3 → map + zone override | Per-tenant command center | **P0** | **shipped** — portal publish; native read-only |
 | MEIO | Network inventory optimization | Per-tenant MEIO | **P0** | **shipped** |
-| AI demand sensing / predictive push | Extend ai-worker | Per-tenant + cross-tenant signals | **P0** | **partial** — history + baseline write; external drivers stubbed |
-| Touchless exception planning | Auto-approve stable SKUs | Tenant policy knobs | **P0** | **partial** — policy + auto-approve event; supply-request auto-open on all paths TBD |
+| AI demand sensing / predictive push | Extend ai-worker | Per-tenant + cross-tenant signals | **P0** | **partial** — history + baseline + seasonality stub; weather/POS still stubbed |
+| Touchless exception planning | Auto-approve stable SKUs | Tenant policy knobs | **P0** | **shipped** — policy gate + auto-approve + factory transfer + outbox |
 | One-number forecast | `DemandForecastBaseline` table | Reconciled tenant baseline | **P1** | **shipped** — warehouse forecast + supplier analytics |
-| Scenario sandbox | Read-only what-if API | Tenant admin scenarios | **P1** | **shipped** — heuristic projection; no dedicated portal UI |
-| Lightweight S&OP | Factory vs warehouse capacity | Optional rollup | **P1** | **shipped** — API only; no dedicated portal screen |
-| EKG-lite | Graph read API | Federated graph | **P1** | **partial** — factories, warehouses, SKUs; no drivers/vehicles/retailers/orders |
+| Scenario sandbox | Read-only what-if API | Tenant admin scenarios | **P1** | **shipped** — API + `PlanningBrainPanel` on supplier analytics |
+| Lightweight S&OP | Factory vs warehouse capacity | Optional rollup | **P1** | **shipped** — API + portal panel |
+| EKG-lite | Graph read API | Federated graph | **P1** | **shipped** — factories, warehouses, SKUs, drivers, vehicles, retailers, active orders |
+| Neuro-symbolic agents | Governed allowlist hooks | Full agent suite | **P2 pegasus; hooks P1** | **shipped** — `planning/executor.go` runs approve_insight, open_supply_request, broadcast_template |
 | Supplier collaboration & risk | N/A | Cross-supplier | **Defer pegasus** | deferred |
 | Live IBP | Treasury only (PX3-A2) | Full IBP | **Defer** | deferred |
 | Merchandise / assortment | Skip | pegasus retail | **Skip** | skipped |
 | ESG | Route-mileage hook note | Reporting module | **Defer** | deferred |
-| Neuro-symbolic agents | Governed allowlist hooks | Full agent suite | **P2 pegasus; hooks P1** | **partial** — validate-only endpoint; no mutation executor |
 
 ---
 
@@ -90,10 +90,10 @@ flowchart TB
 |---|---|---|
 | `PX90-A1` | `ReplenishmentPolicies` DDL + default seed | **implemented** — `schema/migrations/20260630_plan90_planning_brain.ddl`, `replenishment/policies.go` |
 | `PX90-A2` | `MEIOEngine` network scan (`replenishment/mei_engine.go`) | **implemented** — runs after per-warehouse cycle |
-| `PX90-A3` | Touchless auto-approve + `REPLENISHMENT_AUTO_APPROVED` outbox | **partial** — auto-approve + event; full supply-request open without planner click not on all reason codes |
+| `PX90-A3` | Touchless auto-approve + `REPLENISHMENT_AUTO_APPROVED` outbox | **shipped** — `replenishment/touchless.go` opens `FactoryInternalTransfers` + `WAREHOUSE_TRANSFER_CREATED` |
 | `PX90-A4` | `GET /v1/supplier/meio/network-summary` | **implemented** |
 | `PX90-A5` | Supplier MEIO on dashboard (portal + iOS + Android); warehouse insight **why** | **implemented** |
-| `PX90-A6` | SSMR: `PX_E2E_MEIO_NETWORK_OK`, `PX_E2E_TOUCHLESS_REPLENISH_OK` | **implemented** — `cmd/ssmr-smokecheck/e2e_plan90.go` |
+| `PX90-A6` | SSMR: `PX_E2E_MEIO_NETWORK_OK`, `PX_E2E_TOUCHLESS_REPLENISH_OK` | **wired** — `e2e_plan90.go`; **pending** full `make test-ssmr-infra` green (blocked by unrelated catalog e2e) |
 
 ### Wave 2 — Days 31–60: Actionable control tower (P0) — **shipped**
 
@@ -104,20 +104,20 @@ flowchart TB
 | `PX90-B3` | `DISPATCH_ZONE_OVERRIDE` event + WS fanout | **implemented** — supplier, warehouse, driver rooms |
 | `PX90-B4` | Dispatch preview/execute respects active overrides | **implemented** — `dispatch/zone_override.go`, warehouse dispatch paths |
 | `PX90-B5` | Control-tower UI | **partial** — portal: `ControlTowerCommandPanel` (publish); iOS/Android: read-only active zones on fleet |
-| `PX90-B6` | SSMR: `PX_E2E_CONTROL_TOWER_OVERRIDE_OK` | **implemented** |
+| `PX90-B6` | SSMR: `PX_E2E_CONTROL_TOWER_OVERRIDE_OK` | **wired**; **pending** infra verify |
 
-### Wave 3 — Days 61–90: Demand brain + EKG (P1) — **partial**
+### Wave 3 — Days 61–90: Demand brain + EKG (P1) — **shipped**
 
 | Anchor | Scope | Status |
 |---|---|---|
 | `PX90-C1` | `DemandForecastBaseline` DDL + writer | **implemented** — predictive push allocator + warehouse insight seed path |
-| `PX90-C2` | `DemandSignalProvider` stub in ai-worker | **implemented** — `predictivepush/signals.go` (order history; weather/POS stubbed) |
+| `PX90-C2` | `DemandSignalProvider` stub in ai-worker | **implemented** — `predictivepush/signals.go` (order history + seasonality stub) |
 | `PX90-C3` | One-number: warehouse + supplier analytics read baseline | **implemented** — `warehouse/demand_products.go`, `supplier/analytics_baseline.go` |
-| `PX90-C4` | `POST /v1/supplier/planning/scenarios/run` | **implemented** — heuristic sandbox, 15m cache; **no portal UI** |
-| `PX90-C5` | `GET /v1/supplier/planning/s-and-op` | **implemented** — API only; **no portal UI** |
-| `PX90-C6` | `GET /v1/supplier/knowledge-graph` EKG-lite | **partial** — factories, warehouses, SKUs; plan spec also called for retailers, active orders, driver/truck nodes |
-| `PX90-C7` | Governed agent allowlist (`planning/agents.go`) | **partial** — `POST .../planning/agent/invoke` validates allowlist; no queued mutation worker |
-| `PX90-C8` | SSMR: `PX_E2E_DEMAND_BASELINE_OK`, `PX_E2E_SCENARIO_SANDBOX_OK`, `PX_E2E_KG_READ_OK` | **implemented** |
+| `PX90-C4` | `POST /v1/supplier/planning/scenarios/run` | **shipped** — API + `PlanningBrainPanel` on supplier analytics |
+| `PX90-C5` | `GET /v1/supplier/planning/s-and-op` | **shipped** — API + portal panel |
+| `PX90-C6` | `GET /v1/supplier/knowledge-graph` EKG-lite | **shipped** — topology, SKUs, drivers, vehicles, retailers, active orders |
+| `PX90-C7` | Governed agent allowlist (`planning/agents.go`) | **shipped** — `planning/executor.go` synchronous allowlisted mutations |
+| `PX90-C8` | SSMR: `PX_E2E_DEMAND_BASELINE_OK`, `PX_E2E_SCENARIO_SANDBOX_OK`, `PX_E2E_KG_READ_OK` | **wired**; **pending** infra verify |
 
 ---
 
@@ -152,16 +152,16 @@ flowchart TB
 
 ## SSMR marker registry (PX90)
 
-| Marker | Proves | Status |
-|---|---|---|
-| `PX_E2E_MEIO_NETWORK_OK` | MEIO network summary API | **wired** |
-| `PX_E2E_TOUCHLESS_REPLENISH_OK` | Replenishment policies readable | **wired** |
-| `PX_E2E_CONTROL_TOWER_OVERRIDE_OK` | Zone override create + list | **wired** |
-| `PX_E2E_DEMAND_BASELINE_OK` | Supplier demand today (baseline path) | **wired** |
-| `PX_E2E_SCENARIO_SANDBOX_OK` | Scenario run returns projection | **wired** |
-| `PX_E2E_KG_READ_OK` | Knowledge graph returns nodes + edges | **wired** |
+| Marker | Proves | Code | Infra verify |
+|---|---|---|---|
+| `PX_E2E_MEIO_NETWORK_OK` | MEIO network summary API | **wired** | **pending** |
+| `PX_E2E_TOUCHLESS_REPLENISH_OK` | Replenishment policies readable | **wired** | **pending** |
+| `PX_E2E_CONTROL_TOWER_OVERRIDE_OK` | Zone override create + list | **wired** | **pending** |
+| `PX_E2E_DEMAND_BASELINE_OK` | Supplier demand today (baseline path) | **wired** | **pending** |
+| `PX_E2E_SCENARIO_SANDBOX_OK` | Scenario run returns projection | **wired** | **pending** |
+| `PX_E2E_KG_READ_OK` | Knowledge graph returns nodes + edges | **wired** | **pending** |
 
-Requires migration applied + `make test-ssmr-infra` for green run.
+Migration applies in SSMR `backend-setup`. Full green blocked (2026-07-01) by unrelated retailer catalog e2e (`MaxRedemptions` column missing in emulator schema).
 
 ---
 
@@ -186,12 +186,12 @@ pegasusX remains **execution + single-supplier planning**. pegasus adds tenant i
 
 | # | Criterion | Status |
 |---|---|---|
-| 1 | MEIO recommends network transfers; touchless on stable SKUs; humans on exceptions | **partial** — MEIO yes; touchless approve yes; exception-only human path not fully gated |
+| 1 | MEIO recommends network transfers; touchless on stable SKUs; humans on exceptions | **shipped** — CRITICAL auto-transfer; WARNING touchless path; humans on dismiss |
 | 2 | Supplier draws zone and publishes dispatch override via WS within seconds | **shipped** (portal); native read-only |
 | 3 | One demand baseline powers warehouse forecast + supplier analytics | **shipped** |
-| 4 | Scenario sandbox answers factory-down / demand-spike without production mutation | **shipped** (API) |
-| 5 | EKG-lite documents supplier network for pegasus federation | **partial** — topology+SKU; extend with drivers/retailers/orders |
-| 6 | All PX90 SSMR markers green under `make test-ssmr-infra` | **pending** — code wired; needs migration + infra run |
+| 4 | Scenario sandbox answers factory-down / demand-spike without production mutation | **shipped** |
+| 5 | EKG-lite documents supplier network for pegasus federation | **shipped** |
+| 6 | All PX90 SSMR markers green under `make test-ssmr-infra` | **pending** — markers wired; migration auto-applies; full run blocked by unrelated e2e failure |
 
 ---
 
@@ -199,9 +199,8 @@ pegasusX remains **execution + single-supplier planning**. pegasus adds tenant i
 
 | Item | Owner | Priority |
 |---|---|---|
-| EKG-lite v2: drivers, vehicles, retailers, active orders as nodes/edges | `planning/service.go` | P1 |
-| Touchless path opens supply request / transfer (not only `APPROVED` status) | `replenishment/touchless.go` | P1 |
-| Scenario + S&OP dedicated portal screens | supplier-portal | P2 |
-| Governed agent mutation executor (allowlisted actions only) | `planning/` + outbox | P2 |
+| Fix `MaxRedemptions` schema drift so `make test-ssmr-infra` reaches plan90 markers | promotions / schema | P0 ops |
+| Native scenario + S&OP screens (portal is canonical) | supplier iOS/Android | P2 |
 | Native control-tower polygon draw (portal stays canonical publish) | supplier iOS/Android | P2 |
+| External weather/POS demand drivers (replace stubs) | ai-worker/predictivepush | P2 |
 | Driver delivery history → scenario sandbox inputs | `planning/` + `Orders` aggregates | P2 |

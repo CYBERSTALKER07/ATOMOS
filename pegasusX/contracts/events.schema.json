@@ -2076,6 +2076,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PLANNING_AGENT_BROADCAST"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PlanningAgentBroadcastEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/PreOrderPayload"
         },
         {
@@ -2957,6 +2976,7 @@
         "ORDER_VALIDATION_FAILED",
         "PAYMENT_CLEARED",
         "PAYMENT_REQUIRED",
+        "PLANNING_AGENT_BROADCAST",
         "PRE_ORDER_AUTO_ACCEPTED",
         "PRE_ORDER_CANCELLED",
         "PRE_ORDER_CONFIRMATION",
@@ -3055,6 +3075,7 @@
     "ORDER_VALIDATION_FAILED": "OrderPayload",
     "PAYMENT_CLEARED": "FinancePayload",
     "PAYMENT_REQUIRED": "FinancePayload",
+    "PLANNING_AGENT_BROADCAST": "PlanningPayload",
     "PRE_ORDER_AUTO_ACCEPTED": "PreOrderPayload",
     "PRE_ORDER_CANCELLED": "PreOrderPayload",
     "PRE_ORDER_CONFIRMATION": "PreOrderPayload",

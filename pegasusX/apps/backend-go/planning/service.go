@@ -239,6 +239,15 @@ func (s *Service) GetKnowledgeGraph(ctx context.Context, supplierID string) (Kno
 	}
 	_ = addNodes("factory", "Factories", "FactoryId", "Name")
 	_ = addNodes("warehouse", "Warehouses", "WarehouseId", "Name")
+	_ = addNodes("driver", "Drivers", "DriverId", "Name")
+	_ = addNodes("vehicle", "Vehicles", "VehicleId", "Label")
+	_ = s.addDriverVehicleEdges(ctx, supplierID, &kg)
+	if err := s.addRetailerNodes(ctx, supplierID, &kg); err != nil {
+		return kg, err
+	}
+	if err := s.addActiveOrderNodes(ctx, supplierID, &kg); err != nil {
+		return kg, err
+	}
 
 	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
 		SQL: `SELECT DISTINCT ProductId FROM Products WHERE SupplierId = @sid AND IsActive = true LIMIT 200`,
@@ -260,6 +269,100 @@ func (s *Service) GetKnowledgeGraph(ctx context.Context, supplierID string) (Kno
 		}
 	}
 	return kg, nil
+}
+
+func (s *Service) addDriverVehicleEdges(ctx context.Context, supplierID string, kg *KnowledgeGraph) error {
+	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT DriverId, VehicleId FROM Drivers
+		      WHERE SupplierId = @sid AND IsActive = true AND VehicleId IS NOT NULL
+		      LIMIT 200`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if errors.Is(err, iterator.Done) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		var driverID, vehicleID string
+		if err := row.Columns(&driverID, &vehicleID); err != nil {
+			continue
+		}
+		if strings.TrimSpace(vehicleID) == "" {
+			continue
+		}
+		kg.Edges = append(kg.Edges, KGEdge{From: driverID, To: vehicleID, Relation: "operates"})
+	}
+}
+
+func (s *Service) addRetailerNodes(ctx context.Context, supplierID string, kg *KnowledgeGraph) error {
+	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT DISTINCT r.RetailerId, COALESCE(r.Name, r.RetailerId)
+		      FROM Orders o
+		      JOIN Retailers r ON o.RetailerId = r.RetailerId
+		      WHERE o.SupplierId = @sid
+		      LIMIT 200`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if errors.Is(err, iterator.Done) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		var id, name string
+		if err := row.Columns(&id, &name); err != nil {
+			continue
+		}
+		kg.Nodes = append(kg.Nodes, KGNode{ID: id, Type: "retailer", Name: name})
+		kg.Edges = append(kg.Edges, KGEdge{From: id, To: supplierID, Relation: "orders_from"})
+	}
+}
+
+func (s *Service) addActiveOrderNodes(ctx context.Context, supplierID string, kg *KnowledgeGraph) error {
+	iter := s.Spanner.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT OrderId, RetailerId, COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''), Status
+		      FROM Orders
+		      WHERE SupplierId = @sid
+		        AND Status IN ('PENDING','LOADED','IN_TRANSIT','ARRIVED')
+		      ORDER BY CreatedAt DESC
+		      LIMIT 100`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if errors.Is(err, iterator.Done) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		var orderID, retailerID, warehouseID, driverID, vehicleID, status string
+		if err := row.Columns(&orderID, &retailerID, &warehouseID, &driverID, &vehicleID, &status); err != nil {
+			continue
+		}
+		kg.Nodes = append(kg.Nodes, KGNode{ID: orderID, Type: "order", Name: status})
+		if retailerID != "" {
+			kg.Edges = append(kg.Edges, KGEdge{From: orderID, To: retailerID, Relation: "delivers_to"})
+		}
+		if warehouseID != "" {
+			kg.Edges = append(kg.Edges, KGEdge{From: warehouseID, To: orderID, Relation: "fulfills"})
+		}
+		if driverID != "" {
+			kg.Edges = append(kg.Edges, KGEdge{From: driverID, To: orderID, Relation: "assigned"})
+		}
+		if vehicleID != "" {
+			kg.Edges = append(kg.Edges, KGEdge{From: vehicleID, To: orderID, Relation: "carries"})
+		}
+		kg.Edges = append(kg.Edges, KGEdge{From: supplierID, To: orderID, Relation: "owns"})
+	}
 }
 
 // WriteDemandBaseline upserts one-number forecast rows for a supplier/day.

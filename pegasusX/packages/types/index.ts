@@ -636,6 +636,7 @@ export interface GovernedAgentInvocationResponse {
   status: string;
   action: string;
   idempotency_key: string;
+  result_id?: string;
 }
 
 export interface SupplierDemandHistoryPoint {
@@ -1835,7 +1836,8 @@ export type EventType =
   | "REPLENISHMENT_AUTO_APPROVED"
   | "DISPATCH_ZONE_OVERRIDE"
   | "planning.meio.recommendation.v1"
-  | "DEMAND_BASELINE_UPDATED";
+  | "DEMAND_BASELINE_UPDATED"
+  | "PLANNING_AGENT_BROADCAST";
 
 // ── Event payloads ──────────────────────────────────────────────────────────
 export interface SupplierCreated {

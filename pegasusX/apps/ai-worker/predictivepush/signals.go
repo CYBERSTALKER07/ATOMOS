@@ -59,6 +59,7 @@ func (p *CompositeSignalProvider) Collect(ctx context.Context, supplierID string
 		}
 	}
 	out = append(out, stubPreorderCalendarSignals(supplierID, targetDay)...)
+	out = append(out, stubSeasonalitySignals(supplierID, targetDay)...)
 	if out == nil {
 		out = []DemandSignal{}
 	}
@@ -69,4 +70,22 @@ func stubPreorderCalendarSignals(supplierID string, targetDay time.Time) []Deman
 	_ = supplierID
 	_ = targetDay
 	return nil
+}
+
+// stubSeasonalitySignals applies a lightweight day-of-week uplift until external POS/weather feeds land.
+func stubSeasonalitySignals(supplierID string, targetDay time.Time) []DemandSignal {
+	if supplierID == "" {
+		return nil
+	}
+	weekday := targetDay.Weekday()
+	if weekday != time.Friday && weekday != time.Saturday {
+		return nil
+	}
+	return []DemandSignal{{
+		SupplierID: supplierID,
+		Qty:        1,
+		Confidence: 0.35,
+		Source:     "seasonality_stub",
+		TargetDate: targetDay,
+	}}
 }

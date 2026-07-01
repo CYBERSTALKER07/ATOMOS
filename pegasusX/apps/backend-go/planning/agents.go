@@ -35,6 +35,9 @@ func ValidateAgentInvocation(inv AgentInvocation) error {
 	if strings.TrimSpace(inv.IdempotencyKey) == "" || strings.TrimSpace(inv.SupplierID) == "" {
 		return ErrAgentInvocationInvalid
 	}
+	if strings.TrimSpace(inv.TargetID) == "" && inv.Action != AgentBroadcastTemplate {
+		return ErrAgentInvocationInvalid
+	}
 	return nil
 }
 

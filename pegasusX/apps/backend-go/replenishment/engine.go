@@ -304,6 +304,12 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 			} else {
 				transferCount++
 			}
+		} else if err := tryTouchlessApprove(ctx, e, wh.SupplierId, insightID, wh, sku, suggestedQty, urgency, reason, string(breakdownJSON)); err != nil {
+			e.Log.Error("replenishment.engine.touchless_failed",
+				"warehouse_id", wh.WarehouseId,
+				"sku_id", sku.SkuId,
+				"err", err,
+			)
 		}
 	}
 	return insightCount, transferCount, nil

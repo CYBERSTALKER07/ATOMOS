@@ -165,6 +165,7 @@ const (
 	EventDispatchZoneOverride         = "DISPATCH_ZONE_OVERRIDE"
 	EventPlanningMEIORecommendation   = "planning.meio.recommendation.v1"
 	EventDemandBaselineUpdated        = "DEMAND_BASELINE_UPDATED"
+	EventPlanningAgentBroadcast       = "PLANNING_AGENT_BROADCAST"
 )
 
 // AggregateTypes used in OutboxEvents.AggregateType.

@@ -21,6 +21,7 @@ import type {
   SupplierDemandSummaryResponse,
 } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
+import PlanningBrainPanel from "@/components/PlanningBrainPanel";
 
 const api = createSupplierApi();
 
@@ -240,6 +241,10 @@ export default function AnalyticsPage() {
           </ul>
         </section>
       ) : null}
+
+      <section className="desk-card p-0 mt-6 overflow-hidden min-h-[320px]">
+        <PlanningBrainPanel />
+      </section>
     </PageChrome>
   );
 }
