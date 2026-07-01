@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: pegasusx-planning-training-export
-  namespace: pegasusx-production
+  namespace: pegasusx
 spec:
   schedule: "30 2 * * *" # Daily 02:30 UTC — after predictive-push baseline write
   concurrencyPolicy: Forbid

@@ -141,6 +141,7 @@ flowchart TB
 3. **Data quality checks** — row counts, null rate on `BaselineQty`, ingest lag < 15m P99
 4. **Privacy** — single supplier; no cross-tenant fields
 5. **K8s CronJob** — [`infra/k8s/planning_training_export_cronjob.yaml`](../infra/k8s/planning_training_export_cronjob.yaml) (02:30 UTC daily; binary in backend image)
+6. **Post-export QA** — `make planning-export-validate FILE=export.jsonl`; export cmd supports `-min-rows`
 
 **Anchor:** `PX-PROD-3` — BQ (or GCS parquet) daily export green for 7 consecutive days on staging.
 
@@ -158,7 +159,7 @@ flowchart TB
 | **SLO dashboard** | Launch dashboard per [`LAUNCH_READINESS_RUNBOOK.md`](../docs/LAUNCH_READINESS_RUNBOOK.md) |
 | **On-call** | Named rotation; finance + delivery playbooks staffed for first 30 days |
 
-**Anchor:** `PX-PROD-4` — fire-drill: simulated Kafka lag → DLQ replay → dashboard green within 30m.
+**Anchor:** `PX-PROD-4` — fire-drill: simulated Kafka lag → DLQ replay → dashboard green within 30m. Runbook: [`OBSERVABILITY_FIRE_DRILL_RUNBOOK.md`](../docs/OBSERVABILITY_FIRE_DRILL_RUNBOOK.md).
 
 ---
 
@@ -186,10 +187,10 @@ flowchart TB
 | Anchor | Phase | Scope | Status |
 |---|---|---|---|
 | `PX-PROD-0` | 0 | Cloud infra + staging adapters | **pending** |
-| `PX-PROD-1` | 1 | SSMR + credential + QA sign-off | **pending** |
+| `PX-PROD-1` | 1 | SSMR + credential + QA sign-off | **in progress** — `make test-ssmr-infra` green locally (PX90/PX91 markers); staging LC-01–LC-06 pending |
 | `PX-PROD-2` | 2 | Math-only planning contract enforced | **shipped** — `NormalizeBaselineSource`; warehouse badges; predictive-push breakdown |
-| `PX-PROD-3` | 3 | ML data export pipeline (no training) | **in progress** — `cmd/planning-training-export`, `make planning-training-export`, K8s CronJob manifest |
-| `PX-PROD-4` | 4 | Observability + fire-drill | **partial** — runbooks exist |
+| `PX-PROD-3` | 3 | ML data export pipeline (no training) | **in progress** — export cmd, CronJob, `planning-export-validate`; needs 7 green days on staging |
+| `PX-PROD-4` | 4 | Observability + fire-drill | **in progress** — [`OBSERVABILITY_FIRE_DRILL_RUNBOOK.md`](../docs/OBSERVABILITY_FIRE_DRILL_RUNBOOK.md); execute on staging |
 | `PX-PROD-5` | 5 | 30-day scale ramp complete | **pending** |
 
 ---

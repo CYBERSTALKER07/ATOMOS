@@ -48,6 +48,8 @@ PUBLIC_BASE_URL=https://api.staging.example.com make p0-preflight  # + cloud smo
 - [ ] Finance: [`PAYMENT_EXCEPTION_SOP.md`](./PAYMENT_EXCEPTION_SOP.md) staffed
 - [ ] Driver: [`DRIVER_SUPPORT_PLAYBOOK.md`](./DRIVER_SUPPORT_PLAYBOOK.md) staffed
 - [ ] **72h hypercare** roster after go-live ([`INCIDENT_RESPONSE_RUNBOOK.md`](./INCIDENT_RESPONSE_RUNBOOK.md))
+- [ ] **Observability fire-drill** on staging ([`OBSERVABILITY_FIRE_DRILL_RUNBOOK.md`](./OBSERVABILITY_FIRE_DRILL_RUNBOOK.md)) — PX-PROD-4
+- [ ] Planning export CronJob deployed; 7 consecutive `planning-export-validate` green days — PX-PROD-3
 - [ ] Pilot cap documented (e.g. max retailers/week, one warehouse)
 
 ## Pilot scope (recommended)

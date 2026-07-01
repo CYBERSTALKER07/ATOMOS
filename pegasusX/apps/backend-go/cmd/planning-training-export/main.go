@@ -13,6 +13,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
+	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
@@ -25,6 +26,7 @@ func main() {
 	days := flag.Int("days", 30, "lookback window in days")
 	format := flag.String("format", "jsonl", "jsonl or csv")
 	outPath := flag.String("out", "", "output file (default stdout)")
+	minRows := flag.Int("min-rows", 0, "fail if exported row count is below this threshold")
 	timeout := flag.Duration("timeout", 15*time.Minute, "job timeout")
 	flag.Parse()
 
@@ -54,6 +56,18 @@ func main() {
 		slog.Error("export query failed", "err", err)
 		os.Exit(1)
 	}
+	rows, quality := sanitizeTrainingRows(rows)
+	if *minRows > 0 && len(rows) < *minRows {
+		slog.Error("export below min-rows threshold",
+			"rows", len(rows),
+			"min_rows", *minRows,
+			"quality", quality,
+		)
+		os.Exit(1)
+	}
+	if quality.MLSourceRows > 0 {
+		slog.Warn("export contained legacy ml baseline_source rows (normalized on write)", "count", quality.MLSourceRows)
+	}
 
 	var out *os.File = os.Stdout
 	if p := strings.TrimSpace(*outPath); p != "" {
@@ -82,7 +96,28 @@ func main() {
 		"start", start.Format("2006-01-02"),
 		"end", end.Format("2006-01-02"),
 		"format", *format,
+		"null_baseline_qty", quality.NullBaselineQty,
+		"ml_source_rows_normalized", quality.MLSourceRows,
 	)
+}
+
+type exportQuality struct {
+	NullBaselineQty int
+	MLSourceRows    int
+}
+
+func sanitizeTrainingRows(rows []trainingRow) ([]trainingRow, exportQuality) {
+	var q exportQuality
+	for i := range rows {
+		if rows[i].BaselineQty <= 0 {
+			q.NullBaselineQty++
+		}
+		if strings.EqualFold(strings.TrimSpace(rows[i].BaselineSource), "ml") {
+			q.MLSourceRows++
+		}
+		rows[i].BaselineSource = planning.NormalizeBaselineSource(rows[i].BaselineSource)
+	}
+	return rows, q
 }
 
 type trainingRow struct {

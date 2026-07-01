@@ -3,3 +3,5 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - ../../planning_training_export_cronjob.yaml
+  - ../../predictive_push_cronjob.yaml

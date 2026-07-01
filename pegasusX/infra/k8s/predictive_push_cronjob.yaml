@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: pegasusx-predictive-push
-  namespace: pegasusx-production
+  namespace: pegasusx
 spec:
   schedule: "0 1 * * *" # Run daily at 1:00 AM
   concurrencyPolicy: Forbid

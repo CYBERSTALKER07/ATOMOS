@@ -16,6 +16,8 @@
 
 ## Planning brain DLQ replay
 
+See also staging fire-drill exercise: [`OBSERVABILITY_FIRE_DRILL_RUNBOOK.md`](./OBSERVABILITY_FIRE_DRILL_RUNBOOK.md) (Drill B).
+
 1. Symptom: `planning.signal.ingest.v1` lag or warehouse/supplier forecast stale.
 2. Inspect ai-worker `planningingest` consumer logs and `PlanningSignalProjections` row growth.
 3. Replay DLQ only after fixing projector idempotency; use `signal_id` dedup on `PlanningSignalProjections` PK.

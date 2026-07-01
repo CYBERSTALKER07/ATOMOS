@@ -1,4 +1,4 @@
-.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate planning-training-export load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
+|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate planning-training-export planning-export-validate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
 
 help:
 	@echo "pegasusX make targets"
@@ -8,6 +8,7 @@ help:
 	@echo "  ssmr-infra-down       stop the isolated SSMR sandbox stack"
 	@echo "  test-ssmr-infra       run isolated SSMR smoke + full-ecosystem PX_E2E marker gate"
 	@echo "  planning-training-export  PX-PROD-3 baseline export for ML collect-later (Spanner required)"
+	@echo "  planning-export-validate  PX-PROD-3 post-export QA (FILE=path [MIN_ROWS=1])"
 	@echo "  (hybrid)              merge .env.ssmr.hybrid.example for free cloud APIs + local Docker"
 	@echo "  ssmr-ecosystem-marker-gate validate PX_E2E log against contracts/ssmr_ecosystem_markers.json"
 	@echo "  load-cert             PX9-F load certification (smoke profile, backend must be up)"
@@ -58,6 +59,10 @@ test-ssmr-infra:
 
 planning-training-export:
 	bash scripts/planning_training_export.sh
+
+planning-export-validate:
+	@test -n "$(FILE)" || (echo "usage: make planning-export-validate FILE=export.jsonl [MIN_ROWS=1]" >&2; exit 1)
+	bash scripts/planning_export_validate.sh "$(FILE)" "$(MIN_ROWS)"
 
 ssmr-ecosystem-marker-gate:
 	@test -n "$(LOG)" || (echo "usage: make ssmr-ecosystem-marker-gate LOG=path/to/ssmr-e2e.log" >&2; exit 1)
