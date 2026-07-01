@@ -21,7 +21,8 @@ export function formatForecastUpdatedAt(generatedAt?: string): string | undefine
 
 function mapBaselineSource(src?: string): ForecastConfidence["baseline_source"] {
   if (src === "demand_forecast_baseline") return "moving_average";
-  if (src === "ai_recommendations") return "ml";
+  if (src === "ai_recommendations" || src === "inventory_hint") return "inventory_hint";
+  if (src === "ml") return "moving_average";
   if (src === "mixed") return "mixed";
   return src as ForecastConfidence["baseline_source"];
 }
@@ -44,7 +45,7 @@ export function forecastConfidenceFromDemand(
   let confidence = 65;
   const src = mapBaselineSource(summary.baseline_source);
   if (src === "seasonal_template") confidence = 75;
-  else if (src === "ml") confidence = 85;
+  else if (src === "inventory_hint") confidence = 72;
   else if (summary.prediction_count >= 5) confidence = 72;
   return {
     low_units: Math.max(0, mid - spread),

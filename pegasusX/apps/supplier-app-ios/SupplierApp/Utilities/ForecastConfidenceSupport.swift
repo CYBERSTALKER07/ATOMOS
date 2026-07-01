@@ -22,7 +22,8 @@ enum ForecastConfidenceSupport {
     private static func mapBaselineSource(_ src: String?) -> String? {
         switch src {
         case "demand_forecast_baseline": return "moving_average"
-        case "ai_recommendations": return "ml"
+        case "ai_recommendations", "inventory_hint": return "inventory_hint"
+        case "ml": return "moving_average"
         default: return src
         }
     }
@@ -47,8 +48,8 @@ enum ForecastConfidenceSupport {
         var confidence = 65
         if src == "seasonal_template" {
             confidence = 75
-        } else if src == "ml" {
-            confidence = 85
+        } else if src == "inventory_hint" {
+            confidence = 72
         } else if summary.predictionCount >= 5 {
             confidence = 72
         }

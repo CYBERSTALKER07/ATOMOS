@@ -32,7 +32,8 @@ fun formatForecastUpdatedAt(generatedAt: String?): String? {
 
 private fun mapBaselineSource(src: String?): String? = when (src) {
     "demand_forecast_baseline" -> "moving_average"
-    "ai_recommendations" -> "ml"
+    "ai_recommendations", "inventory_hint" -> "inventory_hint"
+    "ml" -> "moving_average"
     else -> src
 }
 
@@ -51,7 +52,7 @@ fun forecastConfidenceFromDemand(summary: SupplierDemandSummaryResponse): Foreca
     var confidence = 65
     when (src) {
         "seasonal_template" -> confidence = 75
-        "ml" -> confidence = 85
+        "inventory_hint" -> confidence = 72
         else -> if (summary.predictionCount >= 5) confidence = 72
     }
     return ForecastConfidence(

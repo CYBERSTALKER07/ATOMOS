@@ -85,7 +85,7 @@ func AggregateDemandConfidence(ctx context.Context, client *spanner.Client, supp
 	if mid <= 0 {
 		return FallbackDemandConfidence(q.FallbackQty, q.SourceHint, q.PredictionCount), nil
 	}
-	src := mapBaselineSource(baselineSource.StringVal, q.SourceHint)
+	src := NormalizeBaselineSource(baselineSource.StringVal, q.SourceHint)
 	if confidencePct <= 0 {
 		confidencePct = defaultConfidencePct(src, q.PredictionCount)
 	}
@@ -141,7 +141,7 @@ func FallbackDemandConfidence(mid int64, sourceHint string, predictionCount int6
 		return ForecastConfidence{
 			BlockedReason:  "no_predictions",
 			Label:          "insufficient_history",
-			BaselineSource: mapBaselineSource("", sourceHint),
+			BaselineSource: NormalizeBaselineSource("", sourceHint),
 		}
 	}
 	if mid <= 0 {
@@ -151,7 +151,7 @@ func FallbackDemandConfidence(mid int64, sourceHint string, predictionCount int6
 		}
 	}
 	spread := int64(math.Max(1, math.Round(float64(mid)*0.1)))
-	src := mapBaselineSource("", sourceHint)
+	src := NormalizeBaselineSource("", sourceHint)
 	confidence := defaultConfidencePct(src, predictionCount)
 	label := "standard"
 	if predictionCount < 3 {
@@ -199,7 +199,7 @@ func ProductForecastBreakdown(ctx context.Context, client *spanner.Client, suppl
 		return nil
 	}
 	out := map[string]any{
-		"baseline_source": mapBaselineSource(baselineSource.StringVal, source.StringVal),
+		"baseline_source": NormalizeBaselineSource(baselineSource.StringVal, source.StringVal),
 		"label":           "standard",
 	}
 	if blocked.StringVal != "" {
@@ -222,33 +222,12 @@ func ProductForecastBreakdown(ctx context.Context, client *spanner.Client, suppl
 	return out
 }
 
-func mapBaselineSource(parts ...string) string {
-	for _, part := range parts {
-		switch strings.TrimSpace(part) {
-		case "demand_forecast_baseline", "moving_average":
-			return "moving_average"
-		case "ai_recommendations", "ml":
-			return "ml"
-		case "seasonal_template":
-			return "seasonal_template"
-		case "mixed":
-			return "mixed"
-		}
-	}
-	for _, part := range parts {
-		if strings.TrimSpace(part) != "" {
-			return strings.TrimSpace(part)
-		}
-	}
-	return "moving_average"
-}
-
 func defaultConfidencePct(src string, predictionCount int64) int64 {
-	switch src {
-	case "seasonal_template":
+	switch NormalizeBaselineSource(src) {
+	case BaselineSourceSeasonalTemplate:
 		return 75
-	case "ml":
-		return 85
+	case BaselineSourceInventoryHint:
+		return 72
 	default:
 		if predictionCount >= 5 {
 			return 72

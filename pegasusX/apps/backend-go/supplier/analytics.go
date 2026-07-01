@@ -166,8 +166,8 @@ func (s *Service) buildDemandToday(ctx context.Context, supplierID string, now t
 		}
 		predictionCount++
 		if source == "" {
-			source = "ai_recommendations"
-		} else if source != "ai_recommendations" {
+			source = "inventory_hint"
+		} else if source != "inventory_hint" && source != "demand_forecast_baseline" {
 			source = "mixed"
 		}
 		qty := int64(rec.Score)

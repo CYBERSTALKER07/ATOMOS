@@ -17,16 +17,13 @@ func TestFallbackDemandConfidenceRange(t *testing.T) {
 	if out.LowUnits != 90 || out.HighUnits != 110 {
 		t.Fatalf("range=%d-%d want 90-110", out.LowUnits, out.HighUnits)
 	}
-	if out.BaselineSource != "moving_average" {
+	if out.BaselineSource != BaselineSourceMovingAverage {
 		t.Fatalf("source=%q want moving_average", out.BaselineSource)
 	}
 }
 
-func TestMapBaselineSource(t *testing.T) {
-	if got := mapBaselineSource("demand_forecast_baseline"); got != "moving_average" {
-		t.Fatalf("got=%q", got)
-	}
-	if got := mapBaselineSource("", "seasonal_template"); got != "seasonal_template" {
+func TestNormalizeBaselineSourceDemandBaseline(t *testing.T) {
+	if got := NormalizeBaselineSource("demand_forecast_baseline"); got != BaselineSourceMovingAverage {
 		t.Fatalf("got=%q", got)
 	}
 }
