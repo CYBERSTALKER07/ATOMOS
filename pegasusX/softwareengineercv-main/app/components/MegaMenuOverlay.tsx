@@ -17,15 +17,15 @@ import {
   type MegaNavCategory,
   type MegaNavPromo,
 } from '../data/megaNavigation';
-import { 
-  Box, 
-  Layers, 
-  Zap, 
-  Settings, 
-  Activity, 
-  Network, 
-  Truck, 
-  Navigation, 
+import {
+  Box,
+  Layers,
+  Zap,
+  Settings,
+  Activity,
+  Network,
+  Truck,
+  Navigation,
   Shield,
   Database,
   DollarSign
@@ -324,7 +324,7 @@ export default function MegaMenuOverlay({
           transparent
         />
       </div>
-      <div className="mega-menu__inner relative z-10 pt-[80px]">
+      <div className="mega-menu__inner relative z-10 !pt-[80px]">
 
         <div className="flex flex-1 min-h-0 flex-col lg:flex-row gap-8 lg:gap-16 w-full max-w-7xl mx-auto pt-8">
           {/* Left Column: Rail + Promo */}

@@ -185,6 +185,16 @@ const PillNav: React.FC<PillNavProps> = ({
     return () => window.removeEventListener('resize', onResize);
   }, [items, ease, initialLoadAnimation, showMenuButton]);
 
+  useEffect(() => {
+    const navItems = navItemsRef.current;
+    if (!navItems) return;
+    if (megaMenuOpen) {
+      gsap.to(navItems, { opacity: 0, pointerEvents: 'none', duration: 0.3, ease: 'power2.out' });
+    } else {
+      gsap.to(navItems, { opacity: 1, pointerEvents: 'auto', duration: 0.3, ease: 'power2.out', delay: 0.2 });
+    }
+  }, [megaMenuOpen]);
+
   const handleEnter = (i: number) => {
     const tl = tlRefs.current[i];
     if (!tl) return;
@@ -291,7 +301,7 @@ const PillNav: React.FC<PillNavProps> = ({
   return (
     <div
       ref={wrapperRef}
-      className="fixed top-0 left-0 right-0 z-[10002] bg-black border-b border-white/10"
+      className={`fixed top-0 left-0 right-0 z-[10002] transition-colors duration-300 bg-black border-b border-white/10`}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
           setActiveCategory(null);

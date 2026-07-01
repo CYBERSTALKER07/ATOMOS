@@ -185,7 +185,7 @@ export default function Hero() {
               >
                 <video
                   ref={videoRef}
-                  src="/DURATION_Exactly_seconds.mp4"
+                  src="https://www.dropbox.com/scl/fi/ngrk0vg3lslfx7ca9d69y/DURATION_Exactly_seconds.mp4?rlkey=kdv4tlmsg67jhzzn1ucw642lh&st=eaw7cpxw&raw=1"
                   loop
                   muted
                   playsInline

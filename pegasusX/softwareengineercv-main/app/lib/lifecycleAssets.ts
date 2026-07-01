@@ -1,4 +1,4 @@
-export const ORDER_LIFECYCLE_VIDEO_MP4 = '/Minimal_black_and_white_line_a.mp4';
+export const ORDER_LIFECYCLE_VIDEO_MP4 = 'https://www.dropbox.com/scl/fi/dxt89uydvufuz5y6po2mb/Minimal_black_and_white_line_a.mp4?rlkey=8lymbhwowk6gsx9dmqjdnep0o&st=2vgxg4na&raw=1';
 
 /** Source: Gemini-generated lifecycle animation */
 export const ORDER_LIFECYCLE_GEMINI_SHARE =

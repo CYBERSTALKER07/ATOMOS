@@ -217,13 +217,5 @@ export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
       { slug: 'enterprise-rollout', label: 'Enterprise Rollout', description: 'Multi-site networks and deployment pillars.', href: topicHref('apps-deploy', 'enterprise-rollout'), flow: 'controlPlane' },
       { slug: 'request-demo', label: 'Request Demo', description: 'Live walkthrough with the Pegasus team.', href: topicHref('apps-deploy', 'request-demo'), flow: 'orderLifecycle' },
     ],
-    promo: {
-      title: 'Deploy across your network',
-      body: 'Portal, desktop, mobile, and terminal — six roles with parity on every surface that matters.',
-      primaryLabel: 'VIEW APPS',
-      primaryHref: '/apps-deploy',
-      secondaryLabel: 'GET IN TOUCH',
-      secondaryHref: '/join',
-    },
   },
 ];
