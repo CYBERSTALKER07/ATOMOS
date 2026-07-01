@@ -215,13 +215,13 @@ flowchart LR
 
 **Execution path (existing):** `KAFKA_TOPIC_MAIN` — all transactional outbox events (`ORDER_STATUS_CHANGED`, `INVENTORY_SYNC_COMPLETE`, `planning.meio.recommendation.v1`, `DEMAND_BASELINE_UPDATED`, etc.)
 
-**Planning ingestion (new, Phase 1):**
+**Planning ingestion (shipped PX91):**
 
-| Topic | Producer | Consumer | Payload contract |
-|---|---|---|---|
-| `planning.signal.ingest.v1` | backend-go ingest API | ai-worker | Normalized demand/inventory signals |
-| `planning.forecast.request.v1` | supplier portal / API | ai-worker | Forecast run request (idempotent) |
-| `planning.forecast.result.v1` | ai-worker | backend-go projector | Baseline write (idempotent by `forecast_run_id`) |
+| Topic | Producer | Consumer | Payload contract | Status |
+|---|---|---|---|---|
+| `planning.signal.ingest.v1` | backend-go ingest API | ai-worker | Normalized demand/inventory signals | **shipped** |
+| `planning.forecast.request.v1` | supplier portal / API | ai-worker | Forecast run request (idempotent) | **deferred** — topic only |
+| `planning.forecast.result.v1` | ai-worker | backend-go projector | Baseline write (idempotent by `forecast_run_id`) | **deferred** — topic only |
 
 **Rules:**
 1. Ingest APIs validate + publish to Kafka — **no Spanner write on hot ingest path** for analytics-only signals
@@ -249,7 +249,7 @@ API query params on all planning read endpoints:
 | `regional` | Warehouse zone / H3 region | `?granularity=regional&region_id=...` |
 | `micro` | Per-retailer / per-store | `?granularity=micro&retailer_id=...` |
 
-Backend serves pre-aggregated payloads from `DemandForecastBaseline` + Redis — never scans raw `Orders` on dashboard switch. **Status:** `macro`/`meso` via baseline rows **shipped**; `granularity` query param on analytics APIs **deferred**.
+Backend serves pre-aggregated payloads from `DemandForecastBaseline` + Redis — never scans raw `Orders` on dashboard switch. **Status:** `granularity=macro|regional|micro` on `GET /v1/supplier/analytics/demand/today` **shipped** (`warehouse_id` / `region_id` for regional, `retailer_id` for micro).
 
 ### WebSocket envelopes (planning)
 
@@ -305,9 +305,9 @@ When active template applies:
 - `SeasonalTemplateOverrides` DDL (supplier_id, template_id, start_date, end_date)
 - Warehouse + supplier dashboards read `baseline_source: "seasonal_template" | "ml" | "moving_average"`
 
-### PX91-A3: Confidence labeling — **shipped** (partial)
+### PX91-A3: Confidence labeling — **shipped**
 
-**All forecast displays MUST show ranges, not point estimates.** Some surfaces still derive ±10% range client-side until dedicated API fields are wired on every card.
+**All forecast displays show ranges, not point estimates.** Server returns `confidence` on `GET /v1/supplier/analytics/demand/today`; warehouse replenishment insights enrich `demand_breakdown` from baseline when absent.
 
 | Element | Format | Example |
 |---|---|---|
@@ -355,7 +355,7 @@ Aligned with [`plan_90.md`](plan_90.md) waves. **PX90 + PX91 are shipped in code
 | Moving average / trend baseline | `predictivepush/`, ai-worker | **shipped** | Writes `DemandForecastBaseline` via outbox |
 | Seasonal templates + custom date pickers | `planning/seasonal_templates.go` | **shipped** | `holiday_peak`, `summer_surge`, custom overrides |
 | Sparsity gate | `planning/sparsity_gate.go` | **shipped** | ≥2 completed orders rule |
-| Confidence labeling UI | supplier portal + native | **shipped** | **partial** — UI derives ±10% range until API fields everywhere |
+| Confidence labeling UI | supplier portal + native | **shipped** | API `confidence` on `demand/today`; clients prefer server fields |
 | WebSocket + multi-tier dashboards | portal + native | **shipped** | MEIO, control tower, PlanningBrain |
 | WS reconnect reconcile for planning | `session-reconcile.ts` | **shipped** | Supplier demand + S&OP + MEIO paths |
 
@@ -382,7 +382,7 @@ Aligned with [`plan_90.md`](plan_90.md) waves. **PX90 + PX91 are shipped in code
 |---|---|---|---|
 | `PX91-A1` | Data sparsity gate (≥2 completed orders) | 2 | **shipped** |
 | `PX91-A2` | Hard-coded seasonal fallbacks | 2 | **shipped** |
-| `PX91-A3` | Confidence labeling (range + score UI) | 2 | **shipped** (UI partial — client-derived range on some surfaces) |
+| `PX91-A3` | Confidence labeling (range + score UI) | 2 | **shipped** |
 | `PX91-A4` | Custom date range seasonal overrides | 2 | **shipped** |
 | `PX91-B1` | High-concurrency ingest API → Kafka | 1 | **shipped** |
 | `PX91-B2` | ai-worker signal projector | 1 | **shipped** |
@@ -433,7 +433,7 @@ Aligned with [`plan_90.md`](plan_90.md) waves. **PX90 + PX91 are shipped in code
 | 1 | Kafka ingest handles 1000 concurrent signal updates without Spanner hot-path writes | Phase 1b | **shipped** — `scripts/planning_ingest_load.sh` |
 | 2 | Retailer with <2 orders sees blocked forecast, not hallucinated demand | PX91-A1 | **shipped** |
 | 3 | Holiday peak uses seasonal template, not ML extrapolation | PX91-A2 | **shipped** |
-| 4 | All forecast UI shows range + confidence, never bare integer | PX91-A3 | **partial** — client-derived on some cards |
+| 4 | All forecast UI shows range + confidence, never bare integer | PX91-A3 | **shipped** |
 | 5 | Custom season override generates isolated forecast block | PX91-A4 | **shipped** |
 | 6 | WS reconnect triggers planning dashboard reconcile | PX91-C4 | **shipped** |
 | 7 | Pre-event promo P&L returns margin/volume projection without ledger mutation | PX91-C2 | **shipped** |

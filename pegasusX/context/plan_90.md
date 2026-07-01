@@ -222,5 +222,8 @@ pegasusX remains **execution + single-supplier planning**. pegasus adds tenant i
 |---|---|---|
 | Fix `MaxRedemptions` schema drift so `make test-ssmr-infra` reaches plan90/plan91 markers | promotions / schema | P0 ops |
 | pegasus P2: supplier planning UI + API port to admin-portal | pegasus admin-portal | P1 platform |
-| Wire dedicated API confidence fields on all forecast cards (replace client ±10% derive) | supplier + warehouse UI | P2 |
-| Full ML forecast training pipeline (PX91-C1) | ai-worker | P3 |
+| Wire dedicated API confidence fields on all forecast cards (replace client ±10% derive) | supplier + warehouse UI | **done** (2026-07-01) — `confidence` on demand/today + warehouse `demand_breakdown` enrich |
+| `granularity` query param on `demand/today` | supplier analytics | **done** (2026-07-01) |
+| Full IBP / cross-supplier collaboration / causal factor decomposition | pegasus platform | **deferred** — not pegasusX scope |
+| Full ML forecast training pipeline (PX91-C1) | ai-worker | P3 — shadow mode only today |
+| Retailer-facing planning surfaces (beyond sparsity badge) | retail row | **deferred** — order/track only |

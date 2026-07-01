@@ -37,6 +37,7 @@ private fun mapBaselineSource(src: String?): String? = when (src) {
 }
 
 fun forecastConfidenceFromDemand(summary: SupplierDemandSummaryResponse): ForecastConfidence {
+    summary.confidence?.let { return it }
     if (summary.predictionCount == 0) {
         return ForecastConfidence(
             baselineSource = mapBaselineSource(summary.baselineSource),

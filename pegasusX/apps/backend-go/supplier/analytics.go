@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 )
 
 type analyticsVelocityPoint struct {
@@ -40,13 +42,15 @@ type demandSummaryItem struct {
 }
 
 type demandSummaryResponse struct {
-	TotalRetailers  int64               `json:"total_retailers"`
-	TotalPallets    int64               `json:"total_pallets"`
-	TotalValue      int64               `json:"total_value"`
-	PredictionCount int64               `json:"prediction_count"`
-	Items           []demandSummaryItem `json:"items"`
-	GeneratedAt     string              `json:"generated_at"`
-	BaselineSource  string              `json:"baseline_source,omitempty"`
+	TotalRetailers  int64                        `json:"total_retailers"`
+	TotalPallets    int64                        `json:"total_pallets"`
+	TotalValue      int64                        `json:"total_value"`
+	PredictionCount int64                        `json:"prediction_count"`
+	Items           []demandSummaryItem          `json:"items"`
+	GeneratedAt     string                       `json:"generated_at"`
+	BaselineSource  string                       `json:"baseline_source,omitempty"`
+	Granularity     string                       `json:"granularity,omitempty"`
+	Confidence      *planning.ForecastConfidence `json:"confidence,omitempty"`
 }
 
 type demandHistoryPoint struct {
@@ -108,7 +112,8 @@ func (s *Service) HandleAnalyticsDemandToday(w http.ResponseWriter, r *http.Requ
 	}
 	sid := s.scopedSupplierID(r)
 	now := s.now().UTC()
-	resp, err := s.buildDemandToday(r.Context(), sid, now)
+	query := parseDemandAnalyticsQuery(r)
+	resp, err := s.buildDemandToday(r.Context(), sid, now, query)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_demand_summary_failed"})
 		return
@@ -133,7 +138,7 @@ func (s *Service) HandleAnalyticsDemandHistory(w http.ResponseWriter, r *http.Re
 	writeJSON(w, http.StatusOK, buildDemandHistory(orders, recs, now, 14))
 }
 
-func (s *Service) buildDemandToday(ctx context.Context, supplierID string, now time.Time) (demandSummaryResponse, error) {
+func (s *Service) buildDemandToday(ctx context.Context, supplierID string, now time.Time, query demandAnalyticsQuery) (demandSummaryResponse, error) {
 	recs, err := s.listAIRecommendations(ctx, supplierID, AIRecommendationQuery{Status: "PENDING", Limit: 100})
 	if err != nil {
 		return demandSummaryResponse{}, err
@@ -146,6 +151,10 @@ func (s *Service) buildDemandToday(ctx context.Context, supplierID string, now t
 	source := ""
 
 	for _, rec := range recs {
+		if query.Granularity == "micro" && query.RetailerID != "" &&
+			!strings.EqualFold(strings.TrimSpace(rec.AggregateID), query.RetailerID) {
+			continue
+		}
 		if !isDemandRecommendation(rec) {
 			continue
 		}
@@ -196,7 +205,19 @@ func (s *Service) buildDemandToday(ctx context.Context, supplierID string, now t
 		}
 	}
 
-	merged := s.mergeDemandBaselineItems(ctx, supplierID, now, items, &source)
+	merged := s.mergeDemandBaselineItems(ctx, supplierID, now, items, &source, query.WarehouseID)
+	conf, confErr := planning.AggregateDemandConfidence(ctx, s.portalSpanner, supplierID, planning.DemandConfidenceQuery{
+		Granularity:     query.Granularity,
+		WarehouseID:     query.WarehouseID,
+		RetailerID:      query.RetailerID,
+		ForecastDate:    now,
+		FallbackQty:     totalQty,
+		SourceHint:      source,
+		PredictionCount: predictionCount,
+	})
+	if confErr != nil {
+		return demandSummaryResponse{}, confErr
+	}
 	return demandSummaryResponse{
 		TotalRetailers:  int64(len(retailers)),
 		TotalPallets:    totalQty,
@@ -204,6 +225,8 @@ func (s *Service) buildDemandToday(ctx context.Context, supplierID string, now t
 		PredictionCount: predictionCount,
 		Items:           merged,
 		BaselineSource:  source,
+		Granularity:     query.Granularity,
+		Confidence:      &conf,
 		GeneratedAt:     now.Format(time.RFC3339Nano),
 	}, nil
 }

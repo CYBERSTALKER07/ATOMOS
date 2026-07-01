@@ -15,7 +15,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-	"google.golang.org/api/iterator"
+		"google.golang.org/api/iterator"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 )
 
 var errInsightNotFound = errors.New("insight_not_found")
@@ -202,6 +204,11 @@ func (s *Service) listReplenishmentInsightsSpanner(ctx context.Context, warehous
 			if err := json.Unmarshal([]byte(breakdownRaw), &parsed); err == nil {
 				item.DemandBreakdown = parsed
 			}
+		}
+		if item.DemandBreakdown == nil && strings.TrimSpace(s.supplierID) != "" {
+			item.DemandBreakdown = planning.ProductForecastBreakdown(
+				ctx, s.spannerClient, s.supplierID, item.WarehouseID, item.ProductID, time.Now().UTC(),
+			)
 		}
 		item.Urgency = insightWireUrgency(item.Urgency)
 		item.Status = insightWireStatus(item.Status)

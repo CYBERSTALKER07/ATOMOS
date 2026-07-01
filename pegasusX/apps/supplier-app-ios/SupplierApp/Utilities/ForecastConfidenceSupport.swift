@@ -28,6 +28,9 @@ enum ForecastConfidenceSupport {
     }
 
     static func fromDemand(_ summary: SupplierDemandSummaryResponse) -> ForecastConfidence {
+        if let confidence = summary.confidence {
+            return confidence
+        }
         if summary.predictionCount == 0 {
             return ForecastConfidence(
                 lowUnits: nil,

@@ -1326,6 +1326,8 @@ struct SupplierDemandSummaryResponse: Decodable {
     let predictionCount: Int
     let generatedAt: String
     let baselineSource: String?
+    let granularity: String?
+    let confidence: ForecastConfidence?
 
     enum CodingKeys: String, CodingKey {
         case totalRetailers = "total_retailers"
@@ -1334,6 +1336,8 @@ struct SupplierDemandSummaryResponse: Decodable {
         case predictionCount = "prediction_count"
         case generatedAt = "generated_at"
         case baselineSource = "baseline_source"
+        case granularity
+        case confidence
     }
 }
 

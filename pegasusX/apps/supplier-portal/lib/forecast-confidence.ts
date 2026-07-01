@@ -29,6 +29,9 @@ function mapBaselineSource(src?: string): ForecastConfidence["baseline_source"] 
 export function forecastConfidenceFromDemand(
   summary: SupplierDemandSummaryResponse,
 ): ForecastConfidence {
+  if (summary.confidence) {
+    return summary.confidence;
+  }
   if (summary.prediction_count === 0) {
     return {
       label: "insufficient_history",

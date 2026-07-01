@@ -660,8 +660,19 @@ export class ApiClient {
     return this.request<SupplierAnalyticsRevenueResponse>("/v1/supplier/analytics/revenue", "GET");
   }
 
-  async getSupplierDemandToday(): Promise<SupplierDemandSummaryResponse> {
-    return this.request<SupplierDemandSummaryResponse>("/v1/supplier/analytics/demand/today", "GET");
+  async getSupplierDemandToday(query?: {
+    granularity?: "macro" | "regional" | "micro";
+    warehouse_id?: string;
+    region_id?: string;
+    retailer_id?: string;
+  }): Promise<SupplierDemandSummaryResponse> {
+    const params = new URLSearchParams();
+    if (query?.granularity) params.set("granularity", query.granularity);
+    if (query?.warehouse_id) params.set("warehouse_id", query.warehouse_id);
+    if (query?.region_id) params.set("region_id", query.region_id);
+    if (query?.retailer_id) params.set("retailer_id", query.retailer_id);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return this.request<SupplierDemandSummaryResponse>(`/v1/supplier/analytics/demand/today${suffix}`, "GET");
   }
 
   async getSupplierDemandHistory(): Promise<SupplierDemandHistoryResponse> {

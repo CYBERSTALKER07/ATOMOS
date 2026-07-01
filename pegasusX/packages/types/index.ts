@@ -529,7 +529,9 @@ export interface SupplierDemandSummaryResponse {
   prediction_count: number;
   items: SupplierDemandSummaryItem[];
   generated_at: string;
-  baseline_source?: "ai_recommendations" | "demand_forecast_baseline" | "mixed";
+  baseline_source?: "ai_recommendations" | "demand_forecast_baseline" | "mixed" | string;
+  granularity?: "macro" | "regional" | "micro" | string;
+  confidence?: ForecastConfidence;
 }
 
 export interface SupplierMEIONetworkSummary {

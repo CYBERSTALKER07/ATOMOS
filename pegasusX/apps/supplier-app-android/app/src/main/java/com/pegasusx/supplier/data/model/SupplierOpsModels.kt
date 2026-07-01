@@ -416,6 +416,8 @@ data class SupplierDemandSummaryResponse(
     @SerialName("prediction_count") val predictionCount: Int = 0,
     @SerialName("generated_at") val generatedAt: String = "",
     @SerialName("baseline_source") val baselineSource: String? = null,
+    @SerialName("granularity") val granularity: String? = null,
+    val confidence: ForecastConfidence? = null,
 )
 
 @Serializable

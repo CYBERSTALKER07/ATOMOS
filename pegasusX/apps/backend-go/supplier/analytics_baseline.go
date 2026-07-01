@@ -2,26 +2,33 @@ package supplier
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
 
-func (s *Service) mergeDemandBaselineItems(ctx context.Context, supplierID string, now time.Time, items []demandSummaryItem, source *string) []demandSummaryItem {
+func (s *Service) mergeDemandBaselineItems(ctx context.Context, supplierID string, now time.Time, items []demandSummaryItem, source *string, warehouseID string) []demandSummaryItem {
 	if s == nil || s.portalSpanner == nil || supplierID == "" {
 		return items
 	}
 	day := now.UTC().Truncate(24 * time.Hour)
-	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
-		SQL: `SELECT b.ProductId, COALESCE(p.Name, b.ProductId), SUM(b.BaselineQty), AVG(b.Confidence)
+	sql := `SELECT b.ProductId, COALESCE(p.Name, b.ProductId), SUM(b.BaselineQty), AVG(b.Confidence)
 		      FROM DemandForecastBaseline b
 		      LEFT JOIN Products p ON b.ProductId = p.ProductId
-		      WHERE b.SupplierId = @sid AND b.ForecastDate = @day
-		      GROUP BY b.ProductId, p.Name
+		      WHERE b.SupplierId = @sid AND b.ForecastDate = @day`
+	params := map[string]any{"sid": supplierID, "day": day}
+	if strings.TrimSpace(warehouseID) != "" {
+		sql += ` AND b.WarehouseId = @wh`
+		params["wh"] = strings.TrimSpace(warehouseID)
+	}
+	sql += ` GROUP BY b.ProductId, p.Name
 		      ORDER BY SUM(b.BaselineQty) DESC
-		      LIMIT 100`,
-		Params: map[string]any{"sid": supplierID, "day": day},
+		      LIMIT 100`
+	iter := s.portalSpanner.Single().Query(ctx, spanner.Statement{
+		SQL:    sql,
+		Params: params,
 	})
 	defer iter.Stop()
 
