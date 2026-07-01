@@ -115,8 +115,13 @@ export default function StaggeredMenu({
       }, 0.5);
     }
 
+    if (isOpen) {
+      tl.play();
+    }
+
     return () => {
       tl.kill();
+      tlRef.current = null;
     };
   }, [position, shouldRender]);
 

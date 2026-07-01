@@ -1,26 +1,20 @@
 'use client';
 
 import PillNav from '@/app/components/PillNav';
+import { MEGA_NAV_CATEGORIES } from '@/app/data/megaNavigation';
 
 type SiteNavProps = {
   activeHref?: string;
 };
-
-const SITE_NAV_ITEMS = [
-  { label: 'Home', href: '/' },
-  { label: 'About', href: '/#about' },
-  { label: 'Solutions', href: '/solutions' },
-  { label: 'Projects', href: '/projects' },
-  { label: 'Demo', href: '/join' },
-] as const;
 
 export default function SiteNav({ activeHref }: SiteNavProps) {
   return (
     <PillNav
       logo=""
       logoAlt="Pegasus Logo"
-      showMenuButton
-      items={[...SITE_NAV_ITEMS]}
+      showMenuButton={true}
+      categories={MEGA_NAV_CATEGORIES}
+      items={[]}
       activeHref={activeHref}
       baseColor="#000000"
       pillColor="#ffffff"

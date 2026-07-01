@@ -1447,6 +1447,112 @@ a:hover .editorial-btn--inverted,
   height: 1em;
 }
 
+/* Smart dispatch arcade cabinet */
+.smart-dispatch-arcade {
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+}
+
+.smart-dispatch-arcade__screen {
+  box-shadow: inset 0 0 40px rgba(255, 255, 255, 0.04);
+}
+
+.smart-dispatch-arcade__scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.03) 2px,
+    rgba(255, 255, 255, 0.03) 4px
+  );
+  opacity: 0.6;
+}
+
+.smart-dispatch-arcade__blink {
+  animation: arcade-blink 1.2s step-end infinite;
+}
+
+.smart-dispatch-arcade__cursor {
+  animation: arcade-blink 0.55s step-end infinite;
+}
+
+.smart-dispatch-arcade__slot--scan {
+  animation: arcade-slot-pulse 0.7s ease-in-out infinite;
+}
+
+.smart-dispatch-arcade__slot--filled {
+  animation: arcade-slot-pop 0.35s ease-out;
+}
+
+.smart-dispatch-arcade__confirm--pulse {
+  animation: arcade-confirm-pulse 0.9s ease-in-out infinite;
+}
+
+.smart-dispatch-arcade__row--locked {
+  animation: arcade-row-lock 0.4s ease-out forwards;
+}
+
+@keyframes arcade-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes arcade-slot-pulse {
+  0%,
+  100% {
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: none;
+  }
+  50% {
+    border-color: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
+  }
+}
+
+@keyframes arcade-slot-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes arcade-confirm-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08);
+  }
+}
+
+@keyframes arcade-row-lock {
+  from {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  to {
+    background: rgba(255, 255, 255, 0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .smart-dispatch-arcade__blink,
+  .smart-dispatch-arcade__cursor,
+  .smart-dispatch-arcade__slot--scan,
+  .smart-dispatch-arcade__confirm--pulse {
+    animation: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

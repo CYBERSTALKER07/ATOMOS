@@ -4,8 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { gsap } from 'gsap';
 
-import StaggeredMenu from './StaggeredMenu';
-import { MEGA_NAV_CATEGORIES, MEGA_NAV_FOOTER_LINKS } from '../data/megaNavigation';
+import GigaMenuDropdown from './GigaMenuDropdown';
+import { MEGA_NAV_CATEGORIES, MEGA_NAV_FOOTER_LINKS, type MegaNavCategory } from '../data/megaNavigation';
 
 const staggeredMenuItems = MEGA_NAV_CATEGORIES.map(cat => ({
   label: cat.label,
@@ -37,6 +37,7 @@ export interface PillNavProps {
   onMobileMenuClick?: () => void;
   initialLoadAnimation?: boolean;
   showMenuButton?: boolean;
+  categories?: MegaNavCategory[];
 }
 
 const PillNav: React.FC<PillNavProps> = ({
@@ -53,10 +54,15 @@ const PillNav: React.FC<PillNavProps> = ({
   onMobileMenuClick,
   initialLoadAnimation = true,
   showMenuButton = false,
+  categories,
 }) => {
   const resolvedPillTextColor = pillTextColor ?? baseColor;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<MegaNavCategory | null>(null);
+
+  const displayItems = categories ? categories.map(c => ({ label: c.label, href: c.viewAllHref || '#', id: c.id })) : items;
+
   const circleRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const tlRefs = useRef<Array<gsap.core.Timeline | null>>([]);
   const activeTweenRefs = useRef<Array<gsap.core.Tween | null>>([]);
@@ -66,6 +72,35 @@ const PillNav: React.FC<PillNavProps> = ({
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const navItemsRef = useRef<HTMLDivElement | null>(null);
   const logoRef = useRef<HTMLAnchorElement | HTMLElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(event.target as Node)
+      ) {
+        setActiveCategory(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const hamburger = hamburgerRef.current;
+    if (hamburger) {
+      const lines = hamburger.querySelectorAll('.hamburger-line');
+      const isOpen = showMenuButton ? megaMenuOpen : isMobileMenuOpen;
+      if (isOpen) {
+        gsap.to(lines[0], { rotation: 45, y: 3, duration: 0.3, ease });
+        gsap.to(lines[1], { rotation: -45, y: -3, duration: 0.3, ease });
+      } else {
+        gsap.to(lines[0], { rotation: 0, y: 0, duration: 0.3, ease });
+        gsap.to(lines[1], { rotation: 0, y: 0, duration: 0.3, ease });
+      }
+    }
+  }, [megaMenuOpen, isMobileMenuOpen, showMenuButton, ease]);
 
   useEffect(() => {
     const layout = () => {
@@ -123,7 +158,7 @@ const PillNav: React.FC<PillNavProps> = ({
     window.addEventListener('resize', onResize);
 
     if (document.fonts) {
-      document.fonts.ready.then(layout).catch(() => {});
+      document.fonts.ready.then(layout).catch(() => { });
     }
 
     const menu = mobileMenuRef.current;
@@ -200,26 +235,15 @@ const PillNav: React.FC<PillNavProps> = ({
 
   const toggleMobileMenu = () => {
     if (showMenuButton) {
-      openMegaMenu();
+      setMegaMenuOpen(!megaMenuOpen);
+      if (!megaMenuOpen) onMobileMenuClick?.();
       return;
     }
 
     const newState = !isMobileMenuOpen;
     setIsMobileMenuOpen(newState);
 
-    const hamburger = hamburgerRef.current;
     const menu = mobileMenuRef.current;
-
-    if (hamburger) {
-      const lines = hamburger.querySelectorAll('.hamburger-line');
-      if (newState) {
-        gsap.to(lines[0], { rotation: 45, y: 3, duration: 0.3, ease });
-        gsap.to(lines[1], { rotation: -45, y: -3, duration: 0.3, ease });
-      } else {
-        gsap.to(lines[0], { rotation: 0, y: 0, duration: 0.3, ease });
-        gsap.to(lines[1], { rotation: 0, y: 0, duration: 0.3, ease });
-      }
-    }
 
     if (menu) {
       if (newState) {
@@ -284,274 +308,268 @@ const PillNav: React.FC<PillNavProps> = ({
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[1000] bg-black border-b border-white/10">
+    <div
+      ref={wrapperRef}
+      className="fixed top-0 left-0 right-0 z-[1000] bg-black border-b border-white/10"
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          setActiveCategory(null);
+        }
+      }}
+    >
       <div className="relative pointer-events-none px-4 py-3">
-      <nav
-        className={`pill-nav pointer-events-auto w-full flex items-center gap-2 min-w-0 max-w-7xl mx-auto ${className}`}
-        aria-label="Primary"
-        style={cssVars}
-      >
-        <Link
-          href="/"
-          aria-label="Home"
-          onMouseEnter={handleLogoEnter}
-          onFocus={handleLogoEnter}
-          ref={el => {
-            logoRef.current = el;
-          }}
-          className="shrink-0 rounded-full p-1 inline-flex items-center justify-center overflow-hidden border-2 border-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
-          style={{
-            width: 'var(--nav-h)',
-            height: 'var(--nav-h)',
-            background: 'var(--base, #000)'
-          }}
+        <nav
+          className={`pill-nav pointer-events-auto w-full flex items-center gap-2 min-w-0 max-w-7xl mx-auto ${className}`}
+          aria-label="Primary"
+          style={cssVars}
         >
-          <img 
-            src="/atom.jpeg" 
-            alt={logoAlt}
-            ref={logoImgRef}
-            className="w-full h-full object-cover rounded-full"
-          />
-        </Link>
-
-        <div
-          ref={navItemsRef}
-          className="relative hidden md:flex min-w-0 flex-1 items-center rounded-full overflow-hidden"
-          style={{
-            height: 'var(--nav-h)',
-            background: 'var(--base, #000)'
-          }}
-        >
-          <ul
-            role="menubar"
-            className="list-none flex items-stretch m-0 p-[3px] h-full w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-            style={{ gap: 'var(--pill-gap)' }}
+          <Link
+            href="/"
+            aria-label="Home"
+            onMouseEnter={handleLogoEnter}
+            onFocus={handleLogoEnter}
+            ref={el => {
+              logoRef.current = el;
+            }}
+            className="shrink-0 rounded-full p-1 inline-flex items-center justify-center overflow-hidden border-2 border-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
+            style={{
+              width: 'var(--nav-h)',
+              height: 'var(--nav-h)',
+              background: 'var(--base, #000)'
+            }}
           >
-            {items.map((item, i) => {
-              const isActive = activeHref === item.href;
+            <img
+              src="/atom.jpeg"
+              alt={logoAlt}
+              ref={logoImgRef}
+              className="w-full h-full object-cover rounded-full"
+            />
+          </Link>
 
-              const pillStyle: React.CSSProperties = { ...pillStyleBase };
+          <div
+            ref={navItemsRef}
+            className="relative hidden md:flex min-w-0 flex-1 items-center rounded-full overflow-hidden"
+            style={{
+              height: 'var(--nav-h)',
+              background: 'var(--base, #000)'
+            }}
+          >
+            <ul
+              role="menubar"
+              className="list-none flex items-stretch m-0 p-[3px] h-full w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              style={{ gap: 'var(--pill-gap)' }}
+            >
+              {displayItems.map((item, i) => {
+                const isActive = activeHref === item.href;
 
-              const PillContent = (
-                <>
-                  <span
-                    className="hover-circle absolute left-1/2 bottom-0 rounded-full z-[1] block pointer-events-none"
-                    style={{
-                      background: 'var(--base, #000)',
-                      willChange: 'transform'
-                    }}
-                    aria-hidden="true"
-                    ref={el => {
-                      circleRefs.current[i] = el;
-                    }}
-                  />
-                  <span className="label-stack relative inline-block leading-[1] z-[2]">
+                const pillStyle: React.CSSProperties = { ...pillStyleBase };
+
+                const PillContent = (
+                  <>
                     <span
-                      className="pill-label relative z-[2] inline-block leading-[1]"
-                      style={{ willChange: 'transform' }}
-                    >
-                      {item.label}
-                    </span>
-                    <span
-                      className="pill-label-hover absolute left-0 top-0 z-[3] inline-block"
+                      className="hover-circle absolute left-1/2 bottom-0 rounded- z-[1] block pointer-events-none"
                       style={{
-                        color: 'var(--hover-text, #fff)',
-                        willChange: 'transform, opacity'
+                        background: 'var(--base, #000)',
+                        willChange: 'transform'
                       }}
                       aria-hidden="true"
-                    >
-                      {item.label}
-                    </span>
-                  </span>
-                  {isActive && (
-                    <span
-                      className="absolute left-1/2 -bottom-[6px] -translate-x-1/2 w-3 h-3 rounded-full z-[4]"
-                      style={{ background: 'var(--base, #000)' }}
-                      aria-hidden="true"
+                      ref={el => {
+                        circleRefs.current[i] = el;
+                      }}
                     />
-                  )}
-                </>
-              );
-
-              return (
-                <li key={item.href} role="none" className="flex h-full">
-                  {isExternalLink(item.href) ? (
-                    <a
-                      role="menuitem"
-                      href={item.href}
-                      aria-current={isActive ? 'page' : undefined}
-                      className={basePillClasses}
-                      style={pillStyle}
-                      aria-label={item.ariaLabel || item.label}
-                      onMouseEnter={() => handleEnter(i)}
-                      onMouseLeave={() => handleLeave(i)}
-                      onFocus={() => handleEnter(i)}
-                      onBlur={() => handleLeave(i)}
-                    >
-                      {PillContent}
-                    </a>
-                  ) : (
-                    <Link
-                      role="menuitem"
-                      href={item.href}
-                      aria-current={isActive ? 'page' : undefined}
-                      className={basePillClasses}
-                      style={pillStyle}
-                      aria-label={item.ariaLabel || item.label}
-                      onMouseEnter={() => handleEnter(i)}
-                      onMouseLeave={() => handleLeave(i)}
-                      onFocus={() => handleEnter(i)}
-                      onBlur={() => handleLeave(i)}
-                    >
-                      {PillContent}
-                    </Link>
-                  )}
-                </li>
-              );
-            })}
-            {showMenuButton ? (
-              <li role="none" className="flex h-full shrink-0 ml-auto">
-                <button
-                  type="button"
-                  role="menuitem"
-                  className={basePillClasses}
-                  style={pillStyleBase}
-                  onClick={openMegaMenu}
-                  aria-haspopup="dialog"
-                  aria-expanded={megaMenuOpen}
-                  aria-label="Open site menu"
-                  onMouseEnter={() => handleEnter(items.length)}
-                  onMouseLeave={() => handleLeave(items.length)}
-                  onFocus={() => handleEnter(items.length)}
-                  onBlur={() => handleLeave(items.length)}
-                >
-                  <span
-                    className="hover-circle absolute left-1/2 bottom-0 rounded-full z-[1] block pointer-events-none"
-                    style={{
-                      background: 'var(--base, #000)',
-                      willChange: 'transform',
-                    }}
-                    aria-hidden="true"
-                    ref={(el) => {
-                      circleRefs.current[items.length] = el;
-                    }}
-                  />
-                  <span className="label-stack relative inline-block leading-[1] z-[2]">
-                    <span className="pill-label relative z-[2] inline-block leading-[1]">Menu</span>
-                    <span
-                      className="pill-label-hover absolute left-0 top-0 z-[3] inline-block"
-                      style={{
-                        color: 'var(--hover-text, #fff)',
-                        willChange: 'transform, opacity',
-                      }}
-                      aria-hidden="true"
-                    >
-                      Menu
+                    <span className="label-stack relative inline-block leading-[1] z-[2]">
+                      <span
+                        className="pill-label relative z-[2] inline-block leading-[1]"
+                        style={{ willChange: 'transform' }}
+                      >
+                        {item.label}
+                      </span>
+                      <span
+                        className="pill-label-hover absolute left-0 top-0 z-[3] inline-block"
+                        style={{
+                          color: 'var(--hover-text, #fff)',
+                          willChange: 'transform, opacity'
+                        }}
+                        aria-hidden="true"
+                      >
+                        {item.label}
+                      </span>
                     </span>
-                  </span>
-                </button>
-              </li>
-            ) : null}
-          </ul>
-        </div>
+                    {isActive && (
+                      <span
+                        className="absolute left-1/2 -bottom-[6px] -translate-x-1/2 w-3 h-3 rounded-full z-[4]"
+                        style={{ background: 'var(--base, #000)' }}
+                        aria-hidden="true"
+                      />
+                    )}
+                  </>
+                );
 
-        <button
-          ref={hamburgerRef}
-          onClick={toggleMobileMenu}
-          aria-label={showMenuButton ? 'Open navigation menu' : 'Toggle menu'}
-          aria-expanded={showMenuButton ? megaMenuOpen : isMobileMenuOpen}
-          className="md:hidden shrink-0 ml-auto rounded-full border-0 flex flex-col items-center justify-center gap-1 cursor-pointer p-0 relative focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
-          style={{
-            width: 'var(--nav-h)',
-            height: 'var(--nav-h)',
-            background: 'var(--base, #000)'
-          }}
-        >
-          <span
-            className="hamburger-line w-4 h-0.5 rounded origin-center transition-all duration-[10ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]"
-            style={{ background: 'var(--pill-bg, #fff)' }}
+                return (
+                  <li key={item.href} role="none" className="flex h-full">
+                    {isExternalLink(item.href) ? (
+                      <a
+                        role="menuitem"
+                        href={item.href}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={basePillClasses}
+                        style={pillStyle}
+                        onMouseEnter={() => {
+                          handleEnter(i);
+                          if (categories) setActiveCategory(categories[i]);
+                        }}
+                        onMouseLeave={() => {
+                          handleLeave(i);
+                        }}
+                        onFocus={() => {
+                          handleEnter(i);
+                          if (categories) setActiveCategory(categories[i]);
+                        }}
+                        onBlur={() => {
+                          handleLeave(i);
+                        }}
+                      >
+                        {PillContent}
+                      </a>
+                    ) : (
+                      <Link
+                        role="menuitem"
+                        href={item.href}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={basePillClasses}
+                        style={pillStyle}
+                        onMouseEnter={() => {
+                          handleEnter(i);
+                          if (categories) setActiveCategory(categories[i]);
+                        }}
+                        onMouseLeave={() => {
+                          handleLeave(i);
+                        }}
+                        onFocus={() => {
+                          handleEnter(i);
+                          if (categories) setActiveCategory(categories[i]);
+                        }}
+                        onBlur={() => {
+                          handleLeave(i);
+                        }}
+                      >
+                        {PillContent}
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
+              {/* Text menu button removed in favor of hamburger */}
+            </ul>
+          </div>
+
+          <button
+            ref={hamburgerRef}
+            onClick={toggleMobileMenu}
+            aria-label={showMenuButton ? 'Toggle site menu' : 'Toggle navigation menu'}
+            aria-expanded={showMenuButton ? megaMenuOpen : isMobileMenuOpen}
+            className={`${showMenuButton ? '' : 'md:hidden'} shrink-0 ml-auto rounded-full border-0 flex flex-col items-center justify-center gap-1 cursor-pointer p-0 relative focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none pointer-events-auto`}
+            style={{
+              width: 'var(--nav-h)',
+              height: 'var(--nav-h)',
+              background: 'var(--base, #000)'
+            }}
+          >
+            <span
+              className="hamburger-line w-4 h-0.5 rounded origin-center transition-all duration-[10ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]"
+              style={{ background: 'var(--pill-bg, #fff)' }}
+            />
+            <span
+              className="hamburger-line w-4 h-0.5 rounded origin-center transition-all duration-[10ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]"
+              style={{ background: 'var(--pill-bg, #fff)' }}
+            />
+          </button>
+        </nav>
+
+        {categories && (
+          <GigaMenuDropdown
+            activeCategory={activeCategory}
+            onMouseEnter={() => {
+              if (activeCategory) setActiveCategory(activeCategory);
+            }}
+            onMouseLeave={() => setActiveCategory(null)}
           />
-          <span
-            className="hamburger-line w-4 h-0.5 rounded origin-center transition-all duration-[10ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]"
-            style={{ background: 'var(--pill-bg, #fff)' }}
+        )}
+
+        {showMenuButton && !categories ? (
+          <StaggeredMenu
+            isOpen={megaMenuOpen}
+            onClose={() => setMegaMenuOpen(false)}
+            position="top"
+            items={staggeredMenuItems}
+            socialItems={staggeredSocialItems}
+            displaySocials={true}
+            displayItemNumbering={true}
           />
-        </button>
-      </nav>
+        ) : null}
 
-      {showMenuButton ? (
-        <StaggeredMenu 
-          isOpen={megaMenuOpen} 
-          onClose={() => setMegaMenuOpen(false)} 
-          position="top"
-          items={staggeredMenuItems}
-          socialItems={staggeredSocialItems}
-          displaySocials={true}
-          displayItemNumbering={true}
-        />
-      ) : null}
+        {(!showMenuButton && !categories) ? (
+          <div
+            ref={mobileMenuRef}
+            className="md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-[27px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-[998] origin-top max-h-[70vh] overflow-y-auto"
+            style={{
+              ...cssVars,
+              background: 'var(--base, #000)'
+            }}
+          >
+            <ul className="list-none m-0 p-[3px] flex flex-col gap-[3px]">
+              {displayItems.map(item => {
+                const defaultStyle: React.CSSProperties = {
+                  background: 'var(--pill-bg, #fff)',
+                  color: 'var(--pill-text, #000)'
+                };
+                const hoverIn = (e: React.MouseEvent<HTMLAnchorElement> | React.FocusEvent<HTMLAnchorElement>) => {
+                  e.currentTarget.style.background = 'var(--base)';
+                  e.currentTarget.style.color = 'var(--hover-text, #fff)';
+                };
+                const hoverOut = (e: React.MouseEvent<HTMLAnchorElement> | React.FocusEvent<HTMLAnchorElement>) => {
+                  e.currentTarget.style.background = 'var(--pill-bg, #fff)';
+                  e.currentTarget.style.color = 'var(--pill-text, #000)';
+                };
 
-      {!showMenuButton ? (
-      <div
-        ref={mobileMenuRef}
-        className="md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-[27px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-[998] origin-top max-h-[70vh] overflow-y-auto"
-        style={{
-          ...cssVars,
-          background: 'var(--base, #000)'
-        }}
-      >
-        <ul className="list-none m-0 p-[3px] flex flex-col gap-[3px]">
-          {items.map(item => {
-            const defaultStyle: React.CSSProperties = {
-              background: 'var(--pill-bg, #fff)',
-              color: 'var(--pill-text, #000)'
-            };
-            const hoverIn = (e: React.MouseEvent<HTMLAnchorElement> | React.FocusEvent<HTMLAnchorElement>) => {
-              e.currentTarget.style.background = 'var(--base)';
-              e.currentTarget.style.color = 'var(--hover-text, #fff)';
-            };
-            const hoverOut = (e: React.MouseEvent<HTMLAnchorElement> | React.FocusEvent<HTMLAnchorElement>) => {
-              e.currentTarget.style.background = 'var(--pill-bg, #fff)';
-              e.currentTarget.style.color = 'var(--pill-text, #000)';
-            };
+                const linkClasses =
+                  'block py-3 px-4 text-[16px] font-medium rounded-[50px] transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
 
-            const linkClasses =
-              'block py-3 px-4 text-[16px] font-medium rounded-[50px] transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
-
-            return (
-              <li key={item.href}>
-                {isExternalLink(item.href) ? (
-                  <a
-                    href={item.href}
-                    className={linkClasses}
-                    style={defaultStyle}
-                    onMouseEnter={hoverIn}
-                    onMouseLeave={hoverOut}
-                    onFocus={hoverIn}
-                    onBlur={hoverOut}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    {item.label}
-                  </a>
-                ) : (
-                  <Link
-                    href={item.href}
-                    className={linkClasses}
-                    style={defaultStyle}
-                    onMouseEnter={hoverIn}
-                    onMouseLeave={hoverOut}
-                    onFocus={hoverIn}
-                    onBlur={hoverOut}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    {item.label}
-                  </Link>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-      ) : null}
+                return (
+                  <li key={item.href}>
+                    {isExternalLink(item.href) ? (
+                      <a
+                        href={item.href}
+                        className={linkClasses}
+                        style={defaultStyle}
+                        onMouseEnter={hoverIn}
+                        onMouseLeave={hoverOut}
+                        onFocus={hoverIn}
+                        onBlur={hoverOut}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        {item.label}
+                      </a>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        className={linkClasses}
+                        style={defaultStyle}
+                        onMouseEnter={hoverIn}
+                        onMouseLeave={hoverOut}
+                        onFocus={hoverIn}
+                        onBlur={hoverOut}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        {item.label}
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
       </div>
     </div>
   );
