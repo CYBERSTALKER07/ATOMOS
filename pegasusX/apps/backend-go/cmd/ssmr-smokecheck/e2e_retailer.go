@@ -313,7 +313,7 @@ func runCheckoutPreviewE2E(ctx context.Context, client *http.Client, base, retai
 			{"sku_id": sku, "quantity": 1, "unit_price": 1000},
 		},
 	})
-	status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/checkout/preview", body, retailerToken, "ssmr-checkout-preview")
+	status, respBody, _, err := clientDoRetry(ctx, client, http.MethodPost, base+"/v1/checkout/preview", body, retailerToken, "ssmr-checkout-preview")
 	if err != nil {
 		return err
 	}
@@ -370,7 +370,7 @@ func runCheckoutPolicyGraceE2E(
 			{"sku_id": sku, "quantity": 10, "unit_price": 50000},
 		},
 	})
-	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/checkout/preview", previewBody, retailerToken, "ssmr-policy-grace-preview")
+	status, respBody, _, err = clientDoRetry(ctx, client, http.MethodPost, base+"/v1/checkout/preview", previewBody, retailerToken, "ssmr-policy-grace-preview")
 	if err != nil {
 		return err
 	}

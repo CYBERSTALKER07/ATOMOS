@@ -399,7 +399,7 @@ func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID s
 		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
 		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), COALESCE(DeliveryToken, ''), Status, LineItemsJson,
 		             TotalMinor, Currency, CreatedAt, UpdatedAt, Lat, Lng,
-		             COALESCE(Source, 'MANUAL'), DeliverBefore, RequestedDeliveryDate,
+		             COALESCE(OrderSource, 'MANUAL'), DeliverBefore, RequestedDeliveryDate,
 		             COALESCE(DeliveryPriority, 'STANDARD'), COALESCE(ConfirmationStatus, 'CONFIRMED'),
 		             ProposedDeliveryDate, COALESCE(ReceivingWindowOpen, ''), COALESCE(ReceivingWindowClose, '')
 		      FROM Orders@{FORCE_INDEX=Idx_Orders_ByRetailerCreated}
@@ -437,7 +437,7 @@ func (r *SpannerRepository) ListRecentReceipts(ctx context.Context, retailerID s
 		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
 		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), COALESCE(DeliveryToken, ''), Status, LineItemsJson,
 		             TotalMinor, Currency, CreatedAt, UpdatedAt, Lat, Lng,
-		             COALESCE(Source, 'MANUAL'), DeliverBefore, RequestedDeliveryDate,
+		             COALESCE(OrderSource, 'MANUAL'), DeliverBefore, RequestedDeliveryDate,
 		             COALESCE(DeliveryPriority, 'STANDARD'), COALESCE(ConfirmationStatus, 'CONFIRMED'),
 		             ProposedDeliveryDate, COALESCE(ReceivingWindowOpen, ''), COALESCE(ReceivingWindowClose, '')
 		      FROM Orders

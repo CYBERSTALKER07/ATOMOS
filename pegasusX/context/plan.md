@@ -6,7 +6,7 @@ Last updated: 2026-06-14 (synced with Vegetable Plan creation)
 
 **Supplier role execution ledger:** `SUPPLIER_PHASE.md` — phased tracker for supplier-portal + native apps (start here when Boss says "supplier").
 
-**Planning brain (90-day track):** [`plan_90.md`](plan_90.md) — o9-inspired MEIO, actionable control tower, demand baseline, scenario sandbox, and EKG-lite for pegasusX (single-supplier), with pegasus multi-supplier handoff contracts. Execution anchors remain in this file; PX90 anchors live in `plan_90.md`.
+**Planning brain (90-day track):** [`plan_90.md`](plan_90.md) — o9-inspired MEIO, actionable control tower, demand baseline, scenario sandbox, and EKG-lite for pegasusX (single-supplier), with pegasus multi-supplier handoff contracts. **PX91 extension (gates, ingest, confidence UI, promo sandbox):** [`PlanDigitalBrain.md`](PlanDigitalBrain.md). Execution anchors remain in this file; PX90/PX91 anchors live in `plan_90.md` and `PlanDigitalBrain.md`.
 
 ## Plan Authority
 1. This file is the canonical phased execution roadmap for `pegasusX/`.

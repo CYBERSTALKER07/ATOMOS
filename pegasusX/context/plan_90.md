@@ -19,8 +19,9 @@ Last updated: 2026-07-01
 | **Wave 1** | MEIO + touchless | **shipped** | Touchless opens factory transfer + events; WARNING path in replenishment cycle |
 | **Wave 2** | Actionable control tower | **shipped** | Zone override API + dispatch integration + portal command UI; native **read-only** override status on fleet |
 | **Wave 3** | Demand brain + EKG | **shipped** | EKG v2 graph, governed agent executor, scenario + S&OP portal panel on analytics |
+| **PX91** | Digital brain extension | **shipped** (code) | Sparsity gate, seasonal overrides, ingest→Kafka, confidence UI, promo P&L, shadow mode — see [`PlanDigitalBrain.md`](PlanDigitalBrain.md) |
 
-**SSMR migration:** `schema/migrations/20260630_plan90_planning_brain.ddl` is applied automatically by `backend-setup` in `make test-ssmr-infra`. Full marker green run is **pending** until unrelated e2e blocker (`MaxRedemptions` catalog query) is fixed.
+**SSMR migration:** `schema/migrations/20260630_plan90_planning_brain.ddl` + `schema/migrations/20260701_plan91_digital_brain.ddl` applied automatically by `backend-setup` in `make test-ssmr-infra`. Full marker green run is **pending** until unrelated e2e blocker (`MaxRedemptions` catalog query) is fixed.
 
 **Not in scope (unchanged):** Retail planning UI, full IBP, cross-supplier collaboration, merchandise planning.
 
@@ -165,6 +166,20 @@ Migration applies in SSMR `backend-setup`. Full green blocked (2026-07-01) by un
 
 ---
 
+## SSMR marker registry (PX91)
+
+Full anchor detail: [`PlanDigitalBrain.md`](PlanDigitalBrain.md) § VI.
+
+| Marker | Proves | Code | Infra verify |
+|---|---|---|---|
+| `PX_E2E_SPARSITY_GATE_OK` | ≥2 completed orders gate blocks sparse forecast | **wired** | **pending** |
+| `PX_E2E_CONFIDENCE_LABEL_OK` | Forecast range + confidence fields on baseline path | **wired** | **pending** |
+| `PX_E2E_PLANNING_INGEST_OK` | Signal ingest → Kafka → projection | **wired** | **pending** |
+| `PX_E2E_PROMO_PL_SIM_OK` | Pre-event promo P&L simulation (read-only) | **wired** | **pending** |
+| `PX_E2E_CLOSED_LOOP_EVAL_OK` | Closed-loop promo performance eval | **wired** | **pending** |
+
+---
+
 ## pegasus handoff (multi-supplier ecosystem)
 
 Events and read APIs pegasus should subscribe to (versioned, tenant-scoped):
@@ -177,8 +192,13 @@ Events and read APIs pegasus should subscribe to (versioned, tenant-scoped):
 | `GET /v1/supplier/knowledge-graph` | EKG-lite | Federate graphs at platform layer | **live** (v1 subset) |
 | `DemandForecastBaseline` rows | One-number forecast | Tenant planning workspace | **live** |
 | `POST /v1/supplier/planning/scenarios/run` | What-if sandbox | Executive scenario library | **live** |
+| `POST /v1/supplier/planning/signals/ingest` | High-volume signal ingest | Tenant-scoped planning ingest fan-in | **live** |
+| `planning.signal.ingest.v1` | Kafka topic | Federated signal projections | **live** |
+| `PLANNING_PROMO_SIMULATION_READY` | Promo sandbox WS | Tenant promo eval rollup | **live** |
+| `GET /v1/admin/planning/*` (pegasus) | — | Federated baseline, MEIO, EKG, control tower | **live** (P1) |
+| pegasus supplier planning UI | pegasusX supplier portal + native | `admin-portal/app/supplier/*` parity | **pending** (P2) |
 
-pegasusX remains **execution + single-supplier planning**. pegasus adds tenant isolation, cross-supplier collaboration, and IBP — without reshaping pegasusX Spanner tables.
+pegasusX remains **execution + single-supplier planning**. pegasus adds tenant isolation, cross-supplier collaboration, and IBP — without reshaping pegasusX Spanner tables. **P2 next:** port pegasusX supplier planning APIs + admin-portal supplier screens.
 
 ---
 
@@ -192,6 +212,7 @@ pegasusX remains **execution + single-supplier planning**. pegasus adds tenant i
 | 4 | Scenario sandbox answers factory-down / demand-spike without production mutation | **shipped** |
 | 5 | EKG-lite documents supplier network for pegasus federation | **shipped** |
 | 6 | All PX90 SSMR markers green under `make test-ssmr-infra` | **pending** — markers wired; migration auto-applies; full run blocked by unrelated e2e failure |
+| 7 | PX91 sparsity, ingest, confidence, promo sandbox markers green | **pending** — wired in `e2e_plan90.go`; same infra blocker |
 
 ---
 
@@ -199,6 +220,7 @@ pegasusX remains **execution + single-supplier planning**. pegasus adds tenant i
 
 | Item | Owner | Priority |
 |---|---|---|
-| Fix `MaxRedemptions` schema drift so `make test-ssmr-infra` reaches plan90 markers | promotions / schema | P0 ops |
-| Replace weather/POS stubs with live pegasus ingest feeds | ai-worker/predictivepush | P3 |
-| Native map polygon draw UX polish (corner taps vs viewport bbox) | supplier iOS/Android | P3 |
+| Fix `MaxRedemptions` schema drift so `make test-ssmr-infra` reaches plan90/plan91 markers | promotions / schema | P0 ops |
+| pegasus P2: supplier planning UI + API port to admin-portal | pegasus admin-portal | P1 platform |
+| Wire dedicated API confidence fields on all forecast cards (replace client ±10% derive) | supplier + warehouse UI | P2 |
+| Full ML forecast training pipeline (PX91-C1) | ai-worker | P3 |

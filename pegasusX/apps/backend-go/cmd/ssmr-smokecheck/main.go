@@ -355,6 +355,9 @@ func expectedTopics(cfg *bootstrap.Config) []string {
 		envOr("KAFKA_TOPIC_WEBHOOKS", "ssmr.events.webhooks"),
 		envOr("KAFKA_TOPIC_FREEZE_LOCKS", "pegasusx-freeze-locks"),
 		envOr("KAFKA_TOPIC_INVENTORY_IMPORT", events.TopicInventoryImportEvents),
+		events.TopicPlanningSignalIngest,
+		events.TopicPlanningForecastRequest,
+		events.TopicPlanningForecastResult,
 	}
 	out := make([]string, 0, len(topics))
 	for _, topic := range topics {

@@ -1,16 +1,29 @@
 # PlanDigitalBrain — Enterprise Planning Layer (o9-inspired)
 
-Last updated: 2026-07-01
+Last updated: 2026-07-01 (synced with PX91 enterprise implementation)
 
 **Authority:** Subordinate to [`plan.md`](plan.md). Extends [`plan_90.md`](plan_90.md) with the full enterprise feature baseline, Kafka integration contract, edge-case gates, and UI labeling spec for the digital planning brain.
 
 **Scope boundary:**
-- **pegasusX** — single-supplier planning brain; all analytics scoped by `supplier_id`.
-- **pegasus** (reference) — multi-tenant IBP, cross-supplier collaboration, federated EKG — deferred to platform layer.
+- **pegasusX** — single-supplier planning brain; all analytics scoped by `supplier_id`. **PX90 + PX91 shipped in code**; SSMR infra verify **pending**.
+- **pegasus** (reference) — multi-tenant federation backend (P1 **shipped**); tenant supplier UI + downstream role parity **pending** (P2–P4). See [§ XI pegasus parity track](#xi-pegasus-multi-supplier-parity-track).
 
 **Audience:** Backend engineers, ai-worker, supplier portal + native, warehouse insight surfaces. Driver row stays execution-only; planning **consumes** telemetry and order outcomes.
 
 ---
+
+## Implementation snapshot (2026-07-01)
+
+| Track | Theme | Overall | Notes |
+|---|---|---|---|
+| **PX90** | MEIO, control tower, demand brain, EKG, agents | **shipped** | Waves 1–3; see [`plan_90.md`](plan_90.md) |
+| **PX91** | Ingest, gates, confidence UI, promo sandbox, shadow | **shipped** (code) | Migration `20260701_plan91_digital_brain.ddl`; SSMR markers **wired** |
+| **pegasus P1** | Federation admin APIs | **shipped** | `admin/planning_federation.go` + `/planning` page |
+| **pegasus P2–P4** | Tenant supplier UI + platform rollup | **pending** | No admin-portal supplier planning parity yet |
+
+**Apply before SSMR:** `schema/migrations/20260630_plan90_planning_brain.ddl` + `schema/migrations/20260701_plan91_digital_brain.ddl`.
+
+**Infra verify:** `make test-ssmr-infra` — PX90/PX91 markers wired in `e2e_plan90.go`; full green **pending** (unrelated catalog e2e blocker per `plan_90.md`).
 
 ## I. How pegasusX handles rollbacks and failed transactions today
 
@@ -104,10 +117,10 @@ Every role row implements **reconnect + reconcile**:
 
 `reconcileSession` endpoints per role (from `session-reconcile.ts`):
 - **driver:** `/v1/fleet/orders`, `/v1/driver/manifest`
-- **warehouse:** dispatch preview, dispatch locks
+- **warehouse:** dispatch preview, dispatch locks, `/v1/warehouse/demand/forecast`, `/v1/warehouse/replenishment/insights`
 - **factory:** manifests
 - **payload:** manifests, trucks
-- **supplier:** dispatch preview, manifests
+- **supplier:** dispatch preview, manifests, `/v1/supplier/analytics/demand/today`, `/v1/supplier/meio/network-summary`, `/v1/supplier/planning/s-and-op`
 - **retailer:** active fulfillment, pending payments, tracking
 
 **Planning brain client rule:** After WS reconnect, refetch planning dashboards from read APIs — never assume last-rendered forecast is current.
@@ -138,14 +151,14 @@ Promotion P&L simulation (Phase 3) must use **sandbox tables** or read-only proj
 
 Maps user requirements to pegasusX delivery status. See [`plan_90.md`](plan_90.md) for anchor-level detail.
 
-| Module | Enterprise capability | pegasusX 90d scope | Status |
+| Module | Enterprise capability | pegasusX scope | Status |
 |---|---|---|---|
 | **IBP** | Unified financial + commercial + supply chain planning | Treasury (PX3-A2) + S&OP API only | **deferred** — full IBP is pegasus platform |
-| **Demand Planning** | Multi-horizon AI forecasting, collaborative forecast | `DemandForecastBaseline` + ai-worker signals + warehouse/supplier reads | **partial** — baseline shipped; ML training Phase 3 |
-| **Revenue Growth / Promotions** | Pre-event P&L, closed-loop eval, causal analysis | Promotion evaluator exists; P&L simulation not wired | **pending** — Phase 3 |
+| **Demand Planning** | Multi-horizon AI forecasting, collaborative forecast | `DemandForecastBaseline` + ingest + predictive push | **shipped** — baseline + outbox; **partial** — full ML training (PX91-C1 deferred) |
+| **Revenue Growth / Promotions** | Pre-event P&L, closed-loop eval, causal analysis | `planning/promo_eval.go` sandbox | **shipped** — simulate + closed-loop API; causal analysis **deferred** |
 | **Commercial & Category** | CDT, cannibalization, halo | Not in pegasusX (supplier owns catalog) | **skipped** |
 | **Control Tower** | Real-time visibility + supplier collaboration | Zone overrides + dispatch integration + WS fanout | **shipped** |
-| **EKG** | Knowledge graph of supply chain entities | `GET /v1/supplier/knowledge-graph` — factories, warehouses, SKUs | **partial** — v2 adds drivers, retailers, orders |
+| **EKG** | Knowledge graph of supply chain entities | `GET /v1/supplier/knowledge-graph` | **shipped** — drivers, vehicles, retailers, active orders |
 
 ---
 
@@ -236,7 +249,7 @@ API query params on all planning read endpoints:
 | `regional` | Warehouse zone / H3 region | `?granularity=regional&region_id=...` |
 | `micro` | Per-retailer / per-store | `?granularity=micro&retailer_id=...` |
 
-Backend serves pre-aggregated payloads from `DemandForecastBaseline` + Redis — never scans raw `Orders` on dashboard switch.
+Backend serves pre-aggregated payloads from `DemandForecastBaseline` + Redis — never scans raw `Orders` on dashboard switch. **Status:** `macro`/`meso` via baseline rows **shipped**; `granularity` query param on analytics APIs **deferred**.
 
 ### WebSocket envelopes (planning)
 
@@ -246,7 +259,7 @@ Existing (live):
 - `REPLENISHMENT_AUTO_APPROVED`
 - `DISPATCH_ZONE_OVERRIDE`
 
-New (Phase 2–3):
+New (**shipped** PX91):
 - `PLANNING_FORECAST_UPDATED` — range + confidence score
 - `PLANNING_PROMO_SIMULATION_READY` — pre-event P&L result
 - `PLANNING_CONFIDENCE_DOWNGRADED` — sparsity gate or seasonal fallback triggered
@@ -257,7 +270,7 @@ Fanout rooms: `supplier:{supplier_id}`, `warehouse:{home_node_id}` — via `noti
 
 ## IV. Edge cases, logic gates & front-end labeling
 
-### PX91-A1: Data sparsity gate (zero/one order rule)
+### PX91-A1: Data sparsity gate (zero/one order rule) — **shipped**
 
 **Rule:** Block predictive analytics for any retailer with fewer than **2 completed orders**.
 
@@ -272,7 +285,7 @@ Fanout rooms: `supplier:{supplier_id}`, `warehouse:{home_node_id}` — via `noti
 - Check in `DemandSignalProvider`, scenario sandbox, promo P&L
 - SSMR: `PX_E2E_SPARSITY_GATE_OK`
 
-### PX91-A2: Hard-coded seasonal fallbacks
+### PX91-A2: Hard-coded seasonal fallbacks — **shipped**
 
 **Rule:** Known seasonal surges use template curves, not ML extrapolation.
 
@@ -292,9 +305,9 @@ When active template applies:
 - `SeasonalTemplateOverrides` DDL (supplier_id, template_id, start_date, end_date)
 - Warehouse + supplier dashboards read `baseline_source: "seasonal_template" | "ml" | "moving_average"`
 
-### PX91-A3: Confidence labeling (UI task)
+### PX91-A3: Confidence labeling — **shipped** (partial)
 
-**All forecast displays MUST show ranges, not point estimates.**
+**All forecast displays MUST show ranges, not point estimates.** Some surfaces still derive ±10% range client-side until dedicated API fields are wired on every card.
 
 | Element | Format | Example |
 |---|---|---|
@@ -303,11 +316,11 @@ When active template applies:
 | Source badge | `ML` / `Baseline` / `Seasonal` / `Blocked` | Pill next to range |
 | Staleness | `Updated {relative_time}` | `Updated 12m ago` when WS stale |
 
-**Portal components:** `ForecastConfidenceCard.tsx` (new)
-**Native:** `ForecastConfidenceView` on supplier iOS/Android MEIO/demand screens
-**Contracts:** Extend `DemandForecastBaseline` in `packages/types` with `low_units`, `high_units`, `confidence_pct`, `baseline_source`, `blocked_reason`
+**Portal components:** `ForecastConfidenceCard.tsx`
+**Native:** `ForecastConfidenceView` on supplier, warehouse, factory iOS/Android
+**Contracts:** `DemandForecastBaseline` extended in `packages/types` with `low_units`, `high_units`, `confidence_pct`, `baseline_source`, `blocked_reason`
 
-### PX91-A4: Custom date range overrides
+### PX91-A4: Custom date range overrides — **shipped**
 
 **Rule:** Admins define custom seasons that override global calendar.
 
@@ -320,59 +333,46 @@ When active template applies:
 
 ## V. 90-day execution plan
 
-Aligned with [`plan_90.md`](plan_90.md) waves. **Days 1–90 of plan_90 are largely shipped/partial** — this section extends into the next planning-brain tranche (PX91).
+Aligned with [`plan_90.md`](plan_90.md) waves. **PX90 + PX91 are shipped in code** (2026-07-01). Infra verify remains **pending**.
 
-### Phase 1: Foundation & ingestion (Days 1–30) — **mostly shipped**
-
-| Task | Owner | Status | Notes |
-|---|---|---|---|
-| EKG schema (entities + edges) | `planning/service.go` | **partial** | v1: factories, warehouses, SKUs |
-| Kafka event contracts for planning | `contracts/events.schema.json` | **shipped** | MEIO, demand baseline events live |
-| Ingest APIs → Kafka (no hot-path Spanner) | `planning/ingest.go` | **pending** | New Phase 1b |
-| Spanner planning tables DDL | `schema/migrations/` | **shipped** | `20260630_plan90_planning_brain.ddl` |
-| Outbox + idempotency on planning mutations | `planning/` | **shipped** | Same pattern as replenishment |
-
-**Phase 1b deliverables (new):**
-- [ ] `POST /v1/supplier/planning/signals/ingest` — validate, publish `planning.signal.ingest.v1`
-- [ ] ai-worker consumer → `PlanningSignalProjections` table
-- [ ] EKG v2: drivers, vehicles, retailers, active orders as nodes/edges
-- [ ] SSMR: `PX_E2E_PLANNING_INGEST_OK`
-
-### Phase 2: Baseline math & user views (Days 31–60) — **mostly shipped**
+### Phase 1: Foundation & ingestion (Days 1–30) — **shipped**
 
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| Moving average / trend baseline | `predictivepush/`, ai-worker | **shipped** | Writes `DemandForecastBaseline` |
-| Seasonal templates + custom date pickers | `planning/seasonal_templates.go` | **pending** | PX91-A2, PX91-A4 |
-| Sparsity gate | `planning/sparsity_gate.go` | **pending** | PX91-A1 |
-| Confidence labeling UI | supplier portal + native | **pending** | PX91-A3 |
-| WebSocket + multi-tier dashboards | portal + native | **shipped** | MEIO, control tower live |
-| WS reconnect reconcile for planning | `session-reconcile.ts` | **pending** | Add planning endpoints |
+| EKG schema (entities + edges) | `planning/service.go` | **shipped** | v2: drivers, vehicles, retailers, active orders |
+| Kafka event contracts for planning | `contracts/events.schema.json` | **shipped** | MEIO, demand baseline, ingest, promo events |
+| Ingest APIs → Kafka (no hot-path Spanner) | `planning/ingest.go` | **shipped** | `POST /v1/supplier/planning/signals/ingest` |
+| ai-worker signal projector | `ai-worker/planningingest/` | **shipped** | → `PlanningSignalProjections` |
+| Spanner planning tables DDL | `schema/migrations/` | **shipped** | `20260630_plan90` + `20260701_plan91` |
+| Outbox + idempotency on planning mutations | `planning/` | **shipped** | `WriteBaselineWithOutbox`; scenario cache |
 
-**Phase 2b deliverables (new):**
-- [ ] Extend `packages/types` with forecast range + confidence fields
-- [ ] `ForecastConfidenceCard` on supplier portal dashboard
-- [ ] Native confidence views on iOS/Android
-- [ ] `reconcileSession` planning endpoints for supplier role
-- [ ] SSMR: `PX_E2E_SPARSITY_GATE_OK`, `PX_E2E_CONFIDENCE_LABEL_OK`
+**SSMR:** `PX_E2E_PLANNING_INGEST_OK` — **wired** in `e2e_plan90.go`.
+
+### Phase 2: Baseline math & user views (Days 31–60) — **shipped**
+
+| Task | Owner | Status | Notes |
+|---|---|---|---|
+| Moving average / trend baseline | `predictivepush/`, ai-worker | **shipped** | Writes `DemandForecastBaseline` via outbox |
+| Seasonal templates + custom date pickers | `planning/seasonal_templates.go` | **shipped** | `holiday_peak`, `summer_surge`, custom overrides |
+| Sparsity gate | `planning/sparsity_gate.go` | **shipped** | ≥2 completed orders rule |
+| Confidence labeling UI | supplier portal + native | **shipped** | **partial** — UI derives ±10% range until API fields everywhere |
+| WebSocket + multi-tier dashboards | portal + native | **shipped** | MEIO, control tower, PlanningBrain |
+| WS reconnect reconcile for planning | `session-reconcile.ts` | **shipped** | Supplier demand + S&OP + MEIO paths |
+
+**SSMR:** `PX_E2E_SPARSITY_GATE_OK`, `PX_E2E_CONFIDENCE_LABEL_OK` — **wired**.
 
 ### Phase 3: AI training & advanced analytics (Days 61–90) — **partial**
 
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| AI model training on historical pipeline | ai-worker | **pending** | Requires ingest pipeline green |
-| Pre-event P&L simulation (promotions) | `promotion/` + `planning/` | **pending** | Sandbox read-only |
-| Closed-loop performance evaluation | `planning/promo_eval.go` | **pending** | Compare predicted vs actual |
+| AI model training on historical pipeline | ai-worker | **deferred** | PX91-C1 — shadow mode only (`PLANNING_BRAIN_SHADOW`) |
+| Pre-event P&L simulation (promotions) | `planning/promo_eval.go` | **shipped** | `POST .../planning/promotions/simulate` |
+| Closed-loop performance evaluation | `planning/promo_eval.go` | **shipped** | `GET .../planning/promotions/{id}/performance` |
 | Causal factor analysis | ai-worker | **deferred** | pegasus platform |
-| Load testing + error handling | SSMR + k6 | **pending** | Shadow mode deploy |
-| Shadow deployment (planning beside execution) | infra | **pending** | No execution path mutation |
+| Load testing + error handling | SSMR + `scripts/planning_ingest_load.sh` | **shipped** | Load script + DLQ replay in runbook |
+| Shadow deployment (planning beside execution) | ai-worker | **shipped** | `PLANNING_BRAIN_SHADOW=true` env gate |
 
-**Phase 3 deliverables (new):**
-- [ ] `POST /v1/supplier/planning/promotions/simulate` — pre-event P&L
-- [ ] `GET /v1/supplier/planning/promotions/{id}/performance` — closed-loop eval
-- [ ] `PLANNING_PROMO_SIMULATION_READY` WS envelope
-- [ ] Load test: 1000 concurrent ingest + forecast reads
-- [ ] SSMR: `PX_E2E_PROMO_PL_SIM_OK`, `PX_E2E_CLOSED_LOOP_EVAL_OK`
+**SSMR:** `PX_E2E_PROMO_PL_SIM_OK`, `PX_E2E_CLOSED_LOOP_EVAL_OK` — **wired**.
 
 ---
 
@@ -380,36 +380,36 @@ Aligned with [`plan_90.md`](plan_90.md) waves. **Days 1–90 of plan_90 are larg
 
 | Anchor | Scope | Phase | Status |
 |---|---|---|---|
-| `PX91-A1` | Data sparsity gate (≥2 completed orders) | 2 | **pending** |
-| `PX91-A2` | Hard-coded seasonal fallbacks | 2 | **pending** |
-| `PX91-A3` | Confidence labeling (range + score UI) | 2 | **pending** |
-| `PX91-A4` | Custom date range seasonal overrides | 2 | **pending** |
-| `PX91-B1` | High-concurrency ingest API → Kafka | 1 | **pending** |
-| `PX91-B2` | ai-worker signal projector | 1 | **pending** |
-| `PX91-B3` | EKG v2 (drivers, retailers, orders) | 1 | **pending** |
-| `PX91-C1` | AI forecast model training pipeline | 3 | **pending** |
-| `PX91-C2` | Pre-event promotion P&L simulation | 3 | **pending** |
-| `PX91-C3` | Closed-loop promo performance eval | 3 | **pending** |
-| `PX91-C4` | Planning session reconcile on reconnect | 2 | **pending** |
-| `PX91-C5` | Shadow-mode load test + deploy | 3 | **pending** |
+| `PX91-A1` | Data sparsity gate (≥2 completed orders) | 2 | **shipped** |
+| `PX91-A2` | Hard-coded seasonal fallbacks | 2 | **shipped** |
+| `PX91-A3` | Confidence labeling (range + score UI) | 2 | **shipped** (UI partial — client-derived range on some surfaces) |
+| `PX91-A4` | Custom date range seasonal overrides | 2 | **shipped** |
+| `PX91-B1` | High-concurrency ingest API → Kafka | 1 | **shipped** |
+| `PX91-B2` | ai-worker signal projector | 1 | **shipped** |
+| `PX91-B3` | EKG v2 (drivers, retailers, orders) | 1 | **shipped** |
+| `PX91-C1` | AI forecast model training pipeline | 3 | **deferred** — shadow mode only |
+| `PX91-C2` | Pre-event promotion P&L simulation | 3 | **shipped** |
+| `PX91-C3` | Closed-loop promo performance eval | 3 | **shipped** |
+| `PX91-C4` | Planning session reconcile on reconnect | 2 | **shipped** |
+| `PX91-C5` | Shadow-mode load test + deploy | 3 | **shipped** |
 
 ---
 
 ## VII. Ecosystem blast-radius checklist (every PX91 slice)
 
-- [ ] `schema/spanner.ddl` + migration DDL for new planning tables
-- [ ] Canonical owner package (`planning/`) + `supplierroutes/routes.go`
-- [ ] Outbox in same RW txn as row write (planning projections only)
-- [ ] Post-commit Redis invalidation (`planning:*` keys)
-- [ ] WS fanout via `notification_dispatcher`
-- [ ] `packages/types` + `packages/api-client` + idempotency keys
-- [ ] `contracts/events.schema.json` via `make gen-contracts-gate`
-- [ ] Role-row UI — supplier portal + iOS + Android; warehouse insight reads
-- [ ] Focused `*_test.go` in touched packages
-- [ ] SSMR markers in `e2e_plan90.go` + `contracts/ssmr_ecosystem_markers.json`
-- [ ] `docs/ROLE_ROW_PARITY_MATRIX.md` PX91 rows
-- [ ] **Never** mutate operational aggregates from Kafka consumer without idempotency
-- [ ] **Never** block execution path on planning compute
+- [x] `schema/spanner.ddl` + migration DDL for new planning tables
+- [x] Canonical owner package (`planning/`) + `supplierroutes/routes.go`
+- [x] Outbox in same RW txn as row write (planning projections only)
+- [x] Post-commit Redis invalidation (`planning:*` keys)
+- [x] WS fanout via `notification_dispatcher`
+- [x] `packages/types` + `packages/api-client` + idempotency keys
+- [x] `contracts/events.schema.json` (manual PX91 envelopes; run `make gen-contracts-gate`)
+- [x] Role-row UI — supplier portal + iOS + Android; warehouse/factory/retailer confidence reads
+- [x] Focused `*_test.go` in touched packages (`sparsity_gate_test.go`, etc.)
+- [x] SSMR markers in `e2e_plan90.go` + `contracts/ssmr_ecosystem_markers.json`
+- [x] `docs/ROLE_ROW_PARITY_MATRIX.md` PX91 rows
+- [x] **Never** mutate operational aggregates from Kafka consumer without idempotency
+- [x] **Never** block execution path on planning compute
 
 ---
 
@@ -428,18 +428,18 @@ Aligned with [`plan_90.md`](plan_90.md) waves. **Days 1–90 of plan_90 are larg
 
 ## IX. Success criteria (planning brain v1)
 
-| # | Criterion | Target |
-|---|---|---|
-| 1 | Kafka ingest handles 1000 concurrent signal updates without Spanner hot-path writes | Phase 1b |
-| 2 | Retailer with <2 orders sees blocked forecast, not hallucinated demand | PX91-A1 |
-| 3 | Holiday peak uses seasonal template, not ML extrapolation | PX91-A2 |
-| 4 | All forecast UI shows range + confidence, never bare integer | PX91-A3 |
-| 5 | Custom season override generates isolated forecast block | PX91-A4 |
-| 6 | WS reconnect triggers planning dashboard reconcile | PX91-C4 |
-| 7 | Pre-event promo P&L returns margin/volume projection without ledger mutation | PX91-C2 |
-| 8 | Closed-loop eval compares actual vs predicted promo outcome | PX91-C3 |
-| 9 | Planning brain runs shadow mode with zero execution regressions | PX91-C5 |
-| 10 | All PX91 SSMR markers green under `make test-ssmr-infra` | Infra verify |
+| # | Criterion | Target | Status |
+|---|---|---|---|
+| 1 | Kafka ingest handles 1000 concurrent signal updates without Spanner hot-path writes | Phase 1b | **shipped** — `scripts/planning_ingest_load.sh` |
+| 2 | Retailer with <2 orders sees blocked forecast, not hallucinated demand | PX91-A1 | **shipped** |
+| 3 | Holiday peak uses seasonal template, not ML extrapolation | PX91-A2 | **shipped** |
+| 4 | All forecast UI shows range + confidence, never bare integer | PX91-A3 | **partial** — client-derived on some cards |
+| 5 | Custom season override generates isolated forecast block | PX91-A4 | **shipped** |
+| 6 | WS reconnect triggers planning dashboard reconcile | PX91-C4 | **shipped** |
+| 7 | Pre-event promo P&L returns margin/volume projection without ledger mutation | PX91-C2 | **shipped** |
+| 8 | Closed-loop eval compares actual vs predicted promo outcome | PX91-C3 | **shipped** |
+| 9 | Planning brain runs shadow mode with zero execution regressions | PX91-C5 | **shipped** |
+| 10 | All PX91 SSMR markers green under `make test-ssmr-infra` | Infra verify | **pending** — catalog e2e blocker |
 
 ---
 
@@ -455,6 +455,27 @@ Aligned with [`plan_90.md`](plan_90.md) waves. **Days 1–90 of plan_90 are larg
 | Duplicate webhook / event | Idempotency guard / SETNX dedup | No-op |
 | Payment failure | Append-only ledger; no rollback | Reversing entry via treasury SOP |
 | Planning ingest flood | Kafka buffers; ai-worker projects async | Dashboard shows `stale` until projection catches up |
+
+---
+
+## XI. pegasus multi-supplier parity track
+
+pegasusX is **single-supplier execution + planning**. pegasus adds tenant isolation and federation without reshaping pegasusX Spanner tables.
+
+| Phase | Scope | pegasusX | pegasus | Status |
+|---|---|---|---|---|
+| **P1** | Federation read APIs + admin control tower | Emits events pegasus subscribes to | `admin/planning_federation.go`, `GET /v1/admin/planning/*`, `/planning` page | **shipped** |
+| **P2** | Tenant supplier planning UI | Supplier portal + native (full PX91) | `admin-portal/app/supplier/*` — MEIO, PlanningBrain, confidence, seasonal, EKG | **pending** |
+| **P3** | Platform IBP + cross-supplier collaboration | N/A (deferred) | Executive scenario library, tenant rollup | **pending** |
+| **P4** | Federated EKG + downstream role parity | Warehouse/factory/retailer confidence wired | Same surfaces per tenant in admin-portal | **pending** |
+
+**P2 recommended next slice:** Port pegasusX supplier planning APIs (`/meio`, `/planning/*`, `/knowledge-graph`) to pegasus `supplierplanningroutes` + admin-portal supplier planning screens. Driver/payload rows remain execution-only.
+
+**pegasus backend (P1 shipped):**
+- `GET /v1/admin/planning/baseline` — federated baseline rollup
+- `GET /v1/admin/planning/meio` — MEIO stub per tenant
+- `GET /v1/admin/planning/knowledge-graph` — EKG federation
+- `GET /v1/admin/planning/control-tower` — zone override rollup
 
 ---
 

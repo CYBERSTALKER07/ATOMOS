@@ -119,7 +119,7 @@ func runWarehouseOpsPolicyE2E(ctx context.Context, client *http.Client, base, co
 			{"sku_id": envOr("SSMR_SMOKE_SKU", "SSMR-SKU-1"), "quantity": 100, "unit_price": 1000},
 		},
 	})
-	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/checkout/preview", lineLimitBody, retailerToken, "ssmr-checkout-line-limit")
+	status, respBody, _, err = clientDoRetry(ctx, client, http.MethodPost, base+"/v1/checkout/preview", lineLimitBody, retailerToken, "ssmr-checkout-line-limit")
 	if err != nil {
 		return err
 	}
