@@ -66,11 +66,10 @@ export default function OrderLifecycleVideo({
     }
   }, [reduced, videoMissing]);
 
-  const pauseAndReset = useCallback(() => {
+  const pauseVideo = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
     video.pause();
-    video.currentTime = 0;
   }, []);
 
   const handlePointerEnter = useCallback(() => {
@@ -78,8 +77,8 @@ export default function OrderLifecycleVideo({
   }, [playWithSound]);
 
   const handlePointerLeave = useCallback(() => {
-    pauseAndReset();
-  }, [pauseAndReset]);
+    pauseVideo();
+  }, [pauseVideo]);
 
   const handlePointerDown = useCallback(() => {
     void playWithSound();
@@ -110,7 +109,7 @@ export default function OrderLifecycleVideo({
                   className="order-lifecycle-video__el editorial-card__image object-cover"
                   src={ORDER_LIFECYCLE_VIDEO_MP4}
                   playsInline
-                  preload="auto"
+                  preload="none"
                   poster={ORDER_LIFECYCLE_POSTER}
                   onLoadedData={() => setVideoReady(true)}
                   onError={() => setVideoMissing(true)}

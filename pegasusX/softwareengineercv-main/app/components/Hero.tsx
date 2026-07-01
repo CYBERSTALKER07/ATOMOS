@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { gsap } from 'gsap';
 import Image from 'next/image';
 import { LaserFlowOptimized } from './Optimized3D';
@@ -19,46 +19,63 @@ export default function Hero() {
   const descRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handlePointerEnter = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  }, []);
+
+  const handlePointerLeave = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+  }, []);
 
   useEffect(() => {
-    // Skip GSAP animations on mobile - just use simple fade-in
-    if (isMobile || prefersReducedMotion) {
-      gsap.set([titleRef.current, subtitleRef.current, descRef.current, ctaRef.current, visualRef.current], {
-        opacity: 1,
-        x: 0,
-        y: 0
-      });
-      return;
-    }
+    const ctx = gsap.context(() => {
+      // Skip GSAP animations on mobile - just use simple fade-in
+      if (isMobile || prefersReducedMotion) {
+        gsap.set([titleRef.current, subtitleRef.current, descRef.current, ctaRef.current, visualRef.current], {
+          opacity: 1,
+          x: 0,
+          y: 0
+        });
+        return;
+      }
 
-    // Desktop animations only
-    const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
+      // Desktop animations only
+      const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
-    timeline
-      .fromTo(visualRef.current,
-        { opacity: 0, x: 100 },
-        { opacity: 1, x: 0, duration: 1.2 }
-      )
-      .fromTo(titleRef.current,
-        { opacity: 0, y: 50 },
-        { opacity: 1, y: 0, duration: 1 },
-        '-=0.8'
-      )
-      .fromTo(subtitleRef.current,
-        { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 0.8 },
-        '-=0.6'
-      )
-      .fromTo(descRef.current,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.8 },
-        '-=0.5'
-      )
-      .fromTo(ctaRef.current,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.8 },
-        '-=0.3'
-      );
+      timeline
+        .fromTo(visualRef.current,
+          { opacity: 0, x: 100 },
+          { opacity: 1, x: 0, duration: 1.2 }
+        )
+        .fromTo(titleRef.current,
+          { opacity: 0, y: 50 },
+          { opacity: 1, y: 0, duration: 1 },
+          '-=0.8'
+        )
+        .fromTo(subtitleRef.current,
+          { opacity: 0, y: 30 },
+          { opacity: 1, y: 0, duration: 0.8 },
+          '-=0.6'
+        )
+        .fromTo(descRef.current,
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.8 },
+          '-=0.5'
+        )
+        .fromTo(ctaRef.current,
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.8 },
+          '-=0.3'
+        );
+    });
+
+    return () => ctx.revert();
   }, [isMobile, prefersReducedMotion]);
 
   const scrollToNext = () => {
@@ -161,10 +178,14 @@ export default function Hero() {
           <div ref={visualRef} className="relative order-1 lg:order-2">
             <div className="relative h-[400px] md:h-[500px] lg:h-[600px]  overflow-hidden shadow-2xl bg-black rounded-tl-[200px]  rounded-br-[100px] border-none">
               {/* Video replacing Atom image and LaserFlow */}
-              <div className="absolute inset-0">
+              <div 
+                className="absolute inset-0"
+                onPointerEnter={handlePointerEnter}
+                onPointerLeave={handlePointerLeave}
+              >
                 <video
+                  ref={videoRef}
                   src="/DURATION_Exactly_seconds.mp4"
-                  autoPlay
                   loop
                   muted
                   playsInline
