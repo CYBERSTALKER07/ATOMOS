@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { gsap } from 'gsap';
 
 import GigaMenuDropdown from './GigaMenuDropdown';
+import StaggeredMenu from './StaggeredMenu';
 import { MEGA_NAV_CATEGORIES, MEGA_NAV_FOOTER_LINKS, type MegaNavCategory } from '../data/megaNavigation';
 
 const staggeredMenuItems = MEGA_NAV_CATEGORIES.map(cat => ({
@@ -414,19 +415,15 @@ const PillNav: React.FC<PillNavProps> = ({
                         aria-current={isActive ? 'page' : undefined}
                         className={basePillClasses}
                         style={pillStyle}
-                        onMouseEnter={() => {
-                          handleEnter(i);
-                          if (categories) setActiveCategory(categories[i]);
-                        }}
-                        onMouseLeave={() => {
-                          handleLeave(i);
-                        }}
-                        onFocus={() => {
-                          handleEnter(i);
-                          if (categories) setActiveCategory(categories[i]);
-                        }}
-                        onBlur={() => {
-                          handleLeave(i);
+                        onMouseEnter={() => handleEnter(i)}
+                        onMouseLeave={() => handleLeave(i)}
+                        onFocus={() => handleEnter(i)}
+                        onBlur={() => handleLeave(i)}
+                        onClick={(e) => {
+                          if (categories) {
+                            e.preventDefault();
+                            setActiveCategory(activeCategory === categories[i] ? null : categories[i]);
+                          }
                         }}
                       >
                         {PillContent}
@@ -438,19 +435,15 @@ const PillNav: React.FC<PillNavProps> = ({
                         aria-current={isActive ? 'page' : undefined}
                         className={basePillClasses}
                         style={pillStyle}
-                        onMouseEnter={() => {
-                          handleEnter(i);
-                          if (categories) setActiveCategory(categories[i]);
-                        }}
-                        onMouseLeave={() => {
-                          handleLeave(i);
-                        }}
-                        onFocus={() => {
-                          handleEnter(i);
-                          if (categories) setActiveCategory(categories[i]);
-                        }}
-                        onBlur={() => {
-                          handleLeave(i);
+                        onMouseEnter={() => handleEnter(i)}
+                        onMouseLeave={() => handleLeave(i)}
+                        onFocus={() => handleEnter(i)}
+                        onBlur={() => handleLeave(i)}
+                        onClick={(e) => {
+                          if (categories) {
+                            e.preventDefault();
+                            setActiveCategory(activeCategory === categories[i] ? null : categories[i]);
+                          }
                         }}
                       >
                         {PillContent}
@@ -489,14 +482,12 @@ const PillNav: React.FC<PillNavProps> = ({
         {categories && (
           <GigaMenuDropdown
             activeCategory={activeCategory}
-            onMouseEnter={() => {
-              if (activeCategory) setActiveCategory(activeCategory);
-            }}
-            onMouseLeave={() => setActiveCategory(null)}
+            onMouseEnter={() => {}}
+            onMouseLeave={() => {}}
           />
         )}
 
-        {showMenuButton && !categories ? (
+        {showMenuButton ? (
           <StaggeredMenu
             isOpen={megaMenuOpen}
             onClose={() => setMegaMenuOpen(false)}

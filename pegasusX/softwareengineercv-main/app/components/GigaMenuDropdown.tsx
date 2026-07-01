@@ -3,7 +3,32 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { gsap } from 'gsap';
+import { 
+  Box, 
+  Layers, 
+  Zap, 
+  Settings, 
+  Activity, 
+  Network, 
+  Truck, 
+  Navigation, 
+  Shield 
+} from 'lucide-react';
 import type { MegaNavCategory, MegaNavPromo } from '../data/megaNavigation';
+
+function getIconForFlow(flow?: string) {
+  switch (flow) {
+    case 'controlPlane': return <Layers className="w-6 h-6 text-blue-500" />;
+    case 'orderLifecycle': return <Activity className="w-6 h-6 text-blue-500" />;
+    case 'mutatingHandler': return <Settings className="w-6 h-6 text-blue-500" />;
+    case 'realtimePipeline': return <Zap className="w-6 h-6 text-blue-500" />;
+    case 'topologyMap': return <Network className="w-6 h-6 text-blue-500" />;
+    case 'dispatchBoard': return <Truck className="w-6 h-6 text-blue-500" />;
+    case 'fleetMap': return <Navigation className="w-6 h-6 text-blue-500" />;
+    case 'paymentFlow': return <Shield className="w-6 h-6 text-blue-500" />;
+    default: return <Box className="w-6 h-6 text-blue-500" />;
+  }
+}
 
 type GigaMenuDropdownProps = {
   activeCategory: MegaNavCategory | null;
@@ -90,23 +115,29 @@ export default function GigaMenuDropdown({
                   <Link
                     key={`${link.label}-${idx}`}
                     href={link.href}
-                    className="group block p-6 bg-[#111] hover:bg-[#222] transition-colors rounded-lg border border-white/5 hover:border-white/20"
+                    className="group flex flex-col justify-between p-5 min-h-[140px] bg-[#111] hover:bg-[#222] transition-colors relative"
+                    style={{
+                      clipPath: 'polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%)'
+                    }}
                   >
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-white font-medium text-lg">
-                        {link.label}
-                      </span>
+                    <div className="flex justify-between items-start">
+                      {getIconForFlow(link.flow)}
                       {link.badge && (
                         <span className="text-[10px] font-bold px-2 py-0.5 bg-white text-black rounded-sm tracking-wider">
                           {link.badge}
                         </span>
                       )}
                     </div>
-                    {link.description && (
-                      <p className="text-sm text-gray-400 line-clamp-2">
-                        {link.description}
-                      </p>
-                    )}
+                    <div className="mt-6">
+                      <div className="text-white font-medium text-sm group-hover:text-blue-400 transition-colors">
+                        {link.label}
+                      </div>
+                      {link.description && (
+                        <p className="text-xs text-gray-400 line-clamp-2 mt-1">
+                          {link.description}
+                        </p>
+                      )}
+                    </div>
                   </Link>
                 ))}
               </div>
