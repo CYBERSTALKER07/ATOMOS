@@ -1,18 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { gsap } from 'gsap';
 import Image from 'next/image';
+import { LaserFlowOptimized } from './Optimized3D';
 import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
 import ChamferButton from './ChamferButton';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
-import {
-  HERO_VIDEO_LOCAL_MP4,
-  HERO_VIDEO_REMOTE_MP4,
-  HERO_VIDEO_POSTER,
-  HERO_VIDEO_LOOP_END_SEC,
-} from '../lib/heroAssets';
 
 export default function Hero() {
   const { isMobile } = useIsMobile();
@@ -26,89 +21,73 @@ export default function Hero() {
   const visualRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const [videoSrc, setVideoSrc] = useState(HERO_VIDEO_LOCAL_MP4);
-  const [videoReady, setVideoReady] = useState(false);
-  const [videoMissing, setVideoMissing] = useState(false);
-
-  const startVideo = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || videoMissing || prefersReducedMotion) return;
-    video.currentTime = 0;
-    void video.play().catch(() => {});
-  }, [videoMissing, prefersReducedMotion]);
-
-  const handleVideoError = useCallback(() => {
-    if (videoSrc === HERO_VIDEO_LOCAL_MP4) {
-      setVideoSrc(HERO_VIDEO_REMOTE_MP4);
-      setVideoReady(false);
-      return;
+  const handlePointerEnter = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
     }
-    setVideoMissing(true);
-    setVideoReady(false);
-  }, [videoSrc]);
+  }, []);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || prefersReducedMotion || videoMissing) return;
-
-    let loopEnd = HERO_VIDEO_LOOP_END_SEC;
-
-    const syncLoopEnd = () => {
-      if (video.duration && Number.isFinite(video.duration)) {
-        loopEnd = Math.min(HERO_VIDEO_LOOP_END_SEC, video.duration);
-      }
-    };
-
-    const onTimeUpdate = () => {
-      if (video.currentTime >= loopEnd) {
-        video.pause();
-        video.currentTime = loopEnd;
-      }
-    };
-
-    syncLoopEnd();
-    video.addEventListener('loadedmetadata', syncLoopEnd);
-    video.addEventListener('timeupdate', onTimeUpdate);
-    video.muted = true;
-    startVideo();
-
-    return () => {
-      video.removeEventListener('loadedmetadata', syncLoopEnd);
-      video.removeEventListener('timeupdate', onTimeUpdate);
-    };
-  }, [prefersReducedMotion, videoMissing, videoSrc, startVideo]);
+  const handlePointerLeave = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+  }, []);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
+      // Skip GSAP animations on mobile - just use simple fade-in
       if (isMobile || prefersReducedMotion) {
         gsap.set([titleRef.current, subtitleRef.current, descRef.current, ctaRef.current, visualRef.current], {
           opacity: 1,
           x: 0,
-          y: 0,
+          y: 0
         });
         return;
       }
 
-      gsap
-        .timeline({ defaults: { ease: 'power3.out' } })
-        .fromTo(visualRef.current, { x: 48 }, { x: 0, duration: 1.2 })
-        .fromTo(titleRef.current, { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 1 }, '-=0.8')
-        .fromTo(subtitleRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8 }, '-=0.6')
-        .fromTo(descRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.8 }, '-=0.5')
-        .fromTo(ctaRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.8 }, '-=0.3');
+      // Desktop animations only
+      const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+      timeline
+        .fromTo(visualRef.current,
+          { opacity: 0, x: 100 },
+          { opacity: 1, x: 0, duration: 1.2 }
+        )
+        .fromTo(titleRef.current,
+          { opacity: 0, y: 50 },
+          { opacity: 1, y: 0, duration: 1 },
+          '-=0.8'
+        )
+        .fromTo(subtitleRef.current,
+          { opacity: 0, y: 30 },
+          { opacity: 1, y: 0, duration: 0.8 },
+          '-=0.6'
+        )
+        .fromTo(descRef.current,
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.8 },
+          '-=0.5'
+        )
+        .fromTo(ctaRef.current,
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.8 },
+          '-=0.3'
+        );
     });
 
     return () => ctx.revert();
   }, [isMobile, prefersReducedMotion]);
 
   const scrollToNext = () => {
-    document.querySelector('#about')?.scrollIntoView({ behavior: 'smooth' });
+    const nextSection = document.querySelector('#about');
+    if (nextSection) {
+      nextSection.scrollIntoView({ behavior: 'smooth' });
+    }
   };
-
-  const showPoster = !videoReady || videoMissing || prefersReducedMotion;
 
   return (
     <section id="hero" className="min-h-screen relative flex items-center bg-black overflow-hidden pt-[4.5rem] md:pt-20">
+      {/* Corner Loops - Hidden on mobile */}
       {!isMobile && (
         <>
           <div className="absolute top-0 left-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-30 z-10">
@@ -148,18 +127,19 @@ export default function Hero() {
 
       <div className="container mx-auto px-4 py-20 relative z-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center max-w-7xl mx-auto">
+          {/* Content Side - Left */}
           <div ref={textRef} className="space-y-8 order-2 lg:order-1">
             <div>
               <h1
                 ref={titleRef}
-                className="font-title text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light mb-4 text-white"
+                className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light mb-4 text-white"
               >
                 Pegasus
               </h1>
 
               <div ref={subtitleRef} className="mb-6">
                 <TextType
-                  text={['Logistics Platform', 'Dispatch System', 'Fleet Tracking', 'Payment Confidence']}
+                  text={["Logistics Platform", "Dispatch System", "Fleet Tracking", "Payment Confidence"]}
                   typingSpeed={isMobile ? 100 : 75}
                   pauseDuration={1500}
                   deletingSpeed={isMobile ? 70 : 50}
@@ -183,6 +163,7 @@ export default function Hero() {
               </p>
             </div>
 
+            {/* CTA Buttons */}
             <div ref={ctaRef} className="flex flex-col sm:flex-row gap-3">
               <ChamferButton onClick={scrollToNext} variant="fill">
                 Explore Platform
@@ -193,40 +174,30 @@ export default function Hero() {
             </div>
           </div>
 
+          {/* Visual Side - Mobile: atom.jpeg, Desktop: LaserFlow */}
           <div ref={visualRef} className="relative order-1 lg:order-2">
-            <div className="relative h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden shadow-2xl bg-black rounded-tl-[200px] rounded-br-[100px]">
-              <div className="absolute inset-0">
-                {showPoster ? (
-                  <Image
-                    src={HERO_VIDEO_POSTER}
-                    alt=""
-                    fill
-                    priority
-                    className="object-cover"
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                  />
-                ) : null}
-
-                {!videoMissing && !prefersReducedMotion ? (
-                  <video
-                    key={videoSrc}
-                    ref={videoRef}
-                    src={videoSrc}
-                    muted
-                    playsInline
-                    preload="auto"
-                    poster={HERO_VIDEO_POSTER}
-                    onLoadedData={() => setVideoReady(true)}
-                    onError={handleVideoError}
-                    className={`absolute inset-0 h-full w-full object-cover ${videoReady ? 'opacity-100' : 'opacity-0'}`}
-                  />
-                ) : null}
+            <div className="relative h-[400px] md:h-[500px] lg:h-[600px]  overflow-hidden shadow-2xl bg-black rounded-tl-[200px]  rounded-br-[100px] border-none">
+              {/* Video replacing Atom image and LaserFlow */}
+              <div 
+                className="absolute inset-0"
+                onPointerEnter={handlePointerEnter}
+                onPointerLeave={handlePointerLeave}
+              >
+                <video
+                  ref={videoRef}
+                  src="https://www.dropbox.com/scl/fi/ngrk0vg3lslfx7ca9d69y/DURATION_Exactly_seconds.mp4?rlkey=kdv4tlmsg67jhzzn1ucw642lh&st=eaw7cpxw&raw=1"
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
               </div>
 
+              {/* Decorative border overlay - show on mobile only */}
               {isMobile && (
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-white" />
-                  <div className="absolute top-0 right-0 w-20 h-20 border-t-2 border-l-2 border-white" />
+                  <div className="absolute top-0 right-0 w-20 h-20 border-t-2 border-r-2 border-white" />
                   <div className="absolute bottom-0 left-0 w-20 h-20 border-b-2 border-l-2 border-white" />
                   <div className="absolute bottom-0 right-0 w-20 h-20 border-b-2 border-r-2 border-white" />
                 </div>
@@ -236,16 +207,26 @@ export default function Hero() {
         </div>
       </div>
 
+      {/* Scroll Indicator */}
       <button
-        type="button"
-        className="absolute bottom-8 left-1/2 z-10 hidden -translate-x-1/2 cursor-pointer rounded-lg p-2 outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black md:block"
+        className="absolute bottom-8 left-1/2 transform -translate-x-1/2 cursor-pointer z-10 hidden md:block group focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black outline-none rounded-lg p-2"
         onClick={scrollToNext}
         aria-label="Scroll to next section"
       >
-        <div className="flex flex-col items-center gap-2 text-white transition-colors duration-300 hover:text-[#FBFF63]">
+        <div className="flex flex-col items-center gap-2 text-white group-hover:text-[#FBFF63] transition-colors duration-300">
           <span className="text-sm font-light tracking-widest">SCROLL</span>
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          <svg
+            className="w-6 h-6 animate-bounce"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 14l-7 7m0 0l-7-7m7 7V3"
+            />
           </svg>
         </div>
       </button>

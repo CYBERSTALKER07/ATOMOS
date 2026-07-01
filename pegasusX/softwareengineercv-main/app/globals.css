@@ -2,16 +2,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Avenir Next for titles; system sans for body (add public/fonts/ for licensed web delivery) */
-:root {
-  --font-avenir: "Avenir Next", "Avenir Next LT Pro", "Avenir Next Pro", Avenir, "Helvetica Neue",
-    "Segoe UI", system-ui, sans-serif;
-  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace;
-}
-
-
 /* Glitch Animation Keyframes */
 @keyframes glitch {
   0% { clip-path: inset(20% 0 50% 0); }
@@ -109,7 +99,7 @@
 /* Editorial card system (o9-inspired) */
 .editorial-tag,
 .editorial-eyebrow {
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.6875rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -132,7 +122,6 @@
 }
 
 .editorial-card__title {
-  font-family: var(--font-avenir);
   font-size: clamp(1.35rem, 2.2vw, 2rem);
   font-weight: 700;
   line-height: 1.15;
@@ -153,7 +142,7 @@
 }
 
 .editorial-card__cta .editorial-btn {
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -550,7 +539,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
 }
 
 .chamfer-card__ascii {
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.55rem;
   line-height: 1.35;
   letter-spacing: 0.08em;
@@ -578,7 +567,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
 }
 
 .chamfer-card__meta {
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.625rem;
   letter-spacing: 0.06em;
   color: rgba(255, 255, 255, 0.45);
@@ -608,7 +597,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
   right: 0;
   padding: 0.75rem 1rem;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.625rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -706,7 +695,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
   bottom: 1rem;
   z-index: 2;
   margin: 0;
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.6875rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -744,7 +733,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -873,7 +862,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
   min-width: 7.25rem;
   height: 3rem;
   padding: 0 1.35rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.14em;
@@ -1162,7 +1151,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
   transition: all 0.3s ease-in-out;
 }
 
-@theme inline { --font-sans: var(--font-body); --font-mono: var(--font-mono); --font-title: var(--font-avenir); --radius-sm: calc(var(--radius) - 4px); --radius-md: calc(var(--radius) - 2px); --radius-lg: var(--radius); --radius-xl: calc(var(--radius) + 4px); --color-background: var(--background); --color-foreground: var(--foreground); --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-destructive: var(--destructive); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring); --color-chart-1: var(--chart-1); --color-chart-2: var(--chart-2); --color-chart-3: var(--chart-3); --color-chart-4: var(--chart-4); --color-chart-5: var(--chart-5); --color-sidebar: var(--sidebar); --color-sidebar-foreground: var(--sidebar-foreground); --color-sidebar-primary: var(--sidebar-primary); --color-sidebar-primary-foreground: var(--sidebar-primary-foreground); --color-sidebar-accent: var(--sidebar-accent); --color-sidebar-accent-foreground: var(--sidebar-accent-foreground); --color-sidebar-border: var(--sidebar-border); --color-sidebar-ring: var(--sidebar-ring);
+@theme inline { --radius-sm: calc(var(--radius) - 4px); --radius-md: calc(var(--radius) - 2px); --radius-lg: var(--radius); --radius-xl: calc(var(--radius) + 4px); --color-background: var(--background); --color-foreground: var(--foreground); --color-card: var(--card); --color-card-foreground: var(--card-foreground); --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground); --color-destructive: var(--destructive); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring); --color-chart-1: var(--chart-1); --color-chart-2: var(--chart-2); --color-chart-3: var(--chart-3); --color-chart-4: var(--chart-4); --color-chart-5: var(--chart-5); --color-sidebar: var(--sidebar); --color-sidebar-foreground: var(--sidebar-foreground); --color-sidebar-primary: var(--sidebar-primary); --color-sidebar-primary-foreground: var(--sidebar-primary-foreground); --color-sidebar-accent: var(--sidebar-accent); --color-sidebar-accent-foreground: var(--sidebar-accent-foreground); --color-sidebar-border: var(--sidebar-border); --color-sidebar-ring: var(--sidebar-ring);
 }
 
 :root { --radius: 0.625rem; --background: oklch(1 0 0); --foreground: oklch(0.145 0 0); --card: oklch(1 0 0); --card-foreground: oklch(0.145 0 0); --popover: oklch(1 0 0); --popover-foreground: oklch(0.145 0 0); --primary: oklch(0.205 0 0); --primary-foreground: oklch(0.985 0 0); --secondary: oklch(0.97 0 0); --secondary-foreground: oklch(0.205 0 0); --muted: oklch(0.97 0 0); --muted-foreground: oklch(0.556 0 0); --accent: oklch(0.97 0 0); --accent-foreground: oklch(0.205 0 0); --destructive: oklch(0.577 0.245 27.325); --border: oklch(0.922 0 0); --input: oklch(0.922 0 0); --ring: oklch(0.708 0 0); --chart-1: oklch(0.646 0.222 41.116); --chart-2: oklch(0.6 0.118 184.704); --chart-3: oklch(0.398 0.07 227.392); --chart-4: oklch(0.828 0.189 84.429); --chart-5: oklch(0.769 0.188 70.08); --sidebar: oklch(0.985 0 0); --sidebar-foreground: oklch(0.145 0 0); --sidebar-primary: oklch(0.205 0 0); --sidebar-primary-foreground: oklch(0.985 0 0); --sidebar-accent: oklch(0.97 0 0); --sidebar-accent-foreground: oklch(0.205 0 0); --sidebar-border: oklch(0.922 0 0); --sidebar-ring: oklch(0.708 0 0);
@@ -1207,7 +1196,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
 }
 
 .mega-menu__label {
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.6875rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1215,7 +1204,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
 }
 
 .mega-menu__close {
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1434,7 +1423,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
 }
 
 .mega-menu__badge {
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.5625rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -1449,7 +1438,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
   align-items: center;
   gap: 0.35rem;
   margin-top: 1.5rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -1483,7 +1472,6 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
 }
 
 .mega-menu__promo-title {
-  font-family: var(--font-avenir);
   font-size: 1.25rem;
   font-weight: 700;
   margin: 0 0 0.75rem;
@@ -1504,7 +1492,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
 }
 
 .mega-menu__promo-link {
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -1549,7 +1537,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
 }
 
 .mega-menu__footer-link {
-  font-family: var(--font-mono);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.625rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1735,24 +1723,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
   * {
     @apply border-border outline-ring/50;
   }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  .font-title {
-    font-family: var(--font-avenir);
-    font-feature-settings: "kern" 1, "liga" 1;
-    font-kerning: normal;
-    text-wrap: balance;
-  }
-
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-body);
-    font-feature-settings: "kern" 1, "liga" 1;
-    font-kerning: normal;
   }
 }
