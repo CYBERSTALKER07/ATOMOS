@@ -50,8 +50,8 @@ func parseForecastConfidence(_ breakdown: [String: AnyCodable]?) -> ForecastConf
 func formatSourceBadge(_ source: String?) -> String {
     guard let source, !source.isEmpty else { return "" }
     switch source {
-    case "ml": return "ML"
-    case "moving_average": return "Baseline"
+    case "ml", "moving_average": return "Baseline"
+    case "inventory_hint": return "Hint"
     case "seasonal_template": return "Seasonal"
     case "mixed": return "Mixed"
     default: return source.replacingOccurrences(of: "_", with: " ")

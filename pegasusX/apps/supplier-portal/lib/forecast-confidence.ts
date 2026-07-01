@@ -27,6 +27,22 @@ function mapBaselineSource(src?: string): ForecastConfidence["baseline_source"] 
   return src as ForecastConfidence["baseline_source"];
 }
 
+export function formatBaselineSourceLabel(src?: string): string {
+  const mapped = mapBaselineSource(src);
+  switch (mapped) {
+    case "moving_average":
+      return "Baseline";
+    case "seasonal_template":
+      return "Seasonal";
+    case "inventory_hint":
+      return "Hint";
+    case "mixed":
+      return "Mixed";
+    default:
+      return mapped?.replace(/_/g, " ") ?? "";
+  }
+}
+
 export function forecastConfidenceFromDemand(
   summary: SupplierDemandSummaryResponse,
 ): ForecastConfidence {

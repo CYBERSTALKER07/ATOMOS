@@ -140,6 +140,7 @@ flowchart TB
 2. **Ingest contract freeze** — `planning.signal.ingest.v1` schema versioned in `contracts/events.schema.json`
 3. **Data quality checks** — row counts, null rate on `BaselineQty`, ingest lag < 15m P99
 4. **Privacy** — single supplier; no cross-tenant fields
+5. **K8s CronJob** — [`infra/k8s/planning_training_export_cronjob.yaml`](../infra/k8s/planning_training_export_cronjob.yaml) (02:30 UTC daily; binary in backend image)
 
 **Anchor:** `PX-PROD-3` — BQ (or GCS parquet) daily export green for 7 consecutive days on staging.
 
@@ -186,8 +187,8 @@ flowchart TB
 |---|---|---|---|
 | `PX-PROD-0` | 0 | Cloud infra + staging adapters | **pending** |
 | `PX-PROD-1` | 1 | SSMR + credential + QA sign-off | **pending** |
-| `PX-PROD-2` | 2 | Math-only planning contract enforced | **partial** — code shipped; label hygiene TBD |
-| `PX-PROD-3` | 3 | ML data export pipeline (no training) | **pending** |
+| `PX-PROD-2` | 2 | Math-only planning contract enforced | **shipped** — `NormalizeBaselineSource`; warehouse badges; predictive-push breakdown |
+| `PX-PROD-3` | 3 | ML data export pipeline (no training) | **in progress** — `cmd/planning-training-export`, `make planning-training-export`, K8s CronJob manifest |
 | `PX-PROD-4` | 4 | Observability + fire-drill | **partial** — runbooks exist |
 | `PX-PROD-5` | 5 | 30-day scale ramp complete | **pending** |
 

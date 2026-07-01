@@ -55,8 +55,8 @@ fun parseForecastConfidence(breakdown: JsonObject?): ForecastConfidenceData? {
 }
 
 fun formatSourceBadge(source: String?): String = when (source) {
-    "ml" -> "ML"
-    "moving_average" -> "Baseline"
+    "ml", "moving_average" -> "Baseline"
+    "inventory_hint" -> "Hint"
     "seasonal_template" -> "Seasonal"
     "mixed" -> "Mixed"
     null, "" -> ""

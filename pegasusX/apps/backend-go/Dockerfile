@@ -29,6 +29,11 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
     -o /pegasusx-setup \
     ./apps/backend-go/cmd/setup
 
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s" \
+    -o /planning-training-export \
+    ./apps/backend-go/cmd/planning-training-export
+
 FROM alpine:3.20
 
 RUN apk --no-cache add ca-certificates tzdata
@@ -36,6 +41,7 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /runtime
 COPY --from=builder /pegasusx-backend /usr/local/bin/pegasusx-backend
 COPY --from=builder /pegasusx-setup /usr/local/bin/pegasusx-setup
+COPY --from=builder /planning-training-export /usr/local/bin/planning-training-export
 COPY apps/backend-go/schema ./apps/backend-go/schema
 
 EXPOSE 8080

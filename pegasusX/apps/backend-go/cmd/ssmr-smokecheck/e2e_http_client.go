@@ -42,14 +42,23 @@ func sliceContains(values []string, want string) bool {
 }
 
 func clientGet(ctx context.Context, client *http.Client, url string) ([]byte, error) {
-	status, body, _, err := clientDo(ctx, client, http.MethodGet, url, nil, "", "")
-	if err != nil {
-		return nil, err
+	var lastErr error
+	for attempt := 0; attempt < 8; attempt++ {
+		status, body, _, err := clientDo(ctx, client, http.MethodGet, url, nil, "", "")
+		if err != nil {
+			lastErr = err
+			time.Sleep(time.Duration(1+attempt) * time.Second)
+			continue
+		}
+		if status != http.StatusOK {
+			return nil, fmt.Errorf("GET %s status %d body %s", url, status, string(body))
+		}
+		return body, nil
 	}
-	if status != http.StatusOK {
-		return nil, fmt.Errorf("GET %s status %d body %s", url, status, string(body))
+	if lastErr != nil {
+		return nil, fmt.Errorf("GET %s after retries: %w", url, lastErr)
 	}
-	return body, nil
+	return nil, fmt.Errorf("GET %s failed after retries", url)
 }
 
 func clientPost(ctx context.Context, client *http.Client, url string, body []byte, bearer, idempotencyKey string) (int, []byte, http.Header, error) {
@@ -112,31 +121,60 @@ func clientDoContentType(ctx context.Context, client *http.Client, method, url s
 	if body != nil {
 		reader = bytes.NewReader(body)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, url, reader)
-	if err != nil {
-		return 0, nil, nil, err
+	var lastErr error
+	for attempt := 0; attempt < 6; attempt++ {
+		if body != nil {
+			reader = bytes.NewReader(body)
+		}
+		req, err := http.NewRequestWithContext(ctx, method, url, reader)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		if body != nil && strings.TrimSpace(contentType) != "" {
+			req.Header.Set("Content-Type", contentType)
+		}
+		if idempotencyKey != "" {
+			req.Header.Set("Idempotency-Key", idempotencyKey)
+		}
+		if strings.HasPrefix(bearerOrCookie, auth.CookieName+"=") || strings.Contains(bearerOrCookie, "=") {
+			req.Header.Set("Cookie", bearerOrCookie)
+		} else if bearerOrCookie != "" {
+			req.Header.Set("Authorization", "Bearer "+bearerOrCookie)
+		}
+		if secret := strings.TrimSpace(envOr("LOAD_BOOTSTRAP_SECRET", "")); secret != "" {
+			req.Header.Set("X-PegasusX-Load-Bootstrap", secret)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			if !isTransientHTTPError(err) || attempt == 5 {
+				return 0, nil, nil, err
+			}
+			time.Sleep(time.Duration(1+attempt) * time.Second)
+			continue
+		}
+		defer resp.Body.Close()
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 256*1024))
+		return resp.StatusCode, respBody, resp.Header, nil
 	}
-	if body != nil && strings.TrimSpace(contentType) != "" {
-		req.Header.Set("Content-Type", contentType)
+	if lastErr != nil {
+		return 0, nil, nil, lastErr
 	}
-	if idempotencyKey != "" {
-		req.Header.Set("Idempotency-Key", idempotencyKey)
+	return 0, nil, nil, fmt.Errorf("%s %s failed after retries", method, url)
+}
+
+func isTransientHTTPError(err error) bool {
+	if err == nil {
+		return false
 	}
-	if strings.HasPrefix(bearerOrCookie, auth.CookieName+"=") || strings.Contains(bearerOrCookie, "=") {
-		req.Header.Set("Cookie", bearerOrCookie)
-	} else if bearerOrCookie != "" {
-		req.Header.Set("Authorization", "Bearer "+bearerOrCookie)
-	}
-	if secret := strings.TrimSpace(envOr("LOAD_BOOTSTRAP_SECRET", "")); secret != "" {
-		req.Header.Set("X-PegasusX-Load-Bootstrap", secret)
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, nil, nil, err
-	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 256*1024))
-	return resp.StatusCode, respBody, resp.Header, nil
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "eof") ||
+		strings.Contains(msg, "connection reset") ||
+		strings.Contains(msg, "broken pipe") ||
+		strings.Contains(msg, "connection refused") ||
+		strings.Contains(msg, "no such host") ||
+		strings.Contains(msg, "timeout") ||
+		strings.Contains(msg, "tls handshake")
 }
 
 func sessionCookie(hdrs http.Header) string {

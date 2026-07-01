@@ -645,7 +645,7 @@ export interface ForecastConfidence {
   low_units?: number;
   high_units?: number;
   confidence_pct?: number;
-  baseline_source?: "ml" | "moving_average" | "seasonal_template" | "mixed" | string;
+  baseline_source?: "moving_average" | "seasonal_template" | "mixed" | "inventory_hint" | string;
   blocked_reason?: string;
   label?: "insufficient_history" | "early_signal" | "standard" | string;
 }

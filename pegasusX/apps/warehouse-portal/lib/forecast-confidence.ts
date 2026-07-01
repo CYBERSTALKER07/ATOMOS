@@ -70,7 +70,8 @@ export function isSeasonalTemplateActive(confidence?: ForecastConfidence | null)
 export function formatSourceBadge(source?: string): string {
   if (!source) return '';
   switch (source) {
-    case 'ml': return 'ML';
+    case 'ml': return 'Baseline';
+    case 'inventory_hint': return 'Hint';
     case 'moving_average': return 'Baseline';
     case 'seasonal_template': return 'Seasonal';
     case 'mixed': return 'Mixed';

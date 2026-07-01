@@ -227,13 +227,15 @@ func (s *Service) buildDemandToday(ctx context.Context, supplierID string, now t
 		}
 		conf = planning.FallbackDemandConfidence(totalQty, source, predictionCount)
 	}
+	normalizedSource := planning.NormalizeBaselineSource(source)
+	conf.BaselineSource = planning.NormalizeBaselineSource(conf.BaselineSource, source)
 	return demandSummaryResponse{
 		TotalRetailers:  int64(len(retailers)),
 		TotalPallets:    totalQty,
 		TotalValue:      totalValue,
 		PredictionCount: predictionCount,
 		Items:           merged,
-		BaselineSource:  source,
+		BaselineSource:  normalizedSource,
 		Granularity:     query.Granularity,
 		Confidence:      &conf,
 		GeneratedAt:     now.Format(time.RFC3339Nano),

@@ -3,6 +3,7 @@ package predictivepush
 import (
 	"context"
 	"encoding/json"
+	"math"
 
 	"time"
 
@@ -40,12 +41,27 @@ func (a *Allocator) Allocate(ctx context.Context, events []*DemandEvent) error {
 		// 2. Generate a ReplenishmentInsight
 		insightId := uuid.New().String()
 		
+		spread := int64(math.Max(1, math.Round(float64(event.Quantity)*0.1)))
+		low := event.Quantity - spread
+		if low < 0 {
+			low = 0
+		}
+		high := event.Quantity + spread
+		confPct := int64(math.Round(event.Confidence * 100))
+		if confPct <= 0 {
+			confPct = 65
+		}
 		demandBreakdown, _ := json.Marshal(map[string]interface{}{
-			"retailerId":   event.RetailerId,
-			"targetDate":   event.TargetDate.Format("2006-01-02"),
-			"confidence":   event.Confidence,
-			"patternDays":  event.PatternDays,
-			"predictedQty": event.Quantity,
+			"retailerId":       event.RetailerId,
+			"targetDate":       event.TargetDate.Format("2006-01-02"),
+			"confidence":       event.Confidence,
+			"confidence_pct":   confPct,
+			"patternDays":      event.PatternDays,
+			"predictedQty":     event.Quantity,
+			"low_units":        low,
+			"high_units":       high,
+			"baseline_source":  "moving_average",
+			"label":            "standard",
 		})
 
 		mutation := spanner.Insert(

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ForecastConfidence } from "@pegasusx/types";
+import { formatBaselineSourceLabel } from "@/lib/forecast-confidence";
 
 type Props = {
   confidence: ForecastConfidence;
@@ -29,7 +30,9 @@ export function ForecastConfidenceCard({ confidence, updatedAt, stale }: Props) 
       <div className="flex items-center justify-between gap-2">
         <span className="md-typescale-title-small">Forecast confidence</span>
         {confidence.baseline_source ? (
-          <span className="md-chip text-[10px] uppercase tracking-wide">{confidence.baseline_source}</span>
+          <span className="md-chip text-[10px] uppercase tracking-wide">
+            {formatBaselineSourceLabel(confidence.baseline_source)}
+          </span>
         ) : null}
       </div>
       {blocked ? (
