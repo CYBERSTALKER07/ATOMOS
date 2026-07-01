@@ -5,6 +5,7 @@ struct DashboardView: View {
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var dashboard: SupplierDashboard?
+    @State private var meiSummary: SupplierMEIONetworkSummary?
     @State private var loading = true
     @State private var error: String?
 
@@ -35,6 +36,20 @@ struct DashboardView: View {
                                 title: "Operations at a glance",
                                 subtitle: "Live supplier KPIs"
                             )
+
+                            if let meiSummary {
+                                VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
+                                    Text("MEIO network")
+                                        .font(.headline)
+                                    Text("\(meiSummary.warehousesScanned) warehouses · \(meiSummary.transferRecommendations) transfer recs · \(meiSummary.insightsGenerated) insights")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding()
+                                .background(SupplierTheme.surface)
+                                .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
+                            }
 
                             LazyVGrid(
                                 columns: [GridItem(.adaptive(minimum: gridMin), spacing: SupplierTheme.spacingMD)],
@@ -141,6 +156,7 @@ struct DashboardView: View {
             dashboard = try await SupplierService.dashboard()
             _ = try? await SupplierOperationsService.activity()
             _ = try? await SupplierOperationsService.exceptions()
+            meiSummary = try? await SupplierOperationsService.meiNetworkSummary()
             if let configured = dashboard?.isConfigured {
                 tokenStore.markConfigured(configured)
             }

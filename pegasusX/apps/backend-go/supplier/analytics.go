@@ -46,6 +46,7 @@ type demandSummaryResponse struct {
 	PredictionCount int64               `json:"prediction_count"`
 	Items           []demandSummaryItem `json:"items"`
 	GeneratedAt     string              `json:"generated_at"`
+	BaselineSource  string              `json:"baseline_source,omitempty"`
 }
 
 type demandHistoryPoint struct {
@@ -142,12 +143,18 @@ func (s *Service) buildDemandToday(ctx context.Context, supplierID string, now t
 	var predictionCount int64
 	var totalValue int64
 	var totalQty int64
+	source := ""
 
 	for _, rec := range recs {
 		if !isDemandRecommendation(rec) {
 			continue
 		}
 		predictionCount++
+		if source == "" {
+			source = "ai_recommendations"
+		} else if source != "ai_recommendations" {
+			source = "mixed"
+		}
 		qty := int64(rec.Score)
 		if qty <= 0 {
 			qty = 1
@@ -189,12 +196,14 @@ func (s *Service) buildDemandToday(ctx context.Context, supplierID string, now t
 		}
 	}
 
+	merged := s.mergeDemandBaselineItems(ctx, supplierID, now, items, &source)
 	return demandSummaryResponse{
 		TotalRetailers:  int64(len(retailers)),
 		TotalPallets:    totalQty,
 		TotalValue:      totalValue,
 		PredictionCount: predictionCount,
-		Items:           items,
+		Items:           merged,
+		BaselineSource:  source,
 		GeneratedAt:     now.Format(time.RFC3339Nano),
 	}, nil
 }

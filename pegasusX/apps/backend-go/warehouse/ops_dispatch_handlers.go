@@ -63,6 +63,11 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 			}
 			windowConstrained = preview.WindowConstrained
 			dispatchRows = allDispatchRows
+			var overrideMeta []map[string]any
+			dispatchRows, overrideMeta = s.applyZoneOverridesToDispatchRows(r.Context(), s.supplierID, dispatchRows)
+			if len(overrideMeta) > 0 {
+				_ = overrideMeta
+			}
 		}
 	} else if s.opsOrders != nil {
 		rows, err := s.opsOrders(r.Context(), whID, 200)

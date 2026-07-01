@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasus.design.RealtimeRefreshEffect
 import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.data.model.SupplierDashboard
+import com.pegasusx.supplier.data.model.SupplierMEIONetworkSummary
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
@@ -53,6 +54,7 @@ fun DashboardScreen(
     onOpenNotifications: () -> Unit = {},
 ) {
     var dashboard by remember { mutableStateOf<SupplierDashboard?>(null) }
+    var meiSummary by remember { mutableStateOf<SupplierMEIONetworkSummary?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -70,6 +72,7 @@ fun DashboardScreen(
                     runCatching {
                         ops.getActivity()
                         ops.getExceptions()
+                        ops.getMEIONetworkSummary().body()?.let { meiSummary = it }
                     }
                 } else if (!silent) {
                     error = "Failed to load (${resp.code()})"
@@ -160,6 +163,18 @@ fun DashboardScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
+                            }
+                        }
+                    }
+                    meiSummary?.let { mei ->
+                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                                Text("MEIO network", style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    "${mei.warehousesScanned} warehouses · ${mei.transferRecommendations} transfer recs · ${mei.insightsGenerated} insights",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                     }

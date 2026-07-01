@@ -414,3 +414,21 @@ type PreOrderEvent struct {
 	SupplierID string `json:"supplier_id"`
 	Status     string `json:"status,omitempty"`
 }
+
+// PlanningEvent covers PX90 planning-brain surfaces (MEIO, control tower, demand).
+type PlanningEvent struct {
+	BaseEvent
+	SupplierID   string  `json:"supplier_id"`
+	WarehouseID  string  `json:"warehouse_id,omitempty"`
+	FactoryID    string  `json:"factory_id,omitempty"`
+	InsightID    string  `json:"insight_id,omitempty"`
+	ProductID    string  `json:"product_id,omitempty"`
+	OverrideID   string  `json:"override_id,omitempty"`
+	Action       string  `json:"action,omitempty"`
+	Polygon      string  `json:"polygon_geojson,omitempty"`
+	TTLSeconds   int64   `json:"ttl_seconds,omitempty"`
+	BaselineQty  int64   `json:"baseline_qty,omitempty"`
+	Confidence   float64 `json:"confidence,omitempty"`
+	NetworkNodes int     `json:"network_nodes,omitempty"`
+	Transfers    int     `json:"transfer_recommendations,omitempty"`
+}

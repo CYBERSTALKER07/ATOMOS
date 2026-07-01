@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -81,8 +82,41 @@ func (a *Allocator) Allocate(ctx context.Context, events []*DemandEvent) error {
 
 	if len(mutations) > 0 {
 		_, err := a.spannerClient.Apply(ctx, mutations)
-		return err
+		if err != nil {
+			return err
+		}
 	}
+	return a.writeDemandBaselines(ctx, events)
+}
 
-	return nil
+func (a *Allocator) writeDemandBaselines(ctx context.Context, events []*DemandEvent) error {
+	if a == nil || a.spannerClient == nil || len(events) == 0 {
+		return nil
+	}
+	day := time.Now().UTC().Truncate(24 * time.Hour)
+	var mutations []*spanner.Mutation
+	for _, event := range events {
+		if event == nil || event.SupplierId == "" || event.ProductId == "" {
+			continue
+		}
+		warehouse, err := a.locator.FindNearestWarehouse(ctx, event.RetailerId, event.SupplierId)
+		if err != nil || warehouse == nil {
+			continue
+		}
+		mutations = append(mutations, spanner.InsertOrUpdateMap("DemandForecastBaseline", map[string]any{
+			"SupplierId":   event.SupplierId,
+			"ForecastDate": day,
+			"WarehouseId":  warehouse.WarehouseId,
+			"ProductId":    event.ProductId,
+			"BaselineQty":  event.Quantity,
+			"Confidence":   event.Confidence,
+			"Source":       "predictive_push",
+			"CreatedAt":    spanner.CommitTimestamp,
+		}))
+	}
+	if len(mutations) == 0 {
+		return nil
+	}
+	_, err := a.spannerClient.Apply(ctx, mutations)
+	return err
 }

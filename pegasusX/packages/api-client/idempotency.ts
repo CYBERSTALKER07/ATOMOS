@@ -238,6 +238,18 @@ export function supplierReplenishmentTriggerKey(supplierId: string): string {
   return `supplier-replenishment-trigger:${supplierId}`;
 }
 
+export function supplierControlTowerZoneOverrideKey(supplierId: string, action: string, polygonFingerprint: string): string {
+  return `supplier-control-tower-override:${supplierId}:${stableHash(`${action}:${polygonFingerprint}`)}`;
+}
+
+export function supplierPlanningScenarioKey(supplierId: string, factoryDowntimeHours: number, demandDeltaPct: number): string {
+  return `supplier-planning-scenario:${supplierId}:${factoryDowntimeHours}:${demandDeltaPct}`;
+}
+
+export function supplierGovernedAgentKey(supplierId: string, action: string, idempotencyKey: string): string {
+  return `supplier-planning-agent:${supplierId}:${action}:${stableHash(idempotencyKey)}`;
+}
+
 export function supplierBroadcastKey(
   scopeId: string,
   role: string,

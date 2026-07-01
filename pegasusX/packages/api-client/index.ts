@@ -73,6 +73,17 @@ import type {
   SupplierAnalyticsRevenueResponse,
   SupplierDemandSummaryResponse,
   SupplierDemandHistoryResponse,
+  SupplierMEIONetworkSummary,
+  SupplierReplenishmentPolicy,
+  ControlTowerZoneOverride,
+  ControlTowerZoneOverridesResponse,
+  ControlTowerZoneOverrideRequest,
+  PlanningScenarioInput,
+  PlanningScenarioResult,
+  PlanningSAndOPSnapshot,
+  SupplierKnowledgeGraph,
+  GovernedAgentInvocation,
+  GovernedAgentInvocationResponse,
   SupplierInventoryImportResult,
   SupplierImportApplyResponse,
   SupplierImportIngestResponse,
@@ -846,6 +857,53 @@ export class ApiClient {
 
   async triggerSupplierReplenishment(): Promise<SupplierReplenishmentTriggerResponse> {
     return this.request<SupplierReplenishmentTriggerResponse>("/v1/supplier/replenishment/trigger", "POST");
+  }
+
+  async getSupplierReplenishmentPolicies(): Promise<SupplierReplenishmentPolicy> {
+    return this.request<SupplierReplenishmentPolicy>("/v1/supplier/replenishment/policies", "GET");
+  }
+
+  async getSupplierMEIONetworkSummary(): Promise<SupplierMEIONetworkSummary> {
+    return this.request<SupplierMEIONetworkSummary>("/v1/supplier/meio/network-summary", "GET");
+  }
+
+  async listControlTowerZoneOverrides(): Promise<ControlTowerZoneOverridesResponse> {
+    return this.request<ControlTowerZoneOverridesResponse>("/v1/supplier/control-tower/zone-overrides", "GET");
+  }
+
+  async createControlTowerZoneOverride(
+    request: ControlTowerZoneOverrideRequest,
+    idempotencyKey: string,
+  ): Promise<ControlTowerZoneOverride> {
+    return this.request<ControlTowerZoneOverride>("/v1/supplier/control-tower/zone-overrides", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async runPlanningScenario(request: PlanningScenarioInput, idempotencyKey: string): Promise<PlanningScenarioResult> {
+    return this.request<PlanningScenarioResult>("/v1/supplier/planning/scenarios/run", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async getPlanningSAndOP(): Promise<PlanningSAndOPSnapshot> {
+    return this.request<PlanningSAndOPSnapshot>("/v1/supplier/planning/s-and-op", "GET");
+  }
+
+  async getSupplierKnowledgeGraph(): Promise<SupplierKnowledgeGraph> {
+    return this.request<SupplierKnowledgeGraph>("/v1/supplier/knowledge-graph", "GET");
+  }
+
+  async invokeGovernedPlanningAgent(
+    request: GovernedAgentInvocation,
+    idempotencyKey: string,
+  ): Promise<GovernedAgentInvocationResponse> {
+    return this.request<GovernedAgentInvocationResponse>("/v1/supplier/planning/agent/invoke", "POST", {
+      body: request,
+      idempotencyKey,
+    });
   }
 
   async getSupplierFleetOrders(): Promise<SupplierFleetOrderRow[]> {

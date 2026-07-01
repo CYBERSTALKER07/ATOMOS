@@ -181,6 +181,12 @@ interface SupplierApi {
     @GET("v1/supplier/fleet/live-map")
     suspend fun getFleetLiveMap(): Response<SupplierFleetLiveMapResponse>
 
+    @GET("v1/supplier/meio/network-summary")
+    suspend fun getMEIONetworkSummary(): Response<SupplierMEIONetworkSummary>
+
+    @GET("v1/supplier/control-tower/zone-overrides")
+    suspend fun getControlTowerZoneOverrides(): Response<ControlTowerZoneOverridesResponse>
+
     @GET("v1/catalog/products")
     suspend fun listCatalogProducts(): Response<List<CatalogProduct>>
 

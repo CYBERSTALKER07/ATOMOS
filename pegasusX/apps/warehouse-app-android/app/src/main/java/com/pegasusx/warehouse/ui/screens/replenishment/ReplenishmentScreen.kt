@@ -202,6 +202,9 @@ private fun InsightCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            insight.demandBreakdown?.let { breakdown ->
+                Text(formatDemandWhy(breakdown, insight.reasonCode), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Text(
                 "Days until stockout: ${insight.daysUntilStockout}",
                 style = MaterialTheme.typography.bodySmall,
@@ -215,4 +218,15 @@ private fun InsightCard(
             }
         }
     }
+}
+
+private fun formatDemandWhy(breakdown: kotlinx.serialization.json.JsonObject?, reasonCode: String?): String {
+    if (breakdown == null || breakdown.isEmpty()) {
+        return reasonCode?.replace('_', ' ') ?: "Threshold breach"
+    }
+    val parts = mutableListOf<String>()
+    breakdown["burn_rate_7d"]?.toString()?.trim('"')?.toDoubleOrNull()?.let { parts.add("Burn ${"%.1f".format(it)}/d") }
+    breakdown["days_cover"]?.toString()?.trim('"')?.toDoubleOrNull()?.let { parts.add("${"%.1f".format(it)}d cover") }
+    if (breakdown.containsKey("mei_network")) parts.add("MEIO network transfer")
+    return parts.joinToString(" · ").ifBlank { reasonCode?.replace('_', ' ') ?: "Demand signal" }
 }

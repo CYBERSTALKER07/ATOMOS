@@ -159,6 +159,12 @@ const (
 	EventPreOrderDateProposed         = "PRE_ORDER_DATE_PROPOSED"
 	EventPreOrderDateAccepted         = "PRE_ORDER_DATE_ACCEPTED"
 	EventPreOrderDateRejected         = "PRE_ORDER_DATE_REJECTED"
+
+	// @Sync(PlanningEvent)
+	EventReplenishmentAutoApproved    = "REPLENISHMENT_AUTO_APPROVED"
+	EventDispatchZoneOverride         = "DISPATCH_ZONE_OVERRIDE"
+	EventPlanningMEIORecommendation   = "planning.meio.recommendation.v1"
+	EventDemandBaselineUpdated        = "DEMAND_BASELINE_UPDATED"
 )
 
 // AggregateTypes used in OutboxEvents.AggregateType.
@@ -176,6 +182,7 @@ const (
 	AggregateSession          = "DeliverySession"
 	AggregatePromotion            = "Promotion"
 	AggregateRetailerPriceOverride = "RetailerPriceOverride"
+	AggregatePlanning              = "Planning"
 )
 
 func topicFromEnv(key string, fallback string) string {

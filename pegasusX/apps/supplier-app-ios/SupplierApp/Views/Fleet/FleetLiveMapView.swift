@@ -5,6 +5,7 @@ struct FleetLiveMapView: View {
     @Environment(SupplierRealtimeHub.self) private var realtimeHub
     @State private var routes: [SupplierFleetLiveRoute] = []
     @State private var exceptionCells: [ExceptionMapCell] = []
+    @State private var zoneOverrides: [ControlTowerZoneOverride] = []
     @State private var loading = true
     @State private var error: String?
     @State private var cameraPosition: MapCameraPosition = .region(
@@ -28,6 +29,20 @@ struct FleetLiveMapView: View {
                 )
             } else {
                 VStack(spacing: 0) {
+                if !zoneOverrides.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Active control-tower zones")
+                            .font(.subheadline.bold())
+                        ForEach(zoneOverrides.prefix(3)) { override in
+                            Text("\(override.action) · expires \(override.ttlExpiresAt.prefix(19))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(.ultraThinMaterial)
+                }
                 TimelineView(.animation) { timeline in
                     let drivers = animator.snapshot(now: timeline.date)
                     Map(position: $cameraPosition) {
@@ -119,6 +134,9 @@ struct FleetLiveMapView: View {
             animator.updateTargets(routes)
             if let map = try? await SupplierOperationsService.exceptionMap() {
                 exceptionCells = map.cells
+            }
+            if let overrides = try? await SupplierOperationsService.controlTowerZoneOverrides() {
+                zoneOverrides = overrides
             }
             fitCamera()
         } catch {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { BentoCard, BentoGrid } from "@/components/BentoGrid";
 import FleetLiveMapPanel from "@/components/FleetLiveMapPanel";
+import MeioNetworkPanel from "@/components/MeioNetworkPanel";
 import NetworkPulsePanel from "@/components/NetworkPulsePanel";
 import { PageChrome } from "@/components/PageChrome";
 import StatusBadge from "@/components/StatusBadge";
@@ -238,6 +239,10 @@ export default function DashboardPage() {
             <div className="h-4 w-full rounded-full overflow-hidden" style={{ background: "var(--desk-surface-raised)" }}>
               <div className="h-full transition-all duration-500" style={{ width: `${vuPct}%`, background: "var(--desk-accent)" }} />
             </div>
+          </BentoCard>
+
+          <BentoCard size="full" className="p-0 overflow-hidden min-h-[200px]">
+            <MeioNetworkPanel />
           </BentoCard>
 
           <BentoCard size="full" className="p-5">

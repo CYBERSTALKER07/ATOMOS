@@ -364,6 +364,20 @@ func (d *NotificationDispatcher) handleOptimizationEvent(ctx context.Context, pa
 	return nil
 }
 
+func (d *NotificationDispatcher) handlePlanningEvent(ctx context.Context, payload []byte, traceID string) error {
+	e, err := decodePartyEnvelope(payload)
+	if err != nil {
+		return err
+	}
+	if d.dropFanout(e.Type, traceID, e.dedupAggregateID()) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.supplierID(), payload)
+	d.broadcastWarehouse(ctx, e.warehouseID(), payload)
+	d.broadcastDriver(ctx, e.DriverID, payload)
+	return nil
+}
+
 func (d *NotificationDispatcher) handlePreOrderEvent(ctx context.Context, payload []byte, traceID string) error {
 	e, err := decodePartyEnvelope(payload)
 	if err != nil {

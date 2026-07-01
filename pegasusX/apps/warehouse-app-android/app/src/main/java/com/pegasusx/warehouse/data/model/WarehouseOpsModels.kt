@@ -2,6 +2,7 @@ package com.pegasusx.warehouse.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class EmergencyTransferRequest(
@@ -38,6 +39,7 @@ data class ReplenishmentInsight(
     val status: String = "",
     @SerialName("created_at") val createdAt: String = "",
     @SerialName("reason_code") val reasonCode: String? = null,
+    @SerialName("demand_breakdown") val demandBreakdown: JsonObject? = null,
 )
 
 @Serializable

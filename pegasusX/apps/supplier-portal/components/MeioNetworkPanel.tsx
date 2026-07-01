@@ -1,0 +1,81 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supplierFetch } from "@/lib/auth";
+
+type MEIOSummary = {
+  warehouses_scanned: number;
+  skus_analyzed: number;
+  insights_generated: number;
+  transfer_recommendations: number;
+  warehouse_balances: Array<{
+    warehouse_id: string;
+    critical_skus: number;
+    warning_skus: number;
+    avg_days_cover: number;
+  }>;
+};
+
+export default function MeioNetworkPanel() {
+  const [summary, setSummary] = useState<MEIOSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await supplierFetch("/v1/supplier/meio/network-summary");
+        if (!res.ok) {
+          throw new Error(`MEIO summary ${res.status}`);
+        }
+        const data = (await res.json()) as MEIOSummary;
+        if (!cancelled) setSummary(data);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "MEIO unavailable");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div className="p-5 flex flex-col gap-3 h-full">
+      <div>
+        <h2 className="md-typescale-title-medium" style={{ color: "var(--desk-text-secondary)" }}>
+          MEIO network
+        </h2>
+        <p className="md-typescale-body-small mt-1" style={{ color: "var(--desk-text-secondary)" }}>
+          Multi-echelon inventory optimization across warehouses.
+        </p>
+      </div>
+      {error ? (
+        <p className="md-typescale-body-small" style={{ color: "var(--desk-danger)" }}>
+          {error}
+        </p>
+      ) : summary ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Stat label="Warehouses" value={summary.warehouses_scanned} />
+          <Stat label="SKUs" value={summary.skus_analyzed} />
+          <Stat label="Insights" value={summary.insights_generated} />
+          <Stat label="Transfers" value={summary.transfer_recommendations} />
+        </div>
+      ) : (
+        <p className="md-typescale-body-small" style={{ color: "var(--desk-text-secondary)" }}>
+          Loading network scan…
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg p-3" style={{ background: "var(--desk-surface-raised)" }}>
+      <div className="md-typescale-label-medium" style={{ color: "var(--desk-text-secondary)" }}>
+        {label}
+      </div>
+      <div className="md-kpi-value text-xl">{value}</div>
+    </div>
+  );
+}

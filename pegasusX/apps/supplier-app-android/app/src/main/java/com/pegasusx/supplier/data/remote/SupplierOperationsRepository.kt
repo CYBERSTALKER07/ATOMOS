@@ -115,6 +115,11 @@ class SupplierOperationsRepository @Inject constructor(
 
     suspend fun getFleetLiveMap(): Response<SupplierFleetLiveMapResponse> = api.getFleetLiveMap()
 
+    suspend fun getMEIONetworkSummary(): Response<SupplierMEIONetworkSummary> = api.getMEIONetworkSummary()
+
+    suspend fun getControlTowerZoneOverrides(): Response<ControlTowerZoneOverridesResponse> =
+        api.getControlTowerZoneOverrides()
+
     suspend fun getExceptionMap(windowHours: Int = 24): Response<ExceptionMapResponse> =
         api.getExceptionMap(windowHours)
 

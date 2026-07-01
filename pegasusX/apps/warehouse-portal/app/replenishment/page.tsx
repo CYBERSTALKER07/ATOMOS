@@ -123,6 +123,7 @@ export default function ReplenishmentPage() {
               <thead>
                 <tr className="border-b border-(--border)">
                   <th className="px-4 py-3 text-left font-medium">Product</th>
+                  <th className="px-4 py-3 text-left font-medium">Why</th>
                   <th className="px-4 py-3 text-left font-medium">Urgency</th>
                   <th className="px-4 py-3 text-right font-medium">Stock</th>
                   <th className="px-4 py-3 text-right font-medium">Days Left</th>
@@ -143,6 +144,9 @@ export default function ReplenishmentPage() {
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-(--desk-text-secondary) max-w-[220px]">
+                      {formatDemandWhy(insight.demand_breakdown, insight.reason_code)}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`status-chip ${urgencyClass(insight.urgency)}`}>{insight.urgency}</span>
@@ -189,4 +193,22 @@ export default function ReplenishmentPage() {
       </PageChrome>
     </PageTransition>
   );
+}
+
+function formatDemandWhy(
+  breakdown: WarehouseReplenishmentInsight['demand_breakdown'],
+  reasonCode?: string,
+): string {
+  if (!breakdown || typeof breakdown !== 'object') {
+    return reasonCode?.replaceAll('_', ' ') ?? 'Threshold breach';
+  }
+  const parts: string[] = [];
+  const burn = breakdown.burn_rate_7d ?? breakdown.burn_rate;
+  if (typeof burn === 'number') parts.push(`Burn ${burn.toFixed(1)}/d`);
+  if (typeof breakdown.days_cover === 'number') parts.push(`${breakdown.days_cover.toFixed(1)}d cover`);
+  if (typeof breakdown.confidence === 'number') parts.push(`${Math.round(breakdown.confidence * 100)}% conf`);
+  if (breakdown.mei_network) parts.push('MEIO network transfer');
+  if (typeof breakdown.source_warehouse === 'string') parts.push(`from ${breakdown.source_warehouse.slice(0, 8)}…`);
+  if (parts.length === 0 && reasonCode) return reasonCode.replaceAll('_', ' ');
+  return parts.join(' · ') || 'Demand signal';
 }

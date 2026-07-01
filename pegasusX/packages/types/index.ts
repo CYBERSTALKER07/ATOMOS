@@ -529,6 +529,113 @@ export interface SupplierDemandSummaryResponse {
   prediction_count: number;
   items: SupplierDemandSummaryItem[];
   generated_at: string;
+  baseline_source?: "ai_recommendations" | "demand_forecast_baseline" | "mixed";
+}
+
+export interface SupplierMEIONetworkSummary {
+  supplier_id: string;
+  warehouses_scanned: number;
+  skus_analyzed: number;
+  insights_generated: number;
+  transfer_recommendations: number;
+  warehouse_balances: SupplierMEIOWarehouseNode[];
+  generated_at: string;
+}
+
+export interface SupplierMEIOWarehouseNode {
+  warehouse_id: WarehouseId;
+  sku_count: number;
+  critical_skus: number;
+  warning_skus: number;
+  total_stock: number;
+  avg_days_cover: number;
+}
+
+export interface SupplierReplenishmentPolicy {
+  supplier_id: string;
+  auto_approve_stable: boolean;
+  auto_approve_predictive_push: boolean;
+  max_daily_transfer_units: number;
+  min_confidence_score: number;
+}
+
+export interface ControlTowerZoneOverride {
+  override_id: string;
+  supplier_id: SupplierId;
+  warehouse_id?: WarehouseId;
+  action: "REROUTE" | "FREEZE_DISPATCH" | "PRIORITY_BOOST" | string;
+  polygon_geojson: string | Record<string, unknown>;
+  ttl_expires_at: string;
+  is_active: boolean;
+}
+
+export interface ControlTowerZoneOverridesResponse {
+  overrides: ControlTowerZoneOverride[];
+}
+
+export interface ControlTowerZoneOverrideRequest {
+  warehouse_id?: WarehouseId;
+  action: string;
+  polygon_geojson: Record<string, unknown>;
+  ttl_seconds?: number;
+}
+
+export interface PlanningScenarioInput {
+  factory_downtime_hours?: number;
+  demand_delta_pct?: number;
+  horizon_days?: number;
+}
+
+export interface PlanningScenarioResult {
+  scenario_id: string;
+  supplier_id: SupplierId;
+  sla_risk_pct: number;
+  fleet_volume_orders: number;
+  stockout_skus: string[];
+  capacity_breach: boolean;
+  cached_until: string;
+}
+
+export interface PlanningSAndOPSnapshot {
+  supplier_id: SupplierId;
+  horizon_days: number;
+  factory_capacity_units: number;
+  warehouse_inbound_cap_units: number;
+  warehouse_outbound_cap_units: number;
+  utilization_pct: number;
+  capacity_alert: boolean;
+}
+
+export interface KnowledgeGraphNode {
+  id: string;
+  type: string;
+  name?: string;
+}
+
+export interface KnowledgeGraphEdge {
+  from: string;
+  to: string;
+  relation: string;
+}
+
+export interface SupplierKnowledgeGraph {
+  supplier_id: SupplierId;
+  nodes: KnowledgeGraphNode[];
+  edges: KnowledgeGraphEdge[];
+}
+
+export interface GovernedAgentInvocation {
+  action: "approve_insight" | "open_supply_request" | "broadcast_template" | string;
+  idempotency_key: string;
+  supplier_id?: SupplierId;
+  target_id: string;
+  note?: string;
+}
+
+export interface GovernedAgentInvocationResponse {
+  status: string;
+  action: string;
+  idempotency_key: string;
 }
 
 export interface SupplierDemandHistoryPoint {
@@ -1724,7 +1831,11 @@ export type EventType =
   | "COMMAND_DISPATCHED"
   | "COMMAND_RECEIVED"
   | "COMMAND_SETTLED"
-  | "SYSTEM_APP_OUTDATED";
+  | "SYSTEM_APP_OUTDATED"
+  | "REPLENISHMENT_AUTO_APPROVED"
+  | "DISPATCH_ZONE_OVERRIDE"
+  | "planning.meio.recommendation.v1"
+  | "DEMAND_BASELINE_UPDATED";
 
 // ── Event payloads ──────────────────────────────────────────────────────────
 export interface SupplierCreated {
@@ -2384,6 +2495,7 @@ export interface WarehouseReplenishmentInsight {
   status: string;
   created_at: string;
   reason_code?: string;
+  demand_breakdown?: Record<string, unknown> | null;
 }
 
 export interface WarehouseReplenishmentInsightsResponse {

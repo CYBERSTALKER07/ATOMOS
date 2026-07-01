@@ -123,6 +123,14 @@ func (e *Engine) runCycle(ctx context.Context, supplierID string) (CycleResult, 
 		result.InsightsGenerated += insights
 		result.TransfersCreated += transfers
 	}
+	if supplierID != "" {
+		meiSummary, meiErr := e.RunMEIONetwork(ctx, supplierID)
+		if meiErr != nil {
+			e.Log.Warn("replenishment.mei_network_failed", "supplier_id", supplierID, "err", meiErr)
+		} else {
+			result.InsightsGenerated += meiSummary.InsightsGenerated
+		}
+	}
 	return result, nil
 }
 

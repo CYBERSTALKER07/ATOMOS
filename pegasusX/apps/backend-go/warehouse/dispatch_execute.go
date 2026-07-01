@@ -63,6 +63,7 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 	}
 	rows = filterLockedOrders(ctx, s, whID, rows)
 	rows = filterDispatchRowsByOrderIDs(rows, req.OrderIDs)
+	rows, _ = s.applyZoneOverridesToDispatchRows(ctx, sid, rows)
 	if len(rows) == 0 {
 		return out, nil
 	}

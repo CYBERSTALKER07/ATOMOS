@@ -167,6 +167,7 @@ func (s *Service) productDemandFromSpanner(ctx context.Context, warehouseID stri
 		return nil, err
 	}
 	insightByProduct := s.replenishmentInsightsByProduct(ctx, warehouseID)
+	baselineByProduct := s.demandBaselineByProduct(ctx, supplierID, warehouseID, forecastDays)
 	products, err := s.activeProductsBySupplier(ctx, supplierID)
 	if err != nil {
 		return nil, err
@@ -190,6 +191,12 @@ func (s *Service) productDemandFromSpanner(ctx context.Context, warehouseID stri
 				priority = "CRITICAL"
 			case "URGENT", "WARNING":
 				priority = "URGENT"
+			}
+		} else if baseline, ok := baselineByProduct[product.ProductID]; ok && baseline > 0 {
+			burn = float64(baseline) / float64(forecastDays)
+			recommended = baseline
+			if stock > 0 && burn > 0 {
+				daysOut = float64(stock) / burn
 			}
 		} else if stock > 0 {
 			burn = 1.0
@@ -220,7 +227,8 @@ func (s *Service) productDemandFromSpanner(ctx context.Context, warehouseID stri
 			Priority:          priority,
 			Unit:              "VU",
 			Sources: demandForecastSources{
-				BurnRate: burn,
+				BurnRate:     burn,
+				AIPrediction: baselineByProduct[product.ProductID],
 			},
 		})
 	}

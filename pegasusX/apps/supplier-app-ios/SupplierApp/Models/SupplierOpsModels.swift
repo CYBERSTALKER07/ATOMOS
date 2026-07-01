@@ -678,6 +678,47 @@ struct SupplierFleetLiveMapResponse: Decodable {
     }
 }
 
+struct SupplierMEIONetworkSummary: Decodable {
+    let supplierId: String
+    let warehousesScanned: Int
+    let skusAnalyzed: Int
+    let insightsGenerated: Int
+    let transferRecommendations: Int
+    let generatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case supplierId = "supplier_id"
+        case warehousesScanned = "warehouses_scanned"
+        case skusAnalyzed = "skus_analyzed"
+        case insightsGenerated = "insights_generated"
+        case transferRecommendations = "transfer_recommendations"
+        case generatedAt = "generated_at"
+    }
+}
+
+struct ControlTowerZoneOverride: Decodable, Identifiable {
+    var id: String { overrideId }
+    let overrideId: String
+    let supplierId: String
+    let warehouseId: String?
+    let action: String
+    let ttlExpiresAt: String
+    let isActive: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case overrideId = "override_id"
+        case supplierId = "supplier_id"
+        case warehouseId = "warehouse_id"
+        case action
+        case ttlExpiresAt = "ttl_expires_at"
+        case isActive = "is_active"
+    }
+}
+
+struct ControlTowerZoneOverridesResponse: Decodable {
+    let overrides: [ControlTowerZoneOverride]
+}
+
 struct SupplierWsSessionResponse: Decodable {
     let token: String
     let expiresAt: String

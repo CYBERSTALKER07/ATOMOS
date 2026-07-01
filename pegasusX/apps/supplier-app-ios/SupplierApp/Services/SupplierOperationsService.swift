@@ -192,6 +192,15 @@ enum SupplierOperationsService {
         try await APIClient.shared.get("v1/supplier/fleet/live-map")
     }
 
+    static func meiNetworkSummary() async throws -> SupplierMEIONetworkSummary {
+        try await APIClient.shared.get("v1/supplier/meio/network-summary")
+    }
+
+    static func controlTowerZoneOverrides() async throws -> [ControlTowerZoneOverride] {
+        let resp: ControlTowerZoneOverridesResponse = try await APIClient.shared.get("v1/supplier/control-tower/zone-overrides")
+        return resp.overrides
+    }
+
     static func wsSession() async throws -> SupplierWsSessionResponse {
         try await APIClient.shared.get("v1/supplier/ws-session")
     }

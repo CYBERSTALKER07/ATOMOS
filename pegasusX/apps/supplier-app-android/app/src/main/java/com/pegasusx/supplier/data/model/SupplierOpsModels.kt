@@ -730,3 +730,28 @@ data class ImportSessionCreateResponse(
     @SerialName("session_id") val sessionId: String = "",
     val status: String = "",
 )
+
+@Serializable
+data class SupplierMEIONetworkSummary(
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("warehouses_scanned") val warehousesScanned: Int = 0,
+    @SerialName("skus_analyzed") val skusAnalyzed: Int = 0,
+    @SerialName("insights_generated") val insightsGenerated: Int = 0,
+    @SerialName("transfer_recommendations") val transferRecommendations: Int = 0,
+    @SerialName("generated_at") val generatedAt: String = "",
+)
+
+@Serializable
+data class ControlTowerZoneOverride(
+    @SerialName("override_id") val overrideId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("warehouse_id") val warehouseId: String? = null,
+    val action: String = "",
+    @SerialName("ttl_expires_at") val ttlExpiresAt: String = "",
+    @SerialName("is_active") val isActive: Boolean = true,
+)
+
+@Serializable
+data class ControlTowerZoneOverridesResponse(
+    val overrides: List<ControlTowerZoneOverride> = emptyList(),
+)

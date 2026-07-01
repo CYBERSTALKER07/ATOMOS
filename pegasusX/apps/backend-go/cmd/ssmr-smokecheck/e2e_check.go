@@ -146,6 +146,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runReplenishColocateE2E(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("replenishment colocate: %w", err)
 	}
+	if err := runPlan90E2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("plan90: %w", err)
+	}
 	if err := ensureWarehouseDispatchFleet(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch fleet: %w", err)
 	}

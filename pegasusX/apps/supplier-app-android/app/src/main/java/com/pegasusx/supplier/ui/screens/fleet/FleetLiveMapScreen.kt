@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.SupplierFleetLiveRoute
 import com.pegasusx.supplier.data.model.ExceptionMapCell
+import com.pegasusx.supplier.data.model.ControlTowerZoneOverride
 import com.pegasusx.supplier.ui.components.FleetLiveMapLibre
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
@@ -31,6 +32,7 @@ fun FleetLiveMapScreen(
 ) {
     var routes by remember { mutableStateOf<List<SupplierFleetLiveRoute>>(emptyList()) }
     var exceptionCells by remember { mutableStateOf<List<ExceptionMapCell>>(emptyList()) }
+    var zoneOverrides by remember { mutableStateOf<List<ControlTowerZoneOverride>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -43,6 +45,8 @@ fun FleetLiveMapScreen(
             routes = if (resp.isSuccessful) resp.body()?.routes.orEmpty() else emptyList()
             val exc = ops.getExceptionMap()
             exceptionCells = if (exc.isSuccessful) exc.body()?.cells.orEmpty() else emptyList()
+            val overrides = ops.getControlTowerZoneOverrides()
+            zoneOverrides = if (overrides.isSuccessful) overrides.body()?.overrides.orEmpty() else emptyList()
             if (!resp.isSuccessful && !silent) error = "Failed (${resp.code()})"
         } catch (e: Exception) {
             if (!silent) error = e.message
@@ -112,6 +116,21 @@ fun FleetLiveMapScreen(
                             .fillMaxWidth()
                             .height(320.dp),
                     )
+                    if (zoneOverrides.isNotEmpty()) {
+                        Spacer(Modifier.height(PegasusSpacing.sm))
+                        ElevatedCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(PegasusSpacing.md)) {
+                                Text("Active control-tower zones", style = MaterialTheme.typography.titleSmall)
+                                zoneOverrides.take(3).forEach { override ->
+                                    Text(
+                                        "${override.action} · expires ${override.ttlExpiresAt.take(19)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
                     Spacer(Modifier.height(PegasusSpacing.sm))
                 }
                 if (exceptionCells.isNotEmpty()) {

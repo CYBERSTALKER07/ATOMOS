@@ -47,6 +47,7 @@ struct ReplenishmentInsight: Decodable, Identifiable {
     let status: String
     let createdAt: String
     let reasonCode: String?
+    let demandBreakdown: [String: AnyCodable]?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -62,6 +63,7 @@ struct ReplenishmentInsight: Decodable, Identifiable {
         case status
         case createdAt = "created_at"
         case reasonCode = "reason_code"
+        case demandBreakdown = "demand_breakdown"
     }
 }
 
