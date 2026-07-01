@@ -12,6 +12,31 @@ import {
   type MegaNavCategory,
   type MegaNavPromo,
 } from '../data/megaNavigation';
+import { 
+  Box, 
+  Layers, 
+  Zap, 
+  Settings, 
+  Activity, 
+  Network, 
+  Truck, 
+  Navigation, 
+  Shield 
+} from 'lucide-react';
+
+function getIconForFlow(flow?: string) {
+  switch (flow) {
+    case 'controlPlane': return <Layers className="w-6 h-6 text-blue-500" />;
+    case 'orderLifecycle': return <Activity className="w-6 h-6 text-blue-500" />;
+    case 'mutatingHandler': return <Settings className="w-6 h-6 text-blue-500" />;
+    case 'realtimePipeline': return <Zap className="w-6 h-6 text-blue-500" />;
+    case 'topologyMap': return <Network className="w-6 h-6 text-blue-500" />;
+    case 'dispatchBoard': return <Truck className="w-6 h-6 text-blue-500" />;
+    case 'fleetMap': return <Navigation className="w-6 h-6 text-blue-500" />;
+    case 'paymentFlow': return <Shield className="w-6 h-6 text-blue-500" />;
+    default: return <Box className="w-6 h-6 text-blue-500" />;
+  }
+}
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
@@ -22,41 +47,51 @@ type MegaMenuOverlayProps = {
   categories?: MegaNavCategory[];
 };
 
-function splitLinks(links: MegaNavCategory['links']) {
-  const mid = Math.ceil(links.length / 2);
-  return [links.slice(0, mid), links.slice(mid)] as const;
-}
-
 function NavLink({
   label,
   description,
   href,
   badge,
+  flow,
   onNavigate,
 }: {
   label: string;
   description?: string;
   href: string;
   badge?: 'NEW';
+  flow?: string;
   onNavigate: () => void;
 }) {
   const isExternal = href.startsWith('http');
 
   const content = (
-    <>
-      <span className="mega-menu__link-label">
-        {label}
-        {badge ? <span className="mega-menu__badge">{badge}</span> : null}
-      </span>
-      {description ? <span className="mega-menu__link-desc">{description}</span> : null}
-    </>
+    <div className="group flex flex-col justify-between p-5 min-h-[140px] bg-[#111] hover:bg-[#222] transition-colors relative w-full h-full" style={{ clipPath: 'polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%)' }}>
+      <div className="flex justify-between items-start">
+        {getIconForFlow(flow)}
+        {badge && (
+          <span className="text-[10px] font-bold px-2 py-0.5 bg-white text-black rounded-sm tracking-wider">
+            {badge}
+          </span>
+        )}
+      </div>
+      <div className="mt-6">
+        <div className="text-white font-medium text-sm group-hover:text-blue-400 transition-colors">
+          {label}
+        </div>
+        {description && (
+          <p className="text-xs text-gray-400 line-clamp-2 mt-1">
+            {description}
+          </p>
+        )}
+      </div>
+    </div>
   );
 
   if (isExternal) {
     return (
       <a
         href={href}
-        className="mega-menu__link"
+        className="block w-full h-full"
         target="_blank"
         rel="noreferrer noopener"
         onClick={onNavigate}
@@ -67,7 +102,7 @@ function NavLink({
   }
 
   return (
-    <Link href={href} className="mega-menu__link" onClick={onNavigate} prefetch={false}>
+    <Link href={href} className="block w-full h-full" onClick={onNavigate} prefetch={false}>
       {content}
     </Link>
   );
@@ -124,7 +159,6 @@ export default function MegaMenuOverlay({
 
   const activeCategory = categories.find((c) => c.id === activeId) ?? categories[0];
   const promo = activeCategory?.promo ?? DEFAULT_MEGA_PROMO;
-  const [col1, col2] = splitLinks(activeCategory?.links ?? []);
 
   const handleNavigate = useCallback(() => {
     onClose();
@@ -303,30 +337,23 @@ export default function MegaMenuOverlay({
           </ul>
 
           <div ref={panelRef} className="mega-menu__panels" role="tabpanel">
-            <ul className="mega-menu__link-grid mega-menu__link-grid--col1">
-              {col1.map((link) => (
-                <li key={`${activeId}-a-${link.label}`} className="mega-menu__link-item">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full auto-rows-fr h-fit max-h-[100%] overflow-y-auto pb-8 pr-4">
+              {activeCategory?.links.map((link) => (
+                <div key={`${activeId}-${link.label}`} className="h-full">
                   <NavLink {...link} onNavigate={handleNavigate} />
-                </li>
+                </div>
               ))}
-            </ul>
-            <ul className="mega-menu__link-grid mega-menu__link-grid--col2">
-              {col2.map((link) => (
-                <li key={`${activeId}-b-${link.label}`} className="mega-menu__link-item">
-                  <NavLink {...link} onNavigate={handleNavigate} />
-                </li>
-              ))}
-              <li className="mega-menu__link-item mega-menu__view-all-row">
+              <div className="h-full flex items-center justify-center p-5 min-h-[140px] border border-white/10 rounded-lg hover:bg-white/5 transition-colors">
                 <Link
                   href={activeCategory?.viewAllHref ?? '/projects'}
-                  className="mega-menu__view-all"
+                  className="text-white font-bold tracking-widest uppercase text-sm"
                   onClick={handleNavigate}
                   prefetch={false}
                 >
                   {activeCategory?.viewAllLabel ?? 'VIEW ALL'} &gt;
                 </Link>
-              </li>
-            </ul>
+              </div>
+            </div>
           </div>
         </div>
 
