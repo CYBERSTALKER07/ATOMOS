@@ -176,24 +176,17 @@ private fun InsightCard(
                     if (insight.reasonCode == "PREDICTIVE_PUSH") {
                         Spacer(Modifier.width(PegasusSpacing.xs))
                         Surface(
-                            color = Color(0xFFE9D5FF),
+                            color = MaterialTheme.colorScheme.onSurface,
                             shape = MaterialTheme.shapes.small
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.AutoAwesome,
-                                    contentDescription = "AI Push",
-                                    tint = Color(0xFF6B21A8),
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Spacer(Modifier.width(2.dp))
                                 Text(
                                     "AI PUSH",
                                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                    color = Color(0xFF6B21A8)
+                                    color = MaterialTheme.colorScheme.surface
                                 )
                             }
                         }

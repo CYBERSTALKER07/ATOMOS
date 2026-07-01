@@ -138,8 +138,8 @@ export default function ReplenishmentPage() {
                       <div className="flex items-center gap-2">
                         <span>{insight.product_name}</span>
                         {insight.reason_code === 'PREDICTIVE_PUSH' && (
-                          <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-purple-600 bg-purple-100 px-1.5 py-0.5 rounded-full dark:bg-purple-900/30 dark:text-purple-400">
-                            <Icon name="sparkles" size={12} /> AI Push
+                          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-(--desk-surface) bg-(--desk-text-primary) px-1.5 py-0.5 rounded-full">
+                            AI Push
                           </span>
                         )}
                       </div>

@@ -126,8 +126,8 @@ fun WarehouseStatusChip(
     val colors = when {
         normalized in setOf("PROACTIVE") ->
             AssistChipDefaults.assistChipColors(
-                disabledContainerColor = Color(0xFFE9D5FF),
-                disabledLabelColor = Color(0xFF6B21A8),
+                disabledContainerColor = MaterialTheme.colorScheme.onSurface,
+                disabledLabelColor = MaterialTheme.colorScheme.surface,
             )
         normalized in setOf("CANCELLED", "FAILED", "ERROR", "REJECTED", "UNAVAILABLE", "CRITICAL") ->
             AssistChipDefaults.assistChipColors(

@@ -29,12 +29,12 @@ struct ReplenishmentView: View {
                             Text(insight.productName)
                                 .font(.headline)
                             if insight.reasonCode == "PREDICTIVE_PUSH" {
-                                Label("AI PUSH", systemImage: "sparkles")
+                                Text("AI PUSH")
                                     .font(.system(size: 10, weight: .bold))
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
-                                    .background(Color.purple.opacity(0.15))
-                                    .foregroundColor(.purple)
+                                    .background(Color.primary)
+                                    .foregroundColor(Color(UIColor.systemBackground))
                                     .clipShape(Capsule())
                             }
                         }
@@ -103,7 +103,7 @@ struct ReplenishmentView: View {
 
     private func urgencyTint(_ urgency: String) -> Color {
         switch urgency.uppercased() {
-        case "PROACTIVE": return .purple
+        case "PROACTIVE": return .primary
         case "CRITICAL": return LabTheme.destructive
         case "URGENT": return LabTheme.warning
         default: return LabTheme.secondaryLabel
