@@ -30,7 +30,7 @@ export default function StaggeredMenu({
   socialItems = [],
   displaySocials = true,
   displayItemNumbering = true,
-  fontFamily = 'var(--font-geist-sans), sans-serif',
+  fontFamily = 'var(--font-body), sans-serif',
 }: StaggeredMenuProps) {
   const [shouldRender, setShouldRender] = useState(isOpen);
 

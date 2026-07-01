@@ -1,17 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://pegasus.io'),
@@ -100,9 +89,7 @@ export default function RootLayout({
         <link rel="canonical" href="https://pegasus.io" />
         <meta name="theme-color" content="#000000" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased relative bg-black`}
-      >
+      <body className="antialiased relative bg-black font-sans">
         <a
           href="#main-content"
           className="fixed top-4 left-4 z-[10001] bg-white text-black px-4 py-2 rounded-md transition-transform -translate-y-20 focus:translate-y-0 font-light border-2 border-black"

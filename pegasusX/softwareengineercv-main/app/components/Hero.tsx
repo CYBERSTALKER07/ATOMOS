@@ -1,13 +1,18 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Image from 'next/image';
 import { LaserFlowOptimized } from './Optimized3D';
 import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
 import ChamferButton from './ChamferButton';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
+
+const HERO_VIDEO_LOOP_END = 5;
+
+gsap.registerPlugin(ScrollTrigger);
 
 export default function Hero() {
   const { isMobile } = useIsMobile();
@@ -20,18 +25,60 @@ export default function Hero() {
   const ctaRef = useRef<HTMLDivElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
 
-  const handlePointerEnter = useCallback(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {});
-    }
-  }, []);
+  useEffect(() => {
+    const section = sectionRef.current;
+    const video = videoRef.current;
+    if (!section || !video || prefersReducedMotion) return;
 
-  const handlePointerLeave = useCallback(() => {
-    if (videoRef.current) {
-      videoRef.current.pause();
-    }
-  }, []);
+    let loopEnd = HERO_VIDEO_LOOP_END;
+
+    const syncLoopEnd = () => {
+      if (video.duration && Number.isFinite(video.duration)) {
+        loopEnd = Math.min(HERO_VIDEO_LOOP_END, video.duration);
+      }
+    };
+
+    const restartVideo = () => {
+      video.currentTime = 0;
+      void video.play().catch(() => {});
+    };
+
+    const onTimeUpdate = () => {
+      if (video.currentTime >= loopEnd) {
+        video.pause();
+        video.currentTime = loopEnd;
+      }
+    };
+
+    const onWheel = () => {
+      if (video.paused && video.currentTime >= loopEnd - 0.05) {
+        restartVideo();
+      }
+    };
+
+    syncLoopEnd();
+    video.addEventListener('loadedmetadata', syncLoopEnd);
+    video.addEventListener('timeupdate', onTimeUpdate);
+    section.addEventListener('wheel', onWheel, { passive: true });
+    video.muted = true;
+    restartVideo();
+
+    const scrollTrigger = ScrollTrigger.create({
+      trigger: section,
+      start: 'top top',
+      end: 'bottom top',
+      onEnterBack: restartVideo,
+    });
+
+    return () => {
+      scrollTrigger.kill();
+      video.removeEventListener('loadedmetadata', syncLoopEnd);
+      video.removeEventListener('timeupdate', onTimeUpdate);
+      section.removeEventListener('wheel', onWheel);
+    };
+  }, [prefersReducedMotion]);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -86,7 +133,7 @@ export default function Hero() {
   };
 
   return (
-    <section id="hero" className="min-h-screen relative flex items-center bg-black overflow-hidden pt-[4.5rem] md:pt-20">
+    <section ref={sectionRef} id="hero" className="min-h-screen relative flex items-center bg-black overflow-hidden pt-[4.5rem] md:pt-20">
       {/* Corner Loops - Hidden on mobile */}
       {!isMobile && (
         <>
@@ -132,7 +179,7 @@ export default function Hero() {
             <div>
               <h1
                 ref={titleRef}
-                className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light mb-4 text-white"
+                className="font-title text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light mb-4 text-white"
               >
                 Pegasus
               </h1>
@@ -178,17 +225,13 @@ export default function Hero() {
           <div ref={visualRef} className="relative order-1 lg:order-2">
             <div className="relative h-[400px] md:h-[500px] lg:h-[600px]  overflow-hidden shadow-2xl bg-black rounded-tl-[200px]  rounded-br-[100px] border-none">
               {/* Video replacing Atom image and LaserFlow */}
-              <div 
-                className="absolute inset-0"
-                onPointerEnter={handlePointerEnter}
-                onPointerLeave={handlePointerLeave}
-              >
+              <div className="absolute inset-0">
                 <video
                   ref={videoRef}
                   src="https://www.dropbox.com/scl/fi/ngrk0vg3lslfx7ca9d69y/DURATION_Exactly_seconds.mp4?rlkey=kdv4tlmsg67jhzzn1ucw642lh&st=eaw7cpxw&raw=1"
-                  loop
                   muted
                   playsInline
+                  preload="auto"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -216,7 +259,7 @@ export default function Hero() {
         <div className="flex flex-col items-center gap-2 text-white group-hover:text-[#FBFF63] transition-colors duration-300">
           <span className="text-sm font-light tracking-widest">SCROLL</span>
           <svg
-            className="w-6 h-6 animate-bounce"
+            className="w-6 h-6"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
