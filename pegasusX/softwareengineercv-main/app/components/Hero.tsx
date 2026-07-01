@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { gsap } from 'gsap';
-import Image from 'next/image';
-import { LaserFlowOptimized } from './Optimized3D';
 import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
 import ChamferButton from './ChamferButton';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
+
+const HERO_VIDEO_PAUSE_AT = 4;
 
 export default function Hero() {
   const { isMobile } = useIsMobile();
@@ -20,16 +20,58 @@ export default function Hero() {
   const ctaRef = useRef<HTMLDivElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const introFinishedRef = useRef(false);
 
-  const handlePointerEnter = useCallback(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {});
+  const clampAndPauseAtMark = useCallback((video: HTMLVideoElement) => {
+    if (video.currentTime >= HERO_VIDEO_PAUSE_AT) {
+      video.pause();
+      video.currentTime = HERO_VIDEO_PAUSE_AT;
+      introFinishedRef.current = true;
     }
   }, []);
 
+  const playIntro = useCallback(async (video: HTMLVideoElement) => {
+    introFinishedRef.current = false;
+    video.currentTime = 0;
+    try {
+      await video.play();
+    } catch {
+      video.pause();
+      video.currentTime = 0;
+    }
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const onTimeUpdate = () => clampAndPauseAtMark(video);
+
+    if (prefersReducedMotion) {
+      video.pause();
+      video.currentTime = 0;
+      return;
+    }
+
+    video.muted = true;
+    void playIntro(video);
+    video.addEventListener('timeupdate', onTimeUpdate);
+
+    return () => video.removeEventListener('timeupdate', onTimeUpdate);
+  }, [prefersReducedMotion, clampAndPauseAtMark, playIntro]);
+
+  const handlePointerEnter = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || prefersReducedMotion) return;
+    void playIntro(video);
+  }, [prefersReducedMotion, playIntro]);
+
   const handlePointerLeave = useCallback(() => {
-    if (videoRef.current) {
-      videoRef.current.pause();
+    const video = videoRef.current;
+    if (!video) return;
+    video.pause();
+    if (introFinishedRef.current || video.currentTime >= HERO_VIDEO_PAUSE_AT) {
+      video.currentTime = HERO_VIDEO_PAUSE_AT;
     }
   }, []);
 
@@ -186,10 +228,11 @@ export default function Hero() {
                 <video
                   ref={videoRef}
                   src="https://www.dropbox.com/scl/fi/ngrk0vg3lslfx7ca9d69y/DURATION_Exactly_seconds.mp4?rlkey=kdv4tlmsg67jhzzn1ucw642lh&st=eaw7cpxw&raw=1"
-                  loop
                   muted
                   playsInline
-                  className="w-full h-full object-cover"
+                  preload="metadata"
+                  poster="/electric_semi_truck_tesla_with_trailer_rigged_362-1.jpg"
+                  className="h-full w-full object-cover"
                 />
               </div>
 

@@ -2,6 +2,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+:root {
+  --font-title: "Avenir Next", "Avenir Next LT Pro", Avenir, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+h1,
+h2,
+h3,
+.font-title {
+  font-family: var(--font-title);
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
 /* Glitch Animation Keyframes */
 @keyframes glitch {
   0% { clip-path: inset(20% 0 50% 0); }
@@ -122,6 +135,7 @@
 }
 
 .editorial-card__title {
+  font-family: var(--font-title);
   font-size: clamp(1.35rem, 2.2vw, 2rem);
   font-weight: 700;
   line-height: 1.15;
