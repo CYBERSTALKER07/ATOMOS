@@ -50,14 +50,14 @@ export default function SmartDispatchArcade() {
         <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12 max-w-6xl mx-auto">
           <div className="border border-white/10 p-2 md:p-4 bg-[#111] hover:bg-[#1a1a1a] transition-colors rounded-none">
             <img 
-              src="/20260406_0048_Image Generation_remix_01knfjzxcsfwk9h7ty1b7awjkm.png" 
+              src="/Gemini_Generated_Image_un3te4un3te4un3t.png" 
               alt="Smart Dispatch Preview 1" 
               className="w-full h-auto object-cover border border-white/10"
             />
           </div>
           <div className="border border-white/10 p-2 md:p-4 bg-[#111] hover:bg-[#1a1a1a] transition-colors rounded-none">
             <img 
-              src="/20260406_0048_Image Generation_remix_01knfjzxcsfwk9h7ty1b7awjkm.png" 
+              src="/Gemini_Generated_Image_un3te4un3te4un3t.png" 
               alt="Smart Dispatch Preview 2" 
               className="w-full h-auto object-cover border border-white/10"
             />

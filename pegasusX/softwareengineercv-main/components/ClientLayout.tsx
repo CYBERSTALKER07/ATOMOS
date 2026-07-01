@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SplashScreen from './SplashScreen';
 import InstallPWA from './InstallPWA';
 
@@ -9,7 +9,15 @@ interface ClientLayoutProps {
 }
 
 const ClientLayout: React.FC<ClientLayoutProps> = ({ children }) => {
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
+
+  useEffect(() => {
+    const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
+    if (!hasSeenSplash) {
+      setShowSplash(true);
+      sessionStorage.setItem('hasSeenSplash', 'true');
+    }
+  }, []);
 
   return (
     <>

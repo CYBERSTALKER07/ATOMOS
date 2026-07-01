@@ -1,6 +1,8 @@
 export interface AccordionUseCase {
   title: string;
   href: string;
+  slug?: string;
+  image?: string;
 }
 
 export interface AccordionSolution {
@@ -14,82 +16,134 @@ export interface AccordionSolution {
 
 export const SOLUTIONS_ACCORDION_DATA: AccordionSolution[] = [
   {
-    id: 'integrated-business-planning',
+    id: 'supplier',
     numberLabel: '[1]',
-    title: 'Integrated Business Planning',
+    title: 'Supplier',
     overview:
-      'Connect finance, marketing, sales, and supply chain data on a single, live online platform to mitigate risks and capitalize on opportunities.',
-    solutionHref: '/solutions/dispatch-the-right-load',
+      'Collaborate seamlessly with your suppliers. Manage orders, predict demand, and maintain total control over your supply network.',
+    solutionHref: '/roles/supplier',
     useCases: [
-      { title: 'Annual Operating Plan (AOP) & Budgeting', href: '/solutions/dispatch-the-right-load' },
-      { title: 'Digital IBP', href: '/solutions/dispatch-the-right-load' },
-      { title: 'Long Range Planning (LRP)', href: '/solutions/dispatch-the-right-load' },
-      { title: 'Sales & Operations Planning (S&OP)', href: '/solutions/dispatch-the-right-load' },
+      { 
+        title: 'Supplier Control Panel', 
+        href: '/solutions/supplier-control-panel',
+        slug: 'supplier-control-panel',
+        image: '/Gemini_Generated_Image_un3te4un3te4un3t.png'
+      },
+      { 
+        title: 'Supplier Collaboration & Order Vetting', 
+        href: '/solutions/supplier-collaboration',
+        slug: 'supplier-collaboration'
+      },
+      { 
+        title: 'AI/ML Demand & Recommendations', 
+        href: '/solutions/ai-ml-demand',
+        slug: 'ai-ml-demand'
+      },
     ],
   },
   {
-    id: 'demand-planning',
+    id: 'warehouse',
     numberLabel: '[2]',
-    title: 'Demand Planning',
+    title: 'Warehouse',
     overview:
-      'Improve forecast accuracy by capturing real-time market signals and executing agile, responsive demand plans.',
-    solutionHref: '/solutions/warehouse-operations',
+      'Optimize your dispatch processes and manage inventory efficiently across multiple echelons.',
+    solutionHref: '/roles/warehouse',
     useCases: [
-      { title: 'AI/ML Forecasting', href: '/solutions/warehouse-operations' },
-      { title: 'New Product Introduction (NPI) Planning', href: '/solutions/warehouse-operations' },
-      { title: 'Demand Sensing', href: '/solutions/warehouse-operations' },
-      { title: 'Promotions Planning', href: '/solutions/warehouse-operations' },
+      { 
+        title: 'Smart Dispatch Assist', 
+        href: '/solutions/smart-dispatch-assist',
+        slug: 'smart-dispatch-assist'
+      },
+      { 
+        title: 'Multi-Echelon Inventory Optimization', 
+        href: '/solutions/multi-echelon-inventory',
+        slug: 'multi-echelon-inventory'
+      },
     ],
   },
   {
-    id: 'supply-chain-planning',
+    id: 'retailer',
     numberLabel: '[3]',
-    title: 'Supply Chain Planning',
+    title: 'Retailer',
     overview:
-      'Model your end-to-end network digitally to evaluate scenarios, constrain plans, and execute with absolute clarity.',
-    solutionHref: '/solutions/visual-dispatch-engine',
+      'Gain visibility into live tracking and plan your merchandise assortment for maximum retail efficiency.',
+    solutionHref: '/roles/retailer',
     useCases: [
-      { title: 'Supply Planning', href: '/solutions/visual-dispatch-engine' },
-      { title: 'Production Planning & Scheduling', href: '/solutions/factory-loading' },
-      { title: 'Inventory Optimization', href: '/solutions/network-coordination' },
+      { 
+        title: 'Control Tower & Live Tracking', 
+        href: '/solutions/control-tower',
+        slug: 'control-tower'
+      },
+      { 
+        title: 'Merchandise & Assortment Planning', 
+        href: '/solutions/merchandise-planning',
+        slug: 'merchandise-planning'
+      },
     ],
   },
   {
-    id: 'supplier-collaboration',
+    id: 'finance-treasury',
     numberLabel: '[4]',
-    title: 'Supplier Collaboration and Risk Management',
+    title: 'Finance & Treasury',
     overview:
-      'Break down silos with your suppliers. Share live capacity data, commit collaboratively, and handle exceptions in real time.',
-    solutionHref: '/platform/supplier-control-plane',
+      'Reconcile payments, analyze post-game logistics data, and align sales with operational planning.',
+    solutionHref: '/roles/finance',
     useCases: [
-      { title: 'Supplier Control Tower', href: '/platform/supplier-control-plane' },
-      { title: 'Purchase Order Collaboration', href: '/platform/supplier-control-plane' },
-      { title: 'Multi-Tier Risk Management', href: '/platform/supplier-control-plane' },
+      { 
+        title: 'Post-Game Analysis & Reconciliation', 
+        href: '/solutions/post-game-analysis',
+        slug: 'post-game-analysis'
+      },
+      { 
+        title: 'Sales & Operations Planning (S&OP)', 
+        href: '/solutions/sales-operations-planning',
+        slug: 'sales-operations-planning'
+      },
     ],
   },
   {
-    id: 'merchandise-planning',
+    id: 'driver',
     numberLabel: '[5]',
-    title: 'Merchandise Planning',
+    title: 'Driver',
     overview:
-      'Unify assortment, financial planning, and allocation to ensure the right products hit the right locations.',
-    solutionHref: '/solutions/fleet-visibility',
+      'Empower drivers with execution apps for seamless navigation, task completion, and proof-of-delivery.',
+    solutionHref: '/roles/driver',
     useCases: [
-      { title: 'Merchandise Financial Planning', href: '/solutions/fleet-visibility' },
-      { title: 'Assortment Planning', href: '/solutions/fleet-visibility' },
-      { title: 'Allocation & Replenishment', href: '/solutions/fleet-visibility' },
+      { 
+        title: 'Driver Execution App', 
+        href: '/solutions/driver-execution-app',
+        slug: 'driver-execution-app'
+      },
     ],
   },
   {
-    id: 'revenue-growth',
+    id: 'factory',
     numberLabel: '[6]',
-    title: 'Revenue Growth Management',
+    title: 'Factory',
     overview:
-      'Align commercial strategies across channels, ensuring pricing and promotions deliver optimal P&L results.',
-    solutionHref: '/solutions/payment-confidence',
+      'Coordinate factory loading and streamline supply requests directly tied to transport availability.',
+    solutionHref: '/roles/factory',
     useCases: [
-      { title: 'Trade Promotion Management', href: '/solutions/payment-confidence' },
-      { title: 'Pricing Optimization', href: '/solutions/treasury-integrity' },
+      { 
+        title: 'Factory Loading & Supply Requests', 
+        href: '/solutions/factory-loading',
+        slug: 'factory-loading'
+      },
+    ],
+  },
+  {
+    id: 'payload-gate',
+    numberLabel: '[7]',
+    title: 'Payload / Gate',
+    overview:
+      'Secure facility entries and exits with returns handling and seamless barcode gate control.',
+    solutionHref: '/roles/gate',
+    useCases: [
+      { 
+        title: 'Returns & Barcode Gate Control', 
+        href: '/solutions/returns-barcode-gate',
+        slug: 'returns-barcode-gate'
+      },
     ],
   },
 ];

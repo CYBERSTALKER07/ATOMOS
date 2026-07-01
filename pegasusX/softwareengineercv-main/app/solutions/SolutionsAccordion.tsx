@@ -139,9 +139,9 @@ export default function SolutionsAccordion() {
             Our Solutions
           </h1>
           <p className="text-lg md:text-xl leading-relaxed text-white/70 max-w-3xl">
-            o9's Digital Brain platform is helping global companies across industries transform supply chain, 
-            revenue, P&L planning, and decision-making for digital age volatility and complexity. Find more 
-            information about the various solutions that our platform is providing.
+            PegasusX is helping global supply chains transform their logistics, 
+            warehouse management, and operational decision-making for digital age volatility and complexity. Find more 
+            information about the various solutions that our platform provides across every key role.
           </p>
         </div>
 
