@@ -320,7 +320,15 @@ void main(){
   }
 
   vec3 color = uColor;
-  fragColor = vec4(color, M);
+
+  // sRGB gamma correction - convert linear to sRGB for accurate color output
+  vec3 srgbColor = mix(
+    color * 12.92,
+    1.055 * pow(color, vec3(1.0 / 2.4)) - 0.055,
+    step(0.0031308, color)
+  );
+
+  fragColor = vec4(srgbColor, M);
 }
 `;
 
@@ -479,9 +487,9 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
         fragmentShader: FRAGMENT_SRC,
         uniforms,
         transparent: true,
-        glslVersion: THREE.GLSL3,
         depthTest: false,
-        depthWrite: false
+        depthWrite: false,
+        glslVersion: THREE.GLSL3
       });
       const quadGeom = new THREE.PlaneGeometry(2, 2);
       const quad = new THREE.Mesh(quadGeom, material);

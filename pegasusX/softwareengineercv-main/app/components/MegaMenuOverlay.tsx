@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { ArrowRight, ChevronRight, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import PixelBlast from './PixelBlast';
+import LetterGlitch from './LetterGlitch';
 import { gsap } from 'gsap';
 import { useReducedMotion } from '../hooks/useDevice';
 import {
@@ -21,20 +26,25 @@ import {
   Network, 
   Truck, 
   Navigation, 
-  Shield 
+  Shield,
+  Database,
+  DollarSign
 } from 'lucide-react';
 
 function getIconForFlow(flow?: string) {
+  const cls = "w-6 h-6 text-white group-hover:text-black transition-colors duration-300";
   switch (flow) {
-    case 'controlPlane': return <Layers className="w-6 h-6 text-blue-500" />;
-    case 'orderLifecycle': return <Activity className="w-6 h-6 text-blue-500" />;
-    case 'mutatingHandler': return <Settings className="w-6 h-6 text-blue-500" />;
-    case 'realtimePipeline': return <Zap className="w-6 h-6 text-blue-500" />;
-    case 'topologyMap': return <Network className="w-6 h-6 text-blue-500" />;
-    case 'dispatchBoard': return <Truck className="w-6 h-6 text-blue-500" />;
-    case 'fleetMap': return <Navigation className="w-6 h-6 text-blue-500" />;
-    case 'paymentFlow': return <Shield className="w-6 h-6 text-blue-500" />;
-    default: return <Box className="w-6 h-6 text-blue-500" />;
+    case 'controlPlane': return <Layers className={cls} />;
+    case 'orderLifecycle': return <Activity className={cls} />;
+    case 'mutatingHandler': return <Settings className={cls} />;
+    case 'realtimePipeline': return <Zap className={cls} />;
+    case 'topologyMap': return <Network className={cls} />;
+    case 'dispatchBoard': return <Truck className={cls} />;
+    case 'fleetMap': return <Navigation className={cls} />;
+    case 'paymentFlow': return <Shield className={cls} />;
+    case 'dataPlane': return <Database className={cls} />;
+    case 'financials': return <DollarSign className={cls} />;
+    default: return <Box className={cls} />;
   }
 }
 
@@ -65,21 +75,22 @@ function NavLink({
   const isExternal = href.startsWith('http');
 
   const content = (
-    <div className="group flex flex-col justify-between p-5 min-h-[140px] bg-[#111] hover:bg-[#222] transition-colors relative w-full h-full" style={{ clipPath: 'polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%)' }}>
-      <div className="flex justify-between items-start">
+    <div className="group flex flex-col justify-between p-5 min-h-[140px] bg-[#111] relative w-full h-full overflow-hidden" style={{ clipPath: 'polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%)' }}>
+      <div className="absolute inset-0 w-full h-full bg-white origin-left transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] z-0" />
+      <div className="flex justify-between items-start relative z-10">
         {getIconForFlow(flow)}
         {badge && (
-          <span className="text-[10px] font-bold px-2 py-0.5 bg-white text-black rounded-sm tracking-wider">
+          <span className="text-[10px] font-bold px-2 py-0.5 bg-white text-black group-hover:bg-black group-hover:text-white transition-colors duration-300 rounded-sm tracking-wider">
             {badge}
           </span>
         )}
       </div>
-      <div className="mt-6">
-        <div className="text-white font-medium text-sm group-hover:text-blue-400 transition-colors">
+      <div className="mt-6 relative z-10">
+        <div className="text-white group-hover:text-black font-medium text-sm transition-colors duration-300">
           {label}
         </div>
         {description && (
-          <p className="text-xs text-gray-400 line-clamp-2 mt-1">
+          <p className="text-xs text-gray-400 group-hover:text-gray-800 line-clamp-2 mt-1 transition-colors duration-300">
             {description}
           </p>
         )}
@@ -292,24 +303,28 @@ export default function MegaMenuOverlay({
       aria-label="Site navigation"
       aria-hidden={!open}
     >
-      <div className="mega-menu__inner">
-        <header className="mega-menu__header">
-          <span className="mega-menu__label">[NAVIGATION]</span>
-          <div className="flex items-center gap-4">
-            <span className="mega-menu__search-placeholder" aria-hidden="true" title="Search coming soon">
-              ⌕
-            </span>
-            <button
-              ref={closeBtnRef}
-              type="button"
-              className="mega-menu__close"
-              onClick={onClose}
-              aria-label="Close navigation menu"
-            >
-              Close
-            </button>
-          </div>
-        </header>
+      <div className="absolute inset-0 pointer-events-auto z-0 mix-blend-screen opacity-50">
+        <PixelBlast
+          variant="circle"
+          pixelSize={4}
+          color="#ffffff"
+          patternScale={2}
+          patternDensity={1}
+          pixelSizeJitter={0.5}
+          enableRipples
+          rippleSpeed={0.4}
+          rippleThickness={0.12}
+          rippleIntensityScale={1.5}
+          liquid
+          liquidStrength={0.12}
+          liquidRadius={1.2}
+          liquidWobbleSpeed={5}
+          speed={0.6}
+          edgeFade={0.25}
+          transparent
+        />
+      </div>
+      <div className="mega-menu__inner relative z-10 pt-[80px]">
 
         <div className="flex flex-1 min-h-0 flex-col lg:flex-row gap-8 lg:gap-16 w-full max-w-7xl mx-auto pt-8">
           {/* Left Column: Rail + Promo */}
@@ -350,16 +365,24 @@ export default function MegaMenuOverlay({
                   <NavLink {...link} onNavigate={handleNavigate} />
                 </div>
               ))}
-              <div className="h-full flex items-center justify-center p-5 min-h-[140px] border border-white/10 rounded-lg hover:bg-white/5 transition-colors">
-                <Link
-                  href={activeCategory?.viewAllHref ?? '/projects'}
-                  className="text-white font-bold tracking-widest uppercase text-sm"
-                  onClick={handleNavigate}
-                  prefetch={false}
-                >
+              <Link
+                href={activeCategory?.viewAllHref ?? '/projects'}
+                className="group relative h-full flex items-center justify-center p-5 min-h-[140px] border border-white/10 rounded-lg bg-[#111] hover:bg-[#222] overflow-hidden transition-colors"
+                onClick={handleNavigate}
+                prefetch={false}
+              >
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-0">
+                  <LetterGlitch
+                    glitchSpeed={50}
+                    centerVignette={true}
+                    outerVignette={true}
+                    smooth={true}
+                  />
+                </div>
+                <span className="text-white font-bold tracking-widest uppercase text-sm relative z-10">
                   {activeCategory?.viewAllLabel ?? 'VIEW ALL'} &gt;
-                </Link>
-              </div>
+                </span>
+              </Link>
             </div>
             {/* Mobile Promo */}
             <div className="block lg:hidden mt-12 shrink-0">

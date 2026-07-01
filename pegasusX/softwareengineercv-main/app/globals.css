@@ -254,13 +254,13 @@
 
 /* White surface variant — light sweep on hover, black label */
 .editorial-btn--inverted {
-  background: #fff;
-  color: #000;
-  border-color: #000;
+  background: #000;
+  color: #fff;
+  border-color: #fff;
 }
 
 .editorial-btn--inverted::before {
-  background: #e8e8e8;
+  background: #fff;
 }
 
 .editorial-btn--inverted:hover,
@@ -268,12 +268,13 @@
   color: #000 !important;
 }
 
-.editorial-btn--inverted:focus-visible {
-  box-shadow: 0 0 0 2px #000, 0 0 0 4px #fff;
+.editorial-btn--inverted:hover > *,
+.editorial-btn--inverted:focus-visible > * {
+  color: #000 !important;
 }
 
 .editorial-btn--inverted:disabled:hover {
-  color: #000;
+  color: #fff !important;
 }
 
 /* On light backgrounds — black border, same white sweep */
@@ -326,14 +327,18 @@
 
 /* Card link hover propagates fill to nested button label */
 a:hover .editorial-btn::before,
-.editorial-card--interactive:hover .editorial-btn::before {
+.editorial-card--interactive:hover .editorial-btn::before,
+a:hover .chamfer-btn::before,
+.editorial-card--interactive:hover .chamfer-btn::before {
   transform: scaleX(1);
 }
 
 a:hover .editorial-btn,
 .editorial-card--interactive:hover .editorial-btn,
 a:hover .editorial-btn--inverted,
-.editorial-card--interactive:hover .editorial-btn--inverted {
+.editorial-card--interactive:hover .editorial-btn--inverted,
+a:hover .chamfer-btn,
+.editorial-card--interactive:hover .chamfer-btn {
   color: #000 !important;
 }
 
@@ -354,21 +359,50 @@ a:hover .editorial-btn--inverted,
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
   clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
   -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.chamfer-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: -1;
+}
+
+.chamfer-btn:hover::before,
+.chamfer-btn:focus-visible::before {
+  transform: scaleX(1);
+}
+
+.chamfer-btn > * {
+  position: relative;
+  z-index: 1;
 }
 
 .chamfer-btn--fill {
-  background: #e8e8e8;
-  color: #000;
+  background: #000;
+  color: #fff;
+  border: 1px solid #fff;
 }
 
 .chamfer-btn--fill:hover,
 .chamfer-btn--fill:focus-visible {
-  background: #fff;
-  color: #000;
+  color: #000 !important;
+}
+
+.chamfer-btn--fill:hover > *,
+.chamfer-btn--fill:focus-visible > * {
+  color: #000 !important;
 }
 
 .chamfer-btn--ghost {
-  background: transparent;
+  background: #000;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.45);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
@@ -377,7 +411,12 @@ a:hover .editorial-btn--inverted,
 .chamfer-btn--ghost:hover,
 .chamfer-btn--ghost:focus-visible {
   border-color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.06);
+  color: #000 !important;
+}
+
+.chamfer-btn--ghost:hover > *,
+.chamfer-btn--ghost:focus-visible > * {
+  color: #000 !important;
 }
 
 .chamfer-btn:focus-visible {
@@ -1126,7 +1165,10 @@ a:hover .editorial-btn--inverted,
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: color 0.15s ease;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 @media (min-width: 1024px) {
@@ -1136,19 +1178,29 @@ a:hover .editorial-btn--inverted,
   }
 }
 
+.mega-menu__rail-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: -1;
+}
+
+.mega-menu__rail-btn:hover::before,
+.mega-menu__rail-btn:focus-visible::before,
+.mega-menu__rail-btn--active::before {
+  transform: scaleX(1);
+}
+
 .mega-menu__rail-btn:hover,
-.mega-menu__rail-btn:focus-visible {
-  outline: none;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.mega-menu__rail-btn--active {
-  background: #fff;
-  color: #000;
-}
-
+.mega-menu__rail-btn:focus-visible,
+.mega-menu__rail-btn--active,
 .mega-menu__rail-btn--active:hover {
-  background: #fff;
+  outline: none;
+  background: transparent;
   color: #000;
 }
 

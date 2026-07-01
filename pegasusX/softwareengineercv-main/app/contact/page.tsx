@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import Link from 'next/link';
+import { Mail, Zap, Clock, Globe } from 'lucide-react';
 
 export default function ContactPage() {
   const headerRef = useRef<HTMLDivElement>(null);
@@ -122,7 +123,7 @@ export default function ContactPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Contact Form */}
             <div ref={formRef}>
-              <div className="border-2 border-white rounded-2xl p-8 bg-[#0D0D0D]">
+              <div className="border border-white/10 rounded-none p-8 bg-[#111]">
                 <h2 className="text-3xl font-light mb-6">Send a Message</h2>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -135,7 +136,7 @@ export default function ContactPage() {
                       onChange={handleChange}
                       required
                       disabled={isSubmitting}
-                      className="w-full px-4 py-3 bg-black border-2 border-white rounded-lg text-white focus:outline-none focus:border-[#A9EBF9] transition-colors disabled:opacity-50"
+                      className="w-full px-4 py-3 bg-black border border-white/10 rounded-none text-white focus:outline-none focus:border-white transition-colors disabled:opacity-50"
                       placeholder="John Doe"
                     />
                   </div>
@@ -149,7 +150,7 @@ export default function ContactPage() {
                       onChange={handleChange}
                       required
                       disabled={isSubmitting}
-                      className="w-full px-4 py-3 bg-black border-2 border-white rounded-lg text-white focus:outline-none focus:border-[#A9EBF9] transition-colors disabled:opacity-50"
+                      className="w-full px-4 py-3 bg-black border border-white/10 rounded-none text-white focus:outline-none focus:border-white transition-colors disabled:opacity-50"
                       placeholder="john@example.com"
                     />
                   </div>
@@ -163,7 +164,7 @@ export default function ContactPage() {
                       onChange={handleChange}
                       required
                       disabled={isSubmitting}
-                      className="w-full px-4 py-3 bg-black border-2 border-white rounded-lg text-white focus:outline-none focus:border-[#A9EBF9] transition-colors disabled:opacity-50"
+                      className="w-full px-4 py-3 bg-black border border-white/10 rounded-none text-white focus:outline-none focus:border-white transition-colors disabled:opacity-50"
                       placeholder="Project Inquiry"
                     />
                   </div>
@@ -177,19 +178,19 @@ export default function ContactPage() {
                       required
                       rows={6}
                       disabled={isSubmitting}
-                      className="w-full px-4 py-3 bg-black border-2 border-white rounded-lg text-white focus:outline-none focus:border-[#A9EBF9] transition-colors resize-none disabled:opacity-50"
+                      className="w-full px-4 py-3 bg-black border border-white/10 rounded-none text-white focus:outline-none focus:border-white transition-colors resize-none disabled:opacity-50"
                       placeholder="Tell us about your project..."
                     />
                   </div>
 
                   {submitStatus === 'success' && (
-                    <div className="success-message bg-[#8DDC96] text-black p-4 rounded-lg font-semibold text-center" role="status">
+                    <div className="success-message bg-[#8DDC96] text-black p-4 rounded-none font-semibold text-center" role="status">
                       ✓ Message sent successfully! We&apos;ll get back to you soon.
                     </div>
                   )}
 
                   {submitStatus === 'error' && (
-                    <div className="bg-[#FE5934] text-white p-4 rounded-lg font-semibold text-center" role="alert" aria-atomic="true">
+                    <div className="bg-[#FE5934] text-white p-4 rounded-none font-semibold text-center" role="alert" aria-atomic="true">
                       ✗ {errorMessage}
                     </div>
                   )}
@@ -208,8 +209,8 @@ export default function ContactPage() {
             {/* Contact Info */}
             <div ref={infoRef} className="space-y-6">
               {/* Get in Touch */}
-              <div className="border-2 border-white rounded-2xl p-8 hover:bg-[#0D0D0D] transition-all duration-300">
-                <div className="text-4xl mb-4">📧</div>
+              <div className="group border border-white/10 rounded-none p-8 bg-[#111] hover:bg-[#222] transition-colors">
+                <Mail className="w-8 h-8 mb-4 text-white" />
                 <h3 className="text-2xl font-light mb-3">Email</h3>
                 <div className="space-y-2">
                   <a 
@@ -228,8 +229,8 @@ export default function ContactPage() {
               </div>
 
               {/* Response Time */}
-              <div className="border-2 border-white rounded-2xl p-8 hover:bg-[#0D0D0D] transition-all duration-300">
-                <div className="text-4xl mb-4">⚡</div>
+              <div className="group border border-white/10 rounded-none p-8 bg-[#111] hover:bg-[#222] transition-colors">
+                <Zap className="w-8 h-8 mb-4 text-white" />
                 <h3 className="text-2xl font-light mb-3">Response Time</h3>
                 <p className="text-gray-300 text-lg">
                   We typically respond within 24-48 hours during business days.
@@ -237,8 +238,8 @@ export default function ContactPage() {
               </div>
 
               {/* Office Hours */}
-              <div className="border-2 border-white rounded-2xl p-8 hover:bg-[#0D0D0D] transition-all duration-300">
-                <div className="text-4xl mb-4">🕐</div>
+              <div className="group border border-white/10 rounded-none p-8 bg-[#111] hover:bg-[#222] transition-colors">
+                <Clock className="w-8 h-8 mb-4 text-white" />
                 <h3 className="text-2xl font-light mb-3">Office Hours</h3>
                 <p className="text-gray-300 text-lg">
                   Monday - Friday: 9:00 AM - 6:00 PM<br />
@@ -247,8 +248,8 @@ export default function ContactPage() {
               </div>
 
               {/* Social Links */}
-              <div className="border-2 border-white rounded-2xl p-8 hover:bg-[#0D0D0D] transition-all duration-300">
-                <div className="text-4xl mb-4">🌐</div>
+              <div className="group border border-white/10 rounded-none p-8 bg-[#111] hover:bg-[#222] transition-colors">
+                <Globe className="w-8 h-8 mb-4 text-white" />
                 <h3 className="text-2xl font-light mb-4">Connect Online</h3>
                 <div className="flex flex-wrap gap-3">
                   <a href="#" className="editorial-btn editorial-btn--sm">LinkedIn</a>
@@ -262,7 +263,7 @@ export default function ContactPage() {
 
         {/* Bottom CTA */}
         <div className="max-w-7xl mx-auto mt-16">
-          <div className="border-2 border-white rounded-2xl p-12 text-center bg-[#0D0D0D]">
+          <div className="border border-white/10 rounded-none p-12 text-center bg-[#111]">
             <h2 className="text-4xl font-light mb-4">Ready to Start Your Project?</h2>
             <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
               Let&apos;s turn your vision into reality. Reach out today and let&apos;s discuss how we can help.
@@ -280,8 +281,8 @@ export default function ContactPage() {
       </div>
 
       {/* Decorative Elements */}
-      <div className="absolute top-32 right-20 w-40 h-40 border-2 border-white opacity-10 pointer-events-none rounded-2xl" />
-      <div className="absolute bottom-32 left-20 w-32 h-32 border-2 border-white opacity-10 pointer-events-none rounded-2xl" />
+      <div className="absolute top-32 right-20 w-40 h-40 border border-white/10 opacity-50 pointer-events-none rounded-none" />
+      <div className="absolute bottom-32 left-20 w-32 h-32 border border-white/10 opacity-50 pointer-events-none rounded-none" />
       <div className="absolute top-1/2 left-10 w-2 h-2 bg-white rounded-full opacity-30" />
       <div className="absolute top-1/3 right-1/4 w-2 h-2 bg-white rounded-full opacity-30" />
       <div className="absolute bottom-1/3 left-1/3 w-2 h-2 bg-white rounded-full opacity-30" />

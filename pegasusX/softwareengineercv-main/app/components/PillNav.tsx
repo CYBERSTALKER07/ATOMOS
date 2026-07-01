@@ -84,11 +84,13 @@ const PillNav: React.FC<PillNavProps> = ({
       const lines = hamburger.querySelectorAll('.hamburger-line');
       const isOpen = showMenuButton ? megaMenuOpen : isMobileMenuOpen;
       if (isOpen) {
-        gsap.to(lines[0], { rotation: 45, y: 3, duration: 0.3, ease });
-        gsap.to(lines[1], { rotation: -45, y: -3, duration: 0.3, ease });
+        gsap.to(lines[0], { rotation: 45, y: 6, duration: 0.3, ease });
+        gsap.to(lines[1], { opacity: 0, duration: 0.3, ease });
+        if (lines[2]) gsap.to(lines[2], { rotation: -45, y: -6, duration: 0.3, ease });
       } else {
         gsap.to(lines[0], { rotation: 0, y: 0, duration: 0.3, ease });
-        gsap.to(lines[1], { rotation: 0, y: 0, duration: 0.3, ease });
+        gsap.to(lines[1], { opacity: 1, duration: 0.3, ease });
+        if (lines[2]) gsap.to(lines[2], { rotation: 0, y: 0, duration: 0.3, ease });
       }
     }
   }, [megaMenuOpen, isMobileMenuOpen, showMenuButton, ease]);
@@ -301,7 +303,7 @@ const PillNav: React.FC<PillNavProps> = ({
   return (
     <div
       ref={wrapperRef}
-      className="fixed top-0 left-0 right-0 z-[1000] bg-black border-b border-white/10"
+      className="fixed top-0 left-0 right-0 z-[10002] bg-black border-b border-white/10"
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
           setActiveCategory(null);
@@ -322,7 +324,7 @@ const PillNav: React.FC<PillNavProps> = ({
             ref={el => {
               logoRef.current = el;
             }}
-            className="shrink-0 rounded-full p-1 inline-flex items-center justify-center overflow-hidden border-2 border-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
+            className="shrink-0 inline-flex items-center justify-center overflow-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
             style={{
               width: 'var(--nav-h)',
               height: 'var(--nav-h)',
@@ -330,10 +332,10 @@ const PillNav: React.FC<PillNavProps> = ({
             }}
           >
             <img
-              src="/atom.jpeg"
+              src="/pegasus.jpg"
               alt={logoAlt}
               ref={logoImgRef}
-              className="w-full h-full object-cover rounded-full"
+              className="w-full h-full object-contain"
             />
           </Link>
 
@@ -429,12 +431,6 @@ const PillNav: React.FC<PillNavProps> = ({
                         onMouseLeave={() => handleLeave(i)}
                         onFocus={() => handleEnter(i)}
                         onBlur={() => handleLeave(i)}
-                        onClick={(e) => {
-                          if (categories) {
-                            e.preventDefault();
-                            setActiveCategory(activeCategory === categories[i] ? null : categories[i]);
-                          }
-                        }}
                       >
                         {PillContent}
                       </Link>
@@ -446,34 +442,44 @@ const PillNav: React.FC<PillNavProps> = ({
             </ul>
           </div>
 
-          <button
-            ref={hamburgerRef}
-            onClick={toggleMobileMenu}
-            aria-label={showMenuButton ? 'Toggle site menu' : 'Toggle navigation menu'}
-            aria-expanded={showMenuButton ? megaMenuOpen : isMobileMenuOpen}
-            className={`${showMenuButton ? '' : 'md:hidden'} shrink-0 ml-auto rounded-full border-0 flex flex-col items-center justify-center gap-1 cursor-pointer p-0 relative focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none pointer-events-auto`}
-            style={{
-              width: 'var(--nav-h)',
-              height: 'var(--nav-h)',
-              background: 'var(--base, #000)'
-            }}
-          >
-            <span
-              className="hamburger-line w-4 h-0.5 rounded origin-center transition-all duration-[10ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]"
-              style={{ background: 'var(--pill-bg, #fff)' }}
-            />
-            <span
-              className="hamburger-line w-4 h-0.5 rounded origin-center transition-all duration-[10ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]"
-              style={{ background: 'var(--pill-bg, #fff)' }}
-            />
-          </button>
+          <div className="shrink-0 ml-auto flex items-center gap-0 pointer-events-auto">
+            <button
+              ref={hamburgerRef}
+              onClick={toggleMobileMenu}
+              aria-label={showMenuButton ? 'Toggle site menu' : 'Toggle navigation menu'}
+              aria-expanded={showMenuButton ? megaMenuOpen : isMobileMenuOpen}
+              className={`${showMenuButton ? '' : 'md:hidden'} flex items-center gap-3 px-4 py-2 border border-white text-white hover:bg-white hover:text-black transition-colors group outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white`}
+            >
+              <span className="text-sm font-medium tracking-wider">MENU</span>
+              <div className="flex flex-col items-center justify-center gap-[4px]">
+                <span
+                  className="hamburger-line w-5 h-[2px] origin-center transition-all duration-300"
+                  style={{ background: 'currentColor' }}
+                />
+                <span
+                  className="hamburger-line w-5 h-[2px] origin-center transition-all duration-300"
+                  style={{ background: 'currentColor' }}
+                />
+                <span
+                  className="hamburger-line w-5 h-[2px] origin-center transition-all duration-300"
+                  style={{ background: 'currentColor' }}
+                />
+              </div>
+            </button>
+            <Link
+              href="/contact"
+              className="hidden sm:block px-4 py-2 bg-white text-black border border-white text-sm font-medium tracking-wider hover:bg-gray-200 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white"
+            >
+              REQUEST DEMO
+            </Link>
+          </div>
         </nav>
 
         {categories && (
           <GigaMenuDropdown
             activeCategory={activeCategory}
-            onMouseEnter={() => {}}
-            onMouseLeave={() => {}}
+            onMouseEnter={() => { }}
+            onMouseLeave={() => { }}
           />
         )}
 

@@ -58,7 +58,7 @@ export function ContentCardButton({
   className?: string;
   inverted?: boolean;
 }) {
-  const classes = `editorial-btn ${inverted ? 'editorial-btn--inverted' : ''} ${className}`;
+  const classes = `editorial-btn ${className}`;
   if (href) {
     return (
       <Link href={href as Route} prefetch={false} className={classes}>
@@ -272,9 +272,9 @@ function ContentCard({
     ctaLabel ? (
       ctaStyle === 'button' ? (
         href ? (
-          <span className={`editorial-btn ${isLight ? '' : 'editorial-btn--inverted'}`}>{ctaLabel}</span>
+          <span className="editorial-btn">{ctaLabel}</span>
         ) : (
-          <ContentCardButton inverted={!isLight}>{ctaLabel}</ContentCardButton>
+          <ContentCardButton>{ctaLabel}</ContentCardButton>
         )
       ) : href ? (
         <span className="editorial-link">

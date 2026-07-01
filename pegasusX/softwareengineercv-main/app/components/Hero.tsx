@@ -12,7 +12,7 @@ import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
 export default function Hero() {
   const { isMobile } = useIsMobile();
   const prefersReducedMotion = useReducedMotion();
-  
+
   const textRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLParagraphElement>(null);
@@ -23,7 +23,7 @@ export default function Hero() {
   useEffect(() => {
     // Skip GSAP animations on mobile - just use simple fade-in
     if (isMobile || prefersReducedMotion) {
-      gsap.set([titleRef.current, subtitleRef.current, descRef.current, ctaRef.current, visualRef.current], { 
+      gsap.set([titleRef.current, subtitleRef.current, descRef.current, ctaRef.current, visualRef.current], {
         opacity: 1,
         x: 0,
         y: 0
@@ -36,7 +36,7 @@ export default function Hero() {
 
     timeline
       .fromTo(visualRef.current,
-        { opacity: 0, x: 100 }, 
+        { opacity: 0, x: 100 },
         { opacity: 1, x: 0, duration: 1.2 }
       )
       .fromTo(titleRef.current,
@@ -113,13 +113,13 @@ export default function Hero() {
           {/* Content Side - Left */}
           <div ref={textRef} className="space-y-8 order-2 lg:order-1">
             <div>
-              <h1 
-                ref={titleRef} 
+              <h1
+                ref={titleRef}
                 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light mb-4 text-white"
               >
                 Pegasus
               </h1>
-              
+
               <div ref={subtitleRef} className="mb-6">
                 <TextType
                   text={["Logistics Platform", "Dispatch System", "Fleet Tracking", "Payment Confidence"]}
@@ -134,11 +134,11 @@ export default function Hero() {
                   cursorClassName="text-white font-light"
                 />
               </div>
-              
+
               <div className="w-90 h-[0.5px] bg-white mb-6" />
-              
-              <p 
-                ref={descRef} 
+
+              <p
+                ref={descRef}
                 className="text-base md:text-lg font-extralight lg:text-xl text-white leading-relaxed max-w-xl"
               >
                 Run supplier-led logistics from one platform — dispatch, tracking, payments,
@@ -159,34 +159,19 @@ export default function Hero() {
 
           {/* Visual Side - Mobile: atom.jpeg, Desktop: LaserFlow */}
           <div ref={visualRef} className="relative order-1 lg:order-2">
-            <div className="relative h-[400px] md:h-[500px] lg:h-[600px] rounded-2xl overflow-hidden shadow-2xl bg-black border-2 border-white">
-              {isMobile ? (
-                /* Mobile: atom.jpeg image */
-                <div className="absolute inset-0 flex items-center justify-center p-8">
-                  <div className="relative w-full h-full">
-                    <Image
-                      src="/atom.jpeg"
-                      alt="Atom Logo"
-                      fill
-                      className="object-contain transition-all duration-500 hover:scale-110"
-                      priority
-                    />
-                  </div>
-                </div>
-              ) : (
-                /* Desktop: LaserFlow 3D animation */
-                <div className="absolute inset-0">
-                  <LaserFlowOptimized
-                    color="#FFFFFF"
-                    horizontalBeamOffset={0.1}
-                    verticalBeamOffset={0.0}
-                    flowSpeed={0.1}
-                    wispDensity={1.2}
-                    fogIntensity={0.5}
-                  />
-                </div>
-              )}
-              
+            <div className="relative h-[400px] md:h-[500px] lg:h-[600px]  overflow-hidden shadow-2xl bg-black rounded-tl-[200px]  rounded-br-[100px] border-none">
+              {/* Video replacing Atom image and LaserFlow */}
+              <div className="absolute inset-0">
+                <video
+                  src="/DURATION_Exactly_seconds.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
               {/* Decorative border overlay - show on mobile only */}
               {isMobile && (
                 <div className="absolute inset-0 pointer-events-none">
@@ -209,16 +194,16 @@ export default function Hero() {
       >
         <div className="flex flex-col items-center gap-2 text-white group-hover:text-[#FBFF63] transition-colors duration-300">
           <span className="text-sm font-light tracking-widest">SCROLL</span>
-          <svg 
-            className="w-6 h-6 animate-bounce" 
-            fill="none" 
-            stroke="currentColor" 
+          <svg
+            className="w-6 h-6 animate-bounce"
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
               d="M19 14l-7 7m0 0l-7-7m7 7V3"
             />
           </svg>
