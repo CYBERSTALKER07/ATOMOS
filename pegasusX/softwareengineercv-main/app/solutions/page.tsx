@@ -1,9 +1,11 @@
-import {
-  createCategoryHubMetadata,
-  createCategoryHubPage,
-} from '@/app/lib/explore/createTopicPage';
+import { Metadata } from 'next';
+import SolutionsAccordion from './SolutionsAccordion';
 
-const categoryId = 'solutions' as const;
+export const metadata: Metadata = {
+  title: 'Solutions | Pegasus',
+  description: "Pegasus's Digital Brain platform is helping global companies across industries transform supply chain, revenue, and logistics planning.",
+};
 
-export const generateMetadata = createCategoryHubMetadata(categoryId);
-export default createCategoryHubPage(categoryId);
+export default function SolutionsPage() {
+  return <SolutionsAccordion />;
+}
