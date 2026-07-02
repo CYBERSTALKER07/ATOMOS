@@ -35,11 +35,26 @@
     "./tailwind.config": "./tailwind.config.ts"
   },
   "peerDependencies": {
-    "react": ">=18",
-    "next": ">=14"
+    "next": ">=14",
+    "react": ">=18"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
     "react": "19.0.0"
+  },
+  "dependencies": {
+    "@deck.gl/geo-layers": "^9.3.5",
+    "@deck.gl/layers": "^9.3.5",
+    "@deck.gl/react": "^9.3.5",
+    "@types/d3": "^7.4.3",
+    "@types/mapbox-gl": "^3.4.1",
+    "d3": "^7.9.0",
+    "deck.gl": "^9.3.5",
+    "framer-motion": "^12.42.2",
+    "h3-js": "^4.5.0",
+    "lucide-react": "^1.23.0",
+    "mapbox-gl": "^3.20.0",
+    "react-map-gl": "^8.1.0",
+    "recharts": "^3.9.1"
   }
 }
