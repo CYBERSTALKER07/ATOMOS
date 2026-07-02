@@ -74,6 +74,7 @@ func runCrossRoleSupplierBroadcastWS(ctx context.Context, client *http.Client, b
 		return fmt.Errorf("supplier broadcast ws: %w", err)
 	}
 	fmt.Println("PX_E2E_CROSS_ROLE_WS_OK")
+	fmt.Println("PX_E2E_DESKTOP_WS_OK")
 	return nil
 }
 

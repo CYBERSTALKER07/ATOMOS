@@ -45,6 +45,7 @@
       "description": "WebSocket fan-out + Kafka notification inbox across roles",
       "markers": [
         "PX_E2E_CROSS_ROLE_WS_OK",
+        "PX_E2E_DESKTOP_WS_OK",
         "PX_E2E_CROSS_ROLE_DISPATCH_WS_OK",
         "PX_E2E_NOTIFICATION_INBOX_OK",
         "PX_E2E_WAREHOUSE_FLEET_LIVE_MAP_OK",

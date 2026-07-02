@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '@pegasusx/api-client';
 import { warehouseApi } from '@/lib/warehouse-api';
+import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
 import Icon from '@/components/Icon';
 import EmptyState from '@/components/EmptyState';
 import { motion } from 'framer-motion';
@@ -60,6 +61,10 @@ export default function WarehouseDashboard() {
   const [loadIssue, setLoadIssue] = useState<DashboardLoadIssue | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [dateRange, setDateRange] = useState<'today' | '7d' | '30d'>('today');
+
+  useWarehouseSessionReconcile(() => {
+    setReloadToken((token) => token + 1);
+  });
 
   useEffect(() => {
     setLoading(true);

@@ -116,6 +116,10 @@ export default function SupplierAIRecommendationsPage() {
     };
   }, [api, filter, refreshTick]);
 
+  useSupplierSessionReconcile(() => {
+    setRefreshTick((tick) => tick + 1);
+  });
+
   async function recordDecision(recommendation: SupplierAIRecommendation, decision: SupplierAIRecommendationDecision) {
     setPendingDecision(`${recommendation.recommendation_id}:${decision}`);
     setFeedback(null);

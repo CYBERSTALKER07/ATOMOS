@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { warehouseInboundConfirmKey, warehouseInboundScanKey } from '@pegasusx/api-client';
 import { apiFetch } from '@/lib/auth';
+import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
@@ -59,6 +60,10 @@ export default function ReturnsPage() {
   }, [tab, loadInbound, loadHistory]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useWarehouseSessionReconcile(() => {
+    void load();
+  });
 
   async function ensureSession() {
     if (sessionId) return sessionId;

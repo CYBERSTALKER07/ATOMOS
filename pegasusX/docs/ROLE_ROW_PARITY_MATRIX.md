@@ -315,4 +315,17 @@ Shared design packages now own cross-app chrome:
 
 Prefer WebSocket-driven refresh where role inbox events exist; polling is fallback / map geometry only.
 
+### Desktop session reconcile coverage (PX-DESK-4A)
+
+P0 screens call `use*SessionReconcile` to refetch after WS reconnect (server-wins).
+
+| Role | P0 route | Reconcile |
+| --- | --- | --- |
+| Retailer | `/dashboard`, `/orders`, `/dock`, `/catalog`, `/procurement`, `/tracking`, `/insights`, `/notifications`, `/control-tower`, `/settings` | yes |
+| Supplier | `/dashboard`, `/orders`, `/dispatch`, `/treasury`, `/operations`, `/settings/planning` (signal ingest) | yes |
+| Warehouse | `/`, `/dispatch`, `/returns`, `/orders`, `/treasury`, `/vehicles` | yes |
+| Factory | `/`, `/loading-bay`, `/supply-requests`, `/transfers`, `/manifests` | yes |
+
+Handoff timeline panels refresh on reconcile via shared `HandoffTimelinePanel` hooks.
+
 Reference: [`context/plan_desktop.md`](../context/plan_desktop.md), [`docs/qa/PX-DESK_MANUAL_QA.md`](./qa/PX-DESK_MANUAL_QA.md), [`docs/adr/008-desktop-tauri-strategy.md`](./adr/008-desktop-tauri-strategy.md).

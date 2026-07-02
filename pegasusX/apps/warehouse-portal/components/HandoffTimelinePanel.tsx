@@ -5,6 +5,7 @@ import { PulseTimeline } from '@pegasusx/pulse-ui';
 import type { PulseEvent } from '@pegasusx/types';
 import { apiFetch } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';
+import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
 
 const HANDOFF_KINDS = new Set([
   'PREORDER',
@@ -55,6 +56,11 @@ export default function HandoffTimelinePanel({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useWarehouseSessionReconcile(() => {
+    if (source === 'factory') return;
+    void load();
+  });
 
   useEffect(() => {
     if (source !== 'factory') return;

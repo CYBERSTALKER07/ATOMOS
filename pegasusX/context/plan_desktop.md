@@ -135,11 +135,11 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 
 | Anchor | Work | Exit |
 |--------|------|------|
-| `PX-DESK-4A` | Audit session reconcile coverage — every P0 desktop page calls role reconcile on WS reconnect | Checklist in parity matrix; gap list empty for P0 screens |
-| `PX-DESK-4B` | Supplier portal: signal ingest ops panel parity (already portal; ensure desktop Tauri build includes it) | `GET/POST .../planning/signals/*` on desktop build |
-| `PX-DESK-4C` | Handoff timeline panels on warehouse + factory **portal** desktop (native already has 4E) | Portal dispatch + loading-bay show pulse strip |
-| `PX-DESK-4D` | Dispatch fingerprint mismatch banner on supplier portal desktop (native has 4F) | Banner when preview ≠ warehouse plan |
-| `PX-DESK-4E` | Desktop SSMR smoke: `PUBLIC_BASE_URL` + headless or scripted open of Tauri webview against local SSMR | Optional marker `PX_E2E_DESKTOP_WS_OK` in ssmr-smokecheck |
+| `PX-DESK-4A` | Audit session reconcile coverage — every P0 desktop page calls role reconcile on WS reconnect | Checklist in parity matrix; gap list empty for P0 screens | **shipped** — matrix checklist; gaps closed |
+| `PX-DESK-4B` | Supplier portal: signal ingest ops panel parity (already portal; ensure desktop Tauri build includes it) | `GET/POST .../planning/signals/*` on desktop build | **shipped** — `SignalIngestOpsPanel` + planning route |
+| `PX-DESK-4C` | Handoff timeline panels on warehouse + factory **portal** desktop (native already has 4E) | Portal dispatch + loading-bay show pulse strip | **shipped** — reconcile on panel refresh |
+| `PX-DESK-4D` | Dispatch fingerprint mismatch banner on supplier portal desktop (native has 4F) | Banner when preview ≠ warehouse plan | **shipped** — dispatch page banner |
+| `PX-DESK-4E` | Desktop SSMR smoke: `PUBLIC_BASE_URL` + headless or scripted open of Tauri webview against local SSMR | Optional marker `PX_E2E_DESKTOP_WS_OK` in ssmr-smokecheck | **shipped** — alias of cross-role WS spine |
 
 **Anchor:** `PX-DESK-4` — P0 pages reconcile; supplier fingerprint + signal ingest on desktop.
 
@@ -216,8 +216,8 @@ cd pegasusX/apps/warehouse-portal && pnpm tauri:build:win
 | `PX-DESK-2A`–`2F` | 2 | fs, print, wedge, deep links | **shipped** |
 | `PX-DESK-3` | 3 | Performance & UX | **shipped** — 3A–3E complete |
 | `PX-DESK-3A`–`3E` | 3 | Virtualization, maps, skeletons | **shipped** |
-| `PX-DESK-4` | 4 | Realtime & ecosystem parity | **pending** |
-| `PX-DESK-4A`–`4E` | 4 | Reconcile audit, ECS features | **pending** |
+| `PX-DESK-4` | 4 | Realtime & ecosystem parity | **shipped** — 4A–4E complete |
+| `PX-DESK-4A`–`4E` | 4 | Reconcile audit, ECS features | **shipped** |
 | `PX-DESK-5` | 5 | Test & docs | **partial** — 5B/5C/5D shipped; 5A pending |
 | `PX-DESK-5A`–`5D` | 5 | Vitest, QA runbook, ADR | **partial** — 5B–5D shipped |
 

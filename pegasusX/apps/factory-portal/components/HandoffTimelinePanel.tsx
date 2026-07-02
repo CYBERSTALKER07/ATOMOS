@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PulseTimeline } from '@pegasusx/pulse-ui';
 import type { PulseEvent } from '@pegasusx/types';
 import { apiFetch } from '@/lib/auth';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 
 const HANDOFF_KINDS = new Set([
   'PREORDER',
@@ -41,6 +42,10 @@ export default function HandoffTimelinePanel({ className }: { className?: string
   useEffect(() => {
     void load();
   }, [load]);
+
+  useFactorySessionReconcile(() => {
+    void load();
+  });
 
   useEffect(() => {
     const handler = () => {

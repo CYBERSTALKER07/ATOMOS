@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
 import type { PlanningSignalIngestStatus } from "@pegasusx/types";
 
@@ -35,6 +36,10 @@ export default function SignalIngestOpsPanel() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useSupplierSessionReconcile(() => {
+    void load();
+  });
 
   return (
     <section className="desk-card p-6 mt-6">

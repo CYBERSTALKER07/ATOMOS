@@ -3,7 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { desktopPrint } from '@pegasusx/desktop-bridge';
 import { downloadCsv } from '@/lib/csv';
+import { apiFetch } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';
+import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
@@ -64,6 +66,10 @@ export default function TreasuryPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useWarehouseSessionReconcile(() => {
+    void load();
+  });
 
   const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
   const resolveAmount = (inv: Invoice) => {

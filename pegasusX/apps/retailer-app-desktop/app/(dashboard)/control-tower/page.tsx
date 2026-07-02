@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import {
   LiveEKGNetworkGraph,
   HexagonalControlTowerMap,
@@ -77,6 +78,11 @@ const scenariosData = [
 
 export default function ControlTowerPage() {
   const [view, setView] = useState<"network" | "map">("network");
+  const [reconcileEpoch, setReconcileEpoch] = useState(0);
+
+  useRetailerSessionReconcile(() => {
+    setReconcileEpoch((epoch) => epoch + 1);
+  });
   
   const supplierId = "sup-demo-1";
   
@@ -89,7 +95,7 @@ export default function ControlTowerPage() {
 
   useEffect(() => {
     setH3Data(generateH3Data());
-  }, []);
+  }, [reconcileEpoch]);
 
   const displayH3Data = wsH3Data.length > 0 ? wsH3Data : h3Data;
 

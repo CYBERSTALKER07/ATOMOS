@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { PageChrome } from "@/components/PageChrome";
 import EmptyState from "../../../components/EmptyState";
 import { ListRowSkeleton } from "../../../components/Skeleton";
+import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import { useRetailerNotifications } from "../../../lib/notifications";
 import { useOptionalWebSocket } from "../../../lib/ws";
 
@@ -59,6 +60,10 @@ export default function NotificationsPage() {
       setActionError(err instanceof Error ? err.message : "Mark read failed");
     }
   }, [markRead]);
+
+  useRetailerSessionReconcile(() => {
+    void handleRefresh();
+  });
 
   useEffect(() => {
     const sentinel = loadMoreRef.current;
