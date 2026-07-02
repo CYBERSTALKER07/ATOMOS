@@ -225,7 +225,7 @@ pegasus multi-supplier remains **out of scope permanently** for this pegasusX de
 
 ## Related documents
 
-- [`plan.md`](plan.md) — execution anchors PX0–PX12
+- [`plan_ecosystem_sync.md`](plan_ecosystem_sync.md) — data flow, realtime sync, cross-role desync fixes (PX-ECS-*)
 - [`plan_90.md`](plan_90.md) — planning brain shipped scope
 - [`PlanDigitalBrain.md`](PlanDigitalBrain.md) — durability + PX91 detail
 - [`LAUNCH_READINESS_RUNBOOK.md`](../docs/LAUNCH_READINESS_RUNBOOK.md) — release evidence
