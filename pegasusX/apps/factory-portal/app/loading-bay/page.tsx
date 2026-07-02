@@ -13,6 +13,7 @@ import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
 import { PageSection } from '@/components/PageSection';
+import HandoffTimelinePanel from '@/components/HandoffTimelinePanel';
 import { motion } from 'framer-motion';
 
 type TransferState = 'APPROVED' | 'LOADING' | 'DISPATCHED';
@@ -161,6 +162,14 @@ export default function LoadingBayPage() {
             sub={latestUpdatedAt ? `Updated ${new Date(latestUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No updates yet'}
           />
         </KpiStatGrid>
+
+        <PageSection
+          title="Handoff timeline"
+          description="Preorder → accept → dispatch → seal events from the factory pulse feed."
+          className="mt-6"
+        >
+          <HandoffTimelinePanel />
+        </PageSection>
 
         {transfers.length === 0 ? (
           <EmptyState

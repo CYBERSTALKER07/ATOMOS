@@ -48,6 +48,25 @@ struct DispatchPreviewView: View {
                             }
                         }
                         if let preview {
+                            if preview.planFingerprintMismatch {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Dispatch plan drift")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.red)
+                                    Text("Supplier preview fingerprint differs from the warehouse floor plan. Refresh warehouse dispatch before committing.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    if let supplier = preview.planFingerprint, let warehouse = preview.warehousePlanFingerprint {
+                                        Text("supplier \(supplier.prefix(12))… · warehouse \(warehouse.prefix(12))…")
+                                            .font(.caption2.monospaced())
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.red.opacity(0.08))
+                                .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusLG))
+                            }
                             HStack(spacing: SupplierTheme.spacingMD) {
                                 DispatchKpiCard(title: "Pending", value: "\(preview.pendingCount ?? 0)")
                                 DispatchKpiCard(title: "Drivers", value: "\(preview.availableDriverCount ?? 0)")

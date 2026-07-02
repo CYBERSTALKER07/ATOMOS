@@ -28,6 +28,7 @@ import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
 import { PageSection } from '@/components/PageSection';
+import HandoffTimelinePanel from '@/components/HandoffTimelinePanel';
 import EmptyState from '@/components/EmptyState';
 import { OrderActionDialog, OrderOpsCard, OrderProposeDateDialog } from '@/components/orders';
 import { useToast } from '@/components/Toast';
@@ -755,6 +756,14 @@ export default function DispatchPage() {
               ))}
             </div>
           )}
+        </PageSection>
+
+        <PageSection
+          title="Handoff timeline"
+          description="Preorder → accept → dispatch → seal events from the ops pulse feed."
+          className="mt-6"
+        >
+          <HandoffTimelinePanel />
         </PageSection>
 
         <PageSection

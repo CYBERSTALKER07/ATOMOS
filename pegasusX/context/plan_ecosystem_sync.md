@@ -189,9 +189,9 @@ flowchart LR
 
 | Doc location | Current claim | Corrected truth |
 |--------------|---------------|-----------------|
-| `ROLE_ROW_PARITY_MATRIX` signal ingest | Wired → affects forecast | Wired → baseline when payload includes `product_id` + `warehouse_id` |
-| `ROLE_ROW_PARITY_MATRIX` promo P&L | Wired | API + supplier portal sandbox UI (PX-ECS-3A) |
-| `PlanDigitalBrain.md` SSMR | Pending | Local green 2026-07-01; staging pending |
+| `ROLE_ROW_PARITY_MATRIX` signal ingest | Wired → affects forecast | Wired → baseline when payload includes `product_id` + `warehouse_id`; ops status panel (PX-ECS-3E) |
+| `ROLE_ROW_PARITY_MATRIX` promo P&L | API-only / portal-only | Portal + Android/iOS sandbox UI (PX-ECS-3A, 4D) |
+| `PlanDigitalBrain.md` SSMR | Pending | Local green 2026-07-01; staging pending (PX-ECS-5) |
 | `plan_90.md` “AI demand sensing” | Shipped | Math heuristic (predictive push); ML deferred |
 
 ---
@@ -242,10 +242,10 @@ make validate-launch-readiness
 | `PX-ECS-2D` | 2 | Payload mobile silent refresh | **shipped** |
 | `PX-ECS-2E` | 2 | Supplier confidence mapper unify | **shipped** |
 | `PX-ECS-2F` | 2 | Retailer desktop sparsity badge | **shipped** |
-| `PX-ECS-3` | 3 | Planning ↔ execution coherence | **in progress** |
-| `PX-ECS-3A`–`3G` | 3 | Planning UI + docs (see phase table) | **partial** — 3A–3F shipped; 3G docs pending |
-| `PX-ECS-4` | 4 | Execution UX gaps | **in progress** |
-| `PX-ECS-4A`–`4F` | 4 | Visualization (see phase table) | **partial** — 4A–4C shipped |
+| `PX-ECS-3` | 3 | Planning ↔ execution coherence | **shipped** |
+| `PX-ECS-3A`–`3G` | 3 | Planning UI + docs (see phase table) | **shipped** — 3A–3G including doc alignment |
+| `PX-ECS-4` | 4 | Execution UX gaps | **shipped** |
+| `PX-ECS-4A`–`4F` | 4 | Visualization (see phase table) | **shipped** — 4A–4F incl. native promo P&L, handoff timeline, dispatch fingerprint |
 | `PX-ECS-5` | 5 | Infra staging proof | **pending** |
 | `PX-ECS-5A`–`5G` | 5 | Cloud realtime parity (see phase table) | **pending** |
 

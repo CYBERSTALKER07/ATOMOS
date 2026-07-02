@@ -198,6 +198,9 @@ struct SupplierDispatchPreview: Decodable {
     let proposedRoutes: [DispatchProposedRoute]
     let optimizerSource: String?
     let optimizerWarnings: [String]
+    let planFingerprint: String?
+    let warehousePlanFingerprint: String?
+    let planFingerprintMismatch: Bool
 
     enum CodingKeys: String, CodingKey {
         case pendingCount = "pending_count"
@@ -206,6 +209,9 @@ struct SupplierDispatchPreview: Decodable {
         case proposedRoutes = "proposed_routes"
         case optimizerSource = "optimizer_source"
         case optimizerWarnings = "optimizer_warnings"
+        case planFingerprint = "plan_fingerprint"
+        case warehousePlanFingerprint = "warehouse_plan_fingerprint"
+        case planFingerprintMismatch = "plan_fingerprint_mismatch"
     }
 
     init(from decoder: Decoder) throws {
@@ -222,6 +228,9 @@ struct SupplierDispatchPreview: Decodable {
         proposedRoutes = try container.decodeIfPresent([DispatchProposedRoute].self, forKey: .proposedRoutes) ?? []
         optimizerSource = try container.decodeIfPresent(String.self, forKey: .optimizerSource)
         optimizerWarnings = try container.decodeIfPresent([String].self, forKey: .optimizerWarnings) ?? []
+        planFingerprint = try container.decodeIfPresent(String.self, forKey: .planFingerprint)
+        warehousePlanFingerprint = try container.decodeIfPresent(String.self, forKey: .warehousePlanFingerprint)
+        planFingerprintMismatch = try container.decodeIfPresent(Bool.self, forKey: .planFingerprintMismatch) ?? false
     }
 }
 

@@ -5,7 +5,7 @@ Last updated: 2026-07-01 (synced with PX91 enterprise implementation)
 **Authority:** Subordinate to [`plan.md`](plan.md). Extends [`plan_90.md`](plan_90.md) with the full enterprise feature baseline, Kafka integration contract, edge-case gates, and UI labeling spec for the digital planning brain.
 
 **Scope boundary:**
-- **pegasusX** — single-supplier planning brain; all analytics scoped by `supplier_id`. **PX90 + PX91 shipped in code**; SSMR infra verify **pending**.
+- **pegasusX** — single-supplier planning brain; all analytics scoped by `supplier_id`. **PX90 + PX91 shipped in code**; local SSMR green 2026-07-01; cloud staging proof **pending** (PX-ECS-5).
 - **pegasus** (reference) — multi-tenant federation backend (P1 **shipped**); tenant supplier UI + downstream role parity **pending** (P2–P4). See [§ XI pegasus parity track](#xi-pegasus-multi-supplier-parity-track).
 
 **Audience:** Backend engineers, ai-worker, supplier portal + native, warehouse insight surfaces. Driver row stays execution-only; planning **consumes** telemetry and order outcomes.
@@ -17,13 +17,27 @@ Last updated: 2026-07-01 (synced with PX91 enterprise implementation)
 | Track | Theme | Overall | Notes |
 |---|---|---|---|
 | **PX90** | MEIO, control tower, demand brain, EKG, agents | **shipped** | Waves 1–3; see [`plan_90.md`](plan_90.md) |
-| **PX91** | Ingest, gates, confidence UI, promo sandbox, shadow | **shipped** (code) | Migration `20260701_plan91_digital_brain.ddl`; SSMR markers **wired** |
+| **PX91** | Ingest, gates, confidence UI, promo sandbox, shadow | **shipped** (code) | Migration `20260701_plan91_digital_brain.ddl`; SSMR markers **green locally** |
 | **pegasus P1** | Federation admin APIs | **shipped** | `admin/planning_federation.go` + `/planning` page |
 | **pegasus P2–P4** | Tenant supplier UI + platform rollup | **pending** | No admin-portal supplier planning parity yet |
 
 **Apply before SSMR:** `schema/migrations/20260630_plan90_planning_brain.ddl` + `schema/migrations/20260701_plan91_digital_brain.ddl`.
 
-**Infra verify:** `make test-ssmr-infra` — PX90/PX91 markers wired in `e2e_plan90.go`; full green **pending** (unrelated catalog e2e blocker per `plan_90.md`).
+**Infra verify:** `make test-ssmr-infra` — PX90/PX91 + full `PX_E2E_*` markers **green locally** (2026-07-01); staging proof pending `PX-ECS-5D`.
+
+### Ecosystem sync closures (PX-ECS-3, 2026-07-01)
+
+| Surface | Anchor | Status |
+|---------|--------|--------|
+| Promo P&L sandbox UI | PX-ECS-3A, 4D | **shipped** — supplier portal + Android/iOS `POST .../planning/promotions/simulate` |
+| Planning outcomes panel (baseline → insights → touchless → MEIO) | PX-ECS-3B | **shipped** — supplier portal dashboard |
+| Baseline vs actual demand chart + MAPE/variance | PX-ECS-3C | **shipped** — portal + native demand analytics |
+| Replenishment traceability (`SourceInsightId` → factory transfer) | PX-ECS-3D | **shipped** — `GET .../replenishment/traceability` + ops panel |
+| Signal ingest ops (lag, projection count, last ingest) | PX-ECS-3E | **shipped** — `GET .../planning/signals/status` + planning settings panel |
+| Signal ingest → baseline projection | PX-ECS-1D | **shipped** — ingest with `product_id` + `warehouse_id` writes baseline + `DEMAND_BASELINE_UPDATED` |
+| Dispatch fingerprint mismatch warning | PX-ECS-4F | **shipped** — supplier portal + native when supplier vs warehouse preview diverge |
+| Supplier network pulse on native | PX-ECS-4C | **shipped** — Android `SupplierPulseStrip` + iOS `NetworkPulseStrip` |
+| Handoff timeline (preorder → seal) | PX-ECS-4E | **shipped** — warehouse dispatch + factory loading-bay pulse strips |
 
 ## I. How pegasusX handles rollbacks and failed transactions today
 
@@ -439,7 +453,7 @@ Aligned with [`plan_90.md`](plan_90.md) waves. **PX90 + PX91 are shipped in code
 | 7 | Pre-event promo P&L returns margin/volume projection without ledger mutation | PX91-C2 | **shipped** |
 | 8 | Closed-loop eval compares actual vs predicted promo outcome | PX91-C3 | **shipped** |
 | 9 | Planning brain runs shadow mode with zero execution regressions | PX91-C5 | **shipped** |
-| 10 | All PX91 SSMR markers green under `make test-ssmr-infra` | Infra verify | **pending** — catalog e2e blocker |
+| 10 | All PX91 SSMR markers green under `make test-ssmr-infra` | Infra verify | **shipped** — local green 2026-07-01; cloud staging pending |
 
 ---
 
