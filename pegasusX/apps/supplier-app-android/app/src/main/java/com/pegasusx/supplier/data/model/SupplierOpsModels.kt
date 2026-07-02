@@ -102,6 +102,9 @@ data class SupplierDispatchPreview(
     @SerialName("optimizer_source") val optimizerSource: String? = null,
     @SerialName("optimizer_warnings") val optimizerWarnings: List<String> = emptyList(),
     @SerialName("window_constrained_count") val windowConstrainedCount: Int = 0,
+    @SerialName("plan_fingerprint") val planFingerprint: String? = null,
+    @SerialName("warehouse_plan_fingerprint") val warehousePlanFingerprint: String? = null,
+    @SerialName("plan_fingerprint_mismatch") val planFingerprintMismatch: Boolean = false,
 )
 
 @Serializable
@@ -784,6 +787,25 @@ data class PlanningScenarioResult(
     @SerialName("fleet_volume_orders") val fleetVolumeOrders: Long = 0,
     @SerialName("stockout_skus") val stockoutSkus: List<String> = emptyList(),
     @SerialName("capacity_breach") val capacityBreach: Boolean = false,
+)
+
+@Serializable
+data class PromoSimulateInput(
+    @SerialName("promotion_id") val promotionId: String? = null,
+    @SerialName("discount_pct") val discountPct: Double? = null,
+    @SerialName("expected_units") val expectedUnits: Long? = null,
+    @SerialName("avg_unit_margin_minor") val avgUnitMarginMinor: Long? = null,
+)
+
+@Serializable
+data class PromoSimulateResult(
+    @SerialName("simulation_id") val simulationId: String = "",
+    @SerialName("promotion_id") val promotionId: String? = null,
+    @SerialName("projected_volume") val projectedVolume: Long = 0,
+    @SerialName("projected_revenue_minor") val projectedRevenueMinor: Long = 0,
+    @SerialName("projected_margin_minor") val projectedMarginMinor: Long = 0,
+    @SerialName("margin_delta_pct") val marginDeltaPct: Double = 0.0,
+    @SerialName("sandbox_only") val sandboxOnly: Boolean = true,
 )
 
 @Serializable

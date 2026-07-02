@@ -340,6 +340,10 @@ enum SupplierOperationsService {
         try await APIClient.shared.get("v1/supplier/pulse")
     }
 
+    static func simulatePromotionPandL(_ request: PromoSimulateInput) async throws -> PromoSimulateResult {
+        try await APIClient.shared.post("v1/supplier/planning/promotions/simulate", body: request)
+    }
+
     static func updateOrgMember(
         _ userId: String,
         request: SupplierOrgMemberUpdateRequest,

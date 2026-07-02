@@ -10,6 +10,8 @@ struct PromotionsView: View {
     @State private var editingPromotion: SupplierPromotion?
     @State private var name = ""
     @State private var discountBps = "500"
+    @State private var simResults: [String: PromoSimulateResult] = [:]
+    @State private var simulatingId: String?
 
     var body: some View {
         Group {
@@ -30,6 +32,21 @@ struct PromotionsView: View {
                         Text(promoSummary(promo))
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        if let sim = simResults[promo.promotionId] {
+                            Text("P&L sandbox: \(sim.projectedVolume) units · margin \(sim.projectedMarginMinor / 100) (\(Int(sim.marginDeltaPct))%)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                        if promo.isActive {
+                            Button {
+                                Task { await simulate(promo) }
+                            } label: {
+                                Text(simulatingId == promo.promotionId ? "…" : "P&L")
+                            }
+                            .tint(.purple)
+                        }
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if promo.isActive {
@@ -176,6 +193,25 @@ struct PromotionsView: View {
             showEdit = false
             editingPromotion = nil
             await load(silent: true)
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func simulate(_ promo: SupplierPromotion) async {
+        simulatingId = promo.promotionId
+        defer { simulatingId = nil }
+        do {
+            let result = try await SupplierOperationsService.simulatePromotionPandL(
+                PromoSimulateInput(
+                    promotionId: promo.promotionId,
+                    discountPct: Double(promo.discountBps) / 100.0,
+                    expectedUnits: 500,
+                    avgUnitMarginMinor: 1000
+                )
+            )
+            simResults[promo.promotionId] = result
         } catch {
             self.error = error.localizedDescription
         }

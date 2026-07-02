@@ -213,6 +213,29 @@ export default function DispatchPage() {
       {executeSuccess ? (
         <p className="md-typescale-body-small" style={{ color: "var(--desk-success)" }}>{executeSuccess}</p>
       ) : null}
+      {preview?.plan_fingerprint_mismatch ? (
+        <div
+          className="rounded-xl border p-4 space-y-1"
+          style={{
+            borderColor: "var(--desk-danger)",
+            background: "color-mix(in srgb, var(--desk-danger) 8%, var(--desk-surface))",
+          }}
+        >
+          <p className="md-typescale-label-medium" style={{ color: "var(--desk-danger)" }}>
+            Dispatch plan drift
+          </p>
+          <p className="md-typescale-body-small" style={{ color: "var(--desk-text-primary)" }}>
+            Supplier preview fingerprint differs from the warehouse floor plan. Refresh warehouse dispatch preview
+            before committing — warehouse execute will reject stale fingerprints.
+          </p>
+          {preview.plan_fingerprint && preview.warehouse_plan_fingerprint ? (
+            <p className="md-typescale-body-small font-mono text-xs" style={{ color: "var(--desk-text-secondary)" }}>
+              supplier {preview.plan_fingerprint.slice(0, 12)}… · warehouse {preview.warehouse_plan_fingerprint.slice(0, 12)}…
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {preview?.optimizer_warnings && preview.optimizer_warnings.length > 0 ? (
         <div
           className="rounded-xl border p-4 space-y-1"

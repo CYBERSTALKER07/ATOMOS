@@ -16,6 +16,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -31,6 +32,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.pegasus.design.RealtimeRefreshEffect
 import com.pegasus.design.showFullScreenLoading
+import com.pegasusx.supplier.data.model.PromoSimulateInput
+import com.pegasusx.supplier.data.model.PromoSimulateResult
 import com.pegasusx.supplier.data.model.SupplierPromotion
 import com.pegasusx.supplier.data.model.SupplierPromotionUpsertRequest
 import com.pegasusx.supplier.data.remote.SupplierApi
@@ -47,6 +50,8 @@ fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals)
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var promotions by remember { mutableStateOf(emptyList<SupplierPromotion>()) }
+    var simResults by remember { mutableStateOf<Map<String, PromoSimulateResult>>(emptyMap()) }
+    var simulatingId by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var showEdit by remember { mutableStateOf(false) }
     var editingPromotion by remember { mutableStateOf<SupplierPromotion?>(null) }
@@ -113,13 +118,47 @@ fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals)
                         ListItem(
                             headlineContent = { Text(promo.name) },
                             supportingContent = {
-                                Text(
-                                    "${promo.discountBps / 100.0}% · ${promo.scopeType} · ${promo.retailerScope}" +
-                                        if (promo.isActive) "" else " · inactive",
-                                )
+                                val sim = simResults[promo.promotionId]
+                                Column {
+                                    Text(
+                                        "${promo.discountBps / 100.0}% · ${promo.scopeType} · ${promo.retailerScope}" +
+                                            if (promo.isActive) "" else " · inactive",
+                                    )
+                                    sim?.let {
+                                        Text(
+                                            "P&L sandbox: ${it.projectedVolume} units · margin ${it.projectedMarginMinor / 100.0} (${it.marginDeltaPct}%)",
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
+                                }
                             },
                             trailingContent = {
                                 if (promo.isActive) {
+                                    TextButton(
+                                        enabled = simulatingId != promo.promotionId,
+                                        onClick = {
+                                            scope.launch {
+                                                simulatingId = promo.promotionId
+                                                runCatching {
+                                                    api.simulatePromotionPandL(
+                                                        PromoSimulateInput(
+                                                            promotionId = promo.promotionId,
+                                                            discountPct = promo.discountBps / 100.0,
+                                                            expectedUnits = 500,
+                                                            avgUnitMarginMinor = 1000,
+                                                        ),
+                                                    ).body()
+                                                }.onSuccess { result ->
+                                                    result?.let { sim ->
+                                                        simResults = simResults + (promo.promotionId to sim)
+                                                    }
+                                                }
+                                                simulatingId = null
+                                            }
+                                        },
+                                    ) {
+                                        Text(if (simulatingId == promo.promotionId) "…" else "P&L")
+                                    }
                                     TextButton(onClick = {
                                         editingPromotion = promo
                                         name = promo.name

@@ -67,6 +67,9 @@ type SupplierDispatchPreview struct {
 	ProposedRoutes         []map[string]any `json:"proposed_routes,omitempty"`
 	OptimizerSource        string           `json:"optimizer_source,omitempty"`
 	OptimizerWarnings      []string         `json:"optimizer_warnings,omitempty"`
+	PlanFingerprint        string           `json:"plan_fingerprint,omitempty"`
+	WarehousePlanFingerprint string         `json:"warehouse_plan_fingerprint,omitempty"`
+	PlanFingerprintMismatch bool            `json:"plan_fingerprint_mismatch,omitempty"`
 }
 
 // SupplierExceptionRow is an operational exception surfaced to the supplier queue.
@@ -720,6 +723,15 @@ func (s *Service) buildSupplierDispatchPreview(ctx context.Context, supplierID, 
 			Lat: depot.Lat,
 			Lng: depot.Lng,
 		}, out.ProposedRoutes)
+	}
+
+	if strings.TrimSpace(warehouseID) != "" {
+		out.PlanFingerprint = computeSupplierPlanFingerprint(undispatched, out.ProposedRoutes)
+		out.WarehousePlanFingerprint = s.readWarehouseDispatchPlanFingerprint(ctx, warehouseID)
+		if out.PlanFingerprint != "" && out.WarehousePlanFingerprint != "" &&
+			out.PlanFingerprint != out.WarehousePlanFingerprint {
+			out.PlanFingerprintMismatch = true
+		}
 	}
 
 	return out, nil

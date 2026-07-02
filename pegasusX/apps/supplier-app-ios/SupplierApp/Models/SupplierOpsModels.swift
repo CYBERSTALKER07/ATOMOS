@@ -1712,3 +1712,37 @@ struct SupplierPulseResponse: Decodable {
         case fetchedAt = "fetched_at"
     }
 }
+
+struct PromoSimulateInput: Encodable {
+    let promotionId: String?
+    let discountPct: Double?
+    let expectedUnits: Int64?
+    let avgUnitMarginMinor: Int64?
+
+    enum CodingKeys: String, CodingKey {
+        case promotionId = "promotion_id"
+        case discountPct = "discount_pct"
+        case expectedUnits = "expected_units"
+        case avgUnitMarginMinor = "avg_unit_margin_minor"
+    }
+}
+
+struct PromoSimulateResult: Decodable {
+    let simulationId: String
+    let promotionId: String?
+    let projectedVolume: Int64
+    let projectedRevenueMinor: Int64
+    let projectedMarginMinor: Int64
+    let marginDeltaPct: Double
+    let sandboxOnly: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case simulationId = "simulation_id"
+        case promotionId = "promotion_id"
+        case projectedVolume = "projected_volume"
+        case projectedRevenueMinor = "projected_revenue_minor"
+        case projectedMarginMinor = "projected_margin_minor"
+        case marginDeltaPct = "margin_delta_pct"
+        case sandboxOnly = "sandbox_only"
+    }
+}

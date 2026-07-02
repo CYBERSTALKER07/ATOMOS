@@ -199,6 +199,9 @@ interface SupplierApi {
         @Header("X-Idempotency-Key") idempotencyKey: String,
     ): Response<PlanningScenarioResult>
 
+    @POST("v1/supplier/planning/promotions/simulate")
+    suspend fun simulatePromotionPandL(@Body body: PromoSimulateInput): Response<PromoSimulateResult>
+
     @GET("v1/supplier/planning/seasonal-overrides")
     suspend fun getSeasonalOverrides(): Response<SeasonalTemplatesResponse>
 

@@ -1585,6 +1585,9 @@ export interface SupplierDispatchPreview {
   optimizer_source?: string;
   optimizer_warnings?: string[];
   window_constrained_count?: number;
+  plan_fingerprint?: string;
+  warehouse_plan_fingerprint?: string;
+  plan_fingerprint_mismatch?: boolean;
 }
 
 export interface SupplierDispatchExecuteRoute {

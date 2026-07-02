@@ -210,6 +210,13 @@ private fun DispatchPreviewBody(
                     }
                 }
             }
+            preview?.takeIf { it.planFingerprintMismatch }?.let {
+                Text(
+                    "Dispatch plan drift — supplier preview differs from warehouse floor plan. Refresh warehouse dispatch before commit.",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             preview?.let { p ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
