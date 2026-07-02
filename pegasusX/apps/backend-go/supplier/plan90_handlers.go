@@ -265,6 +265,24 @@ func (s *Service) HandlePlanningSignalIngest(w http.ResponseWriter, r *http.Requ
 	writeJSON(w, http.StatusAccepted, map[string]string{"signal_id": signalID, "status": "queued"})
 }
 
+// HandlePlanningSignalStatus serves GET /v1/supplier/planning/signals/status.
+func (s *Service) HandlePlanningSignalStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	if s.portalSpanner == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "signal_status_unavailable"})
+		return
+	}
+	status, err := planning.LoadSignalIngestStatus(r.Context(), s.portalSpanner, s.scopedSupplierID(r), s.now())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "signal_status_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, status)
+}
+
 // HandlePlanningPromoSimulate serves POST /v1/supplier/planning/promotions/simulate.
 func (s *Service) HandlePlanningPromoSimulate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

@@ -1681,3 +1681,34 @@ struct BusinessSetupResponse: Decodable {
         case nextStep = "next_step"
     }
 }
+
+// MARK: - Network pulse
+
+struct SupplierPulseEvent: Decodable, Identifiable {
+    let id: String
+    let kind: String
+    let title: String
+    let description: String?
+    let occurredAt: String
+    let deepLink: String?
+    let orderId: String?
+    let manifestId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, kind, title, description
+        case occurredAt = "occurred_at"
+        case deepLink = "deep_link"
+        case orderId = "order_id"
+        case manifestId = "manifest_id"
+    }
+}
+
+struct SupplierPulseResponse: Decodable {
+    let events: [SupplierPulseEvent]
+    let fetchedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case events
+        case fetchedAt = "fetched_at"
+    }
+}

@@ -147,6 +147,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/planning/seasonal-overrides", d.Service.HandlePlanningSeasonalOverrides)
 		gr.Post("/v1/supplier/planning/seasonal-overrides", d.Service.HandlePlanningSeasonalOverrides)
 		gr.Post("/v1/supplier/planning/signals/ingest", d.Service.HandlePlanningSignalIngest)
+		gr.Get("/v1/supplier/planning/signals/status", d.Service.HandlePlanningSignalStatus)
 		gr.Post("/v1/supplier/planning/promotions/simulate", d.Service.HandlePlanningPromoSimulate)
 		gr.Get("/v1/supplier/planning/promotions/{promotionID}/performance", d.Service.HandlePlanningPromoPerformance)
 		gr.Get("/v1/supplier/planning/sparsity/{retailerID}", d.Service.HandlePlanningSparsityCheck)

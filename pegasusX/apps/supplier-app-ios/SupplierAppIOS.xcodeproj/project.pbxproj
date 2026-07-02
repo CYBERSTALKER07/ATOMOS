@@ -21,6 +21,7 @@
 		27D69AB7FE192A7E5BDD18ED /* SupplierPortalLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF9EA6455252E35434B06DCE /* SupplierPortalLinks.swift */; };
 		2831AA7D0E01D99FFEEED05A /* EarlyCompleteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E089092A5E842AB8F832E97C /* EarlyCompleteView.swift */; };
 		2939DC8BC4630FEB71BFCAC2 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFAAADD6814D98F2FC2C477F /* DashboardView.swift */; };
+		E1A2B3C4D5E6F708192A3B4C /* NetworkPulseStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E6F708192A3B4D /* NetworkPulseStrip.swift */; };
 		2A034E1E487B20A73EFC1C75 /* PricingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0B618FA26B0FB76D293158E /* PricingView.swift */; };
 		2D9BF2D5BCF12BBC723BFCB3 /* OrdersHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4906B1654AE290C4E34777E6 /* OrdersHubView.swift */; };
 		34DC1E87FBEB83E2731D7F10 /* ReconciliationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85C0AAC0E5DBD0967B8775E /* ReconciliationView.swift */; };
@@ -191,6 +192,7 @@
 		BB3743B08488F783206295CB /* MockURLProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockURLProtocol.swift; sourceTree = "<group>"; };
 		BF9EA6455252E35434B06DCE /* SupplierPortalLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplierPortalLinks.swift; sourceTree = "<group>"; };
 		BFAAADD6814D98F2FC2C477F /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		F1A2B3C4D5E6F708192A3B4D /* NetworkPulseStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkPulseStrip.swift; sourceTree = "<group>"; };
 		C23AD8BBFDAE01EA9C59D920 /* ExceptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExceptionsView.swift; sourceTree = "<group>"; };
 		C68EFB265E71B9DF57A5345D /* TreasuryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreasuryViewModel.swift; sourceTree = "<group>"; };
 		C85C0AAC0E5DBD0967B8775E /* ReconciliationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReconciliationView.swift; sourceTree = "<group>"; };
@@ -419,6 +421,7 @@
 			isa = PBXGroup;
 			children = (
 				BFAAADD6814D98F2FC2C477F /* DashboardView.swift */,
+				F1A2B3C4D5E6F708192A3B4D /* NetworkPulseStrip.swift */,
 			);
 			path = Dashboard;
 			sourceTree = "<group>";
@@ -784,6 +787,7 @@
 				FC25832A84A967B2DEEE01E5 /* ClientPolicyBanner.swift in Sources */,
 				98145061B9D6EAFE7865149C /* CollapsibleSidebar.swift in Sources */,
 				2939DC8BC4630FEB71BFCAC2 /* DashboardView.swift in Sources */,
+				E1A2B3C4D5E6F708192A3B4C /* NetworkPulseStrip.swift in Sources */,
 				961CBBCEC7965D6F94079D41 /* DeliveryZonesView.swift in Sources */,
 				9DC90BC41092202D55D8D461 /* DemandHistoryView.swift in Sources */,
 				DCF75ED5D3E235F5F502F33A /* DispatchPreviewMapView.swift in Sources */,

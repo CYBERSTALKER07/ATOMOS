@@ -22,6 +22,9 @@ interface SupplierApi {
     @POST("v1/supplier/business/setup")
     suspend fun setupBusiness(@Body body: JsonElement): Response<JsonElement>
 
+    @GET("v1/supplier/pulse")
+    suspend fun getPulse(): Response<PulseResponse>
+
     @GET("v1/supplier/dashboard")
     suspend fun getDashboard(): Response<SupplierDashboard>
 

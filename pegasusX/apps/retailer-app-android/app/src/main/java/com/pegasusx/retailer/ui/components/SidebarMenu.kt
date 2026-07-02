@@ -66,7 +66,7 @@ enum class SidebarDestination(val label: String, val icon: ImageVector) {
     PROCUREMENT("Procurement", Icons.Outlined.BarChart),
     INSIGHTS("Insights", Icons.Outlined.Insights),
     AUTO_ORDER("Auto-Order", Icons.Outlined.AutoAwesome),
-    AI_PREDICTIONS("AI Predictions", Icons.Outlined.AutoAwesome),
+    AI_PREDICTIONS("Reorder suggestions", Icons.Outlined.AutoAwesome),
     CONTROL_TOWER("Control Tower", Icons.Outlined.DeviceHub),
     DOCK("Dock Queue", Icons.Outlined.LocalShipping),
     INBOX("Inbox", Icons.Outlined.Inbox),

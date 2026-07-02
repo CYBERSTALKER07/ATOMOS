@@ -9,6 +9,7 @@ import { supplierScopeId } from "@/lib/supplier-scope";
 import { supplierSeasonalOverrideCreateKey } from "@pegasusx/api-client/idempotency";
 import type { SeasonalOverrideInput, SeasonalOverrideRow, SeasonalTemplatesResponse } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
+import SignalIngestOpsPanel from "@/components/SignalIngestOpsPanel";
 
 const api = createSupplierApi();
 
@@ -101,7 +102,9 @@ export default function PlanningSettingsPage() {
         </Link>
       }
     >
-      <section className="desk-card p-6">
+      <SignalIngestOpsPanel />
+
+      <section className="desk-card p-6 mt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="bento-card-title">Custom seasons</h2>
           <button

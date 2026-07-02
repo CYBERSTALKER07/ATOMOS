@@ -81,6 +81,7 @@ import type {
   ControlTowerZoneOverrideRequest,
   PlanningScenarioInput,
   PlanningScenarioResult,
+  PlanningSignalIngestStatus,
   PlanningSAndOPSnapshot,
   SupplierKnowledgeGraph,
   GovernedAgentInvocation,
@@ -952,6 +953,10 @@ export class ApiClient {
       body: request,
       idempotencyKey,
     });
+  }
+
+  async getPlanningSignalStatus(): Promise<PlanningSignalIngestStatus> {
+    return this.request<PlanningSignalIngestStatus>("/v1/supplier/planning/signals/status", "GET");
   }
 
   async checkPlanningSparsity(retailerId: string): Promise<SparsityGateResult> {

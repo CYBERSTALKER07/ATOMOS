@@ -258,7 +258,7 @@ private fun DashboardOverviewCard(
                     modifier = Modifier.weight(1f),
                 )
                 RetailerMetricTile(
-                    label = "Predictions",
+                    label = "Suggestions",
                     value = predictionCount.toString(),
                     modifier = Modifier.weight(1f),
                 )

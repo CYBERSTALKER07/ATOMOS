@@ -48,7 +48,7 @@ enum SideMenuTab: String, Hashable, CaseIterable {
         case .suppliers: "Suppliers"
         case .insights: "Insights"
         case .procurement: "Procurement"
-        case .futureDemand: "Future Demand"
+        case .futureDemand: "Reorder suggestions"
         case .autoOrder: "Auto Order"
         case .profile: "Profile"
         }

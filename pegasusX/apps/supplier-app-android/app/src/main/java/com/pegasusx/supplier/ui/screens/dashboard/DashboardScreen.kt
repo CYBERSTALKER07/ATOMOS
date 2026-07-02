@@ -26,6 +26,7 @@ import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasusx.supplier.ui.components.SupplierPulseStrip
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
@@ -55,6 +56,8 @@ fun DashboardScreen(
 ) {
     var dashboard by remember { mutableStateOf<SupplierDashboard?>(null) }
     var meiSummary by remember { mutableStateOf<SupplierMEIONetworkSummary?>(null) }
+    var pulseEvents by remember { mutableStateOf<List<com.pegasusx.supplier.data.model.PulseEvent>>(emptyList()) }
+    var pulseLoading by remember { mutableStateOf(true) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -82,6 +85,13 @@ fun DashboardScreen(
             } finally {
                 if (!silent) loading = false
             }
+            pulseLoading = true
+            runCatching {
+                ops.getPulse().body()?.let { pulseEvents = it.events }
+            }.onFailure {
+                pulseEvents = emptyList()
+            }
+            pulseLoading = false
         }
     }
 
@@ -178,6 +188,11 @@ fun DashboardScreen(
                             }
                         }
                     }
+                    SupplierPulseStrip(
+                        events = pulseEvents,
+                        loading = pulseLoading,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 160.dp),
                         horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),

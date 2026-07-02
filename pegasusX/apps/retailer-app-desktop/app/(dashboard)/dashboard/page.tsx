@@ -278,7 +278,7 @@ export default function DashboardPage() {
                     icon={ShoppingCart}
                     label="Orders"
                   />
-                  <QuickAction href="/insights" icon={Brain} label="Planning" />
+                  <QuickAction href="/insights" icon={Brain} label="Reorder suggestions" />
                 </div>
               </BentoCard>
 

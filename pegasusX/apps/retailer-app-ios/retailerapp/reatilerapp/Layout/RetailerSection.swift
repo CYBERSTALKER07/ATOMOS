@@ -11,7 +11,7 @@ enum RetailerSection: String, CaseIterable, Identifiable {
     case insights = "Insights"
     case suppliers = "Suppliers"
     case autoOrder = "Auto Order"
-    case futureDemand = "Future Demand"
+    case futureDemand = "Reorder suggestions"
     case notifications = "Notifications"
     case settings = "Settings"
     case cards = "Cards"

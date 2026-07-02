@@ -6,6 +6,8 @@ struct DashboardView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var dashboard: SupplierDashboard?
     @State private var meiSummary: SupplierMEIONetworkSummary?
+    @State private var pulseEvents: [SupplierPulseEvent] = []
+    @State private var pulseLoading = true
     @State private var loading = true
     @State private var error: String?
 
@@ -50,6 +52,8 @@ struct DashboardView: View {
                                 .background(SupplierTheme.surface)
                                 .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
                             }
+
+                            NetworkPulseStrip(events: pulseEvents, loading: pulseLoading)
 
                             LazyVGrid(
                                 columns: [GridItem(.adaptive(minimum: gridMin), spacing: SupplierTheme.spacingMD)],
@@ -157,6 +161,9 @@ struct DashboardView: View {
             _ = try? await SupplierOperationsService.activity()
             _ = try? await SupplierOperationsService.exceptions()
             meiSummary = try? await SupplierOperationsService.meiNetworkSummary()
+            pulseLoading = true
+            pulseEvents = (try? await SupplierOperationsService.pulse())?.events ?? []
+            pulseLoading = false
             if let configured = dashboard?.isConfigured {
                 tokenStore.markConfigured(configured)
             }

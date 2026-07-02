@@ -111,6 +111,8 @@ class SupplierOperationsRepository @Inject constructor(
 
     suspend fun getActivity(): Response<SupplierActivityResponse> = api.getActivity()
 
+    suspend fun getPulse(): Response<PulseResponse> = api.getPulse()
+
     suspend fun getFleetOrders(): Response<List<SupplierFleetOrderRow>> = api.getFleetOrders()
 
     suspend fun getFleetLiveMap(): Response<SupplierFleetLiveMapResponse> = api.getFleetLiveMap()

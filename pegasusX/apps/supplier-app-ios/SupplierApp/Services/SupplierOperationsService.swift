@@ -336,6 +336,10 @@ enum SupplierOperationsService {
         try await APIClient.shared.get("v1/supplier/analytics/demand/history")
     }
 
+    static func pulse() async throws -> SupplierPulseResponse {
+        try await APIClient.shared.get("v1/supplier/pulse")
+    }
+
     static func updateOrgMember(
         _ userId: String,
         request: SupplierOrgMemberUpdateRequest,

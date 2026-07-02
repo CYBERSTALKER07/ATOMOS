@@ -97,7 +97,7 @@ struct DashboardView: View {
                     chip: activeOrders.isEmpty ? nil : ("LIVE", AppTheme.success)
                 )
                 KpiTile(
-                    title: "AI Predictions",
+                    title: "Reorder suggestions",
                     value: "\(predictions.count)",
                     systemImage: "sparkles",
                     tint: AppTheme.info,
@@ -120,7 +120,7 @@ struct DashboardView: View {
             // Row 1: two big tiles
             HStack(spacing: AppTheme.spacingMD) {
                 serviceTileView(title: "Catalog", icon: "bag.fill", subtitle: "Browse products", height: 130)
-                serviceTileView(title: "AI Insights", icon: "sparkles", subtitle: "\(predictions.count) predictions", height: 130)
+                serviceTileView(title: "Reorder suggestions", icon: "sparkles", subtitle: "\(predictions.count) items", height: 130)
             }
 
             // Row 2: one wide + two small

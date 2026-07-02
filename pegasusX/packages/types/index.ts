@@ -580,6 +580,15 @@ export interface SupplierReplenishmentTraceabilityResponse {
   generated_at: string;
 }
 
+export interface PlanningSignalIngestStatus {
+  projection_count: number;
+  last_ingest_at?: string;
+  lag_seconds: number;
+  baseline_rows_from_signals: number;
+  topic: string;
+  healthy: boolean;
+}
+
 export interface ControlTowerZoneOverride {
   override_id: string;
   supplier_id: SupplierId;

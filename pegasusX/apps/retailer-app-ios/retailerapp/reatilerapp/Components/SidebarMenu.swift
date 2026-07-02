@@ -219,7 +219,7 @@ enum SidebarDestination: String, CaseIterable {
         case .procurement: "Procurement"
         case .insights: "Insights"
         case .autoOrder: "Auto-Order"
-        case .futureDemand: "AI Predictions"
+        case .futureDemand: "Reorder suggestions"
         case .dock: "Dock Queue"
         case .inbox: "Inbox"
         case .profile: "Profile"
