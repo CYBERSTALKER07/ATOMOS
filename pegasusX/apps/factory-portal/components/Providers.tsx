@@ -7,6 +7,7 @@ import FactoryShell from "./FactoryShell";
 import { PageSkeleton } from "./Skeleton";
 import { ToastProvider } from "./Toast";
 import { ThemeProvider } from "./ThemeProvider";
+import { PortalOfflineTray } from "@/lib/portal-offline-tray";
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
@@ -21,6 +22,7 @@ export default function Providers({ children }: { children: ReactNode }) {
             </ToastProvider>
           </FactoryShell>
         </AuthGuard>
+        <PortalOfflineTray />
       </div>
     </ThemeProvider>
   );

@@ -88,7 +88,7 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 | `PX-DESK-1C` | **Retailer:** Move pending checkout queue from `localStorage` to encrypted SQLite (or keyring-backed store) | `pending-checkout` via desktop-cache; legacy migration on first read | **shipped** |
 | `PX-DESK-1D` | **Warehouse:** Cache dispatch preview + active manifest list for dock PCs | Dispatch page loads cached snapshot; WS/reconcile invalidates | **shipped** — dispatch preview + dispatch runs SQLite hydrate |
 | `PX-DESK-1E` | **Supplier:** Cache dashboard KPIs + orders list (same keys as session reconcile) | Supplier dashboard instant shell on reopen | **shipped** — dashboard bundle + orders list per filter/page |
-| `PX-DESK-1F` | Offline banner + “queued actions” tray component in `@pegasusx/ui-kit` | All four apps use shared `DesktopOfflineTray` |
+| `PX-DESK-1F` | Offline banner + “queued actions” tray component in `@pegasusx/ui-kit` | All four apps use shared `DesktopOfflineTray` | **shipped** |
 
 **Reference:** [`ssr_evaluation.md`](../apps/retailer-app-desktop/ssr_evaluation.md) recommends SQLite — implement here.
 
@@ -208,8 +208,8 @@ cd pegasusX/apps/warehouse-portal && pnpm tauri:build:win
 |--------|-------|-------|--------|
 | `PX-DESK-0` | 0 | Shell hardening & release | **partial** — shared bridge shipped |
 | `PX-DESK-0A`–`0E` | 0 | Signing, CI, bridge package, CDN | **partial** — `0D` + CI typecheck; signing/CDN pending |
-| `PX-DESK-1` | 1 | Offline & SQLite cache | **partial** — retailer, warehouse, supplier wired; 1F offline tray pending |
-| `PX-DESK-1A`–`1F` | 1 | desktop-cache + per-role cache | **partial** — 1A–1E shipped; 1F offline tray pending |
+| `PX-DESK-1` | 1 | Offline & SQLite cache | **shipped** — retailer, warehouse, supplier cache + offline tray |
+| `PX-DESK-1A`–`1F` | 1 | desktop-cache + per-role cache | **shipped** |
 | `PX-DESK-2` | 2 | Native capabilities | **pending** |
 | `PX-DESK-2A`–`2F` | 2 | fs, print, wedge, deep links | **pending** |
 | `PX-DESK-3` | 3 | Performance & UX | **pending** |

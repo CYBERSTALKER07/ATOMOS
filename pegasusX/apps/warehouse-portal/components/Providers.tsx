@@ -7,6 +7,7 @@ import { ThemeProvider } from "./ThemeProvider";
 import { ToastProvider } from "./Toast";
 import { PageSkeleton } from "./Skeleton";
 import { DesktopCacheBootstrap } from "@/lib/desktop-cache-bootstrap";
+import { PortalOfflineTray } from "@/lib/portal-offline-tray";
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
@@ -19,6 +20,7 @@ export default function Providers({ children }: { children: ReactNode }) {
               {children}
             </Suspense>
           </WarehouseShell>
+          <PortalOfflineTray />
         </div>
       </ToastProvider>
     </ThemeProvider>

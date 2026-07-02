@@ -12,6 +12,7 @@ import RetailerShell from "../../components/RetailerShell";
 import ClientPolicyBanner from "../../components/ClientPolicyBanner";
 import PaymentModal from "../../components/PaymentModal";
 import ShopClosedModal from "../../components/ShopClosedModal";
+import { RetailerOfflineTray } from "../../lib/retailer-offline-tray";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -27,6 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </RetailerShell>
           <PaymentModal />
           <ShopClosedModal />
+          <RetailerOfflineTray />
         </CartProvider>
       </NotificationsProvider>
     </WebSocketProvider>
