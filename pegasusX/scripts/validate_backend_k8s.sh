@@ -13,6 +13,7 @@ end
 
 deployment_path = 'infra/k8s/backend-go/deployment.yaml'
 service_path = 'infra/k8s/backend-go/service.yaml'
+ws_service_path = 'infra/k8s/backend-go/service-ws.yaml'
 configmap_path = 'infra/k8s/backend-go/configmap.yaml'
 worker_deployment_path = 'infra/k8s/backend-go-worker/deployment.yaml'
 worker_service_path = 'infra/k8s/backend-go-worker/service.yaml'
@@ -21,11 +22,14 @@ hpa_path = 'infra/k8s/backend-go/hpa.yaml'
 
 deployment = YAML.load_file(deployment_path)
 service = YAML.load_file(service_path)
+ws_service = YAML.load_file(ws_service_path)
 configmap = YAML.load_file(configmap_path)
 worker_deployment = YAML.load_file(worker_deployment_path)
 worker_service = YAML.load_file(worker_service_path)
 pdb = YAML.load_file(pdb_path)
 hpa = YAML.load_file(hpa_path)
+ingress_path = 'infra/k8s/ingress/ingress.yaml'
+ingress = YAML.load_file(ingress_path)
 
 assert(deployment.dig('metadata', 'name') == 'backend-go', 'deployment name must be backend-go')
 assert(deployment.dig('spec', 'template', 'spec', 'serviceAccountName') == 'backend-go', 'deployment must use backend-go service account')
@@ -40,7 +44,13 @@ assert(configmap.dig('data', 'HTTP_PORT') == '8080', 'configmap must set HTTP_PO
 assert(configmap.dig('data', 'PEGASUSX_RUN_MODE') == 'api', 'configmap must set PEGASUSX_RUN_MODE=api for API pods')
 assert(configmap.dig('data', 'ROUTING_OSRM_URL'), 'configmap must set ROUTING_OSRM_URL for route geometry')
 assert(configmap.dig('data', 'GLOBAL_PAY_ENV'), 'configmap must set GLOBAL_PAY_ENV')
+assert(configmap.dig('data', 'OPTIMIZER_BASE_URL')&.include?('optimizer-core'), 'configmap must route VRP to optimizer-core')
 assert(service.dig('spec', 'ports', 0, 'port') == 80, 'service port must be 80')
+assert(ws_service.dig('metadata', 'name') == 'backend-go-ws', 'ws service name must be backend-go-ws')
+assert(ws_service.dig('metadata', 'annotations', 'cloud.google.com/backend-config')&.include?('pegasusx-ws-backendconfig'), 'ws service must attach pegasusx-ws-backendconfig')
+
+ws_backend = ingress.dig('spec', 'rules', 0, 'http', 'paths')&.find { |p| p['path'] == '/v1/ws' }
+assert(ws_backend&.dig('backend', 'service', 'name') == 'backend-go-ws', 'ingress /v1/ws must target backend-go-ws')
 
 assert(pdb.dig('spec', 'selector', 'matchLabels', 'app') == 'backend-go', 'PDB must target backend-go')
 assert(hpa.dig('spec', 'scaleTargetRef', 'name') == 'backend-go', 'HPA must target backend-go deployment')
@@ -56,6 +66,7 @@ assert(worker_container.dig('readinessProbe', 'httpGet', 'path') == '/ready', 'w
 assert(worker_service.dig('spec', 'ports', 0, 'port') == 8081, 'worker service port must be 8081')
 
 assert(File.file?('apps/backend-go/Dockerfile'), 'apps/backend-go/Dockerfile must exist')
+assert(File.file?('infra/k8s/monitoring/podmonitoring.yaml'), 'podmonitoring manifest must exist')
 
 puts 'backend-k8s-ok'
 RUBY

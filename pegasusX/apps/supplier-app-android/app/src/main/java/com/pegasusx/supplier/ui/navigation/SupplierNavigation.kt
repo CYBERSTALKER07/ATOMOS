@@ -84,8 +84,6 @@ import com.pegasusx.supplier.ui.screens.network.WarehousesScreen
 import com.pegasusx.supplier.ui.screens.pricing.RetailerOverridesScreen
 import com.pegasusx.supplier.ui.screens.treasury.ChargebacksScreen
 import com.pegasusx.supplier.ui.screens.treasury.TreasuryHubScreen
-import com.pegasusx.supplier.ui.screens.portal.PortalHandoffScreen
-import com.pegasusx.supplier.ui.portal.SupplierPortalFeature
 
 object SupplierRoutes {
     const val LOGIN = "login"
@@ -143,9 +141,6 @@ object SupplierRoutes {
     const val SUPPLY_LANES = "supply_lanes"
     const val PAYMENTS = "payments"
     const val NOTIFICATIONS = "notifications"
-    const val PORTAL_HANDOFF = "portal_handoff/{feature}"
-
-    fun portalHandoff(feature: SupplierPortalFeature) = "portal_handoff/${feature.routeKey}"
 }
 
 private data class SupplierTab(val route: String, val label: String, val icon: ImageVector)
@@ -255,13 +250,17 @@ fun SupplierNavigation(
             modifier = modifier,
         ) {
             composable(SupplierRoutes.BUSINESS_SETUP) {
+                val canGoBack = navController.previousBackStackEntry != null
                 BusinessSetupScreen(
                     onComplete = {
                         pendingBusinessSetup = false
-                        navController.navigate(SupplierRoutes.BILLING) {
-                            popUpTo(SupplierRoutes.BUSINESS_SETUP) { inclusive = true }
+                        if (!navController.popBackStack()) {
+                            navController.navigate(SupplierRoutes.BILLING) {
+                                popUpTo(SupplierRoutes.BUSINESS_SETUP) { inclusive = true }
+                            }
                         }
                     },
+                    onBack = if (canGoBack) {{ navController.popBackStack() }} else null,
                 )
             }
             composable(SupplierRoutes.BILLING) {
@@ -330,6 +329,7 @@ fun SupplierNavigation(
                     onFleetOrders = { navController.navigate(SupplierRoutes.FLEET_ORDERS) },
                     onLedger = { navController.navigate(SupplierRoutes.LEDGER) },
                     onOperations = { navController.navigate(SupplierRoutes.OPERATIONS) },
+                    onReplenishmentPolicies = { navController.navigate(SupplierRoutes.REPLENISHMENT_POLICIES) },
                     onAnalytics = { navController.navigate(SupplierRoutes.ANALYTICS) },
                     onAiRecommendations = { navController.navigate(SupplierRoutes.AI_RECOMMENDATIONS) },
                     onGeoReport = { navController.navigate(SupplierRoutes.GEO_REPORT) },
@@ -348,6 +348,7 @@ fun SupplierNavigation(
                     onProfile = { navController.navigate(SupplierRoutes.PROFILE) },
                     onNotifications = { navController.navigate(SupplierRoutes.NOTIFICATIONS) },
                     onBilling = { navController.navigate(SupplierRoutes.BILLING) },
+                    onBusinessSetup = { navController.navigate(SupplierRoutes.BUSINESS_SETUP) },
                     onChargebacks = { navController.navigate(SupplierRoutes.CHARGEBACKS) },
                     onRetailerOverrides = { navController.navigate(SupplierRoutes.RETAILER_OVERRIDES) },
                     onInventoryImport = { navController.navigate(SupplierRoutes.INVENTORY_IMPORT) },
@@ -355,10 +356,6 @@ fun SupplierNavigation(
                     onDemandHistory = { navController.navigate(SupplierRoutes.DEMAND_HISTORY) },
                     onFactories = { navController.navigate(SupplierRoutes.FACTORIES) },
                     onWarehouses = { navController.navigate(SupplierRoutes.WAREHOUSES) },
-                    onOpenPortalHandoff = { feature ->
-                        navController.navigate(SupplierRoutes.portalHandoff(feature))
-                    },
-                    onPaymentBypass = { navController.navigate(SupplierRoutes.OPERATIONS) },
                     onSignOut = {
                         TokenHolder.clear()
                         pendingBusinessSetup = false
@@ -559,16 +556,6 @@ fun SupplierNavigation(
                     api = api,
                     onBack = { navController.popBackStack() },
                 )
-            }
-            composable(
-                route = SupplierRoutes.PORTAL_HANDOFF,
-                arguments = listOf(navArgument("feature") { type = NavType.StringType }),
-            ) { entry ->
-                val key = entry.arguments?.getString("feature").orEmpty()
-                val feature = SupplierPortalFeature.fromRouteKey(key)
-                if (feature != null) {
-                    PortalHandoffScreen(feature) { navController.popBackStack() }
-                }
             }
         }
     }

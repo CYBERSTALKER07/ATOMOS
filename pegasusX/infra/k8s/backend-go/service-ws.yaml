@@ -1,0 +1,22 @@
+# Dedicated Service for /v1/ws so GCE Ingress can attach pegasusx-ws-backendconfig (3600s)
+# without applying WS timeouts to REST traffic on backend-go.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-go-ws
+  labels:
+    app: backend-go
+    app.kubernetes.io/name: backend-go
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/service-role: websocket
+  annotations:
+    cloud.google.com/backend-config: '{"default": "pegasusx-ws-backendconfig"}'
+spec:
+  type: ClusterIP
+  selector:
+    app: backend-go
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

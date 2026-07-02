@@ -5,12 +5,6 @@ namespace: pegasusx-staging
 
 resources:
   - ../prod
-  - ../../ai-worker/configmap.yaml
-  - ../../ai-worker/deployment.yaml
-  - ../../ai-worker/service.yaml
-  - ../../optimizer-core/configmap.yaml
-  - ../../optimizer-core/deployment.yaml
-  - ../../optimizer-core/service.yaml
   - ../../external-secrets/backend-go-externalsecret.yaml
 
 patches:
@@ -38,6 +32,7 @@ configMapGenerator:
       - GLOBAL_PAY_ENV=staging
       - KAFKA_TOPIC_DUAL_WRITE=true
       - KAFKA_TOPIC_CONSUME_DOMAIN=true
+      - OPTIMIZER_BASE_URL=http://optimizer-core:8082
 
 labels:
   - pairs:

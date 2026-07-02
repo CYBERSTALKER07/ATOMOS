@@ -29,6 +29,7 @@ fun MoreScreen(
     onFleetOrders: () -> Unit,
     onLedger: () -> Unit,
     onOperations: () -> Unit,
+    onReplenishmentPolicies: () -> Unit,
     onAnalytics: () -> Unit,
     onAiRecommendations: () -> Unit,
     onGeoReport: () -> Unit,
@@ -47,15 +48,14 @@ fun MoreScreen(
     onProfile: () -> Unit,
     onNotifications: () -> Unit,
     onBilling: () -> Unit,
+    onBusinessSetup: () -> Unit,
     onChargebacks: () -> Unit,
-    onPaymentBypass: () -> Unit,
     onRetailerOverrides: () -> Unit,
     onInventoryImport: () -> Unit,
     onTreasuryHub: () -> Unit,
     onDemandHistory: () -> Unit,
     onFactories: () -> Unit,
     onWarehouses: () -> Unit,
-    onOpenPortalHandoff: (com.pegasusx.supplier.ui.portal.SupplierPortalFeature) -> Unit,
     onSignOut: () -> Unit,
 ) {
     val fulfillment = listOf(
@@ -78,15 +78,15 @@ fun MoreScreen(
     )
     val treasury = listOf(
         MoreDestination("Treasury hub", "KPIs and finance modules", Icons.Default.AccountBalance, onTreasuryHub),
+        MoreDestination("Payment ledger", "Treasury entries", Icons.Default.AccountBalance, onLedger),
         MoreDestination("Payments", "Settlement authority", Icons.Default.CreditCard, onPayments),
         MoreDestination("Chargebacks", "Record chargeback or reversal", Icons.Default.Payments, onChargebacks),
-        MoreDestination("Payment ledger", "Treasury entries", Icons.Default.AccountBalance, onLedger),
         MoreDestination("Reconciliation", "Settlement mismatches", Icons.Default.Balance, onReconciliation),
+        MoreDestination("Operations", "Bypass, broadcast & replenishment", Icons.Default.Build, onOperations),
+        MoreDestination("Replenishment policies", "Warehouse supply rules", Icons.Default.Description, onReplenishmentPolicies),
     )
     val insights = listOf(
         MoreDestination("Activity", "Recent events", Icons.Default.Timeline, onActivity),
-        MoreDestination("Replenishment", "Trigger restock", Icons.Default.Build, onOperations),
-        MoreDestination("Portal operations", "Bypass & broadcast", Icons.Default.Computer, onPaymentBypass),
     )
     val account = listOf(
         MoreDestination("Notifications", "Inbox & alerts", Icons.Default.Notifications, onNotifications),
@@ -100,18 +100,8 @@ fun MoreScreen(
         MoreDestination("Org & fleet", "Drivers, vehicles, staff", Icons.Default.Groups, onOrgFleet),
         MoreDestination("Earnings", "Revenue summary", Icons.Default.Payments, onEarnings),
         MoreDestination("Profile", "Company profile", Icons.Default.Person, onProfile),
+        MoreDestination("Business setup", "Tax and headquarters info", Icons.Default.Business, onBusinessSetup),
         MoreDestination("Billing setup", "Banking & gateway", Icons.Default.CreditCard, onBilling),
-    )
-    val webPortal = listOf(
-        MoreDestination("Chargebacks on web", "Open supplier portal", Icons.Default.Computer) {
-            onOpenPortalHandoff(com.pegasusx.supplier.ui.portal.SupplierPortalFeature.CHARGEBACKS)
-        },
-        MoreDestination("Business setup on web", "Open supplier portal", Icons.Default.Computer) {
-            onOpenPortalHandoff(com.pegasusx.supplier.ui.portal.SupplierPortalFeature.BUSINESS_SETUP)
-        },
-        MoreDestination("Operations on web", "Bypass & broadcast", Icons.Default.Computer) {
-            onOpenPortalHandoff(com.pegasusx.supplier.ui.portal.SupplierPortalFeature.PAYMENT_BYPASS)
-        },
     )
 
     Scaffold(topBar = { TopAppBar(title = { Text("More") }) }) { padding ->
@@ -132,8 +122,6 @@ fun MoreScreen(
             insights.forEach { item { MoreRow(it) } }
             item { SectionHeader("Account") }
             account.forEach { item { MoreRow(it) } }
-            item { SectionHeader("Web portal") }
-            webPortal.forEach { item { MoreRow(it) } }
             item {
                 HorizontalDivider(Modifier.padding(vertical = PegasusSpacing.md))
                 MoreRow(

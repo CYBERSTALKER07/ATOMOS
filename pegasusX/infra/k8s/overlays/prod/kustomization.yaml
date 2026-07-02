@@ -5,3 +5,9 @@ resources:
   - ../../base
   - ../../planning_training_export_cronjob.yaml
   - ../../predictive_push_cronjob.yaml
+  - ../../ai-worker/configmap.yaml
+  - ../../ai-worker/deployment.yaml
+  - ../../ai-worker/service.yaml
+  - ../../optimizer-core/configmap.yaml
+  - ../../optimizer-core/deployment.yaml
+  - ../../optimizer-core/service.yaml

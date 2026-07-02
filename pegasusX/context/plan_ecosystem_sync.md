@@ -1,6 +1,6 @@
 # pegasusX — Ecosystem Data Flow & Realtime Sync Plan
 
-Last updated: 2026-07-01
+Last updated: 2026-07-02
 
 **Authority:** Subordinate to [`plan.md`](plan.md). Implements the 2026-07-01 cross-ecosystem audit (backend, all role rows, planning brain, infra).
 
@@ -40,7 +40,7 @@ flowchart LR
 2. Managed Kafka + Memorystore Redis with `REQUIRE_INFRA_ADAPTERS=true`
 3. Clients use `packages/ws-refresh-contract` + role session reconcile on reconnect
 
-**SSMR status:** `make test-ssmr-infra` green locally (PX90/PX91 + full `PX_E2E_*` markers). Cloud staging proof **pending** (PX-PROD-0).
+**SSMR status:** `make test-ssmr-infra` green locally (PX90/PX91 + full `PX_E2E_*` markers). `make validate-launch-readiness` green locally (2026-07-02). Cloud staging proof **pending** (PX-PROD-0).
 
 ---
 
@@ -246,8 +246,8 @@ make validate-launch-readiness
 | `PX-ECS-3A`–`3G` | 3 | Planning UI + docs (see phase table) | **shipped** — 3A–3G including doc alignment |
 | `PX-ECS-4` | 4 | Execution UX gaps | **shipped** |
 | `PX-ECS-4A`–`4F` | 4 | Visualization (see phase table) | **shipped** — 4A–4F incl. native promo P&L, handoff timeline, dispatch fingerprint |
-| `PX-ECS-5` | 5 | Infra staging proof | **pending** |
-| `PX-ECS-5A`–`5G` | 5 | Cloud realtime parity (see phase table) | **pending** |
+| `PX-ECS-5` | 5 | Infra staging proof | **pending** — manifests/alerts ready; needs `PX-PROD-0` apply |
+| `PX-ECS-5A`–`5G` | 5 | Cloud realtime parity (see phase table) | **partial** — WS ingress service, optimizer URL, PodMonitoring, outbox alert in repo; staging proof pending |
 
 ---
 

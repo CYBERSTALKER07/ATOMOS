@@ -22,7 +22,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: backend-go
+                name: backend-go-ws
                 port:
                   number: 80
           - path: /

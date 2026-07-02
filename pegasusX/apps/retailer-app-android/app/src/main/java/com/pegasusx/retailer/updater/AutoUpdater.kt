@@ -8,7 +8,7 @@ import android.util.Log
 
 /**
  * Scaffolding for the self-hosted APK auto-updater.
- * In a production setup, this would poll an endpoint like /v1/app-versions/android
+ * In a production setup, this would poll the app-versions API for the Android channel
  * and use DownloadManager to fetch the new APK and prompt installation.
  */
 class AutoUpdater(private val context: Context) {

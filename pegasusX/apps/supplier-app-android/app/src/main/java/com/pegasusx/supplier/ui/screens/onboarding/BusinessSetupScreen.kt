@@ -3,6 +3,8 @@ package com.pegasusx.supplier.ui.screens.onboarding
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -18,11 +20,23 @@ import com.pegasusx.supplier.ui.viewmodel.OnboardingViewModel
 @Composable
 fun BusinessSetupScreen(
     onComplete: () -> Unit,
+    onBack: (() -> Unit)? = null,
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
     val state by viewModel.businessState.collectAsStateWithLifecycle()
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Business setup") }) }) { padding ->
+    Scaffold(topBar = {
+        TopAppBar(
+            title = { Text("Business setup") },
+            navigationIcon = {
+                if (onBack != null) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            },
+        )
+    }) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)

@@ -23,7 +23,7 @@ data:
   SPANNER_DATABASE: "pegasusx-db"
   GCS_BUCKET_NAME: "pegasusx-prod-catalog"
   ROUTING_OSRM_URL: "http://osrm.pegasusx.svc.cluster.local:5000"
-  OPTIMIZER_BASE_URL: "http://ai-worker.pegasusx.svc.cluster.local:8081"
+  OPTIMIZER_BASE_URL: "http://optimizer-core.pegasusx.svc.cluster.local:8082"
   GLOBAL_PAY_ENV: "production"
   WS_ALLOWED_ORIGINS: "https://supplier.pegasusx.app,https://warehouse.pegasusx.app,https://factory.pegasusx.app,https://retailer.pegasusx.app"
   LOG_LEVEL: "info"

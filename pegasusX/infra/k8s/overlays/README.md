@@ -6,12 +6,13 @@ Render production manifests:
 kubectl kustomize infra/k8s/base --load-restrictor LoadRestrictionsNone
 # or
 kubectl kustomize infra/k8s/overlays/prod --load-restrictor LoadRestrictionsNone
+kubectl kustomize infra/k8s/overlays/staging --load-restrictor LoadRestrictionsNone
 ```
 
 | Overlay | Namespace | Notes |
 |---------|-----------|-------|
-| `prod/` | `pegasusx` | Full HA: 3+ API replicas, worker split, PDB/HPA |
-| `staging/` | `pegasusx-staging` | Dual-write Kafka topics enabled for consumer migration |
+| `prod/` | `pegasusx` | Full HA: 3+ API replicas, worker split, ai-worker + optimizer-core, PDB/HPA, PodMonitoring |
+| `staging/` | `pegasusx-staging` | Dual-write Kafka topics; `OPTIMIZER_BASE_URL=http://optimizer-core:8082` |
 | `dev/` | `pegasusx-dev` | Single replica, debug logging |
 
 See also: [WS_INGRESS_AFFINITY.md](../../docs/WS_INGRESS_AFFINITY.md)

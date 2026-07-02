@@ -17,9 +17,9 @@ Works when:
 
 Ingress config:
 
-- Path `/v1/ws/*` → `backend-go` Service port 80
-- Backend timeout **3600s** (WS idle keepalive)
-- Enable HTTP/2 to origin if supported; WS upgrades use HTTP/1.1
+- Path `/v1/ws/*` → `backend-go-ws` Service port 80 (same pods as `backend-go`, separate BackendConfig)
+- Path `/*` REST → `backend-go` Service with `pegasusx-api-backendconfig` (120s)
+- WS backend uses `pegasusx-ws-backendconfig` (3600s + optional cookie affinity)
 
 No sticky sessions required if Redis relay is healthy.
 

@@ -8,7 +8,7 @@ resource "google_monitoring_alert_policy" "backend_5xx_rate" {
   conditions {
     display_name = "http 5xx fraction high"
     condition_monitoring_query_language {
-      query = <<-EOT
+      query    = <<-EOT
         fetch prometheus_target
         | metric 'prometheus.googleapis.com/void_http_requests_total/counter'
         | filter (metric.status_class = '5xx')
@@ -90,7 +90,7 @@ resource "google_monitoring_alert_policy" "optimizer_fallback_rate" {
   conditions {
     display_name = "fallback fraction high"
     condition_monitoring_query_language {
-      query = <<-EOT
+      query    = <<-EOT
         fetch prometheus_target
         | {
             metric 'prometheus.googleapis.com/void_optimizer_source_total/counter'
@@ -115,7 +115,34 @@ resource "google_monitoring_alert_policy" "optimizer_fallback_rate" {
   notification_channels = var.alert_notification_channels
 
   documentation {
-    content   = "Dispatch optimizer fallback_phase1 exceeds 5% for 5 minutes. Check ai-worker health, OPTIMIZER_BASE_URL, and solver timeouts."
+    content   = "Dispatch optimizer fallback_phase1 exceeds 5% for 5 minutes. Check optimizer-core health, OPTIMIZER_BASE_URL, and solver timeouts."
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "outbox_backlog_high" {
+  count        = local.observability_enabled ? 1 : 0
+  display_name = "pegasusX — Outbox unpublished > 100"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "outbox relay backlog high"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_outbox_unpublished_count/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 100
+      duration        = "300s"
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MAX"
+      }
+    }
+  }
+
+  notification_channels = var.alert_notification_channels
+
+  documentation {
+    content   = "Transactional outbox has more than 100 unpublished events for 5 minutes. Check outbox relay, Kafka broker health, and worker pods before cross-role WS fanout stalls."
     mime_type = "text/markdown"
   }
 }
@@ -282,6 +309,27 @@ resource "google_monitoring_dashboard" "pilot_launch" {
                   }
                 }
               }]
+            }
+          }
+        },
+        {
+          xPos   = 0
+          yPos   = 12
+          width  = 6
+          height = 4
+          widget = {
+            title = "Outbox unpublished (max)"
+            scorecard = {
+              timeSeriesQuery = {
+                timeSeriesFilter = {
+                  filter = "metric.type=\"prometheus.googleapis.com/void_outbox_unpublished_count/gauge\" resource.type=\"prometheus_target\""
+                  aggregation = {
+                    alignmentPeriod    = "60s"
+                    perSeriesAligner   = "ALIGN_MAX"
+                    crossSeriesReducer = "REDUCE_MAX"
+                  }
+                }
+              }
             }
           }
         }

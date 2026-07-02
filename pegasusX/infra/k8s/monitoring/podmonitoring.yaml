@@ -1,0 +1,45 @@
+# Google Managed Prometheus scrape targets (GKE PodMonitoring operator).
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: backend-go
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  selector:
+    matchLabels:
+      app: backend-go
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: backend-go-worker
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  selector:
+    matchLabels:
+      app: backend-go-worker
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: 30s
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: ai-worker
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  selector:
+    matchLabels:
+      app: ai-worker
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: 30s

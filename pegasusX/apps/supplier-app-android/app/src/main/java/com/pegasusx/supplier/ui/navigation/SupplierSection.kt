@@ -45,6 +45,7 @@ enum class SupplierSection(
     NOTIFICATIONS(SupplierRoutes.NOTIFICATIONS, "Notifications", Icons.Default.Notifications),
     EARNINGS(SupplierRoutes.EARNINGS, "Earnings", Icons.AutoMirrored.Filled.ShowChart),
     PROFILE(SupplierRoutes.PROFILE, "Profile", Icons.Default.Person),
+    BUSINESS_SETUP(SupplierRoutes.BUSINESS_SETUP, "Business setup", Icons.Default.Business),
     MORE(SupplierRoutes.MORE, "More", Icons.Default.MoreHoriz),
     ;
 
@@ -92,6 +93,7 @@ enum class SupplierSection(
             NOTIFICATIONS,
             EARNINGS,
             PROFILE,
+            BUSINESS_SETUP,
         )
 
         /** All destinations reachable from the tablet rail (excludes phone-only More hub). */
@@ -108,7 +110,6 @@ enum class SupplierSection(
                 "catalog_detail" -> CATALOG
                 "manifest_detail", "manifest_exceptions" -> MANIFESTS
                 "fleet_live_map" -> FLEET
-                "portal_handoff" -> null
                 else -> entries.firstOrNull { it.route == base }
             }
         }
