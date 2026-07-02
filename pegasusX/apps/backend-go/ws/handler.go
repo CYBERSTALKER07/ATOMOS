@@ -267,8 +267,14 @@ func runConnectionLoop(req *http.Request, conn *gorillaConn, unsubscribes []func
 	conn.conn.SetPongHandler(func(string) error {
 		return conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
 	})
+	
+	limiter := NewIngressRateLimiter()
 	for {
 		if _, _, err := conn.conn.ReadMessage(); err != nil {
+			return
+		}
+		if !limiter.Allow() {
+			log.Warn("websocket ingress rate limit exceeded", "conn_id", conn.ID())
 			return
 		}
 	}

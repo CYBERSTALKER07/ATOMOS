@@ -24,8 +24,24 @@ func (s *Service) HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	event, err := stripewebhook.ConstructEvent(body, r.Header.Get("Stripe-Signature"), s.stripeWebhookSecret)
-	if err != nil {
+	var event stripe.Event
+	var signatureValid bool
+
+	signatureHeader := r.Header.Get("Stripe-Signature")
+	secrets := strings.Split(s.stripeWebhookSecret, ",")
+	for _, secret := range secrets {
+		secret = strings.TrimSpace(secret)
+		if secret == "" {
+			continue
+		}
+		event, err = stripewebhook.ConstructEvent(body, signatureHeader, secret)
+		if err == nil {
+			signatureValid = true
+			break
+		}
+	}
+
+	if !signatureValid {
 		writeJSONError(w, http.StatusUnauthorized, "invalid_signature", "Invalid webhook signature", endpoint, false, "")
 		return
 	}

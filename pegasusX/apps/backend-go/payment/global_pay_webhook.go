@@ -40,7 +40,21 @@ func (s *Service) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.Request)
 	}
 	defer r.Body.Close()
 
-	if !verifyGlobalPayBasicAuth(r.Header.Get("Authorization"), s.globalPayWebhookSecret) {
+	var signatureValid bool
+	authHeader := r.Header.Get("Authorization")
+	secrets := strings.Split(s.globalPayWebhookSecret, ",")
+	for _, secret := range secrets {
+		secret = strings.TrimSpace(secret)
+		if secret == "" {
+			continue
+		}
+		if verifyGlobalPayBasicAuth(authHeader, secret) {
+			signatureValid = true
+			break
+		}
+	}
+
+	if !signatureValid {
 		writeJSONError(w, http.StatusUnauthorized, "invalid_signature", "Invalid webhook signature", endpoint, false, "")
 		return
 	}

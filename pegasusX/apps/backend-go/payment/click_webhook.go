@@ -50,7 +50,20 @@ func (s *Service) HandleClickWebhook(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnprocessableEntity, "invalid_request", "click_trans_id is required", endpoint, false, "")
 		return
 	}
-	if !verifyClickSignature(req, s.clickWebhookSecret) {
+	var signatureValid bool
+	secrets := strings.Split(s.clickWebhookSecret, ",")
+	for _, secret := range secrets {
+		secret = strings.TrimSpace(secret)
+		if secret == "" {
+			continue
+		}
+		if verifyClickSignature(req, secret) {
+			signatureValid = true
+			break
+		}
+	}
+
+	if !signatureValid {
 		writeJSONError(w, http.StatusUnauthorized, "invalid_signature", "Invalid webhook signature", endpoint, false, "")
 		return
 	}

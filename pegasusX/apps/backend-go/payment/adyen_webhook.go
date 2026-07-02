@@ -38,9 +38,21 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	secrets := strings.Split(s.adyenWebhookSecret, ",")
 	for _, itemWrapper := range *adyenWebhook.NotificationItems {
 		item := itemWrapper.NotificationRequestItem
-		if !adyenhmac.ValidateHmac(item, s.adyenWebhookSecret) {
+		var signatureValid bool
+		for _, secret := range secrets {
+			secret = strings.TrimSpace(secret)
+			if secret == "" {
+				continue
+			}
+			if adyenhmac.ValidateHmac(item, secret) {
+				signatureValid = true
+				break
+			}
+		}
+		if !signatureValid {
 			writeJSONError(w, http.StatusUnauthorized, "invalid_signature", "Invalid webhook signature", endpoint, false, "")
 			return
 		}

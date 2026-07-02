@@ -4,6 +4,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"golang.org/x/time/rate"
 )
 
 // HubLimits caps live sockets per hub instance. Per-room shedding reaps the
@@ -52,3 +54,22 @@ func envInt(key string, fallback int) int {
 func CapacityRetryAfterSeconds() int {
 	return envInt("WS_RETRY_AFTER_SECONDS", 30)
 }
+
+// IngressRateLimiter protects the server from abusive clients sending too many messages.
+type IngressRateLimiter struct {
+	limiter *rate.Limiter
+}
+
+func NewIngressRateLimiter() *IngressRateLimiter {
+	// 5 messages per second, burst of 10
+	limit := rate.Limit(envInt("WS_INGRESS_RATE_LIMIT", 5))
+	burst := envInt("WS_INGRESS_BURST_LIMIT", 10)
+	return &IngressRateLimiter{
+		limiter: rate.NewLimiter(limit, burst),
+	}
+}
+
+func (l *IngressRateLimiter) Allow() bool {
+	return l.limiter.Allow()
+}
+
