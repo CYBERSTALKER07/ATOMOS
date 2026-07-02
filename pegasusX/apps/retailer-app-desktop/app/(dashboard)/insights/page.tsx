@@ -25,6 +25,7 @@ import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
 import EmptyState from "../../../components/EmptyState";
+import SpendAnalytics from "./SpendAnalytics";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import { correctPrediction } from "../../../lib/api";
@@ -472,6 +473,10 @@ export default function InsightsPage() {
           </div>
         </BentoCard>
       </BentoGrid>
+
+      <div className="mb-8">
+        <SpendAnalytics />
+      </div>
 
       <div className="flex gap-8 min-h-[520px]">
         {/* Main: AI Picks */}

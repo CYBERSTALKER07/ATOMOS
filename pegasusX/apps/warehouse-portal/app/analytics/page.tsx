@@ -6,6 +6,7 @@ import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import VelocityGauge from './VelocityGauge';
 
 interface AnalyticsData {
   period: string;
@@ -190,6 +191,12 @@ export default function AnalyticsPage() {
             No completed-order revenue in this period. Daily breakdown populates from Spanner `daily_breakdown`.
           </p>
         )}
+        )}
+      </div>
+
+      <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
+        <h2 className="text-sm font-semibold mb-4 text-center">Fulfillment Velocity (Time to Dispatch)</h2>
+        <VelocityGauge className="w-full" />
       </div>
 
       {/* Top Products */}
