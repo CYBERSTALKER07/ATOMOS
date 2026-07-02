@@ -328,4 +328,15 @@ P0 screens call `use*SessionReconcile` to refetch after WS reconnect (server-win
 
 Handoff timeline panels refresh on reconcile via shared `HandoffTimelinePanel` hooks.
 
+### Desktop vitest parity (PX-DESK-5A)
+
+Each Tauri portal runs `pnpm test` with auth cookie tests, session-reconcile hook test, and one P0 page pure-logic test.
+
+| App | Auth | Session reconcile | P0 page logic |
+| --- | --- | --- | --- |
+| retailer-app-desktop | `lib/__tests__/auth.test.ts` | `session-reconcile.test.tsx` | dock `page.test.ts` |
+| supplier-portal | `lib/__tests__/auth.test.ts` | `session-reconcile.test.tsx` | orders cache keys + dispatch fingerprint |
+| warehouse-portal | `lib/__tests__/auth.test.ts` | `session-reconcile.test.tsx` | handoff pulse filter |
+| factory-portal | `lib/__tests__/auth.test.ts` | `session-reconcile.test.tsx` | supply-requests filter |
+
 Reference: [`context/plan_desktop.md`](../context/plan_desktop.md), [`docs/qa/PX-DESK_MANUAL_QA.md`](./qa/PX-DESK_MANUAL_QA.md), [`docs/adr/008-desktop-tauri-strategy.md`](./adr/008-desktop-tauri-strategy.md).

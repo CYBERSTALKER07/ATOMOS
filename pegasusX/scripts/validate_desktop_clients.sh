@@ -28,6 +28,8 @@ pnpm --filter @pegasusx/desktop-cache test
 for app in "${APPS[@]}"; do
   dir="apps/$app"
   [[ -d "$dir" ]] || fail "missing $dir"
+  echo "$app: vitest (PX-DESK-5A)"
+  pnpm --filter "@pegasusx/$app" test
   echo "$app: typecheck"
   pnpm --filter "@pegasusx/$app" typecheck
   echo "$app: static export (TAURI_BUILD=1)"

@@ -34,8 +34,8 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 
 | App | Routes / depth | Tauri shell today | Gaps |
 |-----|----------------|-------------------|------|
-| **retailer-app-desktop** | Richest retailer surface (procurement, dock, checkout) | Keyring, updater stub | Pending checkout in `localStorage`; no SQLite; best test coverage (~6 vitest files) |
-| **supplier-portal** | ~48 routes, full ops spine | Keyring, updater stub | Thin portal tests; Tauri Android redundant vs native Kotlin |
+| **retailer-app-desktop** | Richest retailer surface (procurement, dock, checkout) | Keyring, updater stub | Pending checkout in `localStorage`; no SQLite; deepest vitest suite (~70 tests) |
+| **supplier-portal** | ~48 routes, full ops spine | Keyring, updater stub | Auth + session-reconcile + dispatch fingerprint vitest; Tauri Android redundant vs native Kotlin |
 | **warehouse-portal** | ~35 routes, dispatch/fleet/treasury | Keyring, fs/dialog plugins declared, barely used | Keyboard-wedge returns only; no local dispatch cache |
 | **factory-portal** | ~19 routes, manifests/loading-bay | Keyring, updater stub | Lighter than portal native on some sheets |
 
@@ -151,7 +151,7 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 
 | Anchor | Work | Exit |
 |--------|------|------|
-| `PX-DESK-5A` | Vitest parity: each portal gets auth + session-reconcile + one P0 page test (match retailer depth) | `pnpm test` green per app in CI |
+| `PX-DESK-5A` | Vitest parity: each portal gets auth + session-reconcile + one P0 page test (match retailer depth) | `pnpm test` green per app in CI | **shipped** |
 | `PX-DESK-5B` | `docs/qa/PX-DESK_MANUAL_QA.md` — Windows checklist (install, update, wedge scan, print, offline checkout) | Linked from `PX12_MANUAL_QA_RUNBOOK.md` | **shipped** |
 | `PX-DESK-5C` | ADR `008-desktop-tauri-strategy.md` — locked decision + when to add Rust plugins vs rewrite | ADR accepted | **shipped** |
 | `PX-DESK-5D` | Parity matrix “Desktop capabilities” appendix (cache, export, print, offline queue per role) | Matrix row per desktop-only feature | **shipped** |
@@ -188,6 +188,9 @@ cd pegasusX/apps/retailer-app-desktop && pnpm typecheck && pnpm build:static
 # Retailer unit tests (deepest today)
 cd pegasusX/apps/retailer-app-desktop && pnpm test
 
+# All four portals — PX-DESK-5A vitest parity
+cd pegasusX && pnpm --filter @pegasusx/{retailer-app-desktop,supplier-portal,warehouse-portal,factory-portal} test
+
 # Ecosystem contracts (unchanged)
 cd pegasusX && make parity-contract-full
 cd pegasusX && make test-ssmr-infra
@@ -218,8 +221,8 @@ cd pegasusX/apps/warehouse-portal && pnpm tauri:build:win
 | `PX-DESK-3A`–`3E` | 3 | Virtualization, maps, skeletons | **shipped** |
 | `PX-DESK-4` | 4 | Realtime & ecosystem parity | **shipped** — 4A–4E complete |
 | `PX-DESK-4A`–`4E` | 4 | Reconcile audit, ECS features | **shipped** |
-| `PX-DESK-5` | 5 | Test & docs | **partial** — 5B/5C/5D shipped; 5A pending |
-| `PX-DESK-5A`–`5D` | 5 | Vitest, QA runbook, ADR | **partial** — 5B–5D shipped |
+| `PX-DESK-5` | 5 | Test & docs | **shipped** — 5A–5D complete |
+| `PX-DESK-5A`–`5D` | 5 | Vitest, QA runbook, ADR | **shipped** |
 
 ---
 

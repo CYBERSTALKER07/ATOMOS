@@ -31,7 +31,7 @@ help:
 	@echo "  qa-gate                compile + unit tests (fails if integration tests would be skipped)"
 	@echo "  validate-ai-worker-k8s validate ai-worker Kubernetes manifests"
 	@echo "  validate-backend-k8s  validate backend-go Kubernetes manifests"
-	@echo "  validate-desktop-clients  PX-DESK typecheck + static export for all Tauri portals"
+	@echo "  validate-desktop-clients  PX-DESK typecheck + vitest + static export for all Tauri portals"
 	@echo "  validate-desktop-updater  PX-DESK-0A/0E pubkey + GCS updater endpoint gate"
 	@echo "  validate-launch-readiness validate launch evidence bundle"
 	@echo "  docker-build          build backend-go + ai-worker container images (local tag)"

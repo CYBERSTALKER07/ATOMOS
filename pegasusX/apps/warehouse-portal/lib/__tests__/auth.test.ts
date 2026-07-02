@@ -1,21 +1,38 @@
-import { describe, it, expect } from 'vitest';
-import { decodeJwtPayload, parseFactoryLiveEvent, FactoryLiveEvent } from '../auth';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { decodeJwtPayload, readTokenFromCookie } from "../auth";
 
-describe('auth.ts utilities', () => {
-  describe('decodeJwtPayload', () => {
-    it('decodes a valid JWT payload', () => {
-      // Mock JWT format: header.payload.signature
-      const payload = { sub: 'user123', role: 'factory_admin' };
-      const encodedPayload = btoa(JSON.stringify(payload));
-      const fakeToken = `header.${encodedPayload}.signature`;
+vi.mock("@/lib/bridge", () => ({
+  isTauri: () => false,
+  getStoredToken: vi.fn(),
+  storeToken: vi.fn(),
+  clearStoredToken: vi.fn(),
+}));
 
-      const decoded = decodeJwtPayload(fakeToken);
-      expect(decoded).toEqual(payload);
+describe("warehouse auth utilities", () => {
+  describe("readTokenFromCookie", () => {
+    beforeEach(() => {
+      Object.defineProperty(document, "cookie", { writable: true, value: "" });
     });
 
-    it('returns null for invalid JWT formats', () => {
-      expect(decodeJwtPayload('invalid-token')).toBeNull();
-      expect(decodeJwtPayload('header.invalid_payload_not_base64.signature')).toBeNull();
+    it("reads pegasus_warehouse_jwt from cookie", () => {
+      Object.defineProperty(document, "cookie", {
+        writable: true,
+        value: "pegasus_warehouse_jwt=wh-tok",
+      });
+      expect(readTokenFromCookie()).toBe("wh-tok");
+    });
+  });
+
+  describe("decodeJwtPayload", () => {
+    it("decodes a valid JWT payload", () => {
+      const payload = { sub: "user123", role: "warehouse_admin" };
+      const encodedPayload = btoa(JSON.stringify(payload));
+      const fakeToken = `header.${encodedPayload}.signature`;
+      expect(decodeJwtPayload(fakeToken)).toEqual(payload);
+    });
+
+    it("returns null for invalid JWT formats", () => {
+      expect(decodeJwtPayload("invalid-token")).toBeNull();
     });
   });
 });
