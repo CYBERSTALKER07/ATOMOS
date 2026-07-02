@@ -56,6 +56,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     private let navigationVoiceAnnouncer = NavigationVoiceAnnouncer()
     private let routeDeviationTracker = RouteDeviationTracker()
     private var isReroutingRoute = false
+    private var hasLoadedMissionsOnce = false
     private let maxTrailPoints = 60
     private let locationInterpolator = LocationInterpolator()
     private var interpolationTask: Task<Void, Never>?
@@ -145,14 +146,18 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         guard let event else { return }
         guard DriverWsRefresh.shouldRefreshManifest(eventType: event.type) else { return }
         Task {
-            await loadMissions()
+            await loadMissions(silent: true)
             lastRealtimeRefreshAt = Date()
         }
     }
 
     func loadMissions(silent: Bool = false) async {
-        if !silent { isLoadingMissions = true }
-        defer { if !silent { isLoadingMissions = false } }
+        let effectiveSilent = silent || hasLoadedMissionsOnce
+        if !effectiveSilent { isLoadingMissions = true }
+        defer {
+            if !effectiveSilent { isLoadingMissions = false }
+            hasLoadedMissionsOnce = true
+        }
 
         // Try real API first
         do {

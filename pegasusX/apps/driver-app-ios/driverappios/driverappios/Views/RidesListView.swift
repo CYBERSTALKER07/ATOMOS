@@ -153,8 +153,11 @@ struct RidesListView: View {
             }
             Task {
                 await DriverReconnectRecovery.recoverInFlight(wasInFlight: hadInFlight)
-                await vm.loadMissions()
+                await vm.loadMissions(silent: true)
             }
+        }
+        .onChange(of: driverSocketState.eventSequence) { _, _ in
+            vm.handleSocketEvent(driverSocketState.lastEvent)
         }
         .safeAreaInset(edge: .bottom) {
             if let earlyCompleteMessage {

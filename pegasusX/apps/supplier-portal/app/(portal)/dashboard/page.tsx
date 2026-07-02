@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { BentoCard, BentoGrid } from "@/components/BentoGrid";
 import FleetLiveMapPanel from "@/components/FleetLiveMapPanel";
-import MeioNetworkPanel from "@/components/MeioNetworkPanel";
+import PlanningOutcomesPanel from "@/components/PlanningOutcomesPanel";
 import NetworkPulsePanel from "@/components/NetworkPulsePanel";
 import { PageChrome } from "@/components/PageChrome";
 import StatusBadge from "@/components/StatusBadge";
@@ -242,7 +242,7 @@ export default function DashboardPage() {
           </BentoCard>
 
           <BentoCard size="full" className="p-0 overflow-hidden min-h-[200px]">
-            <MeioNetworkPanel />
+            <PlanningOutcomesPanel />
           </BentoCard>
 
           <BentoCard size="full" className="p-5">

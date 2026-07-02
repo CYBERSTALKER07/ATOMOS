@@ -386,25 +386,6 @@ data class EarlyCompleteRequestResponse(
 )
 
 @Serializable
-data class NegotiationItemRequest(
-    @SerialName("sku_id") val skuId: String,
-    @SerialName("original_qty") val originalQty: Long,
-    @SerialName("proposed_qty") val proposedQty: Long
-)
-
-@Serializable
-data class NegotiationPayload(
-    @SerialName("order_id") val orderId: String,
-    val items: List<NegotiationItemRequest>
-)
-
-@Serializable
-data class NegotiationProposalResponse(
-    val status: String,
-    @SerialName("proposal_id") val proposalId: String
-)
-
-@Serializable
 data class RouteReorderResponse(
     val status: String,
     @SerialName("route_id") val routeId: String,

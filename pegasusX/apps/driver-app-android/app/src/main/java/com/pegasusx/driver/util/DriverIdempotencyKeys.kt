@@ -41,8 +41,6 @@ object DriverIdempotencyKeys {
 
     fun reportDamage(orderId: String): String = "driver-report-damage:${driverId()}:$orderId"
 
-    fun negotiate(orderId: String): String = "driver-negotiate:${driverId()}:$orderId"
-
     fun requestEarlyComplete(reason: String): String = "driver-request-early-complete:${driverId()}:${stableHash(reason)}"
 
     fun routeReorder(routeId: String, orderSequence: List<String>): String {

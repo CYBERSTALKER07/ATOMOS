@@ -77,10 +77,6 @@ enum DriverIdempotency {
         "driver-report-damage:\(driverId()):\(orderId)"
     }
 
-    static func negotiate(orderId: String) -> String {
-        "driver-negotiate:\(driverId()):\(orderId)"
-    }
-
     static func requestEarlyComplete(reason: String) -> String {
         "driver-request-early-complete:\(driverId()):\(stableHash(reason))"
     }

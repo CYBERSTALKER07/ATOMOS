@@ -678,30 +678,6 @@ struct EarlyCompleteRequestResponse: Decodable {
     }
 }
 
-/// Edge 28 request item payload for /v1/delivery/negotiate.
-struct NegotiationItemRequest: Encodable {
-    let skuId: String
-    let originalQty: Int64
-    let proposedQty: Int64
-
-    enum CodingKeys: String, CodingKey {
-        case skuId = "sku_id"
-        case originalQty = "original_qty"
-        case proposedQty = "proposed_qty"
-    }
-}
-
-/// Edge 28 response payload for /v1/delivery/negotiate.
-struct NegotiationProposalResponse: Decodable {
-    let status: String
-    let proposalId: String
-
-    enum CodingKeys: String, CodingKey {
-        case status
-        case proposalId = "proposal_id"
-    }
-}
-
 /// Response payload for /v1/fleet/route/reorder.
 struct RouteReorderResponse: Decodable {
     let status: String

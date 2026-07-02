@@ -24,7 +24,7 @@ import com.pegasusx.driver.data.model.LoginRequest
 import com.pegasusx.driver.data.model.ManifestGateResponse
 import com.pegasusx.driver.data.model.MissingItemsPayload
 import com.pegasusx.driver.data.model.MissingItemsResponse
-// NegotiationPayload / NegotiationProposalResponse — quantity negotiation disabled.
+// Quantity negotiation disabled ecosystem-wide — backend returns 410 feature_disabled.
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.PendingCollection
 import com.pegasusx.driver.data.model.PulseResponse

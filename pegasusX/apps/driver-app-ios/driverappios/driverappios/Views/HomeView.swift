@@ -19,6 +19,7 @@ struct HomeView: View {
     @State private var handoffAlertMessage: String?
     @State private var pulseEvents: [PulseEvent] = []
     @State private var pulseLoading = true
+    @State private var driverSocketState = DriverSocketState.shared
 
     var body: some View {
         ScrollView {
@@ -137,6 +138,9 @@ struct HomeView: View {
         .task {
             await vm.loadMissions()
             await loadPulse()
+        }
+        .onChange(of: driverSocketState.eventSequence) { _, _ in
+            vm.handleSocketEvent(driverSocketState.lastEvent)
         }
     }
 
