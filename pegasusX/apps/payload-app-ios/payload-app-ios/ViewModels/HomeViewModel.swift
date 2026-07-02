@@ -510,16 +510,16 @@ final class HomeViewModel {
         let trimmed = orderId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty,
               let manifestId = manifest?.manifestId,
+              let m = manifest,
               let truckId = selectedTruckId,
               !injectingOrder else { return }
         // Phase 6: when offline, persist to the queue and notify the user.
         if !online {
-            let body = (try? JSONEncoder().encode(InjectOrderRequest(orderId: trimmed))).flatMap { String(data: $0, encoding: .utf8) } ?? ""
-            let action = QueuedAction(
-                id: deterministicQueueActionId(action: "inject-order", entityId: "\(manifestId)-\(trimmed)"),
-                endpoint: "/v1/supplier/manifests/\(manifestId)/inject-order",
+            let action = QueuedActionModel(
+                id: deterministicQueueActionId(action: "inject-order", entityId: "\(m.manifestId)-\(trimmed)"),
+                endpoint: "v1/supplier/manifests/\(m.manifestId)/inject-order",
                 method: "POST",
-                body: body,
+                body: "{\"order_id\":\"\(trimmed)\"}",
                 createdAt: Date().timeIntervalSince1970
             )
             queue.enqueue(action)

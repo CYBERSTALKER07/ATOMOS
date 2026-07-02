@@ -157,7 +157,9 @@ dependencies {
     // Hilt
     implementation("com.google.dagger:hilt-android:2.59.2")
     ksp("com.google.dagger:hilt-android-compiler:2.59.2")
+    ksp("androidx.hilt:hilt-compiler:1.2.0")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation("androidx.hilt:hilt-work:1.2.0")
 
     // Networking
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
@@ -172,6 +174,9 @@ dependencies {
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
+
+    // WorkManager — background sync
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
 
     // Barcode scanning (shared module: CameraX + ML Kit)
     implementation(project(":barcode-scanner"))

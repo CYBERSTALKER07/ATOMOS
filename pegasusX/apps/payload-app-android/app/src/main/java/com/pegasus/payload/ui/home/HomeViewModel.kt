@@ -155,7 +155,10 @@ class HomeViewModel @Inject constructor(
     private fun bootstrapPhase6() {
         val token = secureStore.token ?: return
         // Initial inbox fetch + queue restore.
-        _state.update { it.copy(queuedActions = repository.readQueue().size) }
+        viewModelScope.launch {
+            val qCount = repository.queuedActionsCount()
+            _state.update { it.copy(queuedActions = qCount) }
+        }
         loadNotifications()
         registerFcmToken()
         // Connect WebSocket and observe its frames + reconnects.
@@ -254,7 +257,7 @@ class HomeViewModel @Inject constructor(
     private fun flushQueueAndNotify() {
         viewModelScope.launch {
             val (sent, kept) = runCatching { repository.flushQueue(BuildConfig.API_BASE_URL) }
-                .getOrDefault(0 to repository.readQueue().size)
+                .getOrDefault(0 to repository.queuedActionsCount())
             _state.update {
                 it.copy(
                     queuedActions = kept,
@@ -806,20 +809,23 @@ class HomeViewModel @Inject constructor(
         // Phase 6: when offline, persist to the queue and surface a notice.
         if (!_state.value.online) {
             val body = json.encodeToString(InjectOrderRequest.serializer(), InjectOrderRequest(orderId = trimmed))
-            repository.enqueue(
-                QueuedAction(
-                    id = deterministicQueueActionId("inject-order", "$manifestId-$trimmed"),
-                    endpoint = "/v1/supplier/manifests/$manifestId/inject-order",
-                    method = "POST",
-                    body = body,
-                    createdAt = System.currentTimeMillis(),
+            viewModelScope.launch {
+                repository.enqueue(
+                    QueuedAction(
+                        id = deterministicQueueActionId("inject-order", "$manifestId-$trimmed"),
+                        endpoint = "/v1/supplier/manifests/$manifestId/inject-order",
+                        method = "POST",
+                        body = body,
+                        createdAt = System.currentTimeMillis(),
+                    )
                 )
-            )
-            _state.update {
-                it.copy(
-                    queuedActions = repository.readQueue().size,
-                    queuedNoticeMessage = "Queued offline. Will sync when connection restores.",
-                )
+                val count = repository.queuedActionsCount()
+                _state.update {
+                    it.copy(
+                        queuedActions = count,
+                        queuedNoticeMessage = "Queued offline. Will sync when connection restores.",
+                    )
+                }
             }
             return
         }

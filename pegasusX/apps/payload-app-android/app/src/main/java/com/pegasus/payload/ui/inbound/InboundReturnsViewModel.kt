@@ -39,21 +39,23 @@ class InboundReturnsViewModel @Inject constructor(
         true,
     )
 
-    fun queuedScanCount(): Int =
-        repository.readQueue().count { it.endpoint.contains("returns/inbound/scan") }
+    fun queuedScanCountFlow(): kotlinx.coroutines.flow.Flow<Int> =
+        repository.queuedScanCountFlow("returns/inbound/scan")
 
     fun enqueueOfflineScan(barcode: String, sessionId: String?) {
         val body = json.encodeToString(
             InboundScanBody(barcode = barcode, sessionId = sessionId.orEmpty()),
         )
-        repository.enqueue(
-            QueuedAction(
-                id = PayloadIdempotencyKeys.key("inbound-scan", "${barcode}-${sessionId.orEmpty()}"),
-                endpoint = "/v1/returns/inbound/scan",
-                method = "POST",
-                body = body,
-                createdAt = System.currentTimeMillis(),
-            ),
-        )
+        viewModelScope.launch {
+            repository.enqueue(
+                QueuedAction(
+                    id = PayloadIdempotencyKeys.key("inbound-scan", "${barcode}-${sessionId.orEmpty()}"),
+                    endpoint = "/v1/returns/inbound/scan",
+                    method = "POST",
+                    body = body,
+                    createdAt = System.currentTimeMillis(),
+                ),
+            )
+        }
     }
 }

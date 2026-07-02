@@ -253,7 +253,7 @@ struct InboundReturnsView: View {
             }
         }
         let bodyData = (try? JSONEncoder().encode(ScanQueueBody(barcode: barcode, qty: 1, sessionId: sessionId ?? ""))) ?? Data()
-        let action = QueuedAction(
+        let action = QueuedActionModel(
             id: PayloadIdempotency.inboundScan(barcode: barcode, sessionId: sessionId ?? "offline"),
             endpoint: "v1/returns/inbound/scan",
             method: "POST",

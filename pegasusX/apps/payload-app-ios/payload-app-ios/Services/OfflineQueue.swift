@@ -1,42 +1,52 @@
-//
-//  OfflineQueue.swift
-//  payload-app-ios
-//
-//  Persistent JSON-backed queue for actions taken while the WebSocket /
-//  network is offline. Mirrors the Expo `offline_queue` SecureStore key and
-//  the Android `payloader_offline_queue` EncryptedSharedPreferences entry.
-//  Only inject-order is enqueued today; the structure supports arbitrary
-//  endpoint+method+body to match the Android implementation.
-//
-
 import Foundation
+import SwiftData
+
+@Model
+final class QueuedActionModel {
+    @Attribute(.unique) var id: String
+    var endpoint: String
+    var method: String
+    var body: String
+    var createdAt: Double
+
+    init(id: String, endpoint: String, method: String, body: String, createdAt: Double) {
+        self.id = id
+        self.endpoint = endpoint
+        self.method = method
+        self.body = body
+        self.createdAt = createdAt
+    }
+}
 
 @MainActor
 final class OfflineQueue {
     static let shared = OfflineQueue()
-    private let key = "payload_offline_queue"
-    private let encoder = JSONEncoder()
-    private let decoder = JSONDecoder()
-
-    func read() -> [QueuedAction] {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return [] }
-        return (try? decoder.decode([QueuedAction].self, from: data)) ?? []
-    }
-
-    func write(_ items: [QueuedAction]) {
-        if items.isEmpty {
-            UserDefaults.standard.removeObject(forKey: key)
-            return
-        }
-        if let data = try? encoder.encode(items) {
-            UserDefaults.standard.set(data, forKey: key)
+    
+    let container: ModelContainer
+    let context: ModelContext
+    
+    private init() {
+        do {
+            let config = ModelConfiguration(isStoredInMemoryOnly: false)
+            container = try ModelContainer(for: QueuedActionModel.self, configurations: config)
+            context = container.mainContext
+        } catch {
+            fatalError("Failed to initialize SwiftData ModelContainer for OfflineQueue: \(error)")
         }
     }
 
-    func enqueue(_ action: QueuedAction) {
-        var items = read()
-        items.append(action)
-        write(items)
+    func read() -> [QueuedActionModel] {
+        let descriptor = FetchDescriptor<QueuedActionModel>(sortBy: [SortDescriptor(\.createdAt)])
+        return (try? context.fetch(descriptor)) ?? []
+    }
+
+    func write(_ items: [QueuedActionModel]) {
+        // Not used directly in SwiftData pattern since we just insert/delete.
+    }
+
+    func enqueue(_ action: QueuedActionModel) {
+        context.insert(action)
+        try? context.save()
     }
 
     /// Replays every queued action against the live API. Returns
@@ -47,7 +57,8 @@ final class OfflineQueue {
         let items = read()
         if items.isEmpty { return (0, 0) }
         var sent = 0
-        var remaining: [QueuedAction] = []
+        var remainingCount = items.count
+        
         for action in items {
             do {
                 let (status, _) = try await api.rawRequest(endpoint: action.endpoint,
@@ -55,17 +66,21 @@ final class OfflineQueue {
                                                             body: action.body,
                                                             idempotencyKey: action.id)
                 if (200...299).contains(status) || status == 409 {
+                    context.delete(action)
                     sent += 1
+                    remainingCount -= 1
                 } else if status == 408 || status == 429 || status >= 500 {
-                    remaining.append(action)
+                    // keep
                 } else {
+                    context.delete(action)
                     sent += 1 // 4xx other than retry-eligible: drop to avoid blocking.
+                    remainingCount -= 1
                 }
             } catch {
-                remaining.append(action)
+                // keep
             }
         }
-        write(remaining)
-        return (sent, remaining.count)
+        try? context.save()
+        return (sent, remainingCount)
     }
 }

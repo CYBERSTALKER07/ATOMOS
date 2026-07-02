@@ -31,7 +31,9 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -224,4 +226,32 @@ interface PayloadApi {
 
     @GET("v1/catalog/barcode/{ean}")
     suspend fun lookupBarcode(@Path("ean") ean: String): Response<Map<String, @JvmSuppressWildcards Any>>
+
+    // ── Raw queue sync ───────────────────────────────────────────────────────
+    @POST("{endpoint}")
+    suspend fun rawPost(
+        @Path(value = "endpoint", encoded = true) endpoint: String,
+        @Body body: okhttp3.RequestBody?,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): Response<okhttp3.ResponseBody>
+
+    @PUT("{endpoint}")
+    suspend fun rawPut(
+        @Path(value = "endpoint", encoded = true) endpoint: String,
+        @Body body: okhttp3.RequestBody?,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): Response<okhttp3.ResponseBody>
+
+    @PATCH("{endpoint}")
+    suspend fun rawPatch(
+        @Path(value = "endpoint", encoded = true) endpoint: String,
+        @Body body: okhttp3.RequestBody?,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): Response<okhttp3.ResponseBody>
+
+    @DELETE("{endpoint}")
+    suspend fun rawDelete(
+        @Path(value = "endpoint", encoded = true) endpoint: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): Response<okhttp3.ResponseBody>
 }

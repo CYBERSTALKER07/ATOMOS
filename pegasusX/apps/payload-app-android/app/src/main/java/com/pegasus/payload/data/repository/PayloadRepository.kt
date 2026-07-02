@@ -35,6 +35,10 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import com.pegasus.payload.data.local.QueuedActionDao
+import com.pegasus.payload.data.local.QueuedActionEntity
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -50,6 +54,7 @@ class PayloadRepository @Inject constructor(
     private val secureStore: SecureStore,
     private val json: Json,
     private val okHttp: OkHttpClient,
+    private val queuedActionDao: QueuedActionDao,
 ) {
     private fun deterministicIdempotencyKey(action: String, entityId: String): String =
         PayloadIdempotencyKeys.key(action, entityId)
@@ -208,42 +213,45 @@ class PayloadRepository @Inject constructor(
 
     // ── Phase 6: offline action queue ────────────────────────────────────────
     // Persists a small queue of write actions (currently only inject-order)
-    // in EncryptedSharedPreferences. Drained on WS reconnect via [flushQueue].
+    // in Room Database. Drained on WS reconnect via WorkManager or flushQueue.
 
-    private val queueSerializer = ListSerializer(QueuedAction.serializer())
+    suspend fun queuedActionsCount(): Int = queuedActionDao.count()
 
-    fun readQueue(): List<QueuedAction> =
-        secureStore.offlineQueueJson?.let {
-            runCatching { json.decodeFromString(queueSerializer, it) }.getOrDefault(emptyList())
-        } ?: emptyList()
-
-    fun writeQueue(items: List<QueuedAction>) {
-        secureStore.offlineQueueJson = if (items.isEmpty()) null
-        else json.encodeToString(queueSerializer, items)
+    fun queuedScanCountFlow(pathContains: String): Flow<Int> {
+        return queuedActionDao.countByEndpointFlow(pathContains)
     }
 
-    fun enqueue(action: QueuedAction) {
-        writeQueue(readQueue() + action)
+    suspend fun enqueue(action: QueuedAction) {
+        queuedActionDao.insert(
+            QueuedActionEntity(
+                id = action.id,
+                endpoint = action.endpoint,
+                method = action.method,
+                bodyJson = action.body,
+                timestamp = action.createdAt
+            )
+        )
     }
 
     /**
-     * Drain the persisted offline queue. Returns (sent, kept) pair. Kept items
-     * are re-persisted for next reconnect attempt.
+     * Drain the persisted offline queue. Returns (sent, kept) pair.
      */
     suspend fun flushQueue(baseUrl: String): Pair<Int, Int> {
-        val current = readQueue()
+        val current = queuedActionDao.getAll()
         if (current.isEmpty()) return 0 to 0
         val token = secureStore.token ?: return 0 to current.size
-        val remaining = mutableListOf<QueuedAction>()
+        
         var sent = 0
+        var remaining = 0
         for (action in current) {
             val req = Request.Builder()
                 .url("${baseUrl.trimEnd('/')}${action.endpoint}")
                 .header("Authorization", "Bearer $token")
                 .header("Content-Type", "application/json")
                 .header("Idempotency-Key", action.id)
-                .method(action.method, action.body.toRequestBody("application/json".toMediaType()))
+                .method(action.method, action.bodyJson?.toRequestBody("application/json".toMediaType()) ?: okhttp3.internal.EMPTY_REQUEST)
                 .build()
+                
             val outcome = runCatching {
                 okHttp.newCall(req).execute().use { response ->
                     val status = response.code
@@ -254,14 +262,18 @@ class PayloadRepository @Inject constructor(
                     }
                 }
             }.getOrElse { QueueReplayOutcome.Retry }
+            
             when (outcome) {
-                QueueReplayOutcome.Sent,
-                QueueReplayOutcome.Drop -> sent++
-                QueueReplayOutcome.Retry -> remaining.add(action)
+                QueueReplayOutcome.Sent, QueueReplayOutcome.Drop -> {
+                    queuedActionDao.deleteById(action.id)
+                    sent++
+                }
+                QueueReplayOutcome.Retry -> {
+                    remaining++
+                }
             }
         }
-        writeQueue(remaining)
-        return sent to remaining.size
+        return sent to remaining
     }
 
     private enum class QueueReplayOutcome { Sent, Retry, Drop }

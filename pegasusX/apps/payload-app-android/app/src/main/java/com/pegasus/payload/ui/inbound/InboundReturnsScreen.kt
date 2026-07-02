@@ -78,7 +78,7 @@ fun InboundReturnsScreen(
     var scannerEnabled by remember { mutableStateOf(true) }
     var selected by remember { mutableStateOf(setOf<String>()) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
-    var queuedScans by remember { mutableStateOf(0) }
+    val queuedScans by viewModel.queuedScanCountFlow().collectAsStateWithLifecycle(0)
     val scope = rememberCoroutineScope()
 
     fun parseRows(body: Map<String, Any>?): List<InboundRow> {
@@ -109,7 +109,6 @@ fun InboundReturnsScreen(
                 else error = "Failed (${resp.code()})"
                 val hist = api.getReturnsHistory()
                 if (hist.isSuccessful) history = parseRows(hist.body())
-                queuedScans = viewModel.queuedScanCount()
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
             } finally {
@@ -136,7 +135,6 @@ fun InboundReturnsScreen(
                     viewModel.enqueueOfflineScan(trimmed, sessionId)
                     barcode = ""
                     statusMessage = "Scan queued (offline)"
-                    queuedScans = viewModel.queuedScanCount()
                     return@launch
                 }
                 val sid = ensureSession()
