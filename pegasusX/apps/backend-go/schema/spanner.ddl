@@ -802,6 +802,7 @@ CREATE TABLE FactoryInternalTransfers (
   ReassignDepth   INT64       NOT NULL DEFAULT (0),
   ExceptionCount  INT64       NOT NULL DEFAULT (0),
   SupplyRequestId STRING(36),
+  SourceInsightId STRING(36),
   WarehouseId     STRING(36),
   TransferMode    STRING(10),
   CreatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
@@ -811,6 +812,7 @@ CREATE TABLE FactoryInternalTransfers (
 CREATE INDEX Idx_FactoryTransfers_ByFactoryId ON FactoryInternalTransfers(FactoryId, UpdatedAt DESC);
 CREATE INDEX Idx_FactoryTransfers_BySupplierId ON FactoryInternalTransfers(SupplierId);
 CREATE INDEX Idx_FactoryTransfers_ByManifestId ON FactoryInternalTransfers(ManifestId);
+CREATE INDEX Idx_FactoryTransfers_BySourceInsight ON FactoryInternalTransfers(SourceInsightId);
 
 -- Predictive / threshold-based replenishment recommendations per warehouse SKU.
 CREATE TABLE ReplenishmentInsights (

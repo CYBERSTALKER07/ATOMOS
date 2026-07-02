@@ -376,10 +376,11 @@ func (e *Engine) autoCreateTransfer(ctx context.Context, wh warehouseInfo, insig
 				"Status":    "APPROVED",
 			}),
 			spanner.InsertOrUpdateMap("FactoryInternalTransfers", map[string]any{
-				"TransferId":    transferID,
+				"TransferId":      transferID,
 				"FactoryId":     factoryID,
 				"SupplierId":    wh.SupplierId,
 				"WarehouseId":   wh.WarehouseId,
+				"SourceInsightId": insightID,
 				"State":         "APPROVED",
 				"TotalVolumeVU": totalVU,
 				"CreatedAt":     spanner.CommitTimestamp,

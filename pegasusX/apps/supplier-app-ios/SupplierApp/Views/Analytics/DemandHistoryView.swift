@@ -25,11 +25,11 @@ struct DemandHistoryView: View {
                         }
                     }
                     if !history.timeSeries.isEmpty {
-                        Section("Historical accuracy") {
+                        Section("Baseline vs actual") {
                             ForEach(history.timeSeries) { point in
                                 VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
                                     Text(point.date).font(.headline)
-                                    Text("Predicted \(Int(point.predictedQty)) · Actual \(Int(point.actualQty))")
+                                    Text("Baseline \(Int(point.predictedQty)) · Actual \(Int(point.actualQty))")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }

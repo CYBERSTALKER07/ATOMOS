@@ -10,6 +10,7 @@ import { createSupplierApi } from "@/lib/api";
 import { decodeJwtPayload, readTokenFromCookie } from "@/lib/auth";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { PageChrome } from "@/components/PageChrome";
+import ReplenishmentTraceabilityPanel from "@/components/ReplenishmentTraceabilityPanel";
 import { errorToMessage } from "../../payments/_shared/finance";
 
 const api = createSupplierApi();
@@ -312,6 +313,8 @@ export default function OperationsPage() {
           {error}
         </p>
       ) : null}
+
+      <ReplenishmentTraceabilityPanel />
     </PageChrome>
   );
 }

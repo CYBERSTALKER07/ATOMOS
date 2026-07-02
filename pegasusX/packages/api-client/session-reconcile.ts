@@ -33,6 +33,7 @@ export const SESSION_RECONCILE_ENDPOINTS: Record<SessionReconcileRole, SessionRe
     { path: "/v1/supplier/analytics/demand/today", label: "demand_today" },
     { path: "/v1/supplier/meio/network-summary", label: "meio_network" },
     { path: "/v1/supplier/planning/s-and-op", label: "planning_sandop" },
+    { path: "/v1/supplier/replenishment/traceability", label: "replenishment_traceability" },
   ],
   warehouse: [
     { path: "/v1/warehouse/ops/dispatch/preview", label: "dispatch_preview" },

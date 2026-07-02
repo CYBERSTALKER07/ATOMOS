@@ -58,11 +58,32 @@ export default function DemandAnalyticsPage() {
     () =>
       (history?.time_series ?? []).map((point) => ({
         date: point.date.slice(5),
-        predicted: point.predicted_qty,
+        baseline: point.predicted_qty,
         actual: point.actual_qty,
       })),
     [history],
   );
+
+  const accuracy = useMemo(() => {
+    const points = history?.time_series ?? [];
+    if (points.length === 0) return null;
+    let baselineTotal = 0;
+    let actualTotal = 0;
+    let absError = 0;
+    let compareDays = 0;
+    for (const point of points) {
+      baselineTotal += point.predicted_qty;
+      actualTotal += point.actual_qty;
+      if (point.actual_qty > 0 || point.predicted_qty > 0) {
+        compareDays += 1;
+        absError += Math.abs(point.predicted_qty - point.actual_qty);
+      }
+    }
+    const variancePct =
+      actualTotal > 0 ? Math.round(((baselineTotal - actualTotal) / actualTotal) * 100) : null;
+    const mapePct = actualTotal > 0 ? Math.round((absError / actualTotal) * 100) : null;
+    return { baselineTotal, actualTotal, variancePct, mapePct, compareDays, days: points.length };
+  }, [history]);
 
   return (
     <PageChrome
@@ -85,6 +106,19 @@ export default function DemandAnalyticsPage() {
             <KpiStatCard label="Retailers" value={summary.total_retailers} />
             <KpiStatCard label="Forecast units" value={summary.total_pallets} />
           </KpiStatGrid>
+          {accuracy ? (
+            <div className="mt-4">
+              <KpiStatGrid columns={3}>
+                <KpiStatCard label="14d baseline units" value={accuracy.baselineTotal} />
+                <KpiStatCard label="14d actual units" value={accuracy.actualTotal} />
+                <KpiStatCard
+                  label="Variance (baseline − actual)"
+                  value={accuracy.variancePct == null ? "—" : `${accuracy.variancePct >= 0 ? "+" : ""}${accuracy.variancePct}%`}
+                  sub={accuracy.mapePct == null ? "No completed orders in window" : `MAPE ${accuracy.mapePct}% over ${accuracy.compareDays}d`}
+                />
+              </KpiStatGrid>
+            </div>
+          ) : null}
           <div className="mt-6">
             <ForecastConfidenceCard
               confidence={forecastConfidenceFromDemand(summary)}
@@ -96,7 +130,11 @@ export default function DemandAnalyticsPage() {
       ) : null}
 
       <section className="desk-card p-6 mt-6">
-        <h2 className="bento-card-title">Predicted vs actual (14d)</h2>
+        <h2 className="bento-card-title">Baseline vs actual (14d)</h2>
+        <p className="md-typescale-body-small mt-2" style={{ color: "var(--desk-text-secondary)" }}>
+          Math-only v1: baseline units come from pending AI demand recommendations by day; actual units count
+          completed retailer orders. No ML inference — compare coverage, not causal accuracy.
+        </p>
         <div className="h-72 mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
@@ -105,8 +143,8 @@ export default function DemandAnalyticsPage() {
               <YAxis allowDecimals={false} tick={{ fill: "var(--desk-text-secondary)", fontSize: 12 }} />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="predicted" stroke="var(--desk-accent)" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="actual" stroke="var(--desk-success)" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="baseline" name="Baseline" stroke="var(--desk-accent)" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="actual" name="Actual" stroke="var(--desk-success)" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

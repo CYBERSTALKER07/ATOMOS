@@ -36,6 +36,34 @@ func TestBuildRevenueResponseSumsCompletedOrders(t *testing.T) {
 	}
 }
 
+func TestBuildDemandHistoryAggregatesActualAndBaseline(t *testing.T) {
+	now := time.Date(2026, 6, 14, 12, 0, 0, 0, time.UTC)
+	orders := []SupplierOrder{
+		{Status: "COMPLETED", UpdatedAt: "2026-06-14T09:00:00Z"},
+		{Status: "COMPLETED", UpdatedAt: "2026-06-13T18:00:00Z"},
+	}
+	recs := []AIRecommendation{
+		{
+			RecommendationID: "r-1",
+			AggregateID:      "ret-1",
+			AggregateType:    "DEMAND",
+			Action:           "RESTOCK",
+			Explanation:      "sku-a",
+			Score:            5,
+			GeneratedAt:      "2026-06-14T08:00:00Z",
+			Status:           "PENDING",
+		},
+	}
+	resp := buildDemandHistory(orders, recs, now, 14)
+	if len(resp.TimeSeries) != 14 {
+		t.Fatalf("time_series=%d want=14", len(resp.TimeSeries))
+	}
+	last := resp.TimeSeries[len(resp.TimeSeries)-1]
+	if last.ActualQty != 1 || last.PredictedQty != 5 {
+		t.Fatalf("last point actual=%d predicted=%d", last.ActualQty, last.PredictedQty)
+	}
+}
+
 func TestParseInventoryImportCSV(t *testing.T) {
 	csvBody := []byte("product_id,warehouse_id,quantity_on_hand,reorder_threshold\nsku-1,wh-1,10,2\n")
 	rows, err := parseInventoryImportCSV(csvBody)

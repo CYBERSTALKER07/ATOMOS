@@ -243,9 +243,9 @@ make validate-launch-readiness
 | `PX-ECS-2E` | 2 | Supplier confidence mapper unify | **shipped** |
 | `PX-ECS-2F` | 2 | Retailer desktop sparsity badge | **shipped** |
 | `PX-ECS-3` | 3 | Planning ↔ execution coherence | **in progress** |
-| `PX-ECS-3A`–`3G` | 3 | Planning UI + docs (see phase table) | **partial** — 3A promo sandbox + 3B planning outcomes panel shipped |
+| `PX-ECS-3A`–`3G` | 3 | Planning UI + docs (see phase table) | **partial** — 3A promo sandbox + 3B planning outcomes + 3C baseline chart + 3D traceability shipped |
 | `PX-ECS-4` | 4 | Execution UX gaps | **in progress** |
-| `PX-ECS-4A`–`4F` | 4 | Visualization (see phase table) | **partial** — 4A portal + native shipped |
+| `PX-ECS-4A`–`4F` | 4 | Visualization (see phase table) | **partial** — 4A portal + native + 4B replenishment confidence shipped |
 | `PX-ECS-5` | 5 | Infra staging proof | **pending** |
 | `PX-ECS-5A`–`5G` | 5 | Cloud realtime parity (see phase table) | **pending** |
 

@@ -561,6 +561,25 @@ export interface SupplierReplenishmentPolicy {
   min_confidence_score: number;
 }
 
+export interface SupplierReplenishmentTraceRow {
+  insight_id: string;
+  warehouse_id: string;
+  warehouse_name?: string;
+  product_id: string;
+  product_name?: string;
+  status: string;
+  reason_code?: string;
+  transfer_id?: string;
+  transfer_state?: string;
+  created_at: string;
+  linked_at?: string;
+}
+
+export interface SupplierReplenishmentTraceabilityResponse {
+  rows: SupplierReplenishmentTraceRow[];
+  generated_at: string;
+}
+
 export interface ControlTowerZoneOverride {
   override_id: string;
   supplier_id: SupplierId;

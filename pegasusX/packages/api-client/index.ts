@@ -75,6 +75,7 @@ import type {
   SupplierDemandHistoryResponse,
   SupplierMEIONetworkSummary,
   SupplierReplenishmentPolicy,
+  SupplierReplenishmentTraceabilityResponse,
   ControlTowerZoneOverride,
   ControlTowerZoneOverridesResponse,
   ControlTowerZoneOverrideRequest,
@@ -880,6 +881,10 @@ export class ApiClient {
 
   async getSupplierReplenishmentPolicies(): Promise<SupplierReplenishmentPolicy> {
     return this.request<SupplierReplenishmentPolicy>("/v1/supplier/replenishment/policies", "GET");
+  }
+
+  async getSupplierReplenishmentTraceability(): Promise<SupplierReplenishmentTraceabilityResponse> {
+    return this.request<SupplierReplenishmentTraceabilityResponse>("/v1/supplier/replenishment/traceability", "GET");
   }
 
   async getSupplierMEIONetworkSummary(): Promise<SupplierMEIONetworkSummary> {

@@ -115,7 +115,7 @@ fun DemandHistoryScreen(
                 items(timeSeries, key = { it.date }) { point ->
                     SupplierOpsListCard(
                         headline = point.date,
-                        supporting = "Predicted ${point.predictedQty} · Actual ${point.actualQty}",
+                        supporting = "Baseline ${point.predictedQty} · Actual ${point.actualQty}",
                         status = "FORECAST",
                     )
                 }

@@ -136,6 +136,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/broadcast", d.Service.HandleBroadcast)
 		gr.Post("/v1/supplier/replenishment/trigger", d.Service.HandleReplenishmentTrigger)
 		gr.Get("/v1/supplier/replenishment/policies", d.Service.HandleReplenishmentPolicies)
+		gr.Get("/v1/supplier/replenishment/traceability", d.Service.HandleReplenishmentTraceability)
 		gr.Get("/v1/supplier/meio/network-summary", d.Service.HandleMEIONetworkSummary)
 		gr.Get("/v1/supplier/control-tower/zone-overrides", d.Service.HandleControlTowerZoneOverrides)
 		gr.Post("/v1/supplier/control-tower/zone-overrides", d.Service.HandleControlTowerZoneOverrides)

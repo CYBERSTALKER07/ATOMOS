@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { WarehouseReplenishmentInsight } from '@pegasusx/types';
 import { ApiError, warehouseReplenishmentInsightActionKey } from '@pegasusx/api-client';
 import { warehouseApi } from '@/lib/warehouse-api';
+import { parseForecastConfidence } from '@/lib/forecast-confidence';
+import { ForecastConfidenceView } from '@/components/ForecastConfidenceView';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -123,6 +125,7 @@ export default function ReplenishmentPage() {
               <thead>
                 <tr className="border-b border-(--border)">
                   <th className="px-4 py-3 text-left font-medium">Product</th>
+                  <th className="px-4 py-3 text-left font-medium">Confidence</th>
                   <th className="px-4 py-3 text-left font-medium">Why</th>
                   <th className="px-4 py-3 text-left font-medium">Urgency</th>
                   <th className="px-4 py-3 text-right font-medium">Stock</th>
@@ -133,7 +136,9 @@ export default function ReplenishmentPage() {
                 </tr>
               </thead>
               <tbody>
-                {insights.map((insight) => (
+                {insights.map((insight) => {
+                  const confidence = parseForecastConfidence(insight.demand_breakdown) ?? undefined;
+                  return (
                   <tr key={insight.id} className="border-b border-(--border) last:border-0">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -144,6 +149,13 @@ export default function ReplenishmentPage() {
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {confidence ? (
+                        <ForecastConfidenceView confidence={confidence} compact />
+                      ) : (
+                        <span className="text-xs text-(--muted)">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs text-(--desk-text-secondary) max-w-[220px]">
                       {formatDemandWhy(insight.demand_breakdown, insight.reason_code)}
@@ -184,7 +196,8 @@ export default function ReplenishmentPage() {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             </div>
