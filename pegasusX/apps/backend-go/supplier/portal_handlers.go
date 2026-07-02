@@ -1218,7 +1218,11 @@ func (s *Service) HandleVetOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.cache != nil {
-		s.cache.Invalidate(r.Context(), supplierCacheKey(sid))
+		s.cache.Invalidate(r.Context(),
+			supplierCacheKey(sid),
+			fmt.Sprintf("orders:supplier:%s", sid),
+			fmt.Sprintf("orders:retailer:%s", strings.TrimSpace(order.RetailerID)),
+		)
 		if req.Decision == "REJECTED" {
 			s.cache.Invalidate(r.Context(), "catalog:products:"+sid)
 		}

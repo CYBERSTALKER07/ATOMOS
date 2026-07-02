@@ -372,6 +372,9 @@ func (d *NotificationDispatcher) handlePlanningEvent(ctx context.Context, payloa
 	if d.dropFanout(e.Type, traceID, e.dedupAggregateID()) {
 		return nil
 	}
+	if e.Type == events.EventDemandBaselineUpdated {
+		invalidateForecastAggCache(ctx, d.deps.Cache, e.supplierID())
+	}
 	d.broadcastSupplier(ctx, e.supplierID(), payload)
 	d.broadcastWarehouse(ctx, e.warehouseID(), payload)
 	d.broadcastDriver(ctx, e.DriverID, payload)

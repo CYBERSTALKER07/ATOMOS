@@ -78,11 +78,6 @@ func (s *Service) cancelOrderWithReason(ctx context.Context, current *Order, act
 	}); err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}
-	if prevStatus != StatusCancelled {
-		if err := s.releaseOrderReservations(ctx, current); err != nil {
-			s.log.Warn("release inventory on cancel failed", "order_id", current.OrderID, "err", err)
-		}
-	}
 	s.afterOrderMutation(ctx, *current)
 	return lifecycleResponse(*current, current.Version, false), nil
 }

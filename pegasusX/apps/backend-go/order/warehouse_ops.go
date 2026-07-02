@@ -157,17 +157,8 @@ func (s *Service) warehouseTransition(
 		return fmt.Errorf("warehouse order mutation %s: %w", orderID, err)
 	}
 
-	if nextStatus == StatusCancelled && prevStatus != StatusCancelled {
-		if err := s.releaseOrderReservations(ctx, &current); err != nil {
-			s.log.Warn("release inventory reservation on warehouse cancel failed", "order_id", orderID, "err", err)
-		}
-	}
-
 	s.afterOrderMutation(ctx, current)
 	s.recordStatusTransitionFromOrder(current, prevStatus, reason, string(auth.RoleWarehouse), actorID, "", transitionMeta)
-	if s.cache != nil {
-		s.cache.Invalidate(ctx, retailerOrdersKey(current.RetailerID), supplierOrdersKey(current.SupplierID))
-	}
 	return nil
 }
 

@@ -419,19 +419,13 @@ func (s *Service) WriteDemandBaseline(ctx context.Context, supplierID, warehouse
 		Source:      source,
 	})
 	if err == nil {
-		s.invalidateForecastAgg(ctx, supplierID)
+		InvalidateForecastAggCache(ctx, s.Cache, supplierID)
 	}
 	return err
 }
 
 func (s *Service) invalidateForecastAgg(ctx context.Context, supplierID string) {
-	if s == nil || s.Cache == nil {
-		return
-	}
-	for _, granularity := range []string{"macro", "regional", "micro"} {
-		s.Cache.Invalidate(ctx, ForecastAggCacheKey(supplierID, granularity, "7d"))
-		s.Cache.Invalidate(ctx, ForecastAggCacheKey(supplierID, granularity, "14d"))
-	}
+	InvalidateForecastAggCache(ctx, s.Cache, supplierID)
 }
 
 // ReadDemandBaseline returns baseline rows for warehouse forecast (one-number path).

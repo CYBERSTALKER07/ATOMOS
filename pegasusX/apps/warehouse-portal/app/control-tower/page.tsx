@@ -7,6 +7,7 @@ import {
   GlassmorphismPanel,
   NetworkNode,
   NetworkLink,
+  useControlTowerWebSocket,
 } from "@pegasusx/ui-kit/control-tower";
 import {
   LineChart,
@@ -76,11 +77,21 @@ const scenariosData = [
 
 export default function ControlTowerPage() {
   const [view, setView] = useState<"network" | "map">("network");
+  
+  const supplierId = "sup-demo-1";
+  
+  const { networkNodes, networkLinks, h3Data: wsH3Data } = useControlTowerWebSocket(supplierId);
+
+  const displayNodes = networkNodes.length > 0 ? networkNodes : mockNodes;
+  const displayLinks = networkLinks.length > 0 ? networkLinks : mockLinks;
+
   const [h3Data, setH3Data] = useState<{hex: string, count: number}[]>([]);
 
   useEffect(() => {
     setH3Data(generateH3Data());
   }, []);
+
+  const displayH3Data = wsH3Data.length > 0 ? wsH3Data : h3Data;
 
   return (
     <div className="relative w-full h-[calc(100vh-64px)] bg-[#0a0a0a] text-white overflow-hidden p-6 flex flex-col gap-6">
@@ -110,9 +121,9 @@ export default function ControlTowerPage() {
       {/* Main Content Area */}
       <div className="flex-1 relative rounded-xl overflow-hidden border border-white/10 shadow-2xl">
         {view === "network" ? (
-          <LiveEKGNetworkGraph nodes={mockNodes} links={mockLinks} width={1200} height={800} />
+          <LiveEKGNetworkGraph nodes={displayNodes} links={displayLinks} width={1200} height={800} />
         ) : (
-          <HexagonalControlTowerMap data={h3Data} />
+          <HexagonalControlTowerMap data={displayH3Data} />
         )}
 
         {/* Floating Glassmorphism Panel - Left */}

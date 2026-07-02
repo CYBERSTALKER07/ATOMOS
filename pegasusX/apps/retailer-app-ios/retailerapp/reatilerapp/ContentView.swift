@@ -91,6 +91,7 @@ struct ContentView: View {
     @State private var showCart = false
     @State private var showInsights = false
     @State private var showProcurement = false
+    @State private var showControlTower = false
     @State private var showNotificationInbox = false
     @State private var notificationCount = 0
     @State private var cartBounce = false
@@ -197,6 +198,20 @@ struct ContentView: View {
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
                             Button("Done") { showProcurement = false }
+                                .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
+                        }
+                    }
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationCompactAdaptation(.sheet)
+        }
+        .sheet(isPresented: $showControlTower) {
+            NavigationStack {
+                ControlTowerView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showControlTower = false }
                                 .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
                         }
                     }
@@ -687,6 +702,7 @@ struct ContentView: View {
         case .inbox: showNotificationInbox = true
         case .profile: selectedTab = .profile
         case .insights: showInsights = true
+        case .controlTower: showControlTower = true
         case .settings: selectedTab = .profile
         case .logout: auth.logout()
         }

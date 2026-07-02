@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -26,6 +27,7 @@ type DispatcherDeps struct {
 	Inbox            *notifications.Service
 	EventDedup       EventDedupStore
 	ConsumerGroupID  string
+	Cache            *cache.Cache
 }
 
 // NotificationDispatcher consumes generic events from Kafka and routes

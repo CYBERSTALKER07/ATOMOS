@@ -21,13 +21,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.AddShoppingCart
+import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.ShoppingBag
+import androidx.compose.material.icons.outlined.ShoppingBag
+import androidx.compose.material.icons.outlined.DeviceHub
+import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -91,6 +95,7 @@ fun DashboardScreen(
     onOpenSuppliers: () -> Unit = {},
     onOpenProcurement: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
+    onOpenControlTower: () -> Unit = {},
     onQuickReorder: (Product) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -150,6 +155,7 @@ fun DashboardScreen(
                         onOpenSuppliers = onOpenSuppliers,
                         onOpenProcurement = onOpenProcurement,
                         onOpenProfile = onOpenProfile,
+                        onOpenControlTower = onOpenControlTower,
                     )
                 }
 
@@ -277,6 +283,7 @@ private fun ServiceGrid(
     onOpenSuppliers: () -> Unit = {},
     onOpenProcurement: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
+    onOpenControlTower: () -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
@@ -286,7 +293,7 @@ private fun ServiceGrid(
             ServiceTile(
                 title = "Buy workspace",
                 subtitle = "Browse products and restock",
-                icon = Icons.Rounded.ShoppingBag,
+                icon = Icons.Rounded.ShoppingCart,
                 onClick = onOpenCatalog,
                 modifier = Modifier
                     .weight(1f)
@@ -320,12 +327,20 @@ private fun ServiceGrid(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ServiceTileCompact(
-                    title = "AI insights",
-                    icon = Icons.Rounded.AutoAwesome,
-                    onClick = onOpenInsights,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    DashboardQuickAction(
+                        icon = Icons.Outlined.Insights,
+                        label = "Analytics",
+                        onClick = onOpenInsights,
+                        modifier = Modifier.weight(1f),
+                    )
+                    DashboardQuickAction(
+                        icon = Icons.Outlined.DeviceHub,
+                        label = "Control Tower",
+                        onClick = onOpenControlTower,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 ServiceTileCompact(
                     title = "Suppliers",
                     icon = Icons.Rounded.Storefront,
@@ -662,3 +677,35 @@ private fun ConfidenceRing(
     }
 }
 
+@Composable
+fun DashboardQuickAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.material3.Surface(
+        onClick = onClick,
+        modifier = modifier.height(60.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            androidx.compose.material3.Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            androidx.compose.material3.Text(
+                text = label,
+                style = androidx.compose.material3.MaterialTheme.typography.labelLarge,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}

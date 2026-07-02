@@ -23,6 +23,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalog"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
+	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driver"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -613,6 +614,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		warehouseNodeID = "wh-demo-1"
 	}
 
+	// Start Control Tower telemetry simulator
+	simulator.StartControlTowerSimulation(telemetryHub, supplierSeed.SupplierID, warehouseNodeID)
+
 	var driverRepo driver.Repository
 	var factoryRepo factory.Repository
 	var payloadRepo payload.Repository
@@ -938,6 +942,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				Inbox:           notifSvc,
 				EventDedup:      kafkaEventDedup,
 				ConsumerGroupID: notificationConsumerGroup,
+				Cache:           cacheClient,
 			})
 			dispatcherTopics := events.DispatcherConsumerTopics()
 			notificationConsumer = kafka.NewMultiTopicConsumer(kafka.ConsumerDeps{

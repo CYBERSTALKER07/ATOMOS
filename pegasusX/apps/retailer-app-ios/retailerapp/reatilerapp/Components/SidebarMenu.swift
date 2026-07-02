@@ -205,6 +205,7 @@ enum SidebarDestination: String, CaseIterable {
     case inbox
     case profile
     case settings
+    case controlTower
     case logout
 
     /// Menu items shown in the scrollable list (excludes logout)
@@ -223,6 +224,7 @@ enum SidebarDestination: String, CaseIterable {
         case .inbox: "Inbox"
         case .profile: "Profile"
         case .settings: "Settings"
+        case .controlTower: "Control Tower"
         case .logout: "Log Out"
         }
     }
@@ -238,6 +240,7 @@ enum SidebarDestination: String, CaseIterable {
         case .inbox: "tray"
         case .profile: "person"
         case .settings: "gearshape"
+        case .controlTower: "network"
         case .logout: "rectangle.portrait.and.arrow.right"
         }
     }

@@ -135,6 +135,15 @@ android {
         compose = true
         buildConfig = true
     }
+    
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
+            // Exclude duplicate class issues
+            excludes += "META-INF/spring.*"
+        }
+    }
 }
 
 dependencies {
@@ -182,6 +191,11 @@ dependencies {
 
     // Charts (Vico — Jetpack Compose)
     implementation("com.patrykandpatrick.vico:compose-m3:2.1.2")
+    implementation("com.patrykandpatrick.vico:compose:2.1.2")
+    implementation("com.patrykandpatrick.vico:core:2.1.2")
+
+    // Geospatial
+    implementation("com.uber:h3:4.1.1")
 
     // Room (Offline-first)
     val roomVersion = "2.7.0-alpha11"
@@ -221,4 +235,12 @@ dependencies {
     // Unit Tests
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    
+    // H3 Geospatial Indexing
+    implementation("com.uber:h3:4.1.1")
+}
+
+configurations.all {
+    exclude(group = "io.swagger", module = "swagger-parser-safe-url-resolver")
+    exclude(group = "commons-logging", module = "commons-logging")
 }

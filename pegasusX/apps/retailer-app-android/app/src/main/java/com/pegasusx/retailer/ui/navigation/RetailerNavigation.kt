@@ -75,6 +75,7 @@ import com.pegasusx.retailer.ui.components.ClientPolicyBanner
 import com.pegasusx.retailer.ui.screens.predictions.FutureDemandScreen
 import com.pegasusx.retailer.ui.screens.tracking.DeliveriesHubScreen
 import com.pegasusx.retailer.ui.screens.notifications.NotificationInboxScreen
+import com.pegasusx.retailer.ui.controltower.ControlTowerScreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -137,6 +138,12 @@ fun RetailerNavigation(
                             }
                             com.pegasusx.retailer.ui.components.SidebarDestination.AI_PREDICTIONS -> {
                                 navController.navigate("FUTURE_DEMAND") {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                            com.pegasusx.retailer.ui.components.SidebarDestination.CONTROL_TOWER -> {
+                                navController.navigate("CONTROL_TOWER") {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
                                 }
@@ -435,6 +442,7 @@ fun RetailerNavigation(
                 composable("ANALYTICS") { Box(Modifier.fillMaxSize()) { AnalyticsScreen() } }
                 composable("PROCUREMENT") { Box(Modifier.fillMaxSize()) { ProcurementScreen() } }
                 composable("AUTO_ORDER") { Box(Modifier.fillMaxSize()) { AutoOrderScreen() } }
+                composable("CONTROL_TOWER") { Box(Modifier.fillMaxSize()) { ControlTowerScreen() } }
                 composable("FUTURE_DEMAND") {
                     Box(Modifier.fillMaxSize()) {
                         FutureDemandScreen(onBack = { navController.popBackStack() })
@@ -552,6 +560,12 @@ fun RetailerNavigation(
                         }
                         com.pegasusx.retailer.ui.components.SidebarDestination.AI_PREDICTIONS -> {
                             navController.navigate("FUTURE_DEMAND") {
+                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                            }
+                        }
+                        com.pegasusx.retailer.ui.components.SidebarDestination.CONTROL_TOWER -> {
+                            navController.navigate("CONTROL_TOWER") {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true
                             }

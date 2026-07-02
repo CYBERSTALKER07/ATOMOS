@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.LocalShipping
+import androidx.compose.material.icons.outlined.DeviceHub
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -66,6 +67,7 @@ enum class SidebarDestination(val label: String, val icon: ImageVector) {
     INSIGHTS("Insights", Icons.Outlined.Insights),
     AUTO_ORDER("Auto-Order", Icons.Outlined.AutoAwesome),
     AI_PREDICTIONS("AI Predictions", Icons.Outlined.AutoAwesome),
+    CONTROL_TOWER("Control Tower", Icons.Outlined.DeviceHub),
     DOCK("Dock Queue", Icons.Outlined.LocalShipping),
     INBOX("Inbox", Icons.Outlined.Inbox),
     PROFILE("Profile", Icons.Outlined.Person),

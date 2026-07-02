@@ -199,16 +199,45 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 	}
 
 	err = spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{o.OrderID}, []string{"Version"})
+		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{o.OrderID}, []string{
+			"Version", "Status", "OrderSource", "LineItemsJson", "SupplierId", "WarehouseId",
+		})
 		if err != nil {
 			return err
 		}
-		var version int64
-		if err := row.Columns(&version); err != nil {
+		var (
+			version      int64
+			prevStatus   string
+			orderSource  string
+			prevLineRaw  []byte
+			supplierID   string
+			warehouseID  string
+		)
+		if err := row.Columns(&version, &prevStatus, &orderSource, &prevLineRaw, &supplierID, &warehouseID); err != nil {
 			return err
 		}
 		if version != o.Version {
 			return fmt.Errorf("optimistic concurrency conflict: expected %d, got %d", o.Version, version)
+		}
+
+		if o.Status == StatusCancelled && !strings.EqualFold(strings.TrimSpace(prevStatus), string(StatusCancelled)) {
+			var prevLineItems []LineItem
+			if len(prevLineRaw) > 0 {
+				if err := json.Unmarshal(prevLineRaw, &prevLineItems); err != nil {
+					return fmt.Errorf("parse line items for release %s: %w", o.OrderID, err)
+				}
+			}
+			wh := strings.TrimSpace(o.WarehouseID)
+			if wh == "" {
+				wh = strings.TrimSpace(warehouseID)
+			}
+			sid := strings.TrimSpace(o.SupplierID)
+			if sid == "" {
+				sid = strings.TrimSpace(supplierID)
+			}
+			if err := ReleaseReservationsInTxn(ctx, txn, sid, wh, OrderSource(orderSource), prevLineItems); err != nil {
+				return fmt.Errorf("release reservations in txn %s: %w", o.OrderID, err)
+			}
 		}
 
 		o.Version++

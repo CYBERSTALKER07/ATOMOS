@@ -20,6 +20,7 @@ const NAV: NavSection[] = [
   {
     items: [
       { href: '/', icon: 'dashboard', label: 'Dashboard' },
+      { href: '/control-tower', icon: 'global', label: 'Control Tower' },
       { href: '/orders', icon: 'orders', label: 'Orders' },
       { href: '/preorders', icon: 'orders', label: 'Pre-orders' },
       { href: '/dispatch', icon: 'dispatch', label: 'Dispatch' },

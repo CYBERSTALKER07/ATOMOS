@@ -1255,12 +1255,6 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 
 	s.recordStatusTransitionFromOrder(current, prevStatus, strings.TrimSpace(req.Reason), string(claims.Role), actorID, "", nil)
 
-	if nextStatus == StatusCancelled && prevStatus != StatusCancelled {
-		if err := s.releaseOrderReservations(ctx, &current); err != nil {
-			s.log.Warn("release inventory reservation on cancel failed", "order_id", orderID, "err", err)
-		}
-	}
-
 	if s.cache != nil {
 		s.cache.Invalidate(ctx,
 			retailerOrdersKey(current.RetailerID),
@@ -2383,10 +2377,14 @@ func assignmentResponse(orderRecord Order, eventType string, version int64, noCh
 
 func (s *Service) afterOrderMutation(ctx context.Context, orderRecord Order) {
 	if s.cache != nil {
-		s.cache.Invalidate(ctx,
+		keys := []string{
 			retailerOrdersKey(orderRecord.RetailerID),
 			supplierOrdersKey(orderRecord.SupplierID),
-		)
+		}
+		if orderRecord.Status == StatusCancelled {
+			keys = append(keys, "catalog:products:"+orderRecord.SupplierID)
+		}
+		s.cache.Invalidate(ctx, keys...)
 	}
 	if s.dispatchPlanWarm != nil {
 		if wh := strings.TrimSpace(orderRecord.WarehouseID); wh != "" {

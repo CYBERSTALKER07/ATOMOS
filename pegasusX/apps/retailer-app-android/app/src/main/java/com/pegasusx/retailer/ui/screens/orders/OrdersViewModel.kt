@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.api.RetailerWebSocket
+import com.pegasusx.retailer.data.api.reconcileRetailerSession
 import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Order
@@ -80,7 +81,8 @@ class OrdersViewModel @Inject constructor(
                         )
                     }
                 }
-                refresh()
+                runCatching { reconcileRetailerSession(api) }
+                refresh(silent = true)
             }
         }
     }
@@ -99,7 +101,7 @@ class OrdersViewModel @Inject constructor(
                     "GLOBAL_PAYNT_EXPIRED", "ORDER_AMENDED", "ORDER_COMPLETED", "ORDER_REASSIGNED",
                     "PRE_ORDER_AUTO_ACCEPTED", "PRE_ORDER_CONFIRMED", "PRE_ORDER_EDITED",
                     "PRE_ORDER_DATE_PROPOSED", "PRE_ORDER_DATE_ACCEPTED", "PRE_ORDER_DATE_REJECTED",
-                    "PRE_ORDER_CANCELLED", "PRE_ORDER_NUDGE", "PRE_ORDER_CONFIRMATION" -> refresh()
+                    "PRE_ORDER_CANCELLED", "PRE_ORDER_NUDGE", "PRE_ORDER_CONFIRMATION" -> refresh(silent = true)
                 }
             }
         }
@@ -110,9 +112,14 @@ class OrdersViewModel @Inject constructor(
         retailerWebSocket.disconnect()
     }
 
-    fun refresh() {
+    fun refresh(silent: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            val hasData = _uiState.value.allOrders.isNotEmpty() || _uiState.value.predictions.isNotEmpty()
+            if (!silent || !hasData) {
+                _uiState.update { it.copy(isLoading = true, error = null) }
+            } else {
+                _uiState.update { it.copy(error = null) }
+            }
 
             var nextOrders = _uiState.value.allOrders
             var nextPredictions = _uiState.value.predictions
