@@ -109,6 +109,10 @@ struct WarehouseAdaptiveShell: View {
             ProductsView()
         case .supplyRequests:
             NavigationStack { SupplyRequestsHubView() }
+        case .preorders:
+            NavigationStack { PreordersView() }
+        case .tomorrowBoard:
+            NavigationStack { TomorrowBoardView() }
         case .replenishment:
             NavigationStack { ReplenishmentView() }
         case .demandForecast:

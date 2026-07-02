@@ -162,6 +162,7 @@ const (
 
 	// @Sync(PlanningEvent)
 	EventReplenishmentAutoApproved    = "REPLENISHMENT_AUTO_APPROVED"
+	EventReplenishmentInsightCreated  = "REPLENISHMENT_INSIGHT_CREATED"
 	EventDispatchZoneOverride         = "DISPATCH_ZONE_OVERRIDE"
 	EventPlanningMEIORecommendation   = "planning.meio.recommendation.v1"
 	EventDemandBaselineUpdated        = "DEMAND_BASELINE_UPDATED"

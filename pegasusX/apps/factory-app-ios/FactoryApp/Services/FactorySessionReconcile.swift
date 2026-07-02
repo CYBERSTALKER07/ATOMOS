@@ -10,5 +10,8 @@ import Foundation
 enum FactorySessionReconcile {
     static func run() async {
         _ = try? await FactoryService.manifests()
+        _ = try? await FactoryService.dashboard()
+        _ = try? await FactoryService.analyticsOverview()
+        _ = try? await FactoryService.insights()
     }
 }

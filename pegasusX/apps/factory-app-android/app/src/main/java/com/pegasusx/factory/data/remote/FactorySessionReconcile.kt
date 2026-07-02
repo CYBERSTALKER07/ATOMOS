@@ -6,6 +6,9 @@ import com.pegasusx.factory.data.local.FactoryOfflineQueue
 /** Refetch server-authoritative factory snapshots after transport reconnect. */
 suspend fun reconcileFactorySession(api: FactoryApi, context: Context? = null) {
     runCatching { api.getManifests() }
+    runCatching { api.getDashboard() }
+    runCatching { api.getFactoryAnalyticsOverview() }
+    runCatching { api.getInsights() }
     context?.let { ctx ->
         val queued = FactoryOfflineQueue.read(ctx)
         if (queued.isNotEmpty()) {

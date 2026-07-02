@@ -26,6 +26,7 @@ enum class WarehouseSection(
     TRANSFER_ACTIONS(WarehouseRoutes.TRANSFER_ACTIONS, "Transfer actions", Icons.Default.SwapHoriz),
     PRODUCTS(WarehouseRoutes.PRODUCTS, "Products", Icons.Default.GridView),
     PREORDERS(WarehouseRoutes.PREORDERS, "Pre-orders", Icons.Default.Event),
+    TOMORROW_BOARD(WarehouseRoutes.TOMORROW_BOARD, "Tomorrow board", Icons.Default.CalendarMonth),
     STOCK_COMMITMENTS(WarehouseRoutes.STOCK_COMMITMENTS, "Stock commitments", Icons.Default.Inventory),
     SUPPLY_REQUESTS(WarehouseRoutes.SUPPLY_REQUESTS, "Supply requests", Icons.Default.Sync),
     REPLENISHMENT(WarehouseRoutes.REPLENISHMENT, "Replenishment", Icons.Default.Inventory),
@@ -56,6 +57,7 @@ enum class WarehouseSection(
         val inventorySections: List<WarehouseSection> = listOf(
             PRODUCTS,
             PREORDERS,
+            TOMORROW_BOARD,
             STOCK_COMMITMENTS,
             SUPPLY_REQUESTS,
             REPLENISHMENT,

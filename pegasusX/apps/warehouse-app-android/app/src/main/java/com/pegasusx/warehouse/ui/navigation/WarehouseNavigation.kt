@@ -76,7 +76,7 @@ import com.pegasusx.warehouse.ui.screens.replenishment.ReplenishmentScreen
 import com.pegasusx.warehouse.ui.screens.returns.ReturnsScreen
 import com.pegasusx.warehouse.ui.screens.setup.LocationSetupScreen
 import com.pegasusx.warehouse.ui.screens.staff.StaffScreen
-import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestDetailScreen
+import com.pegasusx.warehouse.ui.screens.tomorrowboard.TomorrowBoardScreen
 import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestsScreen
 import com.pegasusx.warehouse.ui.screens.transfers.TransferActionsScreen
 import com.pegasusx.warehouse.ui.screens.treasury.TreasuryScreen
@@ -112,6 +112,7 @@ object WarehouseRoutes {
     const val LOCATION_SETUP = "location_setup"
     const val LOCATION_SETTINGS = "location_settings"
     const val PREORDERS = "preorders"
+    const val TOMORROW_BOARD = "tomorrow_board"
     const val STOCK_COMMITMENTS = "stock_commitments"
     const val PAYMENT_CONFIG = "payment_config"
     const val NOTIFICATIONS = "notifications"
@@ -481,6 +482,13 @@ fun WarehouseNavigation(
                         api = api,
                         realtimeSignals = realtimeSignals,
                         onBack = backFor(WarehouseRoutes.PREORDERS),
+                    )
+                }
+                composable(WarehouseRoutes.TOMORROW_BOARD) {
+                    TomorrowBoardScreen(
+                        api = api,
+                        realtimeSignals = realtimeSignals,
+                        onBack = backFor(WarehouseRoutes.TOMORROW_BOARD),
                     )
                 }
                 composable(WarehouseRoutes.STOCK_COMMITMENTS) {

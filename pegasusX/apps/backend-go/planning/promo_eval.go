@@ -174,23 +174,3 @@ func (s *Service) actualPromoMetrics(ctx context.Context, supplierID, promotionI
 	return volume, margin, nil
 }
 
-// ProjectSignal persists an ingested planning signal idempotently.
-func (s *Service) ProjectSignal(ctx context.Context, supplierID string, in SignalIngestInput) error {
-	if s == nil || s.Spanner == nil {
-		return errors.New("planning unavailable")
-	}
-	signalID := strings.TrimSpace(in.SignalID)
-	if signalID == "" {
-		return errors.New("signal_id_required")
-	}
-	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("PlanningSignalProjections", map[string]any{
-			"SupplierId": supplierID,
-			"SignalId":   signalID,
-			"Source":     strings.TrimSpace(in.Source),
-			"PayloadJson": string(in.Payload),
-			"IngestedAt": spanner.CommitTimestamp,
-		})})
-	})
-	return err
-}

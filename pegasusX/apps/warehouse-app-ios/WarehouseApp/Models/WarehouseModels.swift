@@ -1899,3 +1899,42 @@ extension Dictionary where Key == String, Value == AnyCodable {
         return string
     }
 }
+
+struct WarehouseOpsBoardDeliveryExpectation: Decodable {
+    let targetLabel: String
+
+    enum CodingKeys: String, CodingKey {
+        case targetLabel = "target_label"
+    }
+}
+
+struct WarehouseOpsBoardOrder: Decodable, Identifiable {
+    var id: String { orderId }
+    let orderId: String
+    let status: String
+    let retailerId: String?
+    let totalMinor: Int64
+    let deliveryExpectation: WarehouseOpsBoardDeliveryExpectation?
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case status
+        case retailerId = "retailer_id"
+        case totalMinor = "total_minor"
+        case deliveryExpectation = "delivery_expectation"
+    }
+}
+
+struct WarehouseOpsBoardResponse: Decodable {
+    let date: String
+    let warehouseId: String
+    let preorders: [WarehouseOpsBoardOrder]
+    let deliverBefore: [WarehouseOpsBoardOrder]
+
+    enum CodingKeys: String, CodingKey {
+        case date
+        case warehouseId = "warehouse_id"
+        case preorders
+        case deliverBefore = "deliver_before"
+    }
+}

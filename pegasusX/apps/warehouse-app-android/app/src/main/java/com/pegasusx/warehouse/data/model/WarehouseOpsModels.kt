@@ -206,3 +206,42 @@ data class RetailerOverridePreviewRequest(
     @SerialName("sku_id") val skuId: String? = null,
     @SerialName("proposed_price") val proposedPrice: Long,
 )
+
+@Serializable
+data class DeliveryExpectation(
+    val kind: String? = null,
+    @SerialName("target_date") val targetDate: String? = null,
+    @SerialName("target_label") val targetLabel: String = "",
+    @SerialName("mode_label") val modeLabel: String? = null,
+    val delayed: Boolean = false,
+    val urgency: String? = null,
+    @SerialName("badge_label") val badgeLabel: String? = null,
+)
+
+@Serializable
+data class WarehouseOpsBoardOrder(
+    @SerialName("order_id") val orderId: String,
+    val status: String,
+    @SerialName("retailer_id") val retailerId: String? = null,
+    @SerialName("total_minor") val totalMinor: Long = 0,
+    @SerialName("delivery_expectation") val deliveryExpectation: DeliveryExpectation? = null,
+)
+
+@Serializable
+data class WarehouseOpsBoardManifest(
+    @SerialName("manifest_id") val manifestId: String,
+    val state: String,
+    @SerialName("stop_count") val stopCount: Long = 0,
+    @SerialName("driver_name") val driverName: String? = null,
+)
+
+@Serializable
+data class WarehouseOpsBoardResponse(
+    val date: String = "",
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    val preorders: List<WarehouseOpsBoardOrder> = emptyList(),
+    @SerialName("deliver_before") val deliverBefore: List<WarehouseOpsBoardOrder> = emptyList(),
+    @SerialName("draft_manifests") val draftManifests: List<WarehouseOpsBoardManifest> = emptyList(),
+    @SerialName("loading_manifests") val loadingManifests: List<WarehouseOpsBoardManifest> = emptyList(),
+    @SerialName("fetched_at") val fetchedAt: String? = null,
+)

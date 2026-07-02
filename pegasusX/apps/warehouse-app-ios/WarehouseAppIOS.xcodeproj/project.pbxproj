@@ -20,6 +20,7 @@
 		2A89FD664216DF1DDF9F3F46 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 57C9CF70E5113B4CF702D63C /* Assets.xcassets */; };
 		2BF513A7728E6DAF51173E9D /* StaffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1963212DE00FAF5E10168BED /* StaffView.swift */; };
 		2F18755FAD1B248506FBA879 /* DemandForecastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ADD58C02F3BDE948D50E45C /* DemandForecastView.swift */; };
+		E8A1B2C3D4E5F6789ABCDEF0 /* TomorrowBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B2C3D4E5F6789ABCDEF012 /* TomorrowBoardView.swift */; };
 		2FF9DD4213CF98C9D3DC4A97 /* WarehouseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEDF5DC0D1406795DE0A4736 /* WarehouseService.swift */; };
 		341E7B32E90F94338A169FE0 /* TransferActionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 337112D659DB9E6E5D560871 /* TransferActionsView.swift */; };
 		37A98DE5E6B0372968D90168 /* WarehouseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42346A5EC575B103624DA7B5 /* WarehouseModels.swift */; };
@@ -127,6 +128,7 @@
 		84659B955E24FFFE335C582C /* ManifestsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestsView.swift; sourceTree = "<group>"; };
 		86CB8FE602CF48790811D3AF /* PegasusWarehouseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusWarehouseApp.swift; sourceTree = "<group>"; };
 		8ADD58C02F3BDE948D50E45C /* DemandForecastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemandForecastView.swift; sourceTree = "<group>"; };
+		F9B2C3D4E5F6789ABCDEF012 /* TomorrowBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TomorrowBoardView.swift; sourceTree = "<group>"; };
 		8BC14978EB4C787C361EE07F /* ReturnsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnsView.swift; sourceTree = "<group>"; };
 		9261B8CE72327788E0CAA5CD /* WarehouseOpsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseOpsModels.swift; sourceTree = "<group>"; };
 		948CD89DFC2A4D9363817EAF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -338,6 +340,7 @@
 				AFF85A15CC7B254482613B5C /* PaymentConfig */,
 				6CB01CD37BAF420EADDA6950 /* Portal */,
 				F76888BC5A430F065843EFA6 /* Preorders */,
+				A7C8D9E0F1A2B3C4D5E6F708 /* TomorrowBoard */,
 				5CED3C6A4785745B82567CD4 /* Products */,
 				2C76B0C8188BD93FFF53D827 /* Replenishment */,
 				0C91539FD516260C995BCC14 /* Returns */,
@@ -475,6 +478,14 @@
 				8ADD58C02F3BDE948D50E45C /* DemandForecastView.swift */,
 			);
 			path = DemandForecast;
+			sourceTree = "<group>";
+		};
+		A7C8D9E0F1A2B3C4D5E6F708 /* TomorrowBoard */ = {
+			isa = PBXGroup;
+			children = (
+				F9B2C3D4E5F6789ABCDEF012 /* TomorrowBoardView.swift */,
+			);
+			path = TomorrowBoard;
 			sourceTree = "<group>";
 		};
 		CED0DD6B60441C57330C3B3B /* Theme */ = {
@@ -665,6 +676,7 @@
 				72CA2B5FF6A38A618C561FA7 /* CreateSupplyRequestSheet.swift in Sources */,
 				D47F70983FC7C12DAAEEB6D3 /* DashboardView.swift in Sources */,
 				2F18755FAD1B248506FBA879 /* DemandForecastView.swift in Sources */,
+				E8A1B2C3D4E5F6789ABCDEF0 /* TomorrowBoardView.swift in Sources */,
 				D79918203A3815B141303368 /* DispatchPreviewMapView.swift in Sources */,
 				F2027CD755C0AC6F8C6A4B67 /* DispatchSettingsView.swift in Sources */,
 				ECB59F1746A20962159EC100 /* DispatchView.swift in Sources */,

@@ -41,7 +41,7 @@ func Run(ctx context.Context, client *spanner.Client) error {
 	shadow := strings.EqualFold(strings.TrimSpace(os.Getenv("PLANNING_BRAIN_SHADOW")), "true")
 	if shadow {
 		slog.Info("planning brain shadow mode: baseline projection only")
-		return allocator.writeDemandBaselines(ctx, events)
+		return allocator.writeDemandBaselines(ctx, events, time.Now().UTC())
 	}
 
 	// 2. Proactively allocate stock (generate ReplenishmentInsights)

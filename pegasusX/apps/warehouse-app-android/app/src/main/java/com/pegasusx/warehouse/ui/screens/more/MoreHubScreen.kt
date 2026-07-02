@@ -33,6 +33,7 @@ private val fulfillment = listOf(
 private val inventory = listOf(
     MoreDestination("Products", "Catalog SKUs", Icons.Default.GridView, WarehouseRoutes.PRODUCTS),
     MoreDestination("Pre-orders", "Scheduled manual pre-orders", Icons.Default.Event, WarehouseRoutes.PREORDERS),
+    MoreDestination("Tomorrow board", "Orders by delivery date", Icons.Default.CalendarMonth, WarehouseRoutes.TOMORROW_BOARD),
     MoreDestination("Stock commitments", "SKU demand drill-down", Icons.Default.Inventory, WarehouseRoutes.STOCK_COMMITMENTS),
     MoreDestination("Supply requests", "Factory restock queue", Icons.Default.Sync, WarehouseRoutes.SUPPLY_REQUESTS),
     MoreDestination("Replenishment", "Stock velocity insights", Icons.Default.Inventory2, WarehouseRoutes.REPLENISHMENT),

@@ -39,9 +39,13 @@ export const SESSION_RECONCILE_ENDPOINTS: Record<SessionReconcileRole, SessionRe
     { path: "/v1/warehouse/dispatch-locks", label: "dispatch_locks" },
     { path: "/v1/warehouse/demand/forecast", label: "demand_forecast" },
     { path: "/v1/warehouse/replenishment/insights", label: "replenishment_insights" },
+    { path: "/v1/warehouse/ops/board", label: "ops_board" },
   ],
   factory: [
     { path: "/v1/factory/manifests", label: "manifests" },
+    { path: "/v1/factory/dashboard", label: "dashboard" },
+    { path: "/v1/factory/analytics/overview", label: "analytics_overview" },
+    { path: "/v1/warehouse/replenishment/insights", label: "replenishment_insights" },
   ],
   payload: [
     { path: "/v1/payloader/manifests", label: "manifests" },

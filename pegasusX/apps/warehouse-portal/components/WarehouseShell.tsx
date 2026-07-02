@@ -23,6 +23,7 @@ const NAV: NavSection[] = [
       { href: '/control-tower', icon: 'global', label: 'Control Tower' },
       { href: '/orders', icon: 'orders', label: 'Orders' },
       { href: '/preorders', icon: 'orders', label: 'Pre-orders' },
+      { href: '/tomorrow-board', icon: 'orders', label: 'Tomorrow board' },
       { href: '/dispatch', icon: 'dispatch', label: 'Dispatch' },
       { href: '/dispatch-settings', icon: 'settings', label: 'Dispatch Settings' },
       { href: '/manifests', icon: 'manifests', label: 'Manifests' },

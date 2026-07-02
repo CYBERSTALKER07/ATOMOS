@@ -10,6 +10,7 @@ import {
   supplierPromotionUpdateKey,
 } from "@pegasusx/api-client";
 import type {
+  PromoSimulateResult,
   SupplierPromotion,
   SupplierPromotionScopeType,
   SupplierPromotionUpsertRequest,
@@ -44,6 +45,8 @@ export default function PromotionsPage() {
   const [form, setForm] = useState<SupplierPromotionUpsertRequest>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [retailerIdsText, setRetailerIdsText] = useState("");
+  const [simResults, setSimResults] = useState<Record<string, PromoSimulateResult>>({});
+  const [simulatingId, setSimulatingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,6 +76,24 @@ export default function PromotionsPage() {
     setForm(emptyForm());
     setEditingId(null);
     setRetailerIdsText("");
+  }
+
+  async function simulatePromo(promo: SupplierPromotion) {
+    setSimulatingId(promo.promotion_id);
+    setError(null);
+    try {
+      const result = await api.simulatePromotionPandL({
+        promotion_id: promo.promotion_id,
+        discount_pct: promo.discount_bps / 100,
+        expected_units: 500,
+        avg_unit_margin_minor: 1000,
+      });
+      setSimResults((prev) => ({ ...prev, [promo.promotion_id]: result }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "P&L simulation failed");
+    } finally {
+      setSimulatingId(null);
+    }
   }
 
   function startEdit(promo: SupplierPromotion) {
@@ -359,6 +380,14 @@ export default function PromotionsPage() {
                     <button
                       type="button"
                       className="md-btn md-btn-tonal"
+                      disabled={simulatingId === promo.promotion_id}
+                      onClick={() => void simulatePromo(promo)}
+                    >
+                      {simulatingId === promo.promotion_id ? "Simulating…" : "Simulate P&L"}
+                    </button>
+                    <button
+                      type="button"
+                      className="md-btn md-btn-tonal"
                       onClick={() => startEdit(promo)}
                     >
                       Edit
@@ -417,6 +446,25 @@ export default function PromotionsPage() {
                     </>
                   ) : null}
                 </dl>
+                {simResults[promo.promotion_id] ? (
+                  <div className="mt-3 rounded-lg border border-[var(--border)] p-3 md-typescale-body-small">
+                    <div className="font-semibold mb-1">Sandbox P&L projection</div>
+                    <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[var(--color-md-outline)]">
+                      <dt>Volume</dt>
+                      <dd className="text-[var(--color-md-on-surface)]">
+                        {simResults[promo.promotion_id].projected_volume}
+                      </dd>
+                      <dt>Margin</dt>
+                      <dd className="text-[var(--color-md-on-surface)]">
+                        {simResults[promo.promotion_id].projected_margin_minor}
+                      </dd>
+                      <dt>Margin Δ</dt>
+                      <dd className="text-[var(--color-md-on-surface)]">
+                        {simResults[promo.promotion_id].margin_delta_pct.toFixed(1)}%
+                      </dd>
+                    </dl>
+                  </div>
+                ) : null}
               </article>
             ))}
           </div>

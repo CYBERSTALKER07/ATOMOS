@@ -304,6 +304,9 @@ interface WarehouseApi {
     @GET("v1/warehouse/replenishment/insights")
     suspend fun getReplenishmentInsights(): Response<ReplenishmentInsightsResponse>
 
+    @GET("v1/warehouse/ops/board")
+    suspend fun getOpsBoard(@Query("date") date: String): Response<WarehouseOpsBoardResponse>
+
     @POST("v1/warehouse/replenishment/insights/{id}/{action}")
     suspend fun replenishmentInsightAction(
         @Path("id") insightId: String,

@@ -340,6 +340,10 @@ enum WarehouseService {
         try await api.get("v1/warehouse/replenishment/insights")
     }
 
+    static func opsBoard(date: String) async throws -> WarehouseOpsBoardResponse {
+        try await api.get("v1/warehouse/ops/board", query: ["date": date])
+    }
+
     static func replenishmentInsightAction(insightId: String, action: String) async throws -> ReplenishmentInsightActionResponse {
         try await api.postEmpty(
             "v1/warehouse/replenishment/insights/\(insightId)/\(action)",
