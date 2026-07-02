@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.pegasusx.supplier.data.model.ForecastConfidence
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.util.formatBaselineSourceLabel
 
 @Composable
 fun ForecastConfidenceView(
@@ -32,7 +33,11 @@ fun ForecastConfidenceView(
         ) {
             Text("Forecast confidence", style = MaterialTheme.typography.titleSmall)
             confidence.baselineSource?.let {
-                Text(it.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    formatBaselineSourceLabel(it),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
             if (blocked) {
                 Text(

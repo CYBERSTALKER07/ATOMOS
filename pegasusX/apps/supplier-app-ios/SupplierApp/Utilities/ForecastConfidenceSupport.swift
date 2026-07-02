@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 
+/// Canonical mapper — keep aligned with packages/types/forecast-confidence.ts
 enum ForecastConfidenceSupport {
     private static let staleMinutes: Int64 = 30
 
@@ -19,12 +20,24 @@ enum ForecastConfidenceSupport {
         return generatedAt
     }
 
-    private static func mapBaselineSource(_ src: String?) -> String? {
+    static func mapBaselineSource(_ src: String?) -> String? {
         switch src {
         case "demand_forecast_baseline": return "moving_average"
         case "ai_recommendations", "inventory_hint": return "inventory_hint"
         case "ml": return "moving_average"
+        case "mixed": return "mixed"
         default: return src
+        }
+    }
+
+    static func formatBaselineSourceLabel(_ src: String?) -> String {
+        switch mapBaselineSource(src) {
+        case "moving_average": return "Baseline"
+        case "seasonal_template": return "Seasonal"
+        case "inventory_hint": return "Hint"
+        case "mixed": return "Mixed"
+        default:
+            return mapBaselineSource(src)?.replacingOccurrences(of: "_", with: " ") ?? ""
         }
     }
 

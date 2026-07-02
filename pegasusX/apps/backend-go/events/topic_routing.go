@@ -78,7 +78,7 @@ func DomainTopicForEventType(eventType string) string {
 		EventPreOrderAutoAccepted, EventPreOrderDateProposed, EventPreOrderDateAccepted,
 		EventPreOrderDateRejected, EventShopClosed, EventShopClosedResponse,
 		EventShopClosedEscalated, EventShopClosedResolved, EventNegotiationProposed,
-		EventNegotiationResolved, EventPaymentRequired, EventPaymentCleared,
+		EventNegotiationResolved, EventPaymentRequired, EventPaymentCleared, EventPaymentFailed,
 		EventSettlementRequired, EventDeliverySessionUpdated, EventDeliveryDisputed,
 		EventMissingItemsReported, EventSplitPaymentCreated:
 		return TopicOrders

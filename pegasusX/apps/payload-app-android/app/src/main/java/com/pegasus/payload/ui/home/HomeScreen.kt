@@ -171,14 +171,14 @@ fun HomeScreen(
     LaunchedEffect(state.online) {
         if (!state.online) return@LaunchedEffect
         viewModel.refreshTrucks(silent = state.trucks.isNotEmpty())
-        viewModel.refreshManifest()
+        viewModel.refreshManifest(silent = state.manifest != null || state.orders.isNotEmpty())
         viewModel.refreshPulse()
     }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.refreshTrucks(silent = state.trucks.isNotEmpty())
-                viewModel.refreshManifest()
+                viewModel.refreshManifest(silent = state.manifest != null || state.orders.isNotEmpty())
                 viewModel.refreshPulse()
             }
         }

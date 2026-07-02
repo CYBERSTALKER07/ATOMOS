@@ -7,6 +7,7 @@ import java.time.temporal.ChronoUnit
 import kotlin.math.max
 import kotlin.math.roundToInt
 
+/** Canonical mapper — keep aligned with packages/types/forecast-confidence.ts */
 private const val STALE_MINUTES = 30L
 
 fun isForecastStale(generatedAt: String?): Boolean {
@@ -30,11 +31,20 @@ fun formatForecastUpdatedAt(generatedAt: String?): String? {
     }.getOrElse { generatedAt }
 }
 
-private fun mapBaselineSource(src: String?): String? = when (src) {
+fun mapBaselineSource(src: String?): String? = when (src) {
     "demand_forecast_baseline" -> "moving_average"
     "ai_recommendations", "inventory_hint" -> "inventory_hint"
     "ml" -> "moving_average"
+    "mixed" -> "mixed"
     else -> src
+}
+
+fun formatBaselineSourceLabel(src: String?): String = when (mapBaselineSource(src)) {
+    "moving_average" -> "Baseline"
+    "seasonal_template" -> "Seasonal"
+    "inventory_hint" -> "Hint"
+    "mixed" -> "Mixed"
+    else -> mapBaselineSource(src)?.replace('_', ' ') ?: ""
 }
 
 fun forecastConfidenceFromDemand(summary: SupplierDemandSummaryResponse): ForecastConfidence {

@@ -241,7 +241,7 @@ private struct HomeLifecycleModifier: ViewModifier {
                 Task {
                     await viewModel.refreshTrucks(silent: !viewModel.trucks.isEmpty)
                     if viewModel.selectedTruckId != nil {
-                        await viewModel.refreshManifest()
+                        await viewModel.refreshManifest(silent: viewModel.manifest != nil || !viewModel.orders.isEmpty)
                     }
                 }
             }
@@ -250,7 +250,7 @@ private struct HomeLifecycleModifier: ViewModifier {
                 Task {
                     await viewModel.refreshTrucks(silent: !viewModel.trucks.isEmpty)
                     if viewModel.selectedTruckId != nil {
-                        await viewModel.refreshManifest()
+                        await viewModel.refreshManifest(silent: viewModel.manifest != nil || !viewModel.orders.isEmpty)
                     }
                 }
             }

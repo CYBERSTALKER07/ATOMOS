@@ -12,7 +12,7 @@ struct ForecastConfidenceView: View {
                     .font(.subheadline.bold())
                 Spacer()
                 if let baseline = confidence.baselineSource {
-                    Text(baseline.uppercased())
+                    Text(ForecastConfidenceSupport.formatBaselineSourceLabel(baseline))
                         .font(.caption2.weight(.semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)

@@ -33,6 +33,10 @@ func (s *relayTestStore) MarkPublished(_ context.Context, eventIDs []string, at 
 	return nil
 }
 
+func (s *relayTestStore) CountUnpublished(_ context.Context) (int64, error) {
+	return int64(len(s.events) - len(s.markIDs)), nil
+}
+
 type relayTestPublisher struct {
 	errorsByCall []error
 	callCount    int

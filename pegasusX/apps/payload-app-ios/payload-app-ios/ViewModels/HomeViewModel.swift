@@ -101,7 +101,7 @@ final class HomeViewModel {
                 await self.reconcileSession()
                 self.recoverInFlightMutations()
                 await self.refreshTrucks(silent: !self.trucks.isEmpty)
-                await self.refreshManifest()
+                await self.refreshManifest(silent: self.manifest != nil || !self.orders.isEmpty)
                 await self.loadNotifications()
                 await self.flushQueue()
             }
@@ -152,15 +152,15 @@ final class HomeViewModel {
         await refreshBatchReadyManifests()
     }
 
-    func refreshManifest() async {
-        await reloadSelectedTruck()
+    func refreshManifest(silent: Bool = false) async {
+        await reloadSelectedTruck(silent: silent)
     }
 
-    private func reloadSelectedTruck() async {
+    private func reloadSelectedTruck(silent: Bool = false) async {
         guard let truckId = selectedTruckId else { return }
-        error = nil
-        await loadManifest(for: truckId)
-        await loadOrders(for: truckId)
+        if !silent { error = nil }
+        await loadManifest(for: truckId, silent: silent)
+        await loadOrders(for: truckId, silent: silent)
         await refreshBatchReadyManifests()
     }
 
@@ -249,9 +249,9 @@ final class HomeViewModel {
         handoffNavigationMessage = nil
     }
 
-    private func loadManifest(for truckId: String) async {
-        loadingManifest = true
-        defer { loadingManifest = false }
+    private func loadManifest(for truckId: String, silent: Bool = false) async {
+        if !silent { loadingManifest = true }
+        defer { if !silent { loadingManifest = false } }
         do {
             let draft = try await api.supplierManifests(state: "DRAFT")
             if let match = draft.manifests.first(where: { $0.truckId == truckId }) {
@@ -261,13 +261,13 @@ final class HomeViewModel {
             let loading = try await api.supplierManifests(state: "LOADING")
             manifest = loading.manifests.first(where: { $0.truckId == truckId })
         } catch {
-            self.error = describe(error)
+            if !silent { self.error = describe(error) }
         }
     }
 
-    private func loadOrders(for truckId: String) async {
-        loadingOrders = true
-        defer { loadingOrders = false }
+    private func loadOrders(for truckId: String, silent: Bool = false) async {
+        if !silent { loadingOrders = true }
+        defer { if !silent { loadingOrders = false } }
         do {
             let result = try await api.orders(vehicleId: truckId, state: "LOADED")
             orders = result
@@ -277,7 +277,7 @@ final class HomeViewModel {
                 selectedOrderId = result.first?.orderId
             }
         } catch {
-            self.error = describe(error)
+            if !silent { self.error = describe(error) }
         }
     }
 
@@ -665,7 +665,8 @@ final class HomeViewModel {
         if frame.type == "PAYLOAD_SYNC" {
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                await self.reloadSelectedTruck()
+                let silent = self.manifest != nil || !self.orders.isEmpty
+                await self.reloadSelectedTruck(silent: silent)
             }
             return
         }

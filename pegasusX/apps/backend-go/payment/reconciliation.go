@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
@@ -79,31 +80,31 @@ func (r *WebhookReconciler) ReconcileStuckSessions(ctx context.Context) error {
 
 			// We write this exactly like a webhook would be written, emitting the relevant event.
 			_ = r.paymentRepo.SaveWebhook(ctx, w, func(txn outbox.TxnBuffer) error {
-				// We don't have direct access to Service.persistWebhookWithOutbox here,
-				// so we emit the outbox event directly.
-				eventType := "PAYMENT_REQUIRED"
+				eventType := events.EventPaymentRequired
 				if status == "PAID" {
-					eventType = "PAYMENT_CLEARED"
+					eventType = events.EventPaymentCleared
 				} else if status == "FAILED" {
-					eventType = "PAYMENT_FAILED"
+					eventType = events.EventPaymentFailed
 				}
 
-				payload := map[string]any{
-					"Type":          eventType,
-					"Timestamp":     now.Format(time.RFC3339Nano),
-					"SessionId":     s.SessionID,
-					"OrderId":       s.OrderID,
-					"SupplierId":    s.SupplierID,
-					"RetailerId":    s.RetailerID,
-					"Gateway":       s.Gateway,
-					"Status":        status,
-					"AmountMinor":   s.AmountMinor,
-					"Currency":      s.Currency,
-					"TransactionId": w.TransactionID,
-					"Source":        "payment.reconciliation",
+				payload := events.FinanceEvent{
+					BaseEvent: events.BaseEvent{
+						Type:      eventType,
+						Timestamp: now.Format(time.RFC3339Nano),
+					},
+					SessionID:     s.SessionID,
+					OrderID:       s.OrderID,
+					SupplierID:    s.SupplierID,
+					RetailerID:    s.RetailerID,
+					Gateway:       s.Gateway,
+					Status:        status,
+					AmountMinor:   s.AmountMinor,
+					Currency:      s.Currency,
+					TransactionID: w.TransactionID,
+					Source:        "payment.reconciliation",
 				}
-				
-				return outbox.EmitJSON(ctx, txn, "session", w.WebhookID, "payment.main", payload)
+
+				return outbox.EmitJSON(ctx, txn, events.AggregateSession, w.WebhookID, events.TopicMain, payload)
 			})
 		}
 	}

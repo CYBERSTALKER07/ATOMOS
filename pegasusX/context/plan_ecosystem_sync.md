@@ -227,21 +227,21 @@ make validate-launch-readiness
 
 | Anchor | Phase | Scope | Status |
 |--------|-------|-------|--------|
-| `PX-ECS-1` | 1 | Backend data-flow correctness | **in progress** |
+| `PX-ECS-1` | 1 | Backend data-flow correctness | **shipped** |
 | `PX-ECS-1A` | 1 | Supplier vet cache invalidation | **shipped** |
 | `PX-ECS-1B` | 1 | In-txn inventory release | **shipped** |
 | `PX-ECS-1C` | 1 | Forecast agg cache invalidation | **shipped** |
 | `PX-ECS-1D` | 1 | Ingest → baseline projection | **shipped** |
 | `PX-ECS-1E` | 1 | Replenishment WS on predictive push | **shipped** |
-| `PX-ECS-1F` | 1 | Order consumer expansion | **pending** |
-| `PX-ECS-1G` | 1 | Outbox metrics | **pending** |
+| `PX-ECS-1F` | 1 | Order consumer expansion | **shipped** |
+| `PX-ECS-1G` | 1 | Outbox metrics | **shipped** |
 | `PX-ECS-2` | 2 | Client realtime parity | **in progress** |
 | `PX-ECS-2A` | 2 | Retailer Android silent refresh | **shipped** |
 | `PX-ECS-2B` | 2 | Driver silent refresh + stub cleanup | **partial** — manifest silent refresh already wired |
 | `PX-ECS-2C` | 2 | Factory session reconcile expand | **shipped** |
-| `PX-ECS-2D` | 2 | Payload mobile silent refresh | **pending** |
-| `PX-ECS-2E` | 2 | Supplier confidence mapper unify | **pending** |
-| `PX-ECS-2F` | 2 | Retailer desktop sparsity badge | **pending** |
+| `PX-ECS-2D` | 2 | Payload mobile silent refresh | **shipped** |
+| `PX-ECS-2E` | 2 | Supplier confidence mapper unify | **shipped** |
+| `PX-ECS-2F` | 2 | Retailer desktop sparsity badge | **shipped** |
 | `PX-ECS-3` | 3 | Planning ↔ execution coherence | **in progress** |
 | `PX-ECS-3A`–`3G` | 3 | Planning UI + docs (see phase table) | **partial** — 3A portal shipped |
 | `PX-ECS-4` | 4 | Execution UX gaps | **in progress** |

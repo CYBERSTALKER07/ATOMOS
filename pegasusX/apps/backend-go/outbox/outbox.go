@@ -49,6 +49,7 @@ type Publisher interface {
 type Store interface {
 	Fetch(ctx context.Context, limit int) ([]Event, error)
 	MarkPublished(ctx context.Context, eventIDs []string, at time.Time) error
+	CountUnpublished(ctx context.Context) (int64, error)
 }
 
 // WithTraceID attaches request trace context used by outbox emitters.

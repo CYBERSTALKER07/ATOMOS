@@ -86,6 +86,12 @@ func (r *Relay) Start(ctx context.Context) {
 }
 
 func (r *Relay) watchdogOnce(ctx context.Context) {
+	count, err := r.store.CountUnpublished(ctx)
+	if err != nil {
+		r.log.Error("outbox watchdog count failed", "err", err)
+	} else {
+		SetUnpublishedCount(count)
+	}
 	events, err := r.store.Fetch(ctx, r.cfg.BatchSize)
 	if err != nil {
 		r.log.Error("outbox watchdog fetch failed", "err", err)

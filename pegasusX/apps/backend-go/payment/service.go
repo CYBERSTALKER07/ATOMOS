@@ -1012,6 +1012,8 @@ func (s *Service) persistWebhookWithOutbox(ctx context.Context, row WebhookRecor
 	eventType := events.EventPaymentRequired
 	if isPaymentSuccessStatus(row.Status) {
 		eventType = events.EventPaymentCleared
+	} else if isPaymentFailureStatus(row.Status) {
+		eventType = events.EventPaymentFailed
 	}
 	if err := s.repo.SaveWebhook(ctx, row, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(ctx, txn, events.AggregateSession, row.WebhookID, events.TopicMain, events.FinanceEvent{
@@ -1229,6 +1231,11 @@ func coalesceString(values ...string) string {
 func isPaymentSuccessStatus(status string) bool {
 	s := strings.ToUpper(strings.TrimSpace(status))
 	return s == "PAID" || s == "CAPTURED" || s == "SETTLED" || s == "SUCCESS"
+}
+
+func isPaymentFailureStatus(status string) bool {
+	s := strings.ToUpper(strings.TrimSpace(status))
+	return s == "FAILED" || s == "DECLINED" || s == "CANCELLED" || s == "VOIDED"
 }
 
 func writeJSONError(w http.ResponseWriter, status int, code, message, endpoint string, deprecated bool, migrateTo string) {

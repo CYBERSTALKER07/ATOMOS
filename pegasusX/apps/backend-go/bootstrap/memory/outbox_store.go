@@ -62,3 +62,15 @@ func (s *OutboxStore) MarkPublished(_ context.Context, eventIDs []string, at tim
 	}
 	return nil
 }
+
+func (s *OutboxStore) CountUnpublished(_ context.Context) (int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var count int64
+	for _, e := range s.events {
+		if _, ok := s.publishedAt[e.EventID]; !ok {
+			count++
+		}
+	}
+	return count, nil
+}

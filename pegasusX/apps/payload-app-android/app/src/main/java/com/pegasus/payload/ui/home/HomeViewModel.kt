@@ -172,7 +172,7 @@ class HomeViewModel @Inject constructor(
                     runCatching { repository.reconcileSession(BuildConfig.API_BASE_URL) }
                     recoverInFlightMutations()
                     refreshTrucks(silent = _state.value.trucks.isNotEmpty())
-                    refreshManifest()
+                    refreshManifest(silent = _state.value.manifest != null || _state.value.orders.isNotEmpty())
                     loadNotifications()
                     flushQueueAndNotify()
                 }
@@ -181,7 +181,7 @@ class HomeViewModel @Inject constructor(
         webSocket.frames
             .onEach { frame ->
                 if (frame.type == "PAYLOAD_SYNC") {
-                    refreshManifest()
+                    refreshManifest(silent = _state.value.manifest != null || _state.value.orders.isNotEmpty())
                     return@onEach
                 }
 
@@ -495,13 +495,29 @@ class HomeViewModel @Inject constructor(
         _state.update { it.copy(handoffNavigationMessage = null) }
     }
 
-    fun refreshManifest() {
+    fun refreshManifest(silent: Boolean = false) {
         val truckId = _state.value.selectedTruckId ?: return
-        _state.update { it.copy(loadingManifest = true, loadingOrders = true, error = null) }
+        if (!silent) {
+            _state.update { it.copy(loadingManifest = true, loadingOrders = true, error = null) }
+        }
         viewModelScope.launch {
             runCatching { repository.loadOpenManifest(truckId) }
-                .onSuccess { manifest -> _state.update { it.copy(manifest = manifest, loadingManifest = false) } }
-                .onFailure { e -> _state.update { it.copy(loadingManifest = false, error = e.message ?: "Failed to load manifest") } }
+                .onSuccess { manifest ->
+                    _state.update { state ->
+                        state.copy(
+                            manifest = manifest,
+                            loadingManifest = if (silent) state.loadingManifest else false,
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _state.update { state ->
+                        state.copy(
+                            loadingManifest = if (silent) state.loadingManifest else false,
+                            error = if (silent) state.error else (e.message ?: "Failed to load manifest"),
+                        )
+                    }
+                }
         }
         viewModelScope.launch {
             runCatching { repository.loadOrders(truckId) }
@@ -511,12 +527,19 @@ class HomeViewModel @Inject constructor(
                             ?: orders.firstOrNull()?.orderId
                         state.copy(
                             orders = orders,
-                            loadingOrders = false,
+                            loadingOrders = if (silent) state.loadingOrders else false,
                             selectedOrderId = selectedOrderId,
                         )
                     }
                 }
-                .onFailure { e -> _state.update { it.copy(loadingOrders = false, error = e.message ?: "Failed to load orders") } }
+                .onFailure { e ->
+                    _state.update { state ->
+                        state.copy(
+                            loadingOrders = if (silent) state.loadingOrders else false,
+                            error = if (silent) state.error else (e.message ?: "Failed to load orders"),
+                        )
+                    }
+                }
         }
         refreshBatchReadyManifests()
     }

@@ -94,6 +94,7 @@ const (
 	// @Sync(FinanceEvent)
 	EventSplitPaymentCreated          = "SPLIT_PAYMENT_CREATED"
 	EventPaymentCleared               = "PAYMENT_CLEARED"
+	EventPaymentFailed                = "PAYMENT_FAILED"
 	EventPaymentRequired              = "PAYMENT_REQUIRED"
 	EventSettlementRequired           = "SETTLEMENT_REQUIRED"
 

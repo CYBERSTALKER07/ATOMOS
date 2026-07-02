@@ -26,6 +26,7 @@ import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import type { Order, Prediction, Product } from "../../../lib/types";
+import { isPredictionBlocked } from "../../../lib/types";
 
 const EMPTY_ORDERS: Order[] = [];
 const EMPTY_PREDICTIONS: Prediction[] = [];
@@ -100,6 +101,10 @@ export default function DashboardPage() {
     [orderList],
   );
   const reorderProducts = useMemo(() => productList.slice(0, 8), [productList]);
+  const blockedPredictionCount = useMemo(
+    () => predictionList.filter((item) => isPredictionBlocked(item)).length,
+    [predictionList],
+  );
 
   const loading = loadingOrders || loadingPred || loadingProducts;
 
@@ -288,7 +293,11 @@ export default function DashboardPage() {
               <KpiCard
                 label="AI Signals"
                 value={predictionList.length}
-                sub="Restock Ready"
+                sub={
+                  blockedPredictionCount > 0
+                    ? `${blockedPredictionCount} blocked (sparse history)`
+                    : "Restock Ready"
+                }
                 icon={<Brain size={18} style={{ color: "var(--desk-info)" }} />}
               />
               <KpiCard
@@ -395,9 +404,16 @@ export default function DashboardPage() {
                           {Math.round(forecast.confidence * 100)}%
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="md-typescale-title-small font-light truncate text-[var(--desk-text-primary)]">
-                            {forecast.productName}
-                          </p>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="md-typescale-title-small font-light truncate text-[var(--desk-text-primary)]">
+                              {forecast.productName}
+                            </p>
+                            {isPredictionBlocked(forecast) ? (
+                              <span className="shrink-0 text-[9px] font-black tracking-tighter px-2 py-0.5 rounded bg-amber-100 border border-amber-200 text-amber-800">
+                                INSUFFICIENT HISTORY
+                              </span>
+                            ) : null}
+                          </div>
                           <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] line-clamp-1">
                             {forecast.reasoning}
                           </p>

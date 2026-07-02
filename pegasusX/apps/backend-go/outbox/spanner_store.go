@@ -145,6 +145,27 @@ LIMIT @limit`,
 	return events, nil
 }
 
+// CountUnpublished returns the number of rows with PublishedAt IS NULL.
+func (s *SpannerStore) CountUnpublished(ctx context.Context) (int64, error) {
+	if s == nil || s.client == nil {
+		return 0, fmt.Errorf("outbox spanner store: nil client")
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT COUNT(*) FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Unpublished} WHERE PublishedAt IS NULL`,
+	}
+	iter := s.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		return 0, fmt.Errorf("outbox spanner store: count: %w", err)
+	}
+	var count int64
+	if err := row.Columns(&count); err != nil {
+		return 0, fmt.Errorf("outbox spanner store: count scan: %w", err)
+	}
+	return count, nil
+}
+
 // MarkPublished marks event IDs as published at the given timestamp.
 func (s *SpannerStore) MarkPublished(ctx context.Context, eventIDs []string, at time.Time) error {
 	if len(eventIDs) == 0 {
