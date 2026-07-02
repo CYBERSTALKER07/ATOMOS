@@ -1,0 +1,64 @@
+name: Desktop Windows Build
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+defaults:
+  run:
+    working-directory: pegasusX
+
+jobs:
+  build:
+    name: ${{ matrix.app }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: retailer-app-desktop
+            filter: "@pegasusx/retailer-app-desktop"
+          - app: supplier-portal
+            filter: "@pegasusx/supplier-portal"
+          - app: warehouse-portal
+            filter: "@pegasusx/warehouse-portal"
+          - app: factory-portal
+            filter: "@pegasusx/factory-portal"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile || pnpm install
+
+      - name: Apply desktop updater pubkey
+        run: bash scripts/apply_desktop_updater_pubkey.sh
+        env:
+          TAURI_UPDATER_PUBKEY: ${{ secrets.TAURI_UPDATER_PUBKEY }}
+
+      - name: Static export + Tauri Windows build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: bash scripts/build_desktop_windows.sh ${{ matrix.app }}
+
+      - name: Upload Windows installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-windows-msvc
+          path: |
+            apps/${{ matrix.app }}/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*.msi
+            apps/${{ matrix.app }}/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*.exe
+          if-no-files-found: warn

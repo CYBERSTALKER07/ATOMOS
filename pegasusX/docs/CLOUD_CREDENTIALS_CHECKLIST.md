@@ -119,7 +119,12 @@ Boss provides API credentials. Wire into Secret Manager + backend env:
 
 - Apple Developer Program (5 iOS apps + APNs)
 - Google Play Console (6 Android apps)
-- Tauri code-signing (supplier, warehouse, factory, retailer desktop)
+- **Tauri desktop** (retailer, supplier, warehouse, factory):
+  - **Updater signing:** minisign keypair via `tauri signer generate`. Commit **public** key only (`contracts/desktop-updater/dev.pub` for dev; production pubkey injected at release). Private key in GSM `PEGASUSX_TAURI_SIGNING_PRIVATE_KEY` → CI `TAURI_SIGNING_PRIVATE_KEY`.
+  - **Apply pubkey before build:** `bash scripts/apply_desktop_updater_pubkey.sh` (or set `TAURI_UPDATER_PUBKEY`).
+  - **Windows Authenticode:** EV code-signing cert for `.msi`/`.exe` (optional secret `WINDOWS_CODESIGN_CERT` + `WINDOWS_CODESIGN_PASSWORD` on release workflow). Timestamp server required.
+  - **macOS:** Developer ID Application cert + `notarytool` staple for `.dmg` (document in release runbook; secrets `APPLE_SIGNING_IDENTITY`, `APPLE_NOTARIZE_*`).
+  - **Updater CDN:** `gs://pegasusx-ssmr-app-updates/{app}-desktop/{target}/{arch}/updater.json` — see `contracts/desktop-updater/README.md`.
 - Expo EAS (payload-terminal) if OTA required
 
 ---
@@ -136,6 +141,7 @@ Boss provides API credentials. Wire into Secret Manager + backend env:
 | `PEGASUSX_INTERNAL_API_KEY` | `INTERNAL_API_KEY` |
 | `pegasusx-<tenant>-google-maps-api-key` | `GOOGLE_MAPS_API_KEY` (Geocoding + Places; restrict Android Maps SDK keys per app) |
 | `pegasusx-<tenant>-kafka-bootstrap-servers` | `KAFKA_BROKERS` (Confluent Cloud Basic bootstrap) |
+| `PEGASUSX_TAURI_SIGNING_PRIVATE_KEY` | `TAURI_SIGNING_PRIVATE_KEY` (desktop updater bundle signing) |
 | Adyen / Stripe / Payme / Click webhook secrets | as enabled |
 
 ---

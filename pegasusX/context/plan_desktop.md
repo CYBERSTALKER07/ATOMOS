@@ -42,7 +42,7 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 **Shared patterns already wired:** `isTauri()` bridge, OS keyring (`store_token` / `get_token` / `clear_token`), `TAURI_BUILD=1` static export, session reconcile hooks on hot pages, offline empty states, `window.print()` on treasury.
 
 **Shared gaps:**
-- `UPDATE_PUBLIC_KEY` placeholder in all four `tauri.conf.json`
+- Production updater signing keys in GSM (dev pubkey committed for CI; rotate before external release)
 - `@tauri-apps/plugin-fs` / `plugin-dialog` in package.json but minimal frontend usage
 - No shared `packages/desktop-bridge` — four copies of `lib/bridge.ts`
 - True SSR impossible with bundled static export (documented; accept and compensate with cache)
@@ -67,11 +67,11 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 
 | Anchor | Work | Exit |
 |--------|------|------|
-| `PX-DESK-0A` | Replace `UPDATE_PUBLIC_KEY` with real updater signing keys; document key rotation in credentials checklist | `tauri.conf.json` pubkey set; test update manifest on GCS |
-| `PX-DESK-0B` | CI: `TAURI_BUILD=1` + `tauri build --target x86_64-pc-windows-msvc` for all four apps (nightly or release branch) | Green workflow artifact: `.msi` per app |
-| `PX-DESK-0C` | Windows code-sign + timestamp (Authenticode); macOS notarize path documented | Signed installer smoke on clean VM |
+| `PX-DESK-0A` | Replace `UPDATE_PUBLIC_KEY` with real updater signing keys; document key rotation in credentials checklist | `tauri.conf.json` pubkey set; test update manifest on GCS | **partial** — dev pubkey + `apply_desktop_updater_pubkey.sh`; prod GSM pending |
+| `PX-DESK-0B` | CI: `TAURI_BUILD=1` + `tauri build --target x86_64-pc-windows-msvc` for all four apps (nightly or release branch) | Green workflow artifact: `.msi` per app | **shipped** — `desktop-windows-build.yml` |
+| `PX-DESK-0C` | Windows code-sign + timestamp (Authenticode); macOS notarize path documented | Signed installer smoke on clean VM | **partial** — documented in credentials checklist; cert secrets pending |
 | `PX-DESK-0D` | Extract shared `packages/desktop-bridge` (keyring, `isTauri`, app info) | Four apps import package; thin `lib/bridge.ts` re-exports | **shipped** |
-| `PX-DESK-0E` | Unify updater CDN base URLs (retailer uses GCS; others pegasus-x.com — align buckets) | Single distribution runbook section |
+| `PX-DESK-0E` | Unify updater CDN base URLs (retailer uses GCS; others pegasus-x.com — align buckets) | Single distribution runbook section | **shipped** — all four on `pegasusx-ssmr-app-updates` |
 
 **Anchor:** `PX-DESK-0` — installers build in CI; updater keys real; bridge DRY.
 
@@ -179,8 +179,10 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 # Desktop bridge + all Tauri clients (PX-DESK-0D+)
 cd pegasusX && pnpm --filter @pegasusx/desktop-bridge test
 cd pegasusX && make validate-desktop-clients
+cd pegasusX && make validate-desktop-updater
 
-# Per-app (manual)
+# Windows MSI (local; requires Rust + WebView2)
+cd pegasusX && bash scripts/build_desktop_windows.sh retailer-app-desktop
 cd pegasusX/apps/retailer-app-desktop && pnpm typecheck && pnpm build:static
 
 # Retailer unit tests (deepest today)
@@ -206,8 +208,8 @@ cd pegasusX/apps/warehouse-portal && pnpm tauri:build:win
 
 | Anchor | Phase | Scope | Status |
 |--------|-------|-------|--------|
-| `PX-DESK-0` | 0 | Shell hardening & release | **partial** — shared bridge shipped |
-| `PX-DESK-0A`–`0E` | 0 | Signing, CI, bridge package, CDN | **partial** — `0D` + CI typecheck; signing/CDN pending |
+| `PX-DESK-0` | 0 | Shell hardening & release | **partial** — bridge, Windows CI, GCS updater; prod signing pending |
+| `PX-DESK-0A`–`0E` | 0 | Signing, CI, bridge package, CDN | **partial** — 0B/0D/0E shipped; 0A dev keys; 0C docs |
 | `PX-DESK-1` | 1 | Offline & SQLite cache | **shipped** — retailer, warehouse, supplier cache + offline tray |
 | `PX-DESK-1A`–`1F` | 1 | desktop-cache + per-role cache | **shipped** |
 | `PX-DESK-2` | 2 | Native capabilities | **pending** |

@@ -102,3 +102,5 @@ jobs:
           pnpm --filter @pegasusx/supplier-portal typecheck
           pnpm --filter @pegasusx/warehouse-portal typecheck
           pnpm --filter @pegasusx/factory-portal typecheck
+      - name: Validate desktop updater config
+        run: bash scripts/validate_desktop_updater.sh

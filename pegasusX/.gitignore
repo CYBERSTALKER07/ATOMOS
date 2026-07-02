@@ -36,6 +36,8 @@ yarn-error.log*
 
 # tauri
 src-tauri/target/
+contracts/desktop-updater/*.key
+contracts/desktop-updater/dev.key
 
 # android
 .gradle/

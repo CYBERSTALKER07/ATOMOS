@@ -47,7 +47,23 @@ Release tag `vYYYY.MM.DD` triggers all workflows; each artifact publishes indepe
 |---------|---------|------------------|
 | iOS native | App Store / TestFlight | Store review; `GET /v1/platform/client-policy` for force/min version |
 | Android native | Google Play | In-app update (flexible) or immediate when below `minimum_version` |
-| Windows desktop (Tauri) | MS Store + website CDN | Tauri updater plugin + signed manifest on GCS |
+| Windows desktop (Tauri) | MS Store + website CDN | Tauri updater plugin + signed manifest on GCS (`pegasusx-ssmr-app-updates`) |
+
+### Tauri desktop distribution (four role portals)
+
+| App | Updater manifest | Windows CI |
+|-----|------------------|------------|
+| `retailer-app-desktop` | `retailer-desktop/{{target}}/{{arch}}/updater.json` | `.github/workflows/desktop-windows-build.yml` |
+| `supplier-portal` | `supplier-desktop/...` | same matrix |
+| `warehouse-portal` | `warehouse-desktop/...` | same matrix |
+| `factory-portal` | `factory-desktop/...` | same matrix |
+
+**Build:** `bash scripts/build_desktop_windows.sh <app>` (local) or weekly `workflow_dispatch` on `windows-latest`.
+
+**Keys:** `contracts/desktop-updater/dev.pub` for dev/CI; production pubkey via `TAURI_UPDATER_PUBKEY` secret. Update bundles signed with `TAURI_SIGNING_PRIVATE_KEY`.
+
+**Installer signing:** Windows Authenticode + macOS notarize documented in [`CLOUD_CREDENTIALS_CHECKLIST.md`](CLOUD_CREDENTIALS_CHECKLIST.md).
+
 | Web portals | CI deploy | Cache-bust static assets; feature flags in backend |
 | payload-terminal (Expo) | EAS Build + EAS Update | Runtime version + channel `production` |
 

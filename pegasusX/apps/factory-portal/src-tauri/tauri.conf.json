@@ -15,7 +15,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Factory Portal — Pegasus",
+        "title": "Factory Portal \u2014 Pegasus",
         "width": 1440,
         "height": 900,
         "minWidth": 1024,
@@ -35,10 +35,10 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://pegasus-x.com/updates/factory-desktop/{{target}}/{{arch}}/updater.json"
+        "https://storage.googleapis.com/pegasusx-ssmr-app-updates/factory-desktop/{{target}}/{{arch}}/updater.json"
       ],
       "dialog": true,
-      "pubkey": "UPDATE_PUBLIC_KEY"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhDREMyMEEzRkY5NEYzQjMKUldTejg1VC9veURjakZ6R3NoSmZ6NGIyOGVBZVBZZGs5TkdMWk9XRTArQ2UyakJNZ01XYXZtS0UK"
     }
   },
   "bundle": {

@@ -32,6 +32,7 @@ help:
 	@echo "  validate-ai-worker-k8s validate ai-worker Kubernetes manifests"
 	@echo "  validate-backend-k8s  validate backend-go Kubernetes manifests"
 	@echo "  validate-desktop-clients  PX-DESK typecheck + static export for all Tauri portals"
+	@echo "  validate-desktop-updater  PX-DESK-0A/0E pubkey + GCS updater endpoint gate"
 	@echo "  validate-launch-readiness validate launch evidence bundle"
 	@echo "  docker-build          build backend-go + ai-worker container images (local tag)"
 	@echo "  docker-build-backend  build backend-go image only"
@@ -142,6 +143,9 @@ validate-backend-k8s:
 
 validate-desktop-clients:
 	bash scripts/validate_desktop_clients.sh
+
+validate-desktop-updater:
+	bash scripts/validate_desktop_updater.sh
 
 validate-launch-readiness:
 	python3 scripts/validate_launch_readiness.py
