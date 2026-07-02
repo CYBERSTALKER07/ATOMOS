@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Icon from "./Icon";
 import EmptyState from "./EmptyState";
-import { PageSkeleton } from "./Skeleton";
+import { PageSkeleton } from "@pegasusx/ui-kit/desktop";
 import { PageChrome as KitPageChrome } from "@pegasusx/ui-kit/portal";
 
 type EmptyVariant =

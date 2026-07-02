@@ -4,16 +4,19 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { SupplierFleetLiveRoute } from '@pegasusx/types';
 import MapGL, { Layer, NavigationControl, Source } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
+import { useMapLibreTeardown } from '@pegasusx/ui-kit/desktop';
 import { FLEET_ROUTE_COLORS, useAnimatedDriverMarkers } from '@/lib/use-animated-driver-markers';
 
 const DEFAULT_CENTER: [number, number] = [69.2401, 41.2995];
+const MAP_PITCH_3D = 50;
 
 type FleetLiveMapProps = {
   routes: SupplierFleetLiveRoute[];
   className?: string;
   loading?: boolean;
   error?: string | null;
+  /** Optional pitched camera — off by default (PX-DESK-3B). */
+  enable3DView?: boolean;
 };
 
 function routeLineFeature(
@@ -38,9 +41,21 @@ function routeLineFeature(
   };
 }
 
-export default function FleetLiveMap({ routes, className, loading, error }: FleetLiveMapProps) {
+export default function FleetLiveMap({
+  routes,
+  className,
+  loading,
+  error,
+  enable3DView = false,
+}: FleetLiveMapProps) {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const pointCollection = useAnimatedDriverMarkers(routes);
+
+  useMapLibreTeardown(mapRef);
+
+  useEffect(() => {
+    void import('maplibre-gl/dist/maplibre-gl.css');
+  }, []);
 
   const lineCollection = useMemo<GeoJSON.FeatureCollection<GeoJSON.LineString>>(() => {
     const features = routes
@@ -67,6 +82,12 @@ export default function FleetLiveMap({ routes, className, loading, error }: Flee
       map.fitBounds(bounds, { padding: 48, maxZoom: 14, duration: 500 });
     }
   }, [lineCollection, pointCollection]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.easeTo({ pitch: enable3DView ? MAP_PITCH_3D : 0, duration: 300 });
+  }, [enable3DView]);
 
   if (loading && routes.length === 0) {
     return (
@@ -110,12 +131,14 @@ export default function FleetLiveMap({ routes, className, loading, error }: Flee
           longitude: DEFAULT_CENTER[0],
           latitude: DEFAULT_CENTER[1],
           zoom: 11,
+          pitch: 0,
         }}
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
         style={{ width: '100%', height: '100%' }}
         mapLib={maplibregl}
+        maxPitch={enable3DView ? 60 : 0}
       >
-        <NavigationControl position="top-right" showCompass={false} />
+        <NavigationControl position="top-right" showCompass={enable3DView} />
         {lineCollection.features.length > 0 ? (
           <Source id="fleet-live-routes" type="geojson" data={lineCollection}>
             <Layer

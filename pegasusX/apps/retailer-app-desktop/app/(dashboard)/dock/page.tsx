@@ -22,6 +22,12 @@ import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import { useLiveData } from "../../../lib/hooks";
 import { useWsEvent, useOptionalWebSocket, type WsMessage } from "../../../lib/ws";
+import {
+  applyDockPendingPatches,
+  clearDockPendingPatches,
+  queueDockOrderPatch,
+} from "../../../lib/dock-pending-patches";
+import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import type { TrackingResponse, TrackingOrder } from "../../../lib/types";
 
 /* ── Config ── */
@@ -145,8 +151,15 @@ export default function DockPage() {
   }, [error, isRefreshing, loading, ws]);
 
   useEffect(() => {
-    if (data?.orders) setOrders(data.orders);
+    if (data?.orders) {
+      setOrders(applyDockPendingPatches(data.orders));
+    }
   }, [data]);
+
+  useRetailerSessionReconcile(() => {
+    clearDockPendingPatches();
+    void mutate();
+  });
 
   useEffect(() => {
     const storage = getBrowserStorage();
@@ -173,16 +186,23 @@ export default function DockPage() {
         typeof msg.delivery_token === "string" ? msg.delivery_token : undefined;
       if (!orderId) return;
       setOrders((prev) =>
-        prev.map((o) =>
-          o.order_id === orderId
-            ? {
-                ...o,
-                delivery_token: deliveryToken || o.delivery_token,
-                is_approaching: true,
-                state: o.state === "IN_TRANSIT" ? "ARRIVING" : o.state,
-              }
-            : o,
-        ),
+        prev.map((o) => {
+          if (o.order_id !== orderId) return o;
+          const nextState = o.state === "IN_TRANSIT" ? "ARRIVING" : o.state;
+          if (typeof navigator !== "undefined" && !navigator.onLine) {
+            queueDockOrderPatch(orderId, {
+              delivery_token: deliveryToken || o.delivery_token,
+              is_approaching: true,
+              state: nextState,
+            });
+          }
+          return {
+            ...o,
+            delivery_token: deliveryToken || o.delivery_token,
+            is_approaching: true,
+            state: nextState,
+          };
+        }),
       );
     }, []),
   );
@@ -193,6 +213,9 @@ export default function DockPage() {
       const orderId = msg.order_id as string | undefined;
       const newState = msg.state as string | undefined;
       if (!orderId || !newState) return;
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        queueDockOrderPatch(orderId, { state: newState });
+      }
       setOrders((prev) =>
         prev.map((o) =>
           o.order_id === orderId ? { ...o, state: newState } : o,
@@ -206,6 +229,7 @@ export default function DockPage() {
     useCallback((msg: WsMessage) => {
       const orderId = msg.order_id as string | undefined;
       if (!orderId) return;
+      clearDockPendingPatches();
       setOrders((prev) => prev.filter((o) => o.order_id !== orderId));
     }, []),
   );

@@ -120,10 +120,10 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 | Anchor | Work | Exit |
 |--------|------|------|
 | `PX-DESK-3A` | Virtualized tables on supplier orders, warehouse dispatch, retailer orders (react-virtuoso or equivalent) | 500+ rows scroll without jank on mid-tier Windows laptop | **shipped** — `VirtualScrollList` in `@pegasusx/ui-kit/desktop` |
-| `PX-DESK-3B` | MapLibre: lazy-load + destroy on unmount for fleet/live-map pages | Memory stable after 10 min on supplier fleet tab |
-| `PX-DESK-3C` | Shared skeleton system in `@pegasusx/ui-kit` for BentoGrid / PageChrome | Portal + desktop use same skeleton components |
-| `PX-DESK-3D` | **Retailer dock:** optimistic inbound scan queue with reconcile | Dock page matches mobile dock semantics on reconnect |
-| `PX-DESK-3E` | Reduce polling where WS covers the surface (audit `usePolling` intervals on desktop-only pages) | Document per-page refresh strategy in parity matrix |
+| `PX-DESK-3B` | MapLibre: lazy-load + destroy on unmount for fleet/live-map pages | Memory stable after 10 min on supplier fleet tab | **shipped** — lazy mount + teardown; optional 3D toggle (default 2D) |
+| `PX-DESK-3C` | Shared skeleton system in `@pegasusx/ui-kit` for BentoGrid / PageChrome | Portal + desktop use same skeleton components | **shipped** — `@pegasusx/ui-kit/desktop` PageSkeletons |
+| `PX-DESK-3D` | **Retailer dock:** optimistic inbound scan queue with reconcile | Dock page matches mobile dock semantics on reconnect | **shipped** — `dock-pending-patches` + session reconcile |
+| `PX-DESK-3E` | Reduce polling where WS covers the surface (audit `usePolling` intervals on desktop-only pages) | Document per-page refresh strategy in parity matrix | **shipped** — matrix appendix |
 
 **Anchor:** `PX-DESK-3` — supplier orders + warehouse dispatch virtualization shipped.
 
@@ -214,8 +214,8 @@ cd pegasusX/apps/warehouse-portal && pnpm tauri:build:win
 | `PX-DESK-1A`–`1F` | 1 | desktop-cache + per-role cache | **shipped** |
 | `PX-DESK-2` | 2 | Native capabilities | **shipped** — 2A–2F complete |
 | `PX-DESK-2A`–`2F` | 2 | fs, print, wedge, deep links | **shipped** |
-| `PX-DESK-3` | 3 | Performance & UX | **partial** — 3A shipped |
-| `PX-DESK-3A`–`3E` | 3 | Virtualization, maps, skeletons | **partial** — 3A shipped; 3B–3E pending |
+| `PX-DESK-3` | 3 | Performance & UX | **shipped** — 3A–3E complete |
+| `PX-DESK-3A`–`3E` | 3 | Virtualization, maps, skeletons | **shipped** |
 | `PX-DESK-4` | 4 | Realtime & ecosystem parity | **pending** |
 | `PX-DESK-4A`–`4E` | 4 | Reconcile audit, ECS features | **pending** |
 | `PX-DESK-5` | 5 | Test & docs | **partial** — 5B/5C/5D shipped; 5A pending |

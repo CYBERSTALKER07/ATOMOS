@@ -300,5 +300,19 @@ Shared design packages now own cross-app chrome:
 | Single instance | yes | yes | yes | yes |
 | Tauri Android | — | **deprecated** (use `supplier-app-android`) | — | — |
 | Virtualized order lists (3A) | yes | yes | yes | — |
+| Fleet map 3D view | optional toggle (default 2D) | optional | optional | — |
+
+### Desktop polling refresh strategy (PX-DESK-3E)
+
+| Surface | Mechanism | Interval (visible) | Hidden tab |
+| --- | --- | --- | --- |
+| Supplier dashboard KPIs | `usePolling` | 60s | pause |
+| Supplier fleet live map | `usePolling` + WS | 15s | 60s (`hiddenIntervalMs`) |
+| Supplier dispatch preview | `usePolling` + WS | 30s | pause |
+| Warehouse fleet live map | `usePolling` + WS | 15s | 60s |
+| Factory home / supply requests | `usePolling` + WS | 30–60s | pause |
+| Retailer dock queue | `useLiveData` + WS | 15s poll + reconcile on reconnect | SQLite cache on Tauri |
+
+Prefer WebSocket-driven refresh where role inbox events exist; polling is fallback / map geometry only.
 
 Reference: [`context/plan_desktop.md`](../context/plan_desktop.md), [`docs/qa/PX-DESK_MANUAL_QA.md`](./qa/PX-DESK_MANUAL_QA.md), [`docs/adr/008-desktop-tauri-strategy.md`](./adr/008-desktop-tauri-strategy.md).
