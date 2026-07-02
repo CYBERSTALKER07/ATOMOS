@@ -8,6 +8,8 @@ struct DashboardView: View {
     @State private var meiSummary: SupplierMEIONetworkSummary?
     @State private var pulseEvents: [SupplierPulseEvent] = []
     @State private var pulseLoading = true
+    @State private var demandConfidence: ForecastConfidence?
+    @State private var demandGeneratedAt: String?
     @State private var loading = true
     @State private var error: String?
 
@@ -51,6 +53,14 @@ struct DashboardView: View {
                                 .padding()
                                 .background(SupplierTheme.surface)
                                 .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
+                            }
+
+                            if let demandConfidence {
+                                ForecastConfidenceView(
+                                    confidence: demandConfidence,
+                                    updatedAt: ForecastConfidenceSupport.formatForecastUpdatedAt(generatedAt: demandGeneratedAt),
+                                    stale: ForecastConfidenceSupport.isForecastStale(generatedAt: demandGeneratedAt)
+                                )
                             }
 
                             NetworkPulseStrip(events: pulseEvents, loading: pulseLoading)
@@ -161,6 +171,13 @@ struct DashboardView: View {
             _ = try? await SupplierOperationsService.activity()
             _ = try? await SupplierOperationsService.exceptions()
             meiSummary = try? await SupplierOperationsService.meiNetworkSummary()
+            if let demand = try? await SupplierOperationsService.demandToday() {
+                demandGeneratedAt = demand.generatedAt
+                demandConfidence = ForecastConfidenceSupport.fromDemand(demand)
+            } else {
+                demandGeneratedAt = nil
+                demandConfidence = nil
+            }
             pulseLoading = true
             pulseEvents = (try? await SupplierOperationsService.pulse())?.events ?? []
             pulseLoading = false

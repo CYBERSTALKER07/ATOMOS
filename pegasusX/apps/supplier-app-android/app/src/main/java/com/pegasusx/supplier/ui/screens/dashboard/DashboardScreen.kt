@@ -21,6 +21,7 @@ import com.pegasus.design.RealtimeRefreshEffect
 import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.data.model.SupplierDashboard
 import com.pegasusx.supplier.data.model.SupplierMEIONetworkSummary
+import com.pegasusx.supplier.data.model.ForecastConfidence
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
@@ -29,7 +30,11 @@ import com.pegasusx.supplier.ui.components.SupplierLoadingState
 import com.pegasusx.supplier.ui.components.SupplierPulseStrip
 import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasusx.supplier.ui.screens.planning.ForecastConfidenceView
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.util.forecastConfidenceFromDemand
+import com.pegasusx.supplier.util.formatForecastUpdatedAt
+import com.pegasusx.supplier.util.isForecastStale
 import kotlinx.coroutines.launch
 
 private data class DashboardKpi(
@@ -58,6 +63,8 @@ fun DashboardScreen(
     var meiSummary by remember { mutableStateOf<SupplierMEIONetworkSummary?>(null) }
     var pulseEvents by remember { mutableStateOf<List<com.pegasusx.supplier.data.model.PulseEvent>>(emptyList()) }
     var pulseLoading by remember { mutableStateOf(true) }
+    var demandConfidence by remember { mutableStateOf<ForecastConfidence?>(null) }
+    var demandGeneratedAt by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -76,6 +83,10 @@ fun DashboardScreen(
                         ops.getActivity()
                         ops.getExceptions()
                         ops.getMEIONetworkSummary().body()?.let { meiSummary = it }
+                        ops.getDemandToday().body()?.let { demand ->
+                            demandGeneratedAt = demand.generatedAt
+                            demandConfidence = forecastConfidenceFromDemand(demand)
+                        }
                     }
                 } else if (!silent) {
                     error = "Failed to load (${resp.code()})"
@@ -187,6 +198,14 @@ fun DashboardScreen(
                                 )
                             }
                         }
+                    }
+                    demandConfidence?.let { confidence ->
+                        ForecastConfidenceView(
+                            confidence = confidence,
+                            updatedAt = formatForecastUpdatedAt(demandGeneratedAt),
+                            stale = isForecastStale(demandGeneratedAt),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                     SupplierPulseStrip(
                         events = pulseEvents,

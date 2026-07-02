@@ -118,6 +118,17 @@ struct MoreHubView: View {
                     Label("Business setup", systemImage: "gearshape.2")
                 }
             }
+            Section("Web portal") {
+                NavigationLink { PortalHandoffView(feature: .chargebacks) } label: {
+                    Label("Chargebacks on web", systemImage: "safari")
+                }
+                NavigationLink { PortalHandoffView(feature: .businessSetup) } label: {
+                    Label("Business setup on web", systemImage: "safari")
+                }
+                NavigationLink { PortalHandoffView(feature: .paymentBypass) } label: {
+                    Label("Operations on web", systemImage: "safari")
+                }
+            }
         }
         .navigationTitle("More")
         .background(SupplierTheme.background)

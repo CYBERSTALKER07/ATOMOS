@@ -55,6 +55,7 @@ fun MoreScreen(
     onDemandHistory: () -> Unit,
     onFactories: () -> Unit,
     onWarehouses: () -> Unit,
+    onOpenPortalHandoff: (com.pegasusx.supplier.ui.portal.SupplierPortalFeature) -> Unit,
     onSignOut: () -> Unit,
 ) {
     val fulfillment = listOf(
@@ -101,6 +102,17 @@ fun MoreScreen(
         MoreDestination("Profile", "Company profile", Icons.Default.Person, onProfile),
         MoreDestination("Billing setup", "Banking & gateway", Icons.Default.CreditCard, onBilling),
     )
+    val webPortal = listOf(
+        MoreDestination("Chargebacks on web", "Open supplier portal", Icons.Default.Computer) {
+            onOpenPortalHandoff(com.pegasusx.supplier.ui.portal.SupplierPortalFeature.CHARGEBACKS)
+        },
+        MoreDestination("Business setup on web", "Open supplier portal", Icons.Default.Computer) {
+            onOpenPortalHandoff(com.pegasusx.supplier.ui.portal.SupplierPortalFeature.BUSINESS_SETUP)
+        },
+        MoreDestination("Operations on web", "Bypass & broadcast", Icons.Default.Computer) {
+            onOpenPortalHandoff(com.pegasusx.supplier.ui.portal.SupplierPortalFeature.PAYMENT_BYPASS)
+        },
+    )
 
     Scaffold(topBar = { TopAppBar(title = { Text("More") }) }) { padding ->
         LazyColumn(
@@ -120,6 +132,8 @@ fun MoreScreen(
             insights.forEach { item { MoreRow(it) } }
             item { SectionHeader("Account") }
             account.forEach { item { MoreRow(it) } }
+            item { SectionHeader("Web portal") }
+            webPortal.forEach { item { MoreRow(it) } }
             item {
                 HorizontalDivider(Modifier.padding(vertical = PegasusSpacing.md))
                 MoreRow(

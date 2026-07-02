@@ -355,6 +355,9 @@ fun SupplierNavigation(
                     onDemandHistory = { navController.navigate(SupplierRoutes.DEMAND_HISTORY) },
                     onFactories = { navController.navigate(SupplierRoutes.FACTORIES) },
                     onWarehouses = { navController.navigate(SupplierRoutes.WAREHOUSES) },
+                    onOpenPortalHandoff = { feature ->
+                        navController.navigate(SupplierRoutes.portalHandoff(feature))
+                    },
                     onPaymentBypass = { navController.navigate(SupplierRoutes.OPERATIONS) },
                     onSignOut = {
                         TokenHolder.clear()
