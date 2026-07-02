@@ -42,6 +42,14 @@ class InboundReturnsViewModel @Inject constructor(
     fun queuedScanCountFlow(): kotlinx.coroutines.flow.Flow<Int> =
         repository.queuedScanCountFlow("returns/inbound/scan")
 
+    init {
+        viewModelScope.launch {
+            webSocket.onReconnect.collect {
+                runCatching { repository.flushQueue(com.pegasus.payload.BuildConfig.API_BASE_URL) }
+            }
+        }
+    }
+
     fun enqueueOfflineScan(barcode: String, sessionId: String?) {
         val body = json.encodeToString(
             InboundScanBody(barcode = barcode, sessionId = sessionId.orEmpty()),

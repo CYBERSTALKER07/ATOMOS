@@ -74,6 +74,11 @@ class CatalogViewModel @Inject constructor(
                     }
                 }
         }
+        viewModelScope.launch {
+            retailerWebSocket.reconnects.collect {
+                refresh()
+            }
+        }
     }
 
     fun refresh() {

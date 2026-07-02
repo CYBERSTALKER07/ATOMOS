@@ -79,8 +79,8 @@ class OrdersViewModel @Inject constructor(
                             loadIssue = null,
                         )
                     }
-                    refresh()
                 }
+                refresh()
             }
         }
     }

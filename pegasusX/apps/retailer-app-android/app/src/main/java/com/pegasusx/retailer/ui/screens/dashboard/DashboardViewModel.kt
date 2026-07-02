@@ -74,8 +74,8 @@ class DashboardViewModel @Inject constructor(
                             loadIssue = null,
                         )
                     }
-                    refresh()
                 }
+                refresh()
             }
         }
     }

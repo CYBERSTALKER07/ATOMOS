@@ -39,6 +39,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/updateroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouseroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/webhookroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -227,6 +228,11 @@ func main() {
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 	})
+	
+	updateroutes.RegisterRoutes(r, updateroutes.Deps{
+		BaseURL: "https://void.example.com", // Adjust accordingly for environments
+	})
+
 	catalogroutes.RegisterRoutes(r, catalogroutes.Deps{
 		Service:             app.CatalogService,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,

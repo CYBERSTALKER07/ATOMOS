@@ -146,11 +146,15 @@ struct RidesListView: View {
             .presentationDetents([.medium])
         }
         .onChange(of: driverSocketState.reconnectEpoch) { _, _ in
+            let hadInFlight = isRequestingEarlyComplete
             if isRequestingEarlyComplete {
                 isRequestingEarlyComplete = false
-                earlyCompleteMessage = "Connection restored — verify status before retrying."
+                earlyCompleteMessage = DriverReconnectRecovery.hint
             }
-            Task { await vm.loadMissions() }
+            Task {
+                await DriverReconnectRecovery.recoverInFlight(wasInFlight: hadInFlight)
+                await vm.loadMissions()
+            }
         }
         .safeAreaInset(edge: .bottom) {
             if let earlyCompleteMessage {
