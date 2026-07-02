@@ -70,7 +70,7 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 | `PX-DESK-0A` | Replace `UPDATE_PUBLIC_KEY` with real updater signing keys; document key rotation in credentials checklist | `tauri.conf.json` pubkey set; test update manifest on GCS |
 | `PX-DESK-0B` | CI: `TAURI_BUILD=1` + `tauri build --target x86_64-pc-windows-msvc` for all four apps (nightly or release branch) | Green workflow artifact: `.msi` per app |
 | `PX-DESK-0C` | Windows code-sign + timestamp (Authenticode); macOS notarize path documented | Signed installer smoke on clean VM |
-| `PX-DESK-0D` | Extract shared `packages/desktop-bridge` (keyring, `isTauri`, app info) | Four apps import package; delete duplicate `lib/bridge.ts` |
+| `PX-DESK-0D` | Extract shared `packages/desktop-bridge` (keyring, `isTauri`, app info) | Four apps import package; thin `lib/bridge.ts` re-exports | **shipped** |
 | `PX-DESK-0E` | Unify updater CDN base URLs (retailer uses GCS; others pegasus-x.com — align buckets) | Single distribution runbook section |
 
 **Anchor:** `PX-DESK-0` — installers build in CI; updater keys real; bridge DRY.
@@ -176,10 +176,12 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 ## Verification loops
 
 ```bash
-# Per-app static export + typecheck
-cd pegasusX/apps/retailer-app-desktop && pnpm typecheck && TAURI_BUILD=1 pnpm build
-cd pegasusX/apps/supplier-portal && pnpm typecheck && TAURI_BUILD=1 pnpm build
-# (warehouse-portal, factory-portal — same pattern)
+# Desktop bridge + all Tauri clients (PX-DESK-0D+)
+cd pegasusX && pnpm --filter @pegasusx/desktop-bridge test
+cd pegasusX && make validate-desktop-clients
+
+# Per-app (manual)
+cd pegasusX/apps/retailer-app-desktop && pnpm typecheck && pnpm build:static
 
 # Retailer unit tests (deepest today)
 cd pegasusX/apps/retailer-app-desktop && pnpm test
@@ -204,8 +206,8 @@ cd pegasusX/apps/warehouse-portal && pnpm tauri:build:win
 
 | Anchor | Phase | Scope | Status |
 |--------|-------|-------|--------|
-| `PX-DESK-0` | 0 | Shell hardening & release | **pending** |
-| `PX-DESK-0A`–`0E` | 0 | Signing, CI, bridge package, CDN | **pending** |
+| `PX-DESK-0` | 0 | Shell hardening & release | **partial** — shared bridge shipped |
+| `PX-DESK-0A`–`0E` | 0 | Signing, CI, bridge package, CDN | **partial** — `0D` + CI typecheck; signing/CDN pending |
 | `PX-DESK-1` | 1 | Offline & SQLite cache | **pending** |
 | `PX-DESK-1A`–`1F` | 1 | desktop-cache + per-role cache | **pending** |
 | `PX-DESK-2` | 2 | Native capabilities | **pending** |

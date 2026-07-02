@@ -44,7 +44,7 @@ export function HexagonalControlTowerMap({ data }: HexagonalControlTowerMapProps
         layers={[layer]}
         initialViewState={INITIAL_VIEW_STATE}
         controller={true}
-        onViewStateChange={(e) => setViewState(e.viewState)}
+        onViewStateChange={(e) => setViewState(e.viewState as any)}
       >
         <Map
           mapboxAccessToken={MAPBOX_ACCESS_TOKEN}

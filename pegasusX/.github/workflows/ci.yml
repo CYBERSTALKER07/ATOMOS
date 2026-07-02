@@ -90,8 +90,13 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 9
-      - name: Install and typecheck supplier portal
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile || pnpm install
+      - name: Desktop bridge tests
+        run: pnpm --filter @pegasusx/desktop-bridge test
+      - name: Typecheck all Tauri desktop clients
         run: |
-          cd apps/supplier-portal
-          pnpm install --frozen-lockfile || pnpm install
-          pnpm exec tsc --noEmit
+          pnpm --filter @pegasusx/retailer-app-desktop typecheck
+          pnpm --filter @pegasusx/supplier-portal typecheck
+          pnpm --filter @pegasusx/warehouse-portal typecheck
+          pnpm --filter @pegasusx/factory-portal typecheck

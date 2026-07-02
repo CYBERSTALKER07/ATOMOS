@@ -18,7 +18,8 @@
     "packages/ui-kit",
     "packages/pulse-ui",
     "packages/explain-ui",
-    "packages/ws-refresh-contract"
+    "packages/ws-refresh-contract",
+    "packages/desktop-bridge"
   ],
   "packageManager": "pnpm@9.0.0",
   "engines": {

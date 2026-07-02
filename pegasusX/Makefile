@@ -1,4 +1,4 @@
-|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate planning-training-export planning-export-validate phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
+|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate planning-training-export planning-export-validate phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
 
 help:
 	@echo "pegasusX make targets"
@@ -31,6 +31,7 @@ help:
 	@echo "  qa-gate                compile + unit tests (fails if integration tests would be skipped)"
 	@echo "  validate-ai-worker-k8s validate ai-worker Kubernetes manifests"
 	@echo "  validate-backend-k8s  validate backend-go Kubernetes manifests"
+	@echo "  validate-desktop-clients  PX-DESK typecheck + static export for all Tauri portals"
 	@echo "  validate-launch-readiness validate launch evidence bundle"
 	@echo "  docker-build          build backend-go + ai-worker container images (local tag)"
 	@echo "  docker-build-backend  build backend-go image only"
@@ -138,6 +139,9 @@ validate-ai-worker-k8s:
 
 validate-backend-k8s:
 	bash scripts/validate_backend_k8s.sh
+
+validate-desktop-clients:
+	bash scripts/validate_desktop_clients.sh
 
 validate-launch-readiness:
 	python3 scripts/validate_launch_readiness.py

@@ -78,13 +78,10 @@ const scenariosData = [
 export default function ControlTowerPage() {
   const [view, setView] = useState<"network" | "map">("network");
   
-  // Use a hardcoded supplierId for demo purposes, 
-  // normally this would come from an auth context.
   const supplierId = "sup-demo-1";
   
   const { networkNodes, networkLinks, h3Data: wsH3Data } = useControlTowerWebSocket(supplierId);
 
-  // Fallback to mock data if WS is empty (e.g. backend not running)
   const displayNodes = networkNodes.length > 0 ? networkNodes : mockNodes;
   const displayLinks = networkLinks.length > 0 ? networkLinks : mockLinks;
 
@@ -108,13 +105,13 @@ export default function ControlTowerPage() {
         <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
           <button
             onClick={() => setView("network")}
-            className={\`px-4 py-2 text-sm font-medium rounded-md transition-colors \${view === "network" ? "bg-emerald-500/20 text-emerald-400" : "text-gray-400 hover:text-white"}\`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors \${view === "network" ? "bg-emerald-500/20 text-emerald-400" : "text-gray-400 hover:text-white"}`}
           >
             Live Network Graph
           </button>
           <button
             onClick={() => setView("map")}
-            className={\`px-4 py-2 text-sm font-medium rounded-md transition-colors \${view === "map" ? "bg-emerald-500/20 text-emerald-400" : "text-gray-400 hover:text-white"}\`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors \${view === "map" ? "bg-emerald-500/20 text-emerald-400" : "text-gray-400 hover:text-white"}`}
           >
             Spatial Map (H3)
           </button>
