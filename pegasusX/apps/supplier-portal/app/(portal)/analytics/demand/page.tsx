@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import type { Route } from "next";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -28,6 +29,8 @@ const api = createSupplierApi();
 
 export default function DemandAnalyticsPage() {
   const [loading, setLoading] = useState(true);
+  const [refreshTick, setRefreshTick] = useState(0);
+  useSupplierSessionReconcile(() => setRefreshTick(t => t + 1));
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<SupplierDemandSummaryResponse | null>(null);
   const [history, setHistory] = useState<SupplierDemandHistoryResponse | null>(null);
@@ -49,7 +52,7 @@ export default function DemandAnalyticsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshTick]);
 
   const chartData = useMemo(
     () =>

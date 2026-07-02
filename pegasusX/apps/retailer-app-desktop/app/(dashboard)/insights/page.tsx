@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import {
   TrendingUp,
   BarChart3,
@@ -328,6 +329,12 @@ export default function InsightsPage() {
   }, [getRetailerId, predList, quantities, refreshPred, selected]);
 
   const loading = loadingPred || loadingAnalytics;
+
+  useRetailerSessionReconcile(() => {
+    void refreshPred();
+    void refreshAnalytics();
+    void refreshDetailed();
+  });
 
   return (
     <div

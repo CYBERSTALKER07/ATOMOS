@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { supplierFetch } from "@/lib/auth";
 import { createSupplierApi } from "@/lib/api";
 import { ListToolbar } from "@/components/ListToolbar";
@@ -113,6 +114,8 @@ export default function CatalogPage() {
       setLoading(false);
     }
   }, []);
+
+  useSupplierSessionReconcile(load);
 
   useEffect(() => {
     void load();

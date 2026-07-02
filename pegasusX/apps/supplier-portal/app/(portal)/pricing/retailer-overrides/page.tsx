@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
 import { supplierScopeId } from "@/lib/supplier-scope";
 import {
@@ -41,6 +42,8 @@ export default function RetailerOverridesPage() {
   const [overrides, setOverrides] = useState<RetailerPriceOverride[]>([]);
   const [products, setProducts] = useState<CatalogProductOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshTick, setRefreshTick] = useState(0);
+  useSupplierSessionReconcile(() => setRefreshTick(t => t + 1));
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

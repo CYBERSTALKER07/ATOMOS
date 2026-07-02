@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierManifestExceptionRow } from "@pegasusx/types";
@@ -34,6 +35,8 @@ export default function ManifestExceptionsPage() {
       .catch((err) => setError(err instanceof Error ? err.message : "load_manifest_exceptions_failed"))
       .finally(() => setLoading(false));
   }, [escalatedOnly]);
+
+  useSupplierSessionReconcile(load);
 
   useEffect(() => {
     load();

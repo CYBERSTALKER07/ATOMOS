@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierTopologyFactory, SupplierTopologyUpdateRequest, SupplierTopologyWarehouse } from "@pegasusx/types";
 import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
@@ -18,6 +19,8 @@ export default function FactoriesPage() {
   const [warehouses, setWarehouses] = useState<SupplierTopologyWarehouse[]>([]);
   const [factories, setFactories] = useState<SupplierTopologyFactory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshTick, setRefreshTick] = useState(0);
+  useSupplierSessionReconcile(() => setRefreshTick(t => t + 1));
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);

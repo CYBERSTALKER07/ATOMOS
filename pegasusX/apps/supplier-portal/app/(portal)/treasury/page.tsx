@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
 import { createSupplierApi } from "@/lib/api";
 import { PageChrome } from "@/components/PageChrome";
@@ -10,6 +11,8 @@ import { errorToMessage, formatMinor, loadFinanceAuthoritySnapshot } from "../..
 export default function TreasuryPage() {
   const api = useMemo(() => createSupplierApi(), []);
   const [loading, setLoading] = useState(true);
+  const [refreshTick, setRefreshTick] = useState(0);
+  useSupplierSessionReconcile(() => setRefreshTick(t => t + 1));
   const [error, setError] = useState<string | null>(null);
   const [monthEarnings, setMonthEarnings] = useState<string>("—");
   const [settlementRows, setSettlementRows] = useState(0);
@@ -35,7 +38,7 @@ export default function TreasuryPage() {
     return () => {
       cancelled = true;
     };
-  }, [api]);
+  }, [api, refreshTick]);
 
   return (
     <PageChrome

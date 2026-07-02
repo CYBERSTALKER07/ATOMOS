@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { usePolling } from '@pegasusx/api-client';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
@@ -113,6 +114,10 @@ export default function PayloadOverridePage() {
   useEffect(() => {
     void fetchManifests();
   }, [fetchManifests]);
+
+  useFactorySessionReconcile(() => {
+    void fetchManifests({ background: true, silent: true });
+  });
 
   useEffect(() => {
     const unsubscribe = subscribeFactoryWS({

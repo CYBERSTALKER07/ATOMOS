@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -111,6 +112,10 @@ export default function InsightsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useFactorySessionReconcile(() => {
+    void load();
+  });
 
   const runInsightAction = useCallback(async (insightId: string, action: 'approve' | 'dismiss') => {
     setActingId(insightId);

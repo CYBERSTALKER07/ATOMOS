@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import { useRouter } from "next/navigation";
 import {
   User,
@@ -111,6 +112,10 @@ function Toggle({
   onToggle: () => void;
   disabled?: boolean;
 }) {
+  useRetailerSessionReconcile(() => {
+    void mutateAutoOrder();
+  });
+
   return (
     <button
       onClick={onToggle}
@@ -152,6 +157,10 @@ function OverrideRow({
   onToggle: () => void;
   saving: boolean;
 }) {
+  useRetailerSessionReconcile(() => {
+    void mutateAutoOrder();
+  });
+
   return (
     <div className="flex items-center justify-between py-3 border-b border-[var(--desk-border)] last:border-0 gap-4">
       <div className="flex items-center gap-3 min-w-0">
@@ -223,6 +232,10 @@ function OverrideSection<T extends { enabled: boolean }>({
   if (items.length === 0) return null;
 
   const enabledCount = items.filter((i) => i.enabled).length;
+
+  useRetailerSessionReconcile(() => {
+    void mutateAutoOrder();
+  });
 
   return (
     <div className="bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl p-6 shadow-[var(--shadow-sm)]">
@@ -620,6 +633,10 @@ export default function SettingsPage() {
     }
     return null;
   }, [isSyncing, loadIssue, loading, ws]);
+
+  useRetailerSessionReconcile(() => {
+    void mutateAutoOrder();
+  });
 
   return (
     <div
@@ -1036,6 +1053,10 @@ function ProfileField({
   errorMessage?: string;
   onChange: (v: string) => void;
 }) {
+  useRetailerSessionReconcile(() => {
+    void mutateAutoOrder();
+  });
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)]">
@@ -1088,6 +1109,10 @@ function ProfileTimeField({
   onChange: (v: string) => void;
 }) {
   const displayValue = normalizeReceivingWindow(value);
+
+  useRetailerSessionReconcile(() => {
+    void mutateAutoOrder();
+  });
 
   return (
     <div className="space-y-1.5">

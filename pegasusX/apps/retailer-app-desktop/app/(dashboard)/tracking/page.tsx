@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import { PageChrome } from "@/components/PageChrome";
 import {
   Truck,
@@ -309,6 +310,11 @@ export default function TrackingPage() {
       return next;
     });
   };
+
+  useRetailerSessionReconcile(() => {
+    void mutateTracking();
+    void mutateFulfillments();
+  });
 
   return (
     <div

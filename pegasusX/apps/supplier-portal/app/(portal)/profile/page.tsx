@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
 import { supplierScopeId } from "@/lib/supplier-scope";
 import { supplierProfileUpdateKey } from "@pegasusx/api-client";
@@ -48,6 +49,8 @@ export default function ProfilePage() {
       setLoading(false);
     }
   }, []);
+
+  useSupplierSessionReconcile(load);
 
   useEffect(() => {
     void load();

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'rea
 import { usePolling, factorySupplyRequestTransitionKey } from '@pegasusx/api-client';
 import type { SupplyFulfillOptions } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { downloadCsv } from '@/lib/csv';
 import { usePagination } from '@/lib/use-pagination';
 import { ListToolbar } from '@/components/ListToolbar';
@@ -162,6 +163,10 @@ export default function SupplyRequestsPage() {
   useEffect(() => {
     void fetchRequests();
   }, [fetchRequests]);
+
+  useFactorySessionReconcile(() => {
+    void fetchRequests({ background: true, silent: true });
+  });
 
   useEffect(() => {
     const unsubscribe = subscribeFactoryWS({

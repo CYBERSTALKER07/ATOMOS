@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import type { Route } from "next";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
@@ -46,6 +47,8 @@ export default function PlanningSettingsPage() {
       setLoading(false);
     }
   }, []);
+
+  useSupplierSessionReconcile(load);
 
   useEffect(() => {
     void load();

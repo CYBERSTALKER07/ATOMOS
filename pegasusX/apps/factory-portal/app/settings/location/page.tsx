@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { factoryOpsLocationKey } from "@pegasusx/api-client";
 import { apiFetch } from "@/lib/auth";
+import { useFactorySessionReconcile } from "@/lib/use-factory-session-reconcile";
 import { factoryOperatorId } from "@/lib/factory-scope";
 import PageTransition from "@/components/PageTransition";
 import { PageChrome } from "@/components/PageChrome";
@@ -49,6 +50,10 @@ export default function FactoryLocationSettingsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useFactorySessionReconcile(() => {
+    void load();
+  });
 
   async function saveLocation() {
     if (!location.address.trim()) {

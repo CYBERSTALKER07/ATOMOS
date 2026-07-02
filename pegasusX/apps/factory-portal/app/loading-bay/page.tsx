@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
 import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import EmptyState from '@/components/EmptyState';
@@ -54,6 +55,10 @@ export default function LoadingBayPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useFactorySessionReconcile(() => {
+    void load();
+  });
 
   useEffect(() => {
     const unsubscribe = subscribeFactoryWS({

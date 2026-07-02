@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/auth';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -48,6 +49,10 @@ export default function FactoryAnalyticsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useFactorySessionReconcile(() => {
+    void load();
+  });
 
   return (
     <PageTransition>

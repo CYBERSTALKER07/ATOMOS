@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
@@ -63,6 +64,8 @@ export default function CatalogProductDetailPage() {
       setLoading(false);
     }
   }, [productId]);
+
+  useSupplierSessionReconcile(load);
 
   useEffect(() => {
     void load();

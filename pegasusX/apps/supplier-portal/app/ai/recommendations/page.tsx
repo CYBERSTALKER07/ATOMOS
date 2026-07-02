@@ -1,6 +1,7 @@
 "use client";
 
 import { ApiClient, ApiError } from "@pegasusx/api-client";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierAIRecommendation, SupplierAIRecommendationDecision } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";

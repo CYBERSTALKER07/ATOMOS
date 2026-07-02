@@ -31,6 +31,7 @@ import { apiFetch } from "../../../lib/auth";
 import { useCart } from "../../../lib/cart";
 import { isCatalogBlocked } from "../../../lib/stock-policy";
 import { useWebSocket } from "../../../lib/ws";
+import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import type { Product, Category, Supplier } from "../../../lib/types";
 import {
   productDisplayPrice,
@@ -87,6 +88,8 @@ export default function CatalogPage() {
     void mutateCategories();
     void mutateSuppliers();
   }, [mutateCategories, mutateProducts, mutateSuppliers]);
+
+  useRetailerSessionReconcile(refreshAll);
 
   useEffect(() => {
     return subscribe("PROMOTION_CHANGED", () => {

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
 import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { downloadCsv } from '@/lib/csv';
 import { usePagination } from '@/lib/use-pagination';
 import { ListToolbar } from '@/components/ListToolbar';
@@ -81,6 +82,10 @@ export default function TransfersPage() {
   }, [stateFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  useFactorySessionReconcile(() => {
+    void load();
+  });
 
   const { page, pageCount, pageItems, next, prev, reset } = usePagination(transfers, 25);
 

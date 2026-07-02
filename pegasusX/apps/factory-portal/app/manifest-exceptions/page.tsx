@@ -5,6 +5,7 @@ import { usePolling } from '@pegasusx/api-client';
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
 import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -112,6 +113,10 @@ export default function ManifestExceptionsPage() {
   useEffect(() => {
     void fetchExceptions();
   }, [fetchExceptions]);
+
+  useFactorySessionReconcile(() => {
+    void fetchExceptions({ background: true, silent: true });
+  });
 
   useEffect(() => {
     const onOnline = () => setIsOffline(false);

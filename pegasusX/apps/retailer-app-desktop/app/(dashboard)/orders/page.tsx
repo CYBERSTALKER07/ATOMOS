@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useWsEvent } from "../../../lib/ws";
 import {
@@ -544,6 +545,11 @@ export default function OrdersPage() {
       onAction: () => setActiveTab("ALL"),
     };
   }, [activeTab, list.length, loadIssue, refreshAll]);
+
+  useRetailerSessionReconcile(() => {
+    void mutateOrders();
+    void mutateTracking();
+  });
 
   return (
     <div

@@ -1,6 +1,7 @@
 "use client";
 
 import { ApiClient, ApiError } from "@pegasusx/api-client";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import {
   supplierFleetDriverCreateKey,
   supplierFleetVehicleCreateKey,
@@ -114,6 +115,8 @@ export default function OrgFleetPage() {
   const [vehicleSubmitting, setVehicleSubmitting] = useState(false);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [memberActionId, setMemberActionId] = useState<string | null>(null);
+
+  useSupplierSessionReconcile(load);
 
   useEffect(() => {
     let cancelled = false;

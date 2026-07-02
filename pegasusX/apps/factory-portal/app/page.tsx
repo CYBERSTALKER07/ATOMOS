@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { usePolling } from '@pegasusx/api-client';
 import Link from 'next/link';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import Icon from '@/components/Icon';
 import EmptyState from '@/components/EmptyState';
 import { PageChrome } from '@/components/PageChrome';
@@ -66,6 +67,11 @@ export default function FactoryDashboard() {
     setLoading(true);
     void load();
   }, [load, reloadToken]);
+
+  useFactorySessionReconcile(() => {
+    setLoading(true);
+    setReloadToken((v) => v + 1);
+  });
 
   usePolling(
     async (signal) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
+import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import {
   Building2,
   Plus,
@@ -251,6 +252,11 @@ export default function ProcurementPage() {
     },
     [mutateSuppliers],
   );
+
+  useRetailerSessionReconcile(() => {
+    void mutateSuppliers();
+    void mutateAnalytics();
+  });
 
   return (
     <div

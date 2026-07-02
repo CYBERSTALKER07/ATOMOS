@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
 import { supplierScopeId } from "@/lib/supplier-scope";
 import {
@@ -56,6 +57,8 @@ export default function PromotionsPage() {
       setLoading(false);
     }
   }, []);
+
+  useSupplierSessionReconcile(load);
 
   useEffect(() => {
     void load();

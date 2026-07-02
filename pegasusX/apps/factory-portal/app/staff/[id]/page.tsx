@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/auth';
+import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 
@@ -39,6 +40,10 @@ export default function StaffDetailPage() {
   }, [id]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useFactorySessionReconcile(() => {
+    void load();
+  });
 
   if (loading) {
     return (
