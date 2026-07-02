@@ -155,7 +155,12 @@ export default function ReturnsPage() {
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
                 value={barcode}
                 onChange={e => setBarcode(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && void handleScan()}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void handleScan();
+                  }
+                }}
                 placeholder="Scan or type (wedge scanner + Enter)"
               />
             </label>

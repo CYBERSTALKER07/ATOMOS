@@ -142,6 +142,10 @@ Boss provides API credentials. Wire into Secret Manager + backend env:
 | `pegasusx-<tenant>-google-maps-api-key` | `GOOGLE_MAPS_API_KEY` (Geocoding + Places; restrict Android Maps SDK keys per app) |
 | `pegasusx-<tenant>-kafka-bootstrap-servers` | `KAFKA_BROKERS` (Confluent Cloud Basic bootstrap) |
 | `PEGASUSX_TAURI_SIGNING_PRIVATE_KEY` | `TAURI_SIGNING_PRIVATE_KEY` (desktop updater bundle signing) |
+| `pegasusx-<tenant>-tauri-updater-pubkey` | `TAURI_UPDATER_PUBKEY` (build-time pubkey injection) |
+| `pegasusx-<tenant>-windows-codesign-pfx` | `WINDOWS_CODESIGN_PFX_B64` (Authenticode) |
+| `pegasusx-<tenant>-windows-codesign-password` | `WINDOWS_CODESIGN_PASSWORD` |
+| `pegasusx-<tenant>-apple-notarize-*` | `APPLE_NOTARIZE_*` (notarytool) |
 | Adyen / Stripe / Payme / Click webhook secrets | as enabled |
 
 ---

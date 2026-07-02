@@ -99,6 +99,31 @@ output "google_maps_api_key_secret_id" {
   value       = google_secret_manager_secret.google_maps_api_key.secret_id
 }
 
+output "app_updates_bucket_name" {
+  description = "GCS bucket for Tauri/mobile OTA update manifests and bundles."
+  value       = google_storage_bucket.app_updates.name
+}
+
+output "tauri_signing_private_key_secret_id" {
+  description = "GSM secret id for Tauri updater signing private key."
+  value       = google_secret_manager_secret.tauri_signing_private_key.secret_id
+}
+
+output "tauri_updater_pubkey_secret_id" {
+  description = "GSM secret id for Tauri updater public key."
+  value       = google_secret_manager_secret.tauri_updater_pubkey.secret_id
+}
+
+output "windows_codesign_pfx_secret_id" {
+  description = "GSM secret id for Windows Authenticode PFX (base64)."
+  value       = google_secret_manager_secret.windows_codesign_pfx.secret_id
+}
+
+output "windows_codesign_password_secret_id" {
+  description = "GSM secret id for Windows codesign PFX password."
+  value       = google_secret_manager_secret.windows_codesign_password.secret_id
+}
+
 output "artifact_registry_url" {
   description = "Artifact Registry repository URL when enable_gke=true."
   value = var.enable_gke ? "${google_artifact_registry_repository.pegasusx[0].location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.pegasusx[0].repository_id}" : ""

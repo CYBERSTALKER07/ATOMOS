@@ -67,9 +67,9 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 
 | Anchor | Work | Exit |
 |--------|------|------|
-| `PX-DESK-0A` | Replace `UPDATE_PUBLIC_KEY` with real updater signing keys; document key rotation in credentials checklist | `tauri.conf.json` pubkey set; test update manifest on GCS | **partial** — dev pubkey + `apply_desktop_updater_pubkey.sh`; prod GSM pending |
+| `PX-DESK-0A` | Replace `UPDATE_PUBLIC_KEY` with real updater signing keys; document key rotation in credentials checklist | `tauri.conf.json` pubkey set; test update manifest on GCS | **partial** — dev pubkey + GSM/terraform secrets; prod values via `sync_desktop_release_secrets.sh` |
 | `PX-DESK-0B` | CI: `TAURI_BUILD=1` + `tauri build --target x86_64-pc-windows-msvc` for all four apps (nightly or release branch) | Green workflow artifact: `.msi` per app | **shipped** — `desktop-windows-build.yml` |
-| `PX-DESK-0C` | Windows code-sign + timestamp (Authenticode); macOS notarize path documented | Signed installer smoke on clean VM | **partial** — documented in credentials checklist; cert secrets pending |
+| `PX-DESK-0C` | Windows code-sign + timestamp (Authenticode); macOS notarize path documented | Signed installer smoke on clean VM | **partial** — `sign_desktop_windows.ps1` + QA runbook; VM smoke manual |
 | `PX-DESK-0D` | Extract shared `packages/desktop-bridge` (keyring, `isTauri`, app info) | Four apps import package; thin `lib/bridge.ts` re-exports | **shipped** |
 | `PX-DESK-0E` | Unify updater CDN base URLs (retailer uses GCS; others pegasus-x.com — align buckets) | Single distribution runbook section | **shipped** — all four on `pegasusx-ssmr-app-updates` |
 
@@ -104,10 +104,10 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 |--------|------|------|
 | `PX-DESK-2A` | Wire `plugin-dialog` + `plugin-fs` for CSV export (inventory audit, ledger, earnings) | Supplier + warehouse export buttons save to user-picked path | **shipped** — `@pegasusx/desktop-bridge` `exportCsv`; supplier fs/dialog plugins |
 | `PX-DESK-2B` | Native print pipeline: wrap `window.print()` + optional PDF save via dialog on treasury/invoice pages | Supplier + warehouse treasury print tested on Windows | **shipped** — `desktopPrint` on treasury pages |
-| `PX-DESK-2C` | **Warehouse returns:** document + test USB barcode wedge on Windows WebView2 | QA runbook step; no regression on Enter-to-submit |
-| `PX-DESK-2D` | Deep links / custom protocol (`pegasusx-retailer://`, etc.) for notification handoff cards | Handoff inbox opens correct desktop route |
-| `PX-DESK-2E` | Single-instance + “second window focuses existing” (dock PCs launching app twice) | Tauri `single_instance` plugin on warehouse + retailer |
-| `PX-DESK-2F` | Deprecate **supplier Tauri Android** in docs; native Kotlin is primary row client | README + matrix note; no new Tauri Android features |
+| `PX-DESK-2C` | **Warehouse returns:** document + test USB barcode wedge on Windows WebView2 | QA runbook step; no regression on Enter-to-submit | **shipped** — `docs/qa/PX-DESK_MANUAL_QA.md` + Enter `preventDefault` |
+| `PX-DESK-2D` | Deep links / custom protocol (`pegasusx-retailer://`, etc.) for notification handoff cards | Handoff inbox opens correct desktop route | **shipped** — all four schemes + `DesktopDeepLinkBootstrap` |
+| `PX-DESK-2E` | Single-instance + “second window focuses existing” (dock PCs launching app twice) | Tauri `single_instance` plugin on warehouse + retailer | **shipped** |
+| `PX-DESK-2F` | Deprecate **supplier Tauri Android** in docs; native Kotlin is primary row client | README + matrix note; no new Tauri Android features | **shipped** |
 
 **Anchor:** `PX-DESK-2` — file export + print + wedge QA green on Windows.
 
@@ -152,9 +152,9 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 | Anchor | Work | Exit |
 |--------|------|------|
 | `PX-DESK-5A` | Vitest parity: each portal gets auth + session-reconcile + one P0 page test (match retailer depth) | `pnpm test` green per app in CI |
-| `PX-DESK-5B` | `docs/qa/PX-DESK_MANUAL_QA.md` — Windows checklist (install, update, wedge scan, print, offline checkout) | Linked from `PX12_MANUAL_QA_RUNBOOK.md` |
+| `PX-DESK-5B` | `docs/qa/PX-DESK_MANUAL_QA.md` — Windows checklist (install, update, wedge scan, print, offline checkout) | Linked from `PX12_MANUAL_QA_RUNBOOK.md` | **shipped** |
 | `PX-DESK-5C` | ADR `008-desktop-tauri-strategy.md` — locked decision + when to add Rust plugins vs rewrite | ADR accepted |
-| `PX-DESK-5D` | Parity matrix “Desktop capabilities” appendix (cache, export, print, offline queue per role) | Matrix row per desktop-only feature |
+| `PX-DESK-5D` | Parity matrix “Desktop capabilities” appendix (cache, export, print, offline queue per role) | Matrix row per desktop-only feature | **shipped** |
 
 **Anchor:** `PX-DESK-5` — CI tests + manual QA runbook + ADR published.
 
@@ -208,12 +208,12 @@ cd pegasusX/apps/warehouse-portal && pnpm tauri:build:win
 
 | Anchor | Phase | Scope | Status |
 |--------|-------|-------|--------|
-| `PX-DESK-0` | 0 | Shell hardening & release | **partial** — bridge, Windows CI, GCS updater; prod signing pending |
-| `PX-DESK-0A`–`0E` | 0 | Signing, CI, bridge package, CDN | **partial** — 0B/0D/0E shipped; 0A dev keys; 0C docs |
+| `PX-DESK-0` | 0 | Shell hardening & release | **partial** — CI + GSM secrets + upload script; prod cert values ops-owned |
+| `PX-DESK-0A`–`0E` | 0 | Signing, CI, bridge package, CDN | **partial** — 0B/0D/0E shipped; 0A/0C ops |
 | `PX-DESK-1` | 1 | Offline & SQLite cache | **shipped** — retailer, warehouse, supplier cache + offline tray |
 | `PX-DESK-1A`–`1F` | 1 | desktop-cache + per-role cache | **shipped** |
-| `PX-DESK-2` | 2 | Native capabilities | **partial** — 2A/2B shipped; wedge/deeplinks pending |
-| `PX-DESK-2A`–`2F` | 2 | fs, print, wedge, deep links | **partial** — 2A CSV save dialog; 2B treasury print |
+| `PX-DESK-2` | 2 | Native capabilities | **shipped** — 2A–2F complete |
+| `PX-DESK-2A`–`2F` | 2 | fs, print, wedge, deep links | **shipped** |
 | `PX-DESK-3` | 3 | Performance & UX | **pending** |
 | `PX-DESK-3A`–`3E` | 3 | Virtualization, maps, skeletons | **pending** |
 | `PX-DESK-4` | 4 | Realtime & ecosystem parity | **pending** |

@@ -113,3 +113,4 @@ export {
   savePrintableHtml,
   type DesktopPrintOptions,
 } from "./print";
+export { desktopDeepLinkToPath, subscribeDesktopDeepLinks } from "./deep-link";

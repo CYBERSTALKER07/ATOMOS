@@ -3,6 +3,7 @@
 Operational checklist for Boss sign-off on production v1 role rows. Pair with [`PX12_ROLE_ROW_QA.md`](./PX12_ROLE_ROW_QA.md).
 
 Capability reference: [`ROLE_ROW_PARITY_MATRIX.md`](../ROLE_ROW_PARITY_MATRIX.md).  
+Desktop Tauri checklist: [`PX-DESK_MANUAL_QA.md`](./PX-DESK_MANUAL_QA.md).  
 Ecosystem master spec: [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](../FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md).
 
 ---

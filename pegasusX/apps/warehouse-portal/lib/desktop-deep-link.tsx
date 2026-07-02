@@ -1,0 +1,18 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { subscribeDesktopDeepLinks } from "@pegasusx/desktop-bridge";
+
+/** Routes `pegasusx-warehouse://…` into the warehouse portal. */
+export function DesktopDeepLinkBootstrap() {
+  const router = useRouter();
+
+  useEffect(() => {
+    return subscribeDesktopDeepLinks((path) => {
+      router.push(path);
+    });
+  }, [router]);
+
+  return null;
+}

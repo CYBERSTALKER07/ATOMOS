@@ -8,10 +8,12 @@ import { PageSkeleton } from "./Skeleton";
 import { ToastProvider } from "./Toast";
 import { ThemeProvider } from "./ThemeProvider";
 import { PortalOfflineTray } from "@/lib/portal-offline-tray";
+import { DesktopDeepLinkBootstrap } from "@/lib/desktop-deep-link";
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
+      <DesktopDeepLinkBootstrap />
       <div className="app-root min-h-screen w-full">
         <AuthGuard>
           <FactoryShell>

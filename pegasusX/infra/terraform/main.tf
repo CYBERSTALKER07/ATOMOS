@@ -18,6 +18,13 @@ locals {
   secret_adyen_webhook           = "${local.resource_prefix}-adyen-webhook-secret"
   secret_stripe_webhook          = "${local.resource_prefix}-stripe-webhook-secret"
   secret_google_maps_api_key     = "${local.resource_prefix}-google-maps-api-key"
+  secret_tauri_signing_private_key = "${local.resource_prefix}-tauri-signing-private-key"
+  secret_tauri_updater_pubkey      = "${local.resource_prefix}-tauri-updater-pubkey"
+  secret_windows_codesign_pfx        = "${local.resource_prefix}-windows-codesign-pfx"
+  secret_windows_codesign_password   = "${local.resource_prefix}-windows-codesign-password"
+  secret_apple_notarize_apple_id     = "${local.resource_prefix}-apple-notarize-apple-id"
+  secret_apple_notarize_team_id      = "${local.resource_prefix}-apple-notarize-team-id"
+  secret_apple_notarize_app_password = "${local.resource_prefix}-apple-notarize-app-password"
   labels = {
     app         = "pegasusx"
     tenant      = local.tenant_slug
@@ -237,6 +244,90 @@ resource "google_secret_manager_secret_version" "google_maps_api_key" {
   count       = trimspace(var.google_maps_api_key) != "" ? 1 : 0
   secret      = google_secret_manager_secret.google_maps_api_key.id
   secret_data = var.google_maps_api_key
+}
+
+resource "google_secret_manager_secret" "tauri_signing_private_key" {
+  secret_id = local.secret_tauri_signing_private_key
+  replication { auto {} }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "tauri_signing_private_key" {
+  count       = trimspace(var.tauri_signing_private_key) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.tauri_signing_private_key.id
+  secret_data = var.tauri_signing_private_key
+}
+
+resource "google_secret_manager_secret" "tauri_updater_pubkey" {
+  secret_id = local.secret_tauri_updater_pubkey
+  replication { auto {} }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "tauri_updater_pubkey" {
+  count       = trimspace(var.tauri_updater_pubkey) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.tauri_updater_pubkey.id
+  secret_data = var.tauri_updater_pubkey
+}
+
+resource "google_secret_manager_secret" "windows_codesign_pfx" {
+  secret_id = local.secret_windows_codesign_pfx
+  replication { auto {} }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "windows_codesign_pfx" {
+  count       = trimspace(var.windows_codesign_pfx_b64) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.windows_codesign_pfx.id
+  secret_data = var.windows_codesign_pfx_b64
+}
+
+resource "google_secret_manager_secret" "windows_codesign_password" {
+  secret_id = local.secret_windows_codesign_password
+  replication { auto {} }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "windows_codesign_password" {
+  count       = trimspace(var.windows_codesign_password) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.windows_codesign_password.id
+  secret_data = var.windows_codesign_password
+}
+
+resource "google_secret_manager_secret" "apple_notarize_apple_id" {
+  secret_id = local.secret_apple_notarize_apple_id
+  replication { auto {} }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "apple_notarize_apple_id" {
+  count       = trimspace(var.apple_notarize_apple_id) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.apple_notarize_apple_id.id
+  secret_data = var.apple_notarize_apple_id
+}
+
+resource "google_secret_manager_secret" "apple_notarize_team_id" {
+  secret_id = local.secret_apple_notarize_team_id
+  replication { auto {} }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "apple_notarize_team_id" {
+  count       = trimspace(var.apple_notarize_team_id) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.apple_notarize_team_id.id
+  secret_data = var.apple_notarize_team_id
+}
+
+resource "google_secret_manager_secret" "apple_notarize_app_password" {
+  secret_id = local.secret_apple_notarize_app_password
+  replication { auto {} }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "apple_notarize_app_password" {
+  count       = trimspace(var.apple_notarize_app_password) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.apple_notarize_app_password.id
+  secret_data = var.apple_notarize_app_password
 }
 
 # ------------------------------------------------------------------------------

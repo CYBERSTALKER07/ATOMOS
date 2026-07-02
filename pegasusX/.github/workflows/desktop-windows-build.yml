@@ -54,6 +54,15 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: bash scripts/build_desktop_windows.sh ${{ matrix.app }}
 
+      - name: Authenticode sign (optional)
+        shell: pwsh
+        env:
+          WINDOWS_CODESIGN_PFX_B64: ${{ secrets.WINDOWS_CODESIGN_PFX_B64 }}
+          WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+        run: |
+          .\scripts\sign_desktop_windows.ps1 -Path "apps\${{ matrix.app }}\src-tauri\target\x86_64-pc-windows-msvc\release\bundle\nsis\*.exe"
+          .\scripts\sign_desktop_windows.ps1 -Path "apps\${{ matrix.app }}\src-tauri\target\x86_64-pc-windows-msvc\release\bundle\msi\*.msi"
+
       - name: Upload Windows installer artifacts
         uses: actions/upload-artifact@v4
         with:

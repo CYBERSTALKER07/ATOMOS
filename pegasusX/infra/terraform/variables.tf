@@ -188,3 +188,52 @@ variable "google_maps_api_key" {
   default     = ""
   sensitive   = true
 }
+
+variable "tauri_signing_private_key" {
+  description = "Minisign private key for Tauri desktop updater bundles (Secret Manager)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "tauri_updater_pubkey" {
+  description = "Minisign public key embedded in desktop tauri.conf.json (Secret Manager)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "windows_codesign_pfx_b64" {
+  description = "Base64-encoded Authenticode PFX for Windows desktop installers."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "windows_codesign_password" {
+  description = "Password for windows_codesign_pfx_b64."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "apple_notarize_apple_id" {
+  description = "Apple ID for notarytool desktop releases."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "apple_notarize_team_id" {
+  description = "Apple Team ID for notarization."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "apple_notarize_app_password" {
+  description = "App-specific password for notarytool."
+  type        = string
+  default     = ""
+  sensitive   = true
+}

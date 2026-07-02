@@ -30,3 +30,12 @@ Bucket: `pegasusx-ssmr-app-updates` (see `infra/terraform/main.tf`)
 | Factory desktop | `factory-desktop/{{target}}/{{arch}}/updater.json` |
 
 Upload signed bundles + manifests after each release train cut.
+
+## Production release train
+
+1. `terraform apply` provisions GSM secrets (`tauri_signing_private_key`, `windows_codesign_pfx`, …) and `app_updates` bucket.
+2. Fill `contracts/desktop-updater/.env.release.example` → `.env.staging.secrets`.
+3. `bash scripts/sync_desktop_release_secrets.sh`
+4. GitHub Actions: `desktop-windows-build` (set `TAURI_*` + `WINDOWS_CODESIGN_*` secrets).
+5. `bash scripts/upload_desktop_updater_manifest.sh <app> <version> <bundle-path>`
+6. Manual QA: [`docs/qa/PX-DESK_MANUAL_QA.md`](../../docs/qa/PX-DESK_MANUAL_QA.md)
