@@ -5,6 +5,10 @@
   "permissions": [
     "core:default",
     "shell:allow-open",
-    "sql:default"
+    "sql:default",
+    "dialog:default",
+    "dialog:allow-save",
+    "fs:default",
+    "fs:allow-write-text-file"
   ]
 }

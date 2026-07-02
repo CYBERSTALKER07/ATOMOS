@@ -5,10 +5,14 @@
   "main": "index.ts",
   "types": "index.ts",
   "peerDependencies": {
-    "@tauri-apps/api": "^2.10.0"
+    "@tauri-apps/api": "^2.10.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tauri-apps/plugin-fs": "^2.0.0"
   },
   "devDependencies": {
     "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/plugin-dialog": "^2.7.0",
+    "@tauri-apps/plugin-fs": "^2.5.0",
     "jsdom": "^29.0.2",
     "vitest": "^3.2.4"
   },

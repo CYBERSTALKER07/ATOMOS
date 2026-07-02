@@ -43,7 +43,7 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 
 **Shared gaps:**
 - Production updater signing keys in GSM (dev pubkey committed for CI; rotate before external release)
-- `@tauri-apps/plugin-fs` / `plugin-dialog` in package.json but minimal frontend usage
+- `@tauri-apps/plugin-fs` / `plugin-dialog` wired for CSV export on supplier + warehouse; factory uses web fallback until plugins registered
 - No shared `packages/desktop-bridge` — four copies of `lib/bridge.ts`
 - True SSR impossible with bundled static export (documented; accept and compensate with cache)
 - Supplier signal-ingest ops panel portal-only (native gap intentional per matrix)
@@ -102,8 +102,8 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 
 | Anchor | Work | Exit |
 |--------|------|------|
-| `PX-DESK-2A` | Wire `plugin-dialog` + `plugin-fs` for CSV export (inventory audit, ledger, earnings) | Supplier + warehouse export buttons save to user-picked path |
-| `PX-DESK-2B` | Native print pipeline: wrap `window.print()` + optional PDF save via dialog on treasury/invoice pages | Supplier + warehouse treasury print tested on Windows |
+| `PX-DESK-2A` | Wire `plugin-dialog` + `plugin-fs` for CSV export (inventory audit, ledger, earnings) | Supplier + warehouse export buttons save to user-picked path | **shipped** — `@pegasusx/desktop-bridge` `exportCsv`; supplier fs/dialog plugins |
+| `PX-DESK-2B` | Native print pipeline: wrap `window.print()` + optional PDF save via dialog on treasury/invoice pages | Supplier + warehouse treasury print tested on Windows | **shipped** — `desktopPrint` on treasury pages |
 | `PX-DESK-2C` | **Warehouse returns:** document + test USB barcode wedge on Windows WebView2 | QA runbook step; no regression on Enter-to-submit |
 | `PX-DESK-2D` | Deep links / custom protocol (`pegasusx-retailer://`, etc.) for notification handoff cards | Handoff inbox opens correct desktop route |
 | `PX-DESK-2E` | Single-instance + “second window focuses existing” (dock PCs launching app twice) | Tauri `single_instance` plugin on warehouse + retailer |
@@ -212,8 +212,8 @@ cd pegasusX/apps/warehouse-portal && pnpm tauri:build:win
 | `PX-DESK-0A`–`0E` | 0 | Signing, CI, bridge package, CDN | **partial** — 0B/0D/0E shipped; 0A dev keys; 0C docs |
 | `PX-DESK-1` | 1 | Offline & SQLite cache | **shipped** — retailer, warehouse, supplier cache + offline tray |
 | `PX-DESK-1A`–`1F` | 1 | desktop-cache + per-role cache | **shipped** |
-| `PX-DESK-2` | 2 | Native capabilities | **pending** |
-| `PX-DESK-2A`–`2F` | 2 | fs, print, wedge, deep links | **pending** |
+| `PX-DESK-2` | 2 | Native capabilities | **partial** — 2A/2B shipped; wedge/deeplinks pending |
+| `PX-DESK-2A`–`2F` | 2 | fs, print, wedge, deep links | **partial** — 2A CSV save dialog; 2B treasury print |
 | `PX-DESK-3` | 3 | Performance & UX | **pending** |
 | `PX-DESK-3A`–`3E` | 3 | Virtualization, maps, skeletons | **pending** |
 | `PX-DESK-4` | 4 | Realtime & ecosystem parity | **pending** |

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { apiFetch } from '@/lib/auth';
+import { desktopPrint } from '@pegasusx/desktop-bridge';
+import { downloadCsv } from '@/lib/csv';
 import { warehouseApi } from '@/lib/warehouse-api';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -80,27 +81,22 @@ export default function TreasuryPage() {
   };
 
   const exportCsv = () => {
-    const header = ['Invoice ID', 'Retailer', 'Amount', 'Currency', 'Status', 'Due Date'];
-    const rows = invoices.map(inv => [
-      inv.invoice_id,
-      `"${(inv.retailer_name || '').replace(/"/g, '""')}"`,
-      resolveAmount(inv),
-      resolveCurrency(inv),
-      inv.status,
-      inv.due_date ? new Date(inv.due_date).toLocaleDateString() : ''
-    ]);
-    const csv = [header, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `treasury_export_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    void downloadCsv(
+      `treasury_export_${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Invoice ID', 'Retailer', 'Amount', 'Currency', 'Status', 'Due Date'],
+      invoices.map((inv) => [
+        inv.invoice_id,
+        inv.retailer_name || '',
+        String(resolveAmount(inv)),
+        resolveCurrency(inv),
+        inv.status,
+        inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '',
+      ]),
+    );
   };
 
   const exportPdf = () => {
-    window.print();
+    desktopPrint({ title: 'Warehouse Treasury' });
   };
 
   const ov = overview || { total_invoiced: 0, total_paid: 0, total_outstanding: 0 };

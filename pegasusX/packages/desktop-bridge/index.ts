@@ -15,17 +15,9 @@ export interface AppInfo {
   platform: string;
 }
 
-type TauriWindow = Window & {
-  __TAURI__?: unknown;
-  __TAURI_INTERNALS__?: unknown;
-};
+import { isTauri } from "./tauri-runtime";
 
-/** True when running inside a Tauri webview (v1 and v2 globals). */
-export function isTauri(): boolean {
-  if (typeof window === "undefined") return false;
-  const w = window as TauriWindow;
-  return w.__TAURI__ !== undefined || w.__TAURI_INTERNALS__ !== undefined;
-}
+export { isTauri } from "./tauri-runtime";
 
 async function getTauriCore() {
   if (!isTauri()) throw new Error("Not running in Tauri");
@@ -105,3 +97,19 @@ export async function getAppInfo(): Promise<AppInfo | null> {
     return null;
   }
 }
+
+export { escapeCsvCell, formatCsv } from "./format-csv";
+export {
+  downloadCsv,
+  exportCsv,
+  saveTextFile,
+  type SaveTextFileOptions,
+  type SaveTextFileResult,
+} from "./file-export";
+export {
+  desktopPrint,
+  isDesktopPrintAvailable,
+  isNativeFileExportAvailable,
+  savePrintableHtml,
+  type DesktopPrintOptions,
+} from "./print";
