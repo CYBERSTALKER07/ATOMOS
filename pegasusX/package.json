@@ -19,7 +19,8 @@
     "packages/pulse-ui",
     "packages/explain-ui",
     "packages/ws-refresh-contract",
-    "packages/desktop-bridge"
+    "packages/desktop-bridge",
+    "packages/desktop-cache"
   ],
   "packageManager": "pnpm@9.0.0",
   "engines": {

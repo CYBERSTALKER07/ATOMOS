@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { apiFetch } from './auth';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { cacheGet, cacheSet } from "@pegasusx/desktop-cache";
+import { isTauri } from "@pegasusx/desktop-bridge";
+import { apiFetch } from "./auth";
 
 type LiveDataError = Error & { status?: number };
 
@@ -7,7 +9,17 @@ type MutateOptions = {
   silent?: boolean;
 };
 
-export function useLiveData<T>(url: string, interval = 0) {
+type UseLiveDataOptions = {
+  /** When true (default on Tauri), hydrate from SQLite before network fetch. */
+  cache?: boolean;
+};
+
+export function useLiveData<T>(
+  url: string,
+  interval = 0,
+  options: UseLiveDataOptions = {},
+) {
+  const useCache = options.cache !== false && isTauri() && url.length > 0;
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
@@ -15,63 +27,84 @@ export function useLiveData<T>(url: string, interval = 0) {
   const mountedRef = useRef(true);
   const abortRef = useRef<AbortController | null>(null);
 
-  const mutate = useCallback(async ({ silent = true }: MutateOptions = {}) => {
-    if (!url) {
-      abortRef.current?.abort();
-      setData(null);
-      setError(null);
-      setLoading(false);
-      setIsRefreshing(false);
-      return;
-    }
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    if (silent) {
-      setIsRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-
-    try {
-      const res = await apiFetch(url, { signal: controller.signal });
-      if (!res.ok) {
-        const requestError = new Error(`API fetch failed (${res.status})`) as LiveDataError;
-        requestError.status = res.status;
-        throw requestError;
+  const mutate = useCallback(
+    async ({ silent = true }: MutateOptions = {}) => {
+      if (!url) {
+        abortRef.current?.abort();
+        setData(null);
+        setError(null);
+        setLoading(false);
+        setIsRefreshing(false);
+        return;
       }
-      const json = await res.json();
-      if (!mountedRef.current || controller.signal.aborted) return;
-      setData(json);
-      setError(null);
-    } catch (err: unknown) {
-      if (!mountedRef.current || controller.signal.aborted) return;
-      setError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      if (!mountedRef.current || controller.signal.aborted) return;
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [url]);
+
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      if (silent) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      try {
+        const res = await apiFetch(url, { signal: controller.signal });
+        if (!res.ok) {
+          const requestError = new Error(`API fetch failed (${res.status})`) as LiveDataError;
+          requestError.status = res.status;
+          throw requestError;
+        }
+        const json = (await res.json()) as T;
+        if (!mountedRef.current || controller.signal.aborted) return;
+        setData(json);
+        setError(null);
+        if (useCache) {
+          void cacheSet(url, json);
+        }
+      } catch (err: unknown) {
+        if (!mountedRef.current || controller.signal.aborted) return;
+        setError(err instanceof Error ? err : new Error(String(err)));
+      } finally {
+        if (!mountedRef.current || controller.signal.aborted) return;
+        setLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [url, useCache],
+  );
 
   useEffect(() => {
     mountedRef.current = true;
-    void mutate({ silent: false });
+
+    const bootstrap = async () => {
+      if (useCache) {
+        const cached = await cacheGet<T>(url);
+        if (!mountedRef.current) return;
+        if (cached !== null) {
+          setData(cached);
+          setLoading(false);
+          void mutate({ silent: true });
+          return;
+        }
+      }
+      void mutate({ silent: false });
+    };
+
+    void bootstrap();
 
     return () => {
       mountedRef.current = false;
       abortRef.current?.abort();
       abortRef.current = null;
     };
-  }, [mutate]);
+  }, [mutate, url, useCache]);
 
   useEffect(() => {
     if (interval <= 0 || !url) return;
 
     const pid = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       void mutate();
     }, interval);
 
@@ -81,19 +114,21 @@ export function useLiveData<T>(url: string, interval = 0) {
   useEffect(() => {
     if (!url) return;
 
-    const refresh = () => { void mutate(); };
+    const refresh = () => {
+      void mutate();
+    };
     const onVisible = () => {
-      if (document.visibilityState === 'visible') refresh();
+      if (document.visibilityState === "visible") refresh();
     };
 
-    window.addEventListener('focus', refresh);
-    window.addEventListener('online', refresh);
-    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
-      window.removeEventListener('focus', refresh);
-      window.removeEventListener('online', refresh);
-      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [mutate, url]);
 

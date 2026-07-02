@@ -1,0 +1,21 @@
+{
+  "name": "@pegasusx/desktop-cache",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "types": "index.ts",
+  "dependencies": {
+    "@pegasusx/desktop-bridge": "workspace:*"
+  },
+  "peerDependencies": {
+    "@tauri-apps/plugin-sql": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/plugin-sql": "^2.2.0",
+    "jsdom": "^29.0.2",
+    "vitest": "^3.2.4"
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

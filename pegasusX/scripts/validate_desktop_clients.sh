@@ -22,6 +22,9 @@ pnpm install --frozen-lockfile 2>/dev/null || pnpm install
 echo "desktop-bridge: unit tests"
 pnpm --filter @pegasusx/desktop-bridge test
 
+echo "desktop-cache: unit tests"
+pnpm --filter @pegasusx/desktop-cache test
+
 for app in "${APPS[@]}"; do
   dir="apps/$app"
   [[ -d "$dir" ]] || fail "missing $dir"

@@ -83,9 +83,9 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 
 | Anchor | Work | Exit |
 |--------|------|------|
-| `PX-DESK-1A` | `packages/desktop-cache` — Tauri SQL plugin wrapper + migration helpers | Shared crate/TS API documented |
-| `PX-DESK-1B` | **Retailer:** SQLite cache for profile, catalog browse snapshot, open orders list | Dashboard/orders render from cache &lt;200ms; background refresh |
-| `PX-DESK-1C` | **Retailer:** Move pending checkout queue from `localStorage` to encrypted SQLite (or keyring-backed store) | `pending-checkout.ts` uses desktop-cache; idempotency keys preserved |
+| `PX-DESK-1A` | `packages/desktop-cache` — Tauri SQL plugin wrapper + migration helpers | Shared TS API + vitest; retailer Tauri registers `tauri-plugin-sql` | **shipped** |
+| `PX-DESK-1B` | **Retailer:** SQLite cache for profile, catalog browse snapshot, open orders list | `useLiveData` hydrates from cache on Tauri; dashboard/orders/catalog | **partial** — URL-keyed cache; profile localStorage unchanged |
+| `PX-DESK-1C` | **Retailer:** Move pending checkout queue from `localStorage` to encrypted SQLite (or keyring-backed store) | `pending-checkout` via desktop-cache; legacy migration on first read | **shipped** |
 | `PX-DESK-1D` | **Warehouse:** Cache dispatch preview + active manifest list for dock PCs | Dispatch page loads cached snapshot; WS/reconcile invalidates |
 | `PX-DESK-1E` | **Supplier:** Cache dashboard KPIs + orders list (same keys as session reconcile) | Supplier dashboard instant shell on reopen |
 | `PX-DESK-1F` | Offline banner + “queued actions” tray component in `@pegasusx/ui-kit` | All four apps use shared `DesktopOfflineTray` |
@@ -208,8 +208,8 @@ cd pegasusX/apps/warehouse-portal && pnpm tauri:build:win
 |--------|-------|-------|--------|
 | `PX-DESK-0` | 0 | Shell hardening & release | **partial** — shared bridge shipped |
 | `PX-DESK-0A`–`0E` | 0 | Signing, CI, bridge package, CDN | **partial** — `0D` + CI typecheck; signing/CDN pending |
-| `PX-DESK-1` | 1 | Offline & SQLite cache | **pending** |
-| `PX-DESK-1A`–`1F` | 1 | desktop-cache + per-role cache | **pending** |
+| `PX-DESK-1` | 1 | Offline & SQLite cache | **partial** — retailer wired; warehouse/supplier pending |
+| `PX-DESK-1A`–`1F` | 1 | desktop-cache + per-role cache | **partial** — 1A/1C shipped; 1B retailer `useLiveData` |
 | `PX-DESK-2` | 2 | Native capabilities | **pending** |
 | `PX-DESK-2A`–`2F` | 2 | fs, print, wedge, deep links | **pending** |
 | `PX-DESK-3` | 3 | Performance & UX | **pending** |

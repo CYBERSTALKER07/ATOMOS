@@ -94,6 +94,8 @@ jobs:
         run: pnpm install --frozen-lockfile || pnpm install
       - name: Desktop bridge tests
         run: pnpm --filter @pegasusx/desktop-bridge test
+      - name: Desktop cache tests
+        run: pnpm --filter @pegasusx/desktop-cache test
       - name: Typecheck all Tauri desktop clients
         run: |
           pnpm --filter @pegasusx/retailer-app-desktop typecheck

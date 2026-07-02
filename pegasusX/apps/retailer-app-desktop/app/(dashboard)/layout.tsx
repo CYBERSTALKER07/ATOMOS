@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { WebSocketProvider } from "../../lib/ws";
 import { SessionReconcileListener } from "../../lib/session-reconcile-listener";
 import { PendingCheckoutFlusher } from "../../lib/pending-checkout-flusher";
+import { DesktopCacheBootstrap } from "../../lib/desktop-cache-bootstrap";
 import { NotificationsProvider } from "../../lib/notifications";
 import { clearStoredToken } from "../../lib/bridge";
 import { CartProvider } from "../../lib/cart";
@@ -16,6 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <WebSocketProvider>
       <SessionReconcileListener />
+      <DesktopCacheBootstrap />
       <PendingCheckoutFlusher />
       <NotificationsProvider>
         <CartProvider>

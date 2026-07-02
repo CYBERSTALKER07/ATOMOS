@@ -391,7 +391,7 @@ export default function CheckoutModal({
               .map((item) => `${item.sku_id}:${item.quantity}:${item.unit_price}`)
               .sort()
               .join("|");
-            enqueuePendingCheckout(
+            void enqueuePendingCheckout(
               {
                 retailer_id: profile.id,
                 payment_gateway: gatewayMap[method] || "GLOBAL_PAY",
@@ -400,7 +400,7 @@ export default function CheckoutModal({
                 items: lineItems,
               },
               retailerUnifiedCheckoutKey(method, cartKey),
-            );
+            ).catch(() => undefined);
           }
         } catch {
           // Best-effort queue.
