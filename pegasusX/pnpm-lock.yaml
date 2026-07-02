@@ -446,6 +446,9 @@ importers:
       '@pegasusx/desktop-bridge':
         specifier: workspace:*
         version: link:../../packages/desktop-bridge
+      '@pegasusx/desktop-cache':
+        specifier: workspace:*
+        version: link:../../packages/desktop-cache
       '@pegasusx/explain-ui':
         specifier: workspace:*
         version: link:../../packages/explain-ui
@@ -464,6 +467,9 @@ importers:
       '@tauri-apps/api':
         specifier: ^2.11.0
         version: 2.11.0
+      '@tauri-apps/plugin-sql':
+        specifier: ^2.2.0
+        version: 2.4.0
       firebase:
         specifier: ^12.12.0
         version: 12.14.0
@@ -546,6 +552,9 @@ importers:
       '@pegasusx/desktop-bridge':
         specifier: workspace:*
         version: link:../../packages/desktop-bridge
+      '@pegasusx/desktop-cache':
+        specifier: workspace:*
+        version: link:../../packages/desktop-cache
       '@pegasusx/explain-ui':
         specifier: workspace:*
         version: link:../../packages/explain-ui
@@ -570,6 +579,9 @@ importers:
       '@tauri-apps/plugin-fs':
         specifier: ^2.5.0
         version: 2.5.1
+      '@tauri-apps/plugin-sql':
+        specifier: ^2.2.0
+        version: 2.4.0
       firebase:
         specifier: ^12.12.0
         version: 12.14.0

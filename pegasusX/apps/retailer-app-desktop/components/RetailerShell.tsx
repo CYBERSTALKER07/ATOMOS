@@ -22,6 +22,7 @@ import {
   MapPin,
   Container,
 } from "lucide-react";
+import { getRetailerProfile } from "@/lib/retailer-profile";
 import { useWebSocket } from "../lib/ws";
 import { useRetailerNotifications } from "../lib/notifications";
 import { clearStoredToken } from "../lib/bridge";
@@ -378,28 +379,25 @@ export default function RetailerShell({
     setMobileOpen(false);
   }, [pathname]);
   useEffect(() => {
-    if (typeof localStorage === "undefined") return;
-    try {
-      const profile = JSON.parse(
-        localStorage.getItem("retailer_profile") || "{}",
-      );
-      const source = (profile.name || profile.company || "Retailer").trim();
-      const initials =
-        source
-          .split(" ")
-          .filter(Boolean)
-          .map((part: string) => part[0])
-          .join("")
-          .slice(0, 2)
-          .toUpperCase() || "R";
-      setIdentity({
-        name: profile.name || "Retailer",
-        company: profile.company || "Workspace",
-        initials,
-      });
-    } catch {
+    const profile = getRetailerProfile();
+    if (!profile) {
       setIdentity(DEFAULT_IDENTITY);
+      return;
     }
+    const source = (profile.name || profile.company || "Retailer").trim();
+    const initials =
+      source
+        .split(" ")
+        .filter(Boolean)
+        .map((part: string) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase() || "R";
+    setIdentity({
+      name: profile.name || "Retailer",
+      company: profile.company || "Workspace",
+      initials,
+    });
   }, []);
 
   return (

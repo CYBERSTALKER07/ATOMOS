@@ -195,10 +195,9 @@ Events and read APIs pegasus should subscribe to (versioned, tenant-scoped):
 | `POST /v1/supplier/planning/signals/ingest` | High-volume signal ingest | Tenant-scoped planning ingest fan-in | **live** |
 | `planning.signal.ingest.v1` | Kafka topic | Federated signal projections | **live** |
 | `PLANNING_PROMO_SIMULATION_READY` | Promo sandbox WS | Tenant promo eval rollup | **live** |
-| `GET /v1/admin/planning/*` (pegasus) | — | Federated baseline, MEIO, EKG, control tower | **live** (P1) |
-| pegasus supplier planning UI | pegasusX supplier portal + native | `admin-portal/app/supplier/*` parity | **pending** (P2) |
+| `GET /v1/admin/planning/*` | — | Federated baseline, MEIO, EKG, control tower | **migrated to Pegasus reference** |
 
-pegasusX remains **execution + single-supplier planning**. pegasus adds tenant isolation, cross-supplier collaboration, and IBP — without reshaping pegasusX Spanner tables. **P2 next:** port pegasusX supplier planning APIs + admin-portal supplier screens.
+pegasusX remains **execution + single-supplier planning**. See [`PEGASUS_REFERENCE.md`](PEGASUS_REFERENCE.md) for the multi-tenant reference architecture.
 
 ---
 

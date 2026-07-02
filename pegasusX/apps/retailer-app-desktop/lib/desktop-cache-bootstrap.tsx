@@ -2,11 +2,15 @@
 
 import { useEffect } from "react";
 import { initDesktopCache } from "@pegasusx/desktop-cache";
+import { initRetailerProfile } from "./retailer-profile";
 
-/** Opens SQLite and runs migrations on Tauri startup. */
+/** Opens SQLite and hydrates retailer profile from cache on Tauri startup. */
 export function DesktopCacheBootstrap() {
   useEffect(() => {
-    void initDesktopCache();
+    void (async () => {
+      await initDesktopCache();
+      await initRetailerProfile();
+    })();
   }, []);
 
   return null;

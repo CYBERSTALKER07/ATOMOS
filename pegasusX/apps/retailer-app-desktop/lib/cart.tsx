@@ -9,6 +9,7 @@ import {
   stockMetaFromProduct,
   type StockAwareProduct,
 } from './stock-policy';
+import { getRetailerId } from './retailer-profile';
 import type { CheckoutPreviewResponse, Product } from './types';
 
 export interface CartItem {
@@ -144,22 +145,10 @@ async function fetchPromotionTotals(cartItems: CartItem[]): Promise<{
   return { subtotal, discount, total: Math.max(0, subtotal - discount) };
 }
 
-function readRetailerProfileId(): string | null {
-  if (typeof localStorage === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem('retailer_profile');
-    if (!raw) return null;
-    const profile = JSON.parse(raw) as { id?: string };
-    return profile.id ?? null;
-  } catch {
-    return null;
-  }
-}
-
 async function fetchCheckoutPreviewCaps(
   cartItems: CartItem[],
 ): Promise<CheckoutPreviewResponse | null> {
-  const retailerId = readRetailerProfileId();
+  const retailerId = getRetailerId();
   if (!retailerId || cartItems.length === 0) {
     return null;
   }

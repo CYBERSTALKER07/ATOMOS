@@ -37,7 +37,8 @@ import {
   retailerRequestCancelKey,
 } from "@pegasusx/api-client";
 import { useOptionalWebSocket } from "../../../lib/ws";
-import type { Order, RetailerProfile, TrackingResponse } from "../../../lib/types";
+import { getRetailerProfile } from "@/lib/retailer-profile";
+import type { Order, TrackingResponse } from "../../../lib/types";
 
 const chipCfg: Record<
   string,
@@ -66,16 +67,7 @@ const chipCfg: Record<
 type LoadIssue = "restricted" | "offline" | "error";
 
 export default function OrdersPage() {
-  const getProfile = (): RetailerProfile | null => {
-    if (typeof localStorage === "undefined") return null;
-    try {
-      return JSON.parse(localStorage.getItem("retailer_profile") || "null");
-    } catch {
-      return null;
-    }
-  };
-
-  const profile = getProfile();
+  const profile = getRetailerProfile();
   const ordersUrl = profile?.id
     ? `/v1/retailers/${profile.id}/orders`
     : "/v1/orders";

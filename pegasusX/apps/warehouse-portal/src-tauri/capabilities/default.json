@@ -24,6 +24,7 @@
     "os:default",
     "process:default",
     "process:allow-exit",
-    "process:allow-restart"
+    "process:allow-restart",
+    "sql:default"
   ]
 }

@@ -17,6 +17,7 @@ import { orderableCapsFromPreview } from "../lib/stock-policy";
 import { apiFetch } from "../lib/auth";
 import { useWebSocket } from "../lib/ws";
 import { useRouter } from "next/navigation";
+import { getRetailerProfile } from "@/lib/retailer-profile";
 import type {
   ActiveFulfillmentsResponse,
   CheckoutPreviewResponse,
@@ -33,13 +34,7 @@ import {
 } from "../lib/pending-checkout";
 
 function getProfile(): RetailerProfile | null {
-  if (typeof localStorage === "undefined") return null;
-  try {
-    const raw = localStorage.getItem("retailer_profile");
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+  return getRetailerProfile();
 }
 
 interface CheckoutModalProps {

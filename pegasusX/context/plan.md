@@ -17,7 +17,7 @@ Last updated: 2026-06-14 (synced with Vegetable Plan creation)
 
 ## Program Goal
 1. Deliver a single-supplier logistics ecosystem with role-row parity across supplier, retailer, driver, warehouse, factory, and payload surfaces.
-2. Preserve architectural compatibility with the Pegasus reference so contracts, event names, and operating concepts stay migratable.
+2. Preserve architectural compatibility with the Pegasus reference (`context/PEGASUS_REFERENCE.md`) so contracts, event names, and operating concepts stay migratable.
 3. Reach production quality for high-volume operation: comfortable at 1M-request-class daily traffic, durable under bursty concurrent demand, and structurally ready for multi-million request growth.
 4. Keep local Docker SSMR validation as the mandatory proof loop for the same critical flows expected in production cloud environments.
 5. Use Spanner, Kafka, Redis, Firebase, Kubernetes, and Terraform as first-class platform primitives, not post-launch add-ons.
@@ -154,7 +154,7 @@ Production v1 bar: all six roles deployable, no silent 404/501 on shipped client
 
 ## PX-8 Client Surface Parity Closure
 
-Closes the gap between pegasusX client trees and the Pegasus reference where apps exist but pages, Tauri shells, or backend wiring are incomplete. Work is phased by largest structural drift first; each phase updates `context/parity-ledger.md` in the same change set.
+Closes the gap between pegasusX client trees and the Pegasus reference (`context/PEGASUS_REFERENCE.md`) where apps exist but pages, Tauri shells, or backend wiring are incomplete. Work is phased by largest structural drift first; each phase updates `context/parity-ledger.md` in the same change set.
 
 | Anchor | Role / surface | Status | Exit evidence |
 |---|---|---|---|
@@ -745,7 +745,7 @@ Product and support:
 1. Before each meaningful execution batch, read this file and map the work to one or more plan anchors.
 2. Prefer the active or earliest queued delivery batch unless the user explicitly reprioritizes.
 3. After each batch, update statuses in this file and sync the context/docs set in the same change set when architecture or delivery truth changed.
-4. When behavior diverges from the Pegasus reference, update `context/parity-ledger.md` in the same batch.
+4. When behavior diverges from the Pegasus reference (`context/PEGASUS_REFERENCE.md`), update `context/parity-ledger.md` in the same batch.
 5. When the roadmap changes, update local instruction files so future agents follow the revised execution model.
 
 ## Documentation Sync Set

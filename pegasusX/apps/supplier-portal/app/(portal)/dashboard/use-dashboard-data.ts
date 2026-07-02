@@ -1,8 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePolling } from "@pegasusx/api-client";
+import { cacheGet, cacheSet } from "@pegasusx/desktop-cache";
+import { isTauri } from "@pegasusx/desktop-bridge";
 import type { OrderStatus } from "@pegasusx/types";
 import type { SupplierDashboardResponse } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
+import { supplierDashboardCacheKey } from "@/lib/supplier-cache-keys";
+import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 
 export interface DashboardMetrics {
   ordersByStatus: Partial<Record<OrderStatus, number>>;
@@ -36,6 +40,11 @@ export interface DashboardData {
   recentManifests: DispatchManifest[];
   recentEvents: WsEventLog[];
 }
+
+type DashboardCacheBundle = {
+  data: DashboardData;
+  isPaymentConfigured: boolean | null;
+};
 
 function emptyOrderStatusCounts(): Partial<Record<OrderStatus, number>> {
   return {
@@ -99,56 +108,90 @@ function mapDashboard(resp: SupplierDashboardResponse): DashboardData {
   };
 }
 
+const empty: DashboardData = {
+  metrics: {
+    ordersByStatus: emptyOrderStatusCounts(),
+    revenueToday: 0,
+    revenueChangePct: 0,
+    activeDrivers: 0,
+    totalDrivers: 1,
+    deliveryCompletionRate: 0,
+    retailersOrderedToday: 0,
+    totalRetailers: 1,
+    fleetVuUsed: 0,
+    fleetVuTotal: 1,
+  },
+  recentManifests: [],
+  recentEvents: [],
+};
+
 export function useDashboardData() {
   const [data, setData] = useState<DashboardData | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
+  const [isPaymentConfigured, setIsPaymentConfigured] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async (_signal?: AbortSignal) => {
+  const refresh = useCallback(async (silent = false) => {
+    const cacheKey = supplierDashboardCacheKey();
+    let hydratedFromCache = false;
+
+    if (isTauri()) {
+      const cached = await cacheGet<DashboardCacheBundle>(cacheKey);
+      if (cached?.data) {
+        setData(cached.data);
+        setIsPaymentConfigured(cached.isPaymentConfigured);
+        setLoading(false);
+        hydratedFromCache = true;
+      }
+    }
+
+    if (!silent && !hydratedFromCache) {
+      setLoading(true);
+    }
+
     try {
       const [dashResp, profResp] = await Promise.all([
         api.getSupplierDashboard(),
-        api.getSupplierProfile()
+        api.getSupplierProfile(),
       ]);
-      setData(mapDashboard(dashResp));
-      setProfile(profResp);
+      const nextData = mapDashboard(dashResp);
+      const paymentConfigured =
+        Boolean(profResp?.selected_gateways && profResp.selected_gateways.length > 0);
+      setData(nextData);
+      setIsPaymentConfigured(paymentConfigured);
       setError(null);
+      if (isTauri()) {
+        void cacheSet(cacheKey, {
+          data: nextData,
+          isPaymentConfigured: paymentConfigured,
+        });
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_dashboard_failed");
+      if (!hydratedFromCache) {
+        setError(err instanceof Error ? err.message : "load_dashboard_failed");
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  useSupplierSessionReconcile(() => {
+    void refresh(true);
+  });
+
   usePolling(
     async (signal) => {
       if (signal.aborted) return;
-      await refresh(signal);
+      await refresh(true);
     },
     60_000,
     [refresh],
     { pauseWhenHidden: true },
   );
-
-  const empty: DashboardData = {
-    metrics: {
-      ordersByStatus: emptyOrderStatusCounts(),
-      revenueToday: 0,
-      revenueChangePct: 0,
-      activeDrivers: 0,
-      totalDrivers: 1,
-      deliveryCompletionRate: 0,
-      retailersOrderedToday: 0,
-      totalRetailers: 1,
-      fleetVuUsed: 0,
-      fleetVuTotal: 1,
-    },
-    recentManifests: [],
-    recentEvents: [],
-  };
-
-  const isPaymentConfigured = profile?.selected_gateways && profile.selected_gateways.length > 0;
 
   return {
     ...(data ?? empty),

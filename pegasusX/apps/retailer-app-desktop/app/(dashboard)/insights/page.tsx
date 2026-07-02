@@ -32,6 +32,7 @@ import { apiFetch } from "../../../lib/auth";
 import { correctPrediction } from "../../../lib/api";
 import { retailerOrderCreateKey } from "@pegasusx/api-client";
 import { useOptionalWebSocket } from "../../../lib/ws";
+import { getRetailerId } from "@/lib/retailer-profile";
 import type { Prediction, RetailerAnalytics } from "../../../lib/types";
 import { isPredictionBlocked } from "../../../lib/types";
 
@@ -242,17 +243,7 @@ export default function InsightsPage() {
     [],
   );
 
-  const getRetailerId = useCallback(() => {
-    if (typeof localStorage === "undefined") return "";
-    try {
-      const profile = JSON.parse(
-        localStorage.getItem("retailer_profile") || "null",
-      ) as { id?: string } | null;
-      return profile?.id ?? "";
-    } catch {
-      return "";
-    }
-  }, []);
+  const retailerId = getRetailerId();
 
   const handleCorrectPrediction = useCallback(
     async (predictionId: string, payload: Record<string, unknown>) => {
@@ -326,7 +317,7 @@ export default function InsightsPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [getRetailerId, predList, quantities, refreshPred, selected]);
+  }, [predList, quantities, refreshPred, selected]);
 
   const loading = loadingPred || loadingAnalytics;
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { retailerSetupKey } from "@pegasusx/api-client";
+import { getRetailerId } from "@/lib/retailer-profile";
 import { PortalField, PortalInput, PortalActions, FormAlert } from "@/components/portal";
 import { SETUP_TAX_KEY } from "@/components/setup/constants";
 
@@ -12,17 +13,6 @@ function getCookie(name: string) {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
   if (parts.length === 2) return parts.pop()?.split(";").shift();
-}
-
-function getRetailerId(): string {
-  try {
-    const raw = localStorage.getItem("retailer_profile");
-    if (!raw) return "";
-    const profile = JSON.parse(raw) as { id?: string };
-    return profile.id ?? "";
-  } catch {
-    return "";
-  }
 }
 
 export default function SetupAddressPage() {

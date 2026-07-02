@@ -75,7 +75,10 @@ export default function RetailerLoginPage() {
         document.cookie = `pegasus_retailer_refresh=${encodeURIComponent(data.refresh_token)}; path=/; max-age=604800; SameSite=Lax`;
       }
       await storeToken(data.token, data.refresh_token || "");
-      if (data.user) localStorage.setItem("retailer_profile", JSON.stringify(data.user));
+      if (data.user) {
+        const { setRetailerProfile } = await import("@/lib/retailer-profile");
+        await setRetailerProfile(data.user);
+      }
 
       router.replace(data.is_configured ? "/dashboard" : "/setup/tax");
     } catch (err) {

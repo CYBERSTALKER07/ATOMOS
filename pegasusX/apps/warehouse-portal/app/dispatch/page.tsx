@@ -15,8 +15,22 @@ import type {
 import { ApiError, warehouseDispatchKey, warehouseUpdateVehicleKey } from '@pegasusx/api-client';
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
 import type { StatusExplain } from '@pegasusx/types';
+import { isTauri } from '@pegasusx/desktop-bridge';
 import { apiFetch } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';
+import {
+  dispatchPreviewCacheKey,
+  getDispatchPreviewCache,
+  setDispatchPreviewCache,
+  snapshotFromPreviewResponse,
+  type DispatchPreviewSnapshot,
+} from '@/lib/dispatch-preview-cache';
+import {
+  dispatchRunsCacheKey,
+  getDispatchRunsCache,
+  setDispatchRunsCache,
+  type DispatchRunRow,
+} from '@/lib/dispatch-runs-cache';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
 import { WAREHOUSE_DISPATCH_REFRESH_EVENTS, parseWarehouseWsEventType } from '@/lib/fleet-ws-events';
@@ -92,13 +106,7 @@ export default function DispatchPage() {
   const [executeError, setExecuteError] = useState<string | null>(null);
   const [executeExplain, setExecuteExplain] = useState<StatusExplain | null>(null);
   const [executeSuccess, setExecuteSuccess] = useState<string | null>(null);
-  const [dispatchRuns, setDispatchRuns] = useState<Array<{
-    run_id: string;
-    status: string;
-    manifest_count: number;
-    orders_assigned: number;
-    created_at: string;
-  }>>([]);
+  const [dispatchRuns, setDispatchRuns] = useState<DispatchRunRow[]>([]);
   const [proposedRoutes, setProposedRoutes] = useState<WarehouseDispatchProposedRoute[]>([]);
   const [optimizerSource, setOptimizerSource] = useState<string | null>(null);
   const [optimizerWarnings, setOptimizerWarnings] = useState<string[]>([]);
@@ -163,44 +171,67 @@ export default function DispatchPage() {
     }
   }
 
+  const applyDispatchSnapshot = useCallback((snapshot: DispatchPreviewSnapshot) => {
+    const nextOrders = snapshot.orders;
+    setOrders(nextOrders);
+    setDrivers(snapshot.drivers);
+    setUnavailableDrivers(snapshot.unavailableDrivers);
+    setProposedRoutes(snapshot.proposedRoutes);
+    setOptimizerSource(snapshot.optimizerSource);
+    setOptimizerWarnings(snapshot.optimizerWarnings);
+    setWindowConstrainedCount(snapshot.windowConstrainedCount);
+    setFleetEffectiveCapacityVU(snapshot.fleetEffectiveCapacityVU);
+    setPlanFingerprint(snapshot.planFingerprint);
+    setSelectedOrderIds(prev => {
+      const valid = new Set(nextOrders.map(order => order.order_id));
+      return new Set([...prev].filter(id => valid.has(id)));
+    });
+  }, []);
+
   const load = useCallback(async (orderFilter?: string[]) => {
     const scopedWarehouseId = warehouseHomeNodeId();
     if (scopedWarehouseId) {
       setWarehouseId(scopedWarehouseId);
     }
+    const filter = orderFilter ?? selectedOrderList;
+    const cacheKey = dispatchPreviewCacheKey(
+      scopedWarehouseId || warehouseId,
+      filter,
+    );
+    let hydratedFromCache = false;
+    if (isTauri()) {
+      const cached = await getDispatchPreviewCache(cacheKey);
+      if (cached) {
+        applyDispatchSnapshot(cached);
+        setLoading(false);
+        hydratedFromCache = true;
+      }
+    }
     setLoadError(null);
     try {
-      const filter = orderFilter ?? selectedOrderList;
       const body = filter.length > 0 ? { order_ids: filter } : {};
       const data = await warehouseApi.previewWarehouseDispatch({}, body);
-      const nextOrders = data.undispatched_orders || data.orders || [];
-      setOrders(nextOrders);
-      setDrivers(data.available_drivers || data.drivers || []);
-      setUnavailableDrivers(data.unavailable_drivers || []);
-      setProposedRoutes(data.proposed_routes || []);
-      setOptimizerSource(data.optimizer_source || null);
-      setOptimizerWarnings(data.optimizer_warnings || []);
-      setWindowConstrainedCount(data.window_constrained_count || 0);
-      setFleetEffectiveCapacityVU(data.fleet_effective_capacity_vu ?? 0);
-      setPlanFingerprint(data.plan_fingerprint ?? null);
-      setSelectedOrderIds(prev => {
-        const valid = new Set(nextOrders.map(order => order.order_id));
-        return new Set([...prev].filter(id => valid.has(id)));
-      });
+      const snapshot = snapshotFromPreviewResponse(data);
+      applyDispatchSnapshot(snapshot);
+      if (isTauri()) {
+        void setDispatchPreviewCache(cacheKey, snapshot);
+      }
       setRestricted(false);
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         setRestricted(true);
-        setOrders([]);
-        setDrivers([]);
-        setUnavailableDrivers([]);
-      } else {
+        if (!hydratedFromCache) {
+          setOrders([]);
+          setDrivers([]);
+          setUnavailableDrivers([]);
+        }
+      } else if (!hydratedFromCache) {
         setLoadError(err instanceof ApiError ? err.message : 'Failed to load dispatch preview');
       }
     } finally {
       setLoading(false);
     }
-  }, [selectedOrderList]);
+  }, [applyDispatchSnapshot, selectedOrderList, warehouseId]);
 
   const loadVehicles = useCallback(async () => {
     try {
@@ -234,9 +265,36 @@ export default function DispatchPage() {
     }
   }, []);
 
+  const loadDispatchRuns = useCallback(async () => {
+    const scopedWarehouseId = warehouseHomeNodeId() || warehouseId;
+    const cacheKey = dispatchRunsCacheKey(scopedWarehouseId);
+    let hydratedFromCache = false;
+    if (isTauri()) {
+      const cached = await getDispatchRunsCache(cacheKey);
+      if (cached) {
+        setDispatchRuns(cached);
+        hydratedFromCache = true;
+      }
+    }
+    try {
+      const data = await apiFetch<{ runs: DispatchRunRow[] }>(
+        '/v1/warehouse/ops/dispatch/runs',
+      );
+      const runs = data.runs ?? [];
+      setDispatchRuns(runs);
+      if (isTauri()) {
+        void setDispatchRunsCache(cacheKey, runs);
+      }
+    } catch {
+      if (!hydratedFromCache) {
+        setDispatchRuns([]);
+      }
+    }
+  }, [warehouseId]);
+
   const loadAll = useCallback(async (orderFilter?: string[]) => {
-    await Promise.all([load(orderFilter), loadVehicles()]);
-  }, [load, loadVehicles]);
+    await Promise.all([load(orderFilter), loadVehicles(), loadDispatchRuns()]);
+  }, [load, loadVehicles, loadDispatchRuns]);
 
   useEffect(() => { void loadAll(); }, [loadAll]);
 
@@ -284,12 +342,6 @@ export default function DispatchPage() {
       setExecuteSuccess('Connection restored — dispatch board refreshed from server.');
     }
   });
-
-  useEffect(() => {
-    void apiFetch<{ runs: typeof dispatchRuns }>('/v1/warehouse/ops/dispatch/runs')
-      .then((data) => setDispatchRuns(data.runs ?? []))
-      .catch(() => setDispatchRuns([]));
-  }, [executeSuccess]);
 
   const selectedDriver = useMemo(
     () => drivers.find(driver => driver.driver_id === selectedDriverId),

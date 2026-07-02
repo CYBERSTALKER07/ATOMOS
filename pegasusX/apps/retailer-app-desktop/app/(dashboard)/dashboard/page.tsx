@@ -25,6 +25,7 @@ import { PageSection } from "../../../components/PageSection";
 import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
 import { useOptionalWebSocket } from "../../../lib/ws";
+import { getRetailerId } from "@/lib/retailer-profile";
 import type { Order, Prediction, Product } from "../../../lib/types";
 import { isPredictionBlocked } from "../../../lib/types";
 
@@ -35,19 +36,7 @@ const EMPTY_PRODUCTS: Product[] = [];
 type LoadIssue = "restricted" | "offline" | "error";
 
 export default function DashboardPage() {
-  const getProfileId = () => {
-    if (typeof localStorage === "undefined") return "";
-    try {
-      const parsed = JSON.parse(
-        localStorage.getItem("retailer_profile") || "null",
-      ) as { id?: string } | null;
-      return parsed?.id ?? "";
-    } catch {
-      return "";
-    }
-  };
-
-  const retailerID = getProfileId();
+  const retailerID = getRetailerId();
   const ordersPath = retailerID
     ? `/v1/retailers/${retailerID}/orders`
     : "/v1/orders";

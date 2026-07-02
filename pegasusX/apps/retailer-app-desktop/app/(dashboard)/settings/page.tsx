@@ -36,7 +36,8 @@ import { getPricingRules } from "../../../lib/api";
 import { retailerProfileUpdateKey } from "@pegasusx/api-client";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
-import type { AutoOrderSettings, RetailerProfile } from "../../../lib/types";
+import { getRetailerProfile, getRetailerId, mergeRetailerProfile } from "@/lib/retailer-profile";
+import type { AutoOrderSettings } from "../../../lib/types";
 import {
   normalizeReceivingWindow,
   validateReceivingWindowField,
@@ -391,6 +392,15 @@ export default function SettingsPage() {
           ? data.receiving_window_close
           : "",
       );
+      await mergeRetailerProfile({
+        id: typeof data.retailer_id === "string" ? data.retailer_id : data.id,
+        name: data.name,
+        company: data.company,
+        email: data.phone ?? data.email,
+        country_code: data.country_code,
+        receiving_window_open: data.receiving_window_open,
+        receiving_window_close: data.receiving_window_close,
+      });
     } catch (err) {
       setProfileError(
         normalizeErrorMessage(err, "Unable to load retailer profile."),
@@ -406,19 +416,12 @@ export default function SettingsPage() {
   }, [loadProfile, mutateAutoOrder]);
 
   useEffect(() => {
-    const storage = getBrowserStorage();
-    if (storage) {
-      try {
-        const p: RetailerProfile = JSON.parse(
-          storage.getItem("retailer_profile") || "{}",
-        );
-        if (p.name) setProfileName(p.name);
-        if (p.company) setProfileCompany(p.company);
-        if (p.email) setProfileEmail(p.email);
-        if (p.country_code) setProfileCountryCode(p.country_code);
-      } catch {
-        /* ignore */
-      }
+    const p = getRetailerProfile();
+    if (p) {
+      if (p.name) setProfileName(p.name);
+      if (p.company) setProfileCompany(p.company);
+      if (p.email) setProfileEmail(p.email);
+      if (p.country_code) setProfileCountryCode(p.country_code);
     }
     void loadProfile();
   }, [loadProfile]);
@@ -461,17 +464,7 @@ export default function SettingsPage() {
         ),
       };
       const retailerId =
-        profileRetailerId ||
-        (() => {
-          try {
-            const storage = getBrowserStorage();
-            if (!storage) return "";
-            const existing = JSON.parse(storage.getItem("retailer_profile") || "{}");
-            return typeof existing.id === "string" ? existing.id : "";
-          } catch {
-            return "";
-          }
-        })();
+        profileRetailerId || getRetailerId();
       const fingerprint = Object.entries(payload)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([key, value]) => `${key}=${value}`)
@@ -492,29 +485,13 @@ export default function SettingsPage() {
 
       setProfileEditing(false);
       setSaveBanner({ kind: "success", message: "Profile saved successfully." });
-      const storage = getBrowserStorage();
-      if (storage) {
-        try {
-          const existing = JSON.parse(storage.getItem("retailer_profile") || "{}");
-          storage.setItem(
-            "retailer_profile",
-            JSON.stringify({
-              ...existing,
-              name: profileName,
-              company: profileCompany,
-              country_code: profileCountryCode,
-              receiving_window_open: normalizeReceivingWindow(
-                profileReceivingWindowOpen,
-              ),
-              receiving_window_close: normalizeReceivingWindow(
-                profileReceivingWindowClose,
-              ),
-            }),
-          );
-        } catch {
-          /* ignore */
-        }
-      }
+      await mergeRetailerProfile({
+        name: profileName,
+        company: profileCompany,
+        country_code: profileCountryCode,
+        receiving_window_open: normalizeReceivingWindow(profileReceivingWindowOpen),
+        receiving_window_close: normalizeReceivingWindow(profileReceivingWindowClose),
+      });
       await loadProfile();
     } catch (err) {
       setSaveBanner({

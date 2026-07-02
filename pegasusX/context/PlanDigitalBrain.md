@@ -470,31 +470,10 @@ Aligned with [`plan_90.md`](plan_90.md) waves. **PX90 + PX91 are shipped in code
 | Payment failure | Append-only ledger; no rollback | Reversing entry via treasury SOP |
 | Planning ingest flood | Kafka buffers; ai-worker projects async | Dashboard shows `stale` until projection catches up |
 
----
-
-## XI. pegasus multi-supplier parity track
-
-pegasusX is **single-supplier execution + planning**. pegasus adds tenant isolation and federation without reshaping pegasusX Spanner tables.
-
-| Phase | Scope | pegasusX | pegasus | Status |
-|---|---|---|---|---|
-| **P1** | Federation read APIs + admin control tower | Emits events pegasus subscribes to | `admin/planning_federation.go`, `GET /v1/admin/planning/*`, `/planning` page | **shipped** |
-| **P2** | Tenant supplier planning UI | Supplier portal + native (full PX91) | `admin-portal/app/supplier/*` — MEIO, PlanningBrain, confidence, seasonal, EKG | **pending** |
-| **P3** | Platform IBP + cross-supplier collaboration | N/A (deferred) | Executive scenario library, tenant rollup | **pending** |
-| **P4** | Federated EKG + downstream role parity | Warehouse/factory/retailer confidence wired | Same surfaces per tenant in admin-portal | **pending** |
-
-**P2 recommended next slice:** Port pegasusX supplier planning APIs (`/meio`, `/planning/*`, `/knowledge-graph`) to pegasus `supplierplanningroutes` + admin-portal supplier planning screens. Driver/payload rows remain execution-only.
-
-**pegasus backend (P1 shipped):**
-- `GET /v1/admin/planning/baseline` — federated baseline rollup
-- `GET /v1/admin/planning/meio` — MEIO stub per tenant
-- `GET /v1/admin/planning/knowledge-graph` — EKG federation
-- `GET /v1/admin/planning/control-tower` — zone override rollup
-
----
-
 ## Related documents
 
+- [`PEGASUSX_CURRENT.md`](PEGASUSX_CURRENT.md) — PegasusX current active execution and planning architecture
+- [`PEGASUS_REFERENCE.md`](PEGASUS_REFERENCE.md) — Pegasus multi-supplier reference architecture
 - [`plan_90.md`](plan_90.md) — PX90 anchor status and shipped waves
 - [`plan.md`](plan.md) — master execution plan (PX0–PX12)
 - [`architecture.md`](architecture.md) — transactional outbox, WS relay, reliability matrix

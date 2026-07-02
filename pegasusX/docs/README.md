@@ -2,6 +2,10 @@
 
 Operational runbooks and migration notes. Architecture lives in `../context/`.
 
+Specifically:
+- `../context/PEGASUSX_CURRENT.md` for the current execution & planning architecture
+- `../context/PEGASUS_REFERENCE.md` for the multi-tenant reference architecture
+
 ## Canonical system spec
 
 - **`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`** — living architect/product spec: role contracts, replenishment + co-locate flows, comms matrix, verification gates, PX-ECO tracker, infra budget

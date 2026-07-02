@@ -3,8 +3,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ApiError } from '@pegasusx/api-client';
+import { cacheGet, cacheSet } from '@pegasusx/desktop-cache';
+import { isTauri } from '@pegasusx/desktop-bridge';
 import type { SupplierOrder } from '@pegasusx/types';
 import { createSupplierApi } from '@/lib/api';
+import { supplierOrdersCacheKey } from '@/lib/supplier-cache-keys';
 import { canAdminOrderOps } from '@/lib/admin-scope';
 import { downloadCsv } from '@/lib/csv';
 import { orderActionFlags } from '@/lib/order-actions';
@@ -80,26 +83,49 @@ export default function OrdersPage() {
   const [proposedDate, setProposedDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const loadOrders = useCallback(async (silent = false) => {
-    if (!silent) {
+    const query =
+      filter === 'SCHEDULED'
+        ? { limit: PAGE_SIZE, offset: page * PAGE_SIZE, status: 'SCHEDULED' }
+        : { limit: PAGE_SIZE, offset: page * PAGE_SIZE, filter };
+    const cacheKey = supplierOrdersCacheKey(query);
+    let hydratedFromCache = false;
+
+    if (isTauri()) {
+      const cached = await cacheGet<{ orders: SupplierOrder[]; total: number }>(cacheKey);
+      if (cached) {
+        setOrders(cached.orders);
+        setTotal(cached.total);
+        setLoading(false);
+        hydratedFromCache = true;
+      }
+    }
+
+    if (!silent && !hydratedFromCache) {
       setLoading(true);
       setError(null);
     }
     try {
-      const query =
-        filter === 'SCHEDULED'
-          ? { limit: PAGE_SIZE, offset: page * PAGE_SIZE, status: 'SCHEDULED' }
-          : { limit: PAGE_SIZE, offset: page * PAGE_SIZE, filter };
       const response = await supplierApi.getSupplierOrders(query);
       setOrders(response.orders);
       setTotal(response.total ?? response.orders.length);
+      if (isTauri()) {
+        void cacheSet(cacheKey, {
+          orders: response.orders,
+          total: response.total ?? response.orders.length,
+        });
+      }
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'load_supplier_orders_failed';
-      if (!silent) {
-        setError(message);
-        toast(message, 'error');
+      if (!hydratedFromCache) {
+        if (!silent) {
+          setError(message);
+          toast(message, 'error');
+        }
       }
     } finally {
-      if (!silent) setLoading(false);
+      if (!silent || !hydratedFromCache) {
+        setLoading(false);
+      }
     }
   }, [filter, page, toast]);
 
