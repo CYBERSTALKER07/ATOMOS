@@ -6,6 +6,8 @@ struct LoadingBayView: View {
     @State private var loading = true
     @State private var error: String?
     @State private var dispatching = false
+    @State private var handoffEvents: [FactoryPulseEvent] = []
+    @State private var handoffLoading = true
 
     private var approved: [Transfer] { transfers.filter { $0.state == "APPROVED" } }
     private var loadingState: [Transfer] { transfers.filter { $0.state == "LOADING" } }
@@ -37,6 +39,8 @@ struct LoadingBayView: View {
                                 loadingCount: loadingState.count,
                                 dispatchedCount: dispatched.count
                             )
+
+                            FactoryHandoffTimelineSection(events: handoffEvents, loading: handoffLoading)
 
                             BaySection(
                                 title: "Ready for Loading",
@@ -106,8 +110,17 @@ struct LoadingBayView: View {
         do {
             let response = try await FactoryService.loadingBayTransfers()
             transfers = response.transfers
+            handoffLoading = true
+            if let pulse = try? await FactoryService.pulse() {
+                handoffEvents = FactoryHandoffPulseSupport.filter(pulse.events)
+            } else {
+                handoffEvents = []
+            }
+            handoffLoading = false
         } catch {
             self.error = error.localizedDescription
+            handoffEvents = []
+            handoffLoading = false
         }
 
         loading = false
@@ -721,4 +734,42 @@ private func overrideVolumeLabel(_ value: Double) -> String {
 private func overrideSyncText(_ value: Date?) -> String {
     guard let value else { return "waiting" }
     return value.formatted(date: .omitted, time: .shortened)
+}
+
+private struct FactoryHandoffTimelineSection: View {
+    let events: [FactoryPulseEvent]
+    let loading: Bool
+
+    private var subtitle: String {
+        if loading && events.isEmpty { return "Loading handoff chain…" }
+        if events.isEmpty { return "No preorder → dispatch → seal events in the recent pulse window." }
+        return "\(events.count) handoff event(s) in recent pulse."
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
+            Text("Handoff timeline")
+                .font(.headline)
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ForEach(events.prefix(8)) { event in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(event.title)
+                        .font(.subheadline.bold())
+                        .lineLimit(2)
+                    if let description = event.description, !description.isEmpty {
+                        Text(description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(3)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .background(LabTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusMD))
+            }
+        }
+    }
 }

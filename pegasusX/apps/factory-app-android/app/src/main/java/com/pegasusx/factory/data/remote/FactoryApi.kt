@@ -71,6 +71,9 @@ interface FactoryApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<DispatchResponse>
 
+    @GET("v1/factory/pulse")
+    suspend fun getPulse(): Response<PulseResponse>
+
     // ── Supply Requests ──
     @GET("v1/factory/supply-requests")
     suspend fun getSupplyRequests(

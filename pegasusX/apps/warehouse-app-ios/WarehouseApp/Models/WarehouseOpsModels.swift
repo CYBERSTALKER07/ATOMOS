@@ -341,3 +341,53 @@ struct RetailerOverridePreviewRequest: Encodable {
         case proposedPrice = "proposed_price"
     }
 }
+
+struct WarehousePulseEvent: Decodable, Identifiable {
+    let id: String
+    let kind: String
+    let title: String
+    let description: String?
+    let occurredAt: String
+    let deepLink: String?
+    let orderId: String?
+    let manifestId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, kind, title, description
+        case occurredAt = "occurred_at"
+        case deepLink = "deep_link"
+        case orderId = "order_id"
+        case manifestId = "manifest_id"
+    }
+}
+
+struct WarehousePulseResponse: Decodable {
+    let events: [WarehousePulseEvent]
+    let fetchedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case events
+        case fetchedAt = "fetched_at"
+    }
+}
+
+enum HandoffPulseSupport {
+    private static let handoffKinds: Set<String> = [
+        "PREORDER",
+        "ORDER_ACCEPTED",
+        "ORDER_DISPATCHED",
+        "MANIFEST_SEALED",
+        "MANIFEST_DISPATCHED",
+        "DISPATCH",
+    ]
+
+    static func filter(_ events: [WarehousePulseEvent]) -> [WarehousePulseEvent] {
+        events.filter(isHandoff)
+    }
+
+    private static func isHandoff(_ event: WarehousePulseEvent) -> Bool {
+        let haystack = "\(event.kind) \(event.title)".uppercased()
+        if handoffKinds.contains(event.kind.uppercased()) { return true }
+        return haystack.range(of: "PREORDER|ACCEPT|DISPATCH|SEAL|MANIFEST", options: .regularExpression) != nil
+    }
+}

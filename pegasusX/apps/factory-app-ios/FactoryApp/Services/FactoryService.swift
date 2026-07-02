@@ -95,6 +95,10 @@ enum FactoryService {
         try await api.get("v1/factory/transfers", query: ["states": "APPROVED,LOADING,DISPATCHED", "limit": "100"])
     }
 
+    static func pulse() async throws -> FactoryPulseResponse {
+        try await api.get("v1/factory/pulse")
+    }
+
     // MARK: - Dispatch
     static func dispatch(transferIds: [String]) async throws -> DispatchResponse {
         try await api.post(

@@ -426,6 +426,10 @@ enum WarehouseService {
         return try await api.get("v1/warehouse/ops/fleet/live-map", query: query)
     }
 
+    static func pulse() async throws -> WarehousePulseResponse {
+        try await api.get("v1/warehouse/ops/pulse")
+    }
+
     static func dispatchSettings() async throws -> DispatchSettingsResponse {
         try await api.get("v1/warehouse/ops/dispatch/settings")
     }

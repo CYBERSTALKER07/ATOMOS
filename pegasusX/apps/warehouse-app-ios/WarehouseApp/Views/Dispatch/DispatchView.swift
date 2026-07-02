@@ -49,6 +49,8 @@ struct DispatchView: View {
     @State private var opsReasonInput = ""
     @State private var proposeDate = Date()
     @State private var detailRoute: DispatchOrderDetailRoute?
+    @State private var handoffEvents: [WarehousePulseEvent] = []
+    @State private var handoffLoading = true
 
     private var capacitySuggestedUnselect: [String] {
         Array(Set(capacityWarnings.flatMap(\.suggestedUnselectOrderIds)))
@@ -284,6 +286,10 @@ struct DispatchView: View {
             FleetLiveMapSection(mapHeight: 240, showsExpand: false)
                 .padding(.horizontal)
                 .padding(.top, LabTheme.spacingSM)
+
+            HandoffTimelineSection(events: handoffEvents, loading: handoffLoading)
+                .padding(.horizontal)
+                .padding(.bottom, LabTheme.spacingSM)
 
             Picker("View", selection: $selectedSegment) {
                 Text("Orders (\(preview.undispatchedOrders.count))").tag(0)
@@ -697,8 +703,17 @@ struct DispatchView: View {
                 supplyRequests = try await supplyData
                 dispatchLocks = try await lockData
                 fleetVehicles = try await fleetData.vehicles
+                handoffLoading = true
+                if let pulse = try? await WarehouseService.pulse() {
+                    handoffEvents = HandoffPulseSupport.filter(pulse.events)
+                } else {
+                    handoffEvents = []
+                }
+                handoffLoading = false
             } catch {
                 if !silent { self.error = describe(error, fallback: "Failed to load dispatch data") }
+                handoffEvents = []
+                handoffLoading = false
             }
             if !silent { loading = false }
         }
@@ -1031,5 +1046,43 @@ private struct DispatchStatusBanner: View {
             .padding(.vertical, LabTheme.spacingXS)
             .foregroundStyle(tint)
             .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+private struct HandoffTimelineSection: View {
+    let events: [WarehousePulseEvent]
+    let loading: Bool
+
+    private var subtitle: String {
+        if loading && events.isEmpty { return "Loading handoff chain…" }
+        if events.isEmpty { return "No preorder → dispatch → seal events in the recent pulse window." }
+        return "\(events.count) handoff event(s) in recent pulse."
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
+            Text("Handoff timeline")
+                .font(.headline)
+            Text(subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ForEach(events.prefix(8)) { event in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(event.title)
+                        .font(.subheadline.bold())
+                        .lineLimit(2)
+                    if let description = event.description, !description.isEmpty {
+                        Text(description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(3)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .background(LabTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusMD))
+            }
+        }
     }
 }

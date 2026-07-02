@@ -369,6 +369,9 @@ interface WarehouseApi {
         @Query("warehouse_id") warehouseId: String? = null,
     ): Response<WarehouseFleetLiveMapResponse>
 
+    @GET("v1/warehouse/ops/pulse")
+    suspend fun getPulse(): Response<PulseResponse>
+
     // ── Notifications + client policy ──
     @GET("v1/user/notifications")
     suspend fun getNotifications(

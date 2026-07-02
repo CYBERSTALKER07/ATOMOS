@@ -12,13 +12,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasusx.factory.data.model.DispatchRequest
+import com.pegasusx.factory.data.model.PulseEvent
 import com.pegasusx.factory.data.model.Transfer
+import com.pegasusx.factory.util.filterHandoffPulseEvents
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasusx.factory.ui.components.FactoryInlineEmptyState
 import com.pegasusx.factory.ui.components.FactoryLoadingState
 import com.pegasusx.factory.ui.components.FactoryMetricTile
 import com.pegasusx.factory.ui.components.FactorySectionHeader
+import com.pegasusx.factory.ui.components.HandoffTimelineSection
 import com.pegasusx.factory.ui.components.FactoryStateKind
 import com.pegasusx.factory.ui.components.FactoryStatePane
 import com.pegasusx.factory.ui.components.FactoryStatusChip
@@ -38,6 +41,8 @@ fun LoadingBayScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var dispatching by remember { mutableStateOf(false) }
+    var handoffEvents by remember { mutableStateOf<List<PulseEvent>>(emptyList()) }
+    var handoffLoading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -54,6 +59,14 @@ fun LoadingBayScreen(
                 } else {
                     error = "Failed (${resp.code()})"
                 }
+                handoffLoading = true
+                val pulseResp = api.getPulse()
+                handoffEvents = if (pulseResp.isSuccessful && pulseResp.body() != null) {
+                    filterHandoffPulseEvents(pulseResp.body()!!.events)
+                } else {
+                    emptyList()
+                }
+                handoffLoading = false
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
             } finally {
@@ -163,6 +176,12 @@ fun LoadingBayScreen(
                         readyCount = approved.size,
                         loadingCount = loadingState.size,
                         dispatchedCount = dispatched.size,
+                    )
+                }
+                item {
+                    HandoffTimelineSection(
+                        events = handoffEvents,
+                        loading = handoffLoading,
                     )
                 }
                 item { FactorySectionHeader(title = "Ready for Loading", count = approved.size) }

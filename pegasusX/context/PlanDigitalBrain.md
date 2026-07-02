@@ -37,7 +37,7 @@ Last updated: 2026-07-01 (synced with PX91 enterprise implementation)
 | Signal ingest → baseline projection | PX-ECS-1D | **shipped** — ingest with `product_id` + `warehouse_id` writes baseline + `DEMAND_BASELINE_UPDATED` |
 | Dispatch fingerprint mismatch warning | PX-ECS-4F | **shipped** — supplier portal + native when supplier vs warehouse preview diverge |
 | Supplier network pulse on native | PX-ECS-4C | **shipped** — Android `SupplierPulseStrip` + iOS `NetworkPulseStrip` |
-| Handoff timeline (preorder → seal) | PX-ECS-4E | **shipped** — warehouse dispatch + factory loading-bay pulse strips |
+| Handoff timeline (preorder → seal) | PX-ECS-4E | **shipped** — warehouse dispatch + factory loading-bay on portal + Android + iOS |
 
 ## I. How pegasusX handles rollbacks and failed transactions today
 

@@ -16,10 +16,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.DispatchPreview
+import com.pegasusx.warehouse.data.model.PulseEvent
 import com.pegasusx.warehouse.data.model.CreateWarehouseDispatchLockRequest
 import com.pegasusx.warehouse.data.model.UpdateVehicleRequest
 import com.pegasusx.warehouse.data.model.Vehicle
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
+import com.pegasusx.warehouse.util.filterHandoffPulseEvents
 import com.pegasusx.warehouse.data.model.CreateWarehouseSupplyRequestRequest
 import com.pegasusx.warehouse.data.model.WarehouseDispatchLock
 import com.pegasusx.warehouse.data.model.WarehouseSupplyRequest
@@ -33,6 +35,7 @@ import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestFormResult
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.components.DispatchPreviewMapLibre
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
+import com.pegasusx.warehouse.ui.components.HandoffTimelineSection
 import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
 import com.pegasusx.warehouse.ui.components.OrderDetailOpenMode
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
@@ -104,6 +107,8 @@ fun DispatchScreen(
     var rejectTarget by remember { mutableStateOf<String?>(null) }
     var opsReasonInput by remember { mutableStateOf("") }
     var opsActingId by remember { mutableStateOf<String?>(null) }
+    var handoffEvents by remember { mutableStateOf<List<PulseEvent>>(emptyList()) }
+    var handoffLoading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }
     val realtimeClient = remember(context) { WarehouseRealtimeClient(context) }
@@ -150,6 +155,14 @@ fun DispatchScreen(
                 if (vehiclesResp.isSuccessful && vehiclesResp.body() != null) {
                     fleetVehicles = vehiclesResp.body()!!.vehicles
                 }
+                handoffLoading = true
+                val pulseResp = api.getPulse()
+                if (pulseResp.isSuccessful && pulseResp.body() != null) {
+                    handoffEvents = filterHandoffPulseEvents(pulseResp.body()!!.events)
+                } else {
+                    handoffEvents = emptyList()
+                }
+                handoffLoading = false
             } catch (e: Exception) {
                 if (!silent) error = e.message ?: "Network error"
             } finally {
@@ -666,6 +679,10 @@ fun DispatchScreen(
                     realtimeSignals = realtimeSignals,
                     modifier = Modifier.padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.sm),
                     mapHeight = 280.dp,
+                )
+                HandoffTimelineSection(
+                    events = handoffEvents,
+                    loading = handoffLoading,
                 )
                 TabRow(selectedTabIndex = tab) {
                     Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Orders (${preview!!.undispatchedOrders.size})") })
