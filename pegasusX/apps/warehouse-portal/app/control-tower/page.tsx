@@ -105,13 +105,13 @@ export default function ControlTowerPage() {
         <div className="flex bg-white/5 border border-white/10 rounded-lg p-1">
           <button
             onClick={() => setView("network")}
-            className={\`px-4 py-2 text-sm font-medium rounded-md transition-colors \${view === "network" ? "bg-emerald-500/20 text-emerald-400" : "text-gray-400 hover:text-white"}\`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors \${view === "network" ? "bg-emerald-500/20 text-emerald-400" : "text-gray-400 hover:text-white"}`}
           >
             Live Network Graph
           </button>
           <button
             onClick={() => setView("map")}
-            className={\`px-4 py-2 text-sm font-medium rounded-md transition-colors \${view === "map" ? "bg-emerald-500/20 text-emerald-400" : "text-gray-400 hover:text-white"}\`}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors \${view === "map" ? "bg-emerald-500/20 text-emerald-400" : "text-gray-400 hover:text-white"}`}
           >
             Spatial Map (H3)
           </button>

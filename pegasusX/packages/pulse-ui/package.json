@@ -9,7 +9,14 @@
     "react": ">=18"
   },
   "dependencies": {
-    "@pegasusx/types": "workspace:*"
+    "@pegasusx/types": "workspace:*",
+    "@types/d3": "^7.4.3",
+    "@types/maplibre-gl": "^1.14.0",
+    "@types/react-map-gl": "^6.1.8",
+    "d3": "^7.9.0",
+    "h3-js": "^4.5.0",
+    "maplibre-gl": "^5.19.0",
+    "react-map-gl": "^8.1.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

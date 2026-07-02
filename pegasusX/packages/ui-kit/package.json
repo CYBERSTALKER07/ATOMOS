@@ -32,6 +32,7 @@
     },
     "./portal": "./src/portal/index.ts",
     "./auth": "./src/auth/index.ts",
+    "./control-tower": "./src/control-tower/index.ts",
     "./tailwind.config": "./tailwind.config.ts"
   },
   "peerDependencies": {

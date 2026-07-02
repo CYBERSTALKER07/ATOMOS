@@ -131,7 +131,7 @@ export function LiveEKGNetworkGraph({
             .attrTween("transform", function() {
               return function(t) {
                 const pt = path.getPointAtLength(t * l);
-                return \`translate(\${pt.x},\${pt.y})\`;
+                return `translate(\${pt.x},\${pt.y})`;
               };
             })
             .remove();
@@ -149,10 +149,10 @@ export function LiveEKGNetworkGraph({
         const dx = d.target.x - d.source.x;
         const dy = d.target.y - d.source.y;
         const dr = Math.sqrt(dx * dx + dy * dy);
-        return \`M\${d.source.x},\${d.source.y}A\${dr},\${dr} 0 0,1 \${d.target.x},\${d.target.y}\`;
+        return `M\${d.source.x},\${d.source.y}A\${dr},\${dr} 0 0,1 \${d.target.x},\${d.target.y}`;
       });
 
-      node.attr("transform", (d) => \`translate(\${d.x},\${d.y})\`);
+      node.attr("transform", (d) => `translate(\${d.x},\${d.y})`);
     });
 
     return () => {
@@ -184,7 +184,7 @@ export function LiveEKGNetworkGraph({
 
   return (
     <div className="w-full h-full min-h-[500px] bg-black rounded-xl overflow-hidden border border-white/10 shadow-2xl relative">
-      <svg ref={svgRef} width="100%" height="100%" viewBox={\`0 0 \${width} \${height}\`} preserveAspectRatio="xMidYMid meet" />
+      <svg ref={svgRef} width="100%" height="100%" viewBox={`0 0 \${width} \${height}`} preserveAspectRatio="xMidYMid meet" />
       <div className="absolute top-4 left-4 flex gap-4 text-xs font-mono text-gray-400">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-emerald-500 rounded-sm"></div> Warehouse
