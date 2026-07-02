@@ -119,7 +119,7 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 
 | Anchor | Work | Exit |
 |--------|------|------|
-| `PX-DESK-3A` | Virtualized tables on supplier orders, warehouse dispatch, retailer orders (react-virtuoso or equivalent) | 500+ rows scroll without jank on mid-tier Windows laptop |
+| `PX-DESK-3A` | Virtualized tables on supplier orders, warehouse dispatch, retailer orders (react-virtuoso or equivalent) | 500+ rows scroll without jank on mid-tier Windows laptop | **shipped** — `VirtualScrollList` in `@pegasusx/ui-kit/desktop` |
 | `PX-DESK-3B` | MapLibre: lazy-load + destroy on unmount for fleet/live-map pages | Memory stable after 10 min on supplier fleet tab |
 | `PX-DESK-3C` | Shared skeleton system in `@pegasusx/ui-kit` for BentoGrid / PageChrome | Portal + desktop use same skeleton components |
 | `PX-DESK-3D` | **Retailer dock:** optimistic inbound scan queue with reconcile | Dock page matches mobile dock semantics on reconnect |
@@ -153,7 +153,7 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 |--------|------|------|
 | `PX-DESK-5A` | Vitest parity: each portal gets auth + session-reconcile + one P0 page test (match retailer depth) | `pnpm test` green per app in CI |
 | `PX-DESK-5B` | `docs/qa/PX-DESK_MANUAL_QA.md` — Windows checklist (install, update, wedge scan, print, offline checkout) | Linked from `PX12_MANUAL_QA_RUNBOOK.md` | **shipped** |
-| `PX-DESK-5C` | ADR `008-desktop-tauri-strategy.md` — locked decision + when to add Rust plugins vs rewrite | ADR accepted |
+| `PX-DESK-5C` | ADR `008-desktop-tauri-strategy.md` — locked decision + when to add Rust plugins vs rewrite | ADR accepted | **shipped** |
 | `PX-DESK-5D` | Parity matrix “Desktop capabilities” appendix (cache, export, print, offline queue per role) | Matrix row per desktop-only feature | **shipped** |
 
 **Anchor:** `PX-DESK-5` — CI tests + manual QA runbook + ADR published.
@@ -214,12 +214,12 @@ cd pegasusX/apps/warehouse-portal && pnpm tauri:build:win
 | `PX-DESK-1A`–`1F` | 1 | desktop-cache + per-role cache | **shipped** |
 | `PX-DESK-2` | 2 | Native capabilities | **shipped** — 2A–2F complete |
 | `PX-DESK-2A`–`2F` | 2 | fs, print, wedge, deep links | **shipped** |
-| `PX-DESK-3` | 3 | Performance & UX | **pending** |
-| `PX-DESK-3A`–`3E` | 3 | Virtualization, maps, skeletons | **pending** |
+| `PX-DESK-3` | 3 | Performance & UX | **partial** — 3A shipped |
+| `PX-DESK-3A`–`3E` | 3 | Virtualization, maps, skeletons | **partial** — 3A shipped; 3B–3E pending |
 | `PX-DESK-4` | 4 | Realtime & ecosystem parity | **pending** |
 | `PX-DESK-4A`–`4E` | 4 | Reconcile audit, ECS features | **pending** |
-| `PX-DESK-5` | 5 | Test & docs | **pending** |
-| `PX-DESK-5A`–`5D` | 5 | Vitest, QA runbook, ADR | **pending** |
+| `PX-DESK-5` | 5 | Test & docs | **partial** — 5B/5C/5D shipped; 5A pending |
+| `PX-DESK-5A`–`5D` | 5 | Vitest, QA runbook, ADR | **partial** — 5B–5D shipped |
 
 ---
 

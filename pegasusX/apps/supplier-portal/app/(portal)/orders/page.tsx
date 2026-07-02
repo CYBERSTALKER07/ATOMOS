@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ApiError } from '@pegasusx/api-client';
 import { cacheGet, cacheSet } from '@pegasusx/desktop-cache';
 import { isTauri } from '@pegasusx/desktop-bridge';
+import { VirtualScrollList } from '@pegasusx/ui-kit/desktop';
 import type { SupplierOrder } from '@pegasusx/types';
 import { createSupplierApi } from '@/lib/api';
 import { supplierOrdersCacheKey } from '@/lib/supplier-cache-keys';
@@ -24,7 +25,8 @@ import EmptyState from '@/components/EmptyState';
 type OrderFilter = 'ACTIVE' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
 
 const supplierApi = createSupplierApi();
-const PAGE_SIZE = 25;
+const WEB_PAGE_SIZE = 25;
+const DESKTOP_PAGE_SIZE = 200;
 const filterLabels: Record<OrderFilter, string> = {
   ACTIVE: 'Active Orders',
   SCHEDULED: 'Scheduled pre-orders',
@@ -66,6 +68,7 @@ export default function OrdersPage() {
   const router = useRouter();
   const { push: toast } = useToast();
   const showAdminOps = useMemo(() => canAdminOrderOps(), []);
+  const pageSize = isTauri() ? DESKTOP_PAGE_SIZE : WEB_PAGE_SIZE;
   const [orders, setOrders] = useState<SupplierOrder[]>([]);
   const [total, setTotal] = useState(0);
   const [filter, setFilter] = useState<OrderFilter>('ACTIVE');
@@ -85,8 +88,8 @@ export default function OrdersPage() {
   const loadOrders = useCallback(async (silent = false) => {
     const query =
       filter === 'SCHEDULED'
-        ? { limit: PAGE_SIZE, offset: page * PAGE_SIZE, status: 'SCHEDULED' }
-        : { limit: PAGE_SIZE, offset: page * PAGE_SIZE, filter };
+        ? { limit: pageSize, offset: page * pageSize, status: 'SCHEDULED' }
+        : { limit: pageSize, offset: page * pageSize, filter };
     const cacheKey = supplierOrdersCacheKey(query);
     let hydratedFromCache = false;
 
@@ -127,7 +130,7 @@ export default function OrdersPage() {
         setLoading(false);
       }
     }
-  }, [filter, page, toast]);
+  }, [filter, page, pageSize, toast]);
 
   useEffect(() => {
     void loadOrders();
@@ -149,7 +152,7 @@ export default function OrdersPage() {
     void loadOrders(true);
   });
 
-  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
 
   const runWarehouseMutation = async () => {
@@ -271,12 +274,16 @@ export default function OrdersPage() {
             body="Orders matching this filter will appear here."
           />
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {orders.map((order, index) => {
+          <VirtualScrollList
+            className="-mx-1 px-1"
+            height="calc(100vh - 280px)"
+            items={orders}
+            itemKey={(order) => order.order_id}
+            renderItem={(order, index) => {
               const flags = orderActionFlags(order.status);
               const warehouseOpsEnabled = canWarehouseOps(order);
               return (
-                <div key={order.order_id} className="space-y-2">
+                <div className="pb-3">
                   <OrderOpsCard
                     index={index}
                     orderId={order.order_id}
@@ -310,8 +317,8 @@ export default function OrdersPage() {
                   />
                 </div>
               );
-            })}
-          </div>
+            }}
+          />
         )}
       </div>
 

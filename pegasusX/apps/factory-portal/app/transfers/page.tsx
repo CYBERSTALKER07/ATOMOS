@@ -6,7 +6,7 @@ import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
 import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
-import { downloadCsv } from '@/lib/csv';
+import { downloadCsv, exportCsv } from '@/lib/csv';
 import { usePagination } from '@/lib/use-pagination';
 import { ListToolbar } from '@/components/ListToolbar';
 import Icon from '@/components/Icon';
@@ -93,8 +93,8 @@ export default function TransfersPage() {
     reset();
   }, [stateFilter, reset]);
 
-  const exportCsv = () => {
-    downloadCsv(
+  const exportCsvHandler = async () => {
+    const result = await exportCsv(
       `factory-transfers${stateFilter !== 'ALL' ? `-${stateFilter.toLowerCase()}` : ''}.csv`,
       ['id', 'warehouse_name', 'state', 'priority', 'total_items', 'total_volume_m3', 'created_at'],
       transfers.map((transfer) => [
@@ -107,6 +107,9 @@ export default function TransfersPage() {
         transfer.created_at,
       ]),
     );
+    if (!result.saved && !result.cancelled && result.reason) {
+      setError(`Export failed: ${result.reason}`);
+    }
   };
 
   useEffect(() => {
@@ -233,7 +236,7 @@ export default function TransfersPage() {
               totalLabel={`${transfers.length} transfers`}
               onPrev={prev}
               onNext={next}
-              onExport={exportCsv}
+              onExport={() => void exportCsvHandler()}
             />
             <section className="overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--background)]">
           <div className="overflow-x-auto">

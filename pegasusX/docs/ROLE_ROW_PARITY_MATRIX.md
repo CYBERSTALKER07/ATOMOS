@@ -294,10 +294,11 @@ Shared design packages now own cross-app chrome:
 | --- | --- | --- | --- | --- |
 | SQLite offline cache | yes | yes | yes | — |
 | Offline tray | yes | yes | yes | yes |
-| Native CSV export (save dialog) | via bridge | yes | yes | web fallback |
+| Native CSV export (save dialog) | via bridge | yes | yes | yes |
 | Treasury print/PDF | — | yes | yes | — |
 | Deep link scheme | `pegasusx-retailer://` | `pegasusx-supplier://` | `pegasusx-warehouse://` | `pegasusx-factory://` |
 | Single instance | yes | yes | yes | yes |
 | Tauri Android | — | **deprecated** (use `supplier-app-android`) | — | — |
+| Virtualized order lists (3A) | yes | yes | yes | — |
 
-Reference: [`context/plan_desktop.md`](../context/plan_desktop.md), [`docs/qa/PX-DESK_MANUAL_QA.md`](./qa/PX-DESK_MANUAL_QA.md).
+Reference: [`context/plan_desktop.md`](../context/plan_desktop.md), [`docs/qa/PX-DESK_MANUAL_QA.md`](./qa/PX-DESK_MANUAL_QA.md), [`docs/adr/008-desktop-tauri-strategy.md`](./adr/008-desktop-tauri-strategy.md).

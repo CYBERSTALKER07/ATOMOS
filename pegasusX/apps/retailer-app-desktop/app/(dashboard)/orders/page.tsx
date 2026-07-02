@@ -27,6 +27,7 @@ import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
 import EmptyState from "../../../components/EmptyState";
 import { PageSection } from "../../../components/PageSection";
+import { VirtualScrollList } from "@pegasusx/ui-kit/desktop";
 import { ListRowSkeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
@@ -722,61 +723,63 @@ export default function OrdersPage() {
                 onAction={listEmptyState.onAction}
               />
             ) : (
-              filtered.map((order) => {
-                const isSelected =
-                  (selectedId ?? list[0]?.order_id) === order.order_id;
-                const c = chipCfg[order.state] || chipCfg.PENDING;
-                return (
-                  <motion.button
-                    key={order.order_id}
-                    layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onClick={() => setSelectedId(order.order_id)}
-                    className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left group ${
-                      isSelected
-                        ? "bg-[var(--desk-surface)] border-[var(--desk-accent)] shadow-md ring-2 ring-[var(--desk-accent-soft)]"
-                        : "bg-[var(--desk-surface)] border-[var(--desk-border)] hover:border-[var(--desk-border-strong)]"
-                    }`}
-                  >
-                    <div
-                      className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-[var(--desk-accent-soft)] text-[var(--desk-accent)]" : "bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)] group-hover:text-[var(--desk-text-secondary)]"}`}
+              <VirtualScrollList
+                height="calc(100vh - 440px)"
+                items={filtered}
+                itemKey={(order) => order.order_id}
+                renderItem={(order) => {
+                  const isSelected =
+                    (selectedId ?? list[0]?.order_id) === order.order_id;
+                  const c = chipCfg[order.state] || chipCfg.PENDING;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(order.order_id)}
+                      className={`mb-2 flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all group ${
+                        isSelected
+                          ? "bg-[var(--desk-surface)] border-[var(--desk-accent)] shadow-md ring-2 ring-[var(--desk-accent-soft)]"
+                          : "bg-[var(--desk-surface)] border-[var(--desk-border)] hover:border-[var(--desk-border-strong)]"
+                      }`}
                     >
-                      <PackageOpen size={20} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
-                          #{order.order_id.slice(-8)}
-                        </span>
-                        <span
-                          className={`text-[10px] font-light uppercase tracking-widest px-2 py-0.5 rounded-md ${c.color === "success" ? "bg-green-100 text-green-700" : c.color === "warning" ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-700"}`}
-                        >
-                          {c.label}
-                        </span>
+                      <div
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors ${isSelected ? "bg-[var(--desk-accent-soft)] text-[var(--desk-accent)]" : "bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)] group-hover:text-[var(--desk-text-secondary)]"}`}
+                      >
+                        <PackageOpen size={20} />
                       </div>
-                      <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] truncate">
-                        {order.payment_gateway || "UNSPECIFIED"}
-                      </p>
-                      {(order.preorder_badge === "REVIEW_DELIVERY" ||
-                        order.confirmation_status === "PENDING_WAREHOUSE") && (
-                        <Chip size="sm" color="warning" variant="soft" className="mt-1">
-                          Review Delivery
-                        </Chip>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
-                        {order.amount.toLocaleString()}
-                      </p>
-                      <ArrowUpRight
-                        size={14}
-                        className={`ml-auto transition-opacity ${isSelected ? "opacity-100 text-[var(--desk-accent)]" : "opacity-20 group-hover:opacity-100"}`}
-                      />
-                    </div>
-                  </motion.button>
-                );
-              })
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex items-center justify-between">
+                          <span className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
+                            #{order.order_id.slice(-8)}
+                          </span>
+                          <span
+                            className={`rounded-md px-2 py-0.5 text-[10px] font-light uppercase tracking-widest ${c.color === "success" ? "bg-green-100 text-green-700" : c.color === "warning" ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-700"}`}
+                          >
+                            {c.label}
+                          </span>
+                        </div>
+                        <p className="md-typescale-body-small truncate text-[var(--desk-text-tertiary)]">
+                          {order.payment_gateway || "UNSPECIFIED"}
+                        </p>
+                        {(order.preorder_badge === "REVIEW_DELIVERY" ||
+                          order.confirmation_status === "PENDING_WAREHOUSE") && (
+                          <Chip size="sm" color="warning" variant="soft" className="mt-1">
+                            Review Delivery
+                          </Chip>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="md-typescale-title-small font-light text-[var(--desk-text-primary)]">
+                          {order.amount.toLocaleString()}
+                        </p>
+                        <ArrowUpRight
+                          size={14}
+                          className={`ml-auto transition-opacity ${isSelected ? "opacity-100 text-[var(--desk-accent)]" : "opacity-20 group-hover:opacity-100"}`}
+                        />
+                      </div>
+                    </button>
+                  );
+                }}
+              />
             )}
           </AnimatePresence>
           </div>

@@ -5,7 +5,7 @@ import { usePolling, factorySupplyRequestTransitionKey } from '@pegasusx/api-cli
 import type { SupplyFulfillOptions } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
-import { downloadCsv } from '@/lib/csv';
+import { exportCsv } from '@/lib/csv';
 import { usePagination } from '@/lib/use-pagination';
 import { ListToolbar } from '@/components/ListToolbar';
 import { useToast } from '@/components/Toast';
@@ -226,8 +226,8 @@ export default function SupplyRequestsPage() {
     setSelectedIds(new Set());
   }, [filter, reset]);
 
-  const exportCsv = () => {
-    downloadCsv(
+  const exportCsvHandler = async () => {
+    const result = await exportCsv(
       `factory-supply-requests${filter !== 'ALL' ? `-${filter.toLowerCase()}` : ''}.csv`,
       ['request_id', 'warehouse_id', 'state', 'priority', 'total_volume_vu', 'created_at'],
       filtered.map((request) => [
@@ -239,6 +239,9 @@ export default function SupplyRequestsPage() {
         request.created_at,
       ]),
     );
+    if (!result.saved && !result.cancelled && result.reason) {
+      toast(`Export failed: ${result.reason}`, 'error');
+    }
   };
 
   const runtimeMessage = isOffline
@@ -482,7 +485,7 @@ export default function SupplyRequestsPage() {
               totalLabel={`${filtered.length} supply requests`}
               onPrev={prev}
               onNext={next}
-              onExport={exportCsv}
+              onExport={() => void exportCsvHandler()}
             />
             {selectedIds.size > 0 && (
               <div className="mb-4 flex items-center justify-between rounded-lg border bg-(--color-md-surface-container) p-3" style={{ borderColor: 'var(--color-md-outline-variant)' }}>

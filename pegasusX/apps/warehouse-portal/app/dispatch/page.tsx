@@ -16,6 +16,7 @@ import { ApiError, warehouseDispatchKey, warehouseUpdateVehicleKey } from '@pega
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
 import type { StatusExplain } from '@pegasusx/types';
 import { isTauri } from '@pegasusx/desktop-bridge';
+import { VirtualScrollList } from '@pegasusx/ui-kit/desktop';
 import { apiFetch } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';
 import {
@@ -855,9 +856,13 @@ export default function DispatchPage() {
             {orders.length === 0 ? (
               <EmptyState variant="no-data" headline="All orders dispatched" body="No pending orders need assignment right now." />
             ) : (
-              <div className="space-y-3 max-h-[28rem] overflow-y-auto -mx-5 px-5">
-                {orders.map((order, index) => (
-                  <div key={order.order_id} className="flex items-start gap-2">
+              <VirtualScrollList
+                className="-mx-5 px-5"
+                height="28rem"
+                items={orders}
+                itemKey={(order) => order.order_id}
+                renderItem={(order, index) => (
+                  <div className="flex items-start gap-2 pb-3">
                     <label className="flex items-center pt-4 shrink-0 cursor-pointer">
                       <input
                         type="checkbox"
@@ -887,8 +892,8 @@ export default function DispatchPage() {
                       />
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
+              />
             )}
           </PageSection>
 
