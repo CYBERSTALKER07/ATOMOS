@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
 import { OG_IMAGE } from "@/app/lib/siteAssets";
+import { SITE_NAME, SITE_URL } from "@/app/lib/seo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,10 +16,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://pegasus.io'),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Pegasus | Logistics Operating System',
-    template: '%s | Pegasus'
+    default: `${SITE_NAME} | Logistics Operating System`,
+    template: `%s | ${SITE_NAME}`,
   },
   description: 'Pegasus is the logistics operating system for supplier-led networks. Dispatch, fleet tracking, payments, and realtime coordination across six roles.',
   keywords: [
@@ -35,9 +36,9 @@ export const metadata: Metadata = {
     'supply chain operations',
     'cash on delivery',
   ],
-  authors: [{ name: 'Pegasus' }],
-  creator: 'Pegasus',
-  publisher: 'Pegasus',
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
   formatDetection: {
     email: false,
     address: false,
@@ -46,10 +47,10 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://pegasus.io',
-    title: 'Pegasus | Logistics Operating System',
+    url: SITE_URL,
+    title: `${SITE_NAME} | Logistics Operating System`,
     description: 'Run supplier-led logistics from one platform — dispatch, tracking, payments, and coordination across every team in your network.',
-    siteName: 'Pegasus',
+    siteName: SITE_NAME,
     images: [
       {
         url: OG_IMAGE,
@@ -83,11 +84,13 @@ export const metadata: Metadata = {
     apple: '/atom.jpeg',
   },
   manifest: '/manifest.json',
-  verification: {
-    google: 'your-google-verification-code',
-    // yandex: 'your-yandex-verification-code',
-    // bing: 'your-bing-verification-code',
-  },
+  ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? {
+        verification: {
+          google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+        },
+      }
+    : {}),
 };
 
 export default function RootLayout({
@@ -98,7 +101,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="canonical" href="https://pegasus.io" />
         <meta name="theme-color" content="#000000" />
       </head>
       <body

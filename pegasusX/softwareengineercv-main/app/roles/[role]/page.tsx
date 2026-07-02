@@ -7,6 +7,7 @@ import type { TopicPage } from '@/app/data/topicTypes';
 import { topicHref } from '@/app/data/topicTypes';
 import TopicPageClient from '@/app/components/explore/TopicPageClient';
 import RoleDetailClient from './RoleDetailClient';
+import { pageMetadata } from '@/app/lib/seo';
 
 function getRoleTopic(roleId: string): TopicPage | undefined {
   const fromNav = getTopicByPath('roles', roleId);
@@ -40,20 +41,22 @@ export async function generateMetadata({ params }: { params: Promise<{ role: str
   const { role: roleId } = await params;
   const topic = getRoleTopic(roleId);
   if (topic) {
-    return {
-      title: `${topic.content.title} | Pegasus Roles`,
+    return pageMetadata({
+      title: topic.content.title,
       description: topic.content.summary,
-    };
+      path: `/roles/${roleId}`,
+    });
   }
 
   const role = ROLES_DATA.find((r) => r.id === roleId);
   if (!role) {
     return { title: 'Role Not Found' };
   }
-  return {
-    title: `${role.name} | Pegasus Roles`,
+  return pageMetadata({
+    title: role.name,
     description: role.description,
-  };
+    path: `/roles/${roleId}`,
+  });
 }
 
 export default async function RolePage({ params }: { params: Promise<{ role: string }> }) {

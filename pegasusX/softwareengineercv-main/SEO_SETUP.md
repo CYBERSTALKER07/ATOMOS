@@ -37,10 +37,10 @@ This document outlines the comprehensive SEO setup for your Next.js portfolio ap
 Create a `.env.local` file in the root directory:
 
 ```bash
-NEXT_PUBLIC_SITE_URL=https://softwareengineercv.vercel.app
+NEXT_PUBLIC_SITE_URL=https://pegasus.io
+# Optional — Google Search Console HTML tag value only (not the full meta tag)
+NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=your-verification-code
 ```
-
-Replace `https://yourportfolio.com` with your actual domain.
 
 ### Step 2: Update Personal Information
 Update the following files with your information:
@@ -56,14 +56,14 @@ Update the following files with your information:
   - `sameAs` array with your social media links
   - `alumniOf` with your university name
 
-### Step 3: Add Open Graph Image
-Create an Open Graph image (`og-image.png`) at 1200x630px and place it in the `public` folder. This image will be shown when your site is shared on social media.
+### Step 3: Open Graph image
+OG/Twitter cards use `Unknown-10.jpg` (Pegasus container) via `app/lib/siteAssets.ts`. For a dedicated 1200×630 asset, add `public/og-image.jpg` and point `OG_IMAGE` in `siteAssets.ts`.
 
 ### Step 4: Google Search Console Setup
 1. Go to [Google Search Console](https://search.google.com/search-console)
 2. Add your property (domain or URL prefix)
 3. Get your verification code
-4. Add it to `app/layout.tsx` in the verification section
+4. Set `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` in `.env.local` (layout reads it automatically)
 
 ### Step 5: Submit Your Sitemap
 After deployment:
@@ -74,8 +74,8 @@ After deployment:
 ## SEO Checklist
 
 - [ ] Set `NEXT_PUBLIC_SITE_URL` in `.env.local`
-- [ ] Update all personal information in metadata
-- [ ] Create and add `og-image.png` (1200x630px)
+- [ ] Set `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` when Search Console is ready
+- [ ] OG image configured in `siteAssets.ts` (or add dedicated 1200×630 asset)
 - [ ] Update social media links in structured data
 - [ ] Verify site with Google Search Console
 - [ ] Submit sitemap to search engines
