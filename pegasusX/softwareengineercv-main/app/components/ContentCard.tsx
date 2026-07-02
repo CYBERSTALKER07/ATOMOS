@@ -5,16 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Route } from 'next';
 
-export const EDITORIAL_IMAGES = [
-  '/original-6ba13d16f8042b23a4c50a692bb23176.webp',
-  '/original-1ec76e0e43bf8113cf940c5b4cdaed7a.webp',
-  '/original-7b36f739e822f2c737563ad11d6c58df.webp',
-  '/original-1137dbc252460b3d33f86e46095e1b12.webp',
-  '/original-2096796ee8410886b847d3c0a93c3d4e.webp',
-  '/d43ad1fb95964cffaa808bf7a0364307.webp',
-  '/original-66e7443f7182936b9a9732295fbfc121.webp',
-  '/original-50941087b949fb6cd5a51dc535e09879.webp',
-] as const;
+export { EDITORIAL_IMAGES } from '@/app/lib/siteAssets';
 
 export type ContentCardVariant = 'vertical' | 'split' | 'featured';
 export type ContentCardTone = 'dark' | 'light';

@@ -6,6 +6,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Link from 'next/link';
 import StaggeredMenu from '@/components/StaggeredMenu';
 import ContentCard, { EDITORIAL_IMAGES } from '../components/ContentCard';
+import { SITE_IMAGES } from '@/app/lib/siteAssets';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -139,13 +140,13 @@ export default function DesktopAppsPage() {
       <section className="py-20 px-4 md:px-8">
         <div className="max-w-7xl mx-auto editorial-grid grid grid-cols-1 lg:grid-cols-2">
           <div ref={app1Ref} className="lg:col-span-2">
-            <ContentCard variant="featured" tone="light" eyebrow="DISCOVER THE PLATFORM" title="Retailer Desktop (Tauri)" description="Fast native desktop app for retailer ordering — catalog with zone checks, scheduled delivery windows, checkout, and live shipment tracking from the store counter." image="/original-1137dbc252460b3d33f86e46095e1b12.webp" href="/#contact" ctaLabel="REQUEST DEMO" ctaStyle="button" />
+            <ContentCard variant="featured" tone="light" eyebrow="DISCOVER THE PLATFORM" title="Retailer Desktop (Tauri)" description="Fast native desktop app for retailer ordering — catalog with zone checks, scheduled delivery windows, checkout, and live shipment tracking from the store counter." image={SITE_IMAGES.truckTerminal} href="/#contact" ctaLabel="REQUEST DEMO" ctaStyle="button" />
           </div>
           <div ref={app2Ref}>
-            <ContentCard variant="split" tag="Supplier" title="Supplier Ops Dashboard" description="Executive view across the network — order vetting queues, dispatch preview, treasury reconciliation, and topology management for multi-site suppliers." image="/original-2096796ee8410886b847d3c0a93c3d4e.webp" href="/#contact" ctaLabel="READ MORE" />
+            <ContentCard variant="split" tag="Supplier" title="Supplier Ops Dashboard" description="Executive view across the network — order vetting queues, dispatch preview, treasury reconciliation, and topology management for multi-site suppliers." image={SITE_IMAGES.operationsTeam} href="/#contact" ctaLabel="READ MORE" />
           </div>
           <div ref={app3Ref}>
-            <ContentCard variant="split" tone="light" tag="Warehouse" title="Warehouse Dispatch Console" description="Desktop-grade dispatch boards for depot managers — visual load planning, fleet map, and gate coordination during peak hours." image="/original-50941087b949fb6cd5a51dc535e09879.webp" href="/#contact" ctaLabel="READ MORE" />
+            <ContentCard variant="split" tone="light" tag="Warehouse" title="Warehouse Dispatch Console" description="Desktop-grade dispatch boards for depot managers — visual load planning, fleet map, and gate coordination during peak hours." image={SITE_IMAGES.warehouseWireframe} href="/#contact" ctaLabel="READ MORE" />
           </div>
           <div ref={app4Ref}>
             <ContentCard variant="vertical" tag="Tracking" title="Fleet Command Center" description="Large-screen fleet telemetry with planned-vs-actual routes and deviation alerts for ops teams." image={EDITORIAL_IMAGES[0]} href="/#contact" ctaLabel="READ MORE" />

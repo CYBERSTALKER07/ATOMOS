@@ -6,6 +6,7 @@ import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
 import ChamferButton from './ChamferButton';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
+import { HERO_VIDEO_POSTER } from '@/app/lib/siteAssets';
 
 const HERO_VIDEO_PAUSE_AT = 5;
 
@@ -224,7 +225,7 @@ export default function Hero() {
                   muted
                   playsInline
                   preload="auto"
-                  poster="/electric_semi_truck_tesla_with_trailer_rigged_362-1.jpg"
+                  poster={HERO_VIDEO_POSTER}
                   className="h-full w-full object-cover"
                 />
               </div>

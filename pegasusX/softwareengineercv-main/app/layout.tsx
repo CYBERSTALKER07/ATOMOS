@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
+import { OG_IMAGE } from "@/app/lib/siteAssets";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,7 +52,7 @@ export const metadata: Metadata = {
     siteName: 'Pegasus',
     images: [
       {
-        url: '/og-image.png',
+        url: OG_IMAGE,
         width: 1200,
         height: 630,
         alt: 'Pegasus Logistics Platform',
@@ -63,7 +64,7 @@ export const metadata: Metadata = {
     title: 'Pegasus | Logistics Operating System',
     description: 'Dispatch, fleet tracking, payments, and realtime coordination for supplier-led logistics networks.',
     creator: '@pegasus',
-    images: ['/og-image.png'],
+    images: [OG_IMAGE],
   },
   robots: {
     index: true,

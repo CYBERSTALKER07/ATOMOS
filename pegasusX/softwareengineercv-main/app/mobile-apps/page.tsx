@@ -6,6 +6,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Link from 'next/link';
 import { StaggeredMenu } from '@/components/StaggeredMenu';
 import ContentCard, { EDITORIAL_IMAGES } from '../components/ContentCard';
+import { SITE_IMAGES } from '@/app/lib/siteAssets';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -161,7 +162,7 @@ export default function MobileAppsPage() {
               eyebrow="DISCOVER THE PLATFORM"
               title="Driver Execution"
               description="Route execution stop by stop — sealed manifests, delivery confirmation, cash collection, and live progress back to ops and retailers."
-              image="/d43ad1fb95964cffaa808bf7a0364307.webp"
+              image={SITE_IMAGES.deliveryDrone}
               href="/#contact"
               ctaLabel="REQUEST DEMO"
               ctaStyle="button"
@@ -173,7 +174,7 @@ export default function MobileAppsPage() {
               tag="Mobile"
               title="Warehouse & Gate"
               description="Android apps for warehouse floor teams and gate operators — dispatch boards, manifest scanning, seal workflows, and live fleet visibility after departure."
-              image="/original-66e7443f7182936b9a9732295fbfc121.webp"
+              image={SITE_IMAGES.portCraneScene}
               href="/#contact"
               ctaLabel="READ MORE"
               ctaStyle="link"

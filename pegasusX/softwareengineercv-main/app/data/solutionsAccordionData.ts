@@ -1,3 +1,5 @@
+import { SITE_IMAGES, SOLUTIONS_DEFAULT_IMAGE } from '@/app/lib/siteAssets';
+
 export interface AccordionUseCase {
   title: string;
   href: string;
@@ -27,17 +29,19 @@ export const SOLUTIONS_ACCORDION_DATA: AccordionSolution[] = [
         title: 'Supplier Control Panel', 
         href: '/solutions/supplier-control-panel',
         slug: 'supplier-control-panel',
-        image: '/Gemini_Generated_Image_un3te4un3te4un3t.png'
+        image: SITE_IMAGES.operationsTeam
       },
       { 
         title: 'Supplier Collaboration & Order Vetting', 
         href: '/solutions/supplier-collaboration',
-        slug: 'supplier-collaboration'
+        slug: 'supplier-collaboration',
+        image: SITE_IMAGES.multimodalHub,
       },
       { 
         title: 'AI/ML Demand & Recommendations', 
         href: '/solutions/ai-ml-demand',
-        slug: 'ai-ml-demand'
+        slug: 'ai-ml-demand',
+        image: SITE_IMAGES.terminalArchitecture,
       },
     ],
   },
@@ -52,12 +56,14 @@ export const SOLUTIONS_ACCORDION_DATA: AccordionSolution[] = [
       { 
         title: 'Smart Dispatch Assist', 
         href: '/solutions/smart-dispatch-assist',
-        slug: 'smart-dispatch-assist'
+        slug: 'smart-dispatch-assist',
+        image: SITE_IMAGES.warehouseAutomation,
       },
       { 
         title: 'Multi-Echelon Inventory Optimization', 
         href: '/solutions/multi-echelon-inventory',
-        slug: 'multi-echelon-inventory'
+        slug: 'multi-echelon-inventory',
+        image: SITE_IMAGES.warehouseWireframe,
       },
     ],
   },
@@ -72,12 +78,14 @@ export const SOLUTIONS_ACCORDION_DATA: AccordionSolution[] = [
       { 
         title: 'Control Tower & Live Tracking', 
         href: '/solutions/control-tower',
-        slug: 'control-tower'
+        slug: 'control-tower',
+        image: SITE_IMAGES.logisticsPlatformUi,
       },
       { 
         title: 'Merchandise & Assortment Planning', 
         href: '/solutions/merchandise-planning',
-        slug: 'merchandise-planning'
+        slug: 'merchandise-planning',
+        image: SITE_IMAGES.truckTerminal,
       },
     ],
   },
@@ -92,12 +100,14 @@ export const SOLUTIONS_ACCORDION_DATA: AccordionSolution[] = [
       { 
         title: 'Post-Game Analysis & Reconciliation', 
         href: '/solutions/post-game-analysis',
-        slug: 'post-game-analysis'
+        slug: 'post-game-analysis',
+        image: SITE_IMAGES.pegasusContainer,
       },
       { 
         title: 'Sales & Operations Planning (S&OP)', 
         href: '/solutions/sales-operations-planning',
-        slug: 'sales-operations-planning'
+        slug: 'sales-operations-planning',
+        image: SITE_IMAGES.portCraneScene,
       },
     ],
   },
@@ -112,7 +122,8 @@ export const SOLUTIONS_ACCORDION_DATA: AccordionSolution[] = [
       { 
         title: 'Driver Execution App', 
         href: '/solutions/driver-execution-app',
-        slug: 'driver-execution-app'
+        slug: 'driver-execution-app',
+        image: SITE_IMAGES.truckTerminal,
       },
     ],
   },
@@ -127,7 +138,8 @@ export const SOLUTIONS_ACCORDION_DATA: AccordionSolution[] = [
       { 
         title: 'Factory Loading & Supply Requests', 
         href: '/solutions/factory-loading',
-        slug: 'factory-loading'
+        slug: 'factory-loading',
+        image: SITE_IMAGES.warehouseAutomation,
       },
     ],
   },
@@ -142,7 +154,8 @@ export const SOLUTIONS_ACCORDION_DATA: AccordionSolution[] = [
       { 
         title: 'Returns & Barcode Gate Control', 
         href: '/solutions/returns-barcode-gate',
-        slug: 'returns-barcode-gate'
+        slug: 'returns-barcode-gate',
+        image: SITE_IMAGES.deliveryDrone,
       },
     ],
   },

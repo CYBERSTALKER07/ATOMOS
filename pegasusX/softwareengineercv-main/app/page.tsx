@@ -5,6 +5,7 @@ import PlatformValue from './components/PlatformValue';
 import Skills from './components/Skills';
 import SiteNav from './components/explore/SiteNav';
 import type { Metadata } from 'next';
+import { OG_IMAGE } from '@/app/lib/siteAssets';
 
 const LogisticsSolutions = dynamic(() => import('./components/LogisticsSolutions'));
 const SignalFeatureCards = dynamic(() => import('./components/SignalFeatureCards'));
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
     url: 'https://pegasus.io',
     images: [
       {
-        url: '/og-image.png',
+        url: OG_IMAGE,
         width: 1200,
         height: 630,
         alt: 'Pegasus Logistics Platform',

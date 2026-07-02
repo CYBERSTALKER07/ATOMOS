@@ -5,6 +5,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import ChamferButton from './ChamferButton';
 import { useReducedMotion } from '@/app/hooks/useDevice';
+import { DISPATCH_ARCADE_IMAGE } from '@/app/lib/siteAssets';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -67,7 +68,7 @@ export default function SmartDispatchArcade() {
           </div>
           <div className="border border-white/10 p-2 md:p-4 bg-[#111] hover:bg-[#1a1a1a] transition-colors rounded-none flex items-center justify-center">
             <img 
-              src="/Gemini_Generated_Image_un3te4un3te4un3t.png" 
+              src={DISPATCH_ARCADE_IMAGE} 
               alt="Supplier Control Panel Preview" 
               className="w-full h-full object-cover border border-white/10"
             />

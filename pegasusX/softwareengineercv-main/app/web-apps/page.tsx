@@ -6,6 +6,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Link from 'next/link';
 import { FiArrowLeft } from 'react-icons/fi';
 import ContentCard, { EDITORIAL_IMAGES } from '../components/ContentCard';
+import { SITE_IMAGES } from '@/app/lib/siteAssets';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -108,17 +109,17 @@ export default function WebAppsPage() {
               eyebrow="DISCOVER THE PLATFORM"
               title="Supplier Control Plane"
               description="Network oversight for suppliers — order vetting, dispatch preview, topology management, and treasury views across warehouses, factories, and retailers."
-              image="/original-1ec76e0e43bf8113cf940c5b4cdaed7a.webp"
+              image={SITE_IMAGES.logisticsPlatformUi}
               href="/#contact"
               ctaLabel="REQUEST DEMO"
               ctaStyle="button"
             />
           </div>
           <div ref={app2Ref}>
-            <ContentCard variant="split" tag="Warehouse" title="Warehouse Dispatch Board" description="Visual morning dispatch with truck-and-order matching, capacity planning, gate seal workflow, and live fleet map after departure." image="/original-6ba13d16f8042b23a4c50a692bb23176.webp" href="/#contact" ctaLabel="READ MORE" />
+            <ContentCard variant="split" tag="Warehouse" title="Warehouse Dispatch Board" description="Visual morning dispatch with truck-and-order matching, capacity planning, gate seal workflow, and live fleet map after departure." image={SITE_IMAGES.warehouseAutomation} href="/#contact" ctaLabel="READ MORE" />
           </div>
           <div ref={app3Ref}>
-            <ContentCard variant="split" tone="light" tag="Retailer" title="Retailer Commerce Portal" description="Catalog browsing, checkout, delivery scheduling, and live order tracking — self-serve for retailer teams without calling support." image="/original-7b36f739e822f2c737563ad11d6c58df.webp" href="/#contact" ctaLabel="READ MORE" />
+            <ContentCard variant="split" tone="light" tag="Retailer" title="Retailer Commerce Portal" description="Catalog browsing, checkout, delivery scheduling, and live order tracking — self-serve for retailer teams without calling support." image={SITE_IMAGES.multimodalHub} href="/#contact" ctaLabel="READ MORE" />
           </div>
           <div ref={app4Ref}>
             <ContentCard variant="vertical" tag="Fleet" title="Fleet Telemetry Map" description="Live fleet map with planned-vs-actual routes, deviation alerts for ops, and retailer self-serve tracking when deliveries run late." image={EDITORIAL_IMAGES[0]} href="/#contact" ctaLabel="READ MORE" />

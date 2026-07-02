@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { SOLUTIONS_ACCORDION_DATA } from '@/app/data/solutionsAccordionData';
+import { SOLUTIONS_DEFAULT_IMAGE } from '@/app/lib/siteAssets';
 import Link from 'next/link';
 
 export default async function SolutionDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -21,7 +22,7 @@ export default async function SolutionDetailPage({ params }: { params: Promise<{
     notFound();
   }
 
-  const imageUrl = useCaseData.image || '/Gemini_Generated_Image_un3te4un3te4un3t.png';
+  const imageUrl = useCaseData.image || SOLUTIONS_DEFAULT_IMAGE;
 
   return (
     <div className="min-h-screen bg-black text-white pt-32 pb-24 selection:bg-white/30">
