@@ -30,7 +30,7 @@ cp local.properties.example local.properties   # dev.host=10.0.2.2 for emulator
 
 Bottom tabs: **Dashboard**, **Orders**, **Fleet**, **More**.
 
-More hub includes: manifests, dispatch, exceptions, treasury hub, chargebacks, retailer overrides, inventory import, demand history, factories/warehouses, org & fleet, catalog, pricing, operations, and account settings.
+More hub includes: manifests, dispatch, treasury hub, chargebacks, business setup, operations, replenishment policies, retailer overrides, inventory import, demand history, factories/warehouses, org & fleet, catalog, pricing, and account settings.
 
 **Onboarding:** Login → Register (3-step) → Business setup → Billing gate → Dashboard. No portal handoff required.
 

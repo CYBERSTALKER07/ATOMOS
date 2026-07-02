@@ -33,7 +33,7 @@ open SupplierAppIOS.xcodeproj
 3. **Billing gate** when `is_configured=false` (skippable, same as web)
 4. `SupplierAdaptiveShell` main ops
 
-Native screens cover order vetting, inventory adjust/import, retailer overrides, chargebacks, treasury hub, demand history, factories/warehouses browse, and catalog product detail — no portal handoff.
+Native screens cover order vetting, inventory adjust/import, retailer overrides, chargebacks, business setup, operations, treasury hub, demand history, factories/warehouses browse, and catalog product detail — no portal handoff from More hub.
 
 ## Related surfaces
 

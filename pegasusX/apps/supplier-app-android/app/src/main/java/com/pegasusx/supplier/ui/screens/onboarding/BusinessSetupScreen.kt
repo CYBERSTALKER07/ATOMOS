@@ -24,6 +24,7 @@ fun BusinessSetupScreen(
     viewModel: OnboardingViewModel = hiltViewModel(),
 ) {
     val state by viewModel.businessState.collectAsStateWithLifecycle()
+    val fromOnboarding = onBack == null
 
     Scaffold(topBar = {
         TopAppBar(
@@ -94,7 +95,7 @@ fun BusinessSetupScreen(
                 if (state.loading) {
                     CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
-                    Text("Continue to billing")
+                    Text(if (fromOnboarding) "Continue to billing" else "Save")
                 }
             }
         }
