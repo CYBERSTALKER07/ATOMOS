@@ -1,0 +1,38 @@
+{
+  "retailer": {
+    "title": "Pegasus Retailer: B2B Ordering",
+    "subtitle": "Restock your store with ease.",
+    "description": "Pegasus Retailer is the ultimate B2B e-commerce platform for your business. Browse vast catalogs of wholesale products, track live inventory from top suppliers, and place bulk orders seamlessly. Manage invoices, track deliveries in real-time, and analyze your purchasing habits—all from one powerful dashboard.",
+    "categories": ["Business", "Shopping", "Productivity"]
+  },
+  "supplier": {
+    "title": "Pegasus Supplier: B2B Sales",
+    "subtitle": "Manage your wholesale operations.",
+    "description": "Pegasus Supplier empowers wholesale distributors to digitize their sales pipelines. Process incoming orders, manage dynamic pricing and promotions, and dispatch shipments to your retailer network. Get live insights into revenue, inventory depletion, and team performance on the go.",
+    "categories": ["Business", "Productivity"]
+  },
+  "driver": {
+    "title": "Pegasus Driver: Logistics",
+    "subtitle": "Optimized routing and delivery.",
+    "description": "The dedicated companion app for logistics fleets in the Pegasus ecosystem. Receive optimized routes, verify payload handoffs via QR code scanning, and collect proof-of-delivery (e-signatures and photos). Features offline mode and continuous background location tracking to keep dispatchers informed.",
+    "categories": ["Navigation", "Maps & Navigation"]
+  },
+  "warehouse": {
+    "title": "Pegasus Warehouse Operations",
+    "subtitle": "Smart inventory and picking.",
+    "description": "Transform your warehouse floor with Pegasus. Designed for warehouse staff, this app streamlines pick-and-pack workflows, inbound stock receiving, and inventory auditing. Integrates directly with barcode scanners to ensure 100% accuracy before a pallet ever hits the loading dock.",
+    "categories": ["Business", "Productivity"]
+  },
+  "factory": {
+    "title": "Pegasus Factory: Manufacturing",
+    "subtitle": "Streamline your production floor.",
+    "description": "Connect your manufacturing floor directly to the supply chain. Pegasus Factory tracks work orders, monitors raw material consumption, and reports production output in real-time. Forecast demand based on live downstream supplier data and prevent bottlenecks before they occur.",
+    "categories": ["Business", "Productivity"]
+  },
+  "payload": {
+    "title": "Pegasus Payload Tracker",
+    "subtitle": "Secure chain of custody.",
+    "description": "Designed for strict compliance and security, Pegasus Payload manages the chain of custody for high-value freight. Log condition reports, manage tamper-evident seals, and execute secure handoffs between transport modalities. Ensure total visibility from factory origin to retailer destination.",
+    "categories": ["Utilities", "Tools"]
+  }
+}
