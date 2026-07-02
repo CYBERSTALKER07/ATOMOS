@@ -4,9 +4,9 @@ import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { SiGithub, SiLinkedin } from 'react-icons/si';
+import { SiGithub } from 'react-icons/si';
 import { HiOutlineMail } from 'react-icons/hi';
-import { FaXTwitter } from 'react-icons/fa6';
+import { FaLinkedinIn, FaXTwitter } from 'react-icons/fa6';
 import InfiniteScroll from './InfiniteScroll';
 import { useIsMobile } from '../hooks/useDevice';
 import { useInView } from '../hooks/useInView';
@@ -38,7 +38,7 @@ const EXPLORE_LINKS = [
 
 const SOCIAL_LINKS = [
   { name: 'GitHub', href: 'https://github.com', Icon: SiGithub },
-  { name: 'LinkedIn', href: 'https://linkedin.com/company/pegasus', Icon: SiLinkedin },
+  { name: 'LinkedIn', href: 'https://linkedin.com/company/pegasus', Icon: FaLinkedinIn },
   { name: 'X', href: 'https://twitter.com', Icon: FaXTwitter },
   { name: 'Email', href: 'mailto:demo@pegasus.io', Icon: HiOutlineMail },
 ] as const;

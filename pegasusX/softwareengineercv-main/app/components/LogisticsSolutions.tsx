@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
+import { useIsMobile } from '../hooks/useDevice';
 import FleetVisualPanel from './fleet/FleetVisualPanel';
+import LogisticsSolutionChart from './logistics/LogisticsSolutionChart';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -19,8 +20,6 @@ type Solution = {
   bars: number[];
   line: number[];
 };
-
-const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
 
 const SOLUTIONS: Solution[] = [
   {
@@ -101,144 +100,6 @@ const SOLUTIONS: Solution[] = [
     line: [68, 74, 80, 88],
   },
 ];
-
-function DispatchChart({ solution }: { solution: Solution }) {
-  const prefersReducedMotion = useReducedMotion();
-  const chartRef = useRef<HTMLDivElement>(null);
-  const barRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const lineRef = useRef<SVGPolylineElement>(null);
-  const labelRef = useRef<HTMLParagraphElement>(null);
-  const max = Math.max(...solution.bars, ...solution.line);
-
-  const linePoints = solution.line
-    .map((value, index) => {
-      const x = 12.5 + index * 25;
-      const y = 100 - (value / max) * 78;
-      return `${x},${y}`;
-    })
-    .join(' ');
-
-  useEffect(() => {
-    const bars = barRefs.current.filter(Boolean) as HTMLDivElement[];
-    const line = lineRef.current;
-    const label = labelRef.current;
-
-    if (prefersReducedMotion) {
-      gsap.set(bars, { scaleY: 1 });
-      if (line) gsap.set(line, { strokeDashoffset: 0 });
-      if (label) gsap.set(label, { opacity: 1, y: 0 });
-      return;
-    }
-
-    gsap.set(bars, { scaleY: 0, transformOrigin: 'bottom center' });
-    if (line) {
-      const length = line.getTotalLength();
-      gsap.set(line, { strokeDasharray: length, strokeDashoffset: length, opacity: 0.9 });
-    }
-    if (label) gsap.set(label, { opacity: 0, y: 6 });
-
-    const timeline = gsap.timeline();
-    timeline
-      .to(label, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out' })
-      .to(
-        bars,
-        { scaleY: 1, duration: 0.75, stagger: 0.12, ease: 'power3.out' },
-        '-=0.1'
-      )
-      .to(line, { strokeDashoffset: 0, duration: 1, ease: 'power2.inOut' }, '-=0.55');
-
-    return () => {
-      timeline.kill();
-    };
-  }, [solution.id, prefersReducedMotion]);
-
-  return (
-    <div
-      ref={chartRef}
-      className="h-full flex flex-col justify-end p-6 md:p-8 bg-[#141414] border-l border-white/10 min-h-[18rem]"
-    >
-      <p
-        ref={labelRef}
-        className="text-[0.65rem] font-mono tracking-[0.18em] text-white/50 mb-4 uppercase"
-      >
-        {solution.chartLabel}
-      </p>
-
-      <div className="relative h-44 md:h-52 mb-3">
-        {/* Grid lines */}
-        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" aria-hidden="true">
-          {[0, 1, 2, 3].map((line) => (
-            <div key={line} className="w-full border-t border-white/[0.07]" />
-          ))}
-        </div>
-
-        {/* Bars */}
-        <div className="absolute inset-0 flex items-end justify-between gap-3 md:gap-5 px-1">
-          {solution.bars.map((value, index) => {
-            const bodyHeight = (value / max) * 72;
-            const capHeight = (value / max) * 18;
-
-            return (
-              <div key={`${solution.id}-bar-${index}`} className="flex-1 flex flex-col items-center h-full justify-end">
-                <span className="text-[0.6rem] font-mono text-white/40 mb-2 tabular-nums">{value}</span>
-                <div
-                  ref={(el) => {
-                    barRefs.current[index] = el;
-                  }}
-                  className="w-full max-w-[3.25rem] flex flex-col justify-end h-[calc(100%-1.25rem)]"
-                  style={{ transformOrigin: 'bottom center' }}
-                >
-                  <div
-                    className="w-full bg-white/18 transition-colors duration-300"
-                    style={{ height: `${bodyHeight}%` }}
-                  />
-                  <div
-                    className="w-full bg-[#FFA500] shadow-[0_0_18px_rgba(255,165,0,0.35)]"
-                    style={{ height: `${capHeight}%` }}
-                  />
-                </div>
-                <span className="mt-3 text-[0.6rem] font-mono tracking-wider text-white/35 uppercase">
-                  {QUARTERS[index]}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Trend line */}
-        <svg
-          className="absolute inset-0 w-full h-[calc(100%-1.75rem)] pointer-events-none"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <polyline
-            ref={lineRef}
-            fill="none"
-            stroke="white"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-            points={linePoints}
-          />
-        </svg>
-      </div>
-
-      <div className="flex flex-wrap gap-4 pt-2 text-[0.6rem] font-mono tracking-wider text-white/45 uppercase border-t border-white/10">
-        <span className="flex items-center gap-2">
-          <span className="w-2 h-2 bg-[#FFA500]" /> Forecast
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="w-2 h-2 bg-white/25" /> Actual
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="w-2 h-2 border border-white/40" /> Trend
-        </span>
-      </div>
-    </div>
-  );
-}
 
 export default function LogisticsSolutions() {
   const { isMobile } = useIsMobile();
@@ -323,7 +184,12 @@ export default function LogisticsSolutions() {
             {active.id === 'fleet' || active.id === 'dispatch' ? (
               <FleetVisualPanel key={active.id} mode={active.id === 'fleet' ? 'fleet' : 'dispatch'} />
             ) : (
-              <DispatchChart key={active.id} solution={active} />
+              <LogisticsSolutionChart
+                key={active.id}
+                chartLabel={active.chartLabel}
+                bars={active.bars}
+                line={active.line}
+              />
             )}
           </div>
         </div>
