@@ -97,8 +97,55 @@ const capabilityCards = [
         <rect x="11" y="7" width="2" height="2" fill="black" />
       </svg>
     )
+  },
+  {
+    title: 'Automated\nSettlement',
+    description: 'Reconcile invoices against delivery proofs instantly. Trigger smart contract payments upon successful gate exit or drop-off.',
+    className: 'lg:col-span-1 lg:row-span-1',
+    icon: (
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.2" strokeLinejoin="round">
+        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" strokeWidth="1.2" />
+      </svg>
+    )
+  },
+  {
+    title: 'Capacity\nForecasting',
+    description: 'Predict warehouse and fleet load constraints before they happen using historical volume analysis and market signals.',
+    className: 'lg:col-span-1 lg:row-span-1',
+    icon: (
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.2" strokeLinejoin="round">
+        <path d="M3 3v18h18" strokeWidth="1.2" />
+        <path d="M18 9l-5 5-4-4-5 5" strokeWidth="1.2" />
+      </svg>
+    )
+  },
+  {
+    title: 'Dock\nScheduling',
+    description: 'Eliminate yard congestion with algorithmic slotting. Synchronize arrival windows with live unload speeds and labor availability.',
+    className: 'lg:col-span-1 lg:row-span-1',
+    icon: (
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.2" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="1.2" />
+        <line x1="16" y1="2" x2="16" y2="6" strokeWidth="1.2" />
+        <line x1="8" y1="2" x2="8" y2="6" strokeWidth="1.2" />
+        <line x1="3" y1="10" x2="21" y2="10" strokeWidth="1.2" />
+      </svg>
+    )
+  },
+  {
+    title: 'Geofence\nTriggers',
+    description: 'Automate status updates, notify receivers, and prepare staging areas precisely when a vehicle breaches virtual perimeter boundaries.',
+    className: 'lg:col-span-1 lg:row-span-1',
+    icon: (
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.2" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" strokeWidth="1.2" strokeDasharray="4 4" />
+        <path d="M12 8v4l3 3" strokeWidth="1.2" />
+      </svg>
+    )
   }
 ];
+
+import Dither from './Dither';
 
 export default function Skills() {
   return (
@@ -112,15 +159,27 @@ export default function Skills() {
         {capabilityCards.map((card, index) => (
           <div 
             key={index} 
-            className={`bg-[#050505] p-12 md:p-16 hover:bg-[#080808] transition-colors cursor-pointer group flex flex-col ${card.className || ''}`}
+            className={`relative overflow-hidden bg-[#050505] p-12 md:p-16 hover:bg-[#080808] transition-colors cursor-pointer group flex flex-col ${card.className || ''}`}
           >
-            <div className="mb-10 opacity-80 group-hover:opacity-100 transition-opacity transform group-hover:-translate-y-1 duration-300">
+            <div className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+              <Dither
+                waveColor={[0.1, 0.1, 0.1]}
+                colorNum={4}
+                waveAmplitude={0.3}
+                waveFrequency={3}
+                waveSpeed={0.05}
+                enableMouseInteraction={true}
+                mouseRadius={0.4}
+              />
+            </div>
+            
+            <div className="relative z-10 mb-10 opacity-80 group-hover:opacity-100 transition-opacity transform group-hover:-translate-y-1 duration-300 pointer-events-none">
               {card.icon}
             </div>
-            <h3 className="font-mono text-lg font-bold text-white mb-6 leading-snug whitespace-pre-line">
+            <h3 className="relative z-10 font-mono text-lg font-bold text-white mb-6 leading-snug whitespace-pre-line pointer-events-none">
               {card.title}
             </h3>
-            <p className="text-[13px] md:text-sm text-white/50 leading-relaxed font-sans max-w-md">
+            <p className="relative z-10 text-[13px] md:text-sm text-white/50 leading-relaxed font-sans max-w-md pointer-events-none">
               {card.description}
             </p>
           </div>

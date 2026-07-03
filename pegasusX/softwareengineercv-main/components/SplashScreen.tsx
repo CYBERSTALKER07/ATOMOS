@@ -49,7 +49,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, duration = 3000
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[9999] bg-black flex items-center justify-center overflow-hidden"
+      className="fixed inset-0 z-[10005] bg-black flex items-center justify-center overflow-hidden"
     >
       {/* Main Logo */}
       <div ref={logoRef} className="flex items-center justify-center">

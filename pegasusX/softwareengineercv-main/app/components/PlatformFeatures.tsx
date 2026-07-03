@@ -112,17 +112,13 @@ export default function PlatformFeatures() {
     <section className="bg-black text-white relative border-t border-white/5 overflow-hidden">
       <div className="max-w-[1600px] mx-auto">
         {/* Header Section */}
-        <div className="px-6 py-16 md:px-12 md:py-24 max-w-3xl">
-          <p className="text-[#a0a0a0] text-lg md:text-xl leading-relaxed tracking-wide">
-            Unlock the full potential of logistics workflows. Our infrastructure ensures low latency and high-fidelity visibility for every order.
-          </p>
-        </div>
+
 
         {/* 4-Column Grid Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 border-t border-white/5 relative z-10">
           {FEATURES.map((feature, index) => (
-            <div 
-              key={feature.title} 
+            <div
+              key={feature.title}
               className={`p-8 md:p-12 relative flex flex-col items-center text-center border-white/5
                 ${index < FEATURES.length - 1 ? 'border-b lg:border-b-0 lg:border-r' : ''}
                 ${index === 1 ? 'md:border-r-0 lg:border-r' : ''}
@@ -132,7 +128,7 @@ export default function PlatformFeatures() {
             >
               {/* Dotted Background */}
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.15)_1px,transparent_1px)] bg-[size:24px_24px] opacity-20 pointer-events-none" />
-              
+
               {/* Icon Container */}
               <div className="h-48 w-full flex items-center justify-center relative z-10 mb-8">
                 <FeatureIcon type={feature.icon} />

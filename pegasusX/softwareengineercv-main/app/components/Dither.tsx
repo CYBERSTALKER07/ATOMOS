@@ -1,7 +1,6 @@
-
-'use client';
-
-import { useRef, useEffect, forwardRef } from 'react';
+"use client";
+/* eslint-disable react/no-unknown-property */
+import { useRef, useState, useEffect, forwardRef } from 'react';
 import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import { EffectComposer, wrapEffect } from '@react-three/postprocessing';
 import { Effect } from 'postprocessing';
@@ -304,7 +303,7 @@ export default function Dither({
   waveSpeed = 0.05,
   waveFrequency = 3,
   waveAmplitude = 0.3,
-  waveColor = [1, 1, 1],
+  waveColor = [0.5, 0.5, 0.5],
   colorNum = 4,
   pixelSize = 2,
   disableAnimation = false,

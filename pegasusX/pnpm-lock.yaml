@@ -858,7 +858,7 @@ importers:
         specifier: ^10.7.6
         version: 10.7.7(@react-three/fiber@9.6.1(@types/react@19.2.15)(expo-asset@55.0.17(expo@55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.6)(react-dom@19.1.0(react@19.1.0))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0)(typescript@5.9.3))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0)(typescript@5.9.3))(expo-file-system@55.0.22(expo@55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.6)(react-dom@19.1.0(react@19.1.0))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0)(typescript@5.9.3))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0)))(expo@55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.6)(react-dom@19.1.0(react@19.1.0))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0)(typescript@5.9.3))(immer@11.1.8)(react-dom@19.1.0(react@19.1.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0)(three@0.180.0))(@types/react@19.2.15)(@types/three@0.180.0)(immer@11.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(three@0.180.0)
       '@react-three/fiber':
-        specifier: ^9.3.0
+        specifier: ^9.6.1
         version: 9.6.1(@types/react@19.2.15)(expo-asset@55.0.17(expo@55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.6)(react-dom@19.1.0(react@19.1.0))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0)(typescript@5.9.3))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0)(typescript@5.9.3))(expo-file-system@55.0.22(expo@55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.6)(react-dom@19.1.0(react@19.1.0))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0)(typescript@5.9.3))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0)))(expo@55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.6)(react-dom@19.1.0(react@19.1.0))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0)(typescript@5.9.3))(immer@11.1.8)(react-dom@19.1.0(react@19.1.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0))(react@19.1.0)(three@0.180.0)
       '@react-three/postprocessing':
         specifier: ^3.0.4
@@ -869,6 +869,9 @@ importers:
       '@types/three':
         specifier: ^0.180.0
         version: 0.180.0
+      '@xyflow/react':
+        specifier: ^12.11.1
+        version: 12.11.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(immer@11.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -896,6 +899,9 @@ importers:
       next-seo:
         specifier: ^6.8.0
         version: 6.8.0(next@16.2.10(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      ogl:
+        specifier: ^1.0.11
+        version: 1.0.11
       postprocessing:
         specifier: ^6.39.2
         version: 6.39.2(three@0.180.0)
@@ -5367,6 +5373,22 @@ packages:
   '@xtuc/long@4.2.2':
     resolution: {integrity: sha512-NuHqBY1PB/D8xU6s/thBgOAiAP7HOYDQ32+BFZILJ8ivkUkAHQnWfn6WhL79Owj1qmUnoN/YPhktdIoucipkAQ==}
 
+  '@xyflow/react@12.11.1':
+    resolution: {integrity: sha512-L+zBoLGSXham0MnlY8QqjfR7/C5JNw0zxkaey5aZ5XmCgJBAdH4+WRIu8CR40d3l/BdU635V6YbhBK1jMo8/6Q==}
+    peerDependencies:
+      '@types/react': '>=17'
+      '@types/react-dom': '>=17'
+      react: '>=17'
+      react-dom: '>=17'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
+        optional: true
+
+  '@xyflow/system@0.0.78':
+    resolution: {integrity: sha512-lY0z2qP33fUhTva9Vaxrk0lqZta2pkbxB1trHAx1omnJqRtPvDlAQYV2r5fhS6AdpkulYmbNW0svy+A4/t4B/g==}
+
   '@zip.js/zip.js@2.8.26':
     resolution: {integrity: sha512-RQ4h9F6DOiHxpdocUDrOl6xBM+yOtz+LkUol47AVWcfebGBDpZ7w7Xvz9PS24JgXvLGiXXzSAfdCdVy1tPlaFA==}
     engines: {bun: '>=0.7.0', deno: '>=1.0.0', node: '>=18.0.0'}
@@ -5957,6 +5979,9 @@ packages:
 
   class-variance-authority@0.7.1:
     resolution: {integrity: sha512-Ka+9Trutv7G8M6WT6SeiRWz792K5qEqIGEGzXKhAE6xOWAY6pPH8U+9IY3oCMv6kqTmLsv7Xh/2w2RigkePMsg==}
+
+  classcat@5.0.5:
+    resolution: {integrity: sha512-JhZUT7JFcQy/EzW605k/ktHtncoo9vnyW/2GspNYwFlN1C/WmjuV/xtS04e9SOkL2sTdw0VAZ2UGCcQ9lR6p6w==}
 
   clean-webpack-plugin@4.0.0:
     resolution: {integrity: sha512-WuWE1nyTNAyW5T7oNyys2EN0cfP2fdRxhxnIQWiAp0bMabPdHhoGxM8A6YL2GhqwgrPnnaemVE7nv5XJ2Fhh2w==}
@@ -8926,6 +8951,9 @@ packages:
 
   obug@2.1.1:
     resolution: {integrity: sha512-uTqF9MuPraAQ+IsnPf366RG4cP9RtUi7MLO1N3KEc+wb0a6yKpeL0lmk2IB1jY5KHPAlTc6T/JRdC/YqxHNwkQ==}
+
+  ogl@1.0.11:
+    resolution: {integrity: sha512-kUpC154AFfxi16pmZUK4jk3J+8zxwTWGPo03EoYA8QPbzikHoaC82n6pNTbd+oEaJonaE8aPWBlX7ad9zrqLsA==}
 
   on-finished@2.3.0:
     resolution: {integrity: sha512-ikqdkGAAyf/X/gPhXGvfgAytDZtDbr+bkNUJ0N9h5MI/dmdgCs3l6hoHrcUv41sRKew3jIwrp4qQDXiK99Utww==}
@@ -17225,6 +17253,31 @@ snapshots:
 
   '@xtuc/long@4.2.2': {}
 
+  '@xyflow/react@12.11.1(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(immer@11.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@xyflow/system': 0.0.78
+      classcat: 5.0.5
+      react: 19.1.0
+      react-dom: 19.1.0(react@19.1.0)
+      zustand: 4.5.7(@types/react@19.2.15)(immer@11.1.8)(react@19.1.0)
+    optionalDependencies:
+      '@types/react': 19.2.15
+      '@types/react-dom': 19.2.3(@types/react@19.2.15)
+    transitivePeerDependencies:
+      - immer
+
+  '@xyflow/system@0.0.78':
+    dependencies:
+      '@types/d3-drag': 3.0.7
+      '@types/d3-interpolate': 3.0.4
+      '@types/d3-selection': 3.0.11
+      '@types/d3-transition': 3.0.9
+      '@types/d3-zoom': 3.0.8
+      d3-drag: 3.0.0
+      d3-interpolate: 3.0.1
+      d3-selection: 3.0.0
+      d3-zoom: 3.0.0
+
   '@zip.js/zip.js@2.8.26': {}
 
   a5-js@0.7.3:
@@ -17931,6 +17984,8 @@ snapshots:
   class-variance-authority@0.7.1:
     dependencies:
       clsx: 2.1.1
+
+  classcat@5.0.5: {}
 
   clean-webpack-plugin@4.0.0(webpack@5.108.3):
     dependencies:
@@ -21619,6 +21674,8 @@ snapshots:
       es-object-atoms: 1.1.1
 
   obug@2.1.1: {}
+
+  ogl@1.0.11: {}
 
   on-finished@2.3.0:
     dependencies:

@@ -21,7 +21,7 @@ export default function SystemLoadWidget() {
   }, []);
 
   return (
-    <div ref={containerRef} className="bg-[#0A0A0A] border border-white/5 p-6 rounded flex flex-col relative shadow-2xl overflow-hidden h-full">
+    <div ref={containerRef} className="bg-[#000000] border border-white/5 p-6 rounded flex flex-col relative shadow-2xl overflow-hidden h-full">
       {/* Background ambient glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] bg-white/[0.02] blur-[50px] rounded-full pointer-events-none" />
 

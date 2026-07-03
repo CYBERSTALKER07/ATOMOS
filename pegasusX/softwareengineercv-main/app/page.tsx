@@ -55,9 +55,9 @@ export default function Home() {
         <Hero />
         <LaneDivider index="01" label="Network" />
         <About />
-        <PlatformValue />
+        {/* <PlatformValue /> */}
         <LaneDivider index="02" label="Signal" />
-        <SignalFeatureCards />
+        {/* <SignalFeatureCards /> */}
         <OrderCycleVisualSection />
         <DispatchVisualSection />
         <PlatformFeatures />

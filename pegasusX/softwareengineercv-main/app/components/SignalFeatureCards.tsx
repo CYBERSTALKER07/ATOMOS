@@ -115,30 +115,30 @@ export default function SignalFeatureCards() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-          {CARDS.map((card) => (
-            <Link key={card.href} href={card.href} className="chamfer-card p-6 md:p-8">
-              <div className="flex items-start justify-between gap-4">
-                <h3 className="text-lg font-semibold leading-snug md:text-xl">{card.title}</h3>
-                <span className="chamfer-card__ascii hidden sm:block" aria-hidden>
-                  {card.ascii}
+        {CARDS.map((card) => (
+          <Link key={card.href} href={card.href} className="chamfer-card p-6 md:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <h3 className="text-lg font-semibold leading-snug md:text-xl">{card.title}</h3>
+              <span className="chamfer-card__ascii hidden sm:block" aria-hidden>
+                {card.ascii}
+              </span>
+            </div>
+            <div className="chamfer-card__icon my-6">
+              <LineIcon type={card.icon} />
+            </div>
+            <p className="text-sm leading-relaxed text-white/55">{card.description}</p>
+            <div className="chamfer-card__bottom">
+              {/* <RouteEndpoints from={card.from} to={card.to} /> */}
+              <div className="chamfer-card__footer chamfer-card__footer--route">
+                <span className="chamfer-card__meta">{card.meta}</span>
+                <span className="chamfer-btn chamfer-btn--ghost chamfer-btn--icon" aria-hidden>
+                  <ChamferArrowIcon />
                 </span>
               </div>
-              <div className="chamfer-card__icon my-6">
-                <LineIcon type={card.icon} />
-              </div>
-              <p className="text-sm leading-relaxed text-white/55">{card.description}</p>
-              <div className="chamfer-card__bottom">
-                <RouteEndpoints from={card.from} to={card.to} />
-                <div className="chamfer-card__footer chamfer-card__footer--route">
-                  <span className="chamfer-card__meta">{card.meta}</span>
-                  <span className="chamfer-btn chamfer-btn--ghost chamfer-btn--icon" aria-hidden>
-                    <ChamferArrowIcon />
-                  </span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+            </div>
+          </Link>
+        ))}
+      </div>
     </PageSection>
   );
 }

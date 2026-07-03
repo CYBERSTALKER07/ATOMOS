@@ -1,9 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import gsap from 'gsap';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import PageSection from './layout/PageSection';
 import SystemLoadWidget from './SystemLoadWidget';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const SIDEBAR_NAV = [
   { id: 'supplier', label: 'Supplier Operations', icon: 'M4 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0 M3.1 17l1.4 -6.2a2 2 0 0 1 1.9 -1.6h7.2a2 2 0 0 1 1.9 1.6l1.4 6.2 M2 9h10 M17 17a2 2 0 1 0 4 0a2 2 0 0 0 -4 0 M15.1 17l1.4 -6.2a2 2 0 0 1 1.9 -1.6h1.2' },
@@ -50,11 +53,18 @@ export default function EcosystemStats() {
   const data = TAB_DATA[activeTab];
 
   useEffect(() => {
-    // Animate content change
+    // Advanced staggered entrance animation
     const ctx = gsap.context(() => {
-      gsap.fromTo('.dashboard-content > div',
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: 'power2.out', clearProps: 'all' }
+      gsap.timeline({
+        scrollTrigger: {
+          trigger: dashboardRef.current,
+          start: 'top 80%',
+          toggleActions: 'play none none reverse',
+        }
+      })
+      .fromTo('.stat-card',
+        { opacity: 0, y: 40, scale: 0.95 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.8, stagger: 0.15, ease: 'back.out(1.2)', clearProps: 'all' }
       );
     }, dashboardRef);
     return () => ctx.revert();
@@ -79,33 +89,28 @@ export default function EcosystemStats() {
           <h2 id="ecosystem-stats-heading" className="text-5xl md:text-7xl font-medium tracking-tight mb-6 text-white">
             Optimized for the entire chain
           </h2>
-          <p className="text-white/50 max-w-3xl text-base md:text-lg leading-relaxed">
-            Monitor every network pulse in real-time. Pegasus provides a single pane of glass for deep telemetry into supplier fulfillment, warehouse operations, fleet tracking, and retailer deliveries.
-          </p>
+
         </div>
 
         {/* Massive Dashboard UI */}
-        <div ref={dashboardRef} className="bg-[#050505] border-y border-white/10 overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] flex flex-col lg:flex-row min-h-[800px] w-full">
+        <div ref={dashboardRef} className="bg-[#050505] border-none  border-white/10 overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] flex flex-col lg:flex-row min-h-[800px] w-full">
 
           {/* Sidebar */}
 
 
           {/* Main Content Area */}
-          <div className="flex-1 p-6 md:p-10 dashboard-content flex flex-col bg-[#0A0A0A] relative">
+          <div className="flex-1 p-6 md:p-10 dashboard-content flex flex-col bg-[#000000]  relative">
             {/* Grid Pattern Background */}
             <div className="absolute inset-0 bg-[url('/images/grid-pattern.svg')] opacity-[0.03] pointer-events-none" style={{ backgroundSize: '40px 40px' }} />
 
             {/* Content Header */}
-            <div className="mb-10 relative z-10">
-              <h3 className="text-3xl font-medium text-white mb-2">{data.title}</h3>
-              <p className="text-white/40">{data.subtitle}</p>
-            </div>
+
 
             {/* Metrics Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 flex-1 relative z-10">
 
               {/* Feature/Load Widget (takes up 2 columns on wide screens) */}
-              <div className="xl:col-span-2 rounded-xl overflow-hidden shadow-2xl">
+              <div className="xl:col-span-2 rounded-xl overflow-hidden shadow-2xl stat-card group transition-all duration-500  hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)]">
                 {/* Embedded complex stats */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                   <div className="h-[380px] md:h-full">
@@ -113,7 +118,7 @@ export default function EcosystemStats() {
                   </div>
 
                   {/* Secondary large widget */}
-                  <div className="bg-[#0A0A0A] border border-white/5 p-8 rounded shadow-2xl flex flex-col relative h-[380px] md:h-full">
+                  <div className="bg-[#000000] border border-white/5 p-8 rounded shadow-2xl flex flex-col relative h-[380px] md:h-full transition-colors duration-500 group- group-hover:bg-[#0000000]">
                     <div className="flex justify-between items-start mb-6">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
@@ -136,7 +141,7 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 1: Circle Gauge */}
-              <div className="bg-[#0A0A0A] border border-white/5 p-8 rounded flex flex-col relative h-[380px] md:h-full shadow-2xl">
+              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] md:h-full shadow-2xl stat-card group transition-all duration-500   hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:bg-[#0000000]">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
@@ -160,7 +165,7 @@ export default function EcosystemStats() {
                     <circle cx="110" cy="110" r="85" fill="none" stroke="white" strokeWidth="20"
                       strokeDasharray={2 * Math.PI * 85}
                       strokeDashoffset={(2 * Math.PI * 85) * (1 - data.card1.percent / 100)}
-                      className="transition-all duration-1000 ease-out"
+                      className="transition-all duration-1000 ease-out group-hover:stroke-[#fbff63]"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -182,7 +187,7 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 2: Bar Chart */}
-              <div className="bg-[#0A0A0A] border border-white/5 p-8 rounded flex flex-col relative h-[380px] shadow-2xl">
+              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] shadow-2xl stat-card group transition-all duration-500   hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:bg-[#0000000]">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
@@ -214,7 +219,7 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 3: Speedometer */}
-              <div className="bg-[#0A0A0A] border border-white/5 p-8 rounded flex flex-col relative h-[380px] xl:col-span-2 shadow-2xl">
+              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] xl:col-span-2 shadow-2xl stat-card group transition-all duration-500   hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:bg-[#0000000]">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
@@ -236,7 +241,7 @@ export default function EcosystemStats() {
                     <path d="M 20 160 A 140 140 0 0 1 300 160" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="36" />
                     <path d="M 20 160 A 140 140 0 0 1 300 160" fill="none" stroke="white" strokeWidth="36"
                       strokeDasharray={Math.PI * 140} strokeDashoffset={(Math.PI * 140) * 0.3}
-                      className="transition-all duration-1000 ease-out"
+                      className="transition-all duration-1000 ease-out group-hover:stroke-[#fbff63]"
                     />
                   </svg>
 
@@ -245,11 +250,11 @@ export default function EcosystemStats() {
                   </div>
 
                   <div className="w-full flex justify-between px-12 mt-32 z-10">
-                    <div className="text-center bg-[#0A0A0A]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
+                    <div className="text-center bg-[#000000]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
                       <div className="text-xs text-white/90">{data.card3.stat1}</div>
                       <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card3.label1}</div>
                     </div>
-                    <div className="text-center bg-[#0A0A0A]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
+                    <div className="text-center bg-[#000000]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
                       <div className="text-xs text-white/90">{data.card3.stat2}</div>
                       <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card3.label2}</div>
                     </div>

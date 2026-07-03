@@ -247,39 +247,24 @@ export default function LogisticsWorkflow() {
             <div className="w-full md:w-[280px] border-b md:border-b-0 md:border-r border-white/10 bg-black flex flex-col z-20 shrink-0">
 
               {/* Top Tabs for Roles */}
-              <div className="p-6 pb-4">
-                <div className="grid grid-cols-2 gap-2">
+              <div className="p-6 flex-1 flex flex-col gap-3">
+                <div className="text-[10px] tracking-widest uppercase text-white/40 font-mono mb-2">
+                  Workflow Role
+                </div>
+                <div className="flex flex-col gap-2">
                   {(Object.keys(ROLE_LABELS) as WorkflowRole[]).map((role) => (
                     <button
                       key={role}
                       onClick={() => setActiveRole(role)}
                       className={`
-                        text-xs font-bold py-3 rounded-md tracking-wide transition-colors
+                        text-xs  py-4 rounded-none tracking-wide transition-colors text-left px-4 border
                         ${activeRole === role
-                          ? 'bg-white text-black'
-                          : 'border border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-white/10'}
+                          ? 'bg-white text-black border-white'
+                          : 'border-white/10 bg-black/5 text-white/60 hover:text-white hover:bg-white/10'}
                       `}
                     >
                       {ROLE_LABELS[role]}
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="px-6 flex-1">
-                <div className="text-[10px] tracking-widest uppercase text-white/40 font-mono mb-4 mt-4">
-                  Stack Elements
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  {['order', 'filter', 'agent', 'code', 'webhook', 'condition', 'telegram', 'sms', '+'].map((icon, i) => (
-                    <div key={i} className="aspect-square border border-white/10 rounded-lg bg-black flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 hover:border-white/30 transition-all cursor-pointer group shadow-sm">
-                      {icon === '+' ? (
-                        <span className="text-xl font-light">+</span>
-                      ) : (
-                        <WorkflowIcon type={icon} className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                      )}
-                    </div>
                   ))}
                 </div>
               </div>
@@ -296,16 +281,7 @@ export default function LogisticsWorkflow() {
               <div ref={canvasRef} className="relative min-w-[1300px] min-h-[800px] w-full h-full">
 
                 {/* Top Canvas Bar (Sticky so it stays visible while scrolling) */}
-                <div className="sticky top-0 left-0 right-0 p-6 flex gap-4 z-20">
-                  <div className="bg-[#111] border border-white/10 rounded-md px-4 py-2 text-xs font-mono text-white/60 flex items-center gap-2 shadow-xl hover:bg-[#1a1a1a] transition-colors cursor-pointer">
-                    <span>{ROLE_LABELS[activeRole]} WORKFLOW</span>
-                    <div className="w-2 h-2 bg-white rounded-sm rotate-45 ml-2"></div>
-                  </div>
-                  <div className="bg-[#111] border border-white/10 rounded-md px-4 py-2 text-xs font-mono text-white/60 flex items-center gap-2 shadow-xl hover:bg-[#1a1a1a] transition-colors cursor-pointer">
-                    <span>PRODUCTION</span>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
-                  </div>
-                </div>
+
 
                 {/* SVG Connection Lines & Overlays */}
                 <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
@@ -356,12 +332,7 @@ export default function LogisticsWorkflow() {
                 </div>
 
                 {/* Bottom Right Floating Badge */}
-                <div className="sticky bottom-6 right-6 float-right mr-6 z-30 wf-node">
-                  <div className="bg-white text-black px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-transform cursor-pointer">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4 15l8-8 8 8" /></svg>
-                    Pegasus Platform
-                  </div>
-                </div>
+
 
               </div>
             </div>
