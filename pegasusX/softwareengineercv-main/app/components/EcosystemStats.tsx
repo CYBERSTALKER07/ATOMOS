@@ -23,17 +23,17 @@ const TAB_DATA = {
 
 export default function EcosystemStats() {
   const [activeTab, setActiveTab] = useState<keyof typeof TAB_DATA>('Supplier');
-  
+
   const data = TAB_DATA[activeTab];
 
   return (
-    <PageSection className="bg-[#050505] !py-32 md:!py-48 border-t border-white/5 relative overflow-hidden" aria-labelledby="ecosystem-stats-heading">
-      
+    <PageSection className="bg-[#050505] w-full !py-32 md:!py-48 border-t border-white/5 relative overflow-hidden" aria-labelledby="ecosystem-stats-heading">
+
       {/* Background ambient light */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1000px] h-[400px] bg-white/[0.02] blur-[100px] pointer-events-none rounded-full" />
-      
+
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 relative z-10">
-        
+
         {/* Header */}
         <div className="mb-12">
           <div className="flex items-center gap-3 text-white/40 mb-6">
@@ -56,9 +56,8 @@ export default function EcosystemStats() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-4 text-sm font-medium tracking-wide transition-colors relative whitespace-nowrap ${
-                activeTab === tab ? 'text-white' : 'text-white/40 hover:text-white/80'
-              }`}
+              className={`px-6 py-4 text-sm font-medium tracking-wide transition-colors relative whitespace-nowrap ${activeTab === tab ? 'text-white' : 'text-white/40 hover:text-white/80'
+                }`}
             >
               {tab}
               {activeTab === tab && (
@@ -70,50 +69,50 @@ export default function EcosystemStats() {
 
         {/* 3-Card Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
           {/* Card 1: Circle Gauge */}
           <div className="bg-[#0a0a0a] border border-white/5 p-8 rounded flex flex-col relative h-[460px] shadow-2xl">
             <div className="flex justify-between items-start mb-2">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square" /></svg>
                 </div>
                 <span className="text-base font-medium text-white/90">{data.card1.title}</span>
               </div>
               <span className="text-xs font-mono text-white/40">{data.card1.metric}</span>
             </div>
             <div className="text-sm text-white/40 mb-8">{data.card1.subtitle}</div>
-            
+
             <div className="flex-1 flex items-center justify-center relative">
-               <svg width="260" height="260" className="-rotate-90 drop-shadow-xl">
-                 <circle cx="130" cy="130" r="100" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="24" />
-                 {/* ticks */}
-                 <g stroke="rgba(255,255,255,0.15)" strokeWidth="1.5">
-                   {[...Array(40)].map((_, i) => (
-                     <line key={i} x1="130" y1="16" x2="130" y2="24" transform={`rotate(${i * 9} 130 130)`} />
-                   ))}
-                 </g>
-                 <circle cx="130" cy="130" r="100" fill="none" stroke="white" strokeWidth="24" 
-                   strokeDasharray={2 * Math.PI * 100} 
-                   strokeDashoffset={(2 * Math.PI * 100) * (1 - data.card1.percent / 100)} 
-                   className="transition-all duration-1000 ease-out"
-                 />
-               </svg>
-               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                 <span className="text-5xl font-light tracking-tight text-white">{data.card1.value}</span>
-                 <span className="text-xs font-mono text-white/40 mt-1 uppercase">{data.card1.unit}</span>
-               </div>
-               
-               <div className="absolute left-0 bottom-4 flex flex-col gap-4">
-                 <div>
-                   <div className="text-xs text-white/90">{data.card1.stat1}</div>
-                   <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card1.label1}</div>
-                 </div>
-                 <div>
-                   <div className="text-xs text-white/90">{data.card1.stat2}</div>
-                   <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card1.label2}</div>
-                 </div>
-               </div>
+              <svg width="260" height="260" className="-rotate-90 drop-shadow-xl">
+                <circle cx="130" cy="130" r="100" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="24" />
+                {/* ticks */}
+                <g stroke="rgba(255,255,255,0.15)" strokeWidth="1.5">
+                  {[...Array(40)].map((_, i) => (
+                    <line key={i} x1="130" y1="16" x2="130" y2="24" transform={`rotate(${i * 9} 130 130)`} />
+                  ))}
+                </g>
+                <circle cx="130" cy="130" r="100" fill="none" stroke="white" strokeWidth="24"
+                  strokeDasharray={2 * Math.PI * 100}
+                  strokeDashoffset={(2 * Math.PI * 100) * (1 - data.card1.percent / 100)}
+                  className="transition-all duration-1000 ease-out"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-5xl font-light tracking-tight text-white">{data.card1.value}</span>
+                <span className="text-xs font-mono text-white/40 mt-1 uppercase">{data.card1.unit}</span>
+              </div>
+
+              <div className="absolute left-0 bottom-4 flex flex-col gap-4">
+                <div>
+                  <div className="text-xs text-white/90">{data.card1.stat1}</div>
+                  <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card1.label1}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-white/90">{data.card1.stat2}</div>
+                  <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card1.label2}</div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -122,26 +121,26 @@ export default function EcosystemStats() {
             <div className="flex justify-between items-start mb-2">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square" /></svg>
                 </div>
                 <span className="text-base font-medium text-white/90">{data.card2.title}</span>
               </div>
               <span className="text-xs font-mono text-white/40">{data.card2.metric}</span>
             </div>
             <div className="text-sm text-white/40 mb-10">{data.card2.subtitle}</div>
-            
+
             <div className="flex-1 flex items-end justify-between relative px-2 pb-6">
               <div className="absolute top-[35%] left-0 right-0 border-t border-dashed border-white/10" />
               <div className="absolute top-[35%] left-4 -translate-y-1/2 bg-white text-black text-xs font-mono px-3 py-1 rounded-sm z-10">
                 SLA TARGET
               </div>
-              
+
               {data.card2.bars.map((h, i) => (
                 <div key={i} className="flex flex-col items-center gap-1.5 relative z-0 h-[220px] justify-end">
                   {i === 4 ? (
-                     <div className="w-3 h-3 rounded-full bg-gradient-to-tr from-[#FF3366] to-[#33CCFF] absolute -top-5 shadow-[0_0_12px_rgba(255,51,102,0.8)] z-10" />
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-tr from-[#FF3366] to-[#33CCFF] absolute -top-5 shadow-[0_0_12px_rgba(255,51,102,0.8)] z-10" />
                   ) : (
-                     <div className="w-2 h-2 rounded-full bg-white/80 absolute -top-4" />
+                    <div className="w-2 h-2 rounded-full bg-white/80 absolute -top-4" />
                   )}
                   <div className="w-1 bg-white/10 transition-all duration-700 ease-out" style={{ height: `${h * 1.8}px` }} />
                 </div>
@@ -154,42 +153,42 @@ export default function EcosystemStats() {
             <div className="flex justify-between items-start mb-2">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square" /></svg>
                 </div>
                 <span className="text-base font-medium text-white/90">{data.card3.title}</span>
               </div>
               <span className="text-xs font-mono text-white/40">{data.card3.metric}</span>
             </div>
             <div className="text-sm text-white/40 mb-8">{data.card3.subtitle}</div>
-            
+
             <div className="flex-1 flex flex-col items-center justify-end relative pt-12 pb-4">
-               <svg width="320" height="170" className="overflow-visible drop-shadow-xl">
-                 <g className="text-white/15" strokeWidth="1.5">
-                   {[...Array(35)].map((_, i) => (
-                     <line key={i} x1="160" y1="16" x2="160" y2="24" transform={`rotate(${i * 5 - 85} 160 160)`} stroke="currentColor" />
-                   ))}
-                 </g>
-                 <path d="M 20 160 A 140 140 0 0 1 300 160" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="36" />
-                 <path d="M 20 160 A 140 140 0 0 1 300 160" fill="none" stroke="white" strokeWidth="36" 
-                   strokeDasharray={Math.PI * 140} strokeDashoffset={(Math.PI * 140) * 0.3} 
-                   className="transition-all duration-1000 ease-out"
-                 />
-               </svg>
-               
-               <div className="absolute top-[120px] flex flex-col items-center pointer-events-none">
-                 <span className="text-6xl font-light tracking-tight text-white">{data.card3.value}</span>
-               </div>
-               
-               <div className="w-full flex justify-between px-8 mt-8">
-                 <div className="text-center">
-                   <div className="text-xs text-white/90">{data.card3.stat1}</div>
-                   <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card3.label1}</div>
-                 </div>
-                 <div className="text-center">
-                   <div className="text-xs text-white/90">{data.card3.stat2}</div>
-                   <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card3.label2}</div>
-                 </div>
-               </div>
+              <svg width="320" height="170" className="overflow-visible drop-shadow-xl">
+                <g className="text-white/15" strokeWidth="1.5">
+                  {[...Array(35)].map((_, i) => (
+                    <line key={i} x1="160" y1="16" x2="160" y2="24" transform={`rotate(${i * 5 - 85} 160 160)`} stroke="currentColor" />
+                  ))}
+                </g>
+                <path d="M 20 160 A 140 140 0 0 1 300 160" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="36" />
+                <path d="M 20 160 A 140 140 0 0 1 300 160" fill="none" stroke="white" strokeWidth="36"
+                  strokeDasharray={Math.PI * 140} strokeDashoffset={(Math.PI * 140) * 0.3}
+                  className="transition-all duration-1000 ease-out"
+                />
+              </svg>
+
+              <div className="absolute top-[120px] flex flex-col items-center pointer-events-none">
+                <span className="text-6xl font-light tracking-tight text-white">{data.card3.value}</span>
+              </div>
+
+              <div className="w-full flex justify-between px-8 mt-8">
+                <div className="text-center">
+                  <div className="text-xs text-white/90">{data.card3.stat1}</div>
+                  <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card3.label1}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-white/90">{data.card3.stat2}</div>
+                  <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card3.label2}</div>
+                </div>
+              </div>
             </div>
           </div>
 
