@@ -178,7 +178,7 @@ For each role, list its apps (all must stay in sync per doctrine). For each app/
 - **Phase:** Payload/manifest adjacent work moves factory row together.
 
 ### 2.4 DRIVER Role
-**Apps:** driver-app-android, driver-app-ios (canonical driverappios structure). No desktop.  
+**Apps:** driver-app-android, driver-app-ios/driverappios (Xcode target `driverappios`). No desktop.  
 **Primary backend:** driverroutes + driver/* + telemetry + order edges + manifest-gate.
 
 - **Depends on:** 1.6 (telemetry + tracking), 1.2 (edges: reorder/bypass/credit/missing/split + shopclosed + negotiation), 1.7 (manifest gate + execution), 1.4 (assign/profile vehicle), 1.10 (driver rooms + telemetry hub + FCM + client policy).

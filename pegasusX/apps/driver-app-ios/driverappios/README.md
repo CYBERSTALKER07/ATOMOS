@@ -11,7 +11,7 @@ Native SwiftUI driver execution client for the pegasusX local stack.
 ## Open in Xcode
 
 ```bash
-cd pegasusX/apps/driverappios
+cd pegasusX/apps/driver-app-ios/driverappios
 open driverappios.xcodeproj
 ```
 

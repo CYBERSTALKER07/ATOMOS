@@ -2,7 +2,7 @@
 
 > **Canonical cross-role spec:** [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md) — use this matrix for screen-level parity; use the master plan for end-to-end flows, comms, and verification gates.
 
-Last updated: 2026-07-01 (PX91 digital brain sync). Canonical reference: `pegasus/`. Delivery tree: `pegasusX/`.
+Last updated: 2026-07-03 (PX-ECS doc alignment). Canonical reference: `pegasus/`. Delivery tree: `pegasusX/`.
 
 ## Summary
 

@@ -16,26 +16,34 @@ Single-tenant logistics stack. Sibling project to `pegasus/`.
 **Role / App Matrix (launch scope)**
 | Role | Surfaces |
 |---|---|
-| SUPPLIER | supplier-portal (web + Tauri desktop) |
+| SUPPLIER | supplier-portal (web + Tauri desktop), supplier-app-android, supplier-app-ios |
 | RETAILER | retailer-app-android, retailer-app-ios, retailer-app-desktop |
-| DRIVER | driver-app-android, driver-app-ios |
+| DRIVER | driver-app-android, driver-app-ios/driverappios |
 | WAREHOUSE | warehouse-portal, warehouse-app-android, warehouse-app-ios |
 | FACTORY | factory-portal, factory-app-android, factory-app-ios |
 | PAYLOAD | payload-terminal, payload-app-ios, payload-app-android |
 | MARKETING | marketing-site (Next.js, port 3004) |
-| SYSTEM | backend-go, ai-worker |
+| SYSTEM | backend-go, ai-worker, handoff-service (optional QR sidecar; embedded in backend for SSMR) |
+
+**Deprecated / anchor-only**
+- `admin-portal` — stub; use `supplier-portal`
+- `supplier-app-desktop` — README anchor; desktop ships via `supplier-portal` Tauri
 
 **Repo Layout**
 ```
 pegasusX/
 ├── .github/          # project-local doctrine (ACT, copilot, gemini)
-├── apps/             # role-row applications
-├── packages/         # shared types, api-client, validation, i18n, ui-kit, config
+├── apps/             # role-row applications (25 entries)
+├── packages/         # shared types, api-client, validation, i18n, ui-kit, desktop-bridge, ws-refresh-contract, … (18 packages)
 ├── contracts/        # canonical event/schema artifacts (events.schema.json)
 ├── infra/            # docker-compose, terraform, k8s
-├── context/          # architecture, design system, technology inventory
-├── docs/             # operational docs
-└── scripts/          # build, guard, codegen
+├── services/         # optimizer-core (VRP sidecar)
+├── context/          # architecture, design system, technology inventory, plan anchors
+├── docs/             # operational runbooks and checklists
+├── scripts/          # build, guard, codegen, SSMR smoke
+├── design-system/    # per-portal design tokens
+├── softwareengineercv-main/  # portfolio / marketing Next.js site
+└── visuals/          # Remotion marketing assets
 ```
 
 **See**

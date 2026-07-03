@@ -1,6 +1,6 @@
 # pegasusX — Ecosystem Data Flow & Realtime Sync Plan
 
-Last updated: 2026-07-02
+Last updated: 2026-07-03
 
 **Authority:** Subordinate to [`plan.md`](plan.md). Implements the 2026-07-01 cross-ecosystem audit (backend, all role rows, planning brain, infra).
 
@@ -191,7 +191,8 @@ flowchart LR
 |--------------|---------------|-----------------|
 | `ROLE_ROW_PARITY_MATRIX` signal ingest | Wired → affects forecast | Wired → baseline when payload includes `product_id` + `warehouse_id`; ops status panel (PX-ECS-3E) |
 | `ROLE_ROW_PARITY_MATRIX` promo P&L | API-only / portal-only | Portal + Android/iOS sandbox UI (PX-ECS-3A, 4D) |
-| `PlanDigitalBrain.md` SSMR | Pending | Local green 2026-07-01; staging pending (PX-ECS-5) |
+| `PlanDigitalBrain.md` SSMR | Local green 2026-07-02; staging pending (PX-ECS-5) | Aligned |
+| `plan_90.md` SSMR markers | Was pending (MaxRedemptions blocker) | **green locally** — `20260702_supplier_promotions_redemption_caps.ddl` applied |
 | `plan_90.md` “AI demand sensing” | Shipped | Math heuristic (predictive push); ML deferred |
 
 ---

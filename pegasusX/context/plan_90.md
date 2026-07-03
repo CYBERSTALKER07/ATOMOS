@@ -1,6 +1,6 @@
 # pegasusX plan_90 — Planning Brain (o9-inspired, Pegasus-ready)
 
-Last updated: 2026-07-01
+Last updated: 2026-07-03
 
 **Authority:** Subordinate to [`plan.md`](plan.md). Does not replace execution-phase anchors (PX0–PX12). This track adds the **planning brain** on top of the existing execution muscle.
 
@@ -21,7 +21,7 @@ Last updated: 2026-07-01
 | **Wave 3** | Demand brain + EKG | **shipped** | EKG v2 graph, governed agent executor, scenario + S&OP portal panel on analytics |
 | **PX91** | Digital brain extension | **shipped** (code) | Sparsity gate, seasonal overrides, ingest→Kafka, confidence UI, promo P&L, shadow mode — see [`PlanDigitalBrain.md`](PlanDigitalBrain.md) |
 
-**SSMR migration:** `schema/migrations/20260630_plan90_planning_brain.ddl` + `schema/migrations/20260701_plan91_digital_brain.ddl` applied automatically by `backend-setup` in `make test-ssmr-infra`. Full marker green run is **pending** until unrelated e2e blocker (`MaxRedemptions` catalog query) is fixed.
+**SSMR migration:** `schema/migrations/20260630_plan90_planning_brain.ddl`, `schema/migrations/20260701_plan91_digital_brain.ddl`, and `schema/migrations/20260702_supplier_promotions_redemption_caps.ddl` apply automatically in `backend-setup` during `make test-ssmr-infra`. Full PX90/PX91 marker run is **green locally** (2026-07-02 per [`plan_ecosystem_sync.md`](plan_ecosystem_sync.md)); cloud staging proof remains **pending** (`PX-ECS-5`).
 
 **Not in scope (unchanged):** Retail planning UI, full IBP, cross-supplier collaboration, merchandise planning.
 
@@ -94,7 +94,7 @@ flowchart TB
 | `PX90-A3` | Touchless auto-approve + `REPLENISHMENT_AUTO_APPROVED` outbox | **shipped** — `replenishment/touchless.go` opens `FactoryInternalTransfers` + `WAREHOUSE_TRANSFER_CREATED` |
 | `PX90-A4` | `GET /v1/supplier/meio/network-summary` | **implemented** |
 | `PX90-A5` | Supplier MEIO on dashboard (portal + iOS + Android); warehouse insight **why** | **implemented** |
-| `PX90-A6` | SSMR: `PX_E2E_MEIO_NETWORK_OK`, `PX_E2E_TOUCHLESS_REPLENISH_OK` | **wired** — `e2e_plan90.go`; **pending** full `make test-ssmr-infra` green (blocked by unrelated catalog e2e) |
+| `PX90-A6` | SSMR: `PX_E2E_MEIO_NETWORK_OK`, `PX_E2E_TOUCHLESS_REPLENISH_OK` | **shipped** — `e2e_plan90.go`; green under `make test-ssmr-infra` locally (2026-07-02) |
 
 ### Wave 2 — Days 31–60: Actionable control tower (P0) — **shipped**
 
@@ -105,7 +105,7 @@ flowchart TB
 | `PX90-B3` | `DISPATCH_ZONE_OVERRIDE` event + WS fanout | **implemented** — supplier, warehouse, driver rooms |
 | `PX90-B4` | Dispatch preview/execute respects active overrides | **implemented** — `dispatch/zone_override.go`, warehouse dispatch paths |
 | `PX90-B5` | Control-tower UI | **shipped** — portal `ControlTowerCommandPanel`; iOS/Android publish from fleet live map |
-| `PX90-B6` | SSMR: `PX_E2E_CONTROL_TOWER_OVERRIDE_OK` | **wired**; **pending** infra verify |
+| `PX90-B6` | SSMR: `PX_E2E_CONTROL_TOWER_OVERRIDE_OK` | **shipped** — green locally; staging proof pending (`PX-ECS-5`) |
 
 ### Wave 3 — Days 61–90: Demand brain + EKG (P1) — **shipped**
 
@@ -118,7 +118,7 @@ flowchart TB
 | `PX90-C5` | `GET /v1/supplier/planning/s-and-op` | **shipped** — API + portal + iOS/Android analytics |
 | `PX90-C6` | `GET /v1/supplier/knowledge-graph` EKG-lite | **shipped** — topology, SKUs, drivers, vehicles, retailers, active orders |
 | `PX90-C7` | Governed agent allowlist (`planning/agents.go`) | **shipped** — `planning/executor.go` synchronous allowlisted mutations |
-| `PX90-C8` | SSMR: `PX_E2E_DEMAND_BASELINE_OK`, `PX_E2E_SCENARIO_SANDBOX_OK`, `PX_E2E_KG_READ_OK` | **wired**; **pending** infra verify |
+| `PX90-C8` | SSMR: `PX_E2E_DEMAND_BASELINE_OK`, `PX_E2E_SCENARIO_SANDBOX_OK`, `PX_E2E_KG_READ_OK` | **shipped** — green locally; staging proof pending (`PX-ECS-5`) |
 
 ---
 
@@ -155,14 +155,14 @@ flowchart TB
 
 | Marker | Proves | Code | Infra verify |
 |---|---|---|---|
-| `PX_E2E_MEIO_NETWORK_OK` | MEIO network summary API | **wired** | **pending** |
-| `PX_E2E_TOUCHLESS_REPLENISH_OK` | Replenishment policies readable | **wired** | **pending** |
-| `PX_E2E_CONTROL_TOWER_OVERRIDE_OK` | Zone override create + list | **wired** | **pending** |
-| `PX_E2E_DEMAND_BASELINE_OK` | Supplier demand today (baseline path) | **wired** | **pending** |
-| `PX_E2E_SCENARIO_SANDBOX_OK` | Scenario run returns projection | **wired** | **pending** |
-| `PX_E2E_KG_READ_OK` | Knowledge graph returns nodes + edges | **wired** | **pending** |
+| `PX_E2E_MEIO_NETWORK_OK` | MEIO network summary API | **wired** | **green locally** (2026-07-02) |
+| `PX_E2E_TOUCHLESS_REPLENISH_OK` | Replenishment policies readable | **wired** | **green locally** |
+| `PX_E2E_CONTROL_TOWER_OVERRIDE_OK` | Zone override create + list | **wired** | **green locally** |
+| `PX_E2E_DEMAND_BASELINE_OK` | Supplier demand today (baseline path) | **wired** | **green locally** |
+| `PX_E2E_SCENARIO_SANDBOX_OK` | Scenario run returns projection | **wired** | **green locally** |
+| `PX_E2E_KG_READ_OK` | Knowledge graph returns nodes + edges | **wired** | **green locally** |
 
-Migration applies in SSMR `backend-setup`. Full green blocked (2026-07-01) by unrelated retailer catalog e2e (`MaxRedemptions` column missing in emulator schema).
+Migrations apply in SSMR `backend-setup` including `20260702_supplier_promotions_redemption_caps.ddl` (`MaxRedemptions` on `SupplierPromotions`). Cloud staging proof pending (`PX-ECS-5`).
 
 ---
 
@@ -172,11 +172,11 @@ Full anchor detail: [`PlanDigitalBrain.md`](PlanDigitalBrain.md) § VI.
 
 | Marker | Proves | Code | Infra verify |
 |---|---|---|---|
-| `PX_E2E_SPARSITY_GATE_OK` | ≥2 completed orders gate blocks sparse forecast | **wired** | **pending** |
-| `PX_E2E_CONFIDENCE_LABEL_OK` | Forecast range + confidence fields on baseline path | **wired** | **pending** |
-| `PX_E2E_PLANNING_INGEST_OK` | Signal ingest → Kafka → projection | **wired** | **pending** |
-| `PX_E2E_PROMO_PL_SIM_OK` | Pre-event promo P&L simulation (read-only) | **wired** | **pending** |
-| `PX_E2E_CLOSED_LOOP_EVAL_OK` | Closed-loop promo performance eval | **wired** | **pending** |
+| `PX_E2E_SPARSITY_GATE_OK` | ≥2 completed orders gate blocks sparse forecast | **wired** | **green locally** |
+| `PX_E2E_CONFIDENCE_LABEL_OK` | Forecast range + confidence fields on baseline path | **wired** | **green locally** |
+| `PX_E2E_PLANNING_INGEST_OK` | Signal ingest → Kafka → projection | **wired** | **green locally** |
+| `PX_E2E_PROMO_PL_SIM_OK` | Pre-event promo P&L simulation (read-only) | **wired** | **green locally** |
+| `PX_E2E_CLOSED_LOOP_EVAL_OK` | Closed-loop promo performance eval | **wired** | **green locally** |
 
 ---
 
@@ -210,8 +210,8 @@ pegasusX remains **execution + single-supplier planning**. See [`PEGASUS_REFEREN
 | 3 | One demand baseline powers warehouse forecast + supplier analytics | **shipped** |
 | 4 | Scenario sandbox answers factory-down / demand-spike without production mutation | **shipped** |
 | 5 | EKG-lite documents supplier network for pegasus federation | **shipped** |
-| 6 | All PX90 SSMR markers green under `make test-ssmr-infra` | **pending** — markers wired; migration auto-applies; full run blocked by unrelated e2e failure |
-| 7 | PX91 sparsity, ingest, confidence, promo sandbox markers green | **pending** — wired in `e2e_plan90.go`; same infra blocker |
+| 6 | All PX90 SSMR markers green under `make test-ssmr-infra` | **shipped** — green locally (2026-07-02); cloud staging pending (`PX-ECS-5`) |
+| 7 | PX91 sparsity, ingest, confidence, promo sandbox markers green | **shipped** — green locally; `20260702_supplier_promotions_redemption_caps.ddl` applied in SSMR setup |
 
 ---
 
@@ -219,7 +219,7 @@ pegasusX remains **execution + single-supplier planning**. See [`PEGASUS_REFEREN
 
 | Item | Owner | Priority |
 |---|---|---|
-| Fix `MaxRedemptions` schema drift so `make test-ssmr-infra` reaches plan90/plan91 markers | promotions / schema | P0 ops |
+| Cloud staging proof for PX90/PX91 SSMR markers (`PX-ECS-5D`) | platform | P0 ops |
 | pegasus P2: supplier planning UI + API port to admin-portal | pegasus admin-portal | P1 platform |
 | Wire dedicated API confidence fields on all forecast cards (replace client ±10% derive) | supplier + warehouse UI | **done** (2026-07-01) — `confidence` on demand/today + warehouse `demand_breakdown` enrich |
 | `granularity` query param on `demand/today` | supplier analytics | **done** (2026-07-01) |

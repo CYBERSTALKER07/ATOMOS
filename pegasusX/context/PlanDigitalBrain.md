@@ -5,7 +5,7 @@ Last updated: 2026-07-01 (synced with PX91 enterprise implementation)
 **Authority:** Subordinate to [`plan.md`](plan.md). Extends [`plan_90.md`](plan_90.md) with the full enterprise feature baseline, Kafka integration contract, edge-case gates, and UI labeling spec for the digital planning brain.
 
 **Scope boundary:**
-- **pegasusX** — single-supplier planning brain; all analytics scoped by `supplier_id`. **PX90 + PX91 shipped in code**; local SSMR green 2026-07-01; cloud staging proof **pending** (PX-ECS-5).
+- **pegasusX** — single-supplier planning brain; all analytics scoped by `supplier_id`. **PX90 + PX91 shipped in code**; local SSMR green 2026-07-02; cloud staging proof **pending** (PX-ECS-5).
 - **pegasus** (reference) — multi-tenant federation backend (P1 **shipped**); tenant supplier UI + downstream role parity **pending** (P2–P4). See [§ XI pegasus parity track](#xi-pegasus-multi-supplier-parity-track).
 
 **Audience:** Backend engineers, ai-worker, supplier portal + native, warehouse insight surfaces. Driver row stays execution-only; planning **consumes** telemetry and order outcomes.

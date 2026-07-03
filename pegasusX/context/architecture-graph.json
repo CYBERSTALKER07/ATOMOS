@@ -5,7 +5,7 @@
   "runtimeNotes": [
     {
       "date": "2026-06-02",
-      "summary": "PX4-A1 warehouse role-row clients are now real polling-first consumers of warehouseroutes: packages/{types,api-client} expose warehouse ops contracts, apps/warehouse-portal packages a direct-backend Tauri dashboard over the warehouse HTTP slice, apps/warehouse-app-ios adds an XcodeGen SwiftUI shell with a direct URLSession polling client, and apps/warehouse-app-android adds a Gradle/Compose shell with a direct HTTP polling client. Desktop export, Tauri debug bundle, and iOS xcodebuild passed; Android has clean diagnostics but CLI assemble remains blocked because pegasusX has no Gradle wrapper and no system gradle on PATH."
+      "summary": "PX4-A1 warehouse role-row clients are now real polling-first consumers of warehouseroutes: packages/{types,api-client} expose warehouse ops contracts, apps/warehouse-portal packages a direct-backend Tauri dashboard over the warehouse HTTP slice, apps/warehouse-app-ios adds an XcodeGen SwiftUI shell with a direct URLSession polling client, and apps/warehouse-app-android adds a Gradle/Compose shell with a direct HTTP polling client. Desktop export, Tauri debug bundle, and iOS xcodebuild passed; all six *-android apps ship gradlew (PX8-A4)."
     },
     {
       "date": "2026-05-31",
@@ -49,7 +49,7 @@
     },
     {
       "date": "2026-05-23",
-      "summary": "PX5-A3 Tranche 7 landed as the closure slice for retailer receipt authority: schema/spanner.ddl now defines immutable OrderDeliveryProofs, order/service.go plus order/repository_spanner.go now persist QR handoff and geofence proof artifacts atomically with driver delivery transitions, and retailer/service.go plus retailer/repository_spanner.go now widen recent_receipts.receipt_dossier with delivery_proofs, chargebacks, and reversals while driving proof_status.delivery_proof_available from persisted artifacts. Shared packages/types plus retailer desktop/iOS/Android consumers now render those proof and dispute-history sections. Focused validation passed via order and retailer backend tests, retailer desktop CI=1 build, retailer iOS xcodegen+xcodebuild, and clean Android diagnostics; full Android CLI assemble remains environment-blocked because pegasusX has no Gradle wrapper and no system gradle on PATH."
+      "summary": "PX5-A3 Tranche 7 landed as the closure slice for retailer receipt authority: schema/spanner.ddl now defines immutable OrderDeliveryProofs, order/service.go plus order/repository_spanner.go now persist QR handoff and geofence proof artifacts atomically with driver delivery transitions, and retailer/service.go plus retailer/repository_spanner.go now widen recent_receipts.receipt_dossier with delivery_proofs, chargebacks, and reversals while driving proof_status.delivery_proof_available from persisted artifacts. Shared packages/types plus retailer desktop/iOS/Android consumers now render those proof and dispute-history sections. Focused validation passed via order and retailer backend tests, retailer desktop CI=1 build, retailer iOS xcodegen+xcodebuild; all role-row Android apps ship gradlew (PX8-A4)."
     },
     {
       "date": "2026-05-23",
@@ -367,7 +367,7 @@
     { "id": "driver-android-build-files", "kind": "component", "language": "kotlin", "path": "apps/driver-app-android/app/build.gradle.kts" },
     { "id": "driver-android-api-client", "kind": "component", "language": "kotlin", "path": "apps/driver-app-android/app/src/main/kotlin/com/pegasusx/driver/network/DriverApiClient.kt" },
     { "id": "driver-android-live-ops-screen", "kind": "component", "language": "kotlin", "path": "apps/driver-app-android/app/src/main/kotlin/com/pegasusx/driver/ui/DriverLiveOpsScreen.kt" },
-    { "id": "driverappios", "kind": "mobile", "language": "swift", "path": "apps/driverappios" },
+    { "id": "driverappios", "kind": "mobile", "language": "swift", "path": "apps/driver-app-ios/driverappios" },
     { "id": "warehouse-portal", "kind": "web", "language": "ts", "path": "apps/warehouse-portal" },
     { "id": "warehouse-desktop-dashboard-page", "kind": "component", "language": "ts", "path": "apps/warehouse-portal/app/page.tsx" },
     { "id": "warehouse-desktop-tauri-config", "kind": "component", "language": "json", "path": "apps/warehouse-portal/src-tauri/tauri.conf.json" },

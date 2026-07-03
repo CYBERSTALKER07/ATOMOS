@@ -1,6 +1,6 @@
 # pegasusX Enterprise Execution Plan
 
-Last updated: 2026-06-14 (synced with Vegetable Plan creation)
+Last updated: 2026-07-03 (synced with codebase audit: driver iOS path, SSMR green locally, PX-ECS-1..4 shipped)
 
 **See also (granular per-backend-feature + per-role/app breakdown with UI replication targets, cross-sync obligations, and phase mapping):** `VEGETABLE_PLAN.md` in this directory. It is the "VeggieTales" / feature-by-feature ledger Boss requested. Read it together with this file before any phase work. All status updates must propagate to both.
 
@@ -60,7 +60,7 @@ Last updated: 2026-06-14 (synced with Vegetable Plan creation)
 20. `PX7-A2` Load, resilience, and security certification - `implemented`.
 21. `PX7-A3` Launch readiness, support, and hypercare - `implemented`.
 22. `PX8-A1` Factory desktop portal role-row parity - `implemented` (typecheck verified 2026-06-04; Tauri build optional local proof).
-23. `PX8-A2` Driver iOS canonicalization (`driverappios` vs `driver-app-ios`) - `implemented`.
+23. `PX8-A2` Driver iOS canonicalization (`driver-app-ios/driverappios` Xcode target) - `implemented`.
 24. `PX8-A3` Supplier native row (iOS, Android, desktop) - `implemented` (iOS + Android native; desktop via `supplier-portal` Tauri; `supplier-app-desktop` README anchor).
 25. `PX8-A4` Cross-role client parity audit + Gradle wrapper baseline - `implemented` (matrix in `parity-ledger.md`; all six `*-android` apps have `gradlew`).
 26. `COOL-W0` DeliveryExpectation + ExplainStatus + Pulse API + Handoff inbox metadata — `implemented` (2026-06-29).
@@ -159,7 +159,7 @@ Closes the gap between pegasusX client trees and the Pegasus reference (`context
 | Anchor | Role / surface | Status | Exit evidence |
 |---|---|---|---|
 | `PX8-A1` | Factory — `factory-portal` (desktop) | `implemented` | All Pegasus portal routes + Tauri 2 + `8180` auth/WS; `pnpm typecheck` clean (Boss verified 2026-06-04) |
-| `PX8-A2` | Driver — iOS | `implemented` | `driverappios` canonical; `driver-app-ios` deprecated (README redirect only) |
+| `PX8-A2` | Driver — iOS | `implemented` | Canonical Xcode project at `apps/driver-app-ios/driverappios` (target `driverappios`); outer `driver-app-ios/README.md` is entry pointer only |
 | `PX8-A3` | Supplier — iOS / Android / desktop | `implemented` | `supplier-app-ios`, `supplier-app-android`, `supplier-portal` Tauri desktop |
 | `PX8-A4` | Warehouse / retailer / factory / driver audit | `implemented` | Role-row matrix + Gradle wrappers documented in `parity-ledger.md` |
 

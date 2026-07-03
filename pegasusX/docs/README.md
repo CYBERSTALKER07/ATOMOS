@@ -3,8 +3,12 @@
 Operational runbooks and migration notes. Architecture lives in `../context/`.
 
 Specifically:
+- `../context/plan.md` — canonical phased execution roadmap (PX0–PX12, COOL-W*, PX-ECS)
+- `../context/plan_ecosystem_sync.md` — cross-role realtime/data-flow audit (PX-ECS-1..5)
+- `../context/plan_90.md` / `../context/PlanDigitalBrain.md` — planning brain (PX90/PX91)
+- `../context/plan_production_scale.md` — cloud cutover track (PX-PROD-*)
 - `../context/PEGASUSX_CURRENT.md` for the current execution & planning architecture
-- `../context/PEGASUS_REFERENCE.md` for the multi-tenant reference architecture
+- `../context/PEGASUS_REFERENCE.md` for the multi-tenant reference architecture (read-only; out of pegasusX scope)
 
 ## Canonical system spec
 
