@@ -152,8 +152,11 @@ export default function LogisticsWorkflow() {
           </p>
         </div>
 
-        {/* Workflow Editor Frame */}
-        <div className="wf-element border border-white/10 bg-[#0a0a0a] rounded-xl overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)] flex flex-col md:flex-row h-[700px] relative">
+        {/* BENTO GRID LAYOUT */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+          {/* Workflow Editor Frame */}
+          <div className="lg:col-span-3 wf-element border border-white/10 bg-[#0a0a0a] rounded-xl overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)] flex flex-col md:flex-row h-[700px] relative">
           
           {/* Left Sidebar */}
           <div className="w-full md:w-[280px] border-b md:border-b-0 md:border-r border-white/10 bg-[#0c0c0c] flex flex-col z-20 shrink-0">
@@ -285,6 +288,78 @@ export default function LogisticsWorkflow() {
             </div>
 
           </div>
+        </div>
+
+        {/* Close BENTO GRID LAYOUT */}
+        </div>
+
+        {/* Bento Cards Bottom Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+        <div className="lg:col-span-1 wf-element border border-white/10 bg-[#0a0a0a] p-8 rounded-2xl flex flex-col justify-between hover:border-white/20 transition-all shadow-lg overflow-hidden relative group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-[50px] group-hover:bg-blue-500/20 transition-all" />
+          <div>
+            <div className="flex items-center gap-2 text-white/40 text-xs font-mono mb-6 uppercase tracking-widest">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              Processing Speed
+            </div>
+            <div className="text-4xl font-light tracking-tight text-white mb-2">12.4<span className="text-2xl text-white/50 ml-1">ms</span></div>
+            <div className="text-sm text-white/50">Average event latency</div>
+          </div>
+          <div className="h-16 mt-6 border-b border-white/10 relative">
+            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 40">
+              <path d="M0 30 L10 25 L20 35 L30 15 L40 25 L50 10 L60 20 L70 5 L80 15 L90 5 L100 0" fill="none" stroke="rgba(59,130,246,0.5)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+              <path d="M0 40 L10 35 L20 40 L30 25 L40 35 L50 20 L60 30 L70 15 L80 25 L90 15 L100 10" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+            </svg>
+          </div>
+        </div>
+
+        <div className="lg:col-span-1 wf-element border border-white/10 bg-[#0a0a0a] p-8 rounded-2xl flex flex-col justify-between hover:border-white/20 transition-all shadow-lg overflow-hidden relative group">
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-green-500/10 blur-[50px] group-hover:bg-green-500/20 transition-all" />
+          <div className="flex items-center gap-2 text-white/40 text-xs font-mono mb-8 uppercase tracking-widest">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            System Status
+          </div>
+          <div className="flex-1 flex flex-col justify-center gap-5">
+            {[
+              { name: 'Core API', status: 'Operational', color: 'bg-green-500' },
+              { name: 'Edge Network', status: 'Operational', color: 'bg-green-500' },
+              { name: 'AI Agents', status: 'Processing', color: 'bg-blue-500' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <span className="text-sm text-white/80">{item.name}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-white/40 uppercase font-mono tracking-wide">{item.status}</span>
+                  <div className={`w-1.5 h-1.5 rounded-full ${item.color} shadow-[0_0_8px_${item.color}]`}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="lg:col-span-1 wf-element border border-white/10 bg-[#0a0a0a] p-8 rounded-2xl flex flex-col justify-between hover:border-white/20 transition-all shadow-lg overflow-hidden relative group">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-purple-500/10 blur-[60px] group-hover:bg-purple-500/20 transition-all" />
+          <div className="flex items-center gap-2 text-white/40 text-xs font-mono mb-6 uppercase tracking-widest relative z-10">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            Global Availability
+          </div>
+          <div className="relative z-10 flex-1 flex flex-col justify-end">
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-5xl font-light tracking-tight text-white">99.99</span>
+              <span className="text-xl text-white/50">%</span>
+            </div>
+            <div className="text-sm text-white/50">Uptime over last 90 days</div>
+            
+            <div className="mt-6 flex gap-1 h-8">
+              {[...Array(30)].map((_, i) => (
+                <div 
+                  key={i} 
+                  className={`flex-1 rounded-sm ${i === 14 ? 'bg-yellow-500/50' : 'bg-green-500/40'}`} 
+                  title={i === 14 ? 'Minor degraded performance' : 'No downtime'}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
         </div>
 
       </div>
