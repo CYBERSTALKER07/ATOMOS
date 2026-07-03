@@ -21,6 +21,7 @@ const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualS
 const PlatformFeatures = dynamic(() => import('./components/PlatformFeatures'));
 const EcosystemStats = dynamic(() => import('./components/EcosystemStats'));
 const LogisticsWorkflow = dynamic(() => import('./components/LogisticsWorkflow'));
+const OurApproach = dynamic(() => import('./components/OurApproach'));
 const DevelopmentTools = dynamic(() => import('./components/DevelopmentTools'));
 const Projects = dynamic(() => import('./components/Projects'));
 const Companies = dynamic(() => import('./components/Companies'));
@@ -62,6 +63,7 @@ export default function Home() {
         <PlatformFeatures />
         <EcosystemStats />
         <LogisticsWorkflow />
+        <OurApproach />
         <LaneDivider index="03" label="Operations" />
         <Skills />
         <LogisticsSolutions />
