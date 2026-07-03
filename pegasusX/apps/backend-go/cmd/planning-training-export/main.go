@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
@@ -153,7 +154,7 @@ func queryTrainingRows(ctx context.Context, client *spanner.Client, supplierID s
 		AND b.WarehouseId = act.WarehouseId
 		AND b.ForecastDate = act.OrderDay
 	WHERE b.ForecastDate BETWEEN @start AND @end`
-	params := map[string]any{"start": start, "end": end}
+	params := map[string]any{"start": civil.DateOf(start), "end": civil.DateOf(end)}
 	if supplierID != "" {
 		sql += ` AND b.SupplierId = @sid`
 		params["sid"] = supplierID
@@ -174,7 +175,7 @@ func queryTrainingRows(ctx context.Context, client *spanner.Client, supplierID s
 			return nil, err
 		}
 		var r trainingRow
-		var forecastDate time.Time
+		var forecastDate civil.Date
 		if err := row.Columns(
 			&r.SupplierID, &r.WarehouseID, &r.ProductID, &forecastDate,
 			&r.BaselineQty, &r.LowUnits, &r.HighUnits, &r.ConfidencePct, &r.BaselineSource,
@@ -182,7 +183,7 @@ func queryTrainingRows(ctx context.Context, client *spanner.Client, supplierID s
 		); err != nil {
 			return nil, err
 		}
-		r.ForecastDate = forecastDate.Format("2006-01-02")
+		r.ForecastDate = forecastDate.String()
 		r.ExportAt = exportAt
 		rows = append(rows, r)
 	}

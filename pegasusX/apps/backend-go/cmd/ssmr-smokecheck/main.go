@@ -23,7 +23,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|payment|shop-closed|manifest-seal|loadtokens]")
+		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|payment|shop-closed|manifest-seal|loadtokens|planning-baseline-seed]")
 		os.Exit(1)
 	}
 
@@ -69,6 +69,8 @@ func main() {
 		checkErr = runManifestSealSmokeCheck(ctx, cfg)
 	case "loadtokens":
 		checkErr = runLoadTokens(ctx, cfg)
+	case "planning-baseline-seed":
+		checkErr = runPlanningBaselineSeed(ctx, cfg)
 	default:
 		checkErr = fmt.Errorf("unknown check %q", check)
 	}

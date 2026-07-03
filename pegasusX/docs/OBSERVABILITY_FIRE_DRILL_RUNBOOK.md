@@ -4,6 +4,8 @@ Staging exercise before production go-live. Goal: on-call resolves a simulated i
 
 **Prerequisites:** staging cluster live, Cloud Monitoring dashboards imported, on-call roster assigned.
 
+**Local SSMR path (no GCP billing):** use `bash scripts/fire_drill_ssmr.sh` or `make fire-drill-ssmr` against docker-compose SSMR. Artifacts land in `artifacts/fire-drill-{a,b,c,d}.log`. Drill C reuses `scripts/planning_export_local_cron.sh`.
+
 ---
 
 ## Drill A — Kafka consumer lag (SEV2)
@@ -60,4 +62,4 @@ Staging exercise before production go-live. Goal: on-call resolves a simulated i
 | Platform | | | |
 | Product | | | |
 
-Update `PX-PROD-4` anchor in [`context/plan_production_scale.md`](../context/plan_production_scale.md) to **shipped** after all four drills pass on staging.
+Update `PX-PROD-4` anchor in [`context/plan_production_scale.md`](../context/plan_production_scale.md) to **shipped** after all four drills pass on staging. For local-only proof without GCP billing, mark `PX-LC-3` **shipped** in [`context/plan_local_closure.md`](../context/plan_local_closure.md) when `make fire-drill-ssmr` exits 0.

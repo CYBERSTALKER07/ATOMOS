@@ -83,10 +83,17 @@ make gen-contracts-gate
 |--------|---------|------|------|
 | `PX-LC-2A` | `PX-PROD-3` | With SSMR up: `make planning-training-export` → `artifacts/planning-export.jsonl` (or documented path) | Export completes with `rows > 0` after SSMR seed + planning markers |
 | `PX-LC-2B` | `PX-PROD-3` | `make planning-export-validate FILE=artifacts/planning-export.jsonl MIN_ROWS=1` | Validator prints `OK` |
-| `PX-LC-2C` | `PX-PROD-3` | Add `scripts/planning_export_local_cron.sh` — run export + validate daily for 7 consecutive local days (cron or manual log) | `artifacts/planning-export-audit.log` shows 7× `OK` |
-| `PX-LC-2D` | `PX-PROD-3` | Document in runbook: staging CronJob is **promotion step** after billing; local script satisfies v1 collect-later proof | `plan_production_scale.md` PX-PROD-3 note updated |
+| `PX-LC-2C` | `PX-PROD-3` | `scripts/planning_export_local_cron.sh` + `scripts/planning_export_audit_gate.sh` | `make planning-export-audit-gate DAYS=7` after 7 UTC days |
+| `PX-LC-2D` | `PX-PROD-3` | Staging CronJob is promotion step after billing; local script satisfies v1 collect-later proof | Documented in this file + `plan_production_scale.md` |
 
-**Anchor:** `PX-LC-2` — ML data collection proven without cloud scheduler.
+**Commands:**
+```bash
+make planning-export-local-cron          # one daily export + validate + audit log line
+make planning-export-audit-gate DAYS=7   # after 7 distinct UTC days of cron runs
+make planning-export-audit-bootstrap DAYS=7  # local proof: backfill prior days + cron + gate
+```
+
+**Anchor:** `PX-LC-2` — **shipped** (2026-07-03) — ML data collection proven without cloud scheduler.
 
 ---
 
@@ -96,13 +103,19 @@ make gen-contracts-gate
 
 | Anchor | Maps to | Work | Exit |
 |--------|---------|------|------|
-| `PX-LC-3A` | `PX-PROD-4` | Add `scripts/fire_drill_ssmr.sh` — Drill A: `docker compose stop backend-go-worker`, observe lag metric / WS stall, restart, verify fanout | Script exits 0; log artifact in `artifacts/fire-drill-a.log` |
-| `PX-LC-3B` | `PX-PROD-4` | Drill B: publish malformed `planning.signal.ingest.v1` to SSMR Kafka → DLQ; verify demand/today still 200 math-only | `artifacts/fire-drill-b.log` |
-| `PX-LC-3C` | `PX-PROD-4` | Drill C: run `planning-training-export` after worker pause/resume | Tied to PX-LC-2 |
-| `PX-LC-3D` | `PX-PROD-4` | Drill D: `docker compose restart backend-go` rollback simulation | `/health` recovery < 5m in SSMR |
-| `PX-LC-3E` | `PX-PROD-4` | Append local drill section to [`OBSERVABILITY_FIRE_DRILL_RUNBOOK.md`](../docs/OBSERVABILITY_FIRE_DRILL_RUNBOOK.md) | Runbook has “SSMR local” path distinct from staging |
+| `PX-LC-3A` | `PX-PROD-4` | `scripts/fire_drill_ssmr.sh` Drill A: stop `ai-worker`, restart, verify health | `artifacts/fire-drill-a.log` |
+| `PX-LC-3B` | `PX-PROD-4` | Drill B: malformed `planning.signal.ingest.v1` → DLQ; demand/today 200 math-only | `artifacts/fire-drill-b.log` |
+| `PX-LC-3C` | `PX-PROD-4` | Drill C: `planning_export_local_cron.sh` | `artifacts/fire-drill-c.log` |
+| `PX-LC-3D` | `PX-PROD-4` | Drill D: `docker compose restart backend-go` | `/health` recovery < 5m |
+| `PX-LC-3E` | `PX-PROD-4` | Local path in [`OBSERVABILITY_FIRE_DRILL_RUNBOOK.md`](../docs/OBSERVABILITY_FIRE_DRILL_RUNBOOK.md) | **shipped** |
 
-**Anchor:** `PX-LC-3` — on-call path exercised without kubectl.
+**Commands:**
+```bash
+make fire-drill-ssmr              # all drills A–D
+make fire-drill-ssmr DRILL=B      # single drill
+```
+
+**Anchor:** `PX-LC-3` — **shipped** (2026-07-03) — on-call path exercised without kubectl.
 
 ---
 
@@ -160,10 +173,10 @@ make gen-contracts-gate
 
 | Anchor | Phase | Scope | Target status |
 |--------|-------|-------|---------------|
-| `PX-LC-0` | L0 | Automated gates | **shipped** after L0 complete |
+| `PX-LC-0` | L0 | Automated gates | **shipped** (2026-07-03) |
 | `PX-LC-1` | L1 | Manual QA + war stories | **shipped** after checklists done |
-| `PX-LC-2` | L2 | Planning export local | **shipped** after 7-day local audit |
-| `PX-LC-3` | L3 | Fire drill SSMR | **shipped** after script + runbook |
+| `PX-LC-2` | L2 | Planning export local | **shipped** (2026-07-03) |
+| `PX-LC-3` | L3 | Fire drill SSMR | **shipped** (2026-07-03) |
 | `PX-LC-4` | L4 | Desktop dev release | **shipped** (prod certs deferred) |
 | `PX-LC-5` | L5 | Execution UX gaps | **shipped** or per-item **deferred** |
 | `PX-LC-6` | L6 | Plan reconciliation | **shipped** |

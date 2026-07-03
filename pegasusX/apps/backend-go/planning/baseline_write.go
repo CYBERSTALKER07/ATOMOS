@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -50,7 +51,7 @@ func WriteBaselineWithOutbox(ctx context.Context, client *spanner.Client, now ti
 	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row := map[string]any{
 			"SupplierId":     in.SupplierID,
-			"ForecastDate":   in.ForecastDate,
+			"ForecastDate":   civil.DateOf(in.ForecastDate.UTC()),
 			"WarehouseId":    in.WarehouseID,
 			"ProductId":      in.ProductID,
 			"BaselineQty":    in.BaselineQty,

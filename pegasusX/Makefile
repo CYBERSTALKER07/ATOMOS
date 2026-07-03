@@ -1,4 +1,4 @@
-|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate planning-training-export planning-export-validate phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
+|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra ssmr-ecosystem-marker-gate planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
 
 help:
 	@echo "pegasusX make targets"
@@ -9,6 +9,10 @@ help:
 	@echo "  test-ssmr-infra       run isolated SSMR smoke + full-ecosystem PX_E2E marker gate"
 	@echo "  planning-training-export  PX-PROD-3 baseline export for ML collect-later (Spanner required)"
 	@echo "  planning-export-validate  PX-PROD-3 post-export QA (FILE=path [MIN_ROWS=1])"
+	@echo "  planning-export-local-cron  PX-LC-2 daily export+validate; appends artifacts/planning-export-audit.log"
+	@echo "  planning-export-audit-gate  PX-LC-2 verify N consecutive OK days (DAYS=7 default)"
+	@echo "  planning-export-audit-bootstrap  PX-LC-2 local: backfill prior days + cron + gate (DAYS=7)"
+	@echo "  fire-drill-ssmr           PX-LC-3 local SSMR fire drills (DRILL=all|A|B|C|D)"
 	@echo "  phase0-preflight          PX-PROD-0 gates before terraform (PHASE0_SKIP_WIRE=1 to skip Docker)"
 	@echo "  phase0-plan               terraform plan with infra/terraform/staging.tfvars"
 	@echo "  phase0-apply              terraform apply with staging.tfvars"
@@ -70,6 +74,18 @@ planning-training-export:
 planning-export-validate:
 	@test -n "$(FILE)" || (echo "usage: make planning-export-validate FILE=export.jsonl [MIN_ROWS=1]" >&2; exit 1)
 	bash scripts/planning_export_validate.sh "$(FILE)" "$(MIN_ROWS)"
+
+planning-export-local-cron:
+	bash scripts/planning_export_local_cron.sh
+
+planning-export-audit-gate:
+	bash scripts/planning_export_audit_gate.sh "$(DAYS)"
+
+planning-export-audit-bootstrap:
+	bash scripts/planning_export_audit_bootstrap.sh "$(DAYS)"
+
+fire-drill-ssmr:
+	bash scripts/fire_drill_ssmr.sh "$(DRILL)"
 
 phase0-preflight:
 	bash scripts/phase0_preflight.sh

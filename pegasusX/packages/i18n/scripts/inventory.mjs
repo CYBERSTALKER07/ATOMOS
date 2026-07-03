@@ -93,6 +93,10 @@ function walkDirectory(directoryPath, files = []) {
       continue;
     }
 
+    if (!entry.isFile()) {
+      continue;
+    }
+
     files.push(path.join(directoryPath, entry.name));
   }
 
