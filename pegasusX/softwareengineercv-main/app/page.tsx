@@ -18,7 +18,9 @@ const LogisticsSolutions = dynamic(() => import('./components/LogisticsSolutions
 const SignalFeatureCards = dynamic(() => import('./components/SignalFeatureCards'));
 const OrderCycleVisualSection = dynamic(() => import('./components/OrderCycleVisualSection'));
 const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualSection'));
-const PaymentFlowSection = dynamic(() => import('./components/PaymentFlowSection'));
+const PlatformFeatures = dynamic(() => import('./components/PlatformFeatures'));
+const EcosystemStats = dynamic(() => import('./components/EcosystemStats'));
+const LogisticsWorkflow = dynamic(() => import('./components/LogisticsWorkflow'));
 const DevelopmentTools = dynamic(() => import('./components/DevelopmentTools'));
 const Projects = dynamic(() => import('./components/Projects'));
 const Companies = dynamic(() => import('./components/Companies'));
@@ -57,7 +59,9 @@ export default function Home() {
         <SignalFeatureCards />
         <OrderCycleVisualSection />
         <DispatchVisualSection />
-        <PaymentFlowSection />
+        <PlatformFeatures />
+        <EcosystemStats />
+        <LogisticsWorkflow />
         <LaneDivider index="03" label="Operations" />
         <Skills />
         <LogisticsSolutions />
