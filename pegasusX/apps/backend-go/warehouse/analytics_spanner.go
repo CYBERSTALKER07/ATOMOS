@@ -345,6 +345,29 @@ func (s *Service) loadAnalyticsImportFreshness(ctx context.Context, txn *spanner
 	if lastUpdated.Valid {
 		out["last_applied_at"] = lastUpdated.Time.UTC().Format(time.RFC3339Nano)
 	}
+	out["freshness_source"] = "inventory_v2_proxy"
+	if strings.TrimSpace(supplierID) != "" {
+		sessionStmt := spanner.Statement{
+			SQL: `SELECT session_id, updated_at
+			      FROM SupplierImportSessions
+			      WHERE supplier_id = @supplierId
+			        AND status IN ('applied', 'APPLIED')
+			      ORDER BY updated_at DESC
+			      LIMIT 1`,
+			Params: map[string]any{"supplierId": supplierID},
+		}
+		var sessionID string
+		var sessionUpdated spanner.NullTime
+		if err := txn.Query(ctx, sessionStmt).Do(func(row *spanner.Row) error {
+			return row.Columns(&sessionID, &sessionUpdated)
+		}); err == nil && strings.TrimSpace(sessionID) != "" {
+			out["last_session_id"] = sessionID
+			if sessionUpdated.Valid {
+				out["last_import_session_at"] = sessionUpdated.Time.UTC().Format(time.RFC3339Nano)
+			}
+			out["freshness_source"] = "inventory_v2_proxy_with_session_anchor"
+		}
+	}
 	return out, nil
 }
 

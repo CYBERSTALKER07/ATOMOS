@@ -58,12 +58,36 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun executeDispatch(
         warehouseId: String? = null,
         idempotencyKey: String,
+        mode: String = "AUTO",
+        forceCapacity: Boolean = false,
+        routes: List<SupplierDispatchManualRoute> = emptyList(),
     ): Response<JsonElement> =
         api.executeDispatch(
             warehouseId = warehouseId,
             idempotencyKey = idempotencyKey,
             body = kotlinx.serialization.json.buildJsonObject {
-                put("mode", kotlinx.serialization.json.JsonPrimitive("AUTO"))
+                put("mode", kotlinx.serialization.json.JsonPrimitive(mode))
+                if (forceCapacity) {
+                    put("force_capacity", kotlinx.serialization.json.JsonPrimitive(true))
+                }
+                if (routes.isNotEmpty()) {
+                    put(
+                        "routes",
+                        kotlinx.serialization.json.JsonArray(
+                            routes.map { route ->
+                                kotlinx.serialization.json.buildJsonObject {
+                                    put("driver_id", kotlinx.serialization.json.JsonPrimitive(route.driverId))
+                                    put(
+                                        "order_ids",
+                                        kotlinx.serialization.json.JsonArray(
+                                            route.orderIds.map { kotlinx.serialization.json.JsonPrimitive(it) },
+                                        ),
+                                    )
+                                }
+                            },
+                        ),
+                    )
+                }
             },
         )
 

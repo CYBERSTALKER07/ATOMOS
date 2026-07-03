@@ -30,7 +30,7 @@
 |----|---------|---------|--------|--------|--------|
 | SP1-01 | Topology editor (`PUT /v1/supplier/topology`) | exists + JSON wire tags | `/topology` editor wired | Android + iOS edit/save | **WIRED** |
 | SP1-02 | Warehouse/factory create UI | `PUT topology` | add/remove nodes in topology editor | native edit forms | **WIRED** |
-| SP1-03 | Delivery zones + supply lanes CRUD | partial GET (derived from topology) | read-only + topology drives coverage | read-only + handoff | **WIRED** (topology-owned) |
+| SP1-03 | Delivery zones + supply lanes | **CLOSED** — read-only `GET /v1/supplier/supply-lanes` derived from topology (warehouse nodes, coverage, co-location); edit via Topology, not lane CRUD |
 | SP1-04 | `getSupplierInventory()` in api-client | GET exists | raw fetch today (optional migrate) | — | **WIRED** |
 
 **Dependency:** Phase 0 complete. **Blocks:** warehouse/factory ops for new tenants.

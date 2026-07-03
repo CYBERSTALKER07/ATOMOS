@@ -191,10 +191,68 @@ struct DispatchProposedRoute: Decodable, Identifiable {
     }
 }
 
+struct SupplierDispatchOrderRow: Decodable, Identifiable {
+    var id: String { orderId }
+    let orderId: String
+    let volumeVu: Double
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case volumeVu = "volume_vu"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        orderId = try c.decode(String.self, forKey: .orderId)
+        volumeVu = try c.decodeIfPresent(Double.self, forKey: .volumeVu) ?? 0
+    }
+}
+
+struct SupplierDispatchDriverRow: Decodable, Identifiable {
+    var id: String { driverId }
+    let driverId: String
+    let name: String
+    let maxVolumeVu: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case name
+        case maxVolumeVu = "max_volume_vu"
+    }
+}
+
+struct SupplierDispatchManualRoutePayload: Encodable {
+    let driverId: String
+    let orderIds: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case orderIds = "order_ids"
+    }
+}
+
+struct SupplierDispatchExecuteBody: Encodable {
+    let mode: String
+    let forceCapacity: Bool?
+    let routes: [SupplierDispatchManualRoutePayload]?
+
+    enum CodingKeys: String, CodingKey {
+        case mode
+        case forceCapacity = "force_capacity"
+        case routes
+    }
+}
+
+struct SupplierDispatchExecuteResponse: Decodable {
+    let status: String?
+}
+
 struct SupplierDispatchPreview: Decodable {
     let pendingCount: Int?
     let availableDriverCount: Int?
     let undispatchedOrderCount: Int?
+    let undispatchedOrders: [SupplierDispatchOrderRow]
+    let availableDrivers: [SupplierDispatchDriverRow]
     let proposedRoutes: [DispatchProposedRoute]
     let optimizerSource: String?
     let optimizerWarnings: [String]
@@ -206,6 +264,8 @@ struct SupplierDispatchPreview: Decodable {
         case pendingCount = "pending_count"
         case availableDriverCount = "available_driver_count"
         case undispatchedOrderCount = "undispatched_orders"
+        case undispatchedOrders = "undispatched_orders"
+        case availableDrivers = "available_drivers"
         case proposedRoutes = "proposed_routes"
         case optimizerSource = "optimizer_source"
         case optimizerWarnings = "optimizer_warnings"
@@ -218,13 +278,17 @@ struct SupplierDispatchPreview: Decodable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         pendingCount = try container.decodeIfPresent(Int.self, forKey: .pendingCount)
         availableDriverCount = try container.decodeIfPresent(Int.self, forKey: .availableDriverCount)
-        if let count = try? container.decodeIfPresent(Int.self, forKey: .undispatchedOrderCount) {
+        if let orders = try? container.decodeIfPresent([SupplierDispatchOrderRow].self, forKey: .undispatchedOrders) {
+            undispatchedOrders = orders
+            undispatchedOrderCount = orders.count
+        } else if let count = try? container.decodeIfPresent(Int.self, forKey: .undispatchedOrderCount) {
             undispatchedOrderCount = count
-        } else if let array = try? container.decodeIfPresent([String].self, forKey: .undispatchedOrderCount) {
-            undispatchedOrderCount = array.count
+            undispatchedOrders = []
         } else {
             undispatchedOrderCount = nil
+            undispatchedOrders = []
         }
+        availableDrivers = try container.decodeIfPresent([SupplierDispatchDriverRow].self, forKey: .availableDrivers) ?? []
         proposedRoutes = try container.decodeIfPresent([DispatchProposedRoute].self, forKey: .proposedRoutes) ?? []
         optimizerSource = try container.decodeIfPresent(String.self, forKey: .optimizerSource)
         optimizerWarnings = try container.decodeIfPresent([String].self, forKey: .optimizerWarnings) ?? []

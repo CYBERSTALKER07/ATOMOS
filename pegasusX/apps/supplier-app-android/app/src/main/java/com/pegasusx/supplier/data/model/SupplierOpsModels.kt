@@ -92,9 +92,29 @@ data class SupplierManifestInjectOrderRequest(
 )
 
 @Serializable
+data class SupplierDispatchOrderRow(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("volume_vu") val volumeVu: Double = 0.0,
+    @SerialName("retailer_id") val retailerId: String? = null,
+)
+
+@Serializable
+data class SupplierDispatchDriverRow(
+    @SerialName("driver_id") val driverId: String,
+    val name: String = "",
+    @SerialName("max_volume_vu") val maxVolumeVu: Double? = null,
+)
+
+@Serializable
+data class SupplierDispatchManualRoute(
+    @SerialName("driver_id") val driverId: String,
+    @SerialName("order_ids") val orderIds: List<String>,
+)
+
+@Serializable
 data class SupplierDispatchPreview(
-    @SerialName("undispatched_orders") val undispatchedOrders: List<JsonElement> = emptyList(),
-    @SerialName("available_drivers") val availableDrivers: List<JsonElement> = emptyList(),
+    @SerialName("undispatched_orders") val undispatchedOrders: List<SupplierDispatchOrderRow> = emptyList(),
+    @SerialName("available_drivers") val availableDrivers: List<SupplierDispatchDriverRow> = emptyList(),
     @SerialName("unavailable_drivers") val unavailableDrivers: List<JsonElement> = emptyList(),
     @SerialName("pending_count") val pendingCount: Int = 0,
     @SerialName("available_driver_count") val availableDriverCount: Int = 0,

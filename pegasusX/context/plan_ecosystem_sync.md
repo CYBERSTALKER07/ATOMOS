@@ -247,7 +247,7 @@ make validate-launch-readiness
 | `PX-ECS-3A`–`3G` | 3 | Planning UI + docs (see phase table) | **shipped** — 3A–3G including doc alignment |
 | `PX-ECS-4` | 4 | Execution UX gaps | **shipped** |
 | `PX-ECS-4A`–`4F` | 4 | Visualization (see phase table) | **shipped** — 4A–4F incl. native promo P&L, handoff timeline, dispatch fingerprint |
-| `PX-ECS-5` | 5 | Infra staging proof | **pending** — manifests/alerts ready; needs `PX-PROD-0` apply |
+| `PX-ECS-5` | 5 | Infra staging proof | **pending** — manifests/alerts ready; **local equivalent:** PX-LC-0 gates + PX-LC-3 fire drill |
 | `PX-ECS-5A`–`5G` | 5 | Cloud realtime parity (see phase table) | **partial** — WS ingress service, optimizer URL, PodMonitoring, outbox alert in repo; staging proof pending |
 
 ---

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierSupplyLaneRow } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
@@ -24,13 +24,21 @@ export default function SupplyLanesPage() {
     <PageChrome
       icon="fleet"
       title="Supply lanes"
-      description="Warehouse lanes derived from topology and live order volume."
+      description="Warehouse lanes derived from topology and live order volume. Lanes are read-only — edit warehouses and coverage on Topology."
       loading={loading}
       error={error}
       empty={!loading && lanes.length === 0}
       emptyMessage="No active warehouse lanes. Configure nodes on topology."
     >
       {lanes.length > 0 ? (
+        <div className="space-y-4">
+          <p className="md-typescale-body-small text-[var(--color-md-outline)]">
+            Supply lanes are derived from{" "}
+            <Link href="/topology" className="text-[var(--color-md-primary)] underline">
+              topology
+            </Link>{" "}
+            (warehouse nodes, coverage radius, co-location). There is no separate lane CRUD — update topology to change lane geometry and capacity signals.
+          </p>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {lanes.map((lane) => (
             <div
@@ -99,6 +107,7 @@ export default function SupplyLanesPage() {
               </div>
             </div>
           ))}
+        </div>
         </div>
       ) : null}
     </PageChrome>

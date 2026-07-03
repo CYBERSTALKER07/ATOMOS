@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.pegasusx.supplier.data.model.SupplierDispatchManualRoute
 import com.pegasusx.supplier.data.model.SupplierDispatchPreview
 import com.pegasusx.supplier.data.model.SupplierTopologyWarehouse
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
@@ -25,6 +26,12 @@ import com.pegasusx.supplier.ui.components.SupplierStateKind
 import com.pegasusx.supplier.ui.components.SupplierStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
+
+private const val TETRIS_BUFFER = 0.95
+
+private enum class DispatchMode { Manual, Auto }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,7 +49,11 @@ fun DispatchPreviewScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var executing by remember { mutableStateOf(false) }
     var executeMessage by remember { mutableStateOf<String?>(null) }
-    var showExecuteConfirm by remember { mutableStateOf(false) }
+    var showAutoConfirm by remember { mutableStateOf(false) }
+    var showCapacityOverride by remember { mutableStateOf(false) }
+    var dispatchMode by remember { mutableStateOf(DispatchMode.Manual) }
+    var selectedDriverId by remember { mutableStateOf("") }
+    var selectedOrderIds by remember { mutableStateOf(setOf<String>()) }
     val scope = rememberCoroutineScope()
 
     fun load() {
@@ -67,6 +78,22 @@ fun DispatchPreviewScreen(
 
     LaunchedEffect(selectedWarehouseId) { load() }
 
+    LaunchedEffect(preview?.availableDrivers) {
+        val drivers = preview?.availableDrivers.orEmpty()
+        if (selectedDriverId.isBlank() && drivers.isNotEmpty()) {
+            selectedDriverId = drivers.first().driverId
+        }
+        val valid = drivers.map { it.driverId }.toSet()
+        if (selectedDriverId.isNotBlank() && selectedDriverId !in valid) {
+            selectedDriverId = drivers.firstOrNull()?.driverId.orEmpty()
+        }
+    }
+
+    LaunchedEffect(preview?.undispatchedOrders) {
+        val valid = preview?.undispatchedOrders?.map { it.orderId }?.toSet().orEmpty()
+        selectedOrderIds = selectedOrderIds.intersect(valid)
+    }
+
     SupplierReconnectRecoveryEffect(
         realtimeSignals = realtimeSignals,
         isBusy = { executing },
@@ -74,6 +101,85 @@ fun DispatchPreviewScreen(
         if (hadInFlight) {
             executing = false
             executeMessage = SUPPLIER_RECONNECT_RECOVERY_HINT
+        }
+    }
+
+    fun executeAuto() {
+        scope.launch {
+            executing = true
+            executeMessage = null
+            try {
+                val p = preview
+                val routeFingerprint = p?.let {
+                    """{"pending":${it.pendingCount},"drivers":${it.availableDriverCount},"undispatched":${it.undispatchedOrders.size}}"""
+                } ?: "[]"
+                val supplierId = TokenHolder.supplierId.orEmpty().ifBlank { "supplier" }
+                val warehouseId = selectedWarehouseId.orEmpty().ifBlank { "default" }
+                val idempotencyKey = SupplierIdempotencyKeys.dispatch(
+                    supplierId,
+                    warehouseId,
+                    "AUTO",
+                    routeFingerprint,
+                )
+                val resp = ops.executeDispatch(selectedWarehouseId, idempotencyKey, mode = "AUTO")
+                executeMessage = if (resp.isSuccessful) {
+                    "Auto dispatch executed"
+                } else {
+                    "Execute failed (${resp.code()})"
+                }
+                if (resp.isSuccessful) load()
+            } catch (e: Exception) {
+                executeMessage = e.message
+            } finally {
+                executing = false
+                showAutoConfirm = false
+            }
+        }
+    }
+
+    fun executeManual(forceCapacity: Boolean) {
+        val orderIds = selectedOrderIds.toList().sorted()
+        if (selectedDriverId.isBlank() || orderIds.isEmpty()) return
+        scope.launch {
+            executing = true
+            executeMessage = null
+            try {
+                val routeFingerprint = """{"mode":"MANUAL","force_capacity":$forceCapacity,"routes":[{"driver_id":"$selectedDriverId","order_ids":$orderIds}]}"""
+                val supplierId = TokenHolder.supplierId.orEmpty().ifBlank { "supplier" }
+                val warehouseId = selectedWarehouseId.orEmpty().ifBlank { "default" }
+                val idempotencyKey = SupplierIdempotencyKeys.dispatch(
+                    supplierId,
+                    warehouseId,
+                    "MANUAL",
+                    routeFingerprint,
+                )
+                val resp = ops.executeDispatch(
+                    warehouseId = selectedWarehouseId,
+                    idempotencyKey = idempotencyKey,
+                    mode = "MANUAL",
+                    forceCapacity = forceCapacity,
+                    routes = listOf(SupplierDispatchManualRoute(selectedDriverId, orderIds)),
+                )
+                if (resp.isSuccessful) {
+                    val body = resp.body()
+                    val status = (body as? JsonObject)?.get("status")?.jsonPrimitive?.content
+                    if (status == "capacity_exceeded") {
+                        executeMessage = "Truck capacity exceeded — confirm override or remove orders."
+                        showCapacityOverride = true
+                    } else {
+                        executeMessage = "Manual dispatch committed"
+                        selectedOrderIds = emptySet()
+                        showCapacityOverride = false
+                        load()
+                    }
+                } else {
+                    executeMessage = "Execute failed (${resp.code()})"
+                }
+            } catch (e: Exception) {
+                executeMessage = e.message
+            } finally {
+                executing = false
+            }
         }
     }
 
@@ -88,8 +194,24 @@ fun DispatchPreviewScreen(
             preview = preview,
             executeMessage = executeMessage,
             executing = executing,
+            dispatchMode = dispatchMode,
+            onDispatchModeChange = { dispatchMode = it },
+            selectedDriverId = selectedDriverId,
+            onDriverSelected = { selectedDriverId = it },
+            selectedOrderIds = selectedOrderIds,
+            onToggleOrder = { orderId ->
+                selectedOrderIds = if (orderId in selectedOrderIds) {
+                    selectedOrderIds - orderId
+                } else {
+                    selectedOrderIds + orderId
+                }
+            },
+            onSelectAllOrders = {
+                selectedOrderIds = preview?.undispatchedOrders?.map { it.orderId }?.toSet().orEmpty()
+            },
             onRefresh = { load() },
-            onExecute = { showExecuteConfirm = true },
+            onAutoExecute = { showAutoConfirm = true },
+            onManualExecute = { executeManual(forceCapacity = false) },
         )
     }
 
@@ -112,51 +234,34 @@ fun DispatchPreviewScreen(
         }
     }
 
-    if (showExecuteConfirm) {
+    if (showAutoConfirm) {
         AlertDialog(
-            onDismissRequest = { if (!executing) showExecuteConfirm = false },
-            title = { Text("Execute dispatch?") },
-            text = { Text("This assigns pending orders to available drivers. Confirm to proceed.") },
+            onDismissRequest = { if (!executing) showAutoConfirm = false },
+            title = { Text("Execute auto-dispatch?") },
+            text = { Text("This assigns pending orders to available drivers via the optimizer.") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            executing = true
-                            executeMessage = null
-                            try {
-                                val p = preview
-                                val routeFingerprint = p?.let {
-                                    """{"pending":${it.pendingCount},"drivers":${it.availableDriverCount},"undispatched":${it.undispatchedOrders.size}}"""
-                                } ?: "[]"
-                                val supplierId = TokenHolder.supplierId.orEmpty().ifBlank { "supplier" }
-                                val warehouseId = selectedWarehouseId.orEmpty().ifBlank { "default" }
-                                val idempotencyKey = SupplierIdempotencyKeys.dispatch(
-                                    supplierId,
-                                    warehouseId,
-                                    "AUTO",
-                                    routeFingerprint,
-                                )
-                                val resp = ops.executeDispatch(selectedWarehouseId, idempotencyKey)
-                                executeMessage = if (resp.isSuccessful) {
-                                    "Dispatch executed"
-                                } else {
-                                    "Execute failed (${resp.code()})"
-                                }
-                                if (resp.isSuccessful) load()
-                            } catch (e: Exception) {
-                                executeMessage = e.message
-                            } finally {
-                                executing = false
-                                showExecuteConfirm = false
-                            }
-                        }
-                    },
-                    enabled = !executing,
-                ) { Text("Confirm") }
+                TextButton(onClick = { executeAuto() }, enabled = !executing) { Text("Confirm") }
             },
             dismissButton = {
-                TextButton(onClick = { showExecuteConfirm = false }, enabled = !executing) {
-                    Text("Cancel")
+                TextButton(onClick = { showAutoConfirm = false }, enabled = !executing) { Text("Cancel") }
+            },
+        )
+    }
+
+    if (showCapacityOverride) {
+        AlertDialog(
+            onDismissRequest = { if (!executing) showCapacityOverride = false },
+            title = { Text("Capacity exceeded") },
+            text = { Text("Selected orders exceed truck capacity. Continue anyway?") },
+            confirmButton = {
+                TextButton(
+                    onClick = { executeManual(forceCapacity = true) },
+                    enabled = !executing,
+                ) { Text("Continue") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCapacityOverride = false }, enabled = !executing) {
+                    Text("Adjust")
                 }
             },
         )
@@ -174,11 +279,27 @@ private fun DispatchPreviewBody(
     preview: SupplierDispatchPreview?,
     executeMessage: String?,
     executing: Boolean,
+    dispatchMode: DispatchMode,
+    onDispatchModeChange: (DispatchMode) -> Unit,
+    selectedDriverId: String,
+    onDriverSelected: (String) -> Unit,
+    selectedOrderIds: Set<String>,
+    onToggleOrder: (String) -> Unit,
+    onSelectAllOrders: () -> Unit,
     onRefresh: () -> Unit,
-    onExecute: () -> Unit,
+    onAutoExecute: () -> Unit,
+    onManualExecute: () -> Unit,
 ) {
+    val selectedDriver = preview?.availableDrivers?.orEmpty()?.find { it.driverId == selectedDriverId }
+    val selectedVolume = preview?.undispatchedOrders.orEmpty()
+        .filter { it.orderId in selectedOrderIds }
+        .sumOf { it.volumeVu }
+    val truckMax = selectedDriver?.maxVolumeVu ?: 0.0
+    val truckEffective = truckMax * TETRIS_BUFFER
+    val capacityExceeded = truckEffective > 0 && selectedVolume > truckEffective
+
     when {
-        loading && preview == null -> SupplierLoadingState("Loading dispatch preview…", "Auto-dispatch snapshot", modifier)
+        loading && preview == null -> SupplierLoadingState("Loading dispatch preview…", "Dispatch snapshot", modifier)
         error != null && preview == null -> SupplierStatePane(
             kind = SupplierStateKind.Error,
             headline = "Preview unavailable",
@@ -194,6 +315,18 @@ private fun DispatchPreviewBody(
                 .padding(PegasusSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                FilterChip(
+                    selected = dispatchMode == DispatchMode.Manual,
+                    onClick = { onDispatchModeChange(DispatchMode.Manual) },
+                    label = { Text("Manual truck") },
+                )
+                FilterChip(
+                    selected = dispatchMode == DispatchMode.Auto,
+                    onClick = { onDispatchModeChange(DispatchMode.Auto) },
+                    label = { Text("Smart assign") },
+                )
+            }
             if (warehouses.isNotEmpty()) {
                 Text("Warehouse scope", style = MaterialTheme.typography.titleSmall)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
@@ -212,7 +345,7 @@ private fun DispatchPreviewBody(
             }
             preview?.takeIf { it.planFingerprintMismatch }?.let {
                 Text(
-                    "Dispatch plan drift — supplier preview differs from warehouse floor plan. Refresh warehouse dispatch before commit.",
+                    "Dispatch plan drift — refresh warehouse dispatch before commit.",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -226,7 +359,77 @@ private fun DispatchPreviewBody(
                     KpiCard("Drivers", "${p.availableDriverCount}", Modifier.weight(1f))
                     KpiCard("Undispatched", "${p.undispatchedOrders.size}", Modifier.weight(1f))
                 }
-                if (p.proposedRoutes.isNotEmpty()) {
+                if (dispatchMode == DispatchMode.Manual && p.undispatchedOrders.isNotEmpty()) {
+                    Text("Manual assignment", style = MaterialTheme.typography.titleSmall)
+                    if (truckMax > 0) {
+                        Text(
+                            "Selected ${"%.1f".format(selectedVolume)} / ${"%.1f".format(truckEffective)} VU",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (capacityExceeded) {
+                        Text(
+                            "Insufficient truck space for selected orders.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    if (p.availableDrivers.isNotEmpty()) {
+                        var expanded by remember { mutableStateOf(false) }
+                        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+                            OutlinedTextField(
+                                readOnly = true,
+                                value = selectedDriver?.name?.ifBlank { selectedDriverId }.orEmpty(),
+                                onValueChange = {},
+                                label = { Text("Driver") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            )
+                            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                p.availableDrivers.forEach { driver ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            val vu = driver.maxVolumeVu?.let { " · ${it.toInt()} VU" }.orEmpty()
+                                            Text("${driver.name.ifBlank { driver.driverId }}$vu")
+                                        },
+                                        onClick = {
+                                            onDriverSelected(driver.driverId)
+                                            expanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text("Orders", style = MaterialTheme.typography.labelLarge)
+                        TextButton(onClick = onSelectAllOrders) { Text("Select all") }
+                    }
+                    p.undispatchedOrders.forEach { order ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Checkbox(
+                                    checked = order.orderId in selectedOrderIds,
+                                    onCheckedChange = { onToggleOrder(order.orderId) },
+                                )
+                                Text(order.orderId.take(12), style = MaterialTheme.typography.bodySmall)
+                            }
+                            Text(
+                                "${"%.1f".format(order.volumeVu)} VU",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                if (dispatchMode == DispatchMode.Auto && p.proposedRoutes.isNotEmpty()) {
                     Text("Route map", style = MaterialTheme.typography.titleSmall)
                     p.optimizerSource?.takeIf { it.isNotBlank() }?.let { source ->
                         Text(
@@ -241,27 +444,32 @@ private fun DispatchPreviewBody(
                             .fillMaxWidth()
                             .height(320.dp),
                     )
-                    p.proposedRoutes.forEachIndexed { index, route ->
-                        val label = route.driverName?.takeIf { it.isNotBlank() }
-                            ?: route.driverId?.takeIf { it.isNotBlank() }
-                            ?: "Route ${index + 1}"
-                        val stops = route.stopCount ?: route.orderIds.size
-                        Text(
-                            "$label · $stops stops",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
                 }
             }
             executeMessage?.let { msg ->
                 Text(msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
             }
-            Button(
-                onClick = onExecute,
-                enabled = !loading && !executing && preview != null,
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text(if (executing) "Executing…" else "Execute auto-dispatch") }
+            if (dispatchMode == DispatchMode.Auto) {
+                Button(
+                    onClick = onAutoExecute,
+                    enabled = !loading && !executing && preview != null,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(if (executing) "Executing…" else "Execute auto-dispatch") }
+            } else {
+                Button(
+                    onClick = onManualExecute,
+                    enabled = !loading && !executing && selectedDriverId.isNotBlank() && selectedOrderIds.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        if (executing) {
+                            "Dispatching…"
+                        } else {
+                            "Manual dispatch (${selectedOrderIds.size})"
+                        },
+                    )
+                }
+            }
             OutlinedButton(onClick = onRefresh, enabled = !loading) { Text("Refresh preview") }
         }
     }

@@ -193,8 +193,8 @@ flowchart TB
 | `PX-PROD-0` | 0 | Cloud infra + staging adapters | **in progress** — runbook + `make phase0-*`; needs GCP apply |
 | `PX-PROD-1` | 1 | SSMR + credential + QA sign-off | **in progress** — `make test-ssmr-infra` green locally (PX90/PX91 markers); staging LC-01–LC-06 pending |
 | `PX-PROD-2` | 2 | Math-only planning contract enforced | **shipped** — `NormalizeBaselineSource`; warehouse badges; predictive-push breakdown |
-| `PX-PROD-3` | 3 | ML data export pipeline (no training) | **in progress** — export cmd, CronJob, `planning-export-validate`; needs 7 green days on staging |
-| `PX-PROD-4` | 4 | Observability + fire-drill | **in progress** — [`OBSERVABILITY_FIRE_DRILL_RUNBOOK.md`](../docs/OBSERVABILITY_FIRE_DRILL_RUNBOOK.md); execute on staging |
+| `PX-PROD-3` | 3 | ML data export pipeline (no training) | **implemented (local)** via PX-LC-2; **deferred (staging)** — 7 green days on staging CronJob after `PX-PROD-0` |
+| `PX-PROD-4` | 4 | Observability + fire-drill | **implemented (local)** via PX-LC-3; staging kubectl drills deferred until `PX-PROD-0` |
 | `PX-PROD-5` | 5 | 30-day scale ramp complete | **pending** |
 
 ---

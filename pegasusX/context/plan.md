@@ -148,7 +148,7 @@ Production v1 bar: all six roles deployable, no silent 404/501 on shipped client
 | `PX12-J` | Factory role-row UI parity | `implemented` | manifest + supply surfaces |
 | `PX12-K` | Payload role-row UI parity | `implemented` | device-token via platformroutes |
 | `PX12-L1` | Prod release train + hypercare | `implemented` | closes PX11-E2 |
-| `PX12-M1` | v1 staging closure (2026-06-29) | `in_progress` | SSMR + `px12-preflight-ok`; ops matrix + war-story SOPs; LC-01–LC-06 boss checklist [`docs/V1_STAGING_CLOSURE_CHECKLIST.md`](../docs/V1_STAGING_CLOSURE_CHECKLIST.md) |
+| `PX12-M1` | v1 staging closure (2026-06-29) | `implemented (local)` + `deferred (staging LC-01–06, GCP billing)` | SSMR + `px12-preflight-ok`; local closure PX-LC-0..5 shipped; staging boss checklist [`docs/V1_STAGING_CLOSURE_CHECKLIST.md`](../docs/V1_STAGING_CLOSURE_CHECKLIST.md) |
 
 **Exit:** `parity-contract-full` + `test-ssmr-infra` + `px12-preflight-ok` + staging LC sign-off + per-role QA (`docs/qa/PX12_*`) + war-story Phase C.
 

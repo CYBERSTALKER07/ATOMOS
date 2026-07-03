@@ -61,7 +61,7 @@
 | `top_products` | **Yes** | From completed order line items |
 | `daily_breakdown` / `daily` | **Yes** | Grouped revenue by day |
 | `fleet_utilization` | **Yes** | Home-node drivers + active assignments |
-| `import_freshness` | **Partial** | Proxy from `SupplierInventoryV2` (not session-based) |
+| `import_freshness` | **Closed (intentional proxy)** | `SupplierInventoryV2` 30d rollup + optional `SupplierImportSessions` APPLIED anchor (`last_session_id`, `last_import_session_at`, `freshness_source`) |
 | `import_anomaly_queue` | **Read path live** | Scans `SupplierImportStagedRows`. **Write path live** via `POST /v1/supplier/inventory/import` → `inventory_import_staging.go`. Counts reflect staged `validation_errors` (warehouse-scoped). `import_freshness` remains `SupplierInventoryV2` proxy. |
 
 ---
@@ -95,7 +95,7 @@ Demand forecast and replenishment parity are tracked in `WAREHOUSE_PHASE.md` (WH
 | ID | Item | Status |
 |----|------|--------|
 | WH-U1 | Daily revenue chart (portal + native) | **Done** — `daily_breakdown` on wire |
-| WH-U2 | Full import freshness / anomaly cards | **Done** — DDL + `loadAnalyticsImportAnomalyQueue` |
+| WH-U2 | Full import freshness / anomaly cards | **Done** — inventory V2 proxy + import session anchor on wire |
 | WH-U3 | Default analytics period 30d | **Done** — all three surfaces |
 
 ---

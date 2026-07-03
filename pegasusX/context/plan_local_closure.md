@@ -141,14 +141,14 @@ make fire-drill-ssmr DRILL=B      # single drill
 
 | Anchor | Gap | Work | Exit |
 |--------|-----|------|------|
-| `PX-LC-5A` | Manual truck + order selection UI | Supplier portal MANUAL dispatch; warehouse row already shipped | **shipped** supplier portal; supplier native deferred |
+| `PX-LC-5A` | Manual truck + order selection UI | Supplier portal + Android + iOS MANUAL dispatch | **shipped** all supplier row clients |
 | `PX-LC-5B` | `UnitVolumeVU` + catalog volume | DDL + `dispatch/volume.go` catalog lookup | **shipped** |
-| `PX-LC-5C` | Manual capacity warning | Supplier + warehouse portal `force_capacity` flow | **shipped** supplier portal |
+| `PX-LC-5C` | Manual capacity warning | Supplier + warehouse portal `force_capacity` flow | **shipped** all supplier surfaces |
 | `PX-LC-5D` | Driver on-shift / active-manifest in fleet query | `fleet/live-map` `OnShift` filter | **shipped** |
-| `PX-LC-5E` | Warehouse `import_freshness` partial | [`WAREHOUSE_ANALYTICS_PARITY.md`](WAREHOUSE_ANALYTICS_PARITY.md) — session-based freshness or document intentional proxy | Parity doc closed or gap logged |
-| `PX-LC-5F` | Supplier SP1-03 lanes | Either wire supply-lanes write UI or document topology-only ownership in `SUPPLIER_PHASE.md` | Phase ledger consistent with code |
+| `PX-LC-5E` | Warehouse `import_freshness` partial | Inventory V2 proxy + import session anchor on analytics wire | **shipped** (documented in `WAREHOUSE_ANALYTICS_PARITY.md`) |
+| `PX-LC-5F` | Supplier SP1-03 lanes | Topology-owned read-only lanes (no separate CRUD) | **shipped** — `SUPPLIER_PHASE.md` SP1-03 |
 
-**Anchor:** `PX-LC-5` — architecture gap ledger has no “Missing” without a `deferred` decision.
+**Anchor:** `PX-LC-5` — **shipped** (2026-07-03).
 
 ---
 
@@ -178,7 +178,7 @@ make fire-drill-ssmr DRILL=B      # single drill
 | `PX-LC-2` | L2 | Planning export local | **shipped** (2026-07-03) |
 | `PX-LC-3` | L3 | Fire drill SSMR | **shipped** (2026-07-03) |
 | `PX-LC-4` | L4 | Desktop dev release | **shipped** (prod certs deferred) |
-| `PX-LC-5` | L5 | Execution UX gaps | **partial** — supplier portal 5A–5D shipped; 5E/5F + supplier native open |
+| `PX-LC-5` | L5 | Execution UX gaps | **shipped** (2026-07-03) |
 | `PX-LC-6` | L6 | Plan reconciliation | **shipped** |
 
 ---

@@ -109,16 +109,24 @@ enum SupplierOperationsService {
 
     static func executeDispatch(
         warehouseId: String? = nil,
-        idempotencyKey: String
-    ) async throws {
-        var query: [String: String] = [:]
-        if let warehouseId, !warehouseId.isEmpty {
-            query["warehouse_id"] = warehouseId
+        idempotencyKey: String,
+        mode: String = "AUTO",
+        forceCapacity: Bool = false,
+        routes: [SupplierDispatchManualRoutePayload] = []
+    ) async throws -> SupplierDispatchExecuteResponse {
+        var path = "v1/supplier/dispatch/execute"
+        if let warehouseId, !warehouseId.isEmpty,
+           let encoded = warehouseId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+            path += "?warehouse_id=\(encoded)"
         }
-        try await APIClient.shared.postVoid(
-            "v1/supplier/dispatch/execute",
-            body: ["mode": "AUTO"],
-            query: query,
+        let body = SupplierDispatchExecuteBody(
+            mode: mode,
+            forceCapacity: forceCapacity ? true : nil,
+            routes: routes.isEmpty ? nil : routes
+        )
+        return try await APIClient.shared.post(
+            path,
+            body: body,
             idempotencyKey: idempotencyKey
         )
     }
