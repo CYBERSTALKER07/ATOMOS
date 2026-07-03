@@ -1564,15 +1564,18 @@ export interface SupplierDispatchPreview {
   undispatched_orders: Array<{
     order_id: string;
     retailer_id?: string;
+    retailer_name?: string;
     warehouse_id?: string;
     total_minor: number;
     currency: string;
+    volume_vu?: number;
   }>;
   available_drivers: Array<{
     driver_id: string;
     name: string;
     vehicle_id?: string;
     truck_status?: string;
+    max_volume_vu?: number;
   }>;
   unavailable_drivers?: Array<{
     driver_id: string;
@@ -1602,6 +1605,20 @@ export interface SupplierDispatchExecuteRoute {
 
 export interface SupplierDispatchExecuteRequest {
   mode?: "MANUAL" | "AUTO" | string;
+  force_capacity?: boolean;
+  routes?: Array<{
+    driver_id: string;
+    order_ids: string[];
+  }>;
+}
+
+export interface SupplierDispatchCapacityWarning {
+  driver_id: string;
+  loaded_vu: number;
+  max_volume_vu: number;
+  effective_max_vu: number;
+  excess_vu?: number;
+  suggested_unselect_order_ids?: string[];
 }
 
 export interface SupplierDispatchExecuteResponse {
@@ -1612,6 +1629,7 @@ export interface SupplierDispatchExecuteResponse {
   orders_assigned?: number;
   optimizer_source?: string;
   warnings?: string[];
+  capacity_warnings?: SupplierDispatchCapacityWarning[];
   manifests?: SupplierDispatchExecuteRoute[];
   orphan_order_ids?: string[];
 }

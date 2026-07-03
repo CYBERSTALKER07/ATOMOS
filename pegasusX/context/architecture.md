@@ -280,10 +280,10 @@ Pure in-process math is the default; **ai-worker OR-Tools is optional accelerati
 |---|---|
 | Supplier + warehouse fleet live map (`/fleet/live-map`) | **Implemented** (portal + supplier + warehouse native iOS/Android) |
 | Manifest route geometry (`EncodedRoutePolyline`) | **Implemented** (seal/reorder + backfill; OSRM optional via `ROUTING_OSRM_URL`) |
-| Manual truck + order selection UI | **Missing** on portal/mobile (backend MANUAL path exists) |
-| Product `UnitVolumeVU` + order volume from catalog | **Missing** (dispatch uses qty-sum stub) |
-| Manual capacity warning | **Missing** |
-| Driver on-shift / active-manifest in fleet query | **Partial** |
+| Manual truck + order selection UI | **Missing** on supplier Android/iOS; **shipped** warehouse portal + native + **supplier portal** (2026-07-03) |
+| Product `UnitVolumeVU` + order volume from catalog | **Shipped** — `dispatch/volume.go` reads catalog VU; preview wire includes `volume_vu` |
+| Manual capacity warning | **Shipped** warehouse + supplier portal MANUAL execute (`capacity_exceeded` / `force_capacity`) |
+| Driver on-shift / active-manifest in fleet query | **Shipped** supplier `fleet/live-map` filters `Drivers.OnShift = true` |
 | Auto-dispatch worker | **Exists** (settings opt-in; not primary UX) |
 
 ## Documentation Sync Set

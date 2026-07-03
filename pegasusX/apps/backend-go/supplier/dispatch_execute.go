@@ -36,8 +36,15 @@ type DispatchExecuteResult struct {
 	OrdersAssigned   int                    `json:"orders_assigned"`
 	OptimizerSource  string                 `json:"optimizer_source,omitempty"`
 	Warnings         []string               `json:"warnings,omitempty"`
+	CapacityWarnings []dispatch.CapacityWarning `json:"capacity_warnings,omitempty"`
 	Manifests        []DispatchExecuteRoute `json:"manifests"`
 	Orphans          []string               `json:"orphan_order_ids,omitempty"`
+}
+
+type dispatchExecuteOptions struct {
+	Mode          string
+	Routes        []dispatch.ManualRouteInput
+	ForceCapacity bool
 }
 
 // DispatchExecuteRoute is one committed truck manifest summary.
@@ -105,7 +112,29 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 	sid := s.scopedSupplierID(r)
 	warehouseFilter := resolveSupplierDispatchWarehouseID(r)
 
-	result, err := s.executeDispatch(r.Context(), sid, warehouseFilter)
+	var execReq struct {
+		Mode          string `json:"mode"`
+		ForceCapacity bool   `json:"force_capacity"`
+		Routes        []struct {
+			DriverID  string   `json:"driver_id"`
+			OrderIDs  []string `json:"order_ids"`
+		} `json:"routes"`
+	}
+	if len(body) > 0 {
+		_ = json.Unmarshal(body, &execReq)
+	}
+	opts := dispatchExecuteOptions{
+		Mode:          execReq.Mode,
+		ForceCapacity: execReq.ForceCapacity,
+	}
+	for _, route := range execReq.Routes {
+		opts.Routes = append(opts.Routes, dispatch.ManualRouteInput{
+			DriverID: route.DriverID,
+			OrderIDs: route.OrderIDs,
+		})
+	}
+
+	result, err := s.executeDispatch(r.Context(), sid, warehouseFilter, opts)
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "dispatch execute failed", "supplier_id", sid, "warehouse_id", warehouseFilter, "err", err)
 		if partial, ok := err.(*dispatchPartialCommitError); ok {
@@ -155,7 +184,7 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, result)
 }
 
-func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID string) (DispatchExecuteResult, error) {
+func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID string, opts dispatchExecuteOptions) (DispatchExecuteResult, error) {
 	out := DispatchExecuteResult{
 		Status:      "no_op",
 		SupplierID:  supplierID,
@@ -204,27 +233,75 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 		return out, nil
 	}
 
+	vehiclesByID := make(map[string]dispatch.VehicleSpec)
+	if vehicles, err := s.repo.ListFleetVehicles(ctx, supplierID); err == nil {
+		for _, vehicle := range vehicles {
+			id, spec := dispatch.VehicleSpecIndex(vehicle.VehicleID, vehicle.VehicleClass, vehicle.MaxVolumeVU)
+			vehiclesByID[id] = spec
+		}
+	}
 	fleet, vehicleByDriver, err := s.buildDispatchFleet(ctx, supplierID, warehouseID, freezeLocks)
 	if err != nil {
 		return DispatchExecuteResult{}, err
 	}
-	if len(fleet) == 0 {
+	mode := strings.ToUpper(strings.TrimSpace(opts.Mode))
+	if mode == "MANUAL" {
+		vehicleByDriver = supplierVehicleByDriverMap(ctx, s, supplierID, warehouseID)
+	} else if len(fleet) == 0 {
 		out.Warnings = append(out.Warnings, "no_available_drivers")
 		return out, nil
 	}
 
-	homeNodeID := strings.TrimSpace(warehouseID)
-	if homeNodeID == "" {
-		homeNodeID = strings.TrimSpace(fleet[0].DriverID)
-	}
-	depot := dispatch.ResolveDepot(ctx, s.portalSpanner, warehouseID, dispatch.DepotCoords{
-		Lat: s.fallbackDepotLat,
-		Lng: s.fallbackDepotLng,
-	})
-	job := plan.BuildSolveJob(ctx, supplierID, homeNodeID, depot, rows, fleet)
-	assignment, source, err := plan.OptimizeAndValidate(ctx, s.optimizerClient, job)
-	if err != nil {
-		return DispatchExecuteResult{}, err
+	driverMaxVU := supplierDriverMaxVUMap(ctx, s, supplierID, warehouseID, vehiclesByID)
+
+	var assignment *dispatch.AssignmentResult
+	var source string
+
+	if mode == "MANUAL" {
+		if len(opts.Routes) == 0 {
+			out.Warnings = append(out.Warnings, "manual_routes_required")
+			return out, nil
+		}
+		rows = filterDispatchRowsByManualRoutes(rows, opts.Routes)
+		if len(rows) == 0 {
+			out.Warnings = append(out.Warnings, "no_matching_orders")
+			return out, nil
+		}
+		source = "manual"
+		assignment = dispatch.BuildManualAssignment(rows, opts.Routes, driverMaxVU)
+		if assignment == nil || len(assignment.Routes) == 0 {
+			out.Warnings = append(out.Warnings, "manual_assignment_empty")
+			return out, nil
+		}
+		capacityWarnings := dispatch.ManualCapacityWarnings(assignment.Routes, driverMaxVU)
+		if len(capacityWarnings) > 0 {
+			out.CapacityWarnings = capacityWarnings
+			if !opts.ForceCapacity {
+				out.Status = "capacity_exceeded"
+				out.Warnings = append(out.Warnings, "capacity_exceeded")
+				return out, nil
+			}
+			out.Warnings = append(out.Warnings, "capacity_override")
+		}
+	} else {
+		if len(fleet) == 0 {
+			out.Warnings = append(out.Warnings, "no_available_drivers")
+			return out, nil
+		}
+
+		homeNodeID := strings.TrimSpace(warehouseID)
+		if homeNodeID == "" {
+			homeNodeID = strings.TrimSpace(fleet[0].DriverID)
+		}
+		depot := dispatch.ResolveDepot(ctx, s.portalSpanner, warehouseID, dispatch.DepotCoords{
+			Lat: s.fallbackDepotLat,
+			Lng: s.fallbackDepotLng,
+		})
+		job := plan.BuildSolveJob(ctx, supplierID, homeNodeID, depot, rows, fleet)
+		assignment, source, err = plan.OptimizeAndValidate(ctx, s.optimizerClient, job)
+		if err != nil {
+			return DispatchExecuteResult{}, err
+		}
 	}
 	out.OptimizerSource = source
 	if assignment != nil {

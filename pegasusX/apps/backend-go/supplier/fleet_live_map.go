@@ -64,9 +64,10 @@ func (s *Service) listFleetLiveRoutes(ctx context.Context, supplierID string) ([
 		             m.EncodedRoutePolyline, m.RouteGeometrySource, m.StopCount,
 		             d.Name
 		      FROM SupplierTruckManifests m
-		      LEFT JOIN Drivers d ON d.DriverId = m.DriverId
+		      INNER JOIN Drivers d ON d.DriverId = m.DriverId AND d.SupplierId = m.SupplierId
 		      WHERE m.SupplierId = @sid
 		        AND m.State IN ('SEALED', 'DISPATCHED')
+		        AND d.OnShift = true
 		      ORDER BY m.UpdatedAt DESC
 		      LIMIT 40`,
 		Params: map[string]any{"sid": supplierID},

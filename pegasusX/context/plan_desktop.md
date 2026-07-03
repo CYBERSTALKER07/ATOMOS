@@ -43,7 +43,7 @@ Same TypeScript contracts as portals (`@pegasusx/api-client`, `@pegasusx/types`,
 
 **Shared gaps:**
 - Production updater signing keys in GSM (dev pubkey committed for CI; rotate before external release)
-- `@tauri-apps/plugin-fs` / `plugin-dialog` wired for CSV export on supplier + warehouse; factory uses web fallback until plugins registered
+- `@tauri-apps/plugin-fs` / `plugin-dialog` wired for CSV export on supplier + warehouse + **factory** (`exportCsv` on transfers/supply-requests)
 - No shared `packages/desktop-bridge` — four copies of `lib/bridge.ts`
 - True SSR impossible with bundled static export (documented; accept and compensate with cache)
 - Supplier signal-ingest ops panel portal-only (native gap intentional per matrix)

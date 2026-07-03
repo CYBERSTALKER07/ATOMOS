@@ -128,7 +128,7 @@ make fire-drill-ssmr DRILL=B      # single drill
 | `PX-LC-4A` | `PX-DESK-0B` | Verify `desktop-windows-build.yml` artifacts on release branch | `.msi` for all four apps downloadable from CI |
 | `PX-LC-4B` | `PX-DESK-0A` | Document dev signing path: committed dev pubkey + `make validate-desktop-updater` against local manifest | Updater check passes in CI |
 | `PX-LC-4C` | `PX-DESK-0C` | Run unsigned/debug MSI install smoke on clean Windows VM **or** document as manual QA step with screenshot evidence | QA entry in `PX-DESK_MANUAL_QA.md` |
-| `PX-LC-4D` | gap | Register `plugin-fs` / `plugin-dialog` on **factory-portal** Tauri (supplier + warehouse already wired) | Factory CSV export uses native dialog on Windows |
+| `PX-LC-4D` | gap | Register `plugin-fs` / `plugin-dialog` on **factory-portal** Tauri (supplier + warehouse already wired) | **shipped** — `factory-portal/src-tauri` plugins + capabilities + `exportCsv` |
 | `PX-LC-4E` | `PX-DESK-0` | Mark `PX-DESK-0A`/`0C` prod cert values as **deferred until GCP billing** in `plan_desktop.md` | No false “partial” on shipped dev path |
 
 **Anchor:** `PX-LC-4` — desktop shippable on dev channel; prod signing explicitly billing-gated.
@@ -141,10 +141,10 @@ make fire-drill-ssmr DRILL=B      # single drill
 
 | Anchor | Gap | Work | Exit |
 |--------|-----|------|------|
-| `PX-LC-5A` | Manual truck + order selection UI | Supplier portal + warehouse dispatch: MANUAL path UI (backend exists) | SSMR marker or manual QA row |
-| `PX-LC-5B` | `UnitVolumeVU` + catalog volume | DDL if needed + dispatch qty from catalog VU, not qty-sum stub | `PX_E2E_DISPATCH_CAPACITY_OK` still green; volume matches catalog |
-| `PX-LC-5C` | Manual capacity warning | Surface warning when manual selection exceeds truck VU | UI banner + 409 or warn per existing policy |
-| `PX-LC-5D` | Driver on-shift / active-manifest in fleet query | Complete `GET /v1/supplier/fleet/live-map` filter for on-shift drivers | Fleet map hides off-shift; test in `supplier` package |
+| `PX-LC-5A` | Manual truck + order selection UI | Supplier portal MANUAL dispatch; warehouse row already shipped | **shipped** supplier portal; supplier native deferred |
+| `PX-LC-5B` | `UnitVolumeVU` + catalog volume | DDL + `dispatch/volume.go` catalog lookup | **shipped** |
+| `PX-LC-5C` | Manual capacity warning | Supplier + warehouse portal `force_capacity` flow | **shipped** supplier portal |
+| `PX-LC-5D` | Driver on-shift / active-manifest in fleet query | `fleet/live-map` `OnShift` filter | **shipped** |
 | `PX-LC-5E` | Warehouse `import_freshness` partial | [`WAREHOUSE_ANALYTICS_PARITY.md`](WAREHOUSE_ANALYTICS_PARITY.md) — session-based freshness or document intentional proxy | Parity doc closed or gap logged |
 | `PX-LC-5F` | Supplier SP1-03 lanes | Either wire supply-lanes write UI or document topology-only ownership in `SUPPLIER_PHASE.md` | Phase ledger consistent with code |
 
@@ -178,7 +178,7 @@ make fire-drill-ssmr DRILL=B      # single drill
 | `PX-LC-2` | L2 | Planning export local | **shipped** (2026-07-03) |
 | `PX-LC-3` | L3 | Fire drill SSMR | **shipped** (2026-07-03) |
 | `PX-LC-4` | L4 | Desktop dev release | **shipped** (prod certs deferred) |
-| `PX-LC-5` | L5 | Execution UX gaps | **shipped** or per-item **deferred** |
+| `PX-LC-5` | L5 | Execution UX gaps | **partial** — supplier portal 5A–5D shipped; 5E/5F + supplier native open |
 | `PX-LC-6` | L6 | Plan reconciliation | **shipped** |
 
 ---

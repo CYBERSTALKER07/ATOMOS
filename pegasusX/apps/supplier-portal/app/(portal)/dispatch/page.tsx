@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { decodeJwtPayload, readTokenFromCookie } from "@/lib/auth";
 import { ApiError, supplierDispatchKey } from "@pegasusx/api-client";
-import type { SupplierDispatchPreview, SupplierTopologyWarehouse } from "@pegasusx/types";
+import type { SupplierDispatchCapacityWarning, SupplierDispatchPreview, SupplierTopologyWarehouse } from "@pegasusx/types";
 import { useDispatchData, type ManifestData } from "./use-dispatch-data";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { setSupplierReconcileScope } from "@/lib/supplier-reconnect";
@@ -27,6 +27,10 @@ function supplierScopeId(): string {
   return typeof claims?.supplier_id === "string" ? claims.supplier_id : "supplier";
 }
 
+const TETRIS_BUFFER = 0.95;
+
+type DispatchMode = "auto" | "manual";
+
 export default function DispatchPage() {
   const { manifests, loading, error, refresh } = useDispatchData();
   const [warehouses, setWarehouses] = useState<SupplierTopologyWarehouse[]>([]);
@@ -37,6 +41,23 @@ export default function DispatchPage() {
   const [executeError, setExecuteError] = useState<string | null>(null);
   const [executeSuccess, setExecuteSuccess] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dispatchMode, setDispatchMode] = useState<DispatchMode>("manual");
+  const [selectedDriverId, setSelectedDriverId] = useState("");
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [capacityPrompt, setCapacityPrompt] = useState<SupplierDispatchCapacityWarning[] | null>(null);
+
+  const selectedOrderList = useMemo(() => [...selectedOrderIds].sort(), [selectedOrderIds]);
+
+  useEffect(() => {
+    const valid = new Set((preview?.undispatched_orders ?? []).map((o) => o.order_id));
+    setSelectedOrderIds((prev) => new Set([...prev].filter((id) => valid.has(id))));
+  }, [preview?.undispatched_orders]);
+
+  useEffect(() => {
+    if (!selectedDriverId && preview?.available_drivers?.length) {
+      setSelectedDriverId(preview.available_drivers[0]?.driver_id ?? "");
+    }
+  }, [preview?.available_drivers, selectedDriverId]);
 
   useEffect(() => {
     api
@@ -102,6 +123,56 @@ export default function DispatchPage() {
     }
   }, [loadPreview, preview, refresh, selectedWarehouseId]);
 
+  const runManualDispatch = useCallback(async (forceCapacity = false) => {
+    if (!selectedDriverId || selectedOrderList.length === 0) {
+      return;
+    }
+    setExecuting(true);
+    setExecuteError(null);
+    setExecuteSuccess(null);
+    setCapacityPrompt(null);
+    try {
+      const routeFingerprint = JSON.stringify({
+        mode: "MANUAL",
+        force_capacity: forceCapacity,
+        routes: [{ driver_id: selectedDriverId, order_ids: selectedOrderList }],
+      });
+      const supplierId = supplierScopeId();
+      const warehouseId = selectedWarehouseId ?? "default";
+      const idempotencyKey = supplierDispatchKey(supplierId, warehouseId, "MANUAL", routeFingerprint);
+      const result = await api.executeSupplierDispatch(
+        {
+          mode: "MANUAL",
+          force_capacity: forceCapacity,
+          routes: [{ driver_id: selectedDriverId, order_ids: selectedOrderList }],
+        },
+        warehouseQuery(selectedWarehouseId),
+        idempotencyKey,
+      );
+      if (result.status === "capacity_exceeded" && result.capacity_warnings?.length) {
+        setCapacityPrompt(result.capacity_warnings);
+        setExecuteError("Selected orders exceed truck capacity. Confirm override or remove orders.");
+        return;
+      }
+      if (result.status === "dispatched") {
+        setExecuteSuccess(
+          `Manual dispatch committed: ${result.manifests_created ?? 0} manifest(s), ${result.orders_assigned ?? 0} order(s).`,
+        );
+        setSelectedOrderIds(new Set());
+      } else if (result.warnings?.length) {
+        setExecuteError(result.warnings.join("; "));
+      } else {
+        setExecuteSuccess("No orders were dispatched.");
+      }
+      await refresh();
+      loadPreview();
+    } catch (err) {
+      setExecuteError(err instanceof ApiError ? err.message : "dispatch_execute_failed");
+    } finally {
+      setExecuting(false);
+    }
+  }, [loadPreview, refresh, selectedDriverId, selectedOrderList, selectedWarehouseId]);
+
   useSupplierSessionReconcile(() => {
     loadPreview();
     void refresh();
@@ -122,6 +193,29 @@ export default function DispatchPage() {
     [manifests, searchQuery],
   );
 
+  const selectedDriver = preview?.available_drivers?.find((d) => d.driver_id === selectedDriverId);
+  const selectedVolumeVU = useMemo(() => {
+    const orders = preview?.undispatched_orders ?? [];
+    return orders
+      .filter((o) => selectedOrderIds.has(o.order_id))
+      .reduce((sum, o) => sum + (o.volume_vu ?? 0), 0);
+  }, [preview?.undispatched_orders, selectedOrderIds]);
+  const truckMaxVU = selectedDriver?.max_volume_vu ?? 0;
+  const truckEffectiveVU = truckMaxVU * TETRIS_BUFFER;
+  const capacityExceeded = truckEffectiveVU > 0 && selectedVolumeVU > truckEffectiveVU;
+
+  const toggleOrderSelection = (orderId: string) => {
+    setSelectedOrderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) {
+        next.delete(orderId);
+      } else {
+        next.add(orderId);
+      }
+      return next;
+    });
+  };
+
   return (
     <PageChrome
       icon="dispatch"
@@ -131,15 +225,42 @@ export default function DispatchPage() {
       skeletonVariant="table"
       error={error}
       actions={
-        <div className="flex gap-3">
-          <button
-            type="button"
-            className="md-btn md-btn-filled"
-            disabled={executing || (preview?.pending_count ?? 0) === 0}
-            onClick={() => void runAutoDispatch()}
-          >
-            {executing ? "Dispatching…" : "Auto dispatch"}
-          </button>
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex rounded-lg border border-[var(--color-md-outline-variant)] p-0.5">
+            <button
+              type="button"
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${dispatchMode === "manual" ? "md-btn md-btn-filled h-8" : "md-btn md-btn-text h-8"}`}
+              onClick={() => setDispatchMode("manual")}
+            >
+              Manual truck
+            </button>
+            <button
+              type="button"
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${dispatchMode === "auto" ? "md-btn md-btn-filled h-8" : "md-btn md-btn-text h-8"}`}
+              onClick={() => setDispatchMode("auto")}
+            >
+              Smart assign
+            </button>
+          </div>
+          {dispatchMode === "auto" ? (
+            <button
+              type="button"
+              className="md-btn md-btn-filled"
+              disabled={executing || (preview?.pending_count ?? 0) === 0}
+              onClick={() => void runAutoDispatch()}
+            >
+              {executing ? "Dispatching…" : "Auto dispatch"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="md-btn md-btn-filled"
+              disabled={executing || !selectedDriverId || selectedOrderList.length === 0}
+              onClick={() => void runManualDispatch(false)}
+            >
+              {executing ? "Dispatching…" : `Manual dispatch (${selectedOrderList.length})`}
+            </button>
+          )}
           <div className="relative">
             <input
               type="search"
@@ -252,6 +373,111 @@ export default function DispatchPage() {
               <li key={warning}>{warning}</li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {dispatchMode === "manual" && (preview?.undispatched_orders?.length ?? 0) > 0 ? (
+        <div className="md-card p-4 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="md-typescale-title-medium">Manual truck assignment</h2>
+            {truckMaxVU > 0 ? (
+              <span className="md-typescale-label-small text-[var(--color-md-outline)]">
+                Selected {selectedVolumeVU.toFixed(1)} / {truckEffectiveVU.toFixed(1)} VU (95% of {truckMaxVU.toFixed(1)})
+              </span>
+            ) : null}
+          </div>
+          {capacityExceeded ? (
+            <div
+              className="rounded-lg border p-3 text-sm"
+              style={{
+                borderColor: "var(--desk-warning)",
+                background: "color-mix(in srgb, var(--desk-warning) 10%, var(--desk-surface))",
+              }}
+            >
+              Insufficient truck space detected for the selected orders. Dispatch will prompt before override.
+            </div>
+          ) : null}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="md-typescale-label-medium" htmlFor="manual-driver">Driver / truck</label>
+              <select
+                id="manual-driver"
+                className="md-input-outlined w-full h-10"
+                value={selectedDriverId}
+                onChange={(e) => setSelectedDriverId(e.target.value)}
+              >
+                {(preview?.available_drivers ?? []).map((driver) => (
+                  <option key={driver.driver_id} value={driver.driver_id}>
+                    {driver.name}
+                    {driver.max_volume_vu ? ` · ${driver.max_volume_vu.toFixed(0)} VU` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="md-typescale-label-medium">Pending orders</span>
+                <button
+                  type="button"
+                  className="md-btn md-btn-text h-8 text-sm"
+                  onClick={() => {
+                    const all = preview?.undispatched_orders?.map((o) => o.order_id) ?? [];
+                    setSelectedOrderIds(new Set(all));
+                  }}
+                >
+                  Select all
+                </button>
+              </div>
+              <div className="max-h-48 overflow-y-auto space-y-2 border border-[var(--color-md-outline-variant)] rounded-lg p-2">
+                {(preview?.undispatched_orders ?? []).map((order) => {
+                  const checked = selectedOrderIds.has(order.order_id);
+                  return (
+                    <label
+                      key={order.order_id}
+                      className="flex items-center gap-2 text-sm cursor-pointer rounded-md px-2 py-1 hover:bg-[var(--color-md-surface-container-high)]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleOrderSelection(order.order_id)}
+                      />
+                      <span className="font-mono text-xs">{order.order_id.slice(0, 10)}…</span>
+                      <span className="text-[var(--color-md-outline)]">
+                        {(order.volume_vu ?? 0).toFixed(1)} VU
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {capacityPrompt ? (
+        <div className="md-card p-4 space-y-3 border border-[var(--desk-warning)]">
+          <p className="md-typescale-title-small" style={{ color: "var(--desk-warning)" }}>
+            Capacity exceeded
+          </p>
+          {capacityPrompt.map((warning) => (
+            <p key={warning.driver_id} className="md-typescale-body-small">
+              Loaded {warning.loaded_vu.toFixed(1)} VU exceeds effective max {warning.effective_max_vu.toFixed(1)} VU
+              {warning.excess_vu ? ` (+${warning.excess_vu.toFixed(1)} excess)` : ""}.
+            </p>
+          ))}
+          <div className="flex gap-2">
+            <button type="button" className="md-btn md-btn-tonal" onClick={() => setCapacityPrompt(null)}>
+              Adjust selection
+            </button>
+            <button
+              type="button"
+              className="md-btn md-btn-filled"
+              disabled={executing}
+              onClick={() => void runManualDispatch(true)}
+            >
+              Continue anyway
+            </button>
+          </div>
         </div>
       ) : null}
 
