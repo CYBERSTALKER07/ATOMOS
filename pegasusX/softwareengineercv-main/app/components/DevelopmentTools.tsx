@@ -219,49 +219,49 @@ export default function DevelopmentTools() {
 
   return (
     <PageSection ref={sectionRef} id="tools">
-        <div ref={titleRef}>
-          <SectionHeader
-            align="center"
-            eyebrow="Under the hood"
-            title="Built to run at network scale"
-            description="Production-grade infrastructure keeps your operation reliable — explore the full technology stack, open-source components, and architecture on our technology pages."
-          />
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href="/technology" className="editorial-btn">
-              VIEW TECHNOLOGY
-            </Link>
-            <Link href="/technology/go-backend-platform" className="editorial-btn editorial-btn--sm">
-              OPEN SOURCE STACK →
-            </Link>
-          </div>
+      <div ref={titleRef}>
+        <SectionHeader
+          align="center"
+          eyebrow="Under the hood"
+          title="Built to run at network scale"
+          description="Production-grade infrastructure keeps your operation reliable — explore the full technology stack, open-source components, and architecture on our technology pages."
+        />
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link href="/technology" className="editorial-btn">
+            VIEW TECHNOLOGY
+          </Link>
+          <Link href="/technology/go-backend-platform" className="editorial-btn editorial-btn--sm">
+            OPEN SOURCE STACK →
+          </Link>
         </div>
+      </div>
 
-        <div
-          ref={stackRef}
-          className="border border-white/10 bg-black overflow-hidden"
-          onPointerMove={handlePointerMove}
-          onPointerLeave={handlePointerLeave}
-        >
-          <div ref={rowsRef} className="flex flex-col gap-2 py-6 md:py-8">
-            {carouselRows.map((row, index) => (
-              <div key={index} className="relative h-[96px] md:h-[108px]">
-                <LogoLoop
-                  logos={row.logos}
-                  speed={50}
-                  direction={row.direction}
-                  logoHeight={56}
-                  gap={28}
-                  pauseOnHover={false}
-                  scaleOnHover
-                  fadeOut
-                  fadeOutColor="#000000"
-                  active={isInView}
-                  ariaLabel="Platform stack technologies"
-                />
-              </div>
-            ))}
-          </div>
+      <div
+        ref={stackRef}
+        className="border-none bg-black overflow-hidden"
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+      >
+        <div ref={rowsRef} className="flex flex-col gap-2 py-6 md:py-8">
+          {carouselRows.map((row, index) => (
+            <div key={index} className="relative h-[96px] md:h-[108px]">
+              <LogoLoop
+                logos={row.logos}
+                speed={50}
+                direction={row.direction}
+                logoHeight={56}
+                gap={28}
+                pauseOnHover={false}
+                scaleOnHover
+                fadeOut
+                fadeOutColor="#000000"
+                active={isInView}
+                ariaLabel="Platform stack technologies"
+              />
+            </div>
+          ))}
         </div>
+      </div>
     </PageSection>
   );
 }

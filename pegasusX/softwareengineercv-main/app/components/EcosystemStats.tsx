@@ -61,7 +61,7 @@ export default function EcosystemStats() {
   }, [activeTab]);
 
   return (
-    <PageSection bleed={true} className="bg-[#020202] w-full border-t border-white/5 relative overflow-hidden" aria-labelledby="ecosystem-stats-heading">
+    <PageSection bleed={true} className="bg-[#020202] w-full border-t border-white/5 relative overflow-hidden !p-0" aria-labelledby="ecosystem-stats-heading">
 
       {/* Background ambient light */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-white/[0.015] blur-[120px] pointer-events-none rounded-full" />
