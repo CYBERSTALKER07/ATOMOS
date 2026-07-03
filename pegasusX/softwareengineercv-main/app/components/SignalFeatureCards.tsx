@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import ChamferButton, { ChamferArrowIcon } from './ChamferButton';
+import PageSection from './layout/PageSection';
+import SectionHeader from './layout/SectionHeader';
+import MapPinIcon from './icons/MapPinIcon';
 
 const CARDS = [
   {
@@ -12,6 +15,8 @@ const CARDS = [
     href: '/platform/order-lifecycle',
     ascii: '010\n101\n001',
     icon: 'cycle',
+    from: 'Retailer checkout',
+    to: 'Delivery stop',
   },
   {
     title: 'Dispatch you can trust',
@@ -21,6 +26,8 @@ const CARDS = [
     href: '/solutions/visual-dispatch-engine',
     ascii: '110\n011\n100',
     icon: 'dispatch',
+    from: 'Warehouse gate',
+    to: 'Route manifest',
   },
   {
     title: 'Fleet truth on the map',
@@ -30,8 +37,32 @@ const CARDS = [
     href: '/solutions/fleet-visibility',
     ascii: '001\n110\n010',
     icon: 'fleet',
+    from: 'Depot yard',
+    to: 'Live ETA',
   },
 ] as const;
+
+function RouteEndpoints({ from, to }: { from: string; to: string }) {
+  return (
+    <div className="chamfer-card__route" aria-label={`Route from ${from} to ${to}`}>
+      <div className="chamfer-card__route-end">
+        <MapPinIcon size={18} className="chamfer-card__route-pin chamfer-card__route-pin--from" title="From" />
+        <div className="chamfer-card__route-copy">
+          <span className="chamfer-card__route-label">From</span>
+          <span className="chamfer-card__route-place">{from}</span>
+        </div>
+      </div>
+      <div className="chamfer-card__route-track" aria-hidden />
+      <div className="chamfer-card__route-end chamfer-card__route-end--to">
+        <MapPinIcon size={18} className="chamfer-card__route-pin chamfer-card__route-pin--to" title="To" />
+        <div className="chamfer-card__route-copy">
+          <span className="chamfer-card__route-label">To</span>
+          <span className="chamfer-card__route-place">{to}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function LineIcon({ type }: { type: string }) {
   if (type === 'cycle') {
@@ -64,29 +95,26 @@ function LineIcon({ type }: { type: string }) {
 
 export default function SignalFeatureCards() {
   return (
-    <section className="bg-black py-20 md:py-28 text-white" aria-labelledby="signal-features-heading">
-      <div className="container mx-auto max-w-7xl px-4">
-        <div className="mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="editorial-eyebrow">Capabilities</p>
-            <h2 id="signal-features-heading" className="text-3xl font-semibold tracking-tight md:text-5xl">
-              Signal over noise
-            </h2>
-            <p className="mt-4 max-w-xl text-white/60">
-              Three outcomes every network needs — clearer operations, fewer surprises, faster decisions.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <ChamferButton href="/join" variant="fill">
-              Talk to us
-            </ChamferButton>
-            <ChamferButton href="/platform" variant="ghost">
-              Get started
-            </ChamferButton>
-          </div>
+    <PageSection aria-labelledby="signal-features-heading">
+      <div className="mb-12 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+        <SectionHeader
+          eyebrow="Capabilities"
+          title="Signal over noise"
+          titleId="signal-features-heading"
+          description="Three outcomes every network needs — clearer operations, fewer surprises, faster decisions."
+          className="mb-0"
+        />
+        <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:pb-1">
+          <ChamferButton href="/join" variant="fill">
+            Talk to us
+          </ChamferButton>
+          <ChamferButton href="/platform" variant="ghost">
+            Get started
+          </ChamferButton>
         </div>
+      </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
           {CARDS.map((card) => (
             <Link key={card.href} href={card.href} className="chamfer-card p-6 md:p-8">
               <div className="flex items-start justify-between gap-4">
@@ -99,16 +127,18 @@ export default function SignalFeatureCards() {
                 <LineIcon type={card.icon} />
               </div>
               <p className="text-sm leading-relaxed text-white/55">{card.description}</p>
-              <div className="chamfer-card__footer">
-                <span className="chamfer-card__meta">{card.meta}</span>
-                <span className="chamfer-btn chamfer-btn--ghost chamfer-btn--icon" aria-hidden>
-                  <ChamferArrowIcon />
-                </span>
+              <div className="chamfer-card__bottom">
+                <RouteEndpoints from={card.from} to={card.to} />
+                <div className="chamfer-card__footer chamfer-card__footer--route">
+                  <span className="chamfer-card__meta">{card.meta}</span>
+                  <span className="chamfer-btn chamfer-btn--ghost chamfer-btn--icon" aria-hidden>
+                    <ChamferArrowIcon />
+                  </span>
+                </div>
               </div>
             </Link>
           ))}
         </div>
-      </div>
-    </section>
+    </PageSection>
   );
 }

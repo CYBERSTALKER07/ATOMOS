@@ -6,6 +6,8 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import LogoLoop, { type LogoItem } from './LogoLoop';
 import { useInView } from '../hooks/useInView';
+import PageSection from './layout/PageSection';
+import SectionHeader from './layout/SectionHeader';
 import {
   SiReact,
   SiNextdotjs,
@@ -216,18 +218,14 @@ export default function DevelopmentTools() {
   }, [applySpotlight]);
 
   return (
-    <section ref={sectionRef} className="py-20 bg-black text-white" id="tools">
-      <div className="container mx-auto px-4">
-        <div ref={titleRef} className="text-center mb-12">
-          <p className="editorial-eyebrow mb-4">Under the hood</p>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-4 text-white">
-            Built to run at network scale
-          </h2>
-          <div className="w-20 h-1 bg-white rounded-full mx-auto mb-6" />
-          <p className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto">
-            Production-grade infrastructure keeps your operation reliable — explore the full technology
-            stack, open-source components, and architecture on our technology pages.
-          </p>
+    <PageSection ref={sectionRef} id="tools">
+        <div ref={titleRef}>
+          <SectionHeader
+            align="center"
+            eyebrow="Under the hood"
+            title="Built to run at network scale"
+            description="Production-grade infrastructure keeps your operation reliable — explore the full technology stack, open-source components, and architecture on our technology pages."
+          />
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/technology" className="editorial-btn">
               VIEW TECHNOLOGY
@@ -240,7 +238,7 @@ export default function DevelopmentTools() {
 
         <div
           ref={stackRef}
-          className="max-w-7xl mx-auto border border-white/10 bg-black overflow-hidden"
+          className="border border-white/10 bg-black overflow-hidden"
           onPointerMove={handlePointerMove}
           onPointerLeave={handlePointerLeave}
         >
@@ -264,7 +262,6 @@ export default function DevelopmentTools() {
             ))}
           </div>
         </div>
-      </div>
-    </section>
+    </PageSection>
   );
 }

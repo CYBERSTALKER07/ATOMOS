@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Route } from 'next';
+import PaymentFromToLogos from '@/app/components/payment/PaymentFromToLogos';
 
 export { EDITORIAL_IMAGES } from '@/app/lib/siteAssets';
 
@@ -229,6 +230,8 @@ export interface ContentCardProps {
   className?: string;
   imagePriority?: boolean;
   hoverLabel?: string;
+  /** Replaces photo media with the payment from → debit card logo panel */
+  mediaVisual?: 'payment-from-to';
   children?: React.ReactNode;
 }
 
@@ -248,6 +251,7 @@ function ContentCard({
   className = '',
   imagePriority = false,
   hoverLabel,
+  mediaVisual,
   children,
 }: ContentCardProps) {
   const isLight = tone === 'light' || variant === 'featured';
@@ -300,7 +304,14 @@ function ContentCard({
 
   const mediaInner = (
     <>
-      {image ? (
+      {mediaVisual === 'payment-from-to' ? (
+        <PaymentFromToLogos
+          variant="from-only"
+          size="card"
+          fromPlace="Retailer checkout"
+          className="payment-from-to-logos--editorial"
+        />
+      ) : image ? (
         <Image
           src={image}
           alt={imageAlt || title}
@@ -313,7 +324,7 @@ function ContentCard({
       ) : (
         <div className="editorial-card__media--placeholder absolute inset-0" aria-hidden="true" />
       )}
-      {image ? <CardHoverOverlay label={actionLabel} /> : null}
+      {image && !mediaVisual ? <CardHoverOverlay label={actionLabel} /> : null}
     </>
   );
 

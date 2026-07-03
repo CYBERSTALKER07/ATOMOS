@@ -7,12 +7,14 @@ import Link from 'next/link';
 import ContentCard, { EDITORIAL_IMAGES } from './ContentCard';
 import { useIsMobile } from '../hooks/useDevice';
 import { bentoPlacement } from '../lib/bento';
+import PageSection from './layout/PageSection';
+import SectionHeader from './layout/SectionHeader';
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function Projects() {
   const { isMobile } = useIsMobile();
-  const sectionRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -102,19 +104,16 @@ export default function Projects() {
   ];
 
   return (
-    <section ref={sectionRef} className="py-20 bg-black text-white" id="projects">
-      <div className="container mx-auto px-4">
-        <div ref={titleRef} className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-4 text-white">
-            Platform Modules
-          </h2>
-          <div className="w-20 h-1 bg-white mx-auto mb-6" />
-          <p className="text-lg md:text-xl text-white max-w-2xl mx-auto">
-            Core modules that power supplier-led logistics from dispatch to delivery
-          </p>
+    <PageSection ref={sectionRef} id="projects">
+        <div ref={titleRef}>
+          <SectionHeader
+            align="center"
+            title="Platform Modules"
+            description="Core modules that power supplier-led logistics from dispatch to delivery"
+          />
         </div>
 
-        <div ref={gridRef} className="editorial-bento max-w-7xl mx-auto">
+        <div ref={gridRef} className="editorial-bento">
           {projects.map((project, index) => (
             <ContentCard
               key={project.title}
@@ -138,7 +137,6 @@ export default function Projects() {
             VIEW ALL MODULES
           </Link>
         </div>
-      </div>
-    </section>
+    </PageSection>
   );
 }

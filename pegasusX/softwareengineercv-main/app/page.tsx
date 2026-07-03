@@ -4,6 +4,7 @@ import About from './components/About';
 import PlatformValue from './components/PlatformValue';
 import Skills from './components/Skills';
 import SiteNav from './components/explore/SiteNav';
+import LaneDivider from './components/layout/LaneDivider';
 import type { Metadata } from 'next';
 import {
   pageMetadata,
@@ -17,6 +18,7 @@ const LogisticsSolutions = dynamic(() => import('./components/LogisticsSolutions
 const SignalFeatureCards = dynamic(() => import('./components/SignalFeatureCards'));
 const OrderCycleVisualSection = dynamic(() => import('./components/OrderCycleVisualSection'));
 const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualSection'));
+const PaymentFlowSection = dynamic(() => import('./components/PaymentFlowSection'));
 const DevelopmentTools = dynamic(() => import('./components/DevelopmentTools'));
 const Projects = dynamic(() => import('./components/Projects'));
 const Companies = dynamic(() => import('./components/Companies'));
@@ -48,14 +50,19 @@ export default function Home() {
         <SiteNav activeHref="/" />
 
         <Hero />
+        <LaneDivider index="01" label="Network" />
         <About />
         <PlatformValue />
+        <LaneDivider index="02" label="Signal" />
         <SignalFeatureCards />
         <OrderCycleVisualSection />
         <DispatchVisualSection />
+        <PaymentFlowSection />
+        <LaneDivider index="03" label="Operations" />
         <Skills />
         <LogisticsSolutions />
         <DevelopmentTools />
+        <LaneDivider index="04" label="Proof" />
         <Projects />
         <Companies />
         <Licensing />

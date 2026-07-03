@@ -9,6 +9,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import TextType from './TextType';
 import { useIsMobile } from '../hooks/useDevice';
 import { useInView } from '../hooks/useInView';
+import PageSection from './layout/PageSection';
 
 const ASCIIText = dynamic(() => import('./ASCIIText'), { ssr: false });
 
@@ -53,11 +54,10 @@ export default function About() {
   }, [isMobile]);
 
   return (
-    <section id="about" ref={aboutRef} className="py-20 bg-black text-white">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
+    <PageSection id="about" ref={aboutRef}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div ref={imageRef} className="relative">
-            <div ref={asciiRef} className="max-w-7xl mx-auto">
+            <div ref={asciiRef}>
               <div className="relative h-[400px] md:h-[500px] overflow-hidden border border-white/10 bg-black">
                 {isMobile ? (
                   <div className="relative flex h-full w-full items-center justify-center bg-black p-12">
@@ -141,7 +141,6 @@ export default function About() {
             </div>
           </div>
         </div>
-      </div>
-    </section>
+    </PageSection>
   );
 }

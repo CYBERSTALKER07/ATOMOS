@@ -13,6 +13,8 @@ import {
   useAnimationFrame
 } from 'framer-motion';
 import { useLayoutEffect, useState } from 'react';
+import PageSection from './layout/PageSection';
+import SectionHeader from './layout/SectionHeader';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -280,27 +282,25 @@ export default function Companies() {
   ];
 
   return (
-    <section
+    <PageSection
       ref={sectionRef}
       id="companies"
-      className="py-20 bg-black text-white overflow-hidden"
+      bleed
+      className="overflow-hidden"
     >
-      <div className="container mx-auto px-4 mb-12">
-        <div ref={titleRef} className="text-center max-w-3xl mx-auto">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-6 text-white">
-            Six Roles, One Network
-          </h2>
-          <p className="text-lg md:text-xl text-gray-300 leading-relaxed">
-            Every team in a supplier-led logistics network — connected on Pegasus
-          </p>
+      <div className="page-shell mb-12">
+        <div ref={titleRef}>
+          <SectionHeader
+            align="center"
+            title="Six Roles, One Network"
+            description="Every team in a supplier-led logistics network — connected on Pegasus"
+            className="mb-0"
+          />
         </div>
       </div>
 
-      {/* Row 1 - Scrolling Right */}
       <VelocityScroll companies={rowOneCompanies} velocity={30} numCopies={2} />
-
-      {/* Row 2 - Scrolling Left */}
       <VelocityScroll companies={rowTwoCompanies} velocity={-30} numCopies={2} />
-    </section>
+    </PageSection>
   );
 }

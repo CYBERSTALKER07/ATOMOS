@@ -5,6 +5,70 @@
 :root {
   --font-title: "Avenir Next", "Avenir Next LT Pro", Avenir, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
+  --page-max: 80rem;
+  --page-gutter: clamp(1rem, 4vw, 2rem);
+  --section-y: clamp(4.5rem, 9vw, 7rem);
+  --lane-accent: #fbff63;
+  --lane-muted: rgba(255, 255, 255, 0.1);
+}
+
+/* Unified page rail — one width and gutter across marketing sections */
+.page-shell {
+  width: 100%;
+  max-width: var(--page-max);
+  margin-inline: auto;
+  padding-inline: var(--page-gutter);
+}
+
+.page-section {
+  padding-block: var(--section-y);
+}
+
+.section-header {
+  margin-bottom: clamp(2.5rem, 5vw, 4rem);
+  max-width: 44rem;
+}
+
+.section-header--center {
+  max-width: 48rem;
+}
+
+.lane-divider {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  max-width: var(--page-max);
+  margin-inline: auto;
+  padding-inline: var(--page-gutter);
+  padding-block: 0.5rem;
+}
+
+.lane-divider::before,
+.lane-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--lane-muted) 18%,
+    var(--lane-muted) 82%,
+    transparent
+  );
+}
+
+.lane-divider__label {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+  white-space: nowrap;
+}
+
+.lane-divider__label strong {
+  color: var(--lane-accent);
+  font-weight: 500;
 }
 
 h1,
@@ -580,11 +644,317 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.chamfer-card__footer--route {
+  margin-top: 0;
+  border-top: none;
+  padding-top: 1rem;
+}
+
 .chamfer-card__meta {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.625rem;
   letter-spacing: 0.06em;
   color: rgba(255, 255, 255, 0.45);
+}
+
+.chamfer-card__route {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chamfer-card__bottom {
+  margin-top: auto;
+}
+
+.chamfer-card__route-end {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.chamfer-card__route-end--to {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.chamfer-card__route-pin {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.chamfer-card__route-pin--from {
+  color: var(--lane-accent, #fbff63);
+}
+
+.chamfer-card__route-pin--to {
+  color: #a9ebf9;
+}
+
+.chamfer-card__route-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.chamfer-card__route-label {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.chamfer-card__route-place {
+  font-size: 0.6875rem;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chamfer-card__route-track {
+  width: 1.25rem;
+  height: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.22) 0,
+    rgba(255, 255, 255, 0.22) 3px,
+    transparent 3px,
+    transparent 6px
+  );
+}
+
+/* Payment from → to logo panel */
+.payment-from-to-logos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(0.75rem, 3vw, 1.5rem);
+  width: 100%;
+}
+
+.payment-from-to-logos--from-only {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  text-align: center;
+}
+
+.payment-from-to-logos--from-only.payment-from-to-logos--feature {
+  min-height: clamp(14rem, 32vw, 18rem);
+}
+
+.payment-from-to-logos__mark--hero {
+  width: clamp(7rem, 24vw, 11rem);
+  height: clamp(7rem, 24vw, 11rem);
+  border: 1px solid rgba(251, 255, 99, 0.35);
+  background: rgba(251, 255, 99, 0.06);
+}
+
+.payment-from-to-logos__copy--centered {
+  align-items: center;
+}
+
+.payment-from-to-logos__icon--pin {
+  color: #a9ebf9;
+}
+
+.payment-from-to-logos--feature {
+  padding: clamp(2rem, 5vw, 3rem) clamp(1.25rem, 4vw, 2.5rem);
+  background: #050505;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.payment-from-to-logos--editorial {
+  position: absolute;
+  inset: 0;
+  padding: 1.5rem 1rem;
+  background: #050505;
+  justify-content: center;
+}
+
+.payment-from-to-logos__end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+  text-align: center;
+}
+
+.payment-from-to-logos__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(5.5rem, 18vw, 8.5rem);
+  height: clamp(5.5rem, 18vw, 8.5rem);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #0a0a0a;
+}
+
+.payment-from-to-logos--feature .payment-from-to-logos__mark {
+  width: clamp(6.5rem, 22vw, 10rem);
+  height: clamp(6.5rem, 22vw, 10rem);
+}
+
+.payment-from-to-logos__end--from .payment-from-to-logos__mark {
+  border-color: rgba(251, 255, 99, 0.35);
+  background: rgba(251, 255, 99, 0.06);
+}
+
+.payment-from-to-logos__end--to .payment-from-to-logos__mark {
+  border-color: rgba(169, 235, 249, 0.35);
+  background: rgba(169, 235, 249, 0.06);
+}
+
+.payment-from-to-logos__icon--bag {
+  color: var(--lane-accent, #fbff63);
+}
+
+.payment-from-to-logos__icon--card {
+  color: #a9ebf9;
+}
+
+.payment-from-to-logos__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.payment-from-to-logos__label {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.5625rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+
+.payment-from-to-logos__place {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.payment-from-to-logos--feature .payment-from-to-logos__place {
+  font-size: 0.8125rem;
+}
+
+.payment-from-to-logos__bridge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.payment-from-to-logos__track {
+  width: clamp(1.5rem, 6vw, 3rem);
+  height: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.28) 0,
+    rgba(255, 255, 255, 0.28) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.payment-from-to-logos__arrow {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.875rem;
+}
+
+/* Payment flow feature card */
+.payment-flow-card {
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.payment-flow-card:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: #0f0f0f;
+}
+
+.payment-flow-card--half {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .payment-flow-card--half {
+    width: 50%;
+    max-width: 50%;
+  }
+}
+
+.payment-flow-card__visual {
+  overflow: hidden;
+}
+
+.payment-flow-card__body {
+  padding: 1.75rem 1.5rem 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .payment-flow-card__body {
+    padding: 2.5rem 2.5rem 2rem;
+  }
+}
+
+.payment-flow-card__title {
+  margin-top: 0.75rem;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 300;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.payment-flow-card__description {
+  margin-top: 1rem;
+  max-width: 40rem;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.payment-flow-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  text-decoration: none;
+  color: inherit;
+}
+
+.payment-flow-card__footer:hover .chamfer-btn::before {
+  transform: scaleX(1);
+}
+
+.payment-flow-card__footer:hover .chamfer-btn {
+  color: #000 !important;
+}
+
+@media (min-width: 1024px) {
+  .payment-flow-card__footer {
+    padding: 1rem 2.5rem 1.5rem;
+  }
 }
 
 /* B&W image panels */

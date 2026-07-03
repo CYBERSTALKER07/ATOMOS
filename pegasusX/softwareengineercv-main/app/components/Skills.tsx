@@ -8,6 +8,8 @@ import ContentCard, { EDITORIAL_IMAGES } from './ContentCard';
 import { useIsMobile } from '../hooks/useDevice';
 import { useInView } from '../hooks/useInView';
 import { bentoPlacement, bentoVariant } from '../lib/bento';
+import PageSection from './layout/PageSection';
+import SectionHeader from './layout/SectionHeader';
 
 const PixelBlast = dynamic(() => import('./PixelBlast'), { ssr: false });
 
@@ -83,7 +85,13 @@ export default function Skills() {
   ];
 
   return (
-    <section ref={skillsRef} className="py-20 bg-black text-white relative overflow-hidden" id="skills">
+    <PageSection
+      ref={skillsRef}
+      id="skills"
+      bleed
+      className="relative overflow-hidden"
+      innerClassName="page-shell relative z-10"
+    >
       {!isMobile && isInView ? (
         <div className="absolute inset-0 opacity-25">
           <PixelBlast
@@ -102,18 +110,15 @@ export default function Skills() {
         </div>
       ) : null}
 
-      <div className="container mx-auto px-4 relative z-10">
-        <div ref={titleRef} className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-4 text-white">
-            Platform Capabilities
-          </h2>
-          <div className="w-20 h-1 bg-white mx-auto mb-6" />
-          <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
-            Everything supplier-led networks need to dispatch, track, collect, and coordinate
-          </p>
+        <div ref={titleRef}>
+          <SectionHeader
+            align="center"
+            title="Platform Capabilities"
+            description="Everything supplier-led networks need to dispatch, track, collect, and coordinate"
+          />
         </div>
 
-        <div ref={gridRef} className="editorial-bento max-w-7xl mx-auto">
+        <div ref={gridRef} className="editorial-bento">
           {capabilityCards.map((card, index) => (
             <ContentCard
               key={card.title}
@@ -121,7 +126,12 @@ export default function Skills() {
               tag={card.tag}
               title={card.title}
               description={card.description}
-              image={EDITORIAL_IMAGES[(index + 2) % EDITORIAL_IMAGES.length]}
+              image={
+                card.title === 'Payment Confidence'
+                  ? undefined
+                  : EDITORIAL_IMAGES[(index + 2) % EDITORIAL_IMAGES.length]
+              }
+              mediaVisual={card.title === 'Payment Confidence' ? 'payment-from-to' : undefined}
               href={card.href}
               ctaLabel="READ MORE"
               ctaStyle="link"
@@ -129,7 +139,6 @@ export default function Skills() {
             />
           ))}
         </div>
-      </div>
-    </section>
+    </PageSection>
   );
 }

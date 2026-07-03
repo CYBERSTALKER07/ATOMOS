@@ -13,8 +13,8 @@ export default function OrderCycleVisualSection() {
     <>
       <OrderLifecycleVideo variant="hero" />
 
-      <section className="border-t border-white/10 bg-black py-16 text-white">
-        <div className="container mx-auto max-w-7xl px-4">
+      <section className="bg-black py-12 text-white">
+        <div className="page-shell">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="editorial-eyebrow">Order cycle</p>

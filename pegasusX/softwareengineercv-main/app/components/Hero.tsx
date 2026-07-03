@@ -164,8 +164,8 @@ export default function Hero() {
         </>
       )}
 
-      <div className="container mx-auto px-4 py-20 relative z-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center max-w-7xl mx-auto">
+      <div className="page-shell py-20 relative z-20">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Content Side - Left */}
           <div ref={textRef} className="space-y-8 order-2 lg:order-1">
             <div>

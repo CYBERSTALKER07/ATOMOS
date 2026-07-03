@@ -7,6 +7,8 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import ContentCard, { EDITORIAL_IMAGES } from './ContentCard';
 import { useIsMobile } from '../hooks/useDevice';
+import PageSection from './layout/PageSection';
+import SectionHeader from './layout/SectionHeader';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -43,15 +45,14 @@ export default function PlatformValue() {
   }, [isMobile]);
 
   return (
-    <section ref={sectionRef} id="platform-value" className="py-20 md:py-28 bg-black text-white">
-      <div className="container mx-auto px-4 max-w-7xl">
-        <div ref={titleRef} className="mb-12 md:mb-16 max-w-4xl">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight leading-[1.05]">
-            Redefining supplier-led logistics for live networks
-          </h2>
+    <PageSection ref={sectionRef} id="platform-value">
+        <div ref={titleRef}>
+          <SectionHeader
+            title="Redefining supplier-led logistics for live networks"
+          />
         </div>
 
-        <div ref={gridRef} className="editorial-bento max-w-7xl mx-auto">
+        <div ref={gridRef} className="editorial-bento">
           <ContentCard
             variant="vertical"
             tone="dark"
@@ -115,7 +116,6 @@ export default function PlatformValue() {
             EXPLORE THE PLATFORM
           </Link>
         </div>
-      </div>
-    </section>
+    </PageSection>
   );
 }

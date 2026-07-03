@@ -7,6 +7,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useIsMobile } from '../hooks/useDevice';
 import FleetVisualPanel from './fleet/FleetVisualPanel';
 import LogisticsSolutionChart from './logistics/LogisticsSolutionChart';
+import PageSection from './layout/PageSection';
+import SectionHeader from './layout/SectionHeader';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -132,13 +134,12 @@ export default function LogisticsSolutions() {
   }, [isMobile]);
 
   return (
-    <section ref={sectionRef} id="solutions" className="py-20 md:py-28 bg-black text-white">
-      <div className="container mx-auto px-4 max-w-7xl">
-        <div ref={titleRef} className="mb-12 md:mb-16">
-          <p className="editorial-eyebrow text-white/50 mb-4">The Pegasus Network</p>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight max-w-4xl">
-            End-to-End Logistics Solutions
-          </h2>
+    <PageSection ref={sectionRef} id="solutions">
+        <div ref={titleRef}>
+          <SectionHeader
+            eyebrow="The Pegasus Network"
+            title="End-to-End Logistics Solutions"
+          />
         </div>
 
         <div ref={panelRef} className="grid grid-cols-1 lg:grid-cols-[minmax(0,17rem)_1fr] gap-0 border border-white/15">
@@ -193,7 +194,6 @@ export default function LogisticsSolutions() {
             )}
           </div>
         </div>
-      </div>
-    </section>
+    </PageSection>
   );
 }

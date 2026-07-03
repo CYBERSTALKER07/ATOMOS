@@ -4,6 +4,8 @@ import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import ChamferButton from './ChamferButton';
+import PageSection from './layout/PageSection';
+import SectionHeader from './layout/SectionHeader';
 import { useReducedMotion } from '@/app/hooks/useDevice';
 import { DISPATCH_ARCADE_IMAGE } from '@/app/lib/siteAssets';
 
@@ -31,24 +33,20 @@ export default function SmartDispatchArcade() {
   }, [reduced]);
 
   return (
-    <section ref={sectionRef} className="border-t border-white/10 bg-black py-20 md:py-28 text-white">
-      <div className="container mx-auto max-w-7xl px-4">
-        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="editorial-eyebrow">Smart dispatch</p>
-            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              Supplier Control Panel
-            </h2>
-            <p className="mt-3 max-w-xl text-sm text-white/55">
-              Ranked truck suggestions, never auto-commit. The floor lead confirms every load.
-            </p>
-          </div>
-          <ChamferButton href="/capabilities/smarter-dispatch" variant="ghost">
+    <PageSection ref={sectionRef}>
+        <div className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <SectionHeader
+            eyebrow="Smart dispatch"
+            title="Supplier Control Panel"
+            description="Ranked truck suggestions, never auto-commit. The floor lead confirms every load."
+            className="mb-0"
+          />
+          <ChamferButton href="/capabilities/smarter-dispatch" variant="ghost" className="shrink-0">
             Smarter dispatch
           </ChamferButton>
         </div>
 
-        <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12 max-w-6xl mx-auto">
+        <div ref={containerRef} className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
           <div className="border border-white/10 p-8 md:p-12 bg-[#111] hover:bg-[#1a1a1a] transition-colors rounded-none flex flex-col justify-center min-h-[300px]">
              <h3 className="text-2xl font-light mb-6">Key Capabilities</h3>
              <ul className="space-y-4 text-white/70">
@@ -74,7 +72,6 @@ export default function SmartDispatchArcade() {
             />
           </div>
         </div>
-      </div>
-    </section>
+    </PageSection>
   );
 }
