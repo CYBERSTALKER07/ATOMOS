@@ -5,7 +5,8 @@ import PageSection from './layout/PageSection';
 const capabilityCards = [
   {
     title: 'Visual Dispatch\nEngine',
-    description: 'Map out multi-step routing behaviors on a high-precision grid. Drag and drop triggers, logic gates, and actions to craft custom paths.',
+    description: 'Map out multi-step routing behaviors on a high-precision grid. Drag and drop triggers, logic gates, and actions to craft custom paths with complete flexibility and control over your entire operation.',
+    className: 'lg:col-span-2 lg:row-span-2',
     icon: (
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.2" strokeLinejoin="round">
         <polygon points="12 4 20 8 12 12 4 8" fill="white" />
@@ -19,7 +20,8 @@ const capabilityCards = [
   },
   {
     title: 'Autonomous\nExecution',
-    description: 'Run complex decision trees without manual intervention. Our engine handles conditional branching and error recovery automatically.',
+    description: 'Run complex decision trees without manual intervention. Our engine handles conditional branching automatically.',
+    className: 'lg:col-span-1 lg:row-span-1',
     icon: (
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.2" strokeLinejoin="round">
         <polygon points="12 4 20 8 12 12 4 8" fill="white" />
@@ -31,7 +33,8 @@ const capabilityCards = [
   },
   {
     title: 'End-to-End\nVisibility',
-    description: 'Every vehicle and data transfer is shielded by industrial-grade security. Maintain total control over your organizational data flow.',
+    description: 'Every vehicle and data transfer is shielded by industrial-grade security. Maintain total control over data flow.',
+    className: 'lg:col-span-1 lg:row-span-1',
     icon: (
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.2" strokeLinejoin="round">
         <polygon points="12 4 20 8 12 12 4 8" fill="white" />
@@ -43,7 +46,8 @@ const capabilityCards = [
   },
   {
     title: 'Production-\nReady Stack',
-    description: 'Connect core business platforms and internal services through secure, ready integrations that scale with your volume.',
+    description: 'Connect core business platforms and internal services through secure, ready integrations that scale.',
+    className: 'lg:col-span-1 lg:row-span-1',
     icon: (
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.2" strokeLinejoin="round">
         <polygon points="12 4 20 8 12 12 4 8" fill="white" />
@@ -51,6 +55,46 @@ const capabilityCards = [
         <path d="M4 14 L12 18 L20 14" />
         <line x1="8" y1="6" x2="16" y2="10" stroke="black" strokeWidth="1" />
         <line x1="8" y1="10" x2="16" y2="6" stroke="black" strokeWidth="1" />
+      </svg>
+    )
+  },
+  {
+    title: 'Real-time\nTelemetry',
+    description: 'Monitor fleet vitals, driver status, and delivery ETA with millisecond precision globally.',
+    className: 'lg:col-span-1 lg:row-span-1',
+    icon: (
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.2" strokeLinejoin="round">
+        <polygon points="12 4 20 8 12 12 4 8" fill="white" />
+        <path d="M4 11 L12 15 L20 11" />
+        <circle cx="12" cy="6" r="1.5" fill="black" stroke="none" />
+        <path d="M12 6 L14 8" stroke="black" strokeWidth="0.5" />
+      </svg>
+    )
+  },
+  {
+    title: 'Predictive AI\nRouting',
+    description: 'Leverage machine learning to anticipate traffic patterns, optimize dispatch routes before delays occur, and intelligently re-route resources on the fly to maximize efficiency across your entire supply chain network.',
+    className: 'lg:col-span-2 lg:row-span-1',
+    icon: (
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.2" strokeLinejoin="round">
+        <polygon points="12 4 20 8 12 12 4 8" fill="white" />
+        <path d="M4 11 L12 15 L20 11" />
+        <path d="M4 14 L12 18 L20 14" />
+        <path d="M10 6 L14 6 M12 4 L12 8" stroke="black" strokeWidth="1" />
+      </svg>
+    )
+  },
+  {
+    title: 'Multi-Tenant\nArchitecture',
+    description: 'Isolate data streams per client while managing a unified global network of carriers and suppliers with strict access controls.',
+    className: 'lg:col-span-2 lg:row-span-1',
+    icon: (
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.2" strokeLinejoin="round">
+        <polygon points="12 4 20 8 12 12 4 8" fill="white" />
+        <path d="M4 11 L12 15 L20 11" />
+        <rect x="9" y="5" width="2" height="2" fill="black" />
+        <rect x="13" y="5" width="2" height="2" fill="black" />
+        <rect x="11" y="7" width="2" height="2" fill="black" />
       </svg>
     )
   }
@@ -68,7 +112,7 @@ export default function Skills() {
         {capabilityCards.map((card, index) => (
           <div 
             key={index} 
-            className="bg-[#050505] p-12 md:p-16 hover:bg-[#080808] transition-colors cursor-pointer group flex flex-col"
+            className={`bg-[#050505] p-12 md:p-16 hover:bg-[#080808] transition-colors cursor-pointer group flex flex-col ${card.className || ''}`}
           >
             <div className="mb-10 opacity-80 group-hover:opacity-100 transition-opacity transform group-hover:-translate-y-1 duration-300">
               {card.icon}
@@ -76,7 +120,7 @@ export default function Skills() {
             <h3 className="font-mono text-lg font-bold text-white mb-6 leading-snug whitespace-pre-line">
               {card.title}
             </h3>
-            <p className="text-[13px] md:text-sm text-white/50 leading-relaxed font-sans">
+            <p className="text-[13px] md:text-sm text-white/50 leading-relaxed font-sans max-w-md">
               {card.description}
             </p>
           </div>
