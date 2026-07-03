@@ -1,32 +1,98 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PageSection from './layout/PageSection';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const NODES = [
-  { id: 'n1', x: 80, y: 150, type: 'start', icon: 'email', title: 'Email Trigger', subtitle: '(IMAP)' },
-  { id: 'n2', x: 280, y: 150, type: 'rect', icon: 'if', title: 'If', subtitle: '' },
-  { id: 'n3', x: 480, y: 150, type: 'rect', icon: 'edit', title: 'Edit Fields', subtitle: 'Manual' },
-  { id: 'n4', x: 680, y: 150, type: 'rect', icon: 'agent', title: 'AI Agent', subtitle: 'Tools Agent' },
-  { id: 'n5', x: 480, y: 260, type: 'rect', icon: 'code', title: 'Code', subtitle: '' },
-  { id: 'n6', x: 680, y: 260, type: 'rect', icon: 'edit', title: 'Edit Fields1', subtitle: 'Manual' },
-  { id: 'n7', x: 880, y: 150, type: 'rect', icon: 'send_email', title: 'Send Email', subtitle: 'Send' },
-  { id: 'n8', x: 880, y: 260, type: 'rect', icon: 'telegram', title: 'Telegram', subtitle: 'sendAndWait message' },
-];
+type WorkflowRole = 'supplier' | 'warehouse' | 'retailer' | 'fleet';
 
-const CONNECTIONS = [
-  { from: 'n1', to: 'n2' },
-  { from: 'n2', to: 'n3' },
-  { from: 'n2', to: 'n5', branch: true },
-  { from: 'n3', to: 'n4' },
-  { from: 'n5', to: 'n6' },
-  { from: 'n4', to: 'n7' },
-  { from: 'n6', to: 'n8' },
-];
+const WORKFLOW_DATA = {
+  supplier: {
+    nodes: [
+      { id: 's1', x: 80, y: 150, type: 'start', icon: 'email', title: 'Order Received', subtitle: 'EDI/API' },
+      { id: 's2', x: 280, y: 150, type: 'rect', icon: 'agent', title: 'AI Inventory Check', subtitle: 'Auto-allocation' },
+      { id: 's3', x: 480, y: 80, type: 'rect', icon: 'if', title: 'Stock Available?', subtitle: 'Condition' },
+      { id: 's4', x: 680, y: 80, type: 'rect', icon: 'code', title: 'Release to Floor', subtitle: 'WMS Sync' },
+      { id: 's5', x: 480, y: 220, type: 'rect', icon: 'edit', title: 'Backorder', subtitle: 'Manual Review' },
+      { id: 's6', x: 880, y: 80, type: 'rect', icon: 'agent', title: 'Quality Assurance', subtitle: 'Vision AI' },
+      { id: 's7', x: 1080, y: 80, type: 'rect', icon: 'send_email', title: 'Dispatch Alert', subtitle: 'To Carrier' },
+    ],
+    connections: [
+      { from: 's1', to: 's2' },
+      { from: 's2', to: 's3' },
+      { from: 's3', to: 's4' },
+      { from: 's2', to: 's5', branch: true },
+      { from: 's4', to: 's6', items: '2 pallets' },
+      { from: 's6', to: 's7' },
+    ]
+  },
+  warehouse: {
+    nodes: [
+      { id: 'w1', x: 80, y: 150, type: 'start', icon: 'telegram', title: 'Inbound Alert', subtitle: 'Carrier ETA' },
+      { id: 'w2', x: 280, y: 150, type: 'rect', icon: 'agent', title: 'Dock Scheduling', subtitle: 'AI Optimizer' },
+      { id: 'w3', x: 480, y: 150, type: 'rect', icon: 'code', title: 'Scan & Sort', subtitle: 'IoT Sensors' },
+      { id: 'w4', x: 680, y: 80, type: 'rect', icon: 'if', title: 'QC Pass?', subtitle: 'Condition' },
+      { id: 'w5', x: 880, y: 80, type: 'rect', icon: 'edit', title: 'Putaway', subtitle: 'Forklift Task' },
+      { id: 'w6', x: 680, y: 220, type: 'rect', icon: 'send_email', title: 'Quarantine', subtitle: 'Alert Supplier' },
+      { id: 'w7', x: 1080, y: 80, type: 'rect', icon: 'agent', title: 'Inventory Sync', subtitle: 'ERP Update' },
+    ],
+    connections: [
+      { from: 'w1', to: 'w2' },
+      { from: 'w2', to: 'w3' },
+      { from: 'w3', to: 'w4' },
+      { from: 'w3', to: 'w6', branch: true },
+      { from: 'w4', to: 'w5' },
+      { from: 'w5', to: 'w7' },
+    ]
+  },
+  retailer: {
+    nodes: [
+      { id: 'r1', x: 80, y: 150, type: 'start', icon: 'if', title: 'Low Stock Alert', subtitle: 'POS System' },
+      { id: 'r2', x: 280, y: 150, type: 'rect', icon: 'agent', title: 'Demand Forecast', subtitle: 'AI Predictor' },
+      { id: 'r3', x: 480, y: 150, type: 'rect', icon: 'code', title: 'Auto-Reorder', subtitle: 'Create PO' },
+      { id: 'r4', x: 680, y: 150, type: 'rect', icon: 'email', title: 'Supplier Conf', subtitle: 'EDI 855' },
+      { id: 'r5', x: 880, y: 150, type: 'rect', icon: 'telegram', title: 'ASN Received', subtitle: 'Inbound Prep' },
+      { id: 'r6', x: 1080, y: 150, type: 'rect', icon: 'edit', title: 'Shelf Restock', subtitle: 'Store Task' },
+    ],
+    connections: [
+      { from: 'r1', to: 'r2' },
+      { from: 'r2', to: 'r3' },
+      { from: 'r3', to: 'r4' },
+      { from: 'r4', to: 'r5' },
+      { from: 'r5', to: 'r6' }
+    ]
+  },
+  fleet: {
+    nodes: [
+      { id: 'f1', x: 80, y: 150, type: 'start', icon: 'agent', title: 'Route Optimizer', subtitle: 'AI Dispatch' },
+      { id: 'f2', x: 280, y: 150, type: 'rect', icon: 'code', title: 'Vehicle Assign', subtitle: 'TMS' },
+      { id: 'f3', x: 480, y: 80, type: 'rect', icon: 'if', title: 'Weather Clear?', subtitle: 'API Check' },
+      { id: 'f4', x: 680, y: 80, type: 'rect', icon: 'telegram', title: 'Driver Brief', subtitle: 'Mobile App' },
+      { id: 'f5', x: 480, y: 220, type: 'rect', icon: 'agent', title: 'Reroute', subtitle: 'Dynamic Path' },
+      { id: 'f6', x: 880, y: 80, type: 'rect', icon: 'edit', title: 'Delivery Conf', subtitle: 'ePOD' },
+      { id: 'f7', x: 1080, y: 80, type: 'rect', icon: 'send_email', title: 'Invoice Client', subtitle: 'Billing' },
+    ],
+    connections: [
+      { from: 'f1', to: 'f2' },
+      { from: 'f2', to: 'f3' },
+      { from: 'f2', to: 'f5', branch: true },
+      { from: 'f3', to: 'f4' },
+      { from: 'f5', to: 'f4', branch: true },
+      { from: 'f4', to: 'f6', items: 'Live Track' },
+      { from: 'f6', to: 'f7' },
+    ]
+  }
+};
+
+const ROLE_LABELS = {
+  supplier: 'SUPPLIER',
+  warehouse: 'WAREHOUSE',
+  retailer: 'RETAILER',
+  fleet: 'FLEET'
+};
 
 function WorkflowIcon({ type, className = "" }: { type: string, className?: string }) {
   const commonProps = {
@@ -57,19 +123,17 @@ function WorkflowIcon({ type, className = "" }: { type: string, className?: stri
 
 export default function LogisticsWorkflow() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [activeRole, setActiveRole] = useState<WorkflowRole>('supplier');
+
+  const { nodes, connections } = WORKFLOW_DATA[activeRole];
 
   useEffect(() => {
     let ctx = gsap.context(() => {
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: containerRef.current,
-          start: "top 70%",
-        }
-      });
-
-      tl.fromTo(".wf-element",
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.6, stagger: 0.05, ease: "power3.out" }
+      // Re-trigger entrance animation on tab switch
+      gsap.fromTo(".wf-node",
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.4, stagger: 0.03, ease: "power2.out" }
       );
 
       // Flow animation
@@ -79,14 +143,32 @@ export default function LogisticsWorkflow() {
         ease: "none",
         repeat: -1,
       });
+    }, canvasRef); // Scope to canvas so we only animate canvas items on tab switch
 
+    return () => ctx.revert();
+  }, [activeRole]); // Re-run animation when role changes
+
+  useEffect(() => {
+    // Initial scroll trigger for the whole component
+    let ctx = gsap.context(() => {
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: containerRef.current,
+          start: "top 70%",
+        }
+      });
+
+      tl.fromTo(".wf-header",
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: "power3.out" }
+      );
     }, containerRef);
 
     return () => ctx.revert();
   }, []);
 
   const getNodePorts = (id: string) => {
-    const node = NODES.find(n => n.id === id);
+    const node = nodes.find(n => n.id === id);
     if (!node) return { outX: 0, outY: 0, inX: 0, inY: 0, centerX: 0, bottomY: 0 };
 
     const w = 150;
@@ -117,7 +199,7 @@ export default function LogisticsWorkflow() {
     }
 
     return (
-      <g key={index} className="wf-element">
+      <g key={`${activeRole}-conn-${index}`} className="wf-node">
         {/* Base line */}
         <path d={path} stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeDasharray="4 4" fill="none" />
 
@@ -127,7 +209,7 @@ export default function LogisticsWorkflow() {
         {/* Items badge */}
         {conn.items && !conn.branch && (
           <g transform={`translate(${(from.outX + to.inX) / 2}, ${from.outY})`}>
-            <rect x="-24" y="-10" width="48" height="20" rx="10" fill="#111" stroke="rgba(255,255,255,0.2)" />
+            <rect x="-30" y="-10" width="60" height="20" rx="10" fill="#111" stroke="rgba(255,255,255,0.2)" />
             <text x="0" y="3" fill="#888" fontSize="9" textAnchor="middle" alignmentBaseline="middle" fontFamily="monospace">{conn.items}</text>
           </g>
         )}
@@ -140,7 +222,7 @@ export default function LogisticsWorkflow() {
       <div className="w-[90%] max-w-[1600px] mx-auto z-10 relative">
 
         {/* Header aligned left to match "armory" style */}
-        <div className="mb-12 wf-element">
+        <div className="mb-12 wf-header">
           <div className="flex items-center gap-3 text-white/40 mb-6">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M4 15l8-8 8 8" />
@@ -151,7 +233,7 @@ export default function LogisticsWorkflow() {
             Build logic at scale
           </h2>
           <p className="text-white/50 max-w-xl text-base md:text-lg leading-relaxed">
-            Design, deploy, and manage sophisticated logistics workflows through an intuitive visual interface. No complex coding—just pure supply chain logic.
+            Design, deploy, and manage sophisticated logistics workflows across every facet of your ecosystem. Switch roles below to view distinct operational logic.
           </p>
         </div>
 
@@ -159,26 +241,34 @@ export default function LogisticsWorkflow() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
           {/* Workflow Editor Frame */}
-          <div className="lg:col-span-3 wf-element border border-white/10 bg-[#0a0a0a] rounded-xl overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)] flex flex-col md:flex-row h-[700px] relative">
+          <div className="lg:col-span-3 wf-header border border-white/10 bg-[#0a0a0a] rounded-xl overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)] flex flex-col md:flex-row h-[800px] relative">
 
             {/* Left Sidebar */}
             <div className="w-full md:w-[280px] border-b md:border-b-0 md:border-r border-white/10 bg-black flex flex-col z-20 shrink-0">
 
-              {/* Top Tabs */}
+              {/* Top Tabs for Roles */}
               <div className="p-6 pb-4">
-                <div className="flex gap-2">
-                  <button className="flex-1 bg-black text-white text-xs font-bold py-3 rounded-md tracking-wide hover:bg-gray-200 hover:text-black transition-colors">
-                    AI AGENT
-                  </button>
-                  <button className="flex-1 border border-white/10 bg-white/5 text-white/60 text-xs font-bold py-3 rounded-md tracking-wide hover:text-white hover:bg-white/10 transition-colors">
-                    AI CHAT
-                  </button>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.keys(ROLE_LABELS) as WorkflowRole[]).map((role) => (
+                    <button
+                      key={role}
+                      onClick={() => setActiveRole(role)}
+                      className={`
+                        text-xs font-bold py-3 rounded-md tracking-wide transition-colors
+                        ${activeRole === role
+                          ? 'bg-white text-black'
+                          : 'border border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-white/10'}
+                      `}
+                    >
+                      {ROLE_LABELS[role]}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               <div className="px-6 flex-1">
                 <div className="text-[10px] tracking-widest uppercase text-white/40 font-mono mb-4 mt-4">
-                  Stack
+                  Stack Elements
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
@@ -199,87 +289,84 @@ export default function LogisticsWorkflow() {
               </div>
             </div>
 
-            {/* Canvas Area */}
-            <div className="flex-1 relative bg-[#0a0a0a] overflow-hidden" style={{ backgroundColor: 'black', backgroundSize: '24px 24px' }}>
+            {/* Canvas Area with Scroll */}
+            <div className="flex-1 relative bg-[#0a0a0a] overflow-auto no-scrollbar" style={{ backgroundColor: 'black', backgroundSize: '24px 24px' }}>
 
-              {/* Top Canvas Bar */}
-              <div className="absolute top-0 left-0 right-0 p-6 flex gap-4 z-20">
-                <div className="bg-[#111] border border-white/10 rounded-md px-4 py-2 text-xs font-mono text-white/60 flex items-center gap-2 shadow-xl hover:bg-[#1a1a1a] transition-colors cursor-pointer">
-                  <span>AGENT MODE</span>
-                  <div className="w-2 h-2 bg-white rounded-sm rotate-45 ml-2"></div>
+              {/* Inner Canvas Container that holds absolute elements */}
+              <div ref={canvasRef} className="relative min-w-[1300px] min-h-[800px] w-full h-full">
+
+                {/* Top Canvas Bar (Sticky so it stays visible while scrolling) */}
+                <div className="sticky top-0 left-0 right-0 p-6 flex gap-4 z-20">
+                  <div className="bg-[#111] border border-white/10 rounded-md px-4 py-2 text-xs font-mono text-white/60 flex items-center gap-2 shadow-xl hover:bg-[#1a1a1a] transition-colors cursor-pointer">
+                    <span>{ROLE_LABELS[activeRole]} WORKFLOW</span>
+                    <div className="w-2 h-2 bg-white rounded-sm rotate-45 ml-2"></div>
+                  </div>
+                  <div className="bg-[#111] border border-white/10 rounded-md px-4 py-2 text-xs font-mono text-white/60 flex items-center gap-2 shadow-xl hover:bg-[#1a1a1a] transition-colors cursor-pointer">
+                    <span>PRODUCTION</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+                  </div>
                 </div>
-                <div className="bg-[#111] border border-white/10 rounded-md px-4 py-2 text-xs font-mono text-white/60 flex items-center gap-2 shadow-xl hover:bg-[#1a1a1a] transition-colors cursor-pointer">
-                  <span>UNTITLED</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
-                </div>
-              </div>
 
-              {/* SVG Connection Lines & Overlays */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-                <defs>
-                  <marker id="port-dot" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4">
-                    <circle cx="5" cy="5" r="4" fill="#fff" />
-                  </marker>
-                  <marker id="port-ring" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6">
-                    <circle cx="5" cy="5" r="4" fill="#0a0a0a" stroke="#fff" strokeWidth="1.5" />
-                  </marker>
-                </defs>
+                {/* SVG Connection Lines & Overlays */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                  <defs>
+                    <marker id="port-dot" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4">
+                      <circle cx="5" cy="5" r="4" fill="#fff" />
+                    </marker>
+                  </defs>
 
-                {CONNECTIONS.map((conn, i) => renderConnection(conn, i))}
-              </svg>
+                  {connections.map((conn, i) => renderConnection(conn, i))}
+                </svg>
 
-              {/* Nodes */}
-              <div className="absolute inset-0 overflow-auto">
-                {NODES.map((node) => {
-                  const width = 'w-[150px]';
-                  return (
-                    <div
-                      key={node.id}
-                      className="absolute z-10 flex flex-col items-center wf-element group cursor-pointer"
-                      style={{ left: node.x, top: node.y }}
-                    >
-                      {/* The Node Shape */}
-                      <div className={`
-                      ${width} h-12 ${node.type === 'start' ? 'rounded-l-[20px] rounded-r-[8px]' : 'rounded-[8px]'} bg-[#0d0d0d] border border-white shadow-xl 
-                      flex items-center relative transition-all duration-300
-                      group-hover:border-white/70 group-hover:bg-[#151515] group-hover:-translate-y-1 group-hover:shadow-[0_10px_30px_rgba(255,255,255,0.1)]
-                    `}>
-                        {/* Left Port */}
-                        {node.type !== 'start' && <div className="absolute -left-1 w-2 h-2 rounded-full bg-white"></div>}
+                {/* Nodes */}
+                <div className="absolute inset-0 pt-20">
+                  {nodes.map((node) => {
+                    const width = 'w-[150px]';
+                    return (
+                      <div
+                        key={`${activeRole}-${node.id}`}
+                        className="absolute z-10 flex flex-col items-center wf-node group cursor-pointer"
+                        style={{ left: node.x, top: node.y }}
+                      >
+                        {/* The Node Shape */}
+                        <div className={`
+                        ${width} h-12 ${node.type === 'start' ? 'rounded-l-[20px] rounded-r-[8px]' : 'rounded-[8px]'} bg-[#0d0d0d] border border-white shadow-xl 
+                        flex items-center relative transition-all duration-300
+                        group-hover:border-white/70 group-hover:bg-[#151515] group-hover:-translate-y-1 group-hover:shadow-[0_10px_30px_rgba(255,255,255,0.1)]
+                      `}>
+                          {/* Left Port */}
+                          {node.type !== 'start' && <div className="absolute -left-1 w-2 h-2 rounded-full bg-white"></div>}
 
-                        {/* Right Port */}
-                        <div className="absolute -right-1 w-2 h-2 rounded-full bg-white"></div>
+                          {/* Right Port */}
+                          <div className="absolute -right-1 w-2 h-2 rounded-full bg-white"></div>
 
-                        <div className="flex items-center gap-3 w-full px-4">
-                          <div className="shrink-0 text-white flex items-center justify-center">
-                            <WorkflowIcon type={node.icon} className="w-4 h-4" />
-                          </div>
-                          <div className="flex flex-col text-left truncate leading-tight">
-                            <span className="text-[11px] font-mono text-white/90">{node.title}</span>
-                            {node.subtitle && <span className="text-[9px] font-sans text-white/50 tracking-wide">{node.subtitle}</span>}
+                          <div className="flex items-center gap-3 w-full px-4">
+                            <div className="shrink-0 text-white flex items-center justify-center">
+                              <WorkflowIcon type={node.icon} className="w-4 h-4" />
+                            </div>
+                            <div className="flex flex-col text-left truncate leading-tight">
+                              <span className="text-[11px] font-mono text-white/90">{node.title}</span>
+                              {node.subtitle && <span className="text-[9px] font-sans text-white/50 tracking-wide">{node.subtitle}</span>}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Bottom Right Floating Badge (like "Made in Framer") */}
-              <div className="absolute bottom-6 right-6 z-30 wf-element">
-                <div className="bg-white text-black px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-transform cursor-pointer">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4 15l8-8 8 8" /></svg>
-                  Pegasus Platform
+                    )
+                  })}
                 </div>
-              </div>
 
+                {/* Bottom Right Floating Badge */}
+                <div className="sticky bottom-6 right-6 float-right mr-6 z-30 wf-node">
+                  <div className="bg-white text-black px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-transform cursor-pointer">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4 15l8-8 8 8" /></svg>
+                    Pegasus Platform
+                  </div>
+                </div>
+
+              </div>
             </div>
           </div>
-
-          {/* Close BENTO GRID LAYOUT */}
         </div>
-
-        {/* Bento Cards Bottom Row */}
 
       </div>
     </div>

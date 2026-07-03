@@ -91,7 +91,7 @@ export default function EcosystemStats() {
 
 
           {/* Main Content Area */}
-          <div className="flex-1 p-6 md:p-10 dashboard-content flex flex-col bg-[#030303] relative">
+          <div className="flex-1 p-6 md:p-10 dashboard-content flex flex-col bg-[#0A0A0A] relative">
             {/* Grid Pattern Background */}
             <div className="absolute inset-0 bg-[url('/images/grid-pattern.svg')] opacity-[0.03] pointer-events-none" style={{ backgroundSize: '40px 40px' }} />
 
@@ -113,7 +113,7 @@ export default function EcosystemStats() {
                   </div>
 
                   {/* Secondary large widget */}
-                  <div className="bg-[#0a0a0a] border border-white/5 p-8 rounded shadow-2xl flex flex-col relative h-[380px] md:h-full">
+                  <div className="bg-[#0A0A0A] border border-white/5 p-8 rounded shadow-2xl flex flex-col relative h-[380px] md:h-full">
                     <div className="flex justify-between items-start mb-6">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
@@ -136,7 +136,7 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 1: Circle Gauge */}
-              <div className="bg-[#0a0a0a] border border-white/5 p-8 rounded flex flex-col relative h-[380px] md:h-full shadow-2xl">
+              <div className="bg-[#0A0A0A] border border-white/5 p-8 rounded flex flex-col relative h-[380px] md:h-full shadow-2xl">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
@@ -182,7 +182,7 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 2: Bar Chart */}
-              <div className="bg-[#0a0a0a] border border-white/5 p-8 rounded flex flex-col relative h-[380px] shadow-2xl">
+              <div className="bg-[#0A0A0A] border border-white/5 p-8 rounded flex flex-col relative h-[380px] shadow-2xl">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
@@ -214,7 +214,7 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 3: Speedometer */}
-              <div className="bg-[#0a0a0a] border border-white/5 p-8 rounded flex flex-col relative h-[380px] xl:col-span-2 shadow-2xl">
+              <div className="bg-[#0A0A0A] border border-white/5 p-8 rounded flex flex-col relative h-[380px] xl:col-span-2 shadow-2xl">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
@@ -245,11 +245,11 @@ export default function EcosystemStats() {
                   </div>
 
                   <div className="w-full flex justify-between px-12 mt-32 z-10">
-                    <div className="text-center bg-[#0a0a0a]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
+                    <div className="text-center bg-[#0A0A0A]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
                       <div className="text-xs text-white/90">{data.card3.stat1}</div>
                       <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card3.label1}</div>
                     </div>
-                    <div className="text-center bg-[#0a0a0a]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
+                    <div className="text-center bg-[#0A0A0A]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
                       <div className="text-xs text-white/90">{data.card3.stat2}</div>
                       <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card3.label2}</div>
                     </div>

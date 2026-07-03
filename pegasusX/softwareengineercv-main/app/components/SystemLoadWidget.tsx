@@ -8,7 +8,7 @@ export default function SystemLoadWidget() {
   useEffect(() => {
     const ctx = gsap.context(() => {
       // Add a cool loading animation for the circles
-      gsap.fromTo('.system-load-circle', 
+      gsap.fromTo('.system-load-circle',
         { strokeDashoffset: 1000 },
         { strokeDashoffset: 130, duration: 2, ease: 'power3.out', delay: 0.5 }
       );
@@ -21,7 +21,7 @@ export default function SystemLoadWidget() {
   }, []);
 
   return (
-    <div ref={containerRef} className="bg-[#0a0a0a] border border-white/5 p-6 rounded flex flex-col relative shadow-2xl overflow-hidden h-full">
+    <div ref={containerRef} className="bg-[#0A0A0A] border border-white/5 p-6 rounded flex flex-col relative shadow-2xl overflow-hidden h-full">
       {/* Background ambient glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] bg-white/[0.02] blur-[50px] rounded-full pointer-events-none" />
 
@@ -54,7 +54,7 @@ export default function SystemLoadWidget() {
             {/* Outer dotted ring */}
             <circle cx="90" cy="90" r="70" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" strokeDasharray="4 4" />
             {/* Progress track */}
-            <circle cx="90" cy="90" r="80" fill="none" stroke="white" strokeWidth="6" 
+            <circle cx="90" cy="90" r="80" fill="none" stroke="white" strokeWidth="6"
               strokeLinecap="round"
               strokeDasharray={2 * Math.PI * 80}
               strokeDashoffset={2 * Math.PI * 80 * (1 - 0.987)} // 98.7%
