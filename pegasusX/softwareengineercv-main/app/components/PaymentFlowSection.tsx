@@ -9,14 +9,6 @@ export default function PaymentFlowSection() {
   return (
     <PageSection aria-labelledby="payment-flow-heading" className="!pb-0 md:!pb-2">
       <div className="payment-flow-card payment-flow-card--half">
-        <div className="payment-flow-card__visual" aria-hidden={false}>
-          <PaymentFromToLogos
-            variant="from-only"
-            size="feature"
-            fromPlace="Retailer checkout"
-          />
-        </div>
-
         <div className="payment-flow-card__body">
           <p className="editorial-eyebrow">Finance · Payment integrity</p>
           <h2 id="payment-flow-heading" className="payment-flow-card__title">
@@ -30,6 +22,14 @@ export default function PaymentFlowSection() {
           <ChamferButton href="/capabilities/payment-confidence" variant="fill" className="mt-8">
             Payment confidence
           </ChamferButton>
+        </div>
+
+        <div className="payment-flow-card__visual" aria-hidden={false}>
+          <PaymentFromToLogos
+            variant="from-only"
+            size="feature"
+            fromPlace="Retailer checkout"
+          />
         </div>
 
         <Link href="/projects/payment-integrity" className="payment-flow-card__footer">

@@ -1,17 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { SiGithub } from 'react-icons/si';
-import { HiOutlineMail } from 'react-icons/hi';
-import { FaLinkedinIn, FaXTwitter } from 'react-icons/fa6';
-import InfiniteScroll from './InfiniteScroll';
-import { useIsMobile } from '../hooks/useDevice';
-import { useInView } from '../hooks/useInView';
-
-gsap.registerPlugin(ScrollTrigger);
+import { FaLinkedinIn, FaYoutube, FaInstagram } from 'react-icons/fa';
+import { FaXTwitter } from 'react-icons/fa6';
 
 const PLATFORM_LINKS = [
   { name: 'Platform overview', href: '/platform' },
@@ -20,182 +11,125 @@ const PLATFORM_LINKS = [
   { name: 'Trust & reliability', href: '/platform/trust-reliability' },
 ];
 
-const SOLUTION_LINKS = [
-  { name: 'Dispatch engine', href: '/solutions/visual-dispatch-engine' },
-  { name: 'Fleet visibility', href: '/solutions/fleet-visibility' },
-  { name: 'Payment confidence', href: '/capabilities/payment-confidence' },
-  { name: 'Live coordination', href: '/capabilities/instant-coordination' },
+const COMPANY_LINKS = [
+  { name: 'About Us', href: '/about' },
+  { name: 'Contact Us', href: '/contact' },
+  { name: 'Book A Call', href: '/book' },
+  { name: 'More Templates', href: '/templates' },
 ];
 
-const EXPLORE_LINKS = [
-  { name: 'Roles', href: '/roles' },
-  { name: 'Technology', href: '/technology' },
-  { name: 'Open source stack', href: '/technology/go-backend-platform' },
-  { name: 'Apps & deploy', href: '/apps-deploy' },
-  { name: 'Contact', href: '/contact' },
-  { name: 'Request demo', href: '/join' },
+const POLICIES_LINKS = [
+  { name: 'Terms & Conditions', href: '/terms' },
+  { name: 'Privacy Policy', href: '/privacy' },
 ];
 
 const SOCIAL_LINKS = [
-  { name: 'GitHub', href: 'https://github.com', Icon: SiGithub },
-  { name: 'LinkedIn', href: 'https://linkedin.com/company/pegasus', Icon: FaLinkedinIn },
   { name: 'X', href: 'https://twitter.com', Icon: FaXTwitter },
-  { name: 'Email', href: 'mailto:demo@pegasus.io', Icon: HiOutlineMail },
-] as const;
+  { name: 'LinkedIn', href: 'https://linkedin.com', Icon: FaLinkedinIn },
+  { name: 'YouTube', href: 'https://youtube.com', Icon: FaYoutube },
+  { name: 'Instagram', href: 'https://instagram.com', Icon: FaInstagram },
+];
 
 export default function Footer() {
-  const { isMobile } = useIsMobile();
-  const { ref: footerRef, isInView } = useInView<HTMLElement>({ exit: true, rootMargin: '0px' });
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!footerRef.current || !contentRef.current) return;
-
-    if (isMobile) {
-      gsap.set(contentRef.current, { opacity: 1, y: 0 });
-      return;
-    }
-
-    const ctx = gsap.context(() => {
-      gsap.timeline({
-        scrollTrigger: {
-          trigger: footerRef.current,
-          start: 'top 90%',
-          end: 'bottom bottom',
-          toggleActions: 'play none none reverse',
-        },
-      }).fromTo(contentRef.current, { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 1 });
-    }, footerRef);
-
-    return () => ctx.revert();
-  }, [isMobile, footerRef]);
-
-  const scrollItems = [
-    { content: <div className="text-white/20 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">DISPATCH</div> },
-    { content: <div className="text-white/20 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">TRACK</div> },
-    { content: <div className="text-white/20 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">DELIVER</div> },
-    { content: <div className="text-white/20 text-[6rem] md:text-[9rem] lg:text-[11rem] font-black leading-none tracking-tighter">PEGASUS</div> },
-  ];
-
   return (
-    <footer ref={footerRef} className="relative bg-black text-white overflow-hidden min-h-screen flex items-center">
-      {!isMobile && isInView ? (
-        <div className="absolute inset-0 pointer-events-none z-0">
-          <InfiniteScroll
-            items={scrollItems}
-            isTilted
-            tiltDirection="left"
-            autoplay
-            autoplaySpeed={0.45}
-            autoplayDirection="down"
-            pauseOnHover
-            width="100%"
-            maxHeight="100%"
-            itemMinHeight={180}
-            negativeMargin="-1.5rem"
+    <footer className="bg-[#000000] text-white border-t border-white/5 overflow-hidden font-sans relative">
+
+      {/* Background grain / grid effect */}
+      <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
+      <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.1)_0%,transparent_70%)]" />
+
+      {/* Top section with input */}
+      <div className="border-b border-white/5 flex justify-center py-20 relative z-10">
+        <div className="flex bg-[#1a1a1a] border border-white/10 rounded-sm overflow-hidden w-full max-w-[400px]">
+          <input
+            type="email"
+            placeholder="jane@framer.com"
+            className="bg-transparent text-white/80 placeholder:text-white/40 px-4 py-3 outline-none flex-1 text-sm font-mono"
           />
+          <button className="bg-[#333] hover:bg-[#444] text-white px-6 py-3 transition-colors flex items-center gap-2 text-sm font-medium border-l border-white/10">
+            <span className="opacity-80">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            Subscribe
+          </button>
         </div>
-      ) : null}
+      </div>
 
-      <div ref={contentRef} className="relative z-20 container mx-auto px-4 py-20">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12 mb-16">
-            <div className="lg:col-span-4">
-              <h3 className="text-3xl md:text-4xl font-light mb-6 text-white">
-                Run your network on Pegasus
-              </h3>
-              <p className="text-white/70 text-lg mb-6 max-w-md leading-relaxed">
-                Dispatch, tracking, payments, and coordination for supplier-led logistics — one platform,
-                six roles, every site connected.
-              </p>
-              <Link href="/join" className="editorial-btn">
-                GET A DEMO →
-              </Link>
-            </div>
+      {/* Main footer grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 border-b border-white/5 relative z-10 max-w-[1600px] mx-auto">
+        <div className="absolute inset-y-0 left-1/4 border-l border-white/5 hidden md:block" />
+        <div className="absolute inset-y-0 left-2/4 border-l border-white/5 hidden md:block" />
+        <div className="absolute inset-y-0 left-3/4 border-l border-white/5 hidden md:block" />
 
-            <div className="lg:col-span-2">
-              <h4 className="editorial-eyebrow mb-6">Platform</h4>
-              <ul className="space-y-3">
-                {PLATFORM_LINKS.map((link) => (
-                  <li key={link.name}>
-                    <Link href={link.href} className="text-white/75 hover:text-white transition-colors text-base">
-                      {link.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+        {/* Logo col */}
+        <div className="p-16 flex flex-col items-center justify-center max-md:border-b border-white/5">
+          <img src="/pegasus.jpg" width={100} height={100} alt="" />
+          <span className="mt-6 text-xl font-black tracking-widest text-white uppercase">Pegasus</span>
+        </div>
 
-            <div className="lg:col-span-2">
-              <h4 className="editorial-eyebrow mb-6">Solutions</h4>
-              <ul className="space-y-3">
-                {SOLUTION_LINKS.map((link) => (
-                  <li key={link.name}>
-                    <Link href={link.href} className="text-white/75 hover:text-white transition-colors text-base">
-                      {link.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+        {/* Platform Links col */}
+        <div className="p-12 max-md:border-b border-white/5">
+          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">Platform</h4>
+          <ul className="space-y-4">
+            {PLATFORM_LINKS.map(link => (
+              <li key={link.name}>
+                <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
+                  {link.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-            <div className="lg:col-span-2">
-              <h4 className="editorial-eyebrow mb-6">Explore</h4>
-              <ul className="space-y-3">
-                {EXPLORE_LINKS.map((link) => (
-                  <li key={link.name}>
-                    <Link href={link.href} className="text-white/75 hover:text-white transition-colors text-base">
-                      {link.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+        {/* Company col */}
+        <div className="p-12 max-md:border-b border-white/5">
+          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">Company</h4>
+          <ul className="space-y-4">
+            {COMPANY_LINKS.map(link => (
+              <li key={link.name}>
+                <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
+                  {link.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-            <div className="lg:col-span-2">
-              <h4 className="editorial-eyebrow mb-6">Connect</h4>
-              <div className="space-y-4">
-                {SOCIAL_LINKS.map(({ name, href, Icon }) => (
-                  <a
-                    key={name}
-                    href={href}
-                    target={href.startsWith('http') ? '_blank' : undefined}
-                    rel={href.startsWith('http') ? 'noreferrer noopener' : undefined}
-                    className="flex items-center gap-3 text-white/75 hover:text-white transition-colors group"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center border border-white/20 group-hover:border-white/50 transition-colors">
-                      <Icon className="h-4 w-4" aria-hidden />
-                    </span>
-                    <span className="text-base">{name}</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          </div>
+        {/* Policies col */}
+        <div className="p-12">
+          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">Policies</h4>
+          <ul className="space-y-4 mb-10">
+            {POLICIES_LINKS.map(link => (
+              <li key={link.name}>
+                <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
+                  {link.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
 
-          <div className="border-t border-white/15 mb-8" />
-
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-white/50 text-center md:text-left">
-              © {new Date().getFullYear()} Pegasus. All rights reserved.
-            </p>
-            <div className="flex gap-8">
-              <Link href="/contact" className="text-white/50 hover:text-white transition-colors">
-                Privacy & data requests
-              </Link>
-              <Link href="/contact" className="text-white/50 hover:text-white transition-colors">
-                Terms of use
-              </Link>
-            </div>
-          </div>
-
-          <div className="mt-12 text-center">
-            <a href="#hero" className="editorial-btn editorial-btn--sm">
-              <span>↑</span>
-              <span>BACK TO TOP</span>
-            </a>
+          <div className="flex gap-2">
+            {SOCIAL_LINKS.map(({ name, href, Icon }) => (
+              <a key={name} href={href} target="_blank" rel="noopener noreferrer" className="w-9 h-9 flex items-center justify-center border border-white/10 bg-white/5 hover:bg-white/10 transition-colors rounded-sm group">
+                <Icon className="w-3.5 h-3.5 text-white/60 group-hover:text-white transition-colors" />
+              </a>
+            ))}
           </div>
         </div>
+      </div>
+
+      {/* Huge text */}
+      <div className="pt-24 pb-8 px-4 flex justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
+        <h1 className="text-[25vw] font-black tracking-tighter leading-[0.75] text-[#e5e5e5] select-none lowercase">
+          pegasus
+        </h1>
+      </div>
+
+      {/* Copyright */}
+      <div className="py-6 text-center text-white/40 text-[11px] font-mono relative z-10">
+        ©2026 Pegasus. All rights reserved.
       </div>
     </footer>
   );
