@@ -145,8 +145,7 @@ const capabilityCards = [
   }
 ];
 
-import Dither from './Dither';
-
+import PixelBlast from './PixelBlast';
 export default function Skills() {
   return (
     <PageSection
@@ -162,14 +161,24 @@ export default function Skills() {
             className={`relative overflow-hidden bg-[#050505] p-12 md:p-16 hover:bg-[#080808] transition-colors cursor-pointer group flex flex-col ${card.className || ''}`}
           >
             <div className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-              <Dither
-                waveColor={[0.1, 0.1, 0.1]}
-                colorNum={4}
-                waveAmplitude={0.3}
-                waveFrequency={3}
-                waveSpeed={0.05}
-                enableMouseInteraction={true}
-                mouseRadius={0.4}
+              <PixelBlast
+                variant="circle"
+                pixelSize={6}
+                color="#4a4a4a"
+                patternScale={3}
+                patternDensity={1.2}
+                pixelSizeJitter={0.5}
+                enableRipples
+                rippleSpeed={0.4}
+                rippleThickness={0.12}
+                rippleIntensityScale={1.5}
+                liquid
+                liquidStrength={0.12}
+                liquidRadius={1.2}
+                liquidWobbleSpeed={5}
+                speed={0.6}
+                edgeFade={0.25}
+                transparent
               />
             </div>
             

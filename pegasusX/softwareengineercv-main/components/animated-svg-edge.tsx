@@ -111,13 +111,17 @@ type AnimatedSvg = ({
 
 const shapes = {
   circle: ({ animateMotionProps }) => (
-    <circle r="5" fill="#ff0073">
+    <circle r="4" fill="#fbff63">
       <animateMotion {...animateMotionProps} />
     </circle>
   ),
-
+  box: ({ animateMotionProps }) => (
+    <rect width="6" height="6" fill="#fbff63" transform="translate(-3, -3)">
+      <animateMotion {...animateMotionProps} />
+    </rect>
+  ),
   package: ({ animateMotionProps }) => (
-    <g fill="#dfc7b1" stroke="#2b2a2a" transform="translate(-10,-10)">
+    <g fill="#ffffff" stroke="#000000" transform="translate(-10,-10) scale(0.8)">
       <path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" />
       <path d="M12 22V12" />
       <path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7" />

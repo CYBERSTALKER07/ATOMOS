@@ -1,9 +1,20 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import PageSection from './layout/PageSection';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import {
+  ReactFlow,
+  Background,
+  Handle,
+  Position,
+  useNodesState,
+  useEdgesState,
+  MarkerType
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import { AnimatedSvgEdge } from '../../components/animated-svg-edge';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -13,12 +24,12 @@ const WORKFLOW_DATA = {
   supplier: {
     nodes: [
       { id: 's1', x: 80, y: 150, type: 'start', icon: 'email', title: 'Order Received', subtitle: 'EDI/API' },
-      { id: 's2', x: 280, y: 150, type: 'rect', icon: 'agent', title: 'AI Inventory Check', subtitle: 'Auto-allocation' },
-      { id: 's3', x: 480, y: 80, type: 'rect', icon: 'if', title: 'Stock Available?', subtitle: 'Condition' },
-      { id: 's4', x: 680, y: 80, type: 'rect', icon: 'code', title: 'Release to Floor', subtitle: 'WMS Sync' },
-      { id: 's5', x: 480, y: 220, type: 'rect', icon: 'edit', title: 'Backorder', subtitle: 'Manual Review' },
-      { id: 's6', x: 880, y: 80, type: 'rect', icon: 'agent', title: 'Quality Assurance', subtitle: 'Vision AI' },
-      { id: 's7', x: 1080, y: 80, type: 'rect', icon: 'send_email', title: 'Dispatch Alert', subtitle: 'To Carrier' },
+      { id: 's2', x: 380, y: 150, type: 'rect', icon: 'agent', title: 'AI Inventory Check', subtitle: 'Auto-allocation' },
+      { id: 's3', x: 680, y: 50, type: 'rect', icon: 'if', title: 'Stock Available?', subtitle: 'Condition' },
+      { id: 's4', x: 980, y: 50, type: 'rect', icon: 'code', title: 'Release to Floor', subtitle: 'WMS Sync' },
+      { id: 's5', x: 680, y: 250, type: 'rect', icon: 'edit', title: 'Backorder', subtitle: 'Manual Review' },
+      { id: 's6', x: 1280, y: 50, type: 'rect', icon: 'agent', title: 'Quality Assurance', subtitle: 'Vision AI' },
+      { id: 's7', x: 1580, y: 50, type: 'rect', icon: 'send_email', title: 'Dispatch Alert', subtitle: 'To Carrier' },
     ],
     connections: [
       { from: 's1', to: 's2' },
@@ -32,48 +43,48 @@ const WORKFLOW_DATA = {
   warehouse: {
     nodes: [
       { id: 'w1', x: 80, y: 150, type: 'start', icon: 'telegram', title: 'Inbound Alert', subtitle: 'Carrier ETA' },
-      { id: 'w2', x: 280, y: 150, type: 'rect', icon: 'agent', title: 'Dock Scheduling', subtitle: 'AI Optimizer' },
-      { id: 'w3', x: 480, y: 150, type: 'rect', icon: 'code', title: 'Scan & Sort', subtitle: 'IoT Sensors' },
-      { id: 'w4', x: 680, y: 80, type: 'rect', icon: 'if', title: 'QC Pass?', subtitle: 'Condition' },
-      { id: 'w5', x: 880, y: 80, type: 'rect', icon: 'edit', title: 'Putaway', subtitle: 'Forklift Task' },
-      { id: 'w6', x: 680, y: 220, type: 'rect', icon: 'send_email', title: 'Quarantine', subtitle: 'Alert Supplier' },
-      { id: 'w7', x: 1080, y: 80, type: 'rect', icon: 'agent', title: 'Inventory Sync', subtitle: 'ERP Update' },
+      { id: 'w2', x: 380, y: 150, type: 'rect', icon: 'agent', title: 'Dock Scheduling', subtitle: 'AI Optimizer' },
+      { id: 'w3', x: 680, y: 150, type: 'rect', icon: 'code', title: 'Scan & Sort', subtitle: 'IoT Sensors' },
+      { id: 'w4', x: 980, y: 50, type: 'rect', icon: 'if', title: 'QC Pass?', subtitle: 'Condition' },
+      { id: 'w5', x: 1280, y: 50, type: 'rect', icon: 'edit', title: 'Putaway', subtitle: 'Forklift Task' },
+      { id: 'w6', x: 980, y: 250, type: 'rect', icon: 'send_email', title: 'Quarantine', subtitle: 'Alert Supplier' },
+      { id: 'w7', x: 1580, y: 50, type: 'rect', icon: 'agent', title: 'Inventory Sync', subtitle: 'ERP Update' },
     ],
     connections: [
       { from: 'w1', to: 'w2' },
       { from: 'w2', to: 'w3' },
       { from: 'w3', to: 'w4' },
       { from: 'w3', to: 'w6', branch: true },
-      { from: 'w4', to: 'w5' },
+      { from: 'w4', to: 'w5', items: 'Passed' },
       { from: 'w5', to: 'w7' },
     ]
   },
   retailer: {
     nodes: [
       { id: 'r1', x: 80, y: 150, type: 'start', icon: 'if', title: 'Low Stock Alert', subtitle: 'POS System' },
-      { id: 'r2', x: 280, y: 150, type: 'rect', icon: 'agent', title: 'Demand Forecast', subtitle: 'AI Predictor' },
-      { id: 'r3', x: 480, y: 150, type: 'rect', icon: 'code', title: 'Auto-Reorder', subtitle: 'Create PO' },
-      { id: 'r4', x: 680, y: 150, type: 'rect', icon: 'email', title: 'Supplier Conf', subtitle: 'EDI 855' },
-      { id: 'r5', x: 880, y: 150, type: 'rect', icon: 'telegram', title: 'ASN Received', subtitle: 'Inbound Prep' },
-      { id: 'r6', x: 1080, y: 150, type: 'rect', icon: 'edit', title: 'Shelf Restock', subtitle: 'Store Task' },
+      { id: 'r2', x: 380, y: 150, type: 'rect', icon: 'agent', title: 'Demand Forecast', subtitle: 'AI Predictor' },
+      { id: 'r3', x: 680, y: 150, type: 'rect', icon: 'code', title: 'Auto-Reorder', subtitle: 'Create PO' },
+      { id: 'r4', x: 980, y: 150, type: 'rect', icon: 'email', title: 'Supplier Conf', subtitle: 'EDI 855' },
+      { id: 'r5', x: 1280, y: 150, type: 'rect', icon: 'telegram', title: 'ASN Received', subtitle: 'Inbound Prep' },
+      { id: 'r6', x: 1580, y: 150, type: 'rect', icon: 'edit', title: 'Shelf Restock', subtitle: 'Store Task' },
     ],
     connections: [
       { from: 'r1', to: 'r2' },
       { from: 'r2', to: 'r3' },
       { from: 'r3', to: 'r4' },
-      { from: 'r4', to: 'r5' },
+      { from: 'r4', to: 'r5', items: 'PO Sent' },
       { from: 'r5', to: 'r6' }
     ]
   },
   fleet: {
     nodes: [
       { id: 'f1', x: 80, y: 150, type: 'start', icon: 'agent', title: 'Route Optimizer', subtitle: 'AI Dispatch' },
-      { id: 'f2', x: 280, y: 150, type: 'rect', icon: 'code', title: 'Vehicle Assign', subtitle: 'TMS' },
-      { id: 'f3', x: 480, y: 80, type: 'rect', icon: 'if', title: 'Weather Clear?', subtitle: 'API Check' },
-      { id: 'f4', x: 680, y: 80, type: 'rect', icon: 'telegram', title: 'Driver Brief', subtitle: 'Mobile App' },
-      { id: 'f5', x: 480, y: 220, type: 'rect', icon: 'agent', title: 'Reroute', subtitle: 'Dynamic Path' },
-      { id: 'f6', x: 880, y: 80, type: 'rect', icon: 'edit', title: 'Delivery Conf', subtitle: 'ePOD' },
-      { id: 'f7', x: 1080, y: 80, type: 'rect', icon: 'send_email', title: 'Invoice Client', subtitle: 'Billing' },
+      { id: 'f2', x: 380, y: 150, type: 'rect', icon: 'code', title: 'Vehicle Assign', subtitle: 'TMS' },
+      { id: 'f3', x: 680, y: 50, type: 'rect', icon: 'if', title: 'Weather Clear?', subtitle: 'API Check' },
+      { id: 'f4', x: 980, y: 50, type: 'rect', icon: 'telegram', title: 'Driver Brief', subtitle: 'Mobile App' },
+      { id: 'f5', x: 680, y: 250, type: 'rect', icon: 'agent', title: 'Reroute', subtitle: 'Dynamic Path' },
+      { id: 'f6', x: 1280, y: 50, type: 'rect', icon: 'edit', title: 'Delivery Conf', subtitle: 'ePOD' },
+      { id: 'f7', x: 1580, y: 50, type: 'rect', icon: 'send_email', title: 'Invoice Client', subtitle: 'Billing' },
     ],
     connections: [
       { from: 'f1', to: 'f2' },
@@ -121,32 +132,85 @@ function WorkflowIcon({ type, className = "" }: { type: string, className?: stri
   }
 }
 
+const WorkflowCustomNode = ({ data }: any) => {
+  return (
+    <div className={`
+      w-[260px] p-5 ${data.type === 'start' ? 'rounded-l-[24px] rounded-r-[12px]' : 'rounded-[12px]'} bg-[#0d0d0d] border border-white/20 shadow-xl 
+      flex items-center relative transition-all duration-300
+      hover:border-white/70 hover:bg-[#151515] hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(255,255,255,0.1)]
+    `}>
+      {data.type !== 'start' && <Handle type="target" position={Position.Left} className="w-2 h-2 bg-white !border-none !-ml-1" />}
+      <Handle type="source" position={Position.Right} className="w-2 h-2 bg-white !border-none !-mr-1" />
+
+      <div className="flex items-center gap-4 w-full">
+        <div className="shrink-0 text-white flex items-center justify-center bg-white/5 p-3 rounded-lg border border-white/10">
+          <WorkflowIcon type={data.icon} className="w-6 h-6" />
+        </div>
+        <div className="flex flex-col text-left truncate leading-tight">
+          <span className="text-sm font-mono text-white/90">{data.title}</span>
+          {data.subtitle && <span className="text-xs font-sans text-white/50 tracking-wide mt-1">{data.subtitle}</span>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const edgeTypes = {
+  animatedSvgEdge: AnimatedSvgEdge,
+};
+
+const nodeTypes = {
+  workflowNode: WorkflowCustomNode,
+};
+
 export default function LogisticsWorkflow() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLDivElement>(null);
   const [activeRole, setActiveRole] = useState<WorkflowRole>('supplier');
 
-  const { nodes, connections } = WORKFLOW_DATA[activeRole];
+  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
+    const data = WORKFLOW_DATA[activeRole];
+    const newNodes = data.nodes.map((n) => ({
+      id: n.id,
+      type: 'workflowNode',
+      position: { x: n.x, y: n.y },
+      data: {
+        title: n.title,
+        subtitle: n.subtitle,
+        icon: n.icon,
+        type: n.type
+      }
+    }));
 
+    const newEdges = data.connections.map((c, i) => ({
+      id: `${activeRole}-edge-${i}`,
+      source: c.from,
+      target: c.to,
+      type: 'animatedSvgEdge',
+      data: {
+        duration: 3,
+        shape: c.items ? 'package' : 'box',
+        path: 'smoothstep'
+      },
+      label: c.items,
+      labelStyle: { fill: '#888', fontSize: 10, fontFamily: 'monospace' },
+      labelBgStyle: { fill: '#111', stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1, rx: 10 },
+      labelBgPadding: [20, 8],
+      animated: true,
+      style: { stroke: 'rgba(255,255,255,0.15)', strokeWidth: 2, strokeDasharray: '4 4' },
+      markerEnd: { type: MarkerType.ArrowClosed, color: 'rgba(255,255,255,0.3)' }
+    }));
+
+    return { nodes: newNodes, edges: newEdges };
+  }, [activeRole]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // When active role changes, update nodes and edges
   useEffect(() => {
-    let ctx = gsap.context(() => {
-      // Re-trigger entrance animation on tab switch
-      gsap.fromTo(".wf-node",
-        { opacity: 0, y: 10 },
-        { opacity: 1, y: 0, duration: 0.4, stagger: 0.03, ease: "power2.out" }
-      );
-
-      // Flow animation
-      gsap.to(".flow-dash", {
-        strokeDashoffset: -20,
-        duration: 0.8,
-        ease: "none",
-        repeat: -1,
-      });
-    }, canvasRef); // Scope to canvas so we only animate canvas items on tab switch
-
-    return () => ctx.revert();
-  }, [activeRole]); // Re-run animation when role changes
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   useEffect(() => {
     // Initial scroll trigger for the whole component
@@ -166,56 +230,6 @@ export default function LogisticsWorkflow() {
 
     return () => ctx.revert();
   }, []);
-
-  const getNodePorts = (id: string) => {
-    const node = nodes.find(n => n.id === id);
-    if (!node) return { outX: 0, outY: 0, inX: 0, inY: 0, centerX: 0, bottomY: 0 };
-
-    const w = 150;
-    const h = 48;
-    return {
-      outX: node.x + w, // Right edge
-      outY: node.y + h / 2,
-      inX: node.x, // Left edge
-      inY: node.y + h / 2,
-      centerX: node.x + w / 2,
-      bottomY: node.y + h
-    };
-  };
-
-  const renderConnection = (conn: any, index: number) => {
-    const from = getNodePorts(conn.from);
-    const to = getNodePorts(conn.to);
-
-    let path = "";
-    if (conn.branch) {
-      // Draw path from bottom of 'from' node to left of 'to' node
-      const midY = (from.bottomY + to.inY) / 2;
-      path = `M ${from.centerX} ${from.bottomY} L ${from.centerX} ${to.inY} L ${to.inX} ${to.inY}`;
-    } else {
-      // Orthogonal path from out to in
-      const midX = (from.outX + to.inX) / 2;
-      path = `M ${from.outX} ${from.outY} L ${midX} ${from.outY} L ${midX} ${to.inY} L ${to.inX} ${to.inY}`;
-    }
-
-    return (
-      <g key={`${activeRole}-conn-${index}`} className="wf-node">
-        {/* Base line */}
-        <path d={path} stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeDasharray="4 4" fill="none" />
-
-        {/* Flow line animated overlay */}
-        <path className="flow-dash" d={path} stroke="#ffffff" strokeWidth="1.5" strokeDasharray="10 10" fill="none" opacity="0.4" />
-
-        {/* Items badge */}
-        {conn.items && !conn.branch && (
-          <g transform={`translate(${(from.outX + to.inX) / 2}, ${from.outY})`}>
-            <rect x="-30" y="-10" width="60" height="20" rx="10" fill="#111" stroke="rgba(255,255,255,0.2)" />
-            <text x="0" y="3" fill="#888" fontSize="9" textAnchor="middle" alignmentBaseline="middle" fontFamily="monospace">{conn.items}</text>
-          </g>
-        )}
-      </g>
-    );
-  };
 
   return (
     <div ref={containerRef} className="bg-black w-full relative overflow-hidden font-sans border-t border-white/5 py-32">
@@ -274,67 +288,23 @@ export default function LogisticsWorkflow() {
               </div>
             </div>
 
-            {/* Canvas Area with Scroll */}
-            <div className="flex-1 relative bg-[#0a0a0a] overflow-auto no-scrollbar" style={{ backgroundColor: 'black', backgroundSize: '24px 24px' }}>
-
-              {/* Inner Canvas Container that holds absolute elements */}
-              <div ref={canvasRef} className="relative min-w-[1300px] min-h-[800px] w-full h-full">
-
-                {/* Top Canvas Bar (Sticky so it stays visible while scrolling) */}
-
-
-                {/* SVG Connection Lines & Overlays */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-                  <defs>
-                    <marker id="port-dot" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4">
-                      <circle cx="5" cy="5" r="4" fill="#fff" />
-                    </marker>
-                  </defs>
-
-                  {connections.map((conn, i) => renderConnection(conn, i))}
-                </svg>
-
-                {/* Nodes */}
-                <div className="absolute inset-0 pt-20">
-                  {nodes.map((node) => {
-                    const width = 'w-[150px]';
-                    return (
-                      <div
-                        key={`${activeRole}-${node.id}`}
-                        className="absolute z-10 flex flex-col items-center wf-node group cursor-pointer"
-                        style={{ left: node.x, top: node.y }}
-                      >
-                        {/* The Node Shape */}
-                        <div className={`
-                        ${width} h-12 ${node.type === 'start' ? 'rounded-l-[20px] rounded-r-[8px]' : 'rounded-[8px]'} bg-[#0d0d0d] border border-white shadow-xl 
-                        flex items-center relative transition-all duration-300
-                        group-hover:border-white/70 group-hover:bg-[#151515] group-hover:-translate-y-1 group-hover:shadow-[0_10px_30px_rgba(255,255,255,0.1)]
-                      `}>
-                          {/* Left Port */}
-                          {node.type !== 'start' && <div className="absolute -left-1 w-2 h-2 rounded-full bg-white"></div>}
-
-                          {/* Right Port */}
-                          <div className="absolute -right-1 w-2 h-2 rounded-full bg-white"></div>
-
-                          <div className="flex items-center gap-3 w-full px-4">
-                            <div className="shrink-0 text-white flex items-center justify-center">
-                              <WorkflowIcon type={node.icon} className="w-4 h-4" />
-                            </div>
-                            <div className="flex flex-col text-left truncate leading-tight">
-                              <span className="text-[11px] font-mono text-white/90">{node.title}</span>
-                              {node.subtitle && <span className="text-[9px] font-sans text-white/50 tracking-wide">{node.subtitle}</span>}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* Bottom Right Floating Badge */}
-
-
-              </div>
+            {/* Canvas Area with ReactFlow */}
+            <div className="flex-1 relative bg-transparent">
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                fitView
+                fitViewOptions={{ padding: 0.2 }}
+                proOptions={{ hideAttribution: true }}
+                className="bg-black"
+                defaultEdgeOptions={{ type: 'animatedSvgEdge' }}
+              >
+                <Background color="#333" gap={24} size={1} />
+              </ReactFlow>
             </div>
           </div>
         </div>
