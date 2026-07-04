@@ -10,8 +10,8 @@ region       = "asia-south1"
 # GKE + Artifact Registry (required for Phase 0 deploy)
 enable_gke = true
 
-# Budget — year-1 pilot envelope
-monthly_budget_usd  = 1700
+# Budget — year-1 pilot envelope ($1,500 target; $1,700 upper guardrail per CLOUD_BUDGET_MODEL.md)
+monthly_budget_usd  = 1500
 billing_account_id  = "XXXXXX-XXXXXX-XXXXXX"
 budget_alert_emails = ["ops@example.com"]
 

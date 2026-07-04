@@ -40,12 +40,14 @@ See also: [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARI
 ## Terraform wiring
 
 ```hcl
-# infra/terraform/budget.tf
-monthly_budget_usd   = 1700
+# infra/terraform/budget.tf / staging.tfvars
+monthly_budget_usd   = 1500   # target; 1700 = upper guardrail with same footprint
 billing_account_id   = "XXXXXX-XXXXXX-XXXXXX"  # optional; enables budget resource
 budget_alert_emails  = ["ops@example.com"]
 spanner_processing_units_cap = 100  # enforce in console until TF supports hard cap
 ```
+
+Execution tracker: [`context/plan_cloud_1500.md`](../context/plan_cloud_1500.md).
 
 Apply with `terraform apply` in `pegasusX/infra/terraform/` after `billing_account_id` is set.
 

@@ -61,7 +61,7 @@ flowchart TB
 
 **Goal:** Production-shaped infra with real adapters; no emulator fallbacks.
 
-**Runbook:** [`PHASE_0_CLOUD_FOUNDATION_RUNBOOK.md`](../docs/PHASE_0_CLOUD_FOUNDATION_RUNBOOK.md)
+**Runbook:** [`PHASE_0_CLOUD_FOUNDATION_RUNBOOK.md`](../docs/PHASE_0_CLOUD_FOUNDATION_RUNBOOK.md) · **$1,500 tracker:** [`plan_cloud_1500.md`](plan_cloud_1500.md)
 
 | Task | Owner | Exit |
 |---|---|---|
@@ -190,7 +190,7 @@ flowchart TB
 
 | Anchor | Phase | Scope | Status |
 |---|---|---|---|
-| `PX-PROD-0` | 0 | Cloud infra + staging adapters | **in progress** — runbook + `make phase0-*`; needs GCP apply |
+| `PX-PROD-0` | 0 | Cloud infra + staging adapters | **in progress** — TF plan green (58 add); `staging.tfvars` @ $1,500; needs secrets + `phase0-apply` |
 | `PX-PROD-1` | 1 | SSMR + credential + QA sign-off | **in progress** — `make test-ssmr-infra` green locally (PX90/PX91 markers); staging LC-01–LC-06 pending |
 | `PX-PROD-2` | 2 | Math-only planning contract enforced | **shipped** — `NormalizeBaselineSource`; warehouse badges; predictive-push breakdown |
 | `PX-PROD-3` | 3 | ML data export pipeline (no training) | **implemented (local)** via PX-LC-2; **deferred (staging)** — 7 green days on staging CronJob after `PX-PROD-0` |

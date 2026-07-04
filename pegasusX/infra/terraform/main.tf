@@ -248,7 +248,9 @@ resource "google_secret_manager_secret_version" "google_maps_api_key" {
 
 resource "google_secret_manager_secret" "tauri_signing_private_key" {
   secret_id = local.secret_tauri_signing_private_key
-  replication { auto {} }
+  replication {
+    auto {}
+  }
   labels = local.labels
 }
 
@@ -260,7 +262,9 @@ resource "google_secret_manager_secret_version" "tauri_signing_private_key" {
 
 resource "google_secret_manager_secret" "tauri_updater_pubkey" {
   secret_id = local.secret_tauri_updater_pubkey
-  replication { auto {} }
+  replication {
+    auto {}
+  }
   labels = local.labels
 }
 
@@ -272,7 +276,9 @@ resource "google_secret_manager_secret_version" "tauri_updater_pubkey" {
 
 resource "google_secret_manager_secret" "windows_codesign_pfx" {
   secret_id = local.secret_windows_codesign_pfx
-  replication { auto {} }
+  replication {
+    auto {}
+  }
   labels = local.labels
 }
 
@@ -284,7 +290,9 @@ resource "google_secret_manager_secret_version" "windows_codesign_pfx" {
 
 resource "google_secret_manager_secret" "windows_codesign_password" {
   secret_id = local.secret_windows_codesign_password
-  replication { auto {} }
+  replication {
+    auto {}
+  }
   labels = local.labels
 }
 
@@ -296,7 +304,9 @@ resource "google_secret_manager_secret_version" "windows_codesign_password" {
 
 resource "google_secret_manager_secret" "apple_notarize_apple_id" {
   secret_id = local.secret_apple_notarize_apple_id
-  replication { auto {} }
+  replication {
+    auto {}
+  }
   labels = local.labels
 }
 
@@ -308,7 +318,9 @@ resource "google_secret_manager_secret_version" "apple_notarize_apple_id" {
 
 resource "google_secret_manager_secret" "apple_notarize_team_id" {
   secret_id = local.secret_apple_notarize_team_id
-  replication { auto {} }
+  replication {
+    auto {}
+  }
   labels = local.labels
 }
 
@@ -320,7 +332,9 @@ resource "google_secret_manager_secret_version" "apple_notarize_team_id" {
 
 resource "google_secret_manager_secret" "apple_notarize_app_password" {
   secret_id = local.secret_apple_notarize_app_password
-  replication { auto {} }
+  replication {
+    auto {}
+  }
   labels = local.labels
 }
 
