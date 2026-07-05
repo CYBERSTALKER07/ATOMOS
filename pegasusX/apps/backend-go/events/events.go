@@ -29,24 +29,24 @@ var (
 // packages/types/index.ts EventType union — in the same commit.
 const (
 	// @Sync(SupplierEvent)
-	EventSupplierCreated              = "SUPPLIER_CREATED"
-	EventSupplierUpdated              = "SUPPLIER_UPDATED"
-	EventSupplierProfileUpdated       = "SUPPLIER_PROFILE_UPDATED"
-	EventSupplierBillingUpdated       = "SUPPLIER_BILLING_UPDATED"
-	EventSupplierBillingConfigured    = "SUPPLIER_BILLING_CONFIGURED"
-	EventSupplierMemberAdded          = "SUPPLIER_MEMBER_ADDED"
+	EventSupplierCreated           = "SUPPLIER_CREATED"
+	EventSupplierUpdated           = "SUPPLIER_UPDATED"
+	EventSupplierProfileUpdated    = "SUPPLIER_PROFILE_UPDATED"
+	EventSupplierBillingUpdated    = "SUPPLIER_BILLING_UPDATED"
+	EventSupplierBillingConfigured = "SUPPLIER_BILLING_CONFIGURED"
+	EventSupplierMemberAdded       = "SUPPLIER_MEMBER_ADDED"
 
 	// @Sync(RetailerEvent)
-	EventRetailerRegistered           = "RETAILER_REGISTERED"
+	EventRetailerRegistered = "RETAILER_REGISTERED"
 
 	// @Sync(DriverEvent)
-	EventDriverCreated                = "DRIVER_CREATED"
-	EventDriverAvailabilityChanged    = "DRIVER_AVAILABILITY_CHANGED"
-	EventDriverLocationUpdated        = "DRIVER_LOCATION_UPDATED"
+	EventDriverCreated             = "DRIVER_CREATED"
+	EventDriverAvailabilityChanged = "DRIVER_AVAILABILITY_CHANGED"
+	EventDriverLocationUpdated     = "DRIVER_LOCATION_UPDATED"
 
 	// @Sync(VehicleEvent)
-	EventVehicleCreated               = "VEHICLE_CREATED"
-	EventVehicleAvailabilityChanged   = "VEHICLE_AVAILABILITY_CHANGED"
+	EventVehicleCreated             = "VEHICLE_CREATED"
+	EventVehicleAvailabilityChanged = "VEHICLE_AVAILABILITY_CHANGED"
 
 	// @Sync(WarehouseEvent)
 	EventWarehouseCreated             = "WAREHOUSE_CREATED"
@@ -60,106 +60,113 @@ const (
 	EventFactorySupplyRequestUpdate   = "FACTORY_SUPPLY_REQUEST_UPDATE"
 
 	// @Sync(SystemEvent)
-	EventFreezeLockAcquired           = "FREEZE_LOCK_ACQUIRED"
-	EventFreezeLockReleased           = "FREEZE_LOCK_RELEASED"
-	EventSystemAppOutdated            = "SYSTEM_APP_OUTDATED"
+	EventFreezeLockAcquired = "FREEZE_LOCK_ACQUIRED"
+	EventFreezeLockReleased = "FREEZE_LOCK_RELEASED"
+	EventSystemAppOutdated  = "SYSTEM_APP_OUTDATED"
 
 	// @Sync(WarehouseTransferEvent)
-	EventWarehouseTransferCreated     = "WAREHOUSE_TRANSFER_CREATED"
-	EventWarehouseTransferReceived    = "WAREHOUSE_TRANSFER_RECEIVED"
-	EventSupplyTransferApproaching    = "SUPPLY_TRANSFER_APPROACHING"
+	EventWarehouseTransferCreated  = "WAREHOUSE_TRANSFER_CREATED"
+	EventWarehouseTransferReceived = "WAREHOUSE_TRANSFER_RECEIVED"
+	EventSupplyTransferApproaching = "SUPPLY_TRANSFER_APPROACHING"
 
 	// @Sync(FactoryEvent)
-	EventFactoryCreated               = "FACTORY_CREATED"
-	EventFactoryLocationUpdated       = "FACTORY_LOCATION_UPDATED"
+	EventFactoryCreated         = "FACTORY_CREATED"
+	EventFactoryLocationUpdated = "FACTORY_LOCATION_UPDATED"
 
 	// @Sync(OrderEvent)
-	EventOrderCreated                 = "ORDER_CREATED"
-	EventOrderStatusChanged           = "ORDER_STATUS_CHANGED"
-	EventOrderValidationFailed        = "ORDER_VALIDATION_FAILED"
-	EventOrderAssigned                = "ORDER_ASSIGNED"
-	EventOrderReassigned              = "ORDER_REASSIGNED"
-	EventOrderFinalized               = "ORDER_FINALIZED"
-	EventMissingItemsReported         = "MISSING_ITEMS_REPORTED"
-	EventOrderAmended                 = "ORDER_AMENDED"
+	EventOrderCreated          = "ORDER_CREATED"
+	EventOrderStatusChanged    = "ORDER_STATUS_CHANGED"
+	EventOrderValidationFailed = "ORDER_VALIDATION_FAILED"
+	EventOrderAssigned         = "ORDER_ASSIGNED"
+	EventOrderReassigned       = "ORDER_REASSIGNED"
+	EventOrderFinalized        = "ORDER_FINALIZED"
+	EventMissingItemsReported  = "MISSING_ITEMS_REPORTED"
+	EventOrderAmended          = "ORDER_AMENDED"
 
 	// @Sync(AIRecommendationEvent)
-	EventAIRecommendationCreated      = "AI_RECOMMENDATION_CREATED"
-	EventAIRecommendationDecided      = "AI_RECOMMENDATION_DECIDED"
+	EventAIRecommendationCreated = "AI_RECOMMENDATION_CREATED"
+	EventAIRecommendationDecided = "AI_RECOMMENDATION_DECIDED"
 
 	// @Sync(RouteEvent)
-	EventRouteCreated                 = "ROUTE_CREATED"
-	EventRouteReordered               = "ROUTE_REORDERED"
+	EventRouteCreated   = "ROUTE_CREATED"
+	EventRouteReordered = "ROUTE_REORDERED"
 
 	// @Sync(FinanceEvent)
-	EventSplitPaymentCreated          = "SPLIT_PAYMENT_CREATED"
-	EventPaymentCleared               = "PAYMENT_CLEARED"
-	EventPaymentFailed                = "PAYMENT_FAILED"
-	EventPaymentRequired              = "PAYMENT_REQUIRED"
-	EventSettlementRequired           = "SETTLEMENT_REQUIRED"
+	EventSplitPaymentCreated = "SPLIT_PAYMENT_CREATED"
+	EventPaymentCleared      = "PAYMENT_CLEARED"
+	EventPaymentFailed       = "PAYMENT_FAILED"
+	EventPaymentRequired     = "PAYMENT_REQUIRED"
+	EventSettlementRequired  = "SETTLEMENT_REQUIRED"
 
 	// @Sync(ManifestEvent)
-	EventManifestDraftCreated         = "MANIFEST_DRAFT_CREATED"
-	EventManifestLoadingStarted       = "MANIFEST_LOADING_STARTED"
-	EventManifestOrderInjected        = "MANIFEST_ORDER_INJECTED"
-	EventManifestOrderException       = "MANIFEST_ORDER_EXCEPTION"
-	EventManifestDLQEscalation        = "MANIFEST_DLQ_ESCALATION"
-	EventManifestRebalanced           = "MANIFEST_REBALANCED"
-	EventManifestCancelled            = "MANIFEST_CANCELLED"
-	EventManifestSealed               = "MANIFEST_SEALED"
-	EventManifestDispatched           = "MANIFEST_DISPATCHED"
-	EventManifestCompleted            = "MANIFEST_COMPLETED"
+	EventManifestDraftCreated   = "MANIFEST_DRAFT_CREATED"
+	EventManifestLoadingStarted = "MANIFEST_LOADING_STARTED"
+	EventManifestOrderInjected  = "MANIFEST_ORDER_INJECTED"
+	EventManifestOrderException = "MANIFEST_ORDER_EXCEPTION"
+	EventManifestDLQEscalation  = "MANIFEST_DLQ_ESCALATION"
+	EventManifestRebalanced     = "MANIFEST_REBALANCED"
+	EventManifestCancelled      = "MANIFEST_CANCELLED"
+	EventManifestSealed         = "MANIFEST_SEALED"
+	EventManifestDispatched     = "MANIFEST_DISPATCHED"
+	EventManifestCompleted      = "MANIFEST_COMPLETED"
 
 	// @Sync(DeliverySessionEvent)
-	EventDeliverySessionUpdated       = "DELIVERY_SESSION_UPDATED"
-	EventDeliveryDisputed             = "DELIVERY_DISPUTED"
+	EventDeliverySessionUpdated = "DELIVERY_SESSION_UPDATED"
+	EventDeliveryDisputed       = "DELIVERY_DISPUTED"
 
 	// @Sync(ShopClosedEvent)
-	EventShopClosed                   = "SHOP_CLOSED"
-	EventShopClosedResponse           = "SHOP_CLOSED_RESPONSE"
-	EventShopClosedEscalated          = "SHOP_CLOSED_ESCALATED"
-	EventShopClosedResolved           = "SHOP_CLOSED_RESOLVED"
+	EventShopClosed          = "SHOP_CLOSED"
+	EventShopClosedResponse  = "SHOP_CLOSED_RESPONSE"
+	EventShopClosedEscalated = "SHOP_CLOSED_ESCALATED"
+	EventShopClosedResolved  = "SHOP_CLOSED_RESOLVED"
+
+	// @Sync(ShopClosedBypassOffloadEvent)
+	EventShopClosedBypassOffload = "SHOP_CLOSED_BYPASS_OFFLOAD"
+
+	// @Sync(CreditDeliveryEvent)
+	EventCreditDeliveryMarked   = "CREDIT_DELIVERY_MARKED"
+	EventCreditDeliveryResolved = "CREDIT_DELIVERY_RESOLVED"
 
 	// @Sync(NegotiationEvent)
-	EventNegotiationProposed          = "NEGOTIATION_PROPOSED"
-	EventNegotiationResolved          = "NEGOTIATION_RESOLVED"
+	EventNegotiationProposed = "NEGOTIATION_PROPOSED"
+	EventNegotiationResolved = "NEGOTIATION_RESOLVED"
 
 	// @Sync(SyncEvent)
-	EventCartSyncUpdated              = "CART_SYNC_UPDATED"
-	EventInventorySyncComplete        = "INVENTORY_SYNC_COMPLETE"
+	EventCartSyncUpdated       = "CART_SYNC_UPDATED"
+	EventInventorySyncComplete = "INVENTORY_SYNC_COMPLETE"
 
 	// @Sync(InventoryImportEvent)
-	EventInventoryImportUploaded      = "INVENTORY_IMPORT_UPLOADED"
-	EventInventoryImportStatusUpdate  = "INVENTORY_IMPORT_STATUS_UPDATE"
+	EventInventoryImportUploaded     = "INVENTORY_IMPORT_UPLOADED"
+	EventInventoryImportStatusUpdate = "INVENTORY_IMPORT_STATUS_UPDATE"
 
 	// @Sync(PromotionEvent)
-	EventPromotionChanged             = "PROMOTION_CHANGED"
+	EventPromotionChanged = "PROMOTION_CHANGED"
 
 	// @Sync(RetailerPriceOverrideEvent)
-	EventRetailerPriceOverride        = "RETAILER_PRICE_OVERRIDE"
+	EventRetailerPriceOverride = "RETAILER_PRICE_OVERRIDE"
 
 	// @Sync(CommandEvent)
-	EventCommandDispatched            = "COMMAND_DISPATCHED"
-	EventCommandReceived              = "COMMAND_RECEIVED"
-	EventCommandSettled               = "COMMAND_SETTLED"
+	EventCommandDispatched = "COMMAND_DISPATCHED"
+	EventCommandReceived   = "COMMAND_RECEIVED"
+	EventCommandSettled    = "COMMAND_SETTLED"
 
 	// @Sync(ReturnEvent)
-	EventSupplierReturnCreated        = "SUPPLIER_RETURN_CREATED"
-	EventSupplierReturnResolved       = "SUPPLIER_RETURN_RESOLVED"
-	EventDriverReturnApproaching      = "DRIVER_RETURN_APPROACHING"
-	EventReturnReceivedAtWarehouse    = "RETURN_RECEIVED_AT_WAREHOUSE"
+	EventSupplierReturnCreated     = "SUPPLIER_RETURN_CREATED"
+	EventSupplierReturnResolved    = "SUPPLIER_RETURN_RESOLVED"
+	EventDriverReturnApproaching   = "DRIVER_RETURN_APPROACHING"
+	EventReturnReceivedAtWarehouse = "RETURN_RECEIVED_AT_WAREHOUSE"
 
 	// @Sync(PreOrderEvent)
-	EventPreOrderNotified             = "PRE_ORDER_NOTIFIED"
-	EventPreOrderNudge                = "PRE_ORDER_NUDGE"
-	EventPreOrderConfirmation         = "PRE_ORDER_CONFIRMATION"
-	EventPreOrderConfirmed            = "PRE_ORDER_CONFIRMED"
-	EventPreOrderEdited               = "PRE_ORDER_EDITED"
-	EventPreOrderCancelled            = "PRE_ORDER_CANCELLED"
-	EventPreOrderAutoAccepted         = "PRE_ORDER_AUTO_ACCEPTED"
-	EventPreOrderDateProposed         = "PRE_ORDER_DATE_PROPOSED"
-	EventPreOrderDateAccepted         = "PRE_ORDER_DATE_ACCEPTED"
-	EventPreOrderDateRejected         = "PRE_ORDER_DATE_REJECTED"
+	EventPreOrderNotified     = "PRE_ORDER_NOTIFIED"
+	EventPreOrderNudge        = "PRE_ORDER_NUDGE"
+	EventPreOrderConfirmation = "PRE_ORDER_CONFIRMATION"
+	EventPreOrderConfirmed    = "PRE_ORDER_CONFIRMED"
+	EventPreOrderEdited       = "PRE_ORDER_EDITED"
+	EventPreOrderCancelled    = "PRE_ORDER_CANCELLED"
+	EventPreOrderAutoAccepted = "PRE_ORDER_AUTO_ACCEPTED"
+	EventPreOrderDateProposed = "PRE_ORDER_DATE_PROPOSED"
+	EventPreOrderDateAccepted = "PRE_ORDER_DATE_ACCEPTED"
+	EventPreOrderDateRejected = "PRE_ORDER_DATE_REJECTED"
 
 	// @Sync(PlanningEvent)
 	EventReplenishmentAutoApproved    = "REPLENISHMENT_AUTO_APPROVED"
@@ -175,25 +182,25 @@ const (
 )
 
 const (
-	TopicPlanningSignalIngest  = "planning.signal.ingest.v1"
+	TopicPlanningSignalIngest    = "planning.signal.ingest.v1"
 	TopicPlanningForecastRequest = "planning.forecast.request.v1"
 	TopicPlanningForecastResult  = "planning.forecast.result.v1"
 )
 
 // AggregateTypes used in OutboxEvents.AggregateType.
 const (
-	AggregateSupplier         = "Supplier"
-	AggregateRetailer         = "Retailer"
-	AggregateDriver           = "Driver"
-	AggregateVehicle          = "Vehicle"
-	AggregateWarehouse        = "Warehouse"
-	AggregateFactory          = "Factory"
-	AggregateOrder            = "Order"
-	AggregateAIRecommendation = "AIRecommendation"
-	AggregateRoute            = "Route"
-	AggregateManifest         = "Manifest"
-	AggregateSession          = "DeliverySession"
-	AggregatePromotion            = "Promotion"
+	AggregateSupplier              = "Supplier"
+	AggregateRetailer              = "Retailer"
+	AggregateDriver                = "Driver"
+	AggregateVehicle               = "Vehicle"
+	AggregateWarehouse             = "Warehouse"
+	AggregateFactory               = "Factory"
+	AggregateOrder                 = "Order"
+	AggregateAIRecommendation      = "AIRecommendation"
+	AggregateRoute                 = "Route"
+	AggregateManifest              = "Manifest"
+	AggregateSession               = "DeliverySession"
+	AggregatePromotion             = "Promotion"
 	AggregateRetailerPriceOverride = "RetailerPriceOverride"
 	AggregatePlanning              = "Planning"
 )

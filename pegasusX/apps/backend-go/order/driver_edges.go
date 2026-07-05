@@ -246,6 +246,16 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 			}
 			return nil
 		},
+		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
+			return outbox.EmitJSON(r.Context(), txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.CreditDeliveryEvent{
+				BaseEvent:  events.BaseEvent{Type: events.EventCreditDeliveryMarked, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
+				OrderID:    orderRecord.OrderID,
+				DriverID:   claims.Subject,
+				SupplierID: orderRecord.SupplierID,
+				RetailerID: orderRecord.RetailerID,
+				Status:     string(StatusDeliveredOnCredit),
+			})
+		},
 	})
 	if err != nil {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
@@ -546,14 +556,13 @@ func applyShopClosedBypassOffload(ctx context.Context, txn *spanner.ReadWriteTra
 	}
 
 	buf := &spannerTxnBuffer{}
-	if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, map[string]any{
-		"type":        "SHOP_CLOSED_BYPASS_OFFLOAD",
-		"order_id":    orderID,
-		"driver_id":   driverID,
-		"supplier_id": supplierID,
-		"retailer_id": retailerID,
-		"status":      string(StatusAwaitingPayment),
-		"timestamp":   now.UTC().Format(time.RFC3339Nano),
+	if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, events.ShopClosedBypassOffloadEvent{
+		BaseEvent:  events.BaseEvent{Type: events.EventShopClosedBypassOffload, Timestamp: now.UTC().Format(time.RFC3339Nano)},
+		OrderID:    orderID,
+		DriverID:   driverID,
+		SupplierID: supplierID,
+		RetailerID: retailerID,
+		Status:     string(StatusAwaitingPayment),
 	}); err != nil {
 		return err
 	}

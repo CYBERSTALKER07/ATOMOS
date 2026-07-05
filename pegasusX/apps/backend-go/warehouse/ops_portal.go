@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
@@ -817,7 +818,76 @@ func (s *Service) HandleSupplyRequestByID(w http.ResponseWriter, r *http.Request
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "unsupported_action"})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"request_id": id, "state": "CANCELLED"})
+
+		warehouseID := warehouseIDFromRequest(r)
+		if warehouseID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "warehouse_id required"})
+			return
+		}
+		if s.repo == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "repository_unavailable"})
+			return
+		}
+
+		rows, err := s.repo.ListSupplyRequests(r.Context(), warehouseID, 200)
+		if err != nil {
+			s.log.Warn("warehouse supply request cancel load failed", "warehouse_id", warehouseID, "request_id", id, "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supply_requests_failed"})
+			return
+		}
+		var target SupplyRequest
+		var found bool
+		for _, req := range rows {
+			if req.RequestID == id {
+				target = req
+				found = true
+				break
+			}
+		}
+		if !found {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "request_not_found"})
+			return
+		}
+
+		state := strings.ToUpper(strings.TrimSpace(target.State))
+		if state == "" {
+			state = strings.ToUpper(strings.TrimSpace(target.Status))
+		}
+		if state == "CANCELLED" {
+			writeJSON(w, http.StatusOK, map[string]any{"request_id": id, "state": "CANCELLED"})
+			return
+		}
+		if state == "FULFILLED" || state == "RECEIVED" {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "cannot_cancel_terminal_state"})
+			return
+		}
+
+		nowTS := s.now().UTC().Format(time.RFC3339Nano)
+		target.State = "CANCELLED"
+		target.Status = "CANCELLED"
+		target.UpdatedAt = nowTS
+
+		if err := s.repo.UpdateSupplyRequestStatus(r.Context(), id, "CANCELLED", func(txn outbox.TxnBuffer) error {
+			return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, id, events.TopicMain, events.WarehouseEvent{
+				BaseEvent:   events.BaseEvent{Type: events.EventSupplyRequestUpdate, Timestamp: nowTS},
+				RequestID:   id,
+				WarehouseID: warehouseID,
+				SupplierID:  s.supplierID,
+				FactoryID:   target.FactoryID,
+				Status:      "CANCELLED",
+			})
+		}); err != nil {
+			s.log.Warn("warehouse supply request cancel failed", "warehouse_id", warehouseID, "request_id", id, "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cancel_supply_request_failed"})
+			return
+		}
+
+		if s.cache != nil {
+			s.cache.Invalidate(r.Context(), warehouseSupplyRequestsKey(s.supplierID, warehouseID))
+		}
+		s.broadcastSupplyRequestUpdate(r.Context(), warehouseID, target)
+		s.log.Info("warehouse supply request cancelled", "supplier_id", s.supplierID, "warehouse_id", warehouseID, "request_id", id)
+		writeJSON(w, http.StatusOK, map[string]any{"request_id": id, "state": "CANCELLED"})
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}

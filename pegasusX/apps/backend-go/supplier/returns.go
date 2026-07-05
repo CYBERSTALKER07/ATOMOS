@@ -19,24 +19,24 @@ import (
 
 // SupplierReturnRow is one quarantine row for the supplier returns queue.
 type SupplierReturnRow struct {
-	ReturnID        string `json:"return_id"`
-	LineItemID      string `json:"line_item_id"`
-	OrderID         string `json:"order_id"`
-	SkuID           string `json:"sku_id"`
-	ProductName     string `json:"product_name"`
-	Quantity        int64  `json:"quantity"`
-	UnitPrice       int64  `json:"unit_price"`
-	Status          string `json:"status"`
-	PhysicalStatus  string `json:"physical_status"`
-	ReceivedQty     int64  `json:"received_qty"`
-	ManifestID      string `json:"manifest_id,omitempty"`
-	DriverID        string `json:"driver_id,omitempty"`
-	DriverName      string `json:"driver_name,omitempty"`
-	Reason          string `json:"reason"`
-	DriverNotes     string `json:"driver_notes,omitempty"`
-	RetailerID      string `json:"retailer_id"`
-	RetailerName    string `json:"retailer_name"`
-	CreatedAt       string `json:"created_at"`
+	ReturnID       string `json:"return_id"`
+	LineItemID     string `json:"line_item_id"`
+	OrderID        string `json:"order_id"`
+	SkuID          string `json:"sku_id"`
+	ProductName    string `json:"product_name"`
+	Quantity       int64  `json:"quantity"`
+	UnitPrice      int64  `json:"unit_price"`
+	Status         string `json:"status"`
+	PhysicalStatus string `json:"physical_status"`
+	ReceivedQty    int64  `json:"received_qty"`
+	ManifestID     string `json:"manifest_id,omitempty"`
+	DriverID       string `json:"driver_id,omitempty"`
+	DriverName     string `json:"driver_name,omitempty"`
+	Reason         string `json:"reason"`
+	DriverNotes    string `json:"driver_notes,omitempty"`
+	RetailerID     string `json:"retailer_id"`
+	RetailerName   string `json:"retailer_name"`
+	CreatedAt      string `json:"created_at"`
 }
 
 type resolveReturnRequest struct {
@@ -241,6 +241,8 @@ func (s *Service) HandleResolveReturn(w http.ResponseWriter, r *http.Request) {
 				if receivedQty <= 0 {
 					return fmt.Errorf("return %s not yet scanned at warehouse gate", returnID)
 				}
+			case "WRITTEN_OFF":
+				return fmt.Errorf("return %s was written off at warehouse gate; cannot return to stock", returnID)
 			default:
 				return fmt.Errorf("return %s must be received at warehouse gate before restock", returnID)
 			}
@@ -332,7 +334,11 @@ func (s *Service) HandleResolveReturn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.cache != nil {
-		s.cache.Invalidate(ctx, supplierCacheKey(supplierID), "supplier:inventory:"+supplierID)
+		keys := []string{supplierCacheKey(supplierID), "supplier:inventory:" + supplierID}
+		if warehouseID != "" {
+			keys = append(keys, "warehouse:inventory:"+warehouseID)
+		}
+		s.cache.Invalidate(ctx, keys...)
 	}
 
 	resp := map[string]any{

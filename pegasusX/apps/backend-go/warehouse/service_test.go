@@ -158,6 +158,60 @@ func TestHandleSupplyRequests_GetUsesRepository(t *testing.T) {
 	}
 }
 
+func TestHandleSupplyRequestByID_Cancel(t *testing.T) {
+	repo := &warehouseRepoSpy{listRequests: []SupplyRequest{{
+		RequestID:   "req-cancel-1",
+		WarehouseID: "wh-1",
+		Status:      "SUBMITTED",
+		State:       "SUBMITTED",
+		FactoryID:   "fc-1",
+		CreatedAt:   "2026-05-19T09:00:00Z",
+		UpdatedAt:   "2026-05-19T09:00:00Z",
+	}}}
+	cacheBackend := &warehouseCacheBackendSpy{}
+	supplierConn := &warehouseWSConnSpy{id: "supplier-conn"}
+	warehouseConn := &warehouseWSConnSpy{id: "warehouse-conn"}
+
+	svc := newWarehouseTestService(repo, cacheBackend)
+	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
+	svc.warehouseHub.Subscribe("warehouse:wh-1", warehouseConn)
+
+	req := httptest.NewRequest(http.MethodPatch, "/v1/warehouse/supply-requests/req-cancel-1?warehouse_id=wh-1", strings.NewReader(`{"action":"CANCEL"}`))
+	req = withWarehouseClaims(req, auth.Claims{Subject: "ops-1", HomeNodeID: "wh-claims"})
+	rr := httptest.NewRecorder()
+
+	svc.HandleSupplyRequestByID(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if repo.updateCalls != 1 || repo.updatedID != "req-cancel-1" || repo.updatedStatus != "CANCELLED" {
+		t.Fatalf("expected UpdateSupplyRequestStatus(req-cancel-1, CANCELLED), got calls=%d id=%q status=%q", repo.updateCalls, repo.updatedID, repo.updatedStatus)
+	}
+	if len(repo.events) != 1 {
+		t.Fatalf("expected 1 outbox event, got %d", len(repo.events))
+	}
+	outboxPayload := decodeWarehouseOutboxPayload(t, repo.events[0])
+	if got, _ := outboxPayload["type"].(string); got != events.EventSupplyRequestUpdate {
+		t.Fatalf("expected event type %q, got %q", events.EventSupplyRequestUpdate, got)
+	}
+	if got, _ := outboxPayload["status"].(string); got != "CANCELLED" {
+		t.Fatalf("expected status CANCELLED, got %q", got)
+	}
+
+	assertWarehouseCacheDeletedKeys(t, cacheBackend.deletedKeys, warehouseSupplyRequestsKey("supplier-test", "wh-1"))
+	assertWarehouseWSMessageContainsType(t, supplierConn.messages, events.EventSupplyRequestUpdate)
+	assertWarehouseWSMessageContainsType(t, warehouseConn.messages, events.EventSupplyRequestUpdate)
+
+	var resp map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode cancel response: %v", err)
+	}
+	if got, _ := resp["state"].(string); got != "CANCELLED" {
+		t.Fatalf("expected response state CANCELLED, got %q", got)
+	}
+}
+
 func TestHandleDispatchLock_AcquireReleaseSeamParity(t *testing.T) {
 	repo := &warehouseRepoSpy{}
 	cacheBackend := &warehouseCacheBackendSpy{}
@@ -484,6 +538,9 @@ type warehouseRepoSpy struct {
 	listRequests    []SupplyRequest
 	createCalls     int
 	createdRequests []SupplyRequest
+	updateCalls     int
+	updatedID       string
+	updatedStatus   string
 	applyCalls      int
 	events          []outbox.Event
 	locks           map[string]DispatchLock
@@ -510,6 +567,9 @@ func (r *warehouseRepoSpy) CreateSupplyRequest(ctx context.Context, req SupplyRe
 }
 
 func (r *warehouseRepoSpy) UpdateSupplyRequestStatus(ctx context.Context, requestID, status string, emit func(outbox.TxnBuffer) error) error {
+	r.updateCalls++
+	r.updatedID = requestID
+	r.updatedStatus = status
 	if emit != nil {
 		buf := &warehouseTxnBufferSpy{}
 		if err := emit(buf); err != nil {

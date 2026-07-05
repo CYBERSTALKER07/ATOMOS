@@ -93,6 +93,36 @@
       "title": "CommandPayload",
       "type": "object"
     },
+    "CreditDeliveryPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "driver_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "driver_id",
+        "order_id",
+        "retailer_id",
+        "supplier_id"
+      ],
+      "title": "CreditDeliveryPayload",
+      "type": "object"
+    },
     "DeliverySessionPayload": {
       "additionalProperties": true,
       "properties": {
@@ -919,6 +949,36 @@
       "title": "RoutePayload",
       "type": "object"
     },
+    "ShopClosedBypassOffloadPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "driver_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "driver_id",
+        "order_id",
+        "retailer_id",
+        "supplier_id"
+      ],
+      "title": "ShopClosedBypassOffloadPayload",
+      "type": "object"
+    },
     "ShopClosedPayload": {
       "additionalProperties": true,
       "properties": {
@@ -1371,6 +1431,44 @@
         }
       ],
       "title": "CommandSettledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CreditDeliveryPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CREDIT_DELIVERY_MARKED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CreditDeliveryMarkedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CreditDeliveryPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CREDIT_DELIVERY_RESOLVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CreditDeliveryResolvedEnvelope"
     },
     {
       "allOf": [
@@ -2572,6 +2670,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/ShopClosedBypassOffloadPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SHOP_CLOSED_BYPASS_OFFLOAD"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ShopClosedBypassOffloadEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/ShopClosedPayload"
         },
         {
@@ -3073,6 +3190,8 @@
         "COMMAND_DISPATCHED",
         "COMMAND_RECEIVED",
         "COMMAND_SETTLED",
+        "CREDIT_DELIVERY_MARKED",
+        "CREDIT_DELIVERY_RESOLVED",
         "DELIVERY_DISPUTED",
         "DELIVERY_SESSION_UPDATED",
         "DEMAND_BASELINE_UPDATED",
@@ -3136,6 +3255,7 @@
         "ROUTE_REORDERED",
         "SETTLEMENT_REQUIRED",
         "SHOP_CLOSED",
+        "SHOP_CLOSED_BYPASS_OFFLOAD",
         "SHOP_CLOSED_ESCALATED",
         "SHOP_CLOSED_RESOLVED",
         "SHOP_CLOSED_RESPONSE",
@@ -3178,6 +3298,8 @@
     "COMMAND_DISPATCHED": "CommandPayload",
     "COMMAND_RECEIVED": "CommandPayload",
     "COMMAND_SETTLED": "CommandPayload",
+    "CREDIT_DELIVERY_MARKED": "CreditDeliveryPayload",
+    "CREDIT_DELIVERY_RESOLVED": "CreditDeliveryPayload",
     "DELIVERY_DISPUTED": "DeliverySessionPayload",
     "DELIVERY_SESSION_UPDATED": "DeliverySessionPayload",
     "DEMAND_BASELINE_UPDATED": "PlanningPayload",
@@ -3241,6 +3363,7 @@
     "ROUTE_REORDERED": "RoutePayload",
     "SETTLEMENT_REQUIRED": "FinancePayload",
     "SHOP_CLOSED": "ShopClosedPayload",
+    "SHOP_CLOSED_BYPASS_OFFLOAD": "ShopClosedBypassOffloadPayload",
     "SHOP_CLOSED_ESCALATED": "ShopClosedPayload",
     "SHOP_CLOSED_RESOLVED": "ShopClosedPayload",
     "SHOP_CLOSED_RESPONSE": "ShopClosedPayload",

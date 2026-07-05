@@ -17,26 +17,26 @@ import (
 
 // DispatcherDeps provides the dependencies to the NotificationDispatcher.
 type DispatcherDeps struct {
-	SupplierHub      *ws.Hub
-	WarehouseHub     *ws.Hub
-	DriverHub        *ws.Hub
-	RetailerHub      *ws.Hub
-	FactoryHub       *ws.Hub
-	PayloadHub       *ws.Hub
-	Push             *notifications.PushBridge
-	Inbox            *notifications.Service
-	EventDedup       EventDedupStore
-	ConsumerGroupID  string
-	Cache            *cache.Cache
+	SupplierHub     *ws.Hub
+	WarehouseHub    *ws.Hub
+	DriverHub       *ws.Hub
+	RetailerHub     *ws.Hub
+	FactoryHub      *ws.Hub
+	PayloadHub      *ws.Hub
+	Push            *notifications.PushBridge
+	Inbox           *notifications.Service
+	EventDedup      EventDedupStore
+	ConsumerGroupID string
+	Cache           *cache.Cache
 }
 
 // NotificationDispatcher consumes generic events from Kafka and routes
 // them to downstream systems like WebSocket Hubs or Push Notifications.
 type NotificationDispatcher struct {
-	deps              DispatcherDeps
-	dedup             *fanoutDedup
-	eventDedup        EventDedupStore
-	consumerGroupID   string
+	deps            DispatcherDeps
+	dedup           *fanoutDedup
+	eventDedup      EventDedupStore
+	consumerGroupID string
 }
 
 // NewNotificationDispatcher creates a new dispatcher instance.
@@ -110,8 +110,10 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 	case events.EventSupplierUpdated, events.EventSupplierBillingConfigured,
 		events.EventSupplierProfileUpdated, events.EventSupplierBillingUpdated, events.EventSupplierMemberAdded:
 		return d.handleSupplierUpdated(ctx, msg.Value, traceID)
-	case events.EventShopClosed, events.EventShopClosedResponse, events.EventShopClosedEscalated, events.EventShopClosedResolved:
+	case events.EventShopClosed, events.EventShopClosedResponse, events.EventShopClosedEscalated, events.EventShopClosedResolved, events.EventShopClosedBypassOffload:
 		return d.handleShopClosedEvent(ctx, msg.Value, traceID)
+	case events.EventCreditDeliveryMarked, events.EventCreditDeliveryResolved:
+		return d.handleDriverEdgeEvent(ctx, msg.Value, traceID)
 	case events.EventNegotiationProposed, events.EventNegotiationResolved:
 		return d.handleNegotiationEvent(ctx, msg.Value, traceID)
 	case events.EventRouteReordered, events.EventRouteCreated:

@@ -24,7 +24,6 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
-	"google.golang.org/api/iterator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -35,6 +34,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"github.com/pegasusx/pegasusx/packages/handoff"
+	"google.golang.org/api/iterator"
 )
 
 // Status is the canonical order state. Matches packages/types OrderStatus and
@@ -77,11 +77,11 @@ const (
 type ConfirmationStatus string
 
 const (
-	ConfirmationStatusConfirmed     ConfirmationStatus = "CONFIRMED"
-	ConfirmationStatusDraft         ConfirmationStatus = "DRAFT"
-	ConfirmationStatusPending       ConfirmationStatus = "PENDING"
-	ConfirmationStatusRejected      ConfirmationStatus = "REJECTED"
-	ConfirmationStatusAutoConfirmed ConfirmationStatus = "AUTO_CONFIRMED"
+	ConfirmationStatusConfirmed        ConfirmationStatus = "CONFIRMED"
+	ConfirmationStatusDraft            ConfirmationStatus = "DRAFT"
+	ConfirmationStatusPending          ConfirmationStatus = "PENDING"
+	ConfirmationStatusRejected         ConfirmationStatus = "REJECTED"
+	ConfirmationStatusAutoConfirmed    ConfirmationStatus = "AUTO_CONFIRMED"
 	ConfirmationStatusPendingWarehouse ConfirmationStatus = "PENDING_WAREHOUSE"
 )
 
@@ -111,50 +111,50 @@ type LineItem struct {
 
 // Order is the persisted aggregate.
 type Order struct {
-	OrderID               string
-	SupplierID            string
-	RetailerID            string
-	WarehouseID           string
-	DriverID              string
-	VehicleID             string
-	RouteID               string
-	ManifestID            string
-	Status                Status
-	Source                OrderSource
-	ConfirmationStatus    ConfirmationStatus
-	LineItems             []LineItem
-	TotalMinor            int64
-	OriginalTotalMinor    int64
-	Currency              string
-	H3Cell                string
-	Lat                   float64
-	Lng                   float64
-	QRToken               string
-	RequestedDeliveryDate *time.Time
-	AutoConfirmAt         *time.Time
-	DecisionAt            *time.Time
-	DecisionBy            string
-	DerivedFromOrderID    string
-	ReceivingWindowOpen   string
-	ReceivingWindowClose  string
-	Timezone              string
-	DeliverBefore         *time.Time
-	DeliveryPriority      DeliveryPriority
-	DeliveryFeeMinor      int64
-	WarehouseNotes        string
+	OrderID                string
+	SupplierID             string
+	RetailerID             string
+	WarehouseID            string
+	DriverID               string
+	VehicleID              string
+	RouteID                string
+	ManifestID             string
+	Status                 Status
+	Source                 OrderSource
+	ConfirmationStatus     ConfirmationStatus
+	LineItems              []LineItem
+	TotalMinor             int64
+	OriginalTotalMinor     int64
+	Currency               string
+	H3Cell                 string
+	Lat                    float64
+	Lng                    float64
+	QRToken                string
+	RequestedDeliveryDate  *time.Time
+	AutoConfirmAt          *time.Time
+	DecisionAt             *time.Time
+	DecisionBy             string
+	DerivedFromOrderID     string
+	ReceivingWindowOpen    string
+	ReceivingWindowClose   string
+	Timezone               string
+	DeliverBefore          *time.Time
+	DeliveryPriority       DeliveryPriority
+	DeliveryFeeMinor       int64
+	WarehouseNotes         string
 	PreorderReminderSentAt *time.Time
-	NudgeNotifiedAt       *time.Time
+	NudgeNotifiedAt        *time.Time
 	ConfirmationNotifiedAt *time.Time
-	CancelLockedAt        *time.Time
-	CancelLockReason      string
-	CancelLockExpiresAt   *time.Time
-	ProposedDeliveryDate  *time.Time
-	DeliveryProposalAt    *time.Time
-	DeliveryProposalBy    string
+	CancelLockedAt         *time.Time
+	CancelLockReason       string
+	CancelLockExpiresAt    *time.Time
+	ProposedDeliveryDate   *time.Time
+	DeliveryProposalAt     *time.Time
+	DeliveryProposalBy     string
 	DeliveryProposalReason string
-	Version               int64
-	CreatedAt             time.Time
-	UpdatedAt             time.Time
+	Version                int64
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
 
 	// PendingSupplierReturns is written in the same UpdateOrder transaction and not stored on Orders.
 	PendingSupplierReturns []SupplierReturn `json:"-"`
@@ -253,23 +253,23 @@ type Service struct {
 	paymentCapturer PaymentCapturer
 	promotions      *promotion.Service
 
-	supplierID    string
-	supplierName  string
-	currency      string
-	retailerHub   *ws.Hub
-	supplierHub   *ws.Hub
-	driverHub     *ws.Hub
-	spannerClient *spanner.Client
-	manifestStore *manifest.Store
-	idem          idempotency.Store
-	shopGrace     time.Duration
-	log           *slog.Logger
-	now           func() time.Time
-	newID         func() string
-	jwtSecret     string
-	handoff       *handoff.Engine
-	gatewayPolicy GatewayPolicyReader
-	dispatchPlanWarm func(ctx context.Context, warehouseID string)
+	supplierID         string
+	supplierName       string
+	currency           string
+	retailerHub        *ws.Hub
+	supplierHub        *ws.Hub
+	driverHub          *ws.Hub
+	spannerClient      *spanner.Client
+	manifestStore      *manifest.Store
+	idem               idempotency.Store
+	shopGrace          time.Duration
+	log                *slog.Logger
+	now                func() time.Time
+	newID              func() string
+	jwtSecret          string
+	handoff            *handoff.Engine
+	gatewayPolicy      GatewayPolicyReader
+	dispatchPlanWarm   func(ctx context.Context, warehouseID string)
 	previewRateLimiter RateLimiter
 }
 
@@ -311,23 +311,23 @@ func NewService(c ServiceConfig) *Service {
 		grace = 5 * time.Minute
 	}
 	svc := &Service{
-		repo:          c.Repo,
-		cache:         c.Cache,
-		warehouse:     c.Warehouse,
-		promotions:    c.Promotions,
-		supplierID:    c.SupplierID,
-		supplierName:  strings.TrimSpace(c.SupplierName),
-		currency:      c.Currency,
-		retailerHub:   c.RetailerHub,
-		supplierHub:   c.SupplierHub,
-		driverHub:     c.DriverHub,
-		spannerClient: c.SpannerClient,
-		shopGrace:     grace,
-		log:           c.Log,
-		now:           c.Now,
-		newID:         c.NewID,
-		jwtSecret:     c.JWTSecret,
-		handoff:       c.Handoff,
+		repo:               c.Repo,
+		cache:              c.Cache,
+		warehouse:          c.Warehouse,
+		promotions:         c.Promotions,
+		supplierID:         c.SupplierID,
+		supplierName:       strings.TrimSpace(c.SupplierName),
+		currency:           c.Currency,
+		retailerHub:        c.RetailerHub,
+		supplierHub:        c.SupplierHub,
+		driverHub:          c.DriverHub,
+		spannerClient:      c.SpannerClient,
+		shopGrace:          grace,
+		log:                c.Log,
+		now:                c.Now,
+		newID:              c.NewID,
+		jwtSecret:          c.JWTSecret,
+		handoff:            c.Handoff,
 		idem:               c.Idem,
 		previewRateLimiter: newSimpleRateLimiter(100 * time.Millisecond),
 	}
@@ -438,23 +438,23 @@ type ProposeDeliveryDateRequest struct {
 // RetailerOrderLifecycleResponse returns a durable order-side snapshot for AI
 // and preorder actions.
 type RetailerOrderLifecycleResponse struct {
-	OrderID               string             `json:"order_id"`
-	Status                Status             `json:"status"`
-	Source                OrderSource        `json:"order_source"`
-	ConfirmationStatus    ConfirmationStatus `json:"confirmation_status"`
-	RequestedDeliveryDate string             `json:"requested_delivery_date,omitempty"`
-	DeliverBefore         string             `json:"deliver_before,omitempty"`
-	DeliveryPriority      string             `json:"delivery_priority,omitempty"`
-	DeliveryMode          string             `json:"delivery_mode,omitempty"`
-	PreorderBadge         string             `json:"preorder_badge,omitempty"`
-	ProposedDeliveryDate  string             `json:"proposed_delivery_date,omitempty"`
-	DeliveryProposalReason string            `json:"delivery_proposal_reason,omitempty"`
-	AutoConfirmAt         string             `json:"auto_confirm_at,omitempty"`
-	TotalMinor            int64              `json:"total_minor"`
-	Currency              string             `json:"currency"`
-	Version               int64              `json:"version"`
-	UpdatedAt             string             `json:"updated_at"`
-	Created               bool               `json:"created,omitempty"`
+	OrderID                string             `json:"order_id"`
+	Status                 Status             `json:"status"`
+	Source                 OrderSource        `json:"order_source"`
+	ConfirmationStatus     ConfirmationStatus `json:"confirmation_status"`
+	RequestedDeliveryDate  string             `json:"requested_delivery_date,omitempty"`
+	DeliverBefore          string             `json:"deliver_before,omitempty"`
+	DeliveryPriority       string             `json:"delivery_priority,omitempty"`
+	DeliveryMode           string             `json:"delivery_mode,omitempty"`
+	PreorderBadge          string             `json:"preorder_badge,omitempty"`
+	ProposedDeliveryDate   string             `json:"proposed_delivery_date,omitempty"`
+	DeliveryProposalReason string             `json:"delivery_proposal_reason,omitempty"`
+	AutoConfirmAt          string             `json:"auto_confirm_at,omitempty"`
+	TotalMinor             int64              `json:"total_minor"`
+	Currency               string             `json:"currency"`
+	Version                int64              `json:"version"`
+	UpdatedAt              string             `json:"updated_at"`
+	Created                bool               `json:"created,omitempty"`
 }
 
 // RetailerAIPrediction projects a pending AI preorder for retailer review.
@@ -843,23 +843,23 @@ func formatOptionalRFC3339(ts *time.Time) string {
 
 func lifecycleResponse(orderRecord Order, version int64, created bool) RetailerOrderLifecycleResponse {
 	return RetailerOrderLifecycleResponse{
-		OrderID:               orderRecord.OrderID,
-		Status:                orderRecord.Status,
-		Source:                orderRecord.Source,
-		ConfirmationStatus:    orderRecord.ConfirmationStatus,
-		RequestedDeliveryDate: formatOptionalRFC3339(orderRecord.RequestedDeliveryDate),
-		DeliverBefore:         formatOptionalRFC3339(orderRecord.DeliverBefore),
-		DeliveryPriority:      string(orderRecord.DeliveryPriority),
-		DeliveryMode:          deliveryModeLabel(orderRecord),
-		PreorderBadge:         preorderBadgeLabel(orderRecord),
-		ProposedDeliveryDate:  formatOptionalRFC3339(orderRecord.ProposedDeliveryDate),
+		OrderID:                orderRecord.OrderID,
+		Status:                 orderRecord.Status,
+		Source:                 orderRecord.Source,
+		ConfirmationStatus:     orderRecord.ConfirmationStatus,
+		RequestedDeliveryDate:  formatOptionalRFC3339(orderRecord.RequestedDeliveryDate),
+		DeliverBefore:          formatOptionalRFC3339(orderRecord.DeliverBefore),
+		DeliveryPriority:       string(orderRecord.DeliveryPriority),
+		DeliveryMode:           deliveryModeLabel(orderRecord),
+		PreorderBadge:          preorderBadgeLabel(orderRecord),
+		ProposedDeliveryDate:   formatOptionalRFC3339(orderRecord.ProposedDeliveryDate),
 		DeliveryProposalReason: orderRecord.DeliveryProposalReason,
-		AutoConfirmAt:         formatOptionalRFC3339(orderRecord.AutoConfirmAt),
-		TotalMinor:            orderRecord.TotalMinor,
-		Currency:              orderRecord.Currency,
-		Version:               version,
-		UpdatedAt:             orderRecord.UpdatedAt.Format(time.RFC3339Nano),
-		Created:               created,
+		AutoConfirmAt:          formatOptionalRFC3339(orderRecord.AutoConfirmAt),
+		TotalMinor:             orderRecord.TotalMinor,
+		Currency:               orderRecord.Currency,
+		Version:                version,
+		UpdatedAt:              orderRecord.UpdatedAt.Format(time.RFC3339Nano),
+		Created:                created,
 	}
 }
 
@@ -1105,11 +1105,11 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		TotalMinor:            o.TotalMinor,
 		Currency:              o.Currency,
 		CreatedAt:             o.CreatedAt.Format(time.RFC3339Nano),
-		ReceivingWindowOpen:     o.ReceivingWindowOpen,
-		ReceivingWindowClose:    o.ReceivingWindowClose,
-		BackorderOrderID:        backorderOrderID,
-		BackorderedItemCount:    invPlan.BackorderCount,
-		StockWarnings:           invPlan.Warnings,
+		ReceivingWindowOpen:   o.ReceivingWindowOpen,
+		ReceivingWindowClose:  o.ReceivingWindowClose,
+		BackorderOrderID:      backorderOrderID,
+		BackorderedItemCount:  invPlan.BackorderCount,
+		StockWarnings:         invPlan.Warnings,
 	}, nil
 }
 
@@ -1168,7 +1168,6 @@ func (s *Service) createBackorderOrder(
 	}
 	return bo.OrderID, nil
 }
-
 
 // UpdateStatus transitions one order across the canonical lifecycle. Mutations
 // and outbox emission happen atomically in repository UpdateOrder.
@@ -1501,7 +1500,19 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 				deliveryProofDistance(distanceM, latitude, longitude),
 			)
 		},
-		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
+		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, previousStatus Status) error {
+			if previousStatus == StatusDeliveredOnCredit {
+				if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.CreditDeliveryEvent{
+					BaseEvent:  events.BaseEvent{Type: events.EventCreditDeliveryResolved, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
+					OrderID:    orderRecord.OrderID,
+					DriverID:   claims.Subject,
+					SupplierID: orderRecord.SupplierID,
+					RetailerID: orderRecord.RetailerID,
+					Status:     string(StatusCompleted),
+				}); err != nil {
+					return err
+				}
+			}
 			return emitOrderFinalized(ctx, txn, orderRecord)
 		},
 	})
@@ -1557,7 +1568,19 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 				deliveryProofDistance(distanceM, latitude, longitude),
 			)
 		},
-		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
+		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, previousStatus Status) error {
+			if previousStatus == StatusDeliveredOnCredit {
+				if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.CreditDeliveryEvent{
+					BaseEvent:  events.BaseEvent{Type: events.EventCreditDeliveryResolved, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
+					OrderID:    orderRecord.OrderID,
+					DriverID:   claims.Subject,
+					SupplierID: orderRecord.SupplierID,
+					RetailerID: orderRecord.RetailerID,
+					Status:     string(StatusCompleted),
+				}); err != nil {
+					return err
+				}
+			}
 			if err := emitPaymentCleared(ctx, txn, orderRecord, "CASH"); err != nil {
 				return err
 			}
@@ -2671,7 +2694,6 @@ func distanceMeters(latA, lngA, latB, lngB float64) float64 {
 	circle := 2 * math.Atan2(math.Sqrt(angle), math.Sqrt(1-angle))
 	return earthRadiusMeters * circle
 }
-
 
 // AmendItemRequest is one line adjustment from the driver offload review surface.
 type AmendItemRequest struct {

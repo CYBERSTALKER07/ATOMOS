@@ -130,13 +130,13 @@ type DriverEvent struct {
 // VehicleEvent handles vehicle creation.
 type VehicleEvent struct {
 	BaseEvent
-	VehicleID          string `json:"vehicle_id"`
-	SupplierID         string `json:"supplier_id"`
-	HomeNodeID         string `json:"home_node_id,omitempty"`
-	HomeNodeType       string `json:"home_node_type,omitempty"`
-	IsActive           bool   `json:"is_active,omitempty"`
-	UnavailableReason  string `json:"unavailable_reason,omitempty"`
-	UnavailableNote    string `json:"unavailable_note,omitempty"`
+	VehicleID         string `json:"vehicle_id"`
+	SupplierID        string `json:"supplier_id"`
+	HomeNodeID        string `json:"home_node_id,omitempty"`
+	HomeNodeType      string `json:"home_node_type,omitempty"`
+	IsActive          bool   `json:"is_active,omitempty"`
+	UnavailableReason string `json:"unavailable_reason,omitempty"`
+	UnavailableNote   string `json:"unavailable_note,omitempty"`
 }
 
 // OrderEvent handles order creation, status changes, closure, negotiations, and driver edges.
@@ -406,6 +406,26 @@ type ReturnEvent struct {
 	Status     string `json:"status,omitempty"`
 }
 
+// ShopClosedBypassOffloadEvent handles shop-closed bypass offload completion.
+type ShopClosedBypassOffloadEvent struct {
+	BaseEvent
+	OrderID    string `json:"order_id"`
+	DriverID   string `json:"driver_id"`
+	SupplierID string `json:"supplier_id"`
+	RetailerID string `json:"retailer_id"`
+	Status     string `json:"status,omitempty"`
+}
+
+// CreditDeliveryEvent handles credit-delivery marking and resolution.
+type CreditDeliveryEvent struct {
+	BaseEvent
+	OrderID    string `json:"order_id"`
+	DriverID   string `json:"driver_id"`
+	SupplierID string `json:"supplier_id"`
+	RetailerID string `json:"retailer_id"`
+	Status     string `json:"status,omitempty"`
+}
+
 // PreOrderEvent handles pre-order lifecycle.
 type PreOrderEvent struct {
 	BaseEvent
@@ -418,15 +438,15 @@ type PreOrderEvent struct {
 // PlanningEvent covers PX90 planning-brain surfaces (MEIO, control tower, demand).
 type PlanningEvent struct {
 	BaseEvent
-	SupplierID   string  `json:"supplier_id"`
-	WarehouseID  string  `json:"warehouse_id,omitempty"`
-	FactoryID    string  `json:"factory_id,omitempty"`
-	InsightID    string  `json:"insight_id,omitempty"`
-	ProductID    string  `json:"product_id,omitempty"`
-	OverrideID   string  `json:"override_id,omitempty"`
-	Action       string  `json:"action,omitempty"`
-	Polygon      string  `json:"polygon_geojson,omitempty"`
-	TTLSeconds   int64   `json:"ttl_seconds,omitempty"`
+	SupplierID     string  `json:"supplier_id"`
+	WarehouseID    string  `json:"warehouse_id,omitempty"`
+	FactoryID      string  `json:"factory_id,omitempty"`
+	InsightID      string  `json:"insight_id,omitempty"`
+	ProductID      string  `json:"product_id,omitempty"`
+	OverrideID     string  `json:"override_id,omitempty"`
+	Action         string  `json:"action,omitempty"`
+	Polygon        string  `json:"polygon_geojson,omitempty"`
+	TTLSeconds     int64   `json:"ttl_seconds,omitempty"`
 	BaselineQty    int64   `json:"baseline_qty,omitempty"`
 	LowUnits       int64   `json:"low_units,omitempty"`
 	HighUnits      int64   `json:"high_units,omitempty"`
