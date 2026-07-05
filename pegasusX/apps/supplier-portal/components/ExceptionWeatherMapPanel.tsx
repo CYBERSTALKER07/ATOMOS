@@ -116,7 +116,7 @@ export default function ExceptionWeatherMapPanel({ className }: ExceptionWeather
             {cells.map((cell) => (
               <Link
                 key={cell.h3_cell}
-                href={cell.deep_link}
+                href={cell.deep_link as any}
                 className="block rounded-lg border p-3 hover:border-[var(--desk-accent)] transition-colors"
                 style={{ borderColor: "var(--desk-border)", background: "var(--desk-surface-subtle)" }}
               >

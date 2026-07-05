@@ -82,12 +82,15 @@ export default function PromotionsPage() {
     setSimulatingId(promo.promotion_id);
     setError(null);
     try {
-      const result = await api.simulatePromotionPandL({
-        promotion_id: promo.promotion_id,
-        discount_pct: promo.discount_bps / 100,
-        expected_units: 500,
-        avg_unit_margin_minor: 1000,
-      });
+      const result = await api.simulatePromotionPandL(
+        {
+          promotion_id: promo.promotion_id,
+          discount_pct: promo.discount_bps / 100,
+          expected_units: 500,
+          avg_unit_margin_minor: 1000,
+        },
+        crypto.randomUUID(),
+      );
       setSimResults((prev) => ({ ...prev, [promo.promotion_id]: result }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "P&L simulation failed");

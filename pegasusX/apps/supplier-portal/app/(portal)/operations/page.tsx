@@ -146,7 +146,7 @@ export default function OperationsPage() {
       <PageSection title="Operator broadcast" description="Fan out a message to supplier WS rooms by role.">
         <p className="md-typescale-body-small mb-3 text-[var(--color-md-outline)]">
           Signal ingest health and planning projections live on{" "}
-          <Link href="/settings/planning" className="underline text-[var(--color-md-primary)]">
+          <Link href={"/settings/planning" as any} className="underline text-[var(--color-md-primary)]">
             Planning settings
           </Link>
           .

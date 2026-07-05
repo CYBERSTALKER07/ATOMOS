@@ -12,7 +12,8 @@ export default function NetworkPulsePanel({ className }: { className?: string })
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await supplierFetch<{ events: PulseEvent[] }>("/v1/supplier/pulse");
+      const response = await supplierFetch("/v1/supplier/pulse");
+      const data = (await response.json()) as { events: PulseEvent[] };
       setEvents(data.events ?? []);
     } catch {
       setEvents([]);

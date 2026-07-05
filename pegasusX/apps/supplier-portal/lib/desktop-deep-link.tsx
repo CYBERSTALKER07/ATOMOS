@@ -9,8 +9,8 @@ export function DesktopDeepLinkBootstrap() {
   const router = useRouter();
 
   useEffect(() => {
-    return subscribeDesktopDeepLinks((path) => {
-      router.push(path);
+    void subscribeDesktopDeepLinks((path) => {
+      router.push(path as any);
     });
   }, [router]);
 
