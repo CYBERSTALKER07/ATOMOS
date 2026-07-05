@@ -33,6 +33,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"github.com/pegasusx/pegasusx/packages/handoff"
 	"google.golang.org/api/iterator"
@@ -1023,6 +1024,9 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 			return CreateResponse{}, fmt.Errorf("credit check failed: %w", err)
 		}
 		if !check.Allowed {
+			if emitErr := s.emitCreditLimitBreached(ctx, retailerID, total, check); emitErr != nil {
+				s.log.Warn("failed to emit credit limit breached event", "err", emitErr, "retailer_id", retailerID)
+			}
 			return CreateResponse{}, fmt.Errorf("%w: %s (shortfall %d)", ErrCreditLimitBreached, check.Reason, check.Shortfall)
 		}
 	}
@@ -2594,6 +2598,38 @@ func moneyData(orderRecord Order) map[string]any {
 		"amount":   orderRecord.TotalMinor,
 		"currency": orderRecord.Currency,
 	}
+}
+
+func (s *Service) emitCreditLimitBreached(ctx context.Context, retailerID string, requestedAmount int64, check credit.CheckResult) error {
+	if s.spannerClient == nil {
+		return nil
+	}
+	return spannerutils.RunReadWriteTransaction(ctx, s.spannerClient, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &spannerTxnBuffer{}
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateCreditProfile, retailerID, events.TopicMain, events.CreditLimitEvent{
+			BaseEvent:        events.BaseEvent{Type: events.EventRetailerCreditLimitBreached, Timestamp: s.now().Format(time.RFC3339Nano)},
+			OrderID:          "", // unknown at this pre-order stage; consumers key on retailer_id
+			RetailerID:       retailerID,
+			SupplierID:       s.supplierID,
+			RequestedAmount:  requestedAmount,
+			CreditLimitMinor: check.CreditLimitMinor,
+			CurrentBalance:   check.CurrentBalance,
+		}); err != nil {
+			return err
+		}
+		var mutations []*spanner.Mutation
+		for _, e := range buf.events {
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
+				"EventId":       e.EventID,
+				"AggregateType": e.AggregateType,
+				"AggregateId":   e.AggregateID,
+				"TopicName":     e.TopicName,
+				"Payload":       e.Payload,
+				"CreatedAt":     e.CreatedAt,
+			}))
+		}
+		return txn.BufferWrite(mutations)
+	})
 }
 
 func driverOrderResponse(orderRecord Order, message string) DriverOrderResponse {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
@@ -85,8 +86,8 @@ type Repository interface {
 	ListProducts(ctx context.Context, supplierID, categoryID string, activeOnly bool) ([]Product, error)
 	ListDiscoverableProducts(ctx context.Context, categoryID string, limit, offset int64) ([]Product, error)
 	GetProduct(ctx context.Context, productID string) (*Product, error)
-	CreateProduct(ctx context.Context, p Product) error
-	UpdateProduct(ctx context.Context, p Product) error
+	CreateProduct(ctx context.Context, p Product, emit func(outbox.TxnBuffer) error) error
+	UpdateProduct(ctx context.Context, p Product, emit func(outbox.TxnBuffer) error) error
 	ListCategorySuppliers(ctx context.Context, categoryID string) ([]CategorySupplier, error)
 	SearchSuppliers(ctx context.Context, query string, limit int) ([]CategorySupplier, error)
 }
@@ -102,6 +103,15 @@ func NewSpannerRepository(client *spanner.Client) *SpannerRepository {
 }
 
 const productSelectColumns = `ProductId, SupplierId, CategoryId, Name, Description, ImageURL, PriceMinor, Currency, StockQuantity, Unit, UnitVolumeVU, SaleUnit, UnitsPerPack, Barcode, HandlingClass, RequiresColdChain, IsHazardous, IsPerishable, StorageTempMinC, StorageTempMaxC, IsActive, Version, CreatedAt, UpdatedAt`
+
+type spannerTxnBuffer struct {
+	events []outbox.Event
+}
+
+func (b *spannerTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error {
+	b.events = append(b.events, e)
+	return nil
+}
 
 func scanProductRow(row *spanner.Row) (Product, error) {
 	var p Product
@@ -297,9 +307,16 @@ func (r *SpannerRepository) GetProduct(ctx context.Context, productID string) (*
 	return &p, nil
 }
 
-// CreateProduct inserts a new product row inside a ReadWriteTransaction.
-func (r *SpannerRepository) CreateProduct(ctx context.Context, p Product) error {
+// CreateProduct inserts a new product row inside a ReadWriteTransaction and
+// buffers an outbox event when emit is provided.
+func (r *SpannerRepository) CreateProduct(ctx context.Context, p Product, emit func(outbox.TxnBuffer) error) error {
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
 		m := spanner.InsertOrUpdateMap("Products", map[string]any{
 			"ProductId":         p.ProductID,
 			"SupplierId":        p.SupplierID,
@@ -326,7 +343,18 @@ func (r *SpannerRepository) CreateProduct(ctx context.Context, p Product) error 
 			"CreatedAt":         spanner.CommitTimestamp,
 			"UpdatedAt":         spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{m})
+		mutations := []*spanner.Mutation{m}
+		for _, e := range buf.events {
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
+				"EventId":       e.EventID,
+				"AggregateType": e.AggregateType,
+				"AggregateId":   e.AggregateID,
+				"TopicName":     e.TopicName,
+				"Payload":       e.Payload,
+				"CreatedAt":     e.CreatedAt,
+			}))
+		}
+		return txn.BufferWrite(mutations)
 	})
 	if err != nil {
 		return fmt.Errorf("create product %s: %w", p.ProductID, err)
@@ -334,9 +362,16 @@ func (r *SpannerRepository) CreateProduct(ctx context.Context, p Product) error 
 	return nil
 }
 
-// UpdateProduct updates a product row with optimistic concurrency.
-func (r *SpannerRepository) UpdateProduct(ctx context.Context, p Product) error {
+// UpdateProduct updates a product row with optimistic concurrency and buffers
+// an outbox event when emit is provided.
+func (r *SpannerRepository) UpdateProduct(ctx context.Context, p Product, emit func(outbox.TxnBuffer) error) error {
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
 		row, readErr := txn.ReadRow(ctx, "Products", spanner.Key{p.ProductID}, []string{"Version"})
 		if readErr != nil {
 			return fmt.Errorf("read product version %s: %w", p.ProductID, readErr)
@@ -371,7 +406,18 @@ func (r *SpannerRepository) UpdateProduct(ctx context.Context, p Product) error 
 			"Version":           currentVersion + 1,
 			"UpdatedAt":         spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{m})
+		mutations := []*spanner.Mutation{m}
+		for _, e := range buf.events {
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
+				"EventId":       e.EventID,
+				"AggregateType": e.AggregateType,
+				"AggregateId":   e.AggregateID,
+				"TopicName":     e.TopicName,
+				"Payload":       e.Payload,
+				"CreatedAt":     e.CreatedAt,
+			}))
+		}
+		return txn.BufferWrite(mutations)
 	})
 	if err != nil {
 		return fmt.Errorf("update product %s: %w", p.ProductID, err)

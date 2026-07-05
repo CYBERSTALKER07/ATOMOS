@@ -153,6 +153,12 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		events.EventReplenishmentAutoApproved, events.EventPlanningAgentBroadcast,
 		events.EventPlanningForecastUpdated, events.EventPlanningPromoSimulationReady, events.EventPlanningConfidenceDowngraded:
 		return d.handlePlanningEvent(ctx, msg.Value, traceID)
+	case events.EventOrderConditionReported:
+		return d.handleConditionReported(ctx, msg.Value, traceID)
+	case events.EventRetailerCreditProfileChanged, events.EventRetailerCreditLimitBreached:
+		return d.handleCreditEvent(ctx, msg.Value, traceID)
+	case events.EventProductHandlingUpdated:
+		return d.handleProductHandlingUpdated(ctx, msg.Value, traceID)
 	default:
 		if strings.HasPrefix(envelope.Type, "MANIFEST_") {
 			return d.handleManifestEvent(ctx, msg.Value, traceID)
@@ -217,6 +223,48 @@ func (d *NotificationDispatcher) handleWarehouseCreated(ctx context.Context, pay
 	}
 	d.broadcastSupplier(ctx, e.SupplierID, payload)
 	d.broadcastWarehouse(ctx, e.WarehouseID, payload)
+	return nil
+}
+
+func (d *NotificationDispatcher) handleConditionReported(ctx context.Context, payload []byte, traceID string) error {
+	var e events.ConditionEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode condition reported event: %w", err)
+	}
+	if d.dropFanout(events.EventOrderConditionReported, traceID, e.ReportID) {
+		return nil
+	}
+	env, err := decodePartyEnvelope(payload)
+	if err != nil {
+		return err
+	}
+	d.broadcastSupplier(ctx, env.supplierID(), payload)
+	d.broadcastRetailer(ctx, env.retailerID(), payload)
+	return nil
+}
+
+func (d *NotificationDispatcher) handleCreditEvent(ctx context.Context, payload []byte, traceID string) error {
+	var e events.CreditProfileEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode credit event: %w", err)
+	}
+	if d.dropFanout(e.Type, traceID, e.ProfileID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	d.broadcastRetailer(ctx, e.RetailerID, payload)
+	return nil
+}
+
+func (d *NotificationDispatcher) handleProductHandlingUpdated(ctx context.Context, payload []byte, traceID string) error {
+	var e events.ProductEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode product handling updated event: %w", err)
+	}
+	if d.dropFanout(events.EventProductHandlingUpdated, traceID, e.ProductID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
 	return nil
 }
 

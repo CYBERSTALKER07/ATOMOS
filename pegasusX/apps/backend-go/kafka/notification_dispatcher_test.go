@@ -586,3 +586,137 @@ func TestParseEnvelope_RejectsMalformedJSON(t *testing.T) {
 		t.Fatal("expected malformed envelope error")
 	}
 }
+
+func TestNotificationDispatcher_ConditionReportedFansSupplierAndRetailer(t *testing.T) {
+	t.Parallel()
+
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	retailerConn := &dispatcherConnSpy{id: "retailer"}
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	retailerHub := ws.NewHub("retailer", nil, nil)
+	supplierHub.Subscribe("supplier:sup-1", supplierConn)
+	retailerHub.Subscribe("retailer:ret-1", retailerConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub: supplierHub,
+		RetailerHub: retailerHub,
+	})
+
+	payload, _ := json.Marshal(map[string]any{
+		"type":           events.EventOrderConditionReported,
+		"trace_id":       "trace-condition",
+		"report_id":      "rep-1",
+		"order_id":       "ord-1",
+		"supplier_id":    "sup-1",
+		"retailer_id":    "ret-1",
+		"reporter_id":    "drv-1",
+		"reporter_role":  "DRIVER",
+		"condition_type": "DAMAGED",
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(supplierConn.messages) != 1 || len(retailerConn.messages) != 1 {
+		t.Fatalf("supplier=%d retailer=%d, want 1 each", len(supplierConn.messages), len(retailerConn.messages))
+	}
+}
+
+func TestNotificationDispatcher_CreditProfileChangedFansSupplierAndRetailer(t *testing.T) {
+	t.Parallel()
+
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	retailerConn := &dispatcherConnSpy{id: "retailer"}
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	retailerHub := ws.NewHub("retailer", nil, nil)
+	supplierHub.Subscribe("supplier:sup-1", supplierConn)
+	retailerHub.Subscribe("retailer:ret-1", retailerConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub: supplierHub,
+		RetailerHub: retailerHub,
+	})
+
+	payload, _ := json.Marshal(map[string]any{
+		"type":               events.EventRetailerCreditProfileChanged,
+		"trace_id":           "trace-credit",
+		"profile_id":         "crp-1",
+		"retailer_id":        "ret-1",
+		"supplier_id":        "sup-1",
+		"credit_limit_minor": 500000,
+		"current_balance":    100000,
+		"risk_tier":          "MEDIUM",
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(supplierConn.messages) != 1 || len(retailerConn.messages) != 1 {
+		t.Fatalf("supplier=%d retailer=%d, want 1 each", len(supplierConn.messages), len(retailerConn.messages))
+	}
+}
+
+func TestNotificationDispatcher_CreditLimitBreachedFansSupplierAndRetailer(t *testing.T) {
+	t.Parallel()
+
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	retailerConn := &dispatcherConnSpy{id: "retailer"}
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	retailerHub := ws.NewHub("retailer", nil, nil)
+	supplierHub.Subscribe("supplier:sup-1", supplierConn)
+	retailerHub.Subscribe("retailer:ret-1", retailerConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub: supplierHub,
+		RetailerHub: retailerHub,
+	})
+
+	payload, _ := json.Marshal(map[string]any{
+		"type":               events.EventRetailerCreditLimitBreached,
+		"trace_id":           "trace-breach",
+		"order_id":           "ord-1",
+		"retailer_id":        "ret-1",
+		"supplier_id":        "sup-1",
+		"requested_amount":   600000,
+		"credit_limit_minor": 500000,
+		"current_balance":    100000,
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(supplierConn.messages) != 1 || len(retailerConn.messages) != 1 {
+		t.Fatalf("supplier=%d retailer=%d, want 1 each", len(supplierConn.messages), len(retailerConn.messages))
+	}
+}
+
+func TestNotificationDispatcher_ProductHandlingUpdatedFansSupplierOnly(t *testing.T) {
+	t.Parallel()
+
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	retailerConn := &dispatcherConnSpy{id: "retailer"}
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	retailerHub := ws.NewHub("retailer", nil, nil)
+	supplierHub.Subscribe("supplier:sup-1", supplierConn)
+	retailerHub.Subscribe("retailer:ret-1", retailerConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub: supplierHub,
+		RetailerHub: retailerHub,
+	})
+
+	payload, _ := json.Marshal(map[string]any{
+		"type":                events.EventProductHandlingUpdated,
+		"trace_id":            "trace-product",
+		"product_id":          "prod-1",
+		"supplier_id":         "sup-1",
+		"handling_class":      "COLD_CHAIN",
+		"requires_cold_chain": true,
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(supplierConn.messages) != 1 {
+		t.Fatalf("supplier messages = %d, want 1", len(supplierConn.messages))
+	}
+	if len(retailerConn.messages) != 0 {
+		t.Fatalf("retailer hub should not receive product handling updated")
+	}
+}

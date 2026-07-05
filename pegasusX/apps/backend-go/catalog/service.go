@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 )
 
@@ -165,9 +168,12 @@ func (s *Service) GetProduct(ctx context.Context, productID string) (*Product, e
 	return s.repo.GetProduct(ctx, productID)
 }
 
-// CreateProduct adds a new product and invalidates the cache.
+// CreateProduct adds a new product, emits PRODUCT_HANDLING_UPDATED, and invalidates the cache.
 func (s *Service) CreateProduct(ctx context.Context, p Product) error {
-	if err := s.repo.CreateProduct(ctx, p); err != nil {
+	emit := func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, productHandlingEvent(p))
+	}
+	if err := s.repo.CreateProduct(ctx, p, emit); err != nil {
 		return err
 	}
 	if s.cache != nil {
@@ -204,9 +210,12 @@ func (s *Service) ListCategorySuppliers(ctx context.Context, categoryID string) 
 	return suppliers, nil
 }
 
-// UpdateProduct modifies an existing product with optimistic concurrency.
+// UpdateProduct modifies an existing product with optimistic concurrency and emits PRODUCT_HANDLING_UPDATED.
 func (s *Service) UpdateProduct(ctx context.Context, p Product) error {
-	if err := s.repo.UpdateProduct(ctx, p); err != nil {
+	emit := func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, productHandlingEvent(p))
+	}
+	if err := s.repo.UpdateProduct(ctx, p, emit); err != nil {
 		return err
 	}
 	if s.cache != nil {
@@ -216,4 +225,21 @@ func (s *Service) UpdateProduct(ctx context.Context, p Product) error {
 		)
 	}
 	return nil
+}
+
+func productHandlingEvent(p Product) events.ProductEvent {
+	return events.ProductEvent{
+		BaseEvent: events.BaseEvent{
+			Type:      events.EventProductHandlingUpdated,
+			Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		},
+		ProductID:         p.ProductID,
+		SupplierID:        p.SupplierID,
+		HandlingClass:     string(p.HandlingClass),
+		RequiresColdChain: p.RequiresColdChain,
+		IsHazardous:       p.IsHazardous,
+		IsPerishable:      p.IsPerishable,
+		StorageTempMinC:   p.StorageTempMinC,
+		StorageTempMaxC:   p.StorageTempMaxC,
+	}
 }
