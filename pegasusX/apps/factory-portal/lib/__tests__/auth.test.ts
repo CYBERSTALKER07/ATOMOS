@@ -29,7 +29,7 @@ describe('auth.ts utilities', () => {
       const parsed = parseFactoryLiveEvent(validPayload);
       expect(parsed).not.toBeNull();
       expect(parsed?.type).toBe('FACTORY_SUPPLY_REQUEST_UPDATE');
-      expect((parsed as any).requestId).toBe('123');
+      expect((parsed as { requestId?: string } | null)?.requestId).toBe('123');
     });
 
     it('returns null for unknown event types', () => {

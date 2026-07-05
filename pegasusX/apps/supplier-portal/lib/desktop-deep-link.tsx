@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { subscribeDesktopDeepLinks } from "@pegasusx/desktop-bridge";
 
@@ -10,7 +11,9 @@ export function DesktopDeepLinkBootstrap() {
 
   useEffect(() => {
     void subscribeDesktopDeepLinks((path) => {
-      router.push(path as any);
+      // typedRoutes: deep-link paths arrive as runtime strings; Route cast is
+      // the narrowest honest assertion for dynamic navigation targets.
+      router.push(path as Route);
     });
   }, [router]);
 

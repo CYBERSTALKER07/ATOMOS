@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, warehouseDispatchSettingsKey } from '@pegasusx/api-client';
+import type { WarehouseDispatchPreview } from '@pegasusx/types';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
+
+type DispatchPreviewState = Partial<WarehouseDispatchPreview> & { error?: string };
 
 export default function DispatchSettingsPage() {
   const [autoDispatchEnabled, setAutoDispatchEnabled] = useState<boolean | null>(null);
@@ -16,7 +19,7 @@ export default function DispatchSettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [previewData, setPreviewData] = useState<any | null>(null);
+  const [previewData, setPreviewData] = useState<DispatchPreviewState | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
   const load = useCallback(async () => {

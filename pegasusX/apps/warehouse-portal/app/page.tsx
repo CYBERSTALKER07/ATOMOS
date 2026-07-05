@@ -70,9 +70,7 @@ export default function WarehouseDashboard() {
     setLoading(true);
     async function load() {
       try {
-        const dashboard = await warehouseApi.getWarehouseOpsDashboard({
-          range: dateRange
-        } as any);
+        const dashboard = await warehouseApi.getWarehouseOpsDashboard();
         const row = dashboard as unknown as Record<string, unknown>;
         setData({
           active_orders: Number(row.active_orders ?? 0),

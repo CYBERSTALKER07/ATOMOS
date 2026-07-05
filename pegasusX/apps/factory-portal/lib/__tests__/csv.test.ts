@@ -10,7 +10,7 @@ describe('downloadCsv', () => {
       click: vi.fn(),
     };
     
-    vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor as any);
+    vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor as unknown as HTMLAnchorElement);
     const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test-url');
     const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 
