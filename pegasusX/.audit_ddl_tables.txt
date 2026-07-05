@@ -1,0 +1,6 @@
+263:CREATE TABLE Drivers (
+287:CREATE TABLE Vehicles (
+306:CREATE TABLE Warehouses (
+342:CREATE TABLE Factories (
+419:CREATE TABLE PaymentSessions (
+438:CREATE TABLE PaymentAttempts (

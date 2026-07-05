@@ -1,0 +1,10 @@
+cmd/replay-dlq/main.go:79:		err = writer.WriteMessages(ctx, kafka.Message{
+outbox/kafka_publisher.go:77:	return p.writer.WriteMessages(ctx, msg)
+cmd/ssmr-smokecheck/main.go:314:	if _, err := conn.WriteMessages(kafka.Message{
+bootstrap/bootstrap_test.go:82:func (f *fakeKafkaDLQWriter) WriteMessages(_ context.Context, _ ...segmentkafka.Message) error {
+kafka/consumer_test.go:20:func (w *fakeDLQWriter) WriteMessages(_ context.Context, msgs ...segmentkafka.Message) error {
+kafka/consumer.go:44:	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
+kafka/consumer.go:191:	if err := c.deps.DLQWriter.WriteMessages(ctx, dlqMsg); err != nil {
+kafka/dlq_writer.go:38:func (w *kafkaDLQWriter) WriteMessages(ctx context.Context, msgs ...segmentkafka.Message) error {
+kafka/dlq_writer.go:42:	return w.writer.WriteMessages(ctx, msgs...)
+planning/ingest.go:50:	return p.writer.WriteMessages(ctx, kafka.Message{Key: key, Value: value, Time: time.Now().UTC()})

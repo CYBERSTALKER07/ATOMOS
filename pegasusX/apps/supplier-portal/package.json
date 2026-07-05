@@ -36,6 +36,7 @@
     "@tauri-apps/plugin-deep-link": "^2.4.9",
     "@tauri-apps/plugin-sql": "^2.2.0",
     "firebase": "^12.12.0",
+    "framer-motion": "^12.42.2",
     "h3-js": "^4.5.0",
     "lucide-react": "^0.511.0",
     "maplibre-gl": "^5.19.0",

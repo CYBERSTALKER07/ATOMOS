@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import Map from "react-map-gl";
+import Map from "react-map-gl/mapbox";
 import DeckGL from "@deck.gl/react";
 import { H3HexagonLayer } from "@deck.gl/geo-layers";
 import { Map3DViewToggle } from "../desktop/map-chrome";

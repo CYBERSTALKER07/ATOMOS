@@ -1,0 +1,5 @@
+factory/repository_crud.go:13:type Factory struct {
+driver/repository_crud.go:13:type Driver struct {
+driver/repository_crud.go:31:type Vehicle struct {
+payment/service.go:102:type WebhookRecord struct {
+warehouse/repository_crud.go:13:type Warehouse struct {

@@ -1,0 +1,27 @@
+cmd/seed-supplier-prodsim/main.go:168:			spanner.InsertOrUpdateMap("PaymentLedgerEntries", map[string]any{
+cmd/seed-supplier-prodsim/main.go:182:			spanner.InsertOrUpdateMap("PaymentLedgerEntries", map[string]any{
+platform/deferral.go:63:		SQL: `SELECT SessionId FROM PaymentSessions
+retailer/repository_spanner.go:526:		      FROM PaymentLedgerEntries
+retailer/repository_spanner.go:603:		      FROM PaymentLedgerEntries
+retailer/repository_spanner.go:677:		      FROM PaymentWebhooks
+retailer/repository_spanner.go:813:		      FROM PaymentChargebacks
+retailer/repository_spanner.go:861:		      FROM PaymentReversals
+payment/service.go:130:// settlement authority summaries derived from PaymentLedgerEntries.
+payment/repository_spanner.go:47:	base := spanner.InsertOrUpdateMap("PaymentSessions", map[string]any{
+payment/repository_spanner.go:71:	sessionMutation := spanner.InsertOrUpdateMap("PaymentSessions", map[string]any{
+payment/repository_spanner.go:85:	attemptMutation := spanner.InsertOrUpdateMap("PaymentAttempts", map[string]any{
+payment/repository_spanner.go:106:	base := spanner.InsertOrUpdateMap("PaymentAttempts", map[string]any{
+payment/repository_spanner.go:127:	base := spanner.InsertOrUpdateMap("PaymentChargebacks", map[string]any{
+payment/repository_spanner.go:146:	base := spanner.InsertOrUpdateMap("PaymentReversals", map[string]any{
+payment/repository_spanner.go:161:	base := spanner.InsertOrUpdateMap("PaymentWebhooks", map[string]any{
+payment/repository_spanner.go:187:		      FROM PaymentSessions
+payment/repository_spanner.go:223:		      FROM PaymentSessions
+payment/repository_spanner.go:251:		      FROM PaymentChargebacks
+payment/repository_spanner.go:276:		      FROM PaymentSessions
+payment/repository_spanner.go:341:	sql := `SELECT LedgerEntryId, SessionId, OrderId, SupplierId, RetailerId, Gateway, EntryType, AmountMinor, Currency, ReferenceId, Source, OccurredAt, CreatedAt FROM PaymentLedgerEntries`
+payment/repository_spanner.go:408:// immutable PaymentLedgerEntries using bounded stale reads.
+payment/repository_spanner.go:442:	sql := `SELECT Gateway, EntryType, Currency, COUNT(1) AS EntryCount, SUM(AmountMinor) AS AmountMinorTotal, MIN(OccurredAt) AS FirstOccurredAt, MAX(OccurredAt) AS LastOccurredAt FROM PaymentLedgerEntries`
+payment/repository_spanner.go:634:	return spanner.InsertOrUpdateMap("PaymentLedgerEntries", map[string]any{
+supplier/orders_vet.go:260:		          FROM PaymentLedgerEntries ple
+supplier/orders_vet.go:266:		          FROM PaymentSessions ps
+order/service.go:3103:		SQL: `SELECT Gateway FROM PaymentLedgerEntries

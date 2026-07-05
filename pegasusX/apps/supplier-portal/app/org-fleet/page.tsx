@@ -20,7 +20,7 @@ import type {
 } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 import { PortalSection } from "@/components/portal";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 function supplierScopeId(): string {
   if (typeof window === "undefined") {
@@ -116,41 +116,34 @@ export default function OrgFleetPage() {
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [memberActionId, setMemberActionId] = useState<string | null>(null);
 
-  useSupplierSessionReconcile(load);
+  const load = useCallback(async () => {
+    setState({ status: "loading" });
+    try {
+      const [topology, orgMembers, drivers, vehicles] = await Promise.all([
+        api.getSupplierTopology(),
+        api.getSupplierOrgMembers(),
+        api.getSupplierFleetDrivers(),
+        api.getSupplierFleetVehicles(),
+      ]);
+      setState({
+        status: "ready",
+        topology,
+        orgMembers: orgMembers.items,
+        drivers: drivers.items,
+        vehicles: vehicles.items,
+      });
+    } catch (error) {
+      setState({ status: "error", message: toErrorMessage(error) });
+    }
+  }, [api]);
+
+  useSupplierSessionReconcile(() => {
+    void load();
+  });
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setState({ status: "loading" });
-      try {
-        const [topology, orgMembers, drivers, vehicles] = await Promise.all([
-          api.getSupplierTopology(),
-          api.getSupplierOrgMembers(),
-          api.getSupplierFleetDrivers(),
-          api.getSupplierFleetVehicles(),
-        ]);
-        if (!cancelled) {
-          setState({
-            status: "ready",
-            topology,
-            orgMembers: orgMembers.items,
-            drivers: drivers.items,
-            vehicles: vehicles.items,
-          });
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setState({ status: "error", message: toErrorMessage(error) });
-        }
-      }
-    }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [api]);
+    void load();
+  }, [load]);
 
   const warehouses = state.status === "ready" ? state.topology.warehouses : [];
   const factories = state.status === "ready" ? state.topology.factories : [];

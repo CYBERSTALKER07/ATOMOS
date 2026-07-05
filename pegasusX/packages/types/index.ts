@@ -41,6 +41,7 @@ export type Role =
 
 export type SupplierId = string;
 export type RetailerId = string;
+export type OrderId = string;
 export type DeliveryExpectationKind =
   | "STANDARD"
   | "SCHEDULED_PREORDER"
