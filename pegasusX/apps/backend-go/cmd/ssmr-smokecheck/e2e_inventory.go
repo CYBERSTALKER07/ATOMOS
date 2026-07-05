@@ -178,6 +178,9 @@ func runConcurrentStockRejectE2E(
 	if err != nil {
 		return fmt.Errorf("concurrent stock reject register retailer2: %w", err)
 	}
+	if err := grantRetailerCredit(ctx, client, base, cookie, retailer2ID, 500_000_000); err != nil {
+		return fmt.Errorf("concurrent stock reject credit grant retailer2: %w", err)
+	}
 	retailer2Token, err := auth.Issue(auth.Claims{
 		Subject:    retailer2ID,
 		Role:       auth.RoleRetailer,

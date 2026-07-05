@@ -508,6 +508,9 @@ func runShopClosedSmokeCheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("retailer register: %w", err)
 	}
+	if err := grantRetailerCredit(ctx, client, base, cookie, retailerID, 500_000_000); err != nil {
+		return fmt.Errorf("retailer credit grant: %w", err)
+	}
 	retailerToken, err := auth.Issue(auth.Claims{
 		Subject:    retailerID,
 		Role:       auth.RoleRetailer,

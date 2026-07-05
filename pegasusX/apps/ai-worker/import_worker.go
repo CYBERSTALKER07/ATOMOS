@@ -47,7 +47,12 @@ func newInventoryImportRuntime(
 			MinBytes:       1e3,
 			MaxBytes:       10e6,
 			CommitInterval: time.Second,
-			StartOffset:    kafka.LastOffset,
+			// FirstOffset: import lifecycle events are state transitions, not
+			// telemetry. On the group's first-ever join (no committed offset)
+			// LastOffset silently skips any UPLOADED event emitted before the
+			// join, stranding sessions. Replay is safe: ProcessImportUploaded
+			// is idempotent via the MarkSessionDiscovering acquire gate.
+			StartOffset: kafka.FirstOffset,
 		}),
 		repo:        repo,
 		opener:      opener,
@@ -104,7 +109,7 @@ func (r *inventoryImportRuntime) Run(ctx context.Context, metrics *consumerLagMe
 					"gcs_path", e.GCSPath,
 					"err", processErr,
 				)
-				// Retry mechanisms or DLQ should be handled by the repo or later. 
+				// Retry mechanisms or DLQ should be handled by the repo or later.
 				// We commit the message to avoid poison pills blocking the partition.
 			}
 

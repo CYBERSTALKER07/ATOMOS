@@ -154,3 +154,24 @@ func registerRetailerWithPhone(ctx context.Context, client *http.Client, base st
 	}
 	return resp.RetailerID, resp.H3Cell, nil
 }
+
+// grantRetailerCredit provisions a supplier-granted credit line for a
+// registered retailer, mirroring the real operator engagement: supplier vets
+// the retailer and grants credit before the retailer's first pay-later order.
+// Order create fail-closes on missing credit profiles, so every smoke retailer
+// that places orders must pass through this seam.
+func grantRetailerCredit(ctx context.Context, client *http.Client, base, cookie, retailerID string, limitMinor int64) error {
+	body, _ := json.Marshal(map[string]any{
+		"retailer_id":        retailerID,
+		"credit_limit_minor": limitMinor,
+		"reason":             "ssmr-smoke-grant",
+	})
+	status, respBody, _, err := clientDoRetry(ctx, client, http.MethodPatch, base+"/v1/supplier/retailer-credit-profile", body, cookie, "")
+	if err != nil {
+		return fmt.Errorf("grant retailer credit: %w", err)
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("grant retailer credit status %d body %s", status, string(respBody))
+	}
+	return nil
+}

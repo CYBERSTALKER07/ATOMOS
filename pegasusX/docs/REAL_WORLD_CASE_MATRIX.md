@@ -28,6 +28,7 @@ Last updated: 2026-06-29.
 | Checkout preview | Line limit / delivery fee surprise | RETAILER, WAREHOUSE | checkout modal, `/dispatch-settings` | `orderable_quantities`, fee preview API | [`RETAILER_RECEIVING_WINDOWS_GUIDE.md`](./RETAILER_RECEIVING_WINDOWS_GUIDE.md) | Retailer + warehouse ops |
 | Create | New shop outside delivery zone | RETAILER, SUPPLIER | checkout error, `/topology` | H3 `zone_miss` | [`ZONE_MISS_COMMUNICATION_POLICY.md`](./ZONE_MISS_COMMUNICATION_POLICY.md) | Supplier topology team |
 | Create | Two shops order last unit | RETAILER, WAREHOUSE | checkout, dispatch settings | Atomic stock reservation (`REJECT` policy) | — | Warehouse stock policy |
+| Create | New retailer orders with no credit line | RETAILER, SUPPLIER | checkout error, supplier retailer credit | Fail-closed credit gate (`credit_limit_breached: no_credit_profile`); supplier grants via `PATCH /v1/supplier/retailer-credit-profile` | [`FINANCE_SUPPORT_WORKFLOW.md`](./FINANCE_SUPPORT_WORKFLOW.md) | Supplier account managers |
 | Preorder | Date rejected / AI wrong qty | RETAILER, WAREHOUSE | orders, `/preorders` | `PRE_ORDER_*` events | PX12 manual G + I | Account managers |
 | Delivery proposal | Supplier proposes different date | RETAILER | tracking, proposal review | `PX_E2E_DELIVERY_PROPOSAL_OK` | — | Retailer managers |
 | Cancel | Before load vs after load | RETAILER, WAREHOUSE | order detail | State machine + inventory release | — | Retailer cutoff policy |

@@ -17,12 +17,32 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driver"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 )
 
 // ── helpers ─────────────────────────────────────────────────────────────────
+
+// simRouter returns a chi router whose requests carry authenticated
+// supplier-scope claims, mirroring production auth middleware. Handlers
+// resolve supplier scope from claims (never request bodies), so every
+// simulated request must be claim-bound exactly like a real session.
+func simRouter(supplierID string) chi.Router {
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			ctx := auth.WithClaims(req.Context(), auth.Claims{
+				Subject:    "sim-test",
+				Role:       auth.RoleAdmin,
+				SupplierID: supplierID,
+			})
+			next.ServeHTTP(w, req.WithContext(ctx))
+		})
+	})
+	return r
+}
 
 func newWarehouseService() *warehouse.Service {
 	return warehouse.NewService(warehouse.ServiceConfig{
@@ -64,7 +84,7 @@ func getJSON(r chi.Router, path string) *httptest.ResponseRecorder {
 
 func TestSimWarehouse_CreateReadUpdateList(t *testing.T) {
 	svc := newWarehouseService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Post("/v1/warehouses", svc.HandleCreateWarehouse)
 	r.Get("/v1/warehouses/{warehouseId}", svc.HandleGetWarehouse)
 	r.Put("/v1/warehouses/{warehouseId}", svc.HandleUpdateWarehouse)
@@ -95,7 +115,7 @@ func TestSimWarehouse_CreateReadUpdateList(t *testing.T) {
 
 func TestSimWarehouse_CreateValidation(t *testing.T) {
 	svc := newWarehouseService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Post("/v1/warehouses", svc.HandleCreateWarehouse)
 
 	tests := []struct {
@@ -105,7 +125,7 @@ func TestSimWarehouse_CreateValidation(t *testing.T) {
 	}{
 		{"empty body", map[string]interface{}{}, http.StatusBadRequest},
 		{"missing name", map[string]interface{}{"supplier_id": "sup-001"}, http.StatusBadRequest},
-		{"missing supplier_id", map[string]interface{}{"name": "Test"}, http.StatusBadRequest},
+		{"foreign supplier_id rejected", map[string]interface{}{"name": "Test", "supplier_id": "sup-other"}, http.StatusForbidden},
 	}
 
 	for _, tc := range tests {
@@ -118,13 +138,24 @@ func TestSimWarehouse_CreateValidation(t *testing.T) {
 	}
 }
 
+func TestSimWarehouse_UnauthenticatedRejected(t *testing.T) {
+	svc := newWarehouseService()
+	r := chi.NewRouter() // no claims middleware — simulates a session-less caller
+	r.Post("/v1/warehouses", svc.HandleCreateWarehouse)
+
+	w := postJSON(r, "/v1/warehouses", map[string]interface{}{"name": "Test"})
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("unauthenticated create: want 401, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. Factory CRUD lifecycle simulation
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestSimFactory_CreateReadUpdateList(t *testing.T) {
 	svc := newFactoryService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Post("/v1/factories", svc.HandleCreateFactory)
 	r.Get("/v1/factories/{factoryId}", svc.HandleGetFactory)
 	r.Put("/v1/factories/{factoryId}", svc.HandleUpdateFactory)
@@ -143,7 +174,7 @@ func TestSimFactory_CreateReadUpdateList(t *testing.T) {
 
 func TestSimFactory_CreateValidation(t *testing.T) {
 	svc := newFactoryService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Post("/v1/factories", svc.HandleCreateFactory)
 
 	tests := []struct {
@@ -171,7 +202,7 @@ func TestSimFactory_CreateValidation(t *testing.T) {
 
 func TestSimDriver_CreateReadUpdateList(t *testing.T) {
 	svc := newDriverService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Post("/v1/drivers", svc.HandleCreateDriver)
 	r.Get("/v1/drivers/{driverId}", svc.HandleGetDriver)
 	r.Put("/v1/drivers/{driverId}", svc.HandleUpdateDriver)
@@ -191,7 +222,7 @@ func TestSimDriver_CreateReadUpdateList(t *testing.T) {
 
 func TestSimVehicle_CreateReadUpdateList(t *testing.T) {
 	svc := newDriverService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Post("/v1/vehicles", svc.HandleCreateVehicle)
 	r.Get("/v1/vehicles/{vehicleId}", svc.HandleGetVehicle)
 	r.Put("/v1/vehicles/{vehicleId}", svc.HandleUpdateVehicle)
@@ -217,7 +248,7 @@ func TestSimVehicle_CreateReadUpdateList(t *testing.T) {
 
 func TestSimConcurrency_ParallelWarehouseCreation(t *testing.T) {
 	svc := newWarehouseService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Post("/v1/warehouses", svc.HandleCreateWarehouse)
 
 	const goroutines = 50
@@ -248,7 +279,7 @@ func TestSimConcurrency_ParallelWarehouseCreation(t *testing.T) {
 
 func TestSimConcurrency_ParallelDriverCreation(t *testing.T) {
 	svc := newDriverService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Post("/v1/drivers", svc.HandleCreateDriver)
 
 	const goroutines = 50
@@ -279,7 +310,7 @@ func TestSimConcurrency_ParallelDriverCreation(t *testing.T) {
 
 func TestSimConcurrency_ParallelFactoryCreation(t *testing.T) {
 	svc := newFactoryService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Post("/v1/factories", svc.HandleCreateFactory)
 
 	const goroutines = 50
@@ -313,7 +344,7 @@ func TestSimConcurrency_ParallelFactoryCreation(t *testing.T) {
 
 func TestSimErrorMessages_InvalidJSON(t *testing.T) {
 	svc := newWarehouseService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Post("/v1/warehouses", svc.HandleCreateWarehouse)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/warehouses", bytes.NewReader([]byte(`{invalid json`)))
@@ -336,7 +367,7 @@ func TestSimErrorMessages_InvalidJSON(t *testing.T) {
 
 func TestSimErrorMessages_MethodNotAllowed(t *testing.T) {
 	svc := newWarehouseService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Post("/v1/warehouses", svc.HandleCreateWarehouse)
 	r.Get("/v1/warehouses", svc.HandleListWarehouses)
 
@@ -356,7 +387,7 @@ func TestSimErrorMessages_MethodNotAllowed(t *testing.T) {
 
 func TestSimIdempotency_DuplicateWarehouseID(t *testing.T) {
 	svc := newWarehouseService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Post("/v1/warehouses", svc.HandleCreateWarehouse)
 
 	id := uuid.New().String()
@@ -391,7 +422,7 @@ func TestSimEcosystem_FullLifecycle(t *testing.T) {
 
 	// Warehouse
 	whSvc := newWarehouseService()
-	whR := chi.NewRouter()
+	whR := simRouter("sup-eco-001")
 	whR.Post("/v1/warehouses", whSvc.HandleCreateWarehouse)
 
 	whW := postJSON(whR, "/v1/warehouses", map[string]interface{}{
@@ -403,7 +434,7 @@ func TestSimEcosystem_FullLifecycle(t *testing.T) {
 
 	// Factory
 	facSvc := newFactoryService()
-	facR := chi.NewRouter()
+	facR := simRouter("sup-eco-001")
 	facR.Post("/v1/factories", facSvc.HandleCreateFactory)
 
 	facW := postJSON(facR, "/v1/factories", map[string]interface{}{
@@ -415,7 +446,7 @@ func TestSimEcosystem_FullLifecycle(t *testing.T) {
 
 	// Driver
 	drvSvc := newDriverService()
-	drvR := chi.NewRouter()
+	drvR := simRouter("sup-eco-001")
 	drvR.Post("/v1/drivers", drvSvc.HandleCreateDriver)
 	drvR.Post("/v1/vehicles", drvSvc.HandleCreateVehicle)
 
@@ -444,7 +475,7 @@ func TestSimEcosystem_FullLifecycle(t *testing.T) {
 
 func TestSimTimeout_ContextCancellation(t *testing.T) {
 	svc := newWarehouseService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Get("/v1/warehouses", svc.HandleListWarehouses)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -465,7 +496,7 @@ func TestSimTimeout_ContextCancellation(t *testing.T) {
 
 func TestSimLargePayload_OversizedName(t *testing.T) {
 	svc := newWarehouseService()
-	r := chi.NewRouter()
+	r := simRouter("sup-001")
 	r.Post("/v1/warehouses", svc.HandleCreateWarehouse)
 
 	longName := make([]byte, 10240)
@@ -491,11 +522,11 @@ func TestSimConcurrency_MixedEntityCreation(t *testing.T) {
 	facSvc := newFactoryService()
 	drvSvc := newDriverService()
 
-	whR := chi.NewRouter()
+	whR := simRouter("sup-mix")
 	whR.Post("/v1/warehouses", whSvc.HandleCreateWarehouse)
-	facR := chi.NewRouter()
+	facR := simRouter("sup-mix")
 	facR.Post("/v1/factories", facSvc.HandleCreateFactory)
-	drvR := chi.NewRouter()
+	drvR := simRouter("sup-mix")
 	drvR.Post("/v1/drivers", drvSvc.HandleCreateDriver)
 	drvR.Post("/v1/vehicles", drvSvc.HandleCreateVehicle)
 

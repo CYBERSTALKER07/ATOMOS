@@ -41,6 +41,9 @@ func runLoadTokens(ctx context.Context, cfg *bootstrap.Config) error {
 		if err != nil {
 			return fmt.Errorf("retailer register %d: %w", i, err)
 		}
+		if err := grantRetailerCredit(ctx, client, base, cookie, retailerID, 2_000_000_000); err != nil {
+			return fmt.Errorf("retailer credit grant %d: %w", i, err)
+		}
 		if i == 0 {
 			primaryRetailerID = retailerID
 			primaryH3Cell = h3Cell

@@ -65,7 +65,10 @@ func (c *countingConnection) Delivered() int64 { return c.count.Load() }
 
 func waitForRelayReady(t *testing.T, ctx context.Context, publisher *Hub, room string, conn *countingConnection) {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
+	// Generous failure bound: success returns immediately; under full-suite
+	// CPU contention the relay subscriber goroutine can be starved for
+	// seconds, so the bound must not race the scheduler.
+	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
 		before := conn.Delivered()
 		publisher.Broadcast(ctx, room, []byte("relay-ready"))
@@ -204,7 +207,11 @@ func TestStartRelaySubscriberDeliversBurstIntegrity(t *testing.T) {
 		publisherHub.Broadcast(ctx, room, payload)
 	}
 
-	deadline := time.Now().Add(5 * time.Second)
+	// Failure bound only: the loop exits the moment all deliveries land.
+	// 30s absorbs full-suite scheduler contention without weakening the
+	// delivered-count contract (waitForRelayReady may land >1 probe, so
+	// the floor is burst plus at least one probe).
+	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
 		if conn.Delivered() >= burst+1 { // +1 for relay-ready probe
 			return
