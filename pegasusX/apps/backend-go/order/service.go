@@ -26,6 +26,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
@@ -97,16 +98,23 @@ var (
 	ErrInventoryExhausted        = errors.New("inventory_exhausted")
 	ErrBackorderPaymentDeferred  = errors.New("backorder_payment_deferred")
 	ErrPaymentBeforeDelivery     = errors.New("payment_before_delivery_not_allowed")
+	ErrCreditLimitBreached       = errors.New("credit_limit_breached")
 )
 
 // LineItem is one line on an order.
 type LineItem struct {
-	SKU          string  `json:"sku"`
-	Name         string  `json:"name"`
-	Quantity     int64   `json:"quantity"`
-	UnitPrice    int64   `json:"unit_price_minor"` // minor units (tiyin / cents)
-	UnitVolumeVU float64 `json:"unit_volume_vu,omitempty"`
-	PromotionID  string  `json:"promotion_id,omitempty"`
+	SKU               string   `json:"sku"`
+	Name              string   `json:"name"`
+	Quantity          int64    `json:"quantity"`
+	UnitPrice         int64    `json:"unit_price_minor"` // minor units (tiyin / cents)
+	UnitVolumeVU      float64  `json:"unit_volume_vu,omitempty"`
+	PromotionID       string   `json:"promotion_id,omitempty"`
+	HandlingClass     string   `json:"handling_class,omitempty"`
+	RequiresColdChain bool     `json:"requires_cold_chain,omitempty"`
+	IsHazardous       bool     `json:"is_hazardous,omitempty"`
+	IsPerishable      bool     `json:"is_perishable,omitempty"`
+	StorageTempMinC   *float64 `json:"storage_temp_min_c,omitempty"`
+	StorageTempMaxC   *float64 `json:"storage_temp_max_c,omitempty"`
 }
 
 // Order is the persisted aggregate.
@@ -158,6 +166,8 @@ type Order struct {
 
 	// PendingSupplierReturns is written in the same UpdateOrder transaction and not stored on Orders.
 	PendingSupplierReturns []SupplierReturn `json:"-"`
+	// ConditionReports is written in the same UpdateOrder transaction and not stored on Orders.
+	ConditionReports []ConditionReport `json:"-"`
 }
 
 // DeliveryProofType classifies one immutable delivery handoff proof row.
@@ -202,6 +212,8 @@ type Repository interface {
 	ListBackorderedOrders(ctx context.Context, limit int) ([]Order, error)
 	ClearBackorder(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error) error
 	ListOrdersByStatus(ctx context.Context, supplierID, status string, limit int) ([]Order, error)
+	CreateConditionReport(ctx context.Context, report ConditionReport, emit func(outbox.TxnBuffer) error) error
+	ListConditionReports(ctx context.Context, orderID string) ([]ConditionReport, error)
 }
 
 // WarehouseResolver resolves the best supplier warehouse for retailer
@@ -252,6 +264,7 @@ type Service struct {
 	warehouse       WarehouseResolver
 	paymentCapturer PaymentCapturer
 	promotions      *promotion.Service
+	credit          *credit.Service
 
 	supplierID         string
 	supplierName       string
@@ -279,6 +292,7 @@ type ServiceConfig struct {
 	Cache           *cache.Cache
 	Warehouse       WarehouseResolver
 	Promotions      *promotion.Service
+	Credit          *credit.Service
 	SupplierID      string
 	SupplierName    string
 	Currency        string
@@ -329,6 +343,7 @@ func NewService(c ServiceConfig) *Service {
 		jwtSecret:          c.JWTSecret,
 		handoff:            c.Handoff,
 		idem:               c.Idem,
+		credit:             c.Credit,
 		previewRateLimiter: newSimpleRateLimiter(100 * time.Millisecond),
 	}
 	if svc.handoff == nil {
@@ -345,6 +360,12 @@ func (s *Service) SetPaymentCapturer(pc PaymentCapturer) {
 // SetManifestStore wires manifest persistence for route geometry refresh after reorder.
 func (s *Service) SetManifestStore(store *manifest.Store) {
 	s.manifestStore = store
+}
+
+// SetCreditService wires the credit service for order-time limit checks and
+// credit-delivery balance updates.
+func (s *Service) SetCreditService(svc *credit.Service) {
+	s.credit = svc
 }
 
 // SetGatewayPolicyReader wires payment gateway policy for PAYMENT_REQUIRED fanout.
@@ -740,11 +761,17 @@ func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineIt
 				return nil, 0, fmt.Errorf("line_items[%d].unit_price_minor must be >= 0", i)
 			}
 			item := LineItem{
-				SKU:          sku,
-				Name:         strings.TrimSpace(li.Name),
-				Quantity:     li.Quantity,
-				UnitPrice:    li.UnitPrice,
-				UnitVolumeVU: li.UnitVolumeVU,
+				SKU:               sku,
+				Name:              strings.TrimSpace(li.Name),
+				Quantity:          li.Quantity,
+				UnitPrice:         li.UnitPrice,
+				UnitVolumeVU:      li.UnitVolumeVU,
+				HandlingClass:     li.HandlingClass,
+				RequiresColdChain: li.RequiresColdChain,
+				IsHazardous:       li.IsHazardous,
+				IsPerishable:      li.IsPerishable,
+				StorageTempMinC:   li.StorageTempMinC,
+				StorageTempMaxC:   li.StorageTempMaxC,
 			}
 			total += item.UnitPrice * item.Quantity
 			normalized = append(normalized, item)
@@ -762,12 +789,12 @@ func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineIt
 		}
 	}
 
-	iter := s.spannerClient.Single().Read(ctx, "Products", spanner.KeySetFromKeys(keys...), []string{"ProductId", "Name", "PriceMinor", "UnitVolumeVU"})
+	iter := s.spannerClient.Single().Read(ctx, "Products", spanner.KeySetFromKeys(keys...), []string{"ProductId", "Name", "PriceMinor", "UnitVolumeVU", "HandlingClass", "RequiresColdChain", "IsHazardous", "IsPerishable", "StorageTempMinC", "StorageTempMaxC"})
 	defer iter.Stop()
 
 	prices := make(map[string]int64)
 	names := make(map[string]string)
-	volumes := make(map[string]float64)
+	snapshots := make(map[string]productSnapshot)
 
 	for {
 		row, err := iter.Next()
@@ -779,15 +806,29 @@ func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineIt
 		}
 		var id, name string
 		var price int64
-		var vu spanner.NullFloat64
-		if err := row.Columns(&id, &name, &price, &vu); err != nil {
+		var snap productSnapshot
+		var vu, storageTempMinC, storageTempMaxC spanner.NullFloat64
+		var handlingClass spanner.NullString
+		if err := row.Columns(&id, &name, &price, &vu, &handlingClass, &snap.requiresColdChain, &snap.isHazardous, &snap.isPerishable, &storageTempMinC, &storageTempMaxC); err != nil {
 			return nil, 0, err
 		}
 		prices[id] = price
 		names[id] = name
 		if vu.Valid {
-			volumes[id] = vu.Float64
+			snap.unitVolumeVU = vu.Float64
+		} else {
+			snap.unitVolumeVU = defaultUnitVolumeVU
 		}
+		snap.handlingClass = handlingClass.StringVal
+		if storageTempMinC.Valid {
+			v := storageTempMinC.Float64
+			snap.storageTempMinC = &v
+		}
+		if storageTempMaxC.Valid {
+			v := storageTempMaxC.Float64
+			snap.storageTempMaxC = &v
+		}
+		snapshots[id] = snap
 	}
 
 	for i, li := range items {
@@ -804,12 +845,19 @@ func (s *Service) normalizeAndQuoteLineItems(ctx context.Context, items []LineIt
 			return nil, 0, fmt.Errorf("line_items[%d].sku %s not found in catalog", i, sku)
 		}
 
+		snap := snapshots[sku]
 		item := LineItem{
-			SKU:          sku,
-			Name:         names[sku],
-			Quantity:     li.Quantity,
-			UnitPrice:    serverPrice,
-			UnitVolumeVU: volumes[sku],
+			SKU:               sku,
+			Name:              names[sku],
+			Quantity:          li.Quantity,
+			UnitPrice:         serverPrice,
+			UnitVolumeVU:      snap.unitVolumeVU,
+			HandlingClass:     snap.handlingClass,
+			RequiresColdChain: snap.requiresColdChain,
+			IsHazardous:       snap.isHazardous,
+			IsPerishable:      snap.isPerishable,
+			StorageTempMinC:   snap.storageTempMinC,
+			StorageTempMaxC:   snap.storageTempMaxC,
 		}
 
 		total += item.UnitPrice * item.Quantity
@@ -967,6 +1015,16 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 	} else {
 		invPlan.Fulfillable = lineItems
 		total += deliveryFeeMinor
+	}
+
+	if s.credit != nil && total > 0 {
+		check, err := s.credit.CheckOrder(ctx, retailerID, s.supplierID, total)
+		if err != nil {
+			return CreateResponse{}, fmt.Errorf("credit check failed: %w", err)
+		}
+		if !check.Allowed {
+			return CreateResponse{}, fmt.Errorf("%w: %s (shortfall %d)", ErrCreditLimitBreached, check.Reason, check.Shortfall)
+		}
 	}
 
 	if len(lineItems) == 0 && len(invPlan.Backorder) == 0 {
@@ -1520,6 +1578,11 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 		return DriverOrderResponse{}, err
 	}
 	if !result.NoChange {
+		if s.credit != nil && result.PreviousStatus == StatusDeliveredOnCredit && result.Order.TotalMinor > 0 {
+			if clearErr := s.credit.ClearBalance(ctx, result.Order.RetailerID, result.Order.SupplierID, result.Order.TotalMinor, result.Order.OrderID); clearErr != nil {
+				s.log.Error("clear credit balance failed", "order_id", result.Order.OrderID, "err", clearErr)
+			}
+		}
 		// Trigger card payment capture if a capturer is configured and the order is non-zero.
 		// CompleteOrder is only called for non-cash completions.
 		if s.paymentCapturer != nil && result.Order.TotalMinor > 0 {
@@ -2960,6 +3023,7 @@ func (s *Service) HandleReportDamage(w http.ResponseWriter, r *http.Request) {
 		origQtyBySKU[strings.TrimSpace(line.SKU)] = line.Quantity
 	}
 	amendItems := make([]AmendItemRequest, 0, len(req.DamagedItems))
+	conditionReports := make([]ConditionReport, 0, len(req.DamagedItems))
 	for _, item := range req.DamagedItems {
 		sku := strings.TrimSpace(item.SKU)
 		if sku == "" || item.Quantity <= 0 {
@@ -2977,7 +3041,22 @@ func (s *Service) HandleReportDamage(w http.ResponseWriter, r *http.Request) {
 			RejectedQty: item.Quantity,
 			Reason:      "DAMAGED",
 		})
+		conditionReports = append(conditionReports, ConditionReport{
+			ReportID:         s.newID(),
+			OrderID:          current.OrderID,
+			SupplierID:       current.SupplierID,
+			RetailerID:       current.RetailerID,
+			SKU:              sku,
+			ConditionType:    ConditionTypeDamaged,
+			Severity:         SeverityHigh,
+			Description:      strings.TrimSpace(req.Reason),
+			ReportedBy:       claims.Subject,
+			ReportedByRole:   string(claims.Role),
+			ResolutionStatus: ResolutionStatusOpen,
+			CreatedAt:        s.now(),
+		})
 	}
+	current.ConditionReports = conditionReports
 
 	amendResp, err := s.applyOrderAmendments(r.Context(), current, AmendOrderRequest{
 		OrderID:     orderID,

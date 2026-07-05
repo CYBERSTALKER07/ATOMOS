@@ -20,6 +20,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalogroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/creditroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/deliveryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driverroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/enterprise"
@@ -33,8 +34,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotionroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pulseroutes"
-	"github.com/pegasusx/pegasusx/apps/backend-go/returnsroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailerroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/returnsroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
@@ -211,6 +212,7 @@ func main() {
 		FirebaseVerifier:    firebaseVerifier,
 		AllowAuthBypass:     cfg.AllowAuthBypass,
 	})
+	creditroutes.RegisterRoutes(r, creditroutes.Deps{Service: app.CreditService})
 	deliveryroutes.RegisterRoutes(r, deliveryroutes.Deps{
 		Service:             app.OrderService,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
@@ -228,7 +230,7 @@ func main() {
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 	})
-	
+
 	updateroutes.RegisterRoutes(r, updateroutes.Deps{
 		BaseURL: "https://void.example.com", // Adjust accordingly for environments
 	})

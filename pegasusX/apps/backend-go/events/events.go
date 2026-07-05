@@ -156,6 +156,17 @@ const (
 	EventDriverReturnApproaching   = "DRIVER_RETURN_APPROACHING"
 	EventReturnReceivedAtWarehouse = "RETURN_RECEIVED_AT_WAREHOUSE"
 
+	// @Sync(ConditionEvent)
+	EventOrderConditionReported = "ORDER_CONDITION_REPORTED"
+
+	// @Sync(CreditProfileEvent)
+	EventRetailerCreditProfileChanged = "RETAILER_CREDIT_PROFILE_CHANGED"
+	// @Sync(CreditLimitEvent)
+	EventRetailerCreditLimitBreached = "RETAILER_CREDIT_LIMIT_BREACHED"
+
+	// @Sync(ProductEvent)
+	EventProductHandlingUpdated = "PRODUCT_HANDLING_UPDATED"
+
 	// @Sync(PreOrderEvent)
 	EventPreOrderNotified     = "PRE_ORDER_NOTIFIED"
 	EventPreOrderNudge        = "PRE_ORDER_NUDGE"
@@ -203,6 +214,9 @@ const (
 	AggregatePromotion             = "Promotion"
 	AggregateRetailerPriceOverride = "RetailerPriceOverride"
 	AggregatePlanning              = "Planning"
+	AggregateProduct               = "Product"
+	AggregateConditionReport       = "ConditionReport"
+	AggregateCreditProfile         = "CreditProfile"
 )
 
 func topicFromEnv(key string, fallback string) string {

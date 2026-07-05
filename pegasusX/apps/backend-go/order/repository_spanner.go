@@ -81,7 +81,7 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 		}
 
 		var mutations []*spanner.Mutation
-		
+
 		// Deduplicate and atomically redeem promotions.
 		promoMap := make(map[string]bool)
 		for _, line := range o.LineItems {
@@ -105,50 +105,50 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 		}
 
 		mutations = append(mutations, spanner.InsertMap("Orders", map[string]any{
-			"OrderId":               o.OrderID,
-			"SupplierId":            o.SupplierID,
-			"RetailerId":            o.RetailerID,
-			"WarehouseId":           o.WarehouseID,
-			"DriverId":              nullableString(o.DriverID),
-			"VehicleId":             nullableString(o.VehicleID),
-			"RouteId":               nullableString(o.RouteID),
-			"ManifestId":            nullableString(o.ManifestID),
-			"DeliveryToken":         nullableString(o.QRToken),
-			"Status":                string(o.Status),
-			"OrderSource":           string(o.Source),
-			"ConfirmationStatus":    string(o.ConfirmationStatus),
-			"LineItemsJson":         lineItemsRaw,
-			"TotalMinor":            o.TotalMinor,
-			"OriginalTotalMinor":    originalTotalMinorForInsert(o),
-			"Currency":              o.Currency,
-			"H3Cell":                o.H3Cell,
-			"Lat":                   o.Lat,
-			"Lng":                   o.Lng,
-			"RequestedDeliveryDate": nullableTime(o.RequestedDeliveryDate),
-			"DeliverBefore":         nullableTime(o.DeliverBefore),
-			"DeliveryPriority":      string(o.DeliveryPriority),
+			"OrderId":                o.OrderID,
+			"SupplierId":             o.SupplierID,
+			"RetailerId":             o.RetailerID,
+			"WarehouseId":            o.WarehouseID,
+			"DriverId":               nullableString(o.DriverID),
+			"VehicleId":              nullableString(o.VehicleID),
+			"RouteId":                nullableString(o.RouteID),
+			"ManifestId":             nullableString(o.ManifestID),
+			"DeliveryToken":          nullableString(o.QRToken),
+			"Status":                 string(o.Status),
+			"OrderSource":            string(o.Source),
+			"ConfirmationStatus":     string(o.ConfirmationStatus),
+			"LineItemsJson":          lineItemsRaw,
+			"TotalMinor":             o.TotalMinor,
+			"OriginalTotalMinor":     originalTotalMinorForInsert(o),
+			"Currency":               o.Currency,
+			"H3Cell":                 o.H3Cell,
+			"Lat":                    o.Lat,
+			"Lng":                    o.Lng,
+			"RequestedDeliveryDate":  nullableTime(o.RequestedDeliveryDate),
+			"DeliverBefore":          nullableTime(o.DeliverBefore),
+			"DeliveryPriority":       string(o.DeliveryPriority),
 			"DeliveryFeeMinor":       o.DeliveryFeeMinor,
-			"WarehouseNotes":        nullableString(o.WarehouseNotes),
-			"AutoConfirmAt":         nullableTime(o.AutoConfirmAt),
-			"DecisionAt":            nullableTime(o.DecisionAt),
-			"DecisionBy":            nullableString(o.DecisionBy),
-			"DerivedFromOrderId":    nullableString(o.DerivedFromOrderID),
-			"ReceivingWindowOpen":   nullableString(o.ReceivingWindowOpen),
-			"ReceivingWindowClose":  nullableString(o.ReceivingWindowClose),
-			"Timezone":              nullableString(o.Timezone),
+			"WarehouseNotes":         nullableString(o.WarehouseNotes),
+			"AutoConfirmAt":          nullableTime(o.AutoConfirmAt),
+			"DecisionAt":             nullableTime(o.DecisionAt),
+			"DecisionBy":             nullableString(o.DecisionBy),
+			"DerivedFromOrderId":     nullableString(o.DerivedFromOrderID),
+			"ReceivingWindowOpen":    nullableString(o.ReceivingWindowOpen),
+			"ReceivingWindowClose":   nullableString(o.ReceivingWindowClose),
+			"Timezone":               nullableString(o.Timezone),
 			"PreorderReminderSentAt": nullableTime(o.PreorderReminderSentAt),
-			"NudgeNotifiedAt":       nullableTime(o.NudgeNotifiedAt),
+			"NudgeNotifiedAt":        nullableTime(o.NudgeNotifiedAt),
 			"ConfirmationNotifiedAt": nullableTime(o.ConfirmationNotifiedAt),
-			"CancelLockedAt":        nullableTime(o.CancelLockedAt),
-			"CancelLockReason":      nullableString(o.CancelLockReason),
-			"CancelLockExpiresAt":   nullableTime(o.CancelLockExpiresAt),
-			"ProposedDeliveryDate":  nullableTime(o.ProposedDeliveryDate),
-			"DeliveryProposalAt":    nullableTime(o.DeliveryProposalAt),
-			"DeliveryProposalBy":    nullableString(o.DeliveryProposalBy),
+			"CancelLockedAt":         nullableTime(o.CancelLockedAt),
+			"CancelLockReason":       nullableString(o.CancelLockReason),
+			"CancelLockExpiresAt":    nullableTime(o.CancelLockExpiresAt),
+			"ProposedDeliveryDate":   nullableTime(o.ProposedDeliveryDate),
+			"DeliveryProposalAt":     nullableTime(o.DeliveryProposalAt),
+			"DeliveryProposalBy":     nullableString(o.DeliveryProposalBy),
 			"DeliveryProposalReason": nullableString(o.DeliveryProposalReason),
-			"Version":               o.Version,
-			"CreatedAt":             o.CreatedAt.UTC(),
-			"UpdatedAt":             o.UpdatedAt.UTC(),
+			"Version":                o.Version,
+			"CreatedAt":              o.CreatedAt.UTC(),
+			"UpdatedAt":              o.UpdatedAt.UTC(),
 		}))
 
 		for _, e := range buf.events {
@@ -206,12 +206,12 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			return err
 		}
 		var (
-			version      int64
-			prevStatus   string
-			orderSource  string
-			prevLineRaw  []byte
-			supplierID   string
-			warehouseID  string
+			version     int64
+			prevStatus  string
+			orderSource string
+			prevLineRaw []byte
+			supplierID  string
+			warehouseID string
 		)
 		if err := row.Columns(&version, &prevStatus, &orderSource, &prevLineRaw, &supplierID, &warehouseID); err != nil {
 			return err
@@ -252,44 +252,44 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 
 		mutations := []*spanner.Mutation{
 			spanner.UpdateMap("Orders", map[string]any{
-				"OrderId":               o.OrderID,
-				"WarehouseId":           o.WarehouseID,
-				"DriverId":              nullableString(o.DriverID),
-				"VehicleId":             nullableString(o.VehicleID),
-				"RouteId":               nullableString(o.RouteID),
-				"ManifestId":            nullableString(o.ManifestID),
-				"DeliveryToken":         nullableString(o.QRToken),
-				"Status":                string(o.Status),
-				"OrderSource":           string(o.Source),
-				"ConfirmationStatus":    string(o.ConfirmationStatus),
-				"LineItemsJson":         lineItemsRaw,
-				"TotalMinor":            o.TotalMinor,
-				"OriginalTotalMinor":    originalTotalMinorForUpdate(o),
-				"Currency":              o.Currency,
-				"H3Cell":                o.H3Cell,
-				"Lat":                   o.Lat,
-				"Lng":                   o.Lng,
-				"RequestedDeliveryDate": nullableTime(o.RequestedDeliveryDate),
-				"DeliverBefore":         nullableTime(o.DeliverBefore),
-				"DeliveryPriority":      string(o.DeliveryPriority),
-				"DeliveryFeeMinor":      o.DeliveryFeeMinor,
-				"WarehouseNotes":        nullableString(o.WarehouseNotes),
-				"AutoConfirmAt":         nullableTime(o.AutoConfirmAt),
-				"DecisionAt":            nullableTime(o.DecisionAt),
-				"DecisionBy":            nullableString(o.DecisionBy),
-				"DerivedFromOrderId":    nullableString(o.DerivedFromOrderID),
+				"OrderId":                o.OrderID,
+				"WarehouseId":            o.WarehouseID,
+				"DriverId":               nullableString(o.DriverID),
+				"VehicleId":              nullableString(o.VehicleID),
+				"RouteId":                nullableString(o.RouteID),
+				"ManifestId":             nullableString(o.ManifestID),
+				"DeliveryToken":          nullableString(o.QRToken),
+				"Status":                 string(o.Status),
+				"OrderSource":            string(o.Source),
+				"ConfirmationStatus":     string(o.ConfirmationStatus),
+				"LineItemsJson":          lineItemsRaw,
+				"TotalMinor":             o.TotalMinor,
+				"OriginalTotalMinor":     originalTotalMinorForUpdate(o),
+				"Currency":               o.Currency,
+				"H3Cell":                 o.H3Cell,
+				"Lat":                    o.Lat,
+				"Lng":                    o.Lng,
+				"RequestedDeliveryDate":  nullableTime(o.RequestedDeliveryDate),
+				"DeliverBefore":          nullableTime(o.DeliverBefore),
+				"DeliveryPriority":       string(o.DeliveryPriority),
+				"DeliveryFeeMinor":       o.DeliveryFeeMinor,
+				"WarehouseNotes":         nullableString(o.WarehouseNotes),
+				"AutoConfirmAt":          nullableTime(o.AutoConfirmAt),
+				"DecisionAt":             nullableTime(o.DecisionAt),
+				"DecisionBy":             nullableString(o.DecisionBy),
+				"DerivedFromOrderId":     nullableString(o.DerivedFromOrderID),
 				"PreorderReminderSentAt": nullableTime(o.PreorderReminderSentAt),
-				"NudgeNotifiedAt":       nullableTime(o.NudgeNotifiedAt),
+				"NudgeNotifiedAt":        nullableTime(o.NudgeNotifiedAt),
 				"ConfirmationNotifiedAt": nullableTime(o.ConfirmationNotifiedAt),
-				"CancelLockedAt":        nullableTime(o.CancelLockedAt),
-				"CancelLockReason":      nullableString(o.CancelLockReason),
-				"CancelLockExpiresAt":   nullableTime(o.CancelLockExpiresAt),
-				"ProposedDeliveryDate":  nullableTime(o.ProposedDeliveryDate),
-				"DeliveryProposalAt":    nullableTime(o.DeliveryProposalAt),
-				"DeliveryProposalBy":    nullableString(o.DeliveryProposalBy),
+				"CancelLockedAt":         nullableTime(o.CancelLockedAt),
+				"CancelLockReason":       nullableString(o.CancelLockReason),
+				"CancelLockExpiresAt":    nullableTime(o.CancelLockExpiresAt),
+				"ProposedDeliveryDate":   nullableTime(o.ProposedDeliveryDate),
+				"DeliveryProposalAt":     nullableTime(o.DeliveryProposalAt),
+				"DeliveryProposalBy":     nullableString(o.DeliveryProposalBy),
 				"DeliveryProposalReason": nullableString(o.DeliveryProposalReason),
-				"Version":               o.Version,
-				"UpdatedAt":             o.UpdatedAt,
+				"Version":                o.Version,
+				"UpdatedAt":              o.UpdatedAt,
 			}),
 		}
 
@@ -338,6 +338,40 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 				"Longitude":        nullableFloat64(proof.Longitude),
 				"DistanceM":        nullableFloat64(proof.DistanceM),
 				"CapturedAt":       capturedAt,
+			}))
+		}
+
+		for _, cr := range o.ConditionReports {
+			if strings.TrimSpace(cr.ReportID) == "" {
+				continue
+			}
+			photoURLs, err := json.Marshal(cr.PhotoURLs)
+			if err != nil {
+				return fmt.Errorf("marshal condition report photo urls: %w", err)
+			}
+			proofIDs, err := json.Marshal(cr.ProofIDs)
+			if err != nil {
+				return fmt.Errorf("marshal condition report proof ids: %w", err)
+			}
+			mutations = append(mutations, spanner.InsertMap("OrderConditionReports", map[string]any{
+				"ReportId":         cr.ReportID,
+				"OrderId":          cr.OrderID,
+				"SupplierId":       cr.SupplierID,
+				"RetailerId":       cr.RetailerID,
+				"LineItemIndex":    nullableInt64(cr.LineItemIndex),
+				"SKU":              nullableString(cr.SKU),
+				"ConditionType":    string(cr.ConditionType),
+				"Severity":         string(cr.Severity),
+				"Description":      nullableString(cr.Description),
+				"PhotoURLsJson":    photoURLs,
+				"ProofIdsJson":     proofIDs,
+				"ReportedBy":       cr.ReportedBy,
+				"ReportedByRole":   cr.ReportedByRole,
+				"ResolutionStatus": string(cr.ResolutionStatus),
+				"ResolvedBy":       nullableString(cr.ResolvedBy),
+				"ResolvedAt":       nullableTime(cr.ResolvedAt),
+				"ResolutionNotes":  nullableString(cr.ResolutionNotes),
+				"CreatedAt":        cr.CreatedAt.UTC(),
 			}))
 		}
 
@@ -670,6 +704,13 @@ func nullableFloat64(value *float64) interface{} {
 	return *value
 }
 
+func nullableInt64(value *int64) interface{} {
+	if value == nil {
+		return nil
+	}
+	return *value
+}
+
 // ListManifestOrders returns all orders linked to the specified manifest.
 func (r *SpannerRepository) ListManifestOrders(ctx context.Context, manifestID string) ([]Order, error) {
 	stmt := spanner.Statement{
@@ -734,14 +775,14 @@ func (r *SpannerRepository) ListOrdersForStockCommitment(ctx context.Context, wa
 
 func (r *SpannerRepository) queryOrders(ctx context.Context, stmt spanner.Statement) ([]Order, error) {
 	var res []Order
-	
+
 	var iter *spanner.RowIterator
 	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
 		iter = txn.Query(ctx, stmt)
 	} else {
 		iter = r.client.Single().Query(ctx, stmt)
 	}
-	
+
 	err := iter.Do(func(row *spanner.Row) error {
 		o, err := scanOrderRowRow(row)
 		if err != nil {
@@ -786,7 +827,7 @@ func (r *SpannerRepository) ClearBackorder(ctx context.Context, orderID string, 
 		if Status(status) != StatusBackordered {
 			return fmt.Errorf("order %s is not backordered (status: %s)", orderID, status)
 		}
-		
+
 		// Re-read full order inside transaction to get LineItems.
 		orderRecord, _, err := r.getOrderInTxn(ctx, txn, orderID)
 		if err != nil {
@@ -869,4 +910,124 @@ func (r *SpannerRepository) ListOrdersByStatus(ctx context.Context, supplierID, 
 		}
 	}
 	return r.queryOrders(ctx, stmt)
+}
+
+// CreateConditionReport persists a structured condition report and optional outbox event atomically.
+func (r *SpannerRepository) CreateConditionReport(ctx context.Context, report ConditionReport, emit func(outbox.TxnBuffer) error) error {
+	if r == nil || r.client == nil {
+		return fmt.Errorf("spanner order repository: nil client")
+	}
+	photoURLs, err := json.Marshal(report.PhotoURLs)
+	if err != nil {
+		return fmt.Errorf("marshal condition report photo urls: %w", err)
+	}
+	proofIDs, err := json.Marshal(report.ProofIDs)
+	if err != nil {
+		return fmt.Errorf("marshal condition report proof ids: %w", err)
+	}
+
+	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
+
+		mutations := []*spanner.Mutation{
+			spanner.InsertMap("OrderConditionReports", map[string]any{
+				"ReportId":         report.ReportID,
+				"OrderId":          report.OrderID,
+				"SupplierId":       report.SupplierID,
+				"RetailerId":       report.RetailerID,
+				"LineItemIndex":    nullableInt64(report.LineItemIndex),
+				"SKU":              nullableString(report.SKU),
+				"ConditionType":    string(report.ConditionType),
+				"Severity":         string(report.Severity),
+				"Description":      nullableString(report.Description),
+				"PhotoURLsJson":    photoURLs,
+				"ProofIdsJson":     proofIDs,
+				"ReportedBy":       report.ReportedBy,
+				"ReportedByRole":   report.ReportedByRole,
+				"ResolutionStatus": string(report.ResolutionStatus),
+				"ResolvedBy":       nullableString(report.ResolvedBy),
+				"ResolvedAt":       nullableTime(report.ResolvedAt),
+				"ResolutionNotes":  nullableString(report.ResolutionNotes),
+				"CreatedAt":        report.CreatedAt.UTC(),
+			}),
+		}
+
+		for _, e := range buf.events {
+			createdAt := e.CreatedAt.UTC()
+			if createdAt.IsZero() {
+				createdAt = time.Now().UTC()
+			}
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
+				"EventId":       e.EventID,
+				"AggregateType": e.AggregateType,
+				"AggregateId":   e.AggregateID,
+				"TopicName":     e.TopicName,
+				"Payload":       e.Payload,
+				"CreatedAt":     createdAt,
+				"PublishedAt":   nil,
+			}))
+		}
+
+		return txn.BufferWrite(mutations)
+	})
+}
+
+// ListConditionReports returns condition reports for an order, newest first.
+func (r *SpannerRepository) ListConditionReports(ctx context.Context, orderID string) ([]ConditionReport, error) {
+	if r == nil || r.client == nil {
+		return nil, fmt.Errorf("spanner order repository: nil client")
+	}
+	stmt := spanner.Statement{
+		SQL:    "SELECT ReportId, OrderId, SupplierId, RetailerId, LineItemIndex, SKU, ConditionType, Severity, Description, PhotoURLsJson, ProofIdsJson, ReportedBy, ReportedByRole, ResolutionStatus, ResolvedBy, ResolvedAt, ResolutionNotes, CreatedAt FROM OrderConditionReports WHERE OrderId = @oid ORDER BY CreatedAt DESC",
+		Params: map[string]any{"oid": orderID},
+	}
+	var reports []ConditionReport
+	err := r.client.Single().Query(ctx, stmt).Do(func(row *spanner.Row) error {
+		cr, err := scanConditionReportRow(row)
+		if err != nil {
+			return err
+		}
+		reports = append(reports, cr)
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list condition reports for order %s: %w", orderID, err)
+	}
+	return reports, nil
+}
+
+func scanConditionReportRow(row *spanner.Row) (ConditionReport, error) {
+	var cr ConditionReport
+	var desc, sku, resolvedBy, resolutionNotes spanner.NullString
+	var lineItemIndex spanner.NullInt64
+	var resolvedAt spanner.NullTime
+	var photoRaw, proofRaw []byte
+	if err := row.Columns(&cr.ReportID, &cr.OrderID, &cr.SupplierID, &cr.RetailerID, &lineItemIndex, &sku,
+		&cr.ConditionType, &cr.Severity, &desc, &photoRaw, &proofRaw, &cr.ReportedBy, &cr.ReportedByRole,
+		&cr.ResolutionStatus, &resolvedBy, &resolvedAt, &resolutionNotes, &cr.CreatedAt); err != nil {
+		return ConditionReport{}, fmt.Errorf("scan condition report row: %w", err)
+	}
+	if lineItemIndex.Valid {
+		v := lineItemIndex.Int64
+		cr.LineItemIndex = &v
+	}
+	cr.SKU = sku.StringVal
+	cr.Description = desc.StringVal
+	cr.ResolvedBy = resolvedBy.StringVal
+	cr.ResolutionNotes = resolutionNotes.StringVal
+	if resolvedAt.Valid {
+		cr.ResolvedAt = &resolvedAt.Time
+	}
+	if len(photoRaw) > 0 {
+		_ = json.Unmarshal(photoRaw, &cr.PhotoURLs)
+	}
+	if len(proofRaw) > 0 {
+		_ = json.Unmarshal(proofRaw, &cr.ProofIDs)
+	}
+	return cr, nil
 }

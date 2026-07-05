@@ -22,8 +22,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap/memory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalog"
+	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
-	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driver"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -39,13 +39,14 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
-	"github.com/pegasusx/pegasusx/apps/backend-go/pulse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pulse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/pegasusx/pegasusx/apps/backend-go/returns"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
+	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/storage"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
@@ -144,6 +145,7 @@ type App struct {
 	WarehouseService       *warehouse.Service
 	ReturnsService         *returns.Service
 	OrderService           *order.Service
+	CreditService          *credit.Service
 	HandoffEngine          *handoff.Engine
 	DriverLocations        telemetry.LastLocationStore
 	RetailerHub            *ws.Hub
@@ -532,6 +534,15 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		paymentRepo = memory.NewPaymentRepo(outboxAppender)
 		log.Warn("payment repository fallback enabled", "backend", "in-memory")
 	}
+	var creditRepo credit.Repository
+	if spannerClient != nil {
+		creditRepo = credit.NewSpannerRepository(spannerClient)
+		log.Info("credit repository enabled", "backend", "spanner")
+	} else {
+		creditRepo = memory.NewCreditRepo(outboxAppender)
+		log.Warn("credit repository fallback enabled", "backend", "in-memory")
+	}
+	creditSvc := credit.NewService(creditRepo)
 	supplierSvc.SetEarningsLookup(func(ctx context.Context, supplierID, currency string, now time.Time) (supplier.SupplierEarningsResponse, error) {
 		return loadSupplierEarningsAuthority(ctx, paymentRepo, supplierID, currency, now)
 	})
@@ -545,6 +556,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Cache:           cacheClient,
 		Warehouse:       orderWarehouseResolver,
 		Promotions:      promotionSvc,
+		Credit:          creditSvc,
 		SupplierID:      supplierSeed.SupplierID,
 		SupplierName:    cfg.SeedSupplierName,
 		Currency:        cfg.SeedSupplierCurrency,
@@ -718,16 +730,16 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		}
 	}
 	driverSvc := driver.NewService(driver.ServiceConfig{
-		Repo:           driverRepo,
-		Cache:          cacheClient,
-		NotifSvc:       notifAdapter,
-		OrderList:      driverOrderList,
-		OrderGet:       driverOrderGet,
-		ProfileLookup:  driverProfileLookup,
+		Repo:               driverRepo,
+		Cache:              cacheClient,
+		NotifSvc:           notifAdapter,
+		OrderList:          driverOrderList,
+		OrderGet:           driverOrderGet,
+		ProfileLookup:      driverProfileLookup,
 		AvailabilityReader: driverAvailReader,
-		RouteGeometry:  driverRouteGeometry,
-		Depart:         driverDepart,
-		ReturnComplete: driverReturnComplete,
+		RouteGeometry:      driverRouteGeometry,
+		Depart:             driverDepart,
+		ReturnComplete:     driverReturnComplete,
 		ManifestTokens: func(ctx context.Context, orderIDs []string) map[string]string {
 			tokens := make(map[string]string, len(orderIDs))
 			for _, orderID := range orderIDs {
@@ -1037,6 +1049,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		WarehouseService:       warehouseSvc,
 		ReturnsService:         returnsSvc,
 		OrderService:           orderSvc,
+		CreditService:          creditSvc,
 		HandoffEngine:          handoffEngine,
 		DriverLocations:        driverLocations,
 		RetailerHub:            retailerHub,
@@ -1688,8 +1701,6 @@ func supplierDashboardCountQuery(client *spanner.Client) supplier.DashboardCount
 	}
 }
 
-
-
 // Close tears down long-lived resources in reverse construction order.
 func (a *App) Close() {
 	if a == nil {
@@ -1831,7 +1842,6 @@ func splitAndTrimCSV(value string) []string {
 	return out
 }
 
-
 type runtimeSeedRepository struct {
 	client *spanner.Client
 }
@@ -1876,4 +1886,3 @@ func existingSeedSupplierCreatedAt(ctx context.Context, txn *spanner.ReadWriteTr
 	}
 	return createdAt, nil
 }
-

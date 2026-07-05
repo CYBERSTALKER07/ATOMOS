@@ -260,6 +260,51 @@ CREATE TABLE OrderDeliveryProofs (
 
 CREATE INDEX Idx_OrderDeliveryProofs_ByOrderCaptured ON OrderDeliveryProofs(OrderId, CapturedAt DESC);
 
+-- Structured quality/condition reports linked to orders and optionally line items.
+CREATE TABLE OrderConditionReports (
+  ReportId          STRING(36)    NOT NULL,
+  OrderId           STRING(36)    NOT NULL,
+  SupplierId        STRING(36)    NOT NULL,
+  RetailerId        STRING(36)    NOT NULL,
+  LineItemIndex     INT64,
+  SKU               STRING(50),
+  ConditionType     STRING(32)    NOT NULL,
+  Severity          STRING(16)    NOT NULL DEFAULT ('MEDIUM'),
+  Description       STRING(MAX),
+  PhotoURLsJson     BYTES(MAX),
+  ProofIdsJson      BYTES(MAX),
+  ReportedBy        STRING(36)    NOT NULL,
+  ReportedByRole    STRING(20)    NOT NULL,
+  ResolutionStatus  STRING(20)    NOT NULL DEFAULT ('OPEN'),
+  ResolvedBy        STRING(36),
+  ResolvedAt        TIMESTAMP OPTIONS (allow_commit_timestamp=true),
+  ResolutionNotes   STRING(MAX),
+  CreatedAt         TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (ReportId);
+
+CREATE INDEX Idx_OrderConditionReports_ByOrder ON OrderConditionReports(OrderId, CreatedAt DESC);
+CREATE INDEX Idx_OrderConditionReports_BySupplierStatus ON OrderConditionReports(SupplierId, ResolutionStatus, CreatedAt DESC);
+CREATE INDEX Idx_OrderConditionReports_ByRetailer ON OrderConditionReports(RetailerId, ResolutionStatus, CreatedAt DESC);
+
+-- Retailer credit profile and risk engine state per supplier.
+CREATE TABLE RetailerCreditProfiles (
+  RetailerId          STRING(36)    NOT NULL,
+  SupplierId          STRING(36)    NOT NULL,
+  CreditLimitMinor    INT64         NOT NULL DEFAULT (0),
+  CurrentBalanceMinor INT64         NOT NULL DEFAULT (0),
+  AvailableCreditMinor INT64        NOT NULL DEFAULT (0),
+  RiskScore           INT64         NOT NULL DEFAULT (0),
+  DelinquencyCount    INT64         NOT NULL DEFAULT (0),
+  Status              STRING(20)    NOT NULL DEFAULT ('ACTIVE'),
+  LastEvaluatedAt     TIMESTAMP,
+  Version             INT64         NOT NULL DEFAULT (1),
+  CreatedAt           TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt           TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RetailerId, SupplierId);
+
+CREATE INDEX Idx_RetailerCreditProfiles_BySupplier ON RetailerCreditProfiles(SupplierId, Status, UpdatedAt DESC);
+CREATE INDEX Idx_RetailerCreditProfiles_ByRisk ON RetailerCreditProfiles(SupplierId, RiskScore DESC, UpdatedAt DESC);
+
 CREATE TABLE Drivers (
   DriverId        STRING(36)    NOT NULL,
   Name            STRING(255)   NOT NULL,
@@ -566,29 +611,36 @@ CREATE TABLE ProductCategories (
 CREATE INDEX Idx_ProductCategories_BySupplier ON ProductCategories(SupplierId, SortOrder);
 
 CREATE TABLE Products (
-  ProductId      STRING(36)    NOT NULL,
-  SupplierId     STRING(36)    NOT NULL,
-  CategoryId     STRING(36)    NOT NULL,
-  Name           STRING(255)   NOT NULL,
-  Description    STRING(MAX),
-  ImageURL       STRING(2048),
-  PriceMinor     INT64         NOT NULL,
-  Currency       STRING(3)     NOT NULL,
-  StockQuantity  INT64         NOT NULL DEFAULT (0),
-  Unit           STRING(20)    NOT NULL DEFAULT ('UNIT'),
-  SaleUnit       STRING(16)    NOT NULL DEFAULT ('UNIT'),
-  UnitsPerPack   INT64,
-  UnitVolumeVU   FLOAT64       NOT NULL DEFAULT (1.0),
-  Barcode        STRING(32),
-  IsActive       BOOL          NOT NULL DEFAULT (TRUE),
-  Version        INT64         NOT NULL DEFAULT (1),
-  CreatedAt      TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
-  UpdatedAt      TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ProductId          STRING(36)    NOT NULL,
+  SupplierId         STRING(36)    NOT NULL,
+  CategoryId         STRING(36)    NOT NULL,
+  Name               STRING(255)   NOT NULL,
+  Description        STRING(MAX),
+  ImageURL           STRING(2048),
+  PriceMinor         INT64         NOT NULL,
+  Currency           STRING(3)     NOT NULL,
+  StockQuantity      INT64         NOT NULL DEFAULT (0),
+  Unit               STRING(20)    NOT NULL DEFAULT ('UNIT'),
+  SaleUnit           STRING(16)    NOT NULL DEFAULT ('UNIT'),
+  UnitsPerPack       INT64,
+  UnitVolumeVU       FLOAT64       NOT NULL DEFAULT (1.0),
+  Barcode            STRING(32),
+  HandlingClass      STRING(20)    NOT NULL DEFAULT ('GENERAL'),
+  RequiresColdChain  BOOL          NOT NULL DEFAULT (FALSE),
+  IsHazardous        BOOL          NOT NULL DEFAULT (FALSE),
+  IsPerishable       BOOL          NOT NULL DEFAULT (FALSE),
+  StorageTempMinC    FLOAT64,
+  StorageTempMaxC    FLOAT64,
+  IsActive           BOOL          NOT NULL DEFAULT (TRUE),
+  Version            INT64         NOT NULL DEFAULT (1),
+  CreatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (ProductId);
 
 CREATE INDEX Idx_Products_BySupplierCategory ON Products(SupplierId, CategoryId, IsActive);
 CREATE INDEX Idx_Products_BySupplierActive ON Products(SupplierId, IsActive, UpdatedAt DESC);
 CREATE NULL_FILTERED INDEX Idx_Products_BySupplierBarcode ON Products(SupplierId, Barcode);
+CREATE INDEX Idx_Products_ByHandlingClass ON Products(SupplierId, HandlingClass, IsActive);
 
 CREATE TABLE InventoryLevels (
   InventoryId       STRING(36)    NOT NULL,

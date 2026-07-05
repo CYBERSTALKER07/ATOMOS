@@ -270,6 +270,29 @@ func (r *inMemoryOrderRepo) ListBackorderedOrders(ctx context.Context, limit int
 	return out, nil
 }
 
+func (r *inMemoryOrderRepo) CreateConditionReport(ctx context.Context, report order.ConditionReport, emit func(outbox.TxnBuffer) error) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if emit != nil {
+		txn := &inMemoryTxnBuffer{}
+		if err := emit(txn); err != nil {
+			return err
+		}
+		if r.outboxAppender != nil {
+			if err := r.outboxAppender.Append(ctx, txn.events); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (r *inMemoryOrderRepo) ListConditionReports(ctx context.Context, orderID string) ([]order.ConditionReport, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return nil, nil
+}
+
 func (r *inMemoryOrderRepo) ListOrdersByStatus(ctx context.Context, supplierID, status string, limit int) ([]order.Order, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

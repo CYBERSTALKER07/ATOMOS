@@ -11,6 +11,17 @@ import (
 
 const defaultUnitVolumeVU = 1.0
 
+// productSnapshot captures catalog fields needed at order time.
+type productSnapshot struct {
+	unitVolumeVU      float64
+	handlingClass     string
+	requiresColdChain bool
+	isHazardous       bool
+	isPerishable      bool
+	storageTempMinC   *float64
+	storageTempMaxC   *float64
+}
+
 func (s *Service) enrichLineItemVolumes(ctx context.Context, items []LineItem) ([]LineItem, error) {
 	if s == nil || s.spannerClient == nil || len(items) == 0 {
 		return items, nil
@@ -21,23 +32,30 @@ func (s *Service) enrichLineItemVolumes(ctx context.Context, items []LineItem) (
 			ids = append(ids, id)
 		}
 	}
-	lookup, err := lookupProductUnitVolumes(ctx, s.spannerClient, ids)
+	lookup, err := lookupProductSnapshots(ctx, s.spannerClient, ids)
 	if err != nil {
 		return nil, err
 	}
 	for i := range items {
-		if items[i].UnitVolumeVU > 0 {
+		snap, ok := lookup[strings.TrimSpace(items[i].SKU)]
+		if !ok {
 			continue
 		}
-		if vu, ok := lookup[strings.TrimSpace(items[i].SKU)]; ok {
-			items[i].UnitVolumeVU = vu
+		if items[i].UnitVolumeVU <= 0 {
+			items[i].UnitVolumeVU = snap.unitVolumeVU
 		}
+		items[i].HandlingClass = snap.handlingClass
+		items[i].RequiresColdChain = snap.requiresColdChain
+		items[i].IsHazardous = snap.isHazardous
+		items[i].IsPerishable = snap.isPerishable
+		items[i].StorageTempMinC = snap.storageTempMinC
+		items[i].StorageTempMaxC = snap.storageTempMaxC
 	}
 	return items, nil
 }
 
-func lookupProductUnitVolumes(ctx context.Context, client *spanner.Client, productIDs []string) (map[string]float64, error) {
-	out := make(map[string]float64, len(productIDs))
+func lookupProductSnapshots(ctx context.Context, client *spanner.Client, productIDs []string) (map[string]productSnapshot, error) {
+	out := make(map[string]productSnapshot, len(productIDs))
 	if client == nil || len(productIDs) == 0 {
 		return out, nil
 	}
@@ -59,7 +77,7 @@ func lookupProductUnitVolumes(ctx context.Context, client *spanner.Client, produ
 	}
 
 	stmt := spanner.Statement{
-		SQL:    `SELECT ProductId, UnitVolumeVU FROM Products WHERE ProductId IN UNNEST(@ids)`,
+		SQL:    `SELECT ProductId, UnitVolumeVU, HandlingClass, RequiresColdChain, IsHazardous, IsPerishable, StorageTempMinC, StorageTempMaxC FROM Products WHERE ProductId IN UNNEST(@ids)`,
 		Params: map[string]any{"ids": unique},
 	}
 	iter := client.Single().Query(ctx, stmt)
@@ -71,16 +89,33 @@ func lookupProductUnitVolumes(ctx context.Context, client *spanner.Client, produ
 			return out, nil
 		}
 		if err != nil {
-			return nil, fmt.Errorf("lookup product unit volumes: %w", err)
+			return nil, fmt.Errorf("lookup product snapshots: %w", err)
 		}
 		var productID string
-		var unitVU float64
-		if err := row.Columns(&productID, &unitVU); err != nil {
-			return nil, fmt.Errorf("scan product unit volume: %w", err)
+		var snap productSnapshot
+		var unitVU spanner.NullFloat64
+		var handlingClass spanner.NullString
+		var storageTempMinC, storageTempMaxC spanner.NullFloat64
+		if err := row.Columns(&productID, &unitVU, &handlingClass, &snap.requiresColdChain, &snap.isHazardous, &snap.isPerishable, &storageTempMinC, &storageTempMaxC); err != nil {
+			return nil, fmt.Errorf("scan product snapshot: %w", err)
 		}
-		if unitVU <= 0 {
-			unitVU = defaultUnitVolumeVU
+		if unitVU.Valid {
+			snap.unitVolumeVU = unitVU.Float64
+		} else {
+			snap.unitVolumeVU = defaultUnitVolumeVU
 		}
-		out[productID] = unitVU
+		snap.handlingClass = handlingClass.StringVal
+		if storageTempMinC.Valid {
+			v := storageTempMinC.Float64
+			snap.storageTempMinC = &v
+		}
+		if storageTempMaxC.Valid {
+			v := storageTempMaxC.Float64
+			snap.storageTempMaxC = &v
+		}
+		if snap.unitVolumeVU <= 0 {
+			snap.unitVolumeVU = defaultUnitVolumeVU
+		}
+		out[productID] = snap
 	}
 }

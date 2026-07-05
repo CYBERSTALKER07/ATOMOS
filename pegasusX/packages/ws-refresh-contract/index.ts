@@ -13,6 +13,7 @@ export const ORDER_STATUS_REFRESH_EVENTS = new Set([
   "CANCEL_REQUESTED",
   "CANCEL_APPROVED",
   "ROUTE_REORDERED",
+  "ORDER_CONDITION_REPORTED",
 ]);
 
 export const RETURN_REFRESH_EVENTS = new Set([
@@ -82,6 +83,8 @@ export const RETAILER_ORDER_REFRESH_EVENTS = new Set([
   "PAYMENT_EXPIRED",
   "DELIVERY_SESSION_UPDATED",
   "DELIVERY_DISPUTED",
+  "RETAILER_CREDIT_PROFILE_CHANGED",
+  "RETAILER_CREDIT_LIMIT_BREACHED",
 ]);
 
 export function shouldRefreshOnEvent(eventType: string, allowed: ReadonlySet<string>): boolean {

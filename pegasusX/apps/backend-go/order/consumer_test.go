@@ -55,6 +55,12 @@ func (s *consumerRepoStub) ClearBackorder(context.Context, string, func(outbox.T
 func (s *consumerRepoStub) ListOrdersByStatus(context.Context, string, string, int) ([]Order, error) {
 	return nil, nil
 }
+func (s *consumerRepoStub) CreateConditionReport(context.Context, ConditionReport, func(outbox.TxnBuffer) error) error {
+	return nil
+}
+func (s *consumerRepoStub) ListConditionReports(context.Context, string) ([]ConditionReport, error) {
+	return nil, nil
+}
 
 func TestEventConsumer_PaymentFailedAwaitingPayment(t *testing.T) {
 	repo := &consumerRepoStub{orders: map[string]Order{

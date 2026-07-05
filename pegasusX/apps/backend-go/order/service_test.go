@@ -38,6 +38,9 @@ type testRepo struct {
 	lastProofs          []DeliveryProofArtifact
 	retailerWindowOpen  string
 	retailerWindowClose string
+	conditionReports    []ConditionReport
+	createConditionErr  error
+	listConditionErr    error
 }
 
 func (r *testRepo) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error {
@@ -114,7 +117,6 @@ func (r *testRepo) ClearBackorder(ctx context.Context, orderID string, emit func
 	return nil
 }
 
-
 func (r *testRepo) GetOrder(_ context.Context, _ string) (Order, bool, error) {
 	if r.getErr != nil {
 		return Order{}, false, r.getErr
@@ -123,6 +125,29 @@ func (r *testRepo) GetOrder(_ context.Context, _ string) (Order, bool, error) {
 		return Order{}, false, nil
 	}
 	return r.order, true, nil
+}
+
+func (r *testRepo) CreateConditionReport(_ context.Context, report ConditionReport, emit func(outbox.TxnBuffer) error) error {
+	if r.createConditionErr != nil {
+		return r.createConditionErr
+	}
+	r.conditionReports = append(r.conditionReports, report)
+	if emit != nil {
+		buf := &testTxnBuffer{}
+		if err := emit(buf); err != nil {
+			return err
+		}
+		r.bufferedEvents += len(buf.events)
+		r.lastEvents = append(r.lastEvents, buf.events...)
+	}
+	return nil
+}
+
+func (r *testRepo) ListConditionReports(_ context.Context, _ string) ([]ConditionReport, error) {
+	if r.listConditionErr != nil {
+		return nil, r.listConditionErr
+	}
+	return append([]ConditionReport(nil), r.conditionReports...), nil
 }
 
 func (r *testRepo) ListRetailerOrders(_ context.Context, retailerID string, limit int) ([]Order, error) {

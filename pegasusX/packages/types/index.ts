@@ -1990,6 +1990,10 @@ export type EventType =
   | "SUPPLIER_RETURN_RESOLVED"
   | "RETURN_RECEIVED_AT_WAREHOUSE"
   | "DRIVER_RETURN_APPROACHING"
+  | "ORDER_CONDITION_REPORTED"
+  | "RETAILER_CREDIT_PROFILE_CHANGED"
+  | "RETAILER_CREDIT_LIMIT_BREACHED"
+  | "PRODUCT_HANDLING_UPDATED"
   | "PRE_ORDER_NOTIFIED"
   | "PRE_ORDER_NUDGE"
   | "PRE_ORDER_CONFIRMATION"
@@ -2229,6 +2233,12 @@ export interface RetailerOrderLineItem {
   name?: string;
   quantity: number;
   unit_price_minor: number;
+  handling_class?: "GENERAL" | "COLD_CHAIN" | "HAZARDOUS" | "PERISHABLE";
+  requires_cold_chain?: boolean;
+  is_hazardous?: boolean;
+  is_perishable?: boolean;
+  storage_temp_min_c?: number | null;
+  storage_temp_max_c?: number | null;
 }
 
 export interface RetailerTrackingLocation {
@@ -2548,6 +2558,12 @@ export interface WarehouseOrderLineItem {
   product_name?: string;
   quantity?: number;
   unit_price?: number;
+  handling_class?: "GENERAL" | "COLD_CHAIN" | "HAZARDOUS" | "PERISHABLE";
+  requires_cold_chain?: boolean;
+  is_hazardous?: boolean;
+  is_perishable?: boolean;
+  storage_temp_min_c?: number | null;
+  storage_temp_max_c?: number | null;
 }
 
 export interface WarehouseOrderDetail {
@@ -2558,6 +2574,43 @@ export interface WarehouseOrderDetail {
   total_uzs?: number;
   total_minor?: number;
   line_items?: WarehouseOrderLineItem[];
+}
+
+export interface OrderConditionReport {
+  report_id: string;
+  order_id: OrderId;
+  supplier_id: SupplierId;
+  retailer_id: RetailerId;
+  line_item_index?: number | null;
+  sku?: string;
+  condition_type: "DAMAGED" | "EXPIRED" | "TEMPERATURE_BREACH" | "MISSING" | "QUALITY_REJECT" | "OTHER";
+  severity: "LOW" | "MEDIUM" | "HIGH";
+  description?: string;
+  photo_urls?: string[];
+  proof_ids?: string[];
+  reported_by: string;
+  reported_by_role: string;
+  resolution_status: "OPEN" | "RESOLVED" | "DISPUTED" | "ESCALATED";
+  resolved_by?: string;
+  resolved_at?: string;
+  resolution_notes?: string;
+  created_at: string;
+}
+
+export interface RetailerCreditProfile {
+  retailer_id: RetailerId;
+  supplier_id: SupplierId;
+  credit_limit_minor: number;
+  current_balance_minor: number;
+  available_credit_minor: number;
+  risk_score: number;
+  risk_tier: "LOW" | "MEDIUM" | "HIGH" | "BLOCK";
+  delinquency_count: number;
+  status: "ACTIVE" | "FROZEN" | "CLOSED" | "BLACKLISTED";
+  last_evaluated_at?: string;
+  version: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface OrderTimelineEntry {
@@ -3144,6 +3197,53 @@ export interface WarehouseDispatchExecuteResponse {
   orphan_order_ids?: string[];
 }
 
+export interface ProductHandlingUpdatedEvent {
+  type: "PRODUCT_HANDLING_UPDATED";
+  product_id: string;
+  supplier_id: SupplierId;
+  handling_class: "GENERAL" | "COLD_CHAIN" | "HAZARDOUS" | "PERISHABLE";
+  requires_cold_chain: boolean;
+  is_hazardous: boolean;
+  is_perishable: boolean;
+  storage_temp_min_c?: number | null;
+  storage_temp_max_c?: number | null;
+}
+
+export interface OrderConditionReportedEvent {
+  type: "ORDER_CONDITION_REPORTED";
+  report_id: string;
+  order_id: OrderId;
+  reporter_id: string;
+  reporter_role: string;
+  condition_type: "DAMAGED" | "EXPIRED" | "TEMPERATURE_BREACH" | "MISSING" | "QUALITY_REJECT" | "OTHER";
+  sku?: string;
+  quantity?: number;
+  gcs_paths?: string[];
+  notes?: string;
+}
+
+export interface RetailerCreditProfileChangedEvent {
+  type: "RETAILER_CREDIT_PROFILE_CHANGED";
+  profile_id: string;
+  retailer_id: RetailerId;
+  supplier_id: SupplierId;
+  credit_limit_minor: number;
+  current_balance: number;
+  risk_tier: "LOW" | "MEDIUM" | "HIGH" | "BLOCK";
+  delinquent: boolean;
+  reason?: string;
+}
+
+export interface RetailerCreditLimitBreachedEvent {
+  type: "RETAILER_CREDIT_LIMIT_BREACHED";
+  order_id: OrderId;
+  retailer_id: RetailerId;
+  supplier_id: SupplierId;
+  requested_amount: number;
+  credit_limit_minor: number;
+  current_balance: number;
+}
+
 export interface CatalogProduct {
   product_id: string;
   supplier_id: string;
@@ -3161,6 +3261,12 @@ export interface CatalogProduct {
   is_active: boolean;
   version: number;
   barcode?: string;
+  handling_class?: "GENERAL" | "COLD_CHAIN" | "HAZARDOUS" | "PERISHABLE";
+  requires_cold_chain?: boolean;
+  is_hazardous?: boolean;
+  is_perishable?: boolean;
+  storage_temp_min_c?: number | null;
+  storage_temp_max_c?: number | null;
   created_at?: string;
   updated_at?: string;
 }

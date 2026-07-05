@@ -262,6 +262,11 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
 	}
+	if s.credit != nil && result.Order.TotalMinor > 0 {
+		if markErr := s.credit.MarkBalance(ctx, result.Order.RetailerID, result.Order.SupplierID, result.Order.TotalMinor, result.Order.OrderID); markErr != nil {
+			s.log.Error("mark credit balance failed", "order_id", result.Order.OrderID, "err", markErr)
+		}
+	}
 	s.invalidateOrderCache(ctx, req.OrderID)
 	resp := map[string]any{
 		"status":   result.Order.Status,

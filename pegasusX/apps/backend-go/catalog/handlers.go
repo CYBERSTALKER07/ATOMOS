@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -121,20 +122,26 @@ func (s *Service) HandleGetProduct(w http.ResponseWriter, r *http.Request) {
 // HandleCreateProduct serves POST /v1/catalog/products.
 func (s *Service) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		SupplierID    string  `json:"supplier_id"`
-		CategoryID    string  `json:"category_id"`
-		Name          string  `json:"name"`
-		Description   string  `json:"description"`
-		ImageURL      string  `json:"image_url"`
-		PriceMinor    int64   `json:"price_minor"`
-		Currency      string  `json:"currency"`
-		StockQuantity int64   `json:"stock_quantity"`
-		Unit          string  `json:"unit"`
-		UnitVolumeVU  float64 `json:"unit_volume_vu"`
-		SaleUnit      string  `json:"sale_unit"`
-		UnitsPerPack  *int64  `json:"units_per_pack"`
-		UnitsPerCase  *int64  `json:"units_per_case"`
-		Barcode       string  `json:"barcode"`
+		SupplierID        string   `json:"supplier_id"`
+		CategoryID        string   `json:"category_id"`
+		Name              string   `json:"name"`
+		Description       string   `json:"description"`
+		ImageURL          string   `json:"image_url"`
+		PriceMinor        int64    `json:"price_minor"`
+		Currency          string   `json:"currency"`
+		StockQuantity     int64    `json:"stock_quantity"`
+		Unit              string   `json:"unit"`
+		UnitVolumeVU      float64  `json:"unit_volume_vu"`
+		SaleUnit          string   `json:"sale_unit"`
+		UnitsPerPack      *int64   `json:"units_per_pack"`
+		UnitsPerCase      *int64   `json:"units_per_case"`
+		Barcode           string   `json:"barcode"`
+		HandlingClass     string   `json:"handling_class"`
+		RequiresColdChain bool     `json:"requires_cold_chain"`
+		IsHazardous       bool     `json:"is_hazardous"`
+		IsPerishable      bool     `json:"is_perishable"`
+		StorageTempMinC   *float64 `json:"storage_temp_min_c"`
+		StorageTempMaxC   *float64 `json:"storage_temp_max_c"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -152,22 +159,36 @@ func (s *Service) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
 	if unit == "" {
 		unit = "UNIT"
 	}
+	handlingClass := HandlingClass(strings.ToUpper(strings.TrimSpace(req.HandlingClass)))
+	if !handlingClass.Valid() {
+		handlingClass = HandlingClassGeneral
+	}
+	if err := validateHandlingTemperatures(handlingClass, req.StorageTempMinC, req.StorageTempMaxC); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
 	p := Product{
-		ProductID:     uuid.NewString(),
-		SupplierID:    supplierID,
-		CategoryID:    req.CategoryID,
-		Name:          req.Name,
-		Description:   req.Description,
-		ImageURL:      req.ImageURL,
-		PriceMinor:    req.PriceMinor,
-		Currency:      req.Currency,
-		StockQuantity: req.StockQuantity,
-		Unit:          unit,
-		UnitVolumeVU:  req.UnitVolumeVU,
-		SaleUnit:      req.SaleUnit,
-		UnitsPerPack:  coalesceUnitsPerPack(req.UnitsPerPack, req.UnitsPerCase),
-		Barcode:       strings.TrimSpace(req.Barcode),
-		IsActive:      true,
+		ProductID:         uuid.NewString(),
+		SupplierID:        supplierID,
+		CategoryID:        req.CategoryID,
+		Name:              req.Name,
+		Description:       req.Description,
+		ImageURL:          req.ImageURL,
+		PriceMinor:        req.PriceMinor,
+		Currency:          req.Currency,
+		StockQuantity:     req.StockQuantity,
+		Unit:              unit,
+		UnitVolumeVU:      req.UnitVolumeVU,
+		SaleUnit:          req.SaleUnit,
+		UnitsPerPack:      coalesceUnitsPerPack(req.UnitsPerPack, req.UnitsPerCase),
+		Barcode:           strings.TrimSpace(req.Barcode),
+		HandlingClass:     handlingClass,
+		RequiresColdChain: req.RequiresColdChain || handlingClass == HandlingClassColdChain || handlingClass == HandlingClassPerishable,
+		IsHazardous:       req.IsHazardous || handlingClass == HandlingClassHazardous,
+		IsPerishable:      req.IsPerishable || handlingClass == HandlingClassPerishable,
+		StorageTempMinC:   req.StorageTempMinC,
+		StorageTempMaxC:   req.StorageTempMaxC,
+		IsActive:          true,
 	}
 	if err := s.CreateProduct(r.Context(), p); err != nil {
 		slog.ErrorContext(r.Context(), "create product failed", "err", err)
@@ -185,20 +206,26 @@ func (s *Service) HandleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Name          string   `json:"name"`
-		Description   string   `json:"description"`
-		ImageURL      string   `json:"image_url"`
-		PriceMinor    int64    `json:"price_minor"`
-		Currency      string   `json:"currency"`
-		StockQuantity int64    `json:"stock_quantity"`
-		Unit          string   `json:"unit"`
-		UnitVolumeVU  *float64 `json:"unit_volume_vu"`
-		SaleUnit      *string  `json:"sale_unit"`
-		UnitsPerPack  *int64   `json:"units_per_pack"`
-		UnitsPerCase  *int64   `json:"units_per_case"`
-		Barcode       *string  `json:"barcode"`
-		IsActive      *bool    `json:"is_active"`
-		Version       int64    `json:"version"`
+		Name              string   `json:"name"`
+		Description       string   `json:"description"`
+		ImageURL          string   `json:"image_url"`
+		PriceMinor        int64    `json:"price_minor"`
+		Currency          string   `json:"currency"`
+		StockQuantity     int64    `json:"stock_quantity"`
+		Unit              string   `json:"unit"`
+		UnitVolumeVU      *float64 `json:"unit_volume_vu"`
+		SaleUnit          *string  `json:"sale_unit"`
+		UnitsPerPack      *int64   `json:"units_per_pack"`
+		UnitsPerCase      *int64   `json:"units_per_case"`
+		Barcode           *string  `json:"barcode"`
+		IsActive          *bool    `json:"is_active"`
+		HandlingClass     *string  `json:"handling_class"`
+		RequiresColdChain *bool    `json:"requires_cold_chain"`
+		IsHazardous       *bool    `json:"is_hazardous"`
+		IsPerishable      *bool    `json:"is_perishable"`
+		StorageTempMinC   *float64 `json:"storage_temp_min_c"`
+		StorageTempMaxC   *float64 `json:"storage_temp_max_c"`
+		Version           int64    `json:"version"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -247,6 +274,36 @@ func (s *Service) HandleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.IsActive != nil {
 		existing.IsActive = *req.IsActive
+	}
+	if req.HandlingClass != nil {
+		handlingClass := HandlingClass(strings.ToUpper(strings.TrimSpace(*req.HandlingClass)))
+		if !handlingClass.Valid() {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_handling_class"})
+			return
+		}
+		if err := validateHandlingTemperatures(handlingClass, req.StorageTempMinC, req.StorageTempMaxC); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		existing.HandlingClass = handlingClass
+		existing.RequiresColdChain = handlingClass == HandlingClassColdChain || handlingClass == HandlingClassPerishable
+		existing.IsHazardous = handlingClass == HandlingClassHazardous
+		existing.IsPerishable = handlingClass == HandlingClassPerishable
+	}
+	if req.RequiresColdChain != nil {
+		existing.RequiresColdChain = *req.RequiresColdChain
+	}
+	if req.IsHazardous != nil {
+		existing.IsHazardous = *req.IsHazardous
+	}
+	if req.IsPerishable != nil {
+		existing.IsPerishable = *req.IsPerishable
+	}
+	if req.StorageTempMinC != nil {
+		existing.StorageTempMinC = req.StorageTempMinC
+	}
+	if req.StorageTempMaxC != nil {
+		existing.StorageTempMaxC = req.StorageTempMaxC
 	}
 	existing.Version = req.Version
 	if err := s.UpdateProduct(r.Context(), *existing); err != nil {
@@ -363,6 +420,21 @@ func (s *Service) HandleGetUploadTicket(w http.ResponseWriter, r *http.Request) 
 		"upload_url": uploadURL,
 		"image_url":  imageURL,
 	})
+}
+
+func validateHandlingTemperatures(hc HandlingClass, minC, maxC *float64) error {
+	if hc == HandlingClassColdChain || hc == HandlingClassPerishable {
+		if minC == nil || maxC == nil {
+			return errors.New("temperature_range_required")
+		}
+		if *maxC <= *minC {
+			return errors.New("invalid_temperature_range")
+		}
+	}
+	if hc == HandlingClassGeneral && (minC != nil || maxC != nil) {
+		return errors.New("temperature_not_allowed_for_general")
+	}
+	return nil
 }
 
 func coalesceUnitsPerPack(primary, legacy *int64) *int64 {

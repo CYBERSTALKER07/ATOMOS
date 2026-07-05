@@ -36,6 +36,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/fleet/route/request-early-complete", d.Service.HandleRequestEarlyComplete)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/confirm-payment-bypass", d.Service.HandleConfirmPaymentBypass)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/report-damage", d.Service.HandleReportDamage)
+		gr.With(auth.RequireRole(auth.RoleDriver, auth.RoleRetailer, auth.RoleWarehouseAdmin, auth.RoleWarehouse, auth.RoleFactoryAdmin)).Post("/v1/delivery/report-condition", d.Service.HandleReportCondition)
+		gr.With(auth.RequireRole(auth.RoleDriver, auth.RoleRetailer, auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse, auth.RoleFactoryAdmin)).Get("/v1/order/{orderID}/condition-reports", d.Service.ListConditionReports)
 
 		gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/order/{orderID}/timeline", d.Service.HandleGetOrderTimeline)
 		gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/order/{orderID}/status-context", d.Service.HandleGetOrderStatusContext)

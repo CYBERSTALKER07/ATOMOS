@@ -459,3 +459,58 @@ type PlanningEvent struct {
 	SignalID       string  `json:"signal_id,omitempty"`
 	SimulationID   string  `json:"simulation_id,omitempty"`
 }
+
+// @Sync(ProductEvent)
+// ProductEvent handles product handling classification updates.
+type ProductEvent struct {
+	BaseEvent
+	ProductID         string   `json:"product_id"`
+	SupplierID        string   `json:"supplier_id"`
+	HandlingClass     string   `json:"handling_class"`
+	RequiresColdChain bool     `json:"requires_cold_chain"`
+	IsHazardous       bool     `json:"is_hazardous"`
+	IsPerishable      bool     `json:"is_perishable"`
+	StorageTempMinC   *float64 `json:"storage_temp_min_c,omitempty"`
+	StorageTempMaxC   *float64 `json:"storage_temp_max_c,omitempty"`
+}
+
+// @Sync(ConditionEvent)
+// ConditionEvent handles structured order condition reports.
+type ConditionEvent struct {
+	BaseEvent
+	ReportID      string   `json:"report_id"`
+	OrderID       string   `json:"order_id"`
+	ReporterID    string   `json:"reporter_id"`
+	ReporterRole  string   `json:"reporter_role"`
+	ConditionType string   `json:"condition_type"`
+	SKU           string   `json:"sku,omitempty"`
+	Quantity      int64    `json:"quantity,omitempty"`
+	GCSPaths      []string `json:"gcs_paths,omitempty"`
+	Notes         string   `json:"notes,omitempty"`
+}
+
+// @Sync(CreditEvent)
+// CreditProfileEvent handles retailer credit profile changes.
+type CreditProfileEvent struct {
+	BaseEvent
+	ProfileID        string `json:"profile_id"`
+	RetailerID       string `json:"retailer_id"`
+	SupplierID       string `json:"supplier_id"`
+	CreditLimitMinor int64  `json:"credit_limit_minor"`
+	CurrentBalance   int64  `json:"current_balance"`
+	RiskTier         string `json:"risk_tier"`
+	Delinquent       bool   `json:"delinquent"`
+	Reason           string `json:"reason,omitempty"`
+}
+
+// @Sync(CreditEvent)
+// CreditLimitEvent signals a credit-limit breach at order time.
+type CreditLimitEvent struct {
+	BaseEvent
+	OrderID          string `json:"order_id"`
+	RetailerID       string `json:"retailer_id"`
+	SupplierID       string `json:"supplier_id"`
+	RequestedAmount  int64  `json:"requested_amount"`
+	CreditLimitMinor int64  `json:"credit_limit_minor"`
+	CurrentBalance   int64  `json:"current_balance"`
+}

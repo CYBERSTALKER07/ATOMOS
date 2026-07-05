@@ -93,6 +93,59 @@
       "title": "CommandPayload",
       "type": "object"
     },
+    "ConditionPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "condition_type": {
+          "type": "string"
+        },
+        "gcs_paths": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer"
+        },
+        "report_id": {
+          "type": "string"
+        },
+        "reporter_id": {
+          "type": "string"
+        },
+        "reporter_role": {
+          "type": "string"
+        },
+        "sku": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "condition_type",
+        "order_id",
+        "report_id",
+        "reporter_id",
+        "reporter_role"
+      ],
+      "title": "ConditionPayload",
+      "type": "object"
+    },
     "CreditDeliveryPayload": {
       "additionalProperties": true,
       "properties": {
@@ -121,6 +174,83 @@
         "supplier_id"
       ],
       "title": "CreditDeliveryPayload",
+      "type": "object"
+    },
+    "CreditLimitPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "credit_limit_minor": {
+          "type": "integer"
+        },
+        "current_balance": {
+          "type": "integer"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "requested_amount": {
+          "type": "integer"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "credit_limit_minor",
+        "current_balance",
+        "order_id",
+        "requested_amount",
+        "retailer_id",
+        "supplier_id"
+      ],
+      "title": "CreditLimitPayload",
+      "type": "object"
+    },
+    "CreditProfilePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "credit_limit_minor": {
+          "type": "integer"
+        },
+        "current_balance": {
+          "type": "integer"
+        },
+        "delinquent": {
+          "type": "boolean"
+        },
+        "profile_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "risk_tier": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "credit_limit_minor",
+        "current_balance",
+        "delinquent",
+        "profile_id",
+        "retailer_id",
+        "risk_tier",
+        "supplier_id"
+      ],
+      "title": "CreditProfilePayload",
       "type": "object"
     },
     "DeliverySessionPayload": {
@@ -717,6 +847,61 @@
         "supplier_id"
       ],
       "title": "PreOrderPayload",
+      "type": "object"
+    },
+    "ProductPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "handling_class": {
+          "type": "string"
+        },
+        "is_hazardous": {
+          "type": "boolean"
+        },
+        "is_perishable": {
+          "type": "boolean"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "requires_cold_chain": {
+          "type": "boolean"
+        },
+        "storage_temp_max_c": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "storage_temp_min_c": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "handling_class",
+        "is_hazardous",
+        "is_perishable",
+        "product_id",
+        "requires_cold_chain",
+        "supplier_id"
+      ],
+      "title": "ProductPayload",
       "type": "object"
     },
     "PromotionPayload": {
@@ -2062,6 +2247,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/ConditionPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_CONDITION_REPORTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderConditionReportedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/OrderPayload"
         },
         {
@@ -2480,6 +2684,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/ProductPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PRODUCT_HANDLING_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ProductHandlingUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/PromotionPayload"
         },
         {
@@ -2533,6 +2756,44 @@
         }
       ],
       "title": "ReplenishmentInsightCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CreditLimitPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_CREDIT_LIMIT_BREACHED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerCreditLimitBreachedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CreditProfilePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_CREDIT_PROFILE_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerCreditProfileChangedEnvelope"
     },
     {
       "allOf": [
@@ -3223,6 +3484,7 @@
         "NEGOTIATION_RESOLVED",
         "ORDER_AMENDED",
         "ORDER_ASSIGNED",
+        "ORDER_CONDITION_REPORTED",
         "ORDER_CREATED",
         "ORDER_FINALIZED",
         "ORDER_REASSIGNED",
@@ -3245,9 +3507,12 @@
         "PRE_ORDER_EDITED",
         "PRE_ORDER_NOTIFIED",
         "PRE_ORDER_NUDGE",
+        "PRODUCT_HANDLING_UPDATED",
         "PROMOTION_CHANGED",
         "REPLENISHMENT_AUTO_APPROVED",
         "REPLENISHMENT_INSIGHT_CREATED",
+        "RETAILER_CREDIT_LIMIT_BREACHED",
+        "RETAILER_CREDIT_PROFILE_CHANGED",
         "RETAILER_PRICE_OVERRIDE",
         "RETAILER_REGISTERED",
         "RETURN_RECEIVED_AT_WAREHOUSE",
@@ -3331,6 +3596,7 @@
     "NEGOTIATION_RESOLVED": "NegotiationPayload",
     "ORDER_AMENDED": "OrderPayload",
     "ORDER_ASSIGNED": "OrderPayload",
+    "ORDER_CONDITION_REPORTED": "ConditionPayload",
     "ORDER_CREATED": "OrderPayload",
     "ORDER_FINALIZED": "OrderPayload",
     "ORDER_REASSIGNED": "OrderPayload",
@@ -3353,9 +3619,12 @@
     "PRE_ORDER_EDITED": "PreOrderPayload",
     "PRE_ORDER_NOTIFIED": "PreOrderPayload",
     "PRE_ORDER_NUDGE": "PreOrderPayload",
+    "PRODUCT_HANDLING_UPDATED": "ProductPayload",
     "PROMOTION_CHANGED": "PromotionPayload",
     "REPLENISHMENT_AUTO_APPROVED": "PlanningPayload",
     "REPLENISHMENT_INSIGHT_CREATED": "PlanningPayload",
+    "RETAILER_CREDIT_LIMIT_BREACHED": "CreditLimitPayload",
+    "RETAILER_CREDIT_PROFILE_CHANGED": "CreditProfilePayload",
     "RETAILER_PRICE_OVERRIDE": "RetailerPriceOverridePayload",
     "RETAILER_REGISTERED": "RetailerPayload",
     "RETURN_RECEIVED_AT_WAREHOUSE": "ReturnPayload",
