@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
@@ -40,15 +41,25 @@ type Warehouse struct {
 	H3Cell                     *string   `json:"h3_cell,omitempty" spanner:"H3Cell"`
 }
 
-// CreateWarehouse inserts a new warehouse record.
-func (r *SpannerRepository) CreateWarehouse(ctx context.Context, w Warehouse) error {
+// CreateWarehouse inserts a new warehouse record and emits a WAREHOUSE_CREATED event atomically.
+func (r *SpannerRepository) CreateWarehouse(ctx context.Context, w Warehouse, emit func(outbox.TxnBuffer) error) error {
 	w.CreatedAt = spanner.CommitTimestamp
 	w.UpdatedAt = spanner.CommitTimestamp
 	m, err := spanner.InsertStruct("Warehouses", w)
 	if err != nil {
 		return err
 	}
-	_, err = r.client.Apply(ctx, []*spanner.Mutation{m})
+	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		muts := []*spanner.Mutation{m}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			muts = append(muts, outboxMutations(buf.events)...)
+		}
+		return txn.BufferWrite(muts)
+	})
 	return err
 }
 
@@ -72,14 +83,24 @@ func (r *SpannerRepository) GetWarehouse(ctx context.Context, warehouseID string
 	return w, nil
 }
 
-// UpdateWarehouse updates an existing warehouse record.
-func (r *SpannerRepository) UpdateWarehouse(ctx context.Context, w Warehouse) error {
+// UpdateWarehouse updates an existing warehouse record and emits a WAREHOUSE_LOCATION_UPDATED event atomically.
+func (r *SpannerRepository) UpdateWarehouse(ctx context.Context, w Warehouse, emit func(outbox.TxnBuffer) error) error {
 	w.UpdatedAt = spanner.CommitTimestamp
 	m, err := spanner.UpdateStruct("Warehouses", w)
 	if err != nil {
 		return err
 	}
-	_, err = r.client.Apply(ctx, []*spanner.Mutation{m})
+	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		muts := []*spanner.Mutation{m}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			muts = append(muts, outboxMutations(buf.events)...)
+		}
+		return txn.BufferWrite(muts)
+	})
 	return err
 }
 

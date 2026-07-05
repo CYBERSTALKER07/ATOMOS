@@ -13,3 +13,6 @@ data:
   SPANNER_INSTANCE: "pegasusx-instance"
   SPANNER_DATABASE: "pegasusx-db"
   KAFKA_BROKERS: "kafka:9092"
+  KAFKA_TOPIC_INVENTORY_IMPORT: "pegasusx-inventory-import"
+  GCS_BUCKET_NAME: "pegasusx-prod-catalog"
+  IMPORT_LOCAL_FILE_ROOT: "/var/pegasusx/import-local"

@@ -2,24 +2,44 @@ package warehouse
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 // HandleCreateWarehouse serves POST /v1/warehouses
 func (s *Service) HandleCreateWarehouse(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		web.JSONError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if auth.RejectBodyScopeOverrides(w, r, body) {
+		return
+	}
+
 	var req Warehouse
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	if req.Name == "" || req.SupplierID == "" {
-		web.JSONError(w, "missing required fields: name, supplier_id", http.StatusBadRequest)
+	supplierID, ok := auth.ResolveSupplierID(r.Context())
+	if !ok || supplierID == "" {
+		web.JSONError(w, "missing supplier scope", http.StatusUnauthorized)
+		return
+	}
+	req.SupplierID = supplierID
+
+	if req.Name == "" {
+		web.JSONError(w, "missing required fields: name", http.StatusBadRequest)
 		return
 	}
 
@@ -30,14 +50,25 @@ func (s *Service) HandleCreateWarehouse(w http.ResponseWriter, r *http.Request) 
 	if req.TransferMode == "" {
 		req.TransferMode = "TRUCK"
 	}
-	
+
 	if req.DefaultOutOfStockPolicy == "" {
 		req.DefaultOutOfStockPolicy = "REJECT"
 	}
 
-	if err := s.repo.CreateWarehouse(r.Context(), req); err != nil {
+	emit := func(buf outbox.TxnBuffer) error {
+		return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, req.WarehouseID, events.TopicMain, events.WarehouseEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventWarehouseCreated, Version: 1},
+			WarehouseID: req.WarehouseID,
+			SupplierID:  req.SupplierID,
+		})
+	}
+	if err := s.repo.CreateWarehouse(r.Context(), req, emit); err != nil {
 		web.JSONError(w, "failed to create warehouse: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), warehouseCacheKey(req.WarehouseID), warehousesListCacheKey(req.SupplierID))
 	}
 
 	web.JSONResponse(w, http.StatusCreated, req)
@@ -68,16 +99,43 @@ func (s *Service) HandleUpdateWarehouse(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		web.JSONError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if auth.RejectBodyScopeOverrides(w, r, body) {
+		return
+	}
+
 	var req Warehouse
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 	req.WarehouseID = warehouseID
 
-	if err := s.repo.UpdateWarehouse(r.Context(), req); err != nil {
+	supplierID, ok := auth.ResolveSupplierID(r.Context())
+	if !ok || supplierID == "" {
+		web.JSONError(w, "missing supplier scope", http.StatusUnauthorized)
+		return
+	}
+	req.SupplierID = supplierID
+
+	emit := func(buf outbox.TxnBuffer) error {
+		return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, req.WarehouseID, events.TopicMain, events.WarehouseEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventWarehouseLocationUpdated, Version: 1},
+			WarehouseID: req.WarehouseID,
+			SupplierID:  req.SupplierID,
+		})
+	}
+	if err := s.repo.UpdateWarehouse(r.Context(), req, emit); err != nil {
 		web.JSONError(w, "failed to update warehouse: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), warehouseCacheKey(req.WarehouseID), warehousesListCacheKey(req.SupplierID))
 	}
 
 	web.JSONResponse(w, http.StatusOK, req)
@@ -85,9 +143,14 @@ func (s *Service) HandleUpdateWarehouse(w http.ResponseWriter, r *http.Request) 
 
 // HandleListWarehouses serves GET /v1/warehouses
 func (s *Service) HandleListWarehouses(w http.ResponseWriter, r *http.Request) {
-	supplierID := r.URL.Query().Get("supplier_id")
-	if supplierID == "" {
-		web.JSONError(w, "missing supplier_id query parameter", http.StatusBadRequest)
+	supplierID, ok := auth.ResolveSupplierID(r.Context())
+	if !ok || supplierID == "" {
+		web.JSONError(w, "missing supplier scope", http.StatusUnauthorized)
+		return
+	}
+
+	if q := r.URL.Query().Get("supplier_id"); q != "" && q != supplierID {
+		web.JSONError(w, "access denied: supplier scope violation", http.StatusForbidden)
 		return
 	}
 
@@ -112,4 +175,12 @@ func (s *Service) HandleListWarehouses(w http.ResponseWriter, r *http.Request) {
 	}
 
 	web.JSONResponse(w, http.StatusOK, warehouses)
+}
+
+func warehouseCacheKey(warehouseID string) string {
+	return "warehouse:" + warehouseID
+}
+
+func warehousesListCacheKey(supplierID string) string {
+	return "warehouses:list:" + supplierID
 }

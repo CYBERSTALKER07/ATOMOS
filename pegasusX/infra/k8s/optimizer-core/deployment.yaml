@@ -31,7 +31,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: backend-go-secrets
-                  key: INTERNAL_API_KEY
+                  key: internal-api-key
           readinessProbe:
             httpGet:
               path: /ready

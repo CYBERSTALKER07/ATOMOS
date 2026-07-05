@@ -2,24 +2,44 @@ package factory
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 // HandleCreateFactory serves POST /v1/factories
 func (s *Service) HandleCreateFactory(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		web.JSONError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if auth.RejectBodyScopeOverrides(w, r, body) {
+		return
+	}
+
 	var req Factory
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	if req.Name == "" || req.SupplierID == "" {
-		web.JSONError(w, "missing required fields: name, supplier_id", http.StatusBadRequest)
+	supplierID, ok := auth.ResolveSupplierID(r.Context())
+	if !ok || supplierID == "" {
+		web.JSONError(w, "missing supplier scope", http.StatusUnauthorized)
+		return
+	}
+	req.SupplierID = supplierID
+
+	if req.Name == "" {
+		web.JSONError(w, "missing required fields: name", http.StatusBadRequest)
 		return
 	}
 
@@ -27,9 +47,20 @@ func (s *Service) HandleCreateFactory(w http.ResponseWriter, r *http.Request) {
 		req.FactoryID = uuid.New().String()
 	}
 
-	if err := s.repo.CreateFactory(r.Context(), req); err != nil {
+	emit := func(buf outbox.TxnBuffer) error {
+		return outbox.EmitJSON(r.Context(), buf, events.AggregateFactory, req.FactoryID, events.TopicMain, events.FactoryEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventFactoryCreated, Version: 1},
+			FactoryID:  req.FactoryID,
+			SupplierID: req.SupplierID,
+		})
+	}
+	if err := s.repo.CreateFactory(r.Context(), req, emit); err != nil {
 		web.JSONError(w, "failed to create factory: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), factoryCacheKey(req.FactoryID), factoriesListCacheKey(req.SupplierID))
 	}
 
 	web.JSONResponse(w, http.StatusCreated, req)
@@ -60,16 +91,43 @@ func (s *Service) HandleUpdateFactory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		web.JSONError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if auth.RejectBodyScopeOverrides(w, r, body) {
+		return
+	}
+
 	var req Factory
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		web.JSONError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 	req.FactoryID = factoryID
 
-	if err := s.repo.UpdateFactory(r.Context(), req); err != nil {
+	supplierID, ok := auth.ResolveSupplierID(r.Context())
+	if !ok || supplierID == "" {
+		web.JSONError(w, "missing supplier scope", http.StatusUnauthorized)
+		return
+	}
+	req.SupplierID = supplierID
+
+	emit := func(buf outbox.TxnBuffer) error {
+		return outbox.EmitJSON(r.Context(), buf, events.AggregateFactory, req.FactoryID, events.TopicMain, events.FactoryEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventFactoryLocationUpdated, Version: 1},
+			FactoryID:  req.FactoryID,
+			SupplierID: req.SupplierID,
+		})
+	}
+	if err := s.repo.UpdateFactory(r.Context(), req, emit); err != nil {
 		web.JSONError(w, "failed to update factory: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), factoryCacheKey(req.FactoryID), factoriesListCacheKey(req.SupplierID))
 	}
 
 	web.JSONResponse(w, http.StatusOK, req)
@@ -77,9 +135,14 @@ func (s *Service) HandleUpdateFactory(w http.ResponseWriter, r *http.Request) {
 
 // HandleListFactories serves GET /v1/factories
 func (s *Service) HandleListFactories(w http.ResponseWriter, r *http.Request) {
-	supplierID := r.URL.Query().Get("supplier_id")
-	if supplierID == "" {
-		web.JSONError(w, "missing supplier_id query parameter", http.StatusBadRequest)
+	supplierID, ok := auth.ResolveSupplierID(r.Context())
+	if !ok || supplierID == "" {
+		web.JSONError(w, "missing supplier scope", http.StatusUnauthorized)
+		return
+	}
+
+	if q := r.URL.Query().Get("supplier_id"); q != "" && q != supplierID {
+		web.JSONError(w, "access denied: supplier scope violation", http.StatusForbidden)
 		return
 	}
 
@@ -104,4 +167,12 @@ func (s *Service) HandleListFactories(w http.ResponseWriter, r *http.Request) {
 	}
 
 	web.JSONResponse(w, http.StatusOK, factories)
+}
+
+func factoryCacheKey(factoryID string) string {
+	return "factory:" + factoryID
+}
+
+func factoriesListCacheKey(supplierID string) string {
+	return "factories:list:" + supplierID
 }

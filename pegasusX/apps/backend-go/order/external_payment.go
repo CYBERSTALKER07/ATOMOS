@@ -18,13 +18,19 @@ func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gat
 		return fmt.Errorf("order not found: %s", orderID)
 	}
 	if orderRecord.Status != StatusAwaitingPayment {
+		if orderRecord.Status == StatusCancelled {
+			// Money captured against a cancelled order must never vanish into a
+			// log line: route it to the supplier reconciliation queue.
+			return s.flagPaymentAfterCancel(ctx, orderRecord, gateway)
+		}
 		s.log.InfoContext(ctx, "skipping external payment settlement, order not awaiting payment", "order_id", orderID, "status", orderRecord.Status)
 		return nil
 	}
 
 	previousStatus := orderRecord.Status
 	orderRecord.Status = StatusCompleted
-	orderRecord.Version++
+	// Version must stay at the value read from Spanner: UpdateOrder compares it
+	// against the stored row for optimistic concurrency and increments it itself.
 	orderRecord.UpdatedAt = s.now()
 
 	err = s.repo.UpdateOrder(ctx, orderRecord, nil, func(txn outbox.TxnBuffer) error {
@@ -53,6 +59,34 @@ func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gat
 		}
 	}
 
+	return nil
+}
+
+// flagPaymentAfterCancel moves a cancelled order that still received a gateway
+// settlement into RECONCILIATION_REQUIRED so the supplier reconciliation queue
+// (GET /v1/supplier/reconciliation) surfaces the trapped funds. Idempotent.
+func (s *Service) flagPaymentAfterCancel(ctx context.Context, orderRecord Order, gateway string) error {
+	if orderRecord.Status != StatusCancelled {
+		return nil
+	}
+	previousStatus := orderRecord.Status
+	orderRecord.Status = StatusReconciliationRequired
+	orderRecord.UpdatedAt = s.now()
+
+	err := s.repo.UpdateOrder(ctx, orderRecord, nil, func(txn outbox.TxnBuffer) error {
+		return emitOrderStatusChanged(ctx, txn, orderStatusEmitParams{
+			Order:          orderRecord,
+			PreviousStatus: previousStatus,
+			Reason:         "payment_received_after_cancel:" + strings.TrimSpace(gateway),
+		})
+	})
+	if err != nil {
+		return fmt.Errorf("flag payment after cancel %s: %w", orderRecord.OrderID, err)
+	}
+	s.invalidatePaymentCaches(ctx, orderRecord)
+	s.afterOrderMutation(ctx, orderRecord)
+	s.log.WarnContext(ctx, "payment settled for cancelled order, moved to reconciliation",
+		"order_id", orderRecord.OrderID, "gateway", gateway)
 	return nil
 }
 

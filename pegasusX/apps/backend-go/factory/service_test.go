@@ -1069,7 +1069,7 @@ func assertFactoryWSMessageContainsType(t *testing.T, messages [][]byte, wantTyp
 }
 
 type factoryRepoSpy struct {
-	svc *Service
+	svc        *Service
 	applyCalls int
 	events     []outbox.Event
 }
@@ -1111,7 +1111,7 @@ func (r *factoryRepoSpy) UpdateSupplyRequestState(ctx context.Context, requestID
 	return nil
 }
 
-func (r *factoryRepoSpy) CreateFactory(ctx context.Context, f Factory) error {
+func (r *factoryRepoSpy) CreateFactory(ctx context.Context, f Factory, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 
@@ -1119,14 +1119,13 @@ func (r *factoryRepoSpy) GetFactory(ctx context.Context, factoryID string) (Fact
 	return Factory{}, nil
 }
 
-func (r *factoryRepoSpy) UpdateFactory(ctx context.Context, f Factory) error {
+func (r *factoryRepoSpy) UpdateFactory(ctx context.Context, f Factory, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 
 func (r *factoryRepoSpy) ListFactories(ctx context.Context, supplierID string, limit, offset int) ([]Factory, error) {
 	return nil, nil
 }
-
 
 type factoryCacheBackendSpy struct {
 	deletedKeys [][]string
@@ -1180,7 +1179,12 @@ func (r *factoryRepoSpy) Hydrate(ctx context.Context, supplierID string, s *Serv
 }
 
 type dummyFactoryTx struct{ svc *Service }
-func (d *dummyFactoryTx) ListManifests(ctx context.Context) ([]ManifestRow, error) { return append([]ManifestRow(nil), d.svc.manifests...), nil }
+
+func (d *dummyFactoryTx) ListManifests(ctx context.Context) ([]ManifestRow, error) {
+	return append([]ManifestRow(nil), d.svc.manifests...), nil
+}
 func (d *dummyFactoryTx) SaveManifest(ctx context.Context, m ManifestRow) error { return nil }
-func (d *dummyFactoryTx) ListTransfers(ctx context.Context) ([]TransferRow, error) { return append([]TransferRow(nil), d.svc.transfers...), nil }
+func (d *dummyFactoryTx) ListTransfers(ctx context.Context) ([]TransferRow, error) {
+	return append([]TransferRow(nil), d.svc.transfers...), nil
+}
 func (d *dummyFactoryTx) SaveTransfer(ctx context.Context, t TransferRow) error { return nil }

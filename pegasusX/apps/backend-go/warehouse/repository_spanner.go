@@ -40,9 +40,9 @@ type Repository interface {
 	DeleteLock(ctx context.Context, warehouseID, lockID string, emit func(outbox.TxnBuffer) error) error
 	CreateTransfer(ctx context.Context, transferID, factoryID, supplierID, warehouseID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error
 	UpdateTransferState(ctx context.Context, transferID, supplierID, newState string, emit func(outbox.TxnBuffer) error) error
-	CreateWarehouse(ctx context.Context, w Warehouse) error
+	CreateWarehouse(ctx context.Context, w Warehouse, emit func(outbox.TxnBuffer) error) error
 	GetWarehouse(ctx context.Context, warehouseID string) (Warehouse, error)
-	UpdateWarehouse(ctx context.Context, w Warehouse) error
+	UpdateWarehouse(ctx context.Context, w Warehouse, emit func(outbox.TxnBuffer) error) error
 	ListWarehouses(ctx context.Context, supplierID string, limit, offset int) ([]Warehouse, error)
 }
 
@@ -536,11 +536,18 @@ func (r *inMemoryRepository) Apply(ctx context.Context, mutate func() error, emi
 	return nil
 }
 
-func (m *inMemoryRepository) CreateWarehouse(ctx context.Context, w Warehouse) error { return nil }
-func (m *inMemoryRepository) GetWarehouse(ctx context.Context, warehouseID string) (Warehouse, error) { return Warehouse{}, nil }
-func (m *inMemoryRepository) UpdateWarehouse(ctx context.Context, w Warehouse) error { return nil }
-func (m *inMemoryRepository) ListWarehouses(ctx context.Context, supplierID string, limit, offset int) ([]Warehouse, error) { return nil, nil }
-
+func (m *inMemoryRepository) CreateWarehouse(ctx context.Context, w Warehouse, emit func(outbox.TxnBuffer) error) error {
+	return nil
+}
+func (m *inMemoryRepository) GetWarehouse(ctx context.Context, warehouseID string) (Warehouse, error) {
+	return Warehouse{}, nil
+}
+func (m *inMemoryRepository) UpdateWarehouse(ctx context.Context, w Warehouse, emit func(outbox.TxnBuffer) error) error {
+	return nil
+}
+func (m *inMemoryRepository) ListWarehouses(ctx context.Context, supplierID string, limit, offset int) ([]Warehouse, error) {
+	return nil, nil
+}
 
 func (m *inMemoryRepository) GetInventoryList(ctx context.Context, warehouseID string, opts InventoryListOptions) (map[string]InventoryRow, error) {
 	return nil, nil

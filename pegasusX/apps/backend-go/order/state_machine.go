@@ -28,6 +28,10 @@ func ValidateStatusTransition(current Status, next Status) error {
 		allowed = next == StatusCompleted || next == StatusPendingCashCollection
 	case StatusPendingCashCollection:
 		allowed = next == StatusCompleted
+	case StatusCancelRequested:
+		// Approve -> CANCELLED; deny/resume -> back to the operational leg it
+		// was requested from. Without exits this status would brick the order.
+		allowed = next == StatusCancelled || next == StatusLoaded || next == StatusInTransit || next == StatusArrived
 	case StatusCompleted:
 		allowed = false
 	case StatusCancelled:

@@ -13,6 +13,7 @@ data:
   KAFKA_BROKERS: "kafka.pegasusx.svc.cluster.local:9092"
   KAFKA_TOPIC_MAIN: "pegasusx-main"
   KAFKA_TOPIC_FREEZE_LOCKS: "pegasusx-freeze-locks"
+  KAFKA_TOPIC_INVENTORY_IMPORT: "pegasusx-inventory-import"
   # Domain topics (dual-write when KAFKA_TOPIC_DUAL_WRITE=true on relay)
   KAFKA_TOPIC_ORDERS: "pegasusx-orders"
   KAFKA_TOPIC_DISPATCH: "pegasusx-dispatch"
@@ -26,6 +27,8 @@ data:
   OPTIMIZER_BASE_URL: "http://optimizer-core.pegasusx.svc.cluster.local:8082"
   GLOBAL_PAY_ENV: "production"
   WS_ALLOWED_ORIGINS: "https://supplier.pegasusx.app,https://warehouse.pegasusx.app,https://factory.pegasusx.app,https://retailer.pegasusx.app"
+  PUBLIC_BASE_URL: "https://api.pegasusx.app"
+  FIREBASE_PROJECT_ID: "pegasusx-prod"
   LOG_LEVEL: "info"
   LOG_FORMAT: "json"
   REQUIRE_INFRA_ADAPTERS: "true"

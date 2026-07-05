@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
@@ -43,15 +44,25 @@ type Vehicle struct {
 	UpdatedAt         time.Time `json:"updated_at" spanner:"UpdatedAt"`
 }
 
-// CreateDriver inserts a new driver record.
-func (r *SpannerRepository) CreateDriver(ctx context.Context, d Driver) error {
+// CreateDriver inserts a new driver record and emits a DRIVER_CREATED event atomically.
+func (r *SpannerRepository) CreateDriver(ctx context.Context, d Driver, emit func(outbox.TxnBuffer) error) error {
 	d.CreatedAt = spanner.CommitTimestamp
 	d.UpdatedAt = spanner.CommitTimestamp
 	m, err := spanner.InsertStruct("Drivers", d)
 	if err != nil {
 		return err
 	}
-	_, err = r.client.Apply(ctx, []*spanner.Mutation{m})
+	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		muts := []*spanner.Mutation{m}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			muts = append(muts, outboxMutations(buf.events)...)
+		}
+		return txn.BufferWrite(muts)
+	})
 	return err
 }
 
@@ -72,14 +83,24 @@ func (r *SpannerRepository) GetDriver(ctx context.Context, driverID string) (Dri
 	return d, nil
 }
 
-// UpdateDriver updates an existing driver record.
-func (r *SpannerRepository) UpdateDriver(ctx context.Context, d Driver) error {
+// UpdateDriver updates an existing driver record and emits a DRIVER_AVAILABILITY_CHANGED event atomically.
+func (r *SpannerRepository) UpdateDriver(ctx context.Context, d Driver, emit func(outbox.TxnBuffer) error) error {
 	d.UpdatedAt = spanner.CommitTimestamp
 	m, err := spanner.UpdateStruct("Drivers", d)
 	if err != nil {
 		return err
 	}
-	_, err = r.client.Apply(ctx, []*spanner.Mutation{m})
+	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		muts := []*spanner.Mutation{m}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			muts = append(muts, outboxMutations(buf.events)...)
+		}
+		return txn.BufferWrite(muts)
+	})
 	return err
 }
 
@@ -114,15 +135,25 @@ func (r *SpannerRepository) ListDrivers(ctx context.Context, supplierID string, 
 	return drivers, nil
 }
 
-// CreateVehicle inserts a new vehicle record.
-func (r *SpannerRepository) CreateVehicle(ctx context.Context, v Vehicle) error {
+// CreateVehicle inserts a new vehicle record and emits a VEHICLE_CREATED event atomically.
+func (r *SpannerRepository) CreateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error {
 	v.CreatedAt = spanner.CommitTimestamp
 	v.UpdatedAt = spanner.CommitTimestamp
 	m, err := spanner.InsertStruct("Vehicles", v)
 	if err != nil {
 		return err
 	}
-	_, err = r.client.Apply(ctx, []*spanner.Mutation{m})
+	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		muts := []*spanner.Mutation{m}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			muts = append(muts, outboxMutations(buf.events)...)
+		}
+		return txn.BufferWrite(muts)
+	})
 	return err
 }
 
@@ -143,14 +174,24 @@ func (r *SpannerRepository) GetVehicle(ctx context.Context, vehicleID string) (V
 	return v, nil
 }
 
-// UpdateVehicle updates an existing vehicle record.
-func (r *SpannerRepository) UpdateVehicle(ctx context.Context, v Vehicle) error {
+// UpdateVehicle updates an existing vehicle record and emits a VEHICLE_AVAILABILITY_CHANGED event atomically.
+func (r *SpannerRepository) UpdateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error {
 	v.UpdatedAt = spanner.CommitTimestamp
 	m, err := spanner.UpdateStruct("Vehicles", v)
 	if err != nil {
 		return err
 	}
-	_, err = r.client.Apply(ctx, []*spanner.Mutation{m})
+	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		muts := []*spanner.Mutation{m}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			muts = append(muts, outboxMutations(buf.events)...)
+		}
+		return txn.BufferWrite(muts)
+	})
 	return err
 }
 

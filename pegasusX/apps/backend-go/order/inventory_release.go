@@ -49,20 +49,3 @@ func ReleaseReservationsInTxn(ctx context.Context, txn *spanner.ReadWriteTransac
 	}
 	return nil
 }
-
-// releaseOrderReservations returns reserved stock when an order is cancelled.
-func (s *Service) releaseOrderReservations(ctx context.Context, o *Order) error {
-	if s == nil || s.spannerClient == nil || o == nil {
-		return nil
-	}
-	if o.Source == OrderSourceBackorder || o.WarehouseID == "" || len(o.LineItems) == 0 {
-		return nil
-	}
-	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return ReleaseReservationsInTxn(ctx, txn, o.SupplierID, o.WarehouseID, o.Source, o.LineItems)
-	})
-	if err == nil && s.cache != nil {
-		s.cache.Invalidate(ctx, "catalog:products:"+o.SupplierID)
-	}
-	return err
-}

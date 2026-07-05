@@ -1,6 +1,6 @@
 # pegasusX Enterprise Execution Plan
 
-Last updated: 2026-07-03 (synced with codebase audit: driver iOS path, SSMR green locally, PX-ECS-1..4 shipped)
+Last updated: 2026-07-05 (synced with codebase audit: PX13 ecosystem audit remediation shipped, all gates green)
 
 **See also (granular per-backend-feature + per-role/app breakdown with UI replication targets, cross-sync obligations, and phase mapping):** `VEGETABLE_PLAN.md` in this directory. It is the "VeggieTales" / feature-by-feature ledger Boss requested. Read it together with this file before any phase work. All status updates must propagate to both.
 
@@ -151,6 +151,23 @@ Production v1 bar: all six roles deployable, no silent 404/501 on shipped client
 | `PX12-M1` | v1 staging closure (2026-06-29) | `implemented (local)` + `deferred (staging LC-01–06, GCP billing)` | SSMR + `px12-preflight-ok`; local closure PX-LC-0..5 shipped; staging boss checklist [`docs/V1_STAGING_CLOSURE_CHECKLIST.md`](../docs/V1_STAGING_CLOSURE_CHECKLIST.md) |
 
 **Exit:** `parity-contract-full` + `test-ssmr-infra` + `px12-preflight-ok` + staging LC sign-off + per-role QA (`docs/qa/PX12_*`) + war-story Phase C.
+
+## PX-13 Ecosystem audit remediation (2026-07-05)
+
+Full-stack gap-hunter + void-guardian audit of the pegasusX ecosystem. Closed P0 security/correctness gaps and P1 contract-drift gaps identified by parallel subagent scans. All fixes validated against `make backend-build parity-contract gap-hunter-gate gen-contracts-gate parity-contract-full validate-launch-readiness`.
+
+| Anchor | Scope | Status | Notes |
+|---|---|---|---|
+| `PX13-A1` | Backend route auth hardening | `implemented` | `driverroutes`, `factoryroutes`, `warehouseroutes` ecosystem CRUD (`/v1/drivers`, `/v1/vehicles`, `/v1/factories`, `/v1/warehouses`) moved inside `auth.ProtectMutations` groups scoped to admin roles (`ADMIN`, `WAREHOUSE_ADMIN`, `FACTORY_ADMIN`). |
+| `PX13-A2` | Body scope override rejection | `implemented` | Warehouse/factory/driver/vehicle CRUD handlers now resolve `supplier_id` from `auth.ResolveSupplierID`, reject body-provided scope overrides via `auth.RejectBodyScopeOverrides`, and ignore query `supplier_id` mismatches. |
+| `PX13-A3` | CRUD transactional outbox + cache invalidation | `implemented` | `warehouse/repository_crud.go`, `factory/repository_crud.go`, `driver/repository_crud.go` Create/Update converted from `spanner.Apply` to `ReadWriteTransaction` with `outbox.EmitJSON` (`WAREHOUSE_CREATED`, `WAREHOUSE_LOCATION_UPDATED`, `FACTORY_CREATED`, `FACTORY_LOCATION_UPDATED`, `DRIVER_CREATED`, `DRIVER_AVAILABILITY_CHANGED`, `VEHICLE_CREATED`, `VEHICLE_AVAILABILITY_CHANGED`) and post-commit `cache.Invalidate`. Repository interfaces, in-memory stubs, and test spies updated. |
+| `PX13-B1` | Shared EventType union completeness | `implemented` | `packages/types/index.ts` `EventType` union expanded to mirror `apps/backend-go/events/events.go`, adding pre-order, route-reordered, shop-closed/negotiation resolution, return, planning signal/forecast/promo/confidence events, and missing supplier/warehouse/factory/driver/vehicle lifecycle events. |
+| `PX13-B2` | WebSocket refresh contract correctness | `implemented` | `packages/ws-refresh-contract/index.ts` `DISPATCH_REFRESH_EVENTS` corrected from non-existent `MANIFEST_CREATED` to `MANIFEST_DRAFT_CREATED` and augmented with full manifest lifecycle events. `supplier-portal/lib/supplier-ws-events.ts` dispatch refresh set aligned. |
+| `PX13-C1` | K8s secret key alignment | `implemented` | `infra/k8s/optimizer-core/deployment.yaml` secret key fixed from `INTERNAL_API_KEY` to `internal-api-key` to match `backend-go-secrets`. |
+| `PX13-C2` | K8s configmap completeness | `implemented` | `ai-worker-config` added `KAFKA_TOPIC_INVENTORY_IMPORT`, `GCS_BUCKET_NAME`, `IMPORT_LOCAL_FILE_ROOT`. `backend-go-config` added `PUBLIC_BASE_URL`, `FIREBASE_PROJECT_ID`, `KAFKA_TOPIC_INVENTORY_IMPORT`. |
+| `PX13-C3` | K8s CronJob secret/config references | `implemented` | `predictive_push_cronjob.yaml` and `planning_training_export_cronjob.yaml` changed from non-existent `pegasusx-spanner-credentials` / `pegasusx-backend-config` to canonical `backend-go-secrets` / `backend-go-config`. |
+
+**Exit:** All automated gates green; `go build ./apps/backend-go/...` clean; `go test ./apps/backend-go/warehouse/... ./apps/backend-go/factory/... ./apps/backend-go/driver/... -count=1` pass.
 
 ## PX-8 Client Surface Parity Closure
 

@@ -25,9 +25,9 @@ spec:
               value: "predictive-push-cron"
             envFrom:
             - secretRef:
-                name: pegasusx-spanner-credentials
+                name: backend-go-secrets
             - configMapRef:
-                name: pegasusx-backend-config
+                name: backend-go-config
             resources:
               requests:
                 cpu: "500m"

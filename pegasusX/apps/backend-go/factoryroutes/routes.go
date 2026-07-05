@@ -27,13 +27,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Post("/v1/auth/factory/refresh", d.Service.HandleFactoryRefresh)
 	r.Post("/v1/factory/setup", d.Service.HandleFactorySetup)
 
-	// Ecosystem CRUD
-	r.Post("/v1/factories", d.Service.HandleCreateFactory)
-	r.Get("/v1/factories/{factoryId}", d.Service.HandleGetFactory)
-	r.Put("/v1/factories/{factoryId}", d.Service.HandleUpdateFactory)
-	r.Get("/v1/factories", d.Service.HandleListFactories)
-
 	mountProtected := func(rr chi.Router) {
+		// Ecosystem CRUD
+		rr.Post("/v1/factories", d.Service.HandleCreateFactory)
+		rr.Get("/v1/factories/{factoryId}", d.Service.HandleGetFactory)
+		rr.Put("/v1/factories/{factoryId}", d.Service.HandleUpdateFactory)
+		rr.Get("/v1/factories", d.Service.HandleListFactories)
+
 		rr.Get("/v1/factory/analytics/overview", d.Service.HandleAnalyticsOverview)
 		rr.Get("/v1/factory/dashboard", d.Service.HandleDashboard)
 		rr.Get("/v1/factory/profile", d.Service.HandleProfile)

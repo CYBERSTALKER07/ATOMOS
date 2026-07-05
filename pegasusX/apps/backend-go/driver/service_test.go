@@ -829,7 +829,7 @@ func (r *driverRepoSpy) ApplyAvailability(ctx context.Context, _ AvailabilityUpd
 	return nil
 }
 
-func (r *driverRepoSpy) CreateDriver(ctx context.Context, d Driver) error {
+func (r *driverRepoSpy) CreateDriver(ctx context.Context, d Driver, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 
@@ -837,7 +837,7 @@ func (r *driverRepoSpy) GetDriver(ctx context.Context, driverID string) (Driver,
 	return Driver{}, nil
 }
 
-func (r *driverRepoSpy) UpdateDriver(ctx context.Context, d Driver) error {
+func (r *driverRepoSpy) UpdateDriver(ctx context.Context, d Driver, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 
@@ -845,7 +845,7 @@ func (r *driverRepoSpy) ListDrivers(ctx context.Context, supplierID string, limi
 	return nil, nil
 }
 
-func (r *driverRepoSpy) CreateVehicle(ctx context.Context, v Vehicle) error {
+func (r *driverRepoSpy) CreateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 
@@ -853,14 +853,13 @@ func (r *driverRepoSpy) GetVehicle(ctx context.Context, vehicleID string) (Vehic
 	return Vehicle{}, nil
 }
 
-func (r *driverRepoSpy) UpdateVehicle(ctx context.Context, v Vehicle) error {
+func (r *driverRepoSpy) UpdateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 
 func (r *driverRepoSpy) ListVehicles(ctx context.Context, supplierID string, limit, offset int) ([]Vehicle, error) {
 	return nil, nil
 }
-
 
 type driverTxnBufferSpy struct {
 	events []outbox.Event

@@ -13,13 +13,15 @@ import (
 )
 
 type consumerRepoStub struct {
-	orders map[string]Order
+	orders  map[string]Order
+	updated []Order
 }
 
 func (s *consumerRepoStub) CreateOrder(context.Context, *Order, func(outbox.TxnBuffer) error) error {
 	return nil
 }
-func (s *consumerRepoStub) UpdateOrder(context.Context, Order, []DeliveryProofArtifact, func(outbox.TxnBuffer) error) error {
+func (s *consumerRepoStub) UpdateOrder(_ context.Context, o Order, _ []DeliveryProofArtifact, _ func(outbox.TxnBuffer) error) error {
+	s.updated = append(s.updated, o)
 	return nil
 }
 func (s *consumerRepoStub) GetOrder(_ context.Context, orderID string) (Order, bool, error) {
@@ -85,6 +87,50 @@ func TestEventConsumer_PaymentFailedSkipsCompleted(t *testing.T) {
 	})
 	if err := consumer.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
 		t.Fatalf("HandleEvent: %v", err)
+	}
+}
+
+func TestEventConsumer_PaymentClearedOnCancelledOrderGoesToReconciliation(t *testing.T) {
+	repo := &consumerRepoStub{orders: map[string]Order{
+		"ord-1": {OrderID: "ord-1", RetailerID: "ret-1", SupplierID: "sup-1", Status: StatusCancelled},
+	}}
+	svc := &Service{repo: repo, log: slog.Default(), now: time.Now}
+	consumer := NewEventConsumer(svc, slog.Default())
+
+	payload, _ := json.Marshal(map[string]any{
+		"type":     events.EventPaymentCleared,
+		"order_id": "ord-1",
+		"gateway":  "GLOBALPAY",
+	})
+	if err := consumer.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("HandleEvent: %v", err)
+	}
+	if len(repo.updated) != 1 {
+		t.Fatalf("expected 1 UpdateOrder call, got %d", len(repo.updated))
+	}
+	if repo.updated[0].Status != StatusReconciliationRequired {
+		t.Fatalf("expected RECONCILIATION_REQUIRED, got %s", repo.updated[0].Status)
+	}
+}
+
+func TestEventConsumer_PaymentClearedAwaitingKeepsReadVersion(t *testing.T) {
+	repo := &consumerRepoStub{orders: map[string]Order{
+		"ord-1": {OrderID: "ord-1", RetailerID: "ret-1", SupplierID: "sup-1", Status: StatusAwaitingPayment, Version: 7},
+	}}
+	svc := &Service{repo: repo, log: slog.Default(), now: time.Now}
+	if err := svc.SettleExternalPayment(context.Background(), "ord-1", "GLOBALPAY"); err != nil {
+		t.Fatalf("SettleExternalPayment: %v", err)
+	}
+	if len(repo.updated) != 1 {
+		t.Fatalf("expected 1 UpdateOrder call, got %d", len(repo.updated))
+	}
+	// UpdateOrder performs optimistic concurrency against the stored version and
+	// increments it itself; the service must pass through the version it read.
+	if repo.updated[0].Version != 7 {
+		t.Fatalf("expected read version 7 passed to UpdateOrder, got %d", repo.updated[0].Version)
+	}
+	if repo.updated[0].Status != StatusCompleted {
+		t.Fatalf("expected COMPLETED, got %s", repo.updated[0].Status)
 	}
 }
 

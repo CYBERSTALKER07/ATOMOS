@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # PX12-A: verifies shipped client /v1 paths have backend route registrations.
 set -euo pipefail
+ulimit -n 10240 || true
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"

@@ -73,7 +73,7 @@ Production: set `PEGASUSX_ENV=production` and non-`dev-*` webhook secrets or boo
 Cloud credentials: see `docs/CLOUD_CREDENTIALS_CHECKLIST.md` and `docs/CLOUD_CUTOVER_RUNBOOK.md`.
 
 ## Known progressive gaps (do not block SSMR)
-- Some entity paths still use inline Kafka on touch (migrate to outbox when editing).
+- Inline-Kafka audit closed (PX11-D4): all state transitions emit via `outbox.EmitJSON`; the only direct producers are the outbox relay, DLQ writer, CLI tools, and the loss-tolerant planning signal-ingest publisher (by design, like telemetry).
 - Factory portal / admin portal UI parity deferred until backend sign-off.
 - Load cert gate: `make load-cert` / `make load-cert-ssmr` (`scripts/load/`); report template filled by `generate_report.py` after each run.
 
