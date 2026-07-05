@@ -1,6 +1,6 @@
 # pegasusX Enterprise Execution Plan
 
-Last updated: 2026-07-05 (synced with codebase audit: PX13 ecosystem audit remediation shipped, all gates green)
+Last updated: 2026-07-05 (PX-13 ecosystem audit remediation shipped; PX-14 four mature flow hardening in progress; all gates green)
 
 **See also (granular per-backend-feature + per-role/app breakdown with UI replication targets, cross-sync obligations, and phase mapping):** `VEGETABLE_PLAN.md` in this directory. It is the "VeggieTales" / feature-by-feature ledger Boss requested. Read it together with this file before any phase work. All status updates must propagate to both.
 
@@ -757,6 +757,20 @@ Product and support:
 1. Performance, security, and rollback gates pass with evidence.
 2. Support and hypercare are staffed and documented.
 3. Launch approval is based on measured readiness, not feature count.
+
+## PX-14 Four mature flow hardening (2026-07-05 — active)
+
+End-to-end correctness and contract-parity pass over four flows previously marked `E2E_SSMR_GREEN`: returns / reverse logistics, failed delivery (shop-closed / credit-delivery / bypass-offload), replenishment / supply requests / factory transfers, and reassign / rebalance.
+
+| Anchor | Scope | Status | Notes |
+|---|---|---|---|
+| `PX14-F1` | Returns correctness + contract parity | `in progress` | Double-credit guard + warehouse cache invalidation in `supplier/returns.go`; return events added to `ws-refresh-contract` and `packages/types`; typed `ReturnEvent` payload already exists in `events/types.go` and schema. Remaining: retailer-initiated returns decision, SSMR marker. |
+| `PX14-F2` | Failed delivery hardening | `in progress` | Canonical `ShopClosedBypassOffload` + `CreditDelivery` event constants/payloads; dispatcher wired; bypass/credit paths use canonical events; credit-delivery handler now saves idempotency response and invalidates order cache; HTTP handler unit tests added. Remaining: bypass-offload backend unit tests (Spanner-dependent), SSMR exercise, `DELIVERY_DISPUTED` surfacing in retailer payment modal. |
+| `PX14-F3` | Replenishment / transfer durability | `in progress` | Warehouse supply-request CANCEL implemented with real Spanner update, outbox `SUPPLY_REQUEST_UPDATE`, cache invalidation, WS broadcast; test added. Remaining: factory transfer handlers persist to Spanner, remove memory-only paths, idempotency on driver arrive, Kafka event on driver arrive. |
+| `PX14-F4` | Reassign / rebalance correctness | `not started` | Remaining: integration test for `compensatePartialDispatch`, `Orders.ReassignDepth` column, typed ApiClient methods for payload/factory reassign. |
+| `PX14-FE` | Front-end TypeScript cleanup | `implemented` | `supplier-portal`, `factory-portal`, `warehouse-portal` now pass `pnpm tsc --noEmit`; fixes included warehouse-portal analytics syntax, `apiFetch` generic misuse, `ApiError.payload`, `PageSection`/`PortalField` prop mismatches, and shared `desktop-bridge`/`explain-ui` type resolution. |
+
+**Exit:** All four flows have backend unit tests + SSMR markers + contract parity across backend/events/schema/TS; all automated gates green.
 
 ## Phase Synchronization Protocol
 1. Before each meaningful execution batch, read this file and map the work to one or more plan anchors.

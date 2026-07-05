@@ -236,7 +236,8 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := s.transitionDriverOrder(r.Context(), claims, driverTransitionRequest{
+	ctx := r.Context()
+	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
 		OrderID:    req.OrderID,
 		NextStatus: StatusDeliveredOnCredit,
 		Reason:     "credit_delivery",
@@ -247,7 +248,7 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 			return nil
 		},
 		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
-			return outbox.EmitJSON(r.Context(), txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.CreditDeliveryEvent{
+			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.CreditDeliveryEvent{
 				BaseEvent:  events.BaseEvent{Type: events.EventCreditDeliveryMarked, Timestamp: s.now().UTC().Format(time.RFC3339Nano)},
 				OrderID:    orderRecord.OrderID,
 				DriverID:   claims.Subject,
@@ -261,14 +262,15 @@ func (s *Service) HandleCreditDelivery(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
 	}
+	s.invalidateOrderCache(ctx, req.OrderID)
 	resp := map[string]any{
 		"status":   result.Order.Status,
 		"order_id": result.Order.OrderID,
 	}
 	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
 	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
-	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
 }
 
 // HandleMissingItems serves POST /v1/delivery/missing-items.
