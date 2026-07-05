@@ -278,9 +278,8 @@ export default function DispatchPage() {
       }
     }
     try {
-      const data = await apiFetch<{ runs: DispatchRunRow[] }>(
-        '/v1/warehouse/ops/dispatch/runs',
-      );
+      const res = await apiFetch('/v1/warehouse/ops/dispatch/runs');
+      const data = (await res.json()) as { runs: DispatchRunRow[] };
       const runs = data.runs ?? [];
       setDispatchRuns(runs);
       if (isTauri()) {
@@ -566,7 +565,7 @@ export default function DispatchPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         setExecuteError(err.message);
-        setExecuteExplain(explainFromApiError(err.body));
+        setExecuteExplain(explainFromApiError(err.payload));
       } else {
         setExecuteExplain(null);
         setExecuteError(err instanceof Error ? err.message : 'Smart dispatch failed');

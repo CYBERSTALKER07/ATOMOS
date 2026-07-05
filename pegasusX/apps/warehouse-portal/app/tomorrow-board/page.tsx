@@ -33,8 +33,11 @@ export default function TomorrowBoardPage() {
 
   useEffect(() => {
     setLoading(true);
-    void apiFetch<BoardResponse>(`/v1/warehouse/ops/board?date=${encodeURIComponent(date)}`)
-      .then(setBoard)
+    void apiFetch(`/v1/warehouse/ops/board?date=${encodeURIComponent(date)}`)
+      .then(async (res) => {
+        const data = (await res.json()) as BoardResponse;
+        setBoard(data);
+      })
       .catch(() => setBoard(null))
       .finally(() => setLoading(false));
   }, [date]);

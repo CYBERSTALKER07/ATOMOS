@@ -33,8 +33,10 @@ export async function subscribeDesktopDeepLinks(
   };
 
   try {
-    const { listen } = await import("@tauri-apps/api/event");
-    const unlisten = await listen<string>("pegasusx-deep-link", (event) => {
+    const { listen } = await import("@tauri-apps/api/event") as {
+      listen: (event: string, handler: (event: { payload: string }) => void) => Promise<() => void>;
+    };
+    const unlisten = await listen("pegasusx-deep-link", (event) => {
       handleUrl(event.payload);
     });
     cleanups.push(unlisten);
@@ -43,7 +45,9 @@ export async function subscribeDesktopDeepLinks(
   }
 
   try {
-    const { onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
+    const { onOpenUrl } = await import("@tauri-apps/plugin-deep-link") as {
+      onOpenUrl: (handler: (urls: string[]) => void) => Promise<() => void>;
+    };
     const unlisten = await onOpenUrl((urls) => {
       for (const url of urls) {
         handleUrl(url);

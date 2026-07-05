@@ -1,8 +1,14 @@
-export { ExplainStatusBanner, parseExplainFromPayload } from './ExplainStatusBanner';
-export type { ExplainStatusBannerProps } from './ExplainStatusBanner';
-export { HandoffCard } from './HandoffCard';
-export type { HandoffCardProps } from './HandoffCard';
+import { ExplainStatusBanner, parseExplainFromPayload } from './ExplainStatusBanner';
+import type { ExplainStatusBannerProps } from './ExplainStatusBanner';
+import { HandoffCard } from './HandoffCard';
+import type { HandoffCardProps } from './HandoffCard';
+import type { StatusExplain } from '@pegasusx/types';
 
-export function explainFromApiError(body: unknown): import('@pegasusx/types').StatusExplain | null {
+export { ExplainStatusBanner, parseExplainFromPayload };
+export type { ExplainStatusBannerProps };
+export { HandoffCard };
+export type { HandoffCardProps };
+
+export function explainFromApiError(body: unknown): StatusExplain | null {
   return parseExplainFromPayload(body);
 }

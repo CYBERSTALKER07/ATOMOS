@@ -20,9 +20,10 @@ describe("warehouse handoff pulse filter", () => {
   it("keeps manifest seal events", () => {
     expect(
       isHandoffEvent({
+        id: "evt-1",
         kind: "MANIFEST_SEALED",
         title: "Manifest sealed",
-        ts: new Date().toISOString(),
+        occurred_at: new Date().toISOString(),
       } as PulseEvent),
     ).toBe(true);
   });
@@ -30,9 +31,10 @@ describe("warehouse handoff pulse filter", () => {
   it("drops unrelated pulse kinds", () => {
     expect(
       isHandoffEvent({
+        id: "evt-2",
         kind: "INVENTORY_ADJUSTED",
         title: "Stock change",
-        ts: new Date().toISOString(),
+        occurred_at: new Date().toISOString(),
       } as PulseEvent),
     ).toBe(false);
   });

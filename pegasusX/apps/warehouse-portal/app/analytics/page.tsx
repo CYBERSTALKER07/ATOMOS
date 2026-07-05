@@ -191,7 +191,6 @@ export default function AnalyticsPage() {
             No completed-order revenue in this period. Daily breakdown populates from Spanner `daily_breakdown`.
           </p>
         )}
-        )}
       </div>
 
       <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>

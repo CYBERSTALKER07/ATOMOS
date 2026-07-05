@@ -179,7 +179,7 @@ export default function WarehouseOperationsPage() {
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
 
-      <PageSection title="Broadcast templates" subtitle="Built-in depot starters plus your saved custom messages.">
+      <PageSection title="Broadcast templates" description="Built-in depot starters plus your saved custom messages.">
         {loading ? (
           <p className="text-sm text-muted">Loading templates…</p>
         ) : (
@@ -212,16 +212,16 @@ export default function WarehouseOperationsPage() {
 
       <PortalSection title="Send depot broadcast">
         <div className="grid gap-4 md:grid-cols-2">
-          <PortalField label="Effective date (optional)">
+          <PortalField id="templateDate" label="Effective date (optional)">
             <PortalInput value={templateDate} onChange={(e) => setTemplateDate(e.target.value)} placeholder="2026-07-01" />
           </PortalField>
-          <PortalField label="Custom reason (optional)">
+          <PortalField id="customReason" label="Custom reason (optional)">
             <PortalInput value={customReason} onChange={(e) => setCustomReason(e.target.value)} placeholder="Bay 2 closed" />
           </PortalField>
-          <PortalField label="Title">
+          <PortalField id="broadcastTitle" label="Title">
             <PortalInput value={title} onChange={(e) => setTitle(e.target.value)} />
           </PortalField>
-          <PortalField label="Target role">
+          <PortalField id="broadcastRole" label="Target role">
             <select
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               value={broadcastRole}
@@ -235,8 +235,9 @@ export default function WarehouseOperationsPage() {
             </select>
           </PortalField>
         </div>
-        <PortalField label="Message">
+        <PortalField id="broadcastBody" label="Message">
           <textarea
+            id="broadcastBody"
             className="min-h-[120px] w-full rounded-md border bg-background px-3 py-2 text-sm"
             value={body}
             onChange={(e) => setBody(e.target.value)}
@@ -261,13 +262,13 @@ export default function WarehouseOperationsPage() {
           Preview how a proposed retailer price would compare to catalog list price for SKUs touching this depot. Does not create overrides.
         </p>
         <div className="grid gap-4 md:grid-cols-3">
-          <PortalField label="Product / SKU ID">
+          <PortalField id="pricingProductId" label="Product / SKU ID">
             <PortalInput value={productId} onChange={(e) => setProductId(e.target.value)} />
           </PortalField>
-          <PortalField label="Retailer ID (optional)">
+          <PortalField id="pricingRetailerId" label="Retailer ID (optional)">
             <PortalInput value={retailerId} onChange={(e) => setRetailerId(e.target.value)} />
           </PortalField>
-          <PortalField label="Proposed price (minor units)">
+          <PortalField id="pricingProposedPrice" label="Proposed price (minor units)">
             <PortalInput value={proposedPrice} onChange={(e) => setProposedPrice(e.target.value)} inputMode="numeric" />
           </PortalField>
         </div>

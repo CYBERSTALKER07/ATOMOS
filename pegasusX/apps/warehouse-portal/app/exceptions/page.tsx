@@ -21,8 +21,11 @@ export default function ExceptionsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void apiFetch<{ exceptions: ExceptionRow[] }>('/v1/warehouse/ops/exceptions')
-      .then((data) => setRows(data.exceptions ?? []))
+    void apiFetch('/v1/warehouse/ops/exceptions')
+      .then(async (res) => {
+        const data = (await res.json()) as { exceptions: ExceptionRow[] };
+        setRows(data.exceptions ?? []);
+      })
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
   }, []);
