@@ -31,6 +31,18 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/orders/{id}")
     suspend fun getOrder(@Path("id") id: String): Response<Order>
 
+    @POST("v1/warehouse/recommend-reassign")
+    suspend fun recommendReassign(
+        @Body req: RecommendReassignRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): Response<RecommendReassignResponse>
+
+    @POST("v1/warehouse/reassign-order")
+    suspend fun reassignOrder(
+        @Body req: ReassignOrderRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): Response<StatusResponse>
+
     // ── Drivers ──
     @GET("v1/warehouse/ops/drivers")
     suspend fun getDrivers(): Response<DriverListResponse>
@@ -371,6 +383,15 @@ interface WarehouseApi {
 
     @GET("v1/warehouse/ops/pulse")
     suspend fun getPulse(): Response<PulseResponse>
+
+    // ── Rescue Operations ──
+    @POST("v1/warehouse/ops/dispatch/routes/{routeId}/rescue")
+    suspend fun proposeRescue(
+        @Path("routeId") routeId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+    ): Response<Map<String, String>>
+
 
     // ── Notifications + client policy ──
     @GET("v1/user/notifications")

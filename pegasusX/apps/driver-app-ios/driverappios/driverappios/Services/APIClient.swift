@@ -377,6 +377,32 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
+    // MARK: - Rescue Operations
+
+    func requestRescue(reason: String, note: String) async throws -> [String: String] {
+        struct Req: Encodable { let reason: String; let note: String }
+        return try await post(
+            "v1/driver/ops/rescue/request",
+            body: Req(reason: reason, note: note)
+        )
+    }
+
+    func respondRescue(rescueId: String, accept: Bool) async throws -> [String: String] {
+        struct Req: Encodable { let rescue_id: String; let accept: Bool }
+        return try await post(
+            "v1/driver/ops/rescue/respond",
+            body: Req(rescue_id: rescueId, accept: accept)
+        )
+    }
+
+    func reassignHandshake(orderId: String) async throws -> [String: String] {
+        return try await post(
+            "v1/fleet/orders/\(orderId)/reassign-handshake",
+            body: EmptyBody(),
+            headers: ["Idempotency-Key": UUID().uuidString]
+        )
+    }
+
     // Quantity negotiation disabled ecosystem-wide — backend returns 410 feature_disabled.
 
     /// Edge 32: Mark order as delivered on credit

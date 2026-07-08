@@ -31,6 +31,7 @@ const NAV: NavSection[] = [
       { href: "/operations", icon: "dispatch", label: "Operations" },
       { href: "/operations/replenishment-policies", icon: "inventory", label: "Replenishment Policies" },
       { href: "/exceptions", icon: "warning", label: "Exceptions" },
+      { href: "/activity", icon: "overview", label: "Activity" },
     ],
   },
   {
@@ -72,6 +73,8 @@ const NAV: NavSection[] = [
       { href: "/reconciliation", icon: "reconcile", label: "Reconciliation" },
       { href: "/payments", icon: "payment", label: "Payments" },
       { href: "/earnings", icon: "pricing", label: "Earnings" },
+      { href: "/chargebacks", icon: "warning", label: "Chargebacks" },
+      { href: "/ledger", icon: "orders", label: "Ledger" },
     ],
   },
   {

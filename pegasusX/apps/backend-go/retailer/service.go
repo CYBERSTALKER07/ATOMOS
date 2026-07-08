@@ -215,6 +215,7 @@ type TrackingOrder struct {
 	WarehouseID           string                   `json:"warehouse_id,omitempty"`
 	DriverID              string                   `json:"driver_id,omitempty"`
 	VehicleID             string                   `json:"vehicle_id,omitempty"`
+	LicensePlate          string                   `json:"license_plate,omitempty"`
 	RouteID               string                   `json:"route_id,omitempty"`
 	ManifestID            string                   `json:"manifest_id,omitempty"`
 	Status                string                   `json:"status"`

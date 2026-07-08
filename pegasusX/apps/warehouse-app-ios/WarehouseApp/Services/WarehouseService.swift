@@ -258,6 +258,10 @@ enum WarehouseService {
         try await api.post("v1/warehouse/ops/dispatch/execute", body: body, idempotencyKey: idempotencyKey)
     }
 
+    static func proposeRescue(routeId: String, body: [String: AnyCodable]) async throws -> [String: String] {
+        try await api.post("v1/warehouse/ops/dispatch/routes/\(routeId)/rescue", body: body, idempotencyKey: WarehouseIdempotency.rescuePropose(routeId: routeId))
+    }
+
     static func supplyRequests(state: String? = nil) async throws -> [WarehouseSupplyRequest] {
         var query: [String: String] = [:]
         if let state { query["state"] = state }
@@ -451,6 +455,21 @@ enum WarehouseService {
             "v1/warehouse/ops/location",
             body: WarehouseLocationPatchRequest(address: address, placeId: placeId, lat: lat, lng: lng),
             idempotencyKey: WarehouseIdempotency.opsLocation(lat: lat, lng: lng, placeId: placeId)
+        )
+    }
+
+    // MARK: - Reassignment
+    static func recommendReassign(orderId: String) async throws -> RecommendReassignResponse {
+        try await api.post(
+            "v1/warehouse/recommend-reassign",
+            body: RecommendReassignRequest(orderId: orderId)
+        )
+    }
+
+    static func reassignOrder(_ request: ReassignOrderRequest, idempotencyKey: String) async throws {
+        try await api.postVoid(
+            "v1/warehouse/reassign-order",
+            body: request
         )
     }
 }

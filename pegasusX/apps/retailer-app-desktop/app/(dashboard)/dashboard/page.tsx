@@ -436,12 +436,6 @@ function QuickAction({
   icon: React.ElementType;
   label: string;
 }) {
-  useRetailerSessionReconcile(() => {
-    void refreshOrders();
-    void refreshPredictions();
-    void refreshProducts();
-  });
-
   return (
     <Link
       href={href}
@@ -470,12 +464,6 @@ function KpiCard({
   sub: string;
   icon: React.ReactNode;
 }) {
-  useRetailerSessionReconcile(() => {
-    void refreshOrders();
-    void refreshPredictions();
-    void refreshProducts();
-  });
-
   return (
     <BentoCard interactive={false}>
       <div className="flex items-center justify-between mb-2">

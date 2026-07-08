@@ -17,6 +17,8 @@ enum TypeEnum: String {
     case commandDispatched
     case commandReceived
     case commandSettled
+    case creditDeliveryMarked
+    case creditDeliveryResolved
     case deliveryDisputed
     case deliverySessionUpdated
     case demandBaselineUpdated
@@ -48,6 +50,7 @@ enum TypeEnum: String {
     case negotiationResolved
     case orderAmended
     case orderAssigned
+    case orderConditionReported
     case orderCreated
     case orderFinalized
     case orderReassigned
@@ -72,9 +75,12 @@ enum TypeEnum: String {
     case preOrderEdited
     case preOrderNotified
     case preOrderNudge
+    case productHandlingUpdated
     case promotionChanged
     case replenishmentAutoApproved
     case replenishmentInsightCreated
+    case retailerCreditLimitBreached
+    case retailerCreditProfileChanged
     case retailerPriceOverride
     case retailerRegistered
     case returnReceivedAtWarehouse
@@ -82,6 +88,7 @@ enum TypeEnum: String {
     case routeReordered
     case settlementRequired
     case shopClosed
+    case shopClosedBypassOffload
     case shopClosedEscalated
     case shopClosedResolved
     case shopClosedResponse

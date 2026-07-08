@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 )
 
@@ -13,6 +14,7 @@ import (
 type Deps struct {
 	Service             *warehouse.Service
 	OrderService        *order.Service
+	PayloadService      *payload.Service
 	JWTSecret           string
 	Spanner             *spanner.Client
 	FirebaseAuthEnabled bool
@@ -70,6 +72,16 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/warehouse/ops/dispatch/preview", d.Service.HandleDispatchPreview)
 		rr.Post("/v1/warehouse/ops/dispatch/preview", d.Service.HandleDispatchPreview)
 		rr.Post("/v1/warehouse/ops/dispatch/execute", d.Service.HandleDispatchExecute)
+		
+		// Payload parity for reassignment without scanning
+		if d.PayloadService != nil {
+			rr.Post("/v1/warehouse/reassign-order", d.PayloadService.HandleApplyReassign)
+			rr.Post("/v1/warehouse/recommend-reassign", d.PayloadService.HandleRecommendReassign)
+		}
+
+		// Rescue routes
+		rr.Post("/v1/warehouse/ops/dispatch/rescue/preview", d.Service.HandleOpsDispatchRescuePreview)
+		rr.Post("/v1/warehouse/ops/dispatch/rescue/propose", d.Service.HandleOpsDispatchRescuePropose)
 		rr.Get("/v1/warehouse/ops/dispatch/runs", d.Service.HandleDispatchRuns)
 		rr.Get("/v1/warehouse/ops/dispatch/runs/{runID}", d.Service.HandleDispatchRunDetail)
 		rr.Get("/v1/warehouse/ops/board", d.Service.HandleOpsBoard)

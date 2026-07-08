@@ -328,3 +328,7 @@ func (r *inMemoryOrderRepo) UpdateOrder(ctx context.Context, o order.Order, _ []
 	r.byID[o.OrderID] = o
 	return nil
 }
+
+func (r *inMemoryOrderRepo) FindSiblingDriversForOrder(ctx context.Context, orderID string) ([]string, error) {
+	return nil, nil
+}

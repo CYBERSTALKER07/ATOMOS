@@ -62,3 +62,16 @@ interface PendingMutationDao {
     @Query("DELETE FROM pending_mutations WHERE id = :id")
     suspend fun deleteById(id: String)
 }
+
+@Dao
+interface TelemetryDao {
+
+    @Query("SELECT * FROM telemetry_locations ORDER BY timestamp ASC")
+    suspend fun getAll(): List<com.pegasusx.driver.data.model.TelemetryLocationEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(location: com.pegasusx.driver.data.model.TelemetryLocationEntity)
+
+    @Query("DELETE FROM telemetry_locations WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<String>)
+}

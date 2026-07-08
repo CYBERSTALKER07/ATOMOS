@@ -66,7 +66,7 @@ func driverResidualVolumes(driver PortalDriver, topOff *manifest.DriverManifestC
 
 func driverDispatchEligible(driver PortalDriver, fleetCtx fleetDispatchContext) bool {
 	driverID := strings.TrimSpace(driver.DriverID)
-	if !driver.IsActive || driverID == "" {
+	if !driver.IsActive || !driver.OnShift || driverID == "" {
 		return false
 	}
 	if fleetCtx.InTransit[driverID] {

@@ -101,6 +101,31 @@ data class WarehouseProposeDeliveryRequest(
 )
 
 @Serializable
+data class DriverRecommendation(
+    @SerialName("driver_id") val driverId: String,
+    @SerialName("driver_name") val driverName: String,
+    val distance: Double,
+    val score: Double,
+    @SerialName("vehicle_class") val vehicleClass: String = "",
+    @SerialName("license_plate") val licensePlate: String = "",
+)
+
+@Serializable
+data class RecommendReassignResponse(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("retailer_name") val retailerName: String = "",
+    @SerialName("order_volume_vu") val orderVolumeVu: Double = 0.0,
+    val recommendations: List<DriverRecommendation> = emptyList()
+)
+
+@Serializable
+data class ApplyReassignRequest(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("driver_id") val driverId: String,
+    val partial: Boolean
+)
+
+@Serializable
 data class FleetDriversResponse(
     @SerialName("supplier_id") val supplierId: String = "",
     val items: List<FleetDriver> = emptyList(),

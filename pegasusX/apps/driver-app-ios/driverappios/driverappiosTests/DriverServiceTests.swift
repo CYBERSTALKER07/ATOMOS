@@ -26,13 +26,7 @@ struct DriverServiceTests {
         }
     }
 
-    @Test func missionMockDataHasThreeEntries() {
-        let mocks = Mission.mockMissions
-        #expect(mocks.count == 3)
-        #expect(mocks[0].gateway == "GLOBAL_PAY")
-        #expect(mocks[1].gateway == "CASH")
-        #expect(mocks[2].gateway == "CASH")
-    }
+
 
     // MARK: - Order State
 
@@ -109,11 +103,7 @@ struct DriverServiceTests {
         #expect(expired.isValid == false)
     }
 
-    @Test func routeManifestMockIsValid() {
-        let mock = RouteManifest.mock
-        #expect(mock.isValid == true)
-        #expect(mock.hashes.count == 3)
-    }
+
 
     // MARK: - API Endpoint Paths
 

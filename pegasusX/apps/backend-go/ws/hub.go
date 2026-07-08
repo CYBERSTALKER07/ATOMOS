@@ -137,6 +137,16 @@ func (h *Hub) connectionCountLocked() int {
 	return conns
 }
 
+// HasSubscribers reports whether a room has active local subscribers.
+func (h *Hub) HasSubscribers(room string) bool {
+	if h == nil || room == "" {
+		return false
+	}
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.rooms[room]) > 0
+}
+
 // shedRoomLocked reaps the oldest connections until the room is within MaxPerRoom.
 // Caller must hold h.mu.
 func (h *Hub) shedRoomLocked(room string) {

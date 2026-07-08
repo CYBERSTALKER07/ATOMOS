@@ -4,6 +4,7 @@ data class OrderActionFlags(
     val canDelay: Boolean,
     val canReject: Boolean,
     val canOverflow: Boolean,
+    val canReassign: Boolean,
 )
 
 fun orderActionFlags(state: String): OrderActionFlags {
@@ -16,5 +17,8 @@ fun orderActionFlags(state: String): OrderActionFlags {
             "PENDING", "LOADED", "IN_TRANSIT", "SCHEDULED", "AUTO_ACCEPTED", "DELAYED", "ARRIVED",
         ),
         canOverflow = s == "LOADED" || s == "IN_TRANSIT",
+        canReassign = s in setOf(
+            "PENDING", "LOADED", "IN_TRANSIT", "SCHEDULED", "AUTO_ACCEPTED", "DELAYED", "ARRIVED",
+        ),
     )
 }

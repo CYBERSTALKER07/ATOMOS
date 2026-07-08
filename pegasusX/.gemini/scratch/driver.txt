@@ -1,0 +1,33 @@
+=== driver Android ===
+CashCollectionScreen.kt
+DeliveryCorrectionScreen.kt
+DriverNotificationInboxScreen.kt
+HomeScreen.kt
+LoginScreen.kt
+MainTabView.kt
+ManifestScreen.kt
+MapScreen.kt
+OfflineVerifierScreen.kt
+OffloadReviewScreen.kt
+PaymentWaitingScreen.kt
+ProfileScreen.kt
+ScannerScreen.kt
+ShopClosedWaitingScreen.kt
+SupplyTransfersScreen.kt
+=== driver iOS ===
+CashCollectionView.swift
+DeliveryCorrectionView.swift
+DriverNotificationInboxView.swift
+EndSessionView.swift
+FleetMapView.swift
+HomeView.swift
+LoginView.swift
+MainTabView.swift
+OfflineVerifierView.swift
+OffloadReviewView.swift
+PaymentWaitingView.swift
+ProfileView.swift
+QRScannerView.swift
+RidesListView.swift
+ShopClosedWaitingView.swift
+SupplyTransfersView.swift

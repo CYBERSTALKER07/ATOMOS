@@ -100,6 +100,7 @@ struct ContentView: View {
     @State private var shopClosedAlert: ShopClosedAlertEvent?
     @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var clientPolicyMessage: String?
+    @State private var rescueWarningMessage: String?
     @State private var deliveriesHubInitialTab: DeliveriesHubTab = .map
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -120,6 +121,9 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             ClientPolicyBanner(message: clientPolicyMessage)
+            RescueWarningBanner(message: rescueWarningMessage) {
+                withAnimation(AnimationConstants.fluid) { rescueWarningMessage = nil }
+            }
             Group {
                 if horizontalSizeClass == .regular {
                     ipadLayout
@@ -808,7 +812,12 @@ struct ContentView: View {
                 await loadActiveOrders()
             case .paymentFailed, .paymentExpired:
                 await loadActiveOrders()
-            case .orderStatusChanged, .orderReassigned:
+            case .orderStatusChanged:
+                await loadActiveOrders()
+            case .orderReassigned(let orderId, let licensePlate):
+                withAnimation(AnimationConstants.fluid) {
+                    rescueWarningMessage = "Your order #\(orderId.suffix(4)) has been reassigned to rescue truck (\(licensePlate)) due to a breakdown."
+                }
                 await loadActiveOrders()
             case .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited, .preOrderNudge, .preOrderConfirmationPush,
                  .preOrderDateProposed, .preOrderDateAccepted, .preOrderDateRejected, .preOrderCancelled:

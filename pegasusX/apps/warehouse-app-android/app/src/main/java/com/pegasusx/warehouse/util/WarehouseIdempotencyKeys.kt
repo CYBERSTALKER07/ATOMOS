@@ -95,6 +95,11 @@ object WarehouseIdempotencyKeys {
         return "warehouse-order-propose-delivery:$orderId:$hash"
     }
 
+    fun recommendReassign(orderId: String): String = "warehouse-recommend-reassign:$orderId"
+
+    fun reassignOrder(orderId: String, driverId: String): String =
+        "warehouse-reassign-order:$orderId:$driverId"
+
     fun broadcast(role: String, title: String, body: String): String =
         "warehouse-broadcast:${warehouseId()}:${role.trim().uppercase()}:${stableHash("$title:$body")}"
 

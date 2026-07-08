@@ -29,7 +29,7 @@ export default function NetworkPulsePanel({ className }: { className?: string })
 
   return (
     <div className={className}>
-      <PulseTimeline events={events} loading={loading} emptyLabel="No pulse events yet for your orders." />
+      <PulseTimeline events={events} loading={loading} />
     </div>
   );
 }

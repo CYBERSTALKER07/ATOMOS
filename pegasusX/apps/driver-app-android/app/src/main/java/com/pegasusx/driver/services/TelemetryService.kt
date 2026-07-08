@@ -57,6 +57,7 @@ class TelemetryService : Service() {
     @Inject lateinit var telemetrySocket: TelemetrySocket
     @Inject lateinit var api: DriverApi
     @Inject lateinit var orderDao: OrderDao
+    @Inject lateinit var telemetryDao: com.pegasusx.driver.data.local.TelemetryDao
 
     private lateinit var fusedClient: FusedLocationProviderClient
     private var wakeLock: PowerManager.WakeLock? = null
@@ -183,7 +184,23 @@ class TelemetryService : Service() {
 
                     val sent = telemetrySocket.send(payload)
                     if (!sent) {
-                        Log.w(TAG, "Telemetry send failed — socket may be disconnected")
+                        Log.w(TAG, "Telemetry send failed — socket may be disconnected, caching offline")
+                        serviceScope.launch {
+                            try {
+                                telemetryDao.insert(
+                                    com.pegasusx.driver.data.model.TelemetryLocationEntity(
+                                        id = java.util.UUID.randomUUID().toString(),
+                                        latitude = location.latitude,
+                                        longitude = location.longitude,
+                                        timestamp = System.currentTimeMillis(),
+                                        speed = location.speed,
+                                        bearing = location.bearing
+                                    )
+                                )
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to cache offline telemetry", e)
+                            }
+                        }
                     } else {
                         lastSentLocation = location
                         lastSentTimeMs = System.currentTimeMillis()

@@ -170,6 +170,14 @@ export function supplierManifestSealKey(manifestId: string, supplierId: string):
   return `supplier-manifest-seal:${supplierId}:${manifestId}`;
 }
 
+export function supplierManifestSealAllKey(splitGroupId: string, supplierId: string): string {
+  return `supplier-manifest-seal-all:${supplierId}:${splitGroupId}`;
+}
+
+export function payloadSealAllKey(splitGroupId: string, payloaderId: string): string {
+  return `payload-seal-all:${payloaderId}:${splitGroupId}`;
+}
+
 export function supplierManifestStartLoadingKey(manifestId: string): string {
   return `supplier-start-loading:${manifestId}`;
 }

@@ -171,12 +171,15 @@ export default function NotificationPanel({
           </div>
 
           {items.length > 0 && (
-            <div className="p-3 text-center" style={{ borderTop: '1px solid var(--desk-border)', background: 'var(--desk-surface)' }}>
+            <div className="p-3 text-center flex flex-col gap-2" style={{ borderTop: '1px solid var(--desk-border)', background: 'var(--desk-surface)' }}>
               <button
                 className="desk-btn-secondary w-full justify-center"
-                onClick={onClose}
+                onClick={() => {
+                  onClose();
+                  window.location.href = '/notifications';
+                }}
               >
-                Close Panel
+                View full inbox
               </button>
             </div>
           )}

@@ -8,6 +8,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
@@ -16,6 +17,7 @@ import (
 type Deps struct {
 	Service           *supplier.Service
 	OrderService      *order.Service
+	PayloadService    *payload.Service
 	NotificationInbox *notifications.InboxHandlers
 	JWTSecret         string
 	Spanner           *spanner.Client
@@ -132,6 +134,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			gr.Post("/v1/supplier/negotiate/resolve", d.OrderService.HandleResolveNegotiation)
 			gr.Post("/v1/supplier/route/approve-early-complete", d.OrderService.HandleApproveEarlyComplete)
 		}
+		
+		if d.PayloadService != nil {
+			gr.Post("/v1/supplier/reassign-order", d.PayloadService.HandleApplyReassign)
+			gr.Post("/v1/supplier/recommend-reassign", d.PayloadService.HandleRecommendReassign)
+		}
+
 		gr.Get("/v1/supplier/empathy/adoption", d.Service.HandleEmpathyAdoption)
 		gr.Post("/v1/supplier/broadcast", d.Service.HandleBroadcast)
 		gr.Post("/v1/supplier/replenishment/trigger", d.Service.HandleReplenishmentTrigger)

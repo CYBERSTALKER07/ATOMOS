@@ -219,6 +219,7 @@ data class ReassignOrderRequest(
     @SerialName("to_driver_id") val toDriverId: String,
     val reason: String = "payload-redispatch",
     @SerialName("to_manifest_id") val toManifestId: String? = null,
+    @SerialName("is_partial") val isPartial: Boolean = false,
 )
 
 @Serializable

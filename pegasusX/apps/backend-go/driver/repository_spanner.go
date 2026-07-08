@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"google.golang.org/api/iterator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
@@ -21,6 +22,7 @@ type Repository interface {
 	GetVehicle(ctx context.Context, vehicleID string) (Vehicle, error)
 	UpdateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error
 	ListVehicles(ctx context.Context, supplierID string, limit, offset int) ([]Vehicle, error)
+	FindSiblingDriversForOrder(ctx context.Context, orderID string) ([]string, error)
 }
 
 // AvailabilityUpdate is the durable driver shift/offline row patch.
@@ -255,4 +257,37 @@ func (r *inMemoryRepository) ListVehicles(ctx context.Context, supplierID string
 
 func (r *inMemoryRepository) ApplyAvailability(ctx context.Context, upd AvailabilityUpdate, emit func(outbox.TxnBuffer) error) error {
 	return r.Apply(ctx, nil, emit)
+}
+
+func (r *inMemoryRepository) FindSiblingDriversForOrder(ctx context.Context, orderID string) ([]string, error) {
+	return nil, nil
+}
+
+func (r *SpannerRepository) FindSiblingDriversForOrder(ctx context.Context, orderID string) ([]string, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT DISTINCT DriverId FROM SupplierTruckManifests
+			  WHERE ManifestId IN (
+				  SELECT ManifestId FROM ManifestOrders WHERE OrderId = @orderId
+			  )`,
+		Params: map[string]interface{}{"orderId": orderID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	var driverIDs []string
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var driverID string
+		if err := row.Column(0, &driverID); err != nil {
+			return nil, err
+		}
+		driverIDs = append(driverIDs, driverID)
+	}
+	return driverIDs, nil
 }

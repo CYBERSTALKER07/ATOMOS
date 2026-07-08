@@ -8,6 +8,8 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pegasusx.supplier.ui.components.SupplierLoadingState
@@ -26,8 +28,17 @@ fun OrdersScreen(
     viewModel: OrdersViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.reassignMessage) {
+        state.reassignMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.dismissReassignMessage()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Orders") },
@@ -82,10 +93,89 @@ fun OrdersScreen(
                                 order.updatedAt.takeIf { it.isNotBlank() }?.let { append(" · $it") }
                             },
                             status = order.status.ifBlank { order.decision },
+                            onReassign = if (viewModel.canWarehouseOps(order)) {
+                                { viewModel.openReassignDialog(order.orderId) }
+                            } else null,
                         )
                     }
                 }
             }
         }
+    }
+
+    state.reassignTarget?.let { orderId ->
+        val recs = state.reassignRecommendations
+        AlertDialog(
+            onDismissRequest = { viewModel.closeReassignDialog() },
+            title = { Text("Reassign Order ${orderId.take(8)}") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (recs == null) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                    } else if (recs.recommendations.isEmpty()) {
+                        Text("No suitable trucks available.")
+                    } else {
+                        Text(
+                            "${recs.retailerName} • %.1f VU".format(recs.orderVolumeVu),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(280.dp),
+                        ) {
+                            items(recs.recommendations, key = { it.driverId }) { rec ->
+                                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                rec.driverName.ifBlank { rec.driverId.take(8) },
+                                                style = MaterialTheme.typography.titleSmall,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Text("score %.2f".format(rec.score), style = MaterialTheme.typography.labelMedium)
+                                        }
+                                        Text(
+                                            listOfNotNull(
+                                                rec.licensePlate.takeIf { it.isNotBlank() },
+                                                rec.vehicleClass.takeIf { it.isNotBlank() }
+                                            ).joinToString(" • "),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    viewModel.applyReassign(orderId, rec.driverId, true)
+                                                },
+                                                enabled = !state.isReassigning,
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                            ) { Text("Partial") }
+                                            Button(
+                                                onClick = {
+                                                    viewModel.applyReassign(orderId, rec.driverId, false)
+                                                },
+                                                enabled = !state.isReassigning,
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                            ) { Text("Complete") }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { viewModel.closeReassignDialog() }, enabled = !state.isReassigning) {
+                    Text("Close")
+                }
+            }
+        )
     }
 }

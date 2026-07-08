@@ -16,6 +16,7 @@ fun shouldRefreshManifestOnWsEvent(eventType: String): Boolean {
         "SHOP_CLOSED_RESOLVED",
         "NEGOTIATION_RESOLVED",
         "DELIVERY_SESSION_UPDATED",
+        "REASSIGN_HANDSHAKE_COMPLETED",
         "DRIVER_AVAILABILITY_CHANGED" -> true
         else -> false
     }

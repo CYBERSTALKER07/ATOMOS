@@ -1139,7 +1139,8 @@ func driverOrderListQuery(client *spanner.Client) driver.DriverOrderQuery {
 			SQL: `SELECT o.OrderId, o.RetailerId, COALESCE(r.Name, o.RetailerId), o.Status,
 			             o.TotalMinor, o.DeliveryFeeMinor, o.Lat, o.Lng, COALESCE(o.RouteId, ''),
 			             o.LineItemsJson, o.CreatedAt, o.UpdatedAt,
-			             COALESCE(mo.SequenceIndex, 0)
+			             COALESCE(mo.SequenceIndex, 0),
+			             CASE WHEN (SELECT COUNT(DISTINCT ManifestId) FROM ManifestOrders WHERE OrderId = o.OrderId) > 1 THEN o.OrderId ELSE "" END
 			      FROM Orders o
 			      LEFT JOIN Retailers r ON r.RetailerId = o.RetailerId
 			      LEFT JOIN ManifestOrders mo ON mo.ManifestId = o.ManifestId AND mo.OrderId = o.OrderId
@@ -1164,7 +1165,7 @@ func driverOrderListQuery(client *spanner.Client) driver.DriverOrderQuery {
 			var createdAt, updatedAt time.Time
 			if err := row.Columns(
 				&o.OrderID, &o.RetailerID, &o.RetailerName, &o.Status, &o.TotalMinor, &o.DeliveryFeeMinor,
-				&lat, &lng, &o.RouteID, &lineItems, &createdAt, &updatedAt, &o.SequenceIndex,
+				&lat, &lng, &o.RouteID, &lineItems, &createdAt, &updatedAt, &o.SequenceIndex, &o.SplitGroupID,
 			); err != nil {
 				return nil, fmt.Errorf("driver order scan: %w", err)
 			}
@@ -1235,7 +1236,8 @@ func driverOrderGetQuery(client *spanner.Client) driver.DriverOrderGetQuery {
 			SQL: `SELECT o.OrderId, o.RetailerId, COALESCE(r.Name, o.RetailerId), o.Status,
 			             o.TotalMinor, o.DeliveryFeeMinor, o.Lat, o.Lng, COALESCE(o.RouteId, ''),
 			             o.LineItemsJson, o.CreatedAt, o.UpdatedAt,
-			             COALESCE(mo.SequenceIndex, 0)
+			             COALESCE(mo.SequenceIndex, 0),
+			             CASE WHEN (SELECT COUNT(DISTINCT ManifestId) FROM ManifestOrders WHERE OrderId = o.OrderId) > 1 THEN o.OrderId ELSE "" END
 			      FROM Orders o
 			      LEFT JOIN Retailers r ON r.RetailerId = o.RetailerId
 			      LEFT JOIN ManifestOrders mo ON mo.ManifestId = o.ManifestId AND mo.OrderId = o.OrderId
@@ -1257,7 +1259,7 @@ func driverOrderGetQuery(client *spanner.Client) driver.DriverOrderGetQuery {
 		var createdAt, updatedAt time.Time
 		if err := row.Columns(
 			&o.OrderID, &o.RetailerID, &o.RetailerName, &o.Status, &o.TotalMinor, &o.DeliveryFeeMinor,
-			&lat, &lng, &o.RouteID, &lineItems, &createdAt, &updatedAt, &o.SequenceIndex,
+			&lat, &lng, &o.RouteID, &lineItems, &createdAt, &updatedAt, &o.SequenceIndex, &o.SplitGroupID,
 		); err != nil {
 			return driver.DriverOrderView{}, false, fmt.Errorf("driver order get scan: %w", err)
 		}
@@ -1434,7 +1436,7 @@ func warehouseOpsDriversQuery(client *spanner.Client) warehouse.WarehouseOpsDriv
 			             COALESCE(d.VehicleId, ''), COALESCE(v.VehicleClass, 'CLASS_B'),
 			             COALESCE(v.MaxVolumeVU, 150.0), COALESCE(v.IsActive, FALSE),
 			             COALESCE(v.UnavailableReason, ''), COALESCE(v.UnavailableNote, ''),
-			             COALESCE(v.Label, v.LicensePlate, '')
+			             COALESCE(v.Label, v.LicensePlate, ''), COALESCE(v.LicensePlate, '')
 			      FROM Drivers@{FORCE_INDEX=Idx_Drivers_ByHomeNode} d
 			      LEFT JOIN Vehicles v ON d.VehicleId = v.VehicleId
 			      WHERE d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = @wid
@@ -1471,6 +1473,7 @@ func warehouseOpsDriversQuery(client *spanner.Client) warehouse.WarehouseOpsDriv
 				&vehicleUnavailableReason,
 				&vehicleUnavailableNote,
 				&d.VehicleLabel,
+				&d.LicensePlate,
 			); err != nil {
 				return nil, fmt.Errorf("warehouse ops drivers scan: %w", err)
 			}

@@ -561,15 +561,17 @@ final class HomeViewModel {
     }
 
     /// `newDriverId` is the chosen recommendation's driver_id (RouteId == DriverId in this codebase).
-    func reassignTo(_ newDriverId: String) async {
+    func reassignTo(_ newDriverId: String, isPartial: Bool = false) async {
         guard let orderId = reDispatchOrderId, !reassigning else { return }
         reassigning = true
         error = nil
         defer { reassigning = false }
         do {
-            _ = try await api.reassignOrder(orderId: orderId, toDriverId: newDriverId)
-            orders.removeAll { $0.orderId == orderId }
-            if selectedOrderId == orderId { selectedOrderId = orders.first?.orderId }
+            _ = try await api.reassignOrder(orderId: orderId, toDriverId: newDriverId, isPartial: isPartial)
+            if !isPartial {
+                orders.removeAll { $0.orderId == orderId }
+                if selectedOrderId == orderId { selectedOrderId = orders.first?.orderId }
+            }
             reDispatchOrderId = nil
             recommendations = nil
         } catch {

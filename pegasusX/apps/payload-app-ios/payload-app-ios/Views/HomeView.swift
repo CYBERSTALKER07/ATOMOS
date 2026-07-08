@@ -181,7 +181,7 @@ private struct HomeSheetsModifier: ViewModifier {
                     response: viewModel.recommendations,
                     reassigning: viewModel.reassigning,
                     onClose: { viewModel.closeReDispatch() },
-                    onPick: { driverId in Task { await viewModel.reassignTo(driverId) } }
+                    onPick: { driverId, isPartial in Task { await viewModel.reassignTo(driverId, isPartial: isPartial) } }
                 )
             }
             .alert(
@@ -1340,7 +1340,7 @@ private struct ReDispatchSheet: View {
     let response: RecommendReassignResponse?
     let reassigning: Bool
     let onClose: () -> Void
-    let onPick: (String) -> Void
+    let onPick: (String, Bool) -> Void
 
     var body: some View {
         ZStack {
@@ -1421,11 +1421,11 @@ private struct ReDispatchSheet: View {
                                         
                                         VStack(spacing: 12) {
                                             ForEach(resp.recommendations) { rec in
-                                                Button {
-                                                    onPick(rec.driverId)
-                                                } label: {
-                                                    RecommendationRow(rec: rec)
-                                                }
+                                                RecommendationRow(
+                                                    rec: rec,
+                                                    onPickComplete: { onPick(rec.driverId, false) },
+                                                    onPickPartial: { onPick(rec.driverId, true) }
+                                                )
                                                 .disabled(reassigning)
                                             }
                                         }
@@ -1462,6 +1462,8 @@ private struct ReDispatchSheet: View {
 
 private struct RecommendationRow: View {
     let rec: TruckRecommendation
+    let onPickComplete: () -> Void
+    let onPickPartial: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1513,17 +1515,35 @@ private struct RecommendationRow: View {
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .foregroundStyle(TermTheme.secondary)
                 }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right.square.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(TermTheme.accent)
+                         Spacer()
             }
+            
+            HStack(spacing: 8) {
+                Button(action: onPickComplete) {
+                    Text("COMPLETE")
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(TermTheme.accent.opacity(0.1))
+                        .foregroundStyle(TermTheme.accent)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                
+                Button(action: onPickPartial) {
+                    Text("PARTIAL")
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(TermTheme.secondary.opacity(0.1))
+                        .foregroundStyle(TermTheme.secondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+            }
+            .padding(.top, 4)
         }
         .padding(16)
         .background(TermTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .tacticalCard()
     }
 }

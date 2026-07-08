@@ -244,14 +244,14 @@ CURRENT_STEP="compose-backend"
 
 log_step "Waiting for backend health"
 CURRENT_STEP="backend-health"
-wait_for_http "backend health" "$HEALTH_URL" 90 2
+wait_for_http "backend health" "$HEALTH_URL" 180 2
 # Warm up go run backend after volume-mount compile before e2e traffic.
 wait_for_http "backend health (warmup)" "$HEALTH_URL" 10 3
 
 log_step "Waiting for ai-worker readiness (Kafka consumers joined)"
 CURRENT_STEP="ai-worker-ready"
 AI_WORKER_READY_URL="http://localhost:8181/ready"
-wait_for_http "ai-worker ready" "$AI_WORKER_READY_URL" 90 2
+wait_for_http "ai-worker ready" "$AI_WORKER_READY_URL" 180 2
 
 log_step "Warming optimizer-core (OR-Tools cold start)"
 CURRENT_STEP="optimizer-warmup"

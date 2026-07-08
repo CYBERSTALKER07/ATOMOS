@@ -200,6 +200,8 @@ export {
   payloadApplyReassignKey,
   payloadSupplierSealManifestKey,
   supplierManifestSealKey,
+  supplierManifestSealAllKey,
+  payloadSealAllKey,
   supplierManifestStartLoadingKey,
   supplierManifestInjectKey,
   supplierVetOrderKey,
@@ -796,6 +798,18 @@ export class ApiClient {
     });
   }
 
+  async sealAllSupplierManifests(idempotencyKey: string): Promise<{ sealed_count: number; errors?: any[] }> {
+    return this.request<{ sealed_count: number; errors?: any[] }>("/v1/supplier/manifests/seal-all", "POST", {
+      idempotencyKey,
+    });
+  }
+
+  async sealAllPayloaderManifests(idempotencyKey: string): Promise<{ sealed_count: number; errors?: any[] }> {
+    return this.request<{ sealed_count: number; errors?: any[] }>("/v1/payloader/manifests/seal-all", "POST", {
+      idempotencyKey,
+    });
+  }
+
   async getSupplierManifestExceptions(params?: { escalated?: boolean }): Promise<SupplierManifestExceptionsResponse> {
     const query = new URLSearchParams();
     if (params?.escalated) query.set("escalated", "true");
@@ -805,6 +819,30 @@ export class ApiClient {
 
   async getSupplierSupplyLanes(): Promise<SupplierSupplyLanesResponse> {
     return this.request<SupplierSupplyLanesResponse>("/v1/supplier/supply-lanes", "GET");
+  }
+
+  async getSupplierSettings(): Promise<SupplierSettingsResponse> {
+    return this.request<SupplierSettingsResponse>("/v1/supplier/settings", "GET");
+  }
+
+  async postSupplierRecommendReassign(
+    request: RecommendReassignRequest,
+    idempotencyKey?: string,
+  ): Promise<RecommendReassignResponse> {
+    return this.request<RecommendReassignResponse>("/v1/supplier/recommend-reassign", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async postSupplierApplyReassign(
+    request: ApplyReassignRequest,
+    idempotencyKey?: string,
+  ): Promise<StatusResponse> {
+    return this.request<StatusResponse>("/v1/supplier/reassign-order", "POST", {
+      body: request,
+      idempotencyKey,
+    });
   }
 
   async getSupplierExceptions(): Promise<SupplierExceptionsResponse> {
@@ -1308,6 +1346,47 @@ export class ApiClient {
       body: request,
       idempotencyKey,
     });
+  }
+
+  // ── Rescue Operations ──
+  async postWarehouseProposeRescue(
+    request: {
+      broken_driver_id: string;
+      rescue_driver_id: string;
+      rescue_id: string;
+    },
+    query: { warehouse_id?: string } = {},
+    idempotencyKey?: string,
+  ): Promise<{ status: string }> {
+    return this.request<{ status: string }>(
+      appendQuery(`/v1/warehouse/ops/dispatch/rescue/propose`, query as Record<string, unknown>),
+      "POST",
+      { body: request, idempotencyKey },
+    );
+  }
+
+  async postWarehousePreviewRescue(
+    request: {
+      broken_driver_id: string;
+    },
+    query: { warehouse_id?: string } = {},
+  ): Promise<{
+    broken_driver_id: string;
+    pending_volume_vu: number;
+    rescue_options: {
+      driver_id: string;
+      name: string;
+      license_plate: string;
+      truck_status: string;
+      effective_capacity_vu: number;
+      is_capacity_exceeded: boolean;
+    }[];
+  }> {
+    return this.request(
+      appendQuery(`/v1/warehouse/ops/dispatch/rescue/preview`, query as Record<string, unknown>),
+      "POST",
+      { body: request }
+    );
   }
 
   async setupWarehouse(

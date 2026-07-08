@@ -102,6 +102,8 @@ struct Order: Codable, Identifiable, Hashable {
     let etaDistanceM: Int?
     let routeId: String?
     let sequenceIndex: Int?
+    let isPartial: Bool?
+    let splitGroupId: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -124,6 +126,8 @@ struct Order: Codable, Identifiable, Hashable {
         case etaDistanceM = "eta_distance_m"
         case routeId = "route_id"
         case sequenceIndex = "sequence_index"
+        case isPartial = "is_partial"
+        case splitGroupId = "split_group_id"
     }
 
     /// Formatted amount in
@@ -358,83 +362,3 @@ struct SplitPaymentResponse: Codable {
     let status: String
 }
 
-// MARK: - Mock Orders
-
-extension Order {
-    static let mockOrders: [Order] = [
-        Order(
-            id: "ORD-TASH-0056",
-            retailerId: "RET-001",
-            retailerName: "Korzinka Chilanzar",
-            state: .LOADED,
-            totalAmount: 1_247_000,
-            deliveryFeeMinor: 0,
-            deliveryDistanceKm: 0.0,
-            deliveryAddress: "Chilanzar 9, Block 3",
-            latitude: 41.3111,
-            longitude: 69.2797,
-            qrToken: "ORD-TASH-0056:abc123",
-            paymentGateway: "GLOBAL_PAY",
-            createdAt: "2026-03-19T08:00:00Z",
-            updatedAt: "2026-03-19T08:30:00Z",
-            items: [
-                OrderLineItem(productId: "SKU-COKE-500", productName: "Coca-Cola 500ml", quantity: 4, unitPrice: 11_980),
-                OrderLineItem(productId: "SKU-FANTA-15L", productName: "Fanta 1.5L", quantity: 2, unitPrice: 23_970),
-            ],
-            estimatedArrivalAt: nil,
-            etaDurationSec: nil,
-            etaDistanceM: nil,
-            routeId: nil,
-            sequenceIndex: nil
-        ),
-        Order(
-            id: "ORD-TASH-0057",
-            retailerId: "RET-002",
-            retailerName: "Makro Sergeli",
-            state: .LOADED,
-            totalAmount: 856_400,
-            deliveryFeeMinor: 0,
-            deliveryDistanceKm: 0.0,
-            deliveryAddress: "Sergeli 7, Market Row B",
-            latitude: 41.2887,
-            longitude: 69.2044,
-            qrToken: "ORD-TASH-0057:def456",
-            paymentGateway: "CASH",
-            createdAt: "2026-03-19T08:15:00Z",
-            updatedAt: "2026-03-19T08:45:00Z",
-            items: [
-                OrderLineItem(productId: "SKU-SPRITE-2L", productName: "Sprite 2L", quantity: 2, unitPrice: 19_980),
-            ],
-            estimatedArrivalAt: nil,
-            etaDurationSec: nil,
-            etaDistanceM: nil,
-            routeId: nil,
-            sequenceIndex: nil
-        ),
-        Order(
-            id: "ORD-TASH-0058",
-            retailerId: "RET-003",
-            retailerName: "Havas Yunusabad",
-            state: .LOADED,
-            totalAmount: 2_100_000,
-            deliveryFeeMinor: 0,
-            deliveryDistanceKm: 0.0,
-            deliveryAddress: "Yunusabad 4, Block 12",
-            latitude: 41.3275,
-            longitude: 69.3341,
-            qrToken: "ORD-TASH-0058:ghi789",
-            paymentGateway: "GLOBAL_PAY",
-            createdAt: "2026-03-19T09:00:00Z",
-            updatedAt: "2026-03-19T09:30:00Z",
-            items: [
-                OrderLineItem(productId: "SKU-TEA-100", productName: "Ahmad Tea 100p", quantity: 10, unitPrice: 45_000),
-                OrderLineItem(productId: "SKU-SUGAR-1KG", productName: "Sugar 1kg", quantity: 20, unitPrice: 12_500),
-            ],
-            estimatedArrivalAt: nil,
-            etaDurationSec: nil,
-            etaDistanceM: nil,
-            routeId: nil,
-            sequenceIndex: nil
-        ),
-    ]
-}

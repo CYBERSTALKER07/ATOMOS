@@ -99,6 +99,9 @@ object NetworkModule {
     fun providePendingMutationDao(db: PegasusDriverDatabase): PendingMutationDao = db.pendingMutationDao()
 
     @Provides
+    fun provideTelemetryDao(db: PegasusDriverDatabase): com.pegasusx.driver.data.local.TelemetryDao = db.telemetryDao()
+
+    @Provides
     @Singleton
     fun provideTelemetrySocket(client: OkHttpClient, json: Json): TelemetrySocket =
         TelemetrySocket(client, json)

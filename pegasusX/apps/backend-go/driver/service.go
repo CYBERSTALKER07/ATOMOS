@@ -56,6 +56,7 @@ type DriverOrderView struct {
 	RouteID         string                `json:"route_id,omitempty"`
 	SequenceIndex   int64                 `json:"sequence_index,omitempty"`
 	Items           []DriverOrderLineView `json:"items,omitempty"`
+	SplitGroupID    string                `json:"split_group_id,omitempty"`
 	CreatedAt       string                `json:"created_at"`
 	UpdatedAt       string                `json:"updated_at"`
 }

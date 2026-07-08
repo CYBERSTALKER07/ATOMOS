@@ -29,15 +29,3 @@ protocol SyncServiceProtocol {
     func uploadBatch(driverId: String, deliveries: [SyncDeliveryDTO], bearerToken: String) async throws -> SyncResult
 }
 
-// MARK: - Stub Implementation
-
-final class SyncServiceStub: SyncServiceProtocol {
-
-    static let shared = SyncServiceStub()
-
-    func uploadBatch(driverId: String, deliveries: [SyncDeliveryDTO], bearerToken: String) async throws -> SyncResult {
-        try await Task.sleep(nanoseconds: 500_000_000)
-        let ids = deliveries.map(\.orderId)
-        return SyncResult(status: "OK", processed: ids, skipped: 0)
-    }
-}

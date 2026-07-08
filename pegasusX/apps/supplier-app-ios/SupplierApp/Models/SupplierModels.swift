@@ -538,3 +538,53 @@ struct BillingSetupResponse: Decodable {
         case selectedGateways = "selected_gateways"
     }
 }
+
+// MARK: - Reassignment
+
+struct DriverRecommendation: Decodable, Identifiable {
+    let driverId: String
+    let driverName: String
+    let currentLat: Double
+    let currentLon: Double
+    let distanceKm: Double
+    let score: Double
+    let vehicleClass: String
+    let licensePlate: String
+
+    var id: String { driverId }
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case driverName = "driver_name"
+        case currentLat = "current_lat"
+        case currentLon = "current_lon"
+        case distanceKm = "distance_km"
+        case score
+        case vehicleClass = "vehicle_class"
+        case licensePlate = "license_plate"
+    }
+}
+
+struct RecommendReassignResponse: Decodable {
+    let orderId: String
+    let retailerName: String
+    let orderVolumeVu: Double
+    let recommendations: [DriverRecommendation]
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case retailerName = "retailer_name"
+        case orderVolumeVu = "order_volume_vu"
+        case recommendations
+    }
+}
+
+struct ApplyReassignRequest: Encodable {
+    let driverId: String
+    let isPartial: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case isPartial = "is_partial"
+    }
+}

@@ -891,16 +891,16 @@ class HomeViewModel @Inject constructor(
     }
 
     /** [newDriverId] is the chosen recommendation's driver_id (RouteId == DriverId). */
-    fun reassignTo(newDriverId: String) {
+    fun reassignTo(newDriverId: String, isPartial: Boolean) {
         val orderId = _state.value.reDispatchOrderId ?: return
         if (_state.value.reassigning) return
         _state.update { it.copy(reassigning = true, error = null) }
         viewModelScope.launch {
-            runCatching { repository.applyReassignOrder(orderId, newDriverId) }
+            runCatching { repository.applyReassignOrder(orderId, newDriverId, isPartial = isPartial) }
                 .onSuccess { _ ->
                     _state.update { s ->
-                        val nextOrders = s.orders.filterNot { it.orderId == orderId }
-                        val nextSelected = if (s.selectedOrderId == orderId) nextOrders.firstOrNull()?.orderId else s.selectedOrderId
+                        val nextOrders = if (isPartial) s.orders else s.orders.filterNot { it.orderId == orderId }
+                        val nextSelected = if (!isPartial && s.selectedOrderId == orderId) nextOrders.firstOrNull()?.orderId else s.selectedOrderId
                         s.copy(
                             reassigning = false,
                             reDispatchOrderId = null,

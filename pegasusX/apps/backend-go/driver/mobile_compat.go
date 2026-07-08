@@ -2,6 +2,7 @@ package driver
 
 import (
 	"encoding/json"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"net/http"
 	"os"
 	"strings"
@@ -325,6 +326,26 @@ func (s *Service) HandleOrderStatePatch(w http.ResponseWriter, r *http.Request) 
 		if found {
 			current.Status = state
 			resp = current
+			
+			if state == "IN_TRANSIT" && current.SplitGroupID != "" && s.repo != nil {
+				claims, ok := auth.FromContext(r.Context())
+				if ok {
+					siblings, err := s.repo.FindSiblingDriversForOrder(r.Context(), orderID)
+					if err == nil {
+						for _, sib := range siblings {
+							if sib != claims.Subject {
+								payload := map[string]any{
+									"type":           "OTHER_TRUCK_ON_WAY",
+									"order_id":       orderID,
+									"split_group_id": current.SplitGroupID,
+									"message":        "Another truck is on the way to this route.",
+								}
+								s.broadcastDriverEvent(r.Context(), sib, payload)
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	if resp == nil {

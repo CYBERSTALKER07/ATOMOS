@@ -263,7 +263,7 @@ struct SupplierDispatchPreview: Decodable {
     enum CodingKeys: String, CodingKey {
         case pendingCount = "pending_count"
         case availableDriverCount = "available_driver_count"
-        case undispatchedOrderCount = "undispatched_orders"
+        case undispatchedOrderCount = "undispatched_order_count"
         case undispatchedOrders = "undispatched_orders"
         case availableDrivers = "available_drivers"
         case proposedRoutes = "proposed_routes"

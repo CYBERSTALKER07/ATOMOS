@@ -11,9 +11,10 @@ type VelocityGaugeProps = {
   className?: string;
 };
 
-// Mock Data: 45 minutes average dispatch time. Assuming 60 mins is the SLA warning zone.
-const MOCK_VELOCITY_DATA = [
-  { name: 'Avg Dispatch', value: 45, fill: 'var(--desk-accent)' }
+// Removed Mock Data
+// We would pass this via props in production
+const DEFAULT_VELOCITY_DATA = [
+  { name: 'Avg Dispatch', value: 0, fill: 'var(--desk-accent)' }
 ];
 
 export default function VelocityGauge({ className }: VelocityGaugeProps) {
@@ -26,7 +27,7 @@ export default function VelocityGauge({ className }: VelocityGaugeProps) {
           innerRadius="70%" 
           outerRadius="100%" 
           barSize={20} 
-          data={MOCK_VELOCITY_DATA}
+          data={DEFAULT_VELOCITY_DATA}
           startAngle={180} 
           endAngle={0}
         >
@@ -49,7 +50,7 @@ export default function VelocityGauge({ className }: VelocityGaugeProps) {
             className="md-typescale-display-small"
             style={{ fill: 'var(--desk-text-primary)' }}
           >
-            {MOCK_VELOCITY_DATA[0].value}
+            {DEFAULT_VELOCITY_DATA[0].value}
           </text>
           <text 
             x="50%" 

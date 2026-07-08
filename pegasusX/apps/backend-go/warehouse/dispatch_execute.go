@@ -16,14 +16,20 @@ import (
 
 // DispatchExecuteRequest is the service-layer input for warehouse dispatch commit.
 type DispatchExecuteRequest struct {
-	WarehouseID     string
-	SupplierID      string
-	Mode            string
-	Routes          []DispatchExecuteRoute
-	OrderIDs        []string
-	ForceCapacity   bool
-	AcceptPartial   bool
-	PlanFingerprint string
+	WarehouseID      string
+	SupplierID       string
+	Mode             string
+	Routes           []DispatchExecuteRoute
+	OrderIDs         []string
+	ForceCapacity    bool
+	AcceptPartial    bool
+	PlanFingerprint  string
+	// AllowRetailerSplit permits the system to split a retailer's consolidated
+	// order across multiple trucks when it exceeds a single truck's capacity.
+	// When false and overflow is detected, the response returns status
+	// "capacity_overflow" with OverflowWarnings detailing which orders + by how
+	// much they exceed the largest truck, requiring admin action before commit.
+	AllowRetailerSplit bool
 }
 
 // ExecuteDispatch runs the warehouse smart-dispatch optimizer and commits manifests.
@@ -123,6 +129,18 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 		for _, orphan := range assignment.Orphans {
 			out.Orphans = append(out.Orphans, orphan.OrderID)
 		}
+		// Surface retailer overflow warnings so the warehouse admin can act.
+		if len(assignment.OverflowWarnings) > 0 {
+			out.OverflowWarnings = assignment.OverflowWarnings
+			if !req.AllowRetailerSplit {
+				// Block commit: admin must decide to split or cancel orders.
+				out.Status = "capacity_overflow"
+				out.Warnings = append(out.Warnings, "retailer_order_exceeds_max_truck")
+				return out, nil
+			}
+		}
+		// Carry split shipment groups to the result (populated after commit below).
+		out.SplitShipmentGroups = assignment.SplitShipmentGroups
 	}
 	if assignment == nil || len(assignment.Routes) == 0 {
 		return out, nil
@@ -167,6 +185,7 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 		payload       any
 	}
 	queued := make([]pendingEvent, 0, len(rows)+len(assignment.Routes))
+
 
 	for _, route := range assignment.Routes {
 		driverID := strings.TrimSpace(route.DriverID)
@@ -316,16 +335,35 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 				return err
 			}
 		}
+		// Emit SplitShipmentCreated for each split group so payment service
+		// and driver/retailer apps receive the deduplication contract.
+		for _, grp := range out.SplitShipmentGroups {
+			splitEvt := events.SplitShipmentEvent{
+				BaseEvent:     events.BaseEvent{Type: events.EventSplitShipmentCreated},
+				SplitGroupID:  grp.SplitGroupID,
+				SupplierID:    sid,
+				WarehouseID:   whID,
+				RetailerID:    grp.RetailerID,
+				SharedRouteID: grp.SharedRouteID,
+				OrderIDs:      grp.OrderIDs,
+				ManifestIDs:   grp.ManifestIDs,
+				DriverIDs:     grp.DriverIDs,
+				TruckCount:    len(grp.ManifestIDs),
+			}
+			if err := outbox.EmitJSON(ctx, buf, events.AggregateRoute, grp.SharedRouteID, events.TopicMain, splitEvt); err != nil {
+				return err
+			}
+		}
 		if req.ForceCapacity && len(capacityWarnings) > 0 {
 			if auditBuf, ok := buf.(outbox.TxnAuditBuffer); ok {
 				actorID := warehouseActorID(ctx)
 				for _, warning := range capacityWarnings {
 					if err := outbox.WriteAudit(ctx, auditBuf, sid, actorID, "WAREHOUSE_ADMIN", "DISPATCH_CAPACITY_OVERRIDE", "DispatchRoute", warning.DriverID, map[string]any{
 						"warehouse_id":                 whID,
-						"loaded_vu":                      warning.LoadedVU,
-						"max_volume_vu":                  warning.MaxVolumeVU,
-						"effective_max_vu":               warning.EffectiveMaxVU,
-						"excess_vu":                      warning.ExcessVU,
+						"loaded_vu":                    warning.LoadedVU,
+						"max_volume_vu":                warning.MaxVolumeVU,
+						"effective_max_vu":             warning.EffectiveMaxVU,
+						"excess_vu":                    warning.ExcessVU,
 						"suggested_unselect_order_ids": warning.SuggestedUnselectOrderIDs,
 					}); err != nil {
 						return err
@@ -350,6 +388,7 @@ func (s *Service) ExecuteDispatch(ctx context.Context, req DispatchExecuteReques
 	}
 	return out, nil
 }
+
 
 func (s *Service) resolveDispatchSupplierID(ctx context.Context, warehouseID string) string {
 	if ops := auth.GetWarehouseOps(ctx); ops != nil && strings.TrimSpace(ops.SupplierID) != "" {

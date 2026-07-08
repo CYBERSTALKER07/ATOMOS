@@ -16,11 +16,14 @@ export type OrderOpsCardProps = {
   onOpenDetail: () => void;
   onDelay?: () => void;
   onReject?: () => void;
+  onReassign?: () => void;
   showOpsMenu?: boolean;
   delayLabel?: string;
   rejectLabel?: string;
+  reassignLabel?: string;
   canDelayOverride?: boolean;
   canRejectOverride?: boolean;
+  canReassignOverride?: boolean;
 };
 
 export function OrderOpsCard({
@@ -35,15 +38,19 @@ export function OrderOpsCard({
   onOpenDetail,
   onDelay,
   onReject,
+  onReassign,
   showOpsMenu = true,
   delayLabel,
   rejectLabel,
+  reassignLabel,
   canDelayOverride,
   canRejectOverride,
+  canReassignOverride,
 }: OrderOpsCardProps) {
   const flags = orderActionFlags(state);
   const canDelay = canDelayOverride ?? flags.canDelay;
   const canReject = canRejectOverride ?? flags.canReject;
+  const canReassign = canReassignOverride ?? flags.canReassign;
 
   return (
     <article
@@ -77,11 +84,14 @@ export function OrderOpsCard({
               disabled={disabled}
               canDelay={canDelay}
               canReject={canReject}
+              canReassign={canReassign}
               onViewDetails={onOpenDetail}
               onDelay={onDelay}
               onReject={onReject}
+              onReassign={onReassign}
               delayLabel={delayLabel}
               rejectLabel={rejectLabel}
+              reassignLabel={reassignLabel}
             />
           ) : null}
         </div>

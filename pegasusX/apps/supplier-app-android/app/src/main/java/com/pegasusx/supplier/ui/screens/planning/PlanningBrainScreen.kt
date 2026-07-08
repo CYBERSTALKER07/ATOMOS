@@ -33,8 +33,8 @@ fun PlanningBrainScreen(
 ) {
     var sandop by remember { mutableStateOf<PlanningSAndOPSnapshot?>(null) }
     var scenario by remember { mutableStateOf<PlanningScenarioResult?>(null) }
-    var downtimeHours by remember { mutableDoubleStateOf(8.0) }
-    var demandDeltaPct by remember { mutableDoubleStateOf(10.0) }
+    var downtimeHours by remember { mutableFloatStateOf(8.0f) }
+    var demandDeltaPct by remember { mutableFloatStateOf(10.0f) }
     var loading by remember { mutableStateOf(true) }
     var running by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -65,7 +65,7 @@ fun PlanningBrainScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading S&OP…", modifier = Modifier.padding(padding))
+            loading -> SupplierLoadingState("Loading…", body = "", modifier = Modifier.padding(padding))
             error != null && sandop == null -> SupplierStatePane(
                 kind = SupplierStateKind.Error,
                 headline = "Planning unavailable",
@@ -117,12 +117,12 @@ fun PlanningBrainScreen(
                                         val key = SupplierIdempotencyKeys.planningScenario(
                                             scopeId,
                                             downtimeHours.roundToInt(),
-                                            demandDeltaPct.roundToInt(),
+                                            demandDeltaPct.toDouble(),
                                         )
                                         val resp = ops.runPlanningScenario(
                                             PlanningScenarioInput(
                                                 factoryDowntimeHours = downtimeHours.roundToInt(),
-                                                demandDeltaPct = demandDeltaPct,
+                                                demandDeltaPct = demandDeltaPct.toDouble(),
                                                 horizonDays = 7,
                                             ),
                                             key,

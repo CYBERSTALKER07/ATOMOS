@@ -59,6 +59,7 @@ struct FleetMapView: View {
     @State private var zoomFocus: ZoomFocus = .both
     @State private var validatedQR: ValidateQRResponse?
     @State private var offloadResponse: ConfirmOffloadResponse?
+    @State private var showRescueSheet = false
 
     var body: some View {
         NavigationStack(path: $navPath) {
@@ -130,9 +131,11 @@ struct FleetMapView: View {
                         }
                     case "correction":
                         if let m = vm.activeMission {
+                            let order = vm.orders.first(where: { $0.id == m.order_id })
                             DeliveryCorrectionView(
                                 orderId: m.order_id,
                                 driverId: vm.driverId,
+                                isPartial: order?.isPartial ?? false,
                                 onClose: { navPath = NavigationPath() },
                                 onAmended: {
                                     vm.markCompleted(m.order_id)
@@ -307,6 +310,11 @@ struct FleetMapView: View {
         .sheet(isPresented: $vm.showOfflineVerifier) {
             OfflineVerifierView(modelContext: modelContext)
                 .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showRescueSheet) {
+            RequestRescueSheet()
+                .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
     }
@@ -817,18 +825,35 @@ struct FleetMapView: View {
                 }
                 .buttonStyle(.pressable)
 
-                Button {
-                    Haptics.light()
-                    navPath.append("correction")
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "pencil.and.list.clipboard").font(.system(size: 11))
-                        Text("Delivery Correction").font(.system(size: 12, weight: .semibold))
+                HStack(spacing: 8) {
+                    Button {
+                        Haptics.light()
+                        navPath.append("correction")
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "pencil.and.list.clipboard").font(.system(size: 11))
+                            Text("Delivery Correction").font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundStyle(LabTheme.fgSecondary)
+                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                        .background(LabTheme.fg.opacity(0.04), in: .rect(cornerRadius: 12))
                     }
-                    .foregroundStyle(LabTheme.fgSecondary)
-                    .frame(maxWidth: .infinity).padding(.vertical, 10)
+                    .buttonStyle(.pressable)
+                    
+                    Button {
+                        Haptics.light()
+                        showRescueSheet = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 11))
+                            Text("Rescue").font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundStyle(LabTheme.warning)
+                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                        .background(LabTheme.fg.opacity(0.04), in: .rect(cornerRadius: 12))
+                    }
+                    .buttonStyle(.pressable)
                 }
-                .buttonStyle(.pressable)
             }
             .padding(.horizontal, LabTheme.s20)
         }

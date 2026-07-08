@@ -59,7 +59,7 @@ fun KnowledgeGraphScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading knowledge graph…", modifier = Modifier.padding(padding))
+            loading -> SupplierLoadingState("Loading knowledge graph…", body = "", modifier = Modifier.padding(padding))
             error != null -> SupplierStatePane(
                 kind = SupplierStateKind.Error,
                 headline = "Knowledge graph unavailable",

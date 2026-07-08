@@ -83,6 +83,20 @@ final class CorrectionViewModel {
         rejectionReasons[itemId] = reason
     }
 
+    func startTransitForPartialOrder(orderId: String) async -> Bool {
+        isSubmitting = true
+        defer { isSubmitting = false }
+        do {
+            try await fleetService.reassignHandshake(orderId: orderId)
+            Haptics.success()
+            return true
+        } catch {
+            submitError = error.localizedDescription
+            Haptics.error()
+            return false
+        }
+    }
+
     func submitAmendment(orderId: String, driverId: String) async -> Bool {
         isSubmitting = true
         defer { isSubmitting = false }

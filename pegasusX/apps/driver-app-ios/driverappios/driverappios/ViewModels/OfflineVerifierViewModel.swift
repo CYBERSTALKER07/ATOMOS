@@ -56,7 +56,7 @@ final class OfflineVerifierViewModel {
         self.init(manifestService: ManifestServiceLive.shared, syncService: SyncServiceLive.shared)
     }
 
-    init(manifestService: ManifestServiceProtocol, syncService: SyncServiceProtocol = SyncServiceStub.shared) {
+    init(manifestService: ManifestServiceProtocol, syncService: SyncServiceProtocol = SyncServiceLive.shared) {
         self.manifestService = manifestService
         self.syncService = syncService
     }

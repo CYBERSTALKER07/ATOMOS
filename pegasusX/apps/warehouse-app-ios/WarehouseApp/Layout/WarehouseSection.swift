@@ -17,6 +17,7 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
     case products = "Products"
     case supplyRequests = "Supply requests"
     case preorders = "Pre-orders"
+    case stockCommitments = "Stock commitments"
     case tomorrowBoard = "Tomorrow board"
     case replenishment = "Replenishment"
     case demandForecast = "Demand forecast"
@@ -49,6 +50,7 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
         case .products: "square.grid.2x2"
         case .supplyRequests: "arrow.triangle.2.circlepath"
         case .preorders: "calendar"
+        case .stockCommitments: "chart.pie.fill"
         case .tomorrowBoard: "calendar.badge.clock"
         case .replenishment: "shippingbox"
         case .demandForecast: "chart.line.uptrend.xyaxis"
@@ -77,7 +79,7 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
     }
 
     static var inventorySections: [WarehouseSection] {
-        [.products, .supplyRequests, .preorders, .tomorrowBoard, .replenishment, .demandForecast, .opsSettings]
+        [.products, .supplyRequests, .preorders, .stockCommitments, .tomorrowBoard, .replenishment, .demandForecast, .opsSettings]
     }
 
     static var operationsSections: [WarehouseSection] {

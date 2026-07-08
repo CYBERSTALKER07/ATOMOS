@@ -164,7 +164,7 @@ struct MissionDetailSheet: View {
 
 #Preview {
     MissionDetailSheet(
-        mission: Mission.mockMissions[0],
+        mission: Mission(order_id: "preview", state: "EN_ROUTE", target_lat: 41.3, target_lng: 69.3, amount: 1000, gateway: "CASH", estimated_arrival_at: nil, route_id: nil, sequence_index: nil),
         driverLocation: CLLocationCoordinate2D(latitude: 41.2995, longitude: 69.2401),
         isInRange: true,
         distance: 245,

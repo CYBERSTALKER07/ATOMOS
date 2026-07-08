@@ -20,6 +20,9 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     }
 
     func requestAuthorization() async {
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            return
+        }
         do {
             let center = UNUserNotificationCenter.current()
             let granted = try await center.requestAuthorization(options: [.alert, .badge, .sound])

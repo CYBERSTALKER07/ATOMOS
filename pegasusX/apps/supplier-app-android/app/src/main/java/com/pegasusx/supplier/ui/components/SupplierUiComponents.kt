@@ -163,6 +163,7 @@ fun SupplierOpsListCard(
     modifier: Modifier = Modifier,
     status: String? = null,
     onClick: (() -> Unit)? = null,
+    onReassign: (() -> Unit)? = null,
 ) {
     val cardModifier = modifier.fillMaxWidth()
     val content: @Composable () -> Unit = {
@@ -191,6 +192,20 @@ fun SupplierOpsListCard(
             }
             if (!status.isNullOrBlank()) {
                 SupplierStatusChip(status = status)
+            }
+        }
+        if (onReassign != null) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = PegasusSpacing.md, vertical = PegasusSpacing.sm),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onReassign) {
+                    Text("Reassign")
+                }
             }
         }
     }

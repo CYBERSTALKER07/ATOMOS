@@ -9,9 +9,15 @@ export function DesktopDeepLinkBootstrap() {
   const router = useRouter();
 
   useEffect(() => {
-    return subscribeDesktopDeepLinks((path) => {
+    let cleanup: (() => void) | undefined;
+    subscribeDesktopDeepLinks((path) => {
       router.push(path);
+    }).then((unsub: () => void) => {
+      cleanup = unsub;
     });
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, [router]);
 
   return null;

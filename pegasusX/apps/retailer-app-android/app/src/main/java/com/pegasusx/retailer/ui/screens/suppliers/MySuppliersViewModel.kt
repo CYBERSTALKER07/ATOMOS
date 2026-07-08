@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import javax.inject.Inject
@@ -28,6 +29,7 @@ data class MySuppliersUiState(
     val searchQuery: String = "",
     val suppliers: List<Supplier> = emptyList(),
     val searchResults: List<Supplier> = emptyList(),
+    val analytics: com.pegasusx.retailer.data.model.RetailerAnalytics? = null,
     val error: String? = null,
     val loadIssue: SuppliersLoadIssue? = null,
 ) {
@@ -64,12 +66,18 @@ class MySuppliersViewModel @Inject constructor(
             }
 
             try {
-                val suppliers = api.getMySuppliers()
+                val suppliersDeferred = async { api.getMySuppliers() }
+                val analyticsDeferred = async { api.getRetailerExpenses() }
+                
+                val suppliers = suppliersDeferred.await()
+                val analytics = analyticsDeferred.await()
+                
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         isRefreshing = false,
                         suppliers = suppliers,
+                        analytics = analytics,
                         error = null,
                         loadIssue = null,
                     )

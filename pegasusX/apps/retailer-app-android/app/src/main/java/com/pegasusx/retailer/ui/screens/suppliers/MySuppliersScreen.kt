@@ -155,6 +155,10 @@ fun MySuppliersScreen(
                 }
             }
 
+            if (uiState.analytics != null && !uiState.isLoading) {
+                AnalyticsOverview(uiState.analytics!!)
+            }
+
             if (uiState.isLoading && uiState.suppliers.isEmpty()) {
                 SupplierSkeletonGrid()
             } else if (uiState.suppliers.isEmpty() && !uiState.isLoading && !uiState.isRefreshing) {
@@ -329,3 +333,73 @@ private fun SupplierCard(
 }
 
 
+
+@Composable
+private fun AnalyticsOverview(analytics: com.pegasusx.retailer.data.model.RetailerAnalytics) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().shadow(4.dp, SoftSquircleShape, ambientColor = Color.Black.copy(alpha = 0.04f), spotColor = Color.Black.copy(alpha = 0.04f)),
+            shape = SoftSquircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "MTD Settlement",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Text(
+                    text = "$${analytics.totalThisMonth}",
+                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Light),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
+
+        if (analytics.topSuppliers.isNotEmpty()) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().shadow(4.dp, SoftSquircleShape, ambientColor = Color.Black.copy(alpha = 0.04f), spotColor = Color.Black.copy(alpha = 0.04f)),
+                shape = SoftSquircleShape,
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "TRADE BREAKDOWN",
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp, fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    
+                    analytics.topSuppliers.take(5).forEachIndexed { index, supplier ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("${index + 1}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(supplier.supplierName, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("${supplier.orderCount} trades", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text("$${supplier.total}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

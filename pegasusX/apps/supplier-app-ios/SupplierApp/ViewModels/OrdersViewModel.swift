@@ -10,6 +10,12 @@ final class OrdersViewModel {
     var selection: SupplierOrder?
     var vettingOrderId: String?
 
+    // Reassignment
+    var reassignTarget: String?
+    var reassignRecommendations: RecommendReassignResponse?
+    var isReassigning = false
+    var reassignMessage: String?
+
     let filters: [(id: String, label: String)] = [
         ("ACTIVE", "Active"),
         ("SCHEDULED", "Scheduled"),
@@ -73,5 +79,43 @@ final class OrdersViewModel {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    func openReassignDialog(orderId: String) async {
+        reassignTarget = orderId
+        reassignRecommendations = nil
+        reassignMessage = nil
+        do {
+            reassignRecommendations = try await SupplierOperationsService.recommendReassign(orderId: orderId)
+        } catch {
+            reassignMessage = "Failed to load recommendations: \(error.localizedDescription)"
+            reassignTarget = nil
+        }
+    }
+
+    func closeReassignDialog() {
+        if !isReassigning {
+            reassignTarget = nil
+            reassignRecommendations = nil
+        }
+    }
+
+    func applyReassign(orderId: String, driverId: String, isPartial: Bool) async {
+        isReassigning = true
+        reassignMessage = nil
+        do {
+            try await SupplierOperationsService.applyReassign(
+                orderId: orderId,
+                driverId: driverId,
+                isPartial: isPartial,
+                idempotencyKey: UUID().uuidString
+            )
+            reassignMessage = isPartial ? "Reassigned (Partial)" : "Reassigned (Full)"
+            reassignTarget = nil
+            await load(silent: true)
+        } catch {
+            reassignMessage = "Failed to reassign: \(error.localizedDescription)"
+        }
+        isReassigning = false
     }
 }

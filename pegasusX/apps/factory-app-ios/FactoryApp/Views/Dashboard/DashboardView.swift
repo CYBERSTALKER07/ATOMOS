@@ -5,10 +5,10 @@ struct DashboardView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let onOpenSupplyRequests: () -> Void
     let onOpenPayloadOverride: () -> Void
+    let onOpenManifestExceptions: () -> Void
+    let onOpenAnalytics: () -> Void
     let onOpenInsights: () -> Void
-    @State private var showManifestExceptions = false
     @State private var showManifests = false
-    @State private var showAnalytics = false
     @State private var showCreateTransfer = false
     @State private var realtimeClient = FactoryRealtimeClient()
     @State private var stats = DashboardStats.empty
@@ -41,9 +41,9 @@ struct DashboardView: View {
                         WorkflowLaunchCard(
                             onOpenSupplyRequests: onOpenSupplyRequests,
                             onOpenPayloadOverride: onOpenPayloadOverride,
-                            onOpenManifestExceptions: { showManifestExceptions = true },
+                            onOpenManifestExceptions: onOpenManifestExceptions,
                             onOpenManifests: { showManifests = true },
-                            onOpenAnalytics: { showAnalytics = true },
+                            onOpenAnalytics: onOpenAnalytics,
                             onOpenCreateTransfer: { showCreateTransfer = true },
                             onOpenInsights: onOpenInsights
                         )
@@ -122,18 +122,8 @@ struct DashboardView: View {
             .onDisappear {
                 realtimeClient.disconnect()
             }
-            .sheet(isPresented: $showManifestExceptions) {
-                NavigationStack {
-                    ManifestExceptionsView()
-                }
-            }
             .sheet(isPresented: $showManifests) {
                 ManifestsView()
-            }
-            .sheet(isPresented: $showAnalytics) {
-                NavigationStack {
-                    AnalyticsView()
-                }
             }
             .sheet(isPresented: $showNotifications) {
                 NotificationInboxView()

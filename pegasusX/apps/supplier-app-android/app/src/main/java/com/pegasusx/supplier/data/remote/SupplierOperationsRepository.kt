@@ -347,4 +347,20 @@ class SupplierOperationsRepository @Inject constructor(
 
     suspend fun getCatalogProduct(productId: String): Response<CatalogProduct> =
         api.getCatalogProduct(productId)
+
+    suspend fun recommendReassign(orderId: String): Response<RecommendReassignResponse> =
+        api.recommendReassign(
+            idempotencyKey = "supplier-recommend-reassign-$orderId",
+            body = mapOf("order_id" to orderId)
+        )
+
+    suspend fun applyReassign(orderId: String, driverId: String, partial: Boolean): Response<JsonElement> =
+        api.applyReassign(
+            idempotencyKey = "supplier-apply-reassign-$orderId-$driverId",
+            body = ApplyReassignRequest(
+                orderId = orderId,
+                driverId = driverId,
+                partial = partial
+            )
+        )
 }

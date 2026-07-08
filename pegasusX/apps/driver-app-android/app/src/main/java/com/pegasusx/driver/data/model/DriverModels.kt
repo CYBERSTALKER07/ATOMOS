@@ -56,6 +56,8 @@ data class Order(
     @SerialName("eta_duration_sec") val etaDurationSec: Int? = null,
     @SerialName("eta_distance_m") val etaDistanceM: Int? = null,
     @SerialName("route_id") val routeId: String? = null,
+    @SerialName("is_partial") val isPartial: Boolean = false,
+    @SerialName("split_group_id") val splitGroupId: String? = null,
     @SerialName("sequence_index") val sequenceIndex: Int = 0,
     @SerialName("order_source") val orderSource: String? = null,
     @SerialName("deliver_before") val deliverBefore: String? = null,
@@ -495,6 +497,7 @@ data class OrderEntity(
     val createdAt: String,
     val updatedAt: String,
     val itemsJson: String // serialized OrderLineItem list
+    , val isPartial: Boolean = false, val splitGroupId: String? = null
 )
 
 /**
@@ -560,4 +563,14 @@ data class ClientPolicyResponse(
     @SerialName("update_deferred") val updateDeferred: Boolean = false,
     @SerialName("defer_reason") val deferReason: String? = null,
     val outdated: Boolean = false,
+)
+
+@Entity(tableName = "telemetry_locations")
+data class TelemetryLocationEntity(
+    @PrimaryKey val id: String,
+    val latitude: Double,
+    val longitude: Double,
+    val timestamp: Long,
+    val speed: Float,
+    val bearing: Float
 )

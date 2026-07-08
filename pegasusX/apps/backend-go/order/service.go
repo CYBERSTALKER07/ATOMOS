@@ -215,6 +215,7 @@ type Repository interface {
 	ListOrdersByStatus(ctx context.Context, supplierID, status string, limit int) ([]Order, error)
 	CreateConditionReport(ctx context.Context, report ConditionReport, emit func(outbox.TxnBuffer) error) error
 	ListConditionReports(ctx context.Context, orderID string) ([]ConditionReport, error)
+	FindSiblingDriversForOrder(ctx context.Context, orderID string) ([]string, error)
 }
 
 // WarehouseResolver resolves the best supplier warehouse for retailer
@@ -1821,6 +1822,31 @@ func (s *Service) recordDriverTransitionSuccess(ctx context.Context, claims auth
 		"status", current.Status,
 		"actor_id", claims.Subject,
 	)
+
+	if (current.Status == StatusInTransit || current.Status == StatusCompleted) && s.driverHub != nil {
+		siblings, err := s.repo.FindSiblingDriversForOrder(ctx, current.OrderID)
+		if err == nil && len(siblings) > 1 {
+			for _, sib := range siblings {
+				if sib != claims.Subject {
+					eventType := "OTHER_TRUCK_ON_WAY"
+					message := "Another truck is on the way to this route."
+					if current.Status == StatusCompleted {
+						eventType = "PAYMENT_COMPLETED"
+						message = "Payment has been collected by another driver."
+					}
+					
+					payload := map[string]any{
+						"type":     eventType,
+						"order_id": current.OrderID,
+						"message":  message,
+					}
+					b, _ := json.Marshal(payload)
+					
+					go s.driverHub.Broadcast(context.Background(), "driver:"+sib, b)
+				}
+			}
+		}
+	}
 }
 
 // HandleCreate is POST /v1/order/create. Wired by orderroutes.RegisterRoutes

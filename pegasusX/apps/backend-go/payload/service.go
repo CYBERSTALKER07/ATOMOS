@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
@@ -139,6 +140,7 @@ type OrderRow struct {
 	DispatchPriority int    `json:"dispatch_priority,omitempty"`
 	OverflowCount    int64  `json:"overflow_count,omitempty"`
 	ReassignDepth    int    `json:"reassign_depth,omitempty"`
+	SplitGroupID     string `json:"split_group_id,omitempty"`
 	UpdatedAt        string `json:"updated_at"`
 }
 
@@ -159,12 +161,13 @@ type ManifestRow struct {
 
 // ManifestOrder is one order assignment in a manifest.
 type ManifestOrder struct {
-	ManifestID string `json:"manifest_id"`
-	OrderID    string `json:"order_id"`
-	State      string `json:"state"`
-	VolumeVU   int64  `json:"volume_vu"`
-	Reason     string `json:"reason,omitempty"`
-	UpdatedAt  string `json:"updated_at"`
+	ManifestID   string `json:"manifest_id"`
+	OrderID      string `json:"order_id"`
+	State        string `json:"state"`
+	VolumeVU     int64  `json:"volume_vu"`
+	Reason       string `json:"reason,omitempty"`
+	SplitGroupID string `json:"split_group_id,omitempty"`
+	UpdatedAt    string `json:"updated_at,omitempty"`
 }
 
 // ManifestException tracks order removal exceptions during loading.
@@ -257,8 +260,10 @@ type applyReassignRequest struct {
 	OrderID      string `json:"order_id"`
 	ToRouteID    string `json:"to_route_id"`
 	ToManifestID string `json:"to_manifest_id"`
-	ToDriverID   string `json:"to_driver_id"`
-	Reason       string `json:"reason"`
+	ToDriverID      string `json:"to_driver_id"`
+	Reason          string `json:"reason"`
+	IsPartial       bool   `json:"is_partial"`
+	PartialVolumeVU int64  `json:"partial_volume_vu"`
 }
 
 type sealRequest struct {
@@ -1247,11 +1252,18 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		targetRouteID := req.ToRouteID
 		targetDriverID := req.ToDriverID
 		reassignedVolume := int64(10)
+		if req.IsPartial && req.PartialVolumeVU > 0 {
+			reassignedVolume = req.PartialVolumeVU
+		}
 		if fromManifestID != "" {
 			fromManifestOrders := s.manifestOrders[fromManifestID]
 			fromManifestOrderIdx := s.findManifestOrderIndexLocked(fromManifestID, order.OrderID)
 			if fromManifestOrderIdx >= 0 && fromManifestOrders[fromManifestOrderIdx].VolumeVU > 0 {
-				reassignedVolume = fromManifestOrders[fromManifestOrderIdx].VolumeVU
+				if req.IsPartial && req.PartialVolumeVU == 0 {
+					reassignedVolume = fromManifestOrders[fromManifestOrderIdx].VolumeVU / 2
+				} else if !req.IsPartial {
+					reassignedVolume = fromManifestOrders[fromManifestOrderIdx].VolumeVU
+				}
 			}
 		}
 
@@ -1367,15 +1379,29 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		}
 
 		now := s.now().Format(time.RFC3339Nano)
+		splitGroupID := order.SplitGroupID
+		if req.IsPartial && splitGroupID == "" {
+			splitGroupID = uuid.NewString()
+			s.orders[oIdx].SplitGroupID = splitGroupID
+		}
+
 		if sourceManifestIdx >= 0 {
 			fromManifestOrders := s.manifestOrders[order.ManifestID]
 			moIdx := s.findManifestOrderIndexLocked(order.ManifestID, order.OrderID)
-			removedVol := fromManifestOrders[moIdx].VolumeVU
-			fromManifestOrders[moIdx].State = "REMOVED_REASSIGNED"
-			fromManifestOrders[moIdx].Reason = "REASSIGNED"
+			removedVol := reassignedVolume
+			if req.IsPartial {
+				fromManifestOrders[moIdx].VolumeVU -= removedVol
+				if fromManifestOrders[moIdx].VolumeVU < 0 {
+					fromManifestOrders[moIdx].VolumeVU = 0
+				}
+				fromManifestOrders[moIdx].SplitGroupID = splitGroupID
+			} else {
+				fromManifestOrders[moIdx].State = "REMOVED_REASSIGNED"
+				fromManifestOrders[moIdx].Reason = "REASSIGNED"
+			}
 			fromManifestOrders[moIdx].UpdatedAt = now
 			s.manifestOrders[order.ManifestID] = fromManifestOrders
-			if s.manifests[sourceManifestIdx].StopCount > 0 {
+			if !req.IsPartial && s.manifests[sourceManifestIdx].StopCount > 0 {
 				s.manifests[sourceManifestIdx].StopCount--
 			}
 			if s.manifests[sourceManifestIdx].TotalVolumeVU >= removedVol {
@@ -1399,6 +1425,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 				OrderID:    order.OrderID,
 				State:      "ASSIGNED",
 				VolumeVU:   reassignedVolume,
+				SplitGroupID: splitGroupID,
 				UpdatedAt:  now,
 			})
 			s.manifestOrders[targetManifestID] = targetManifestOrders
@@ -1869,4 +1896,142 @@ func coalesceString(values ...string) string {
 		}
 	}
 	return ""
+}
+func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	body, err := readLimitedBody(r, 4*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+
+	var req struct {
+		// StateFilter, if set, limits sealing to manifests in that state only.
+		// Valid values: "DRAFT", "LOADING". Empty means both are sealed.
+		StateFilter string `json:"state_filter"`
+	}
+	// body may be empty for a no-args call — treat as "seal everything".
+	if len(body) > 0 {
+		_ = json.Unmarshal(body, &req)
+	}
+	stateFilter := strings.ToUpper(strings.TrimSpace(req.StateFilter))
+
+	// Collect candidate manifest IDs under the read lock.
+	s.mu.RLock()
+	var candidateIDs []string
+	for _, m := range s.manifests {
+		state := strings.ToUpper(m.State)
+		if stateFilter != "" && state != stateFilter {
+			continue
+		}
+		if state == payloadManifestStateDraft || state == payloadManifestStateLoading {
+			candidateIDs = append(candidateIDs, m.ManifestID)
+		}
+	}
+	s.mu.RUnlock()
+
+	if len(candidateIDs) == 0 {
+		resp := map[string]any{
+			"status":       "no_sealable_manifests",
+			"sealed_count": 0,
+			"results":      []any{},
+		}
+		respBytes, _ := json.Marshal(resp)
+		s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+		writeJSONBytes(w, http.StatusOK, respBytes)
+		return
+	}
+
+	results := make([]map[string]any, 0, len(candidateIDs))
+	sealedCount := 0
+
+	for _, manifestID := range candidateIDs {
+		var sealed ManifestRow
+		sealErr := s.apply(r.Context(), func() error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			var e error
+			sealed, e = s.sealManifestLocked(manifestID)
+			return e
+		}, func(txn outbox.TxnBuffer) error {
+			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
+				BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: sealed.UpdatedAt},
+				ManifestID: manifestID,
+				SupplierID: s.supplierID,
+				State:      payloadManifestStateSealed,
+				RouteID:    routeIDForManifest(sealed),
+				DriverID:   sealed.DriverID,
+				VehicleID:  sealed.VehicleID,
+				OrderCount: sealed.StopCount,
+			})
+		})
+		switch {
+		case sealErr == http.ErrMissingFile:
+			row := map[string]any{"manifest_id": manifestID, "status": "not_found"}
+			platform.AttachExplainToMap(row, "manifest_not_found")
+			results = append(results, row)
+		case sealErr == http.ErrBodyNotAllowed:
+			// Already sealed or dispatched — skip silently in seal-all context.
+			row := map[string]any{"manifest_id": manifestID, "status": "already_sealed"}
+			results = append(results, row)
+		case sealErr != nil:
+			row := map[string]any{"manifest_id": manifestID, "status": "seal_failed", "error": sealErr.Error()}
+			platform.AttachExplainToMap(row, "manifest_seal_failed")
+			results = append(results, row)
+		default:
+			sealedCount++
+			if s.manifestStore != nil {
+				if geomErr := s.manifestStore.PersistRouteGeometryForManifest(r.Context(), manifestID, "manifest_sealed"); geomErr != nil {
+					s.log.WarnContext(r.Context(), "seal-all: route geometry persist failed",
+						"manifest_id", manifestID, "err", geomErr)
+				}
+			}
+			s.invalidatePayloadKeys(r.Context(),
+				payloadManifestKey(manifestID),
+				payloadManifestListKey(s.supplierID),
+				payloadOrderListKey(s.supplierID),
+			)
+			s.broadcastPayloadEvent(r.Context(), events.EventManifestSealed, map[string]any{
+				"manifest_id": manifestID,
+				"state":       payloadManifestStateSealed,
+				"route_id":    routeIDForManifest(sealed),
+				"driver_id":   sealed.DriverID,
+				"vehicle_id":  sealed.VehicleID,
+				"order_count": sealed.StopCount,
+				"updated_at":  sealed.UpdatedAt,
+			})
+			if sealed.DriverID != "" {
+				s.broadcastDriverEvent(r.Context(), sealed.DriverID, map[string]any{
+					"type":        "MANIFEST_DISPATCHED",
+					"driver_id":   sealed.DriverID,
+					"manifest_id": manifestID,
+					"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
+				})
+			}
+			results = append(results, map[string]any{
+				"manifest_id": manifestID,
+				"status":      "sealed",
+				"state":       sealed.State,
+				"sealed_at":   sealed.SealedAt,
+				"driver_id":   sealed.DriverID,
+				"vehicle_id":  sealed.VehicleID,
+			})
+		}
+	}
+
+	resp := map[string]any{
+		"status":          "seal_all_complete",
+		"sealed_count":    sealedCount,
+		"candidate_count": len(candidateIDs),
+		"results":         results,
+	}
+	respBytes, _ := json.Marshal(resp)
+	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	writeJSONBytes(w, http.StatusOK, respBytes)
 }

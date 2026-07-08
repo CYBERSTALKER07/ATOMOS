@@ -86,6 +86,18 @@ interface SupplierApi {
         @Body body: JsonElement,
     ): Response<JsonElement>
 
+    @POST("v1/supplier/recommend-reassign")
+    suspend fun recommendReassign(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: Map<String, String>
+    ): Response<RecommendReassignResponse>
+
+    @POST("v1/supplier/reassign-order")
+    suspend fun applyReassign(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: ApplyReassignRequest
+    ): Response<JsonElement>
+
     @POST("v1/supplier/orders/payment-bypass")
     suspend fun issuePaymentBypass(
         @Header("X-Idempotency-Key") idempotencyKey: String,

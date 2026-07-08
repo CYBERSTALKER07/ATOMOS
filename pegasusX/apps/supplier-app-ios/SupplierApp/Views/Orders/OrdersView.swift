@@ -25,6 +25,13 @@ struct OrdersView: View {
         .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
             Task { await vm.load(silent: true) }
         }
+        .onChange(of: vm.reassignMessage) { _, newValue in
+            if let msg = newValue {
+                // simple print or we could show an alert. But since we dismiss it, 
+                // typically we just print it or you could add a snackbar equivalent in swiftui
+                print("Reassign message: \(msg)")
+            }
+        }
     }
 
     private var phoneContent: some View {
@@ -191,6 +198,9 @@ struct OrderDetailPanel: View {
 
             if vm.canWarehouseOps(for: order) {
                 Section("Warehouse admin") {
+                    Button("Reassign order") {
+                        Task { await vm.openReassignDialog(orderId: order.orderId) }
+                    }
                     Button("Delay delivery") { showProposeSheet = true }
                     Button("Cancel order", role: .destructive) { showRejectDialog = true }
                 }
@@ -237,6 +247,74 @@ struct OrderDetailPanel: View {
             Button("Cancel", role: .cancel) { opsReason = "" }
         } message: {
             Text("Reason is required for reject.")
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { vm.reassignTarget != nil },
+                set: { if !$0 { vm.closeReassignDialog() } }
+            )
+        ) {
+            NavigationStack {
+                Group {
+                    if let recs = vm.reassignRecommendations {
+                        if recs.recommendations.isEmpty {
+                            ContentUnavailableView("No Trucks", systemImage: "car.fill", description: Text("No suitable trucks available."))
+                        } else {
+                            List {
+                                Section {
+                                    LabeledContent("Retailer", value: recs.retailerName)
+                                    LabeledContent("Volume", value: String(format: "%.1f VU", recs.orderVolumeVu))
+                                }
+                                Section("Available drivers") {
+                                    ForEach(recs.recommendations) { rec in
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            HStack {
+                                                Text(rec.driverName.isEmpty ? String(rec.driverId.prefix(8)) : rec.driverName)
+                                                    .font(.headline)
+                                                Spacer()
+                                                Text(String(format: "score %.2f", rec.score))
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            Text("\(rec.licensePlate) • \(rec.vehicleClass)")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                            HStack {
+                                                Spacer()
+                                                Button("Partial") {
+                                                    Task { await vm.applyReassign(orderId: order.orderId, driverId: rec.driverId, isPartial: true) }
+                                                }
+                                                .buttonStyle(.bordered)
+                                                .disabled(vm.isReassigning)
+                                                
+                                                Button("Complete") {
+                                                    Task { await vm.applyReassign(orderId: order.orderId, driverId: rec.driverId, isPartial: false) }
+                                                }
+                                                .buttonStyle(.borderedProminent)
+                                                .disabled(vm.isReassigning)
+                                            }
+                                        }
+                                        .padding(.vertical, 4)
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        ProgressView("Loading recommendations...")
+                    }
+                }
+                .navigationTitle("Reassign Order")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") {
+                            vm.closeReassignDialog()
+                        }
+                        .disabled(vm.isReassigning)
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
         }
     }
 

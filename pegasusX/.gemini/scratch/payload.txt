@@ -1,0 +1,10 @@
+=== payload Android ===
+HomeScreen.kt
+InboundReturnsScreen.kt
+LoginScreen.kt
+=== payload iOS ===
+HomeView.swift
+InboundReturnsView.swift
+LoginView.swift
+PayloadStateView.swift
+RootView.swift

@@ -15,16 +15,8 @@ type ProductionForecastChartProps = {
   className?: string;
 };
 
-// Mock Data: Raw Materials Stock vs Expected Burn Rate from incoming Warehouse Supply Requests
-const MOCK_FORECAST_DATA = [
-  { day: 'Mon', rawMaterials: 5000, burnRate: 1200 },
-  { day: 'Tue', rawMaterials: 4800, burnRate: 1500 },
-  { day: 'Wed', rawMaterials: 4300, burnRate: 1800 },
-  { day: 'Thu', rawMaterials: 4000, burnRate: 2100 },
-  { day: 'Fri', rawMaterials: 3500, burnRate: 2500 },
-  { day: 'Sat', rawMaterials: 3000, burnRate: 2200 },
-  { day: 'Sun', rawMaterials: 2800, burnRate: 1900 },
-];
+// Removed Mock Data
+const MOCK_FORECAST_DATA: Record<string, unknown>[] = [];
 
 export default function ProductionForecastChart({ className }: ProductionForecastChartProps) {
   return (

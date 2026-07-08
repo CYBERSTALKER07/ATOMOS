@@ -395,17 +395,19 @@ func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID s
 	}
 
 	stmt := spanner.Statement{
-		SQL: `SELECT OrderId, SupplierId, RetailerId,
-		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
-		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), COALESCE(DeliveryToken, ''), Status, LineItemsJson,
-		             TotalMinor, Currency, CreatedAt, UpdatedAt, Lat, Lng,
-		             COALESCE(OrderSource, 'MANUAL'), DeliverBefore, RequestedDeliveryDate,
-		             COALESCE(DeliveryPriority, 'STANDARD'), COALESCE(ConfirmationStatus, 'CONFIRMED'),
-		             ProposedDeliveryDate, COALESCE(ReceivingWindowOpen, ''), COALESCE(ReceivingWindowClose, '')
-		      FROM Orders@{FORCE_INDEX=Idx_Orders_ByRetailerCreated}
-		      WHERE RetailerId = @RetailerId
-		        AND Status IN UNNEST(@Statuses)
-		      ORDER BY CreatedAt DESC
+		SQL: `SELECT o.OrderId, o.SupplierId, o.RetailerId,
+		             COALESCE(o.WarehouseId, ''), COALESCE(o.DriverId, ''), COALESCE(o.VehicleId, ''),
+		             COALESCE(o.RouteId, ''), COALESCE(o.ManifestId, ''), COALESCE(o.DeliveryToken, ''), o.Status, o.LineItemsJson,
+		             o.TotalMinor, o.Currency, o.CreatedAt, o.UpdatedAt, o.Lat, o.Lng,
+		             COALESCE(o.OrderSource, 'MANUAL'), o.DeliverBefore, o.RequestedDeliveryDate,
+		             COALESCE(o.DeliveryPriority, 'STANDARD'), COALESCE(o.ConfirmationStatus, 'CONFIRMED'),
+		             o.ProposedDeliveryDate, COALESCE(o.ReceivingWindowOpen, ''), COALESCE(o.ReceivingWindowClose, ''),
+		             COALESCE(v.LicensePlate, '')
+		      FROM Orders@{FORCE_INDEX=Idx_Orders_ByRetailerCreated} o
+		      LEFT JOIN Vehicles v ON v.VehicleId = o.VehicleId
+		      WHERE o.RetailerId = @RetailerId
+		        AND o.Status IN UNNEST(@Statuses)
+		      ORDER BY o.CreatedAt DESC
 		      LIMIT @Limit
 		      OFFSET @Offset`,
 		Params: map[string]interface{}{
@@ -433,17 +435,19 @@ func (r *SpannerRepository) ListRecentReceipts(ctx context.Context, retailerID s
 	}
 
 	stmt := spanner.Statement{
-		SQL: `SELECT OrderId, SupplierId, RetailerId,
-		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
-		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), COALESCE(DeliveryToken, ''), Status, LineItemsJson,
-		             TotalMinor, Currency, CreatedAt, UpdatedAt, Lat, Lng,
-		             COALESCE(OrderSource, 'MANUAL'), DeliverBefore, RequestedDeliveryDate,
-		             COALESCE(DeliveryPriority, 'STANDARD'), COALESCE(ConfirmationStatus, 'CONFIRMED'),
-		             ProposedDeliveryDate, COALESCE(ReceivingWindowOpen, ''), COALESCE(ReceivingWindowClose, '')
-		      FROM Orders
-		      WHERE RetailerId = @RetailerId
-		        AND Status = @Status
-		      ORDER BY UpdatedAt DESC
+		SQL: `SELECT o.OrderId, o.SupplierId, o.RetailerId,
+		             COALESCE(o.WarehouseId, ''), COALESCE(o.DriverId, ''), COALESCE(o.VehicleId, ''),
+		             COALESCE(o.RouteId, ''), COALESCE(o.ManifestId, ''), COALESCE(o.DeliveryToken, ''), o.Status, o.LineItemsJson,
+		             o.TotalMinor, o.Currency, o.CreatedAt, o.UpdatedAt, o.Lat, o.Lng,
+		             COALESCE(o.OrderSource, 'MANUAL'), o.DeliverBefore, o.RequestedDeliveryDate,
+		             COALESCE(o.DeliveryPriority, 'STANDARD'), COALESCE(o.ConfirmationStatus, 'CONFIRMED'),
+		             o.ProposedDeliveryDate, COALESCE(o.ReceivingWindowOpen, ''), COALESCE(o.ReceivingWindowClose, ''),
+		             COALESCE(v.LicensePlate, '')
+		      FROM Orders o
+		      LEFT JOIN Vehicles v ON v.VehicleId = o.VehicleId
+		      WHERE o.RetailerId = @RetailerId
+		        AND o.Status = @Status
+		      ORDER BY o.UpdatedAt DESC
 		      LIMIT @Limit`,
 		Params: map[string]interface{}{
 			"RetailerId": retailerID,
@@ -1128,6 +1132,7 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 		proposedDelivery    spanner.NullTime
 		receivingOpen       string
 		receivingClose      string
+		licensePlate        string
 	)
 	if err := row.Columns(
 		&tracking.OrderID,
@@ -1155,6 +1160,7 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 		&proposedDelivery,
 		&receivingOpen,
 		&receivingClose,
+		&licensePlate,
 	); err != nil {
 		return TrackingOrder{}, fmt.Errorf("scan retailer tracking order: %w", err)
 	}
@@ -1165,6 +1171,7 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 	if strings.TrimSpace(tracking.DriverID) != "" && strings.TrimSpace(tracking.RouteID) != "" {
 		tracking.TrackingStatus = "assigned"
 	}
+	tracking.LicensePlate = licensePlate
 	tracking.LiveLocationAvailable = false
 	tracking.Items = decodeTrackingLineItems(lineItems)
 	if lat.Valid {

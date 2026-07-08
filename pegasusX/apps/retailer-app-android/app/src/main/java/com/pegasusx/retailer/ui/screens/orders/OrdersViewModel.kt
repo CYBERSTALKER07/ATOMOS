@@ -142,7 +142,7 @@ class OrdersViewModel @Inject constructor(
                 }
             }
 
-            val hasData = nextOrders.isNotEmpty() || nextPredictions.isNotEmpty()
+            val newDataExists = nextOrders.isNotEmpty() || nextPredictions.isNotEmpty()
 
             _uiState.update {
                 it.copy(
@@ -150,7 +150,7 @@ class OrdersViewModel @Inject constructor(
                     allOrders = nextOrders,
                     predictions = nextPredictions,
                     loadIssue = nextIssue,
-                    error = if (nextIssue != null && !hasData) nextErrorMessage else null,
+                    error = if (nextIssue != null && !newDataExists) nextErrorMessage else null,
                 )
             }
         }

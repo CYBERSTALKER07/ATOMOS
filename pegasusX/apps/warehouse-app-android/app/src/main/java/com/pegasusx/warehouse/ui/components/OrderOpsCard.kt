@@ -47,6 +47,7 @@ fun OrderOpsCard(
     enabled: Boolean = true,
     canDelay: Boolean = false,
     canReject: Boolean = false,
+    canReassign: Boolean = false,
     showOpsMenu: Boolean = true,
     showQuickActions: Boolean = true,
     detailOpenMode: OrderDetailOpenMode = OrderDetailOpenMode.Single,
@@ -55,6 +56,7 @@ fun OrderOpsCard(
     onOpenDetail: () -> Unit,
     onDelay: (() -> Unit)? = null,
     onReject: (() -> Unit)? = null,
+    onReassign: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     leadingContent: (@Composable () -> Unit)? = null,
 ) {
@@ -153,11 +155,21 @@ fun OrderOpsCard(
                                     },
                                 )
                             }
+                            if (onReassign != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Reassign order") },
+                                    enabled = canReassign,
+                                    onClick = {
+                                        menuExpanded = false
+                                        onReassign()
+                                    },
+                                )
+                            }
                         }
                     }
                 }
             }
-            if (showQuickActions && (onDelay != null || onReject != null)) {
+            if (showQuickActions && (onDelay != null || onReject != null || onReassign != null)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -180,6 +192,15 @@ fun OrderOpsCard(
                             modifier = Modifier.weight(1f),
                         ) {
                             Text(rejectLabel)
+                        }
+                    }
+                    if (onReassign != null) {
+                        OutlinedButton(
+                            onClick = onReassign,
+                            enabled = enabled && canReassign,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text("Reassign")
                         }
                     }
                 }

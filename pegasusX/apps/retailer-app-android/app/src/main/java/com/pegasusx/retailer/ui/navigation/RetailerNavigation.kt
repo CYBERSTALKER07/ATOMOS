@@ -498,6 +498,17 @@ fun RetailerNavigation(
                         )
                     }
                 }
+                composable("SETUP_WIZARD") {
+                    Box(Modifier.fillMaxSize()) {
+                        com.pegasusx.retailer.ui.screens.setup.SetupWizardScreen(
+                            onSetupComplete = {
+                                navController.navigate(PegasusTab.HOME.name) {
+                                    popUpTo("SETUP_WIZARD") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                }
                 }
             }
         }

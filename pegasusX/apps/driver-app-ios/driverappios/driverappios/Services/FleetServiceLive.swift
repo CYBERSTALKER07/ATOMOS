@@ -170,6 +170,20 @@ final class FleetServiceLive: FleetServiceProtocol {
         )
     }
 
+    // MARK: - Rescue Operations
+
+    func requestRescue(reason: String, note: String) async throws {
+        _ = try await api.requestRescue(reason: reason, note: note)
+    }
+
+    func respondRescue(rescueId: String, accept: Bool) async throws {
+        _ = try await api.respondRescue(rescueId: rescueId, accept: accept)
+    }
+
+    func reassignHandshake(orderId: String) async throws {
+        _ = try await api.reassignHandshake(orderId: orderId)
+    }
+
     // MARK: - Offline Delivery Queue
 
     @MainActor

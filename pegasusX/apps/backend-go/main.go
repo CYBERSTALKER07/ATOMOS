@@ -172,6 +172,7 @@ func main() {
 	warehouseroutes.RegisterRoutes(r, warehouseroutes.Deps{
 		Service:             app.WarehouseService,
 		OrderService:        app.OrderService,
+		PayloadService:      app.PayloadService,
 		JWTSecret:           cfg.JWTSecret,
 		Spanner:             app.Spanner,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
@@ -188,6 +189,7 @@ func main() {
 	supplierroutes.RegisterRoutes(r, supplierroutes.Deps{
 		Service:           app.SupplierService,
 		OrderService:      app.OrderService,
+		PayloadService:    app.PayloadService,
 		NotificationInbox: app.NotificationInbox,
 		JWTSecret:         cfg.JWTSecret,
 		Spanner:           app.Spanner,

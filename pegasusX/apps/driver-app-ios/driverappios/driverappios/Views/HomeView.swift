@@ -20,6 +20,7 @@ struct HomeView: View {
     @State private var pulseEvents: [PulseEvent] = []
     @State private var pulseLoading = true
     @State private var driverSocketState = DriverSocketState.shared
+    @State private var showRescueSheet = false
 
     var body: some View {
         ScrollView {
@@ -133,6 +134,11 @@ struct HomeView: View {
         .sheet(isPresented: $showSupplyTransfers) {
             SupplyTransfersView()
                 .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showRescueSheet) {
+            RequestRescueSheet()
+                .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
         .task {
@@ -495,7 +501,9 @@ struct HomeView: View {
             HStack(spacing: 12) {
                 actionTile(icon: "qrcode.viewfinder", label: "Scan QR")
                 actionTile(icon: "shield.checkered", label: "Offline\nVerify")
-                actionTile(icon: "arrow.triangle.2.circlepath", label: "Sync")
+                actionTileButton(icon: "exclamationmark.triangle.fill", label: "Rescue", tint: LabTheme.warning) {
+                    showRescueSheet = true
+                }
             }
         }
     }
@@ -515,6 +523,26 @@ struct HomeView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
         .labCard()
+    }
+
+    private func actionTileButton(icon: String, label: String, tint: Color = LabTheme.fg, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(tint)
+
+                Text(label)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(LabTheme.fgSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .labCard()
+        }
+        .buttonStyle(.pressable)
     }
 
     // MARK: - Recent Activity

@@ -119,6 +119,7 @@ fun DeliveryCorrectionScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val scope = rememberCoroutineScope()
     var showConfirmDialog by remember { mutableStateOf(false) }
+    var showStartTransitDialog by remember { mutableStateOf(false) }
 
     // Navigate out on success
     if (state.submitSuccess) {
@@ -205,6 +206,37 @@ fun DeliveryCorrectionScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // Section header
+                    if (state.isPartial) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        text = "Partial Order Split",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "This order is split across multiple trucks. Press Start Transit when you are heading to this route to notify the other driver.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Button(
+                                        onClick = { showStartTransitDialog = true },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Start Transit")
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     item {
                         DriverSectionTitle(title = "MANIFEST ITEMS · ${state.audits.size}")
                     }
@@ -268,6 +300,29 @@ fun DeliveryCorrectionScreen(
     }
 
     // ── Confirmation Dialog ──────────────────────────────────────────────────
+    if (showStartTransitDialog) {
+        AlertDialog(
+            onDismissRequest = { showStartTransitDialog = false },
+            title = { Text("Start Transit", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to start transit? This will notify the other driver that you are on the way to this shared route.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showStartTransitDialog = false
+                        viewModel.startTransitForPartialOrder()
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStartTransitDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },

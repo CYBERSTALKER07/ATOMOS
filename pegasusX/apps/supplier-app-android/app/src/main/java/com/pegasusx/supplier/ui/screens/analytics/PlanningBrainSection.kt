@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -39,8 +40,8 @@ import kotlin.math.roundToInt
 fun PlanningBrainSection(ops: SupplierOperationsRepository) {
     var sandop by remember { mutableStateOf<PlanningSAndOPSnapshot?>(null) }
     var scenario by remember { mutableStateOf<PlanningScenarioResult?>(null) }
-    var downtimeHours by remember { mutableDoubleStateOf(8.0) }
-    var demandDeltaPct by remember { mutableDoubleStateOf(10.0) }
+    var downtimeHours by remember { mutableFloatStateOf(8.0f) }
+    var demandDeltaPct by remember { mutableFloatStateOf(10.0f) }
     var loading by remember { mutableStateOf(true) }
     var running by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -112,12 +113,12 @@ fun PlanningBrainSection(ops: SupplierOperationsRepository) {
                             val key = SupplierIdempotencyKeys.planningScenario(
                                 scopeId,
                                 downtimeHours.roundToInt(),
-                                demandDeltaPct.roundToInt(),
+                                demandDeltaPct.toDouble(),
                             )
                             val resp = ops.runPlanningScenario(
                                 PlanningScenarioInput(
                                     factoryDowntimeHours = downtimeHours.roundToInt(),
-                                    demandDeltaPct = demandDeltaPct,
+                                    demandDeltaPct = demandDeltaPct.toDouble(),
                                     horizonDays = 7,
                                 ),
                                 key,

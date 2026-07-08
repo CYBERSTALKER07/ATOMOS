@@ -3,6 +3,7 @@ export type OrderActionFlags = {
   canDelay: boolean;
   canReject: boolean;
   canOverflow: boolean;
+  canReassign: boolean;
 };
 
 /** States eligible for POST .../propose-delivery (not LOADED/IN_TRANSIT/COMPLETED/CANCELLED). */
@@ -21,6 +22,7 @@ export function orderActionFlags(state: string): OrderActionFlags {
       s === 'DELAYED' ||
       s === 'ARRIVED',
     canOverflow: s === 'LOADED' || s === 'IN_TRANSIT',
+    canReassign: !terminal && s !== 'SCHEDULED' && s !== 'DELAYED',
   };
 }
 

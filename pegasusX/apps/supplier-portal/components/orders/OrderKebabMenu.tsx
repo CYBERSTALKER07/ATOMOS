@@ -7,10 +7,13 @@ type OrderKebabMenuProps = {
   onViewDetails: () => void;
   onDelay?: () => void;
   onReject?: () => void;
+  onReassign?: () => void;
   canDelay?: boolean;
   canReject?: boolean;
+  canReassign?: boolean;
   delayLabel?: string;
   rejectLabel?: string;
+  reassignLabel?: string;
   disabled?: boolean;
 };
 
@@ -18,10 +21,13 @@ export function OrderKebabMenu({
   onViewDetails,
   onDelay,
   onReject,
+  onReassign,
   canDelay = false,
   canReject = false,
+  canReassign = false,
   delayLabel = 'Delay delivery',
   rejectLabel = 'Reject order',
+  reassignLabel = 'Reassign order',
   disabled = false,
 }: OrderKebabMenuProps) {
   const [open, setOpen] = useState(false);
@@ -84,6 +90,23 @@ export function OrderKebabMenu({
               }}
             >
               {delayLabel}
+            </button>
+          ) : null}
+          {onReassign ? (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!canReassign}
+              title={!canReassign ? 'Reassign is only available before delivery completes' : undefined}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--default)] disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!canReassign) return;
+                setOpen(false);
+                onReassign();
+              }}
+            >
+              {reassignLabel}
             </button>
           ) : null}
           {onReject ? (

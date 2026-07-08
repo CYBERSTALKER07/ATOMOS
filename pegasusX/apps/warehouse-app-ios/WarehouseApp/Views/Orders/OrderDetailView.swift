@@ -18,6 +18,11 @@ struct OrderDetailView: View {
     @State private var proposeDate = Date()
     @State private var showProposeSheet = false
     @State private var statusMessage: String?
+    @State private var recommendations: [TruckRecommendation] = []
+    @State private var showReassignSheet = false
+    @State private var selectedDriverId: String?
+    @State private var selectedManifestId: String?
+    @State private var isPartialReassign = false
 
     var body: some View {
         Group {
@@ -56,6 +61,10 @@ struct OrderDetailView: View {
                             }
                             if canReject(order.state) {
                                 Button("Cancel order", role: .destructive) { pendingAction = .reject }
+                                    .disabled(mutating)
+                            }
+                            if canReassign(order.state) {
+                                Button("Reassign order") { loadRecommendations() }
                                     .disabled(mutating)
                             }
                         }
@@ -112,6 +121,48 @@ struct OrderDetailView: View {
                 }
             }
             .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $showReassignSheet) {
+            NavigationStack {
+                Form {
+                    Section("Select Vehicle") {
+                        ForEach(recommendations, id: \.driverId) { rec in
+                            Button {
+                                selectedDriverId = rec.driverId
+                                selectedManifestId = rec.toRoute.isEmpty ? nil : rec.toRoute
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading) {
+                                        Text(rec.driverName).foregroundColor(.primary)
+                                        Text("\(rec.vehicleClass) • \(rec.licensePlate)").font(.caption).foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    if selectedDriverId == rec.driverId {
+                                        Image(systemName: "checkmark").foregroundColor(.blue)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Section("Options") {
+                        Toggle("Partial Reassignment", isOn: $isPartialReassign)
+                        TextField("Reason (optional)", text: $reasonInput, axis: .vertical)
+                            .lineLimit(2...4)
+                    }
+                }
+                .navigationTitle("Reassign Order")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { showReassignSheet = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Confirm") { submitReassign() }
+                            .disabled(selectedDriverId == nil || mutating)
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
         }
         .alert(item: $pendingAction) { action in
             Alert(
@@ -202,7 +253,7 @@ struct OrderDetailView: View {
     }
 
     private func showOps(for state: String) -> Bool {
-        canProposeDate(state) || canReject(state) || canOverflow(state)
+        canProposeDate(state) || canReject(state) || canOverflow(state) || canReassign(state)
     }
 
     private func canProposeDate(_ state: String) -> Bool {
@@ -219,6 +270,10 @@ struct OrderDetailView: View {
 
     private func canOverflow(_ state: String) -> Bool {
         ["LOADED", "IN_TRANSIT"].contains(state.uppercased())
+    }
+
+    private func canReassign(_ state: String) -> Bool {
+        ["PENDING", "LOADED", "IN_TRANSIT", "SCHEDULED", "AUTO_ACCEPTED", "DELAYED", "ARRIVED"].contains(state.uppercased())
     }
 
     private func alertTitle(for action: OrderMutationAction) -> String {
@@ -258,5 +313,50 @@ struct OrderDetailView: View {
         merged.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
         let normalized = calendar.date(from: merged) ?? date
         return formatter.string(from: normalized)
+    }
+
+    private func loadRecommendations() {
+        mutating = true
+        statusMessage = "Loading recommendations..."
+        Task {
+            defer { mutating = false }
+            do {
+                let response = try await WarehouseOperationsService.recommendReassign(orderId: orderId)
+                recommendations = response.recommendations
+                if recommendations.isEmpty {
+                    statusMessage = "No available vehicles found for reassignment"
+                } else {
+                    statusMessage = nil
+                    showReassignSheet = true
+                }
+            } catch {
+                statusMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func submitReassign() {
+        guard let driverId = selectedDriverId else { return }
+        mutating = true
+        statusMessage = "Reassigning..."
+        Task {
+            defer { mutating = false }
+            do {
+                let request = ReassignOrderRequest(
+                    orderId: orderId,
+                    toDriverId: driverId,
+                    reason: reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "warehouse-reassign" : reasonInput,
+                    toManifestId: selectedManifestId,
+                    isPartial: isPartialReassign
+                )
+                try await WarehouseOperationsService.reassignOrder(request, idempotencyKey: UUID().uuidString)
+                statusMessage = "Order reassigned successfully"
+                showReassignSheet = false
+                reasonInput = ""
+                load()
+            } catch {
+                statusMessage = error.localizedDescription
+            }
+        }
     }
 }

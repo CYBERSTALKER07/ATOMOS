@@ -861,6 +861,10 @@ func (r *driverRepoSpy) ListVehicles(ctx context.Context, supplierID string, lim
 	return nil, nil
 }
 
+func (r *driverRepoSpy) FindSiblingDriversForOrder(ctx context.Context, orderID string) ([]string, error) {
+	return nil, nil
+}
+
 type driverTxnBufferSpy struct {
 	events []outbox.Event
 }

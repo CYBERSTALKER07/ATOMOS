@@ -1080,7 +1080,7 @@ private struct HandoffTimelineSection: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
-                .background(LabTheme.surface)
+                .background(LabTheme.card)
                 .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusMD))
             }
         }

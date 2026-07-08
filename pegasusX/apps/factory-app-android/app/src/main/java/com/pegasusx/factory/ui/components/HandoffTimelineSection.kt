@@ -25,7 +25,7 @@ fun HandoffTimelineSection(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
     ) {
-        FactorySectionHeader(title = "Handoff timeline")
+        FactorySectionHeader(title = "Handoff timeline", count = events.size)
         val subtitle = when {
             loading && events.isEmpty() -> "Loading handoff chain…"
             events.isEmpty() -> "No preorder → dispatch → seal events in the recent pulse window."

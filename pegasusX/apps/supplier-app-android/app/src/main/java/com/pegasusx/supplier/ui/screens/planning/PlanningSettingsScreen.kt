@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SeasonalOverrideInput
 import com.pegasusx.supplier.data.model.SeasonalOverrideRow
 import com.pegasusx.supplier.data.model.SeasonalTemplatesResponse
@@ -74,7 +73,7 @@ fun PlanningSettingsScreen(
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading seasonal overrides…", modifier = Modifier.padding(padding))
+            loading -> SupplierLoadingState("Loading settings…", body = "", modifier = Modifier.padding(padding))
             error != null && data == null -> SupplierStatePane(
                 kind = SupplierStateKind.Error,
                 headline = "Planning settings unavailable",

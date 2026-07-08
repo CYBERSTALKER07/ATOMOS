@@ -21,6 +21,7 @@ import {
   X,
   MapPin,
   Container,
+  RefreshCcw,
 } from "lucide-react";
 import { getRetailerProfile } from "@/lib/retailer-profile";
 import { useWebSocket } from "../lib/ws";
@@ -44,6 +45,8 @@ const NAV: NavSection[] = [
       { href: "/dock", icon: Container, label: "Dock" },
       { href: "/catalog", icon: PackageSearch, label: "Catalog" },
       { href: "/procurement", icon: Activity, label: "Procurement" },
+      { href: "/my-suppliers", icon: Store, label: "My Suppliers" },
+      { href: "/auto-order", icon: RefreshCcw, label: "Auto-Order" },
       { href: "/insights", icon: BarChart3, label: "Insights" },
     ],
   },

@@ -27,10 +27,12 @@ type PortalDriver struct {
 	Phone                    string  `json:"phone"`
 	TruckStatus              string  `json:"truck_status"`
 	IsActive                 bool    `json:"is_active"`
+	IsOnline                 bool    `json:"is_online"`
 	OnShift                  bool    `json:"on_shift,omitempty"`
 	UnavailableReason        string  `json:"unavailable_reason,omitempty"`
 	VehicleID                string  `json:"vehicle_id,omitempty"`
 	VehicleLabel             string  `json:"vehicle_label,omitempty"`
+	LicensePlate             string  `json:"license_plate,omitempty"`
 	VehicleClass             string  `json:"vehicle_class,omitempty"`
 	MaxVolumeVU              float64 `json:"max_volume_vu,omitempty"`
 	VehicleIsActive          bool    `json:"vehicle_is_active,omitempty"`

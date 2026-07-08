@@ -148,6 +148,7 @@ type OrderEvent struct {
 	DriverID              string  `json:"driver_id,omitempty"`
 	WarehouseID           string  `json:"warehouse_id,omitempty"`
 	VehicleID             string  `json:"vehicle_id,omitempty"`
+	LicensePlate          string  `json:"license_plate,omitempty"`
 	RouteID               string  `json:"route_id,omitempty"`
 	ManifestID            string  `json:"manifest_id,omitempty"`
 	Status                string  `json:"status,omitempty"`
@@ -215,6 +216,29 @@ type ManifestEvent struct {
 	ToRouteID      string `json:"to_route_id,omitempty"`
 	OrderCount     int    `json:"order_count,omitempty"`
 }
+
+// SplitShipmentEvent is emitted when a warehouse admin approves splitting a
+// retailer's oversized consolidated order across multiple trucks. Every
+// manifest in the group is linked by SplitGroupID. The driver and retailer
+// apps display the same shared route and order list. Payment deduplication:
+// the first PAYMENT_COLLECTED event for any order in OrderIDs closes the order
+// for all sibling manifests; the system must reject duplicate payment attempts.
+type SplitShipmentEvent struct {
+	BaseEvent
+	SplitGroupID  string   `json:"split_group_id"`
+	SupplierID    string   `json:"supplier_id"`
+	WarehouseID   string   `json:"warehouse_id,omitempty"`
+	RetailerID    string   `json:"retailer_id"`
+	SharedRouteID string   `json:"shared_route_id"`
+	OrderIDs      []string `json:"order_ids"`
+	ManifestIDs   []string `json:"manifest_ids"`
+	DriverIDs     []string `json:"driver_ids"`
+	TotalVolumeVU float64  `json:"total_volume_vu"`
+	// TruckCount is the number of trucks carrying the split shipment.
+	TruckCount int `json:"truck_count"`
+}
+
+
 
 // RouteEvent handles route events.
 type RouteEvent struct {
@@ -513,4 +537,15 @@ type CreditLimitEvent struct {
 	RequestedAmount  int64  `json:"requested_amount"`
 	CreditLimitMinor int64  `json:"credit_limit_minor"`
 	CurrentBalance   int64  `json:"current_balance"`
+}
+
+// RescueEvent handles mid-route rescue lifecycle between driver and warehouse.
+type RescueEvent struct {
+	BaseEvent
+	RescueID       string `json:"rescue_id,omitempty"`
+	BrokenDriverID string `json:"broken_driver_id"`
+	RescueDriverID string `json:"rescue_driver_id,omitempty"`
+	Status         string `json:"status,omitempty"` // REQUESTED, PROPOSED, ACCEPTED, REJECTED
+	WarehouseID    string `json:"warehouse_id,omitempty"`
+	SupplierID     string `json:"supplier_id,omitempty"`
 }

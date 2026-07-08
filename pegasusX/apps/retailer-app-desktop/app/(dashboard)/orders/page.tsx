@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, Suspense } from "react";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useWsEvent } from "../../../lib/ws";
@@ -67,7 +67,7 @@ const chipCfg: Record<
 
 type LoadIssue = "restricted" | "offline" | "error";
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const profile = getRetailerProfile();
   const ordersUrl = profile?.id
     ? `/v1/retailers/${profile.id}/orders`
@@ -1025,5 +1025,13 @@ export default function OrdersPage() {
       </div>
       </PageChrome>
     </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={<div className="p-8">Loading orders...</div>}>
+      <OrdersPageContent />
+    </Suspense>
   );
 }

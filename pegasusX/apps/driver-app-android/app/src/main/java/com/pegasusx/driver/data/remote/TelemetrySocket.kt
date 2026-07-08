@@ -132,4 +132,8 @@ class TelemetrySocket @Inject constructor(
         socket = null
         _connectionState.trySend(ConnectionState.DISCONNECTED)
     }
+
+    fun isConnected(): Boolean {
+        return socket != null
+    }
 }

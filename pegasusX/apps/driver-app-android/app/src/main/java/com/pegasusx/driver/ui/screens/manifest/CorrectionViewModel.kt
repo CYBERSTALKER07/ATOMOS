@@ -44,6 +44,8 @@ data class LineItemAudit(
 data class CorrectionUiState(
     val orderId: String = "",
     val retailerName: String = "",
+    val isPartial: Boolean = false,
+    val splitGroupId: String? = null,
     val audits: List<LineItemAudit> = emptyList(),
     val isLoading: Boolean = true,
     val isSubmitting: Boolean = false,
@@ -96,6 +98,8 @@ class CorrectionViewModel @Inject constructor(
             _state.update {
                 it.copy(
                     retailerName = order.retailerName.ifBlank { retailerName },
+                    isPartial = order.isPartial,
+                    splitGroupId = order.splitGroupId,
                     audits = audits,
                 )
             }
@@ -120,6 +124,8 @@ class CorrectionViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         retailerName = order.retailerName.ifBlank { retailerName },
+                    isPartial = order.isPartial,
+                    splitGroupId = order.splitGroupId,
                         audits = audits
                     )
                 }
@@ -131,6 +137,21 @@ class CorrectionViewModel @Inject constructor(
 
     fun openEditor(index: Int) {
         _editingIndex.value = index
+    }
+
+    fun startTransitForPartialOrder() {
+        val stateVal = _state.value
+        if (!stateVal.isPartial) return
+        viewModelScope.launch {
+            _state.update { it.copy(isSubmitting = true, error = null) }
+            try {
+                val ik = java.util.UUID.randomUUID().toString()
+                api.reassignHandshake(orderId, ik)
+                _state.update { it.copy(isSubmitting = false) }
+            } catch (e: Exception) {
+                _state.update { it.copy(isSubmitting = false, error = e.message) }
+            }
+        }
     }
 
     fun closeEditor() {

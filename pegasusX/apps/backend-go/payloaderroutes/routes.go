@@ -32,11 +32,14 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/payloader/trucks", d.Service.HandleTrucks)
 		rr.Get("/v1/payloader/orders", d.Service.HandleOrders)
 		rr.Get("/v1/payloader/manifests", d.Service.HandleManifestsList)
+		// Static manifest sub-routes MUST be registered before the {manifestID}
+		// wildcard to avoid the router matching "seal-all" as a manifest ID.
+		rr.Post("/v1/payloader/manifests/seal-all", d.Service.HandleSealAll)
+		rr.Post("/v1/payloader/manifests/seal-completed", d.Service.HandleSealCompletedManifests)
 		rr.Get("/v1/payloader/manifests/{manifestID}", d.Service.HandleManifestDetail)
 		rr.Post("/v1/payloader/manifests/{manifestID}/start-loading", d.Service.HandleStartLoading)
 		rr.Post("/v1/payloader/manifests/{manifestID}/inject-order", d.Service.HandleInjectOrder)
 		rr.Post("/v1/payloader/manifests/{manifestID}/seal", d.Service.HandleSealManifest)
-		rr.Post("/v1/payloader/manifests/seal-completed", d.Service.HandleSealCompletedManifests)
 		rr.Post("/v1/payload/manifest-exception", d.Service.HandleManifestException)
 		rr.Get("/v1/payloader/manifest-exceptions", d.Service.HandleManifestExceptions)
 		rr.Post("/v1/payloader/recommend-reassign", d.Service.HandleRecommendReassign)
@@ -46,6 +49,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 		rr.Get("/v1/supplier/manifests", d.Service.HandleManifestsList)
 		rr.Get("/v1/supplier/manifests/{id}", d.Service.HandleManifestDetail)
+		rr.Post("/v1/supplier/manifests/seal-all", d.Service.HandleSealAll)
 		rr.Post("/v1/supplier/manifests/{id}/start-loading", d.Service.HandleStartLoading)
 		rr.Post("/v1/supplier/manifests/{id}/inject-order", d.Service.HandleInjectOrder)
 		rr.Post("/v1/supplier/manifests/{id}/seal", d.Service.HandleSealManifest)
@@ -57,6 +61,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		}
 		// POST /v1/user/device-token is registered globally via platformroutes.
 	}
+
 
 	allowed := []auth.Role{auth.RolePayload, auth.RoleAdmin}
 	if d.FirebaseAuthEnabled && d.FirebaseVerifier != nil {

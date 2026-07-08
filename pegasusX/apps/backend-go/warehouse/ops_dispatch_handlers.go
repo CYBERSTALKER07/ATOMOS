@@ -160,16 +160,22 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 }
 
 type DispatchExecuteResult struct {
-	Status           string                    `json:"status"`
-	SupplierID       string                    `json:"supplier_id"`
-	WarehouseID      string                    `json:"warehouse_id,omitempty"`
-	ManifestsCreated int                       `json:"manifests_created"`
-	OrdersAssigned   int                       `json:"orders_assigned"`
-	OptimizerSource  string                    `json:"optimizer_source,omitempty"`
-	Warnings         []string                  `json:"warnings,omitempty"`
-	CapacityWarnings []DispatchCapacityWarning `json:"capacity_warnings,omitempty"`
-	Manifests        []DispatchExecuteRoute    `json:"manifests"`
-	Orphans          []string                  `json:"orphan_order_ids,omitempty"`
+	Status              string                      `json:"status"`
+	SupplierID          string                      `json:"supplier_id"`
+	WarehouseID         string                      `json:"warehouse_id,omitempty"`
+	ManifestsCreated    int                         `json:"manifests_created"`
+	OrdersAssigned      int                         `json:"orders_assigned"`
+	OptimizerSource     string                      `json:"optimizer_source,omitempty"`
+	Warnings            []string                    `json:"warnings,omitempty"`
+	CapacityWarnings    []DispatchCapacityWarning   `json:"capacity_warnings,omitempty"`
+	// OverflowWarnings lists retailer orders whose combined volume exceeds any single
+	// truck. The warehouse admin must decide to split across trucks or cancel orders
+	// before this dispatch can commit. Returned with status="capacity_overflow".
+	OverflowWarnings    []dispatch.RetailerOverflowWarning `json:"overflow_warnings,omitempty"`
+	// SplitShipmentGroups describes multi-truck split groups committed in this run.
+	SplitShipmentGroups []dispatch.SplitShipmentGroup      `json:"split_shipment_groups,omitempty"`
+	Manifests           []DispatchExecuteRoute              `json:"manifests"`
+	Orphans             []string                           `json:"orphan_order_ids,omitempty"`
 }
 
 type DispatchCapacityWarning struct {
@@ -225,12 +231,13 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	sid := s.resolveDispatchSupplierID(r.Context(), whID)
 
 	var req struct {
-		Mode            string                 `json:"mode"`
-		Routes          []DispatchExecuteRoute `json:"routes"`
-		OrderIDs        []string               `json:"order_ids"`
-		ForceCapacity   bool                   `json:"force_capacity"`
-		AcceptPartial   bool                   `json:"accept_partial"`
-		PlanFingerprint string                 `json:"plan_fingerprint"`
+		Mode               string                 `json:"mode"`
+		Routes             []DispatchExecuteRoute `json:"routes"`
+		OrderIDs           []string               `json:"order_ids"`
+		ForceCapacity      bool                   `json:"force_capacity"`
+		AcceptPartial      bool                   `json:"accept_partial"`
+		PlanFingerprint    string                 `json:"plan_fingerprint"`
+		AllowRetailerSplit bool                   `json:"allow_retailer_split"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -238,14 +245,15 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	}
 
 	out, err := s.ExecuteDispatch(r.Context(), DispatchExecuteRequest{
-		WarehouseID:     whID,
-		SupplierID:      sid,
-		Mode:            req.Mode,
-		Routes:          req.Routes,
-		OrderIDs:        req.OrderIDs,
-		ForceCapacity:   req.ForceCapacity,
-		AcceptPartial:   req.AcceptPartial,
-		PlanFingerprint: req.PlanFingerprint,
+		WarehouseID:        whID,
+		SupplierID:         sid,
+		Mode:               req.Mode,
+		Routes:             req.Routes,
+		OrderIDs:           req.OrderIDs,
+		ForceCapacity:      req.ForceCapacity,
+		AcceptPartial:      req.AcceptPartial,
+		PlanFingerprint:    req.PlanFingerprint,
+		AllowRetailerSplit: req.AllowRetailerSplit,
 	})
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "dispatch execute failed", "warehouse_id", whID, "err", err)
@@ -271,11 +279,15 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 			"timestamp":         s.now().UTC().Format(time.RFC3339Nano),
 		})
 	}
+	status := http.StatusOK
+	if out.Status == "capacity_overflow" || out.Status == "capacity_exceeded" {
+		status = http.StatusConflict
+	}
 	if encoded, err := json.Marshal(out); err == nil {
-		s.storeMutationReplay(r.Context(), key, body, http.StatusOK, encoded)
+		s.storeMutationReplay(r.Context(), key, body, status, encoded)
 		idemCommitted = true
 	}
-	writeJSON(w, http.StatusOK, out)
+	writeJSON(w, status, out)
 }
 
 func (s *Service) handleOpsDispatchSettings(w http.ResponseWriter, r *http.Request) {

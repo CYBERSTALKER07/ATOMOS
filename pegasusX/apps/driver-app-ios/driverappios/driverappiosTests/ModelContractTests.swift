@@ -41,13 +41,7 @@ struct RouteManifestTests {
         #expect(manifest.isValid == false)
     }
 
-    @Test func hashes_containsExpectedOrders() {
-        let manifest = RouteManifest.mock
-        #expect(manifest.hashes.count == 3)
-        #expect(manifest.hashes["ORD-TASH-0056"] != nil)
-        #expect(manifest.hashes["ORD-TASH-0057"] != nil)
-        #expect(manifest.hashes["ORD-TASH-0058"] != nil)
-    }
+
 }
 
 // MARK: - SHA256 Helper Tests
@@ -113,19 +107,8 @@ struct QRPayloadTests {
 struct MissionTests {
 
     @Test func mission_id_isOrderId() {
-        let mission = Mission.mockMissions[0]
+        let mission = Mission(order_id: "preview", state: "EN_ROUTE", target_lat: 41.3, target_lng: 69.3, amount: 1000, gateway: "CASH", estimated_arrival_at: nil, route_id: nil, sequence_index: nil)
         #expect(mission.id == mission.order_id)
-    }
-
-    @Test func mission_mockCount() {
-        #expect(Mission.mockMissions.count == 3)
-    }
-
-    @Test func mission_gateways_allValid() {
-        let validGateways = Set(["CASH", "GLOBAL_PAY"])
-        for m in Mission.mockMissions {
-            #expect(validGateways.contains(m.gateway), "Unexpected gateway: \(m.gateway)")
-        }
     }
 }
 

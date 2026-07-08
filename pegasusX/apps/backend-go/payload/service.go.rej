@@ -1,0 +1,11 @@
+@@ -1257,6 +1259,9 @@
+ 		targetDriverID := req.ToDriverID
+ 		reassignedVolume := int64(10)
++		if req.IsPartial && req.PartialVolumeVU > 0 {
++			reassignedVolume = req.PartialVolumeVU
++		}
+ 		if fromManifestID != "" {
+ 			fromManifestOrders := s.manifestOrders[fromManifestID]
+ 			fromManifestOrderIdx := s.findManifestOrderIndexLocked(fromManifestID, order.OrderID)
+-			if fromManifestOrderIdx >= 0 && fromManifestOrders[fromManifestOrderIdx].VolumeVU > 0 {
++			if !req.IsPartial && fromManifestOrderIdx >= 0 && fromManifestOrders[fromManifestOrderIdx].VolumeVU > 0 {

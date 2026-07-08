@@ -9,11 +9,13 @@ struct DeliveryCorrectionView: View {
 
     let orderId: String
     let driverId: String
+    var isPartial: Bool = false
     let onClose: () -> Void
     let onAmended: () -> Void
 
     @State private var vm = CorrectionViewModel()
     @State private var showConfirmAlert = false
+    @State private var showStartTransitAlert = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -62,6 +64,17 @@ struct DeliveryCorrectionView: View {
         .task {
             await vm.loadLineItems(orderId: orderId)
         }
+        .alert("Start Transit?", isPresented: $showStartTransitAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Confirm") {
+                Task {
+                    let success = await vm.startTransitForPartialOrder(orderId: orderId)
+                    if success { onAmended() }
+                }
+            }
+        } message: {
+            Text("Notify the other driver that you are heading to this route?")
+        }
         .alert("Confirm Amendment", isPresented: $showConfirmAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Submit", role: .destructive) {
@@ -107,6 +120,33 @@ struct DeliveryCorrectionView: View {
             Text(orderId)
                 .font(.system(size: 13, weight: .semibold, design: .monospaced))
                 .foregroundStyle(LabTheme.fgSecondary)
+
+            if isPartial {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Partial Order Split")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(LabTheme.fg)
+                    
+                    Text("This order is split across multiple trucks. Press Start Transit when you are heading to this route to notify the other driver.")
+                        .font(.system(size: 14))
+                        .foregroundStyle(LabTheme.fgSecondary)
+                    
+                    Button {
+                        showStartTransitAlert = true
+                    } label: {
+                        Text("Start Transit")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(LabTheme.success, in: .rect(cornerRadius: LabTheme.buttonRadius))
+                    }
+                    .buttonStyle(.pressable)
+                }
+                .padding(LabTheme.s16)
+                .labCard()
+                .padding(.top, 8)
+            }
         }
     }
 

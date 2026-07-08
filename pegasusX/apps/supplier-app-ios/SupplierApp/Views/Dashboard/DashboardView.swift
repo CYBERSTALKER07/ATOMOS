@@ -51,7 +51,7 @@ struct DashboardView: View {
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding()
-                                .background(SupplierTheme.surface)
+                                .background(SupplierTheme.card)
                                 .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
                             }
 

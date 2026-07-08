@@ -110,6 +110,19 @@ const (
 	EventManifestDispatched     = "MANIFEST_DISPATCHED"
 	EventManifestCompleted      = "MANIFEST_COMPLETED"
 
+	// @Sync(SplitShipmentEvent)
+	// EventSplitShipmentCreated fires when a warehouse admin approves splitting
+	// a retailer's oversized order across multiple trucks. All drivers in the
+	// group receive the same route; payment is coordinated — only one collection
+	// event is accepted regardless of which driver reaches the retailer first.
+	EventSplitShipmentCreated = "SPLIT_SHIPMENT_CREATED"
+
+	// EventOrderCapacityOverflow is broadcast to the warehouse portal WebSocket
+	// when binpack detects that a retailer's consolidated order exceeds every
+	// truck's capacity. The payload contains the retailer ID, order IDs, and
+	// excess volume so the admin can take corrective action.
+	EventOrderCapacityOverflow = "ORDER_CAPACITY_OVERFLOW"
+
 	// @Sync(DeliverySessionEvent)
 	EventDeliverySessionUpdated = "DELIVERY_SESSION_UPDATED"
 	EventDeliveryDisputed       = "DELIVERY_DISPUTED"

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"google.golang.org/api/iterator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
@@ -1030,4 +1031,33 @@ func scanConditionReportRow(row *spanner.Row) (ConditionReport, error) {
 		_ = json.Unmarshal(proofRaw, &cr.ProofIDs)
 	}
 	return cr, nil
+}
+
+func (r *SpannerRepository) FindSiblingDriversForOrder(ctx context.Context, orderID string) ([]string, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT DISTINCT DriverId FROM SupplierTruckManifests
+			  WHERE ManifestId IN (
+				  SELECT ManifestId FROM ManifestOrders WHERE OrderId = @orderId
+			  )`,
+		Params: map[string]interface{}{"orderId": orderID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	var driverIDs []string
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var driverID string
+		if err := row.Column(0, &driverID); err != nil {
+			return nil, err
+		}
+		driverIDs = append(driverIDs, driverID)
+	}
+	return driverIDs, nil
 }

@@ -16,6 +16,7 @@ import com.pegasusx.warehouse.data.model.Order
 import com.pegasusx.warehouse.data.model.WarehouseOrderMutationRequest
 import com.pegasusx.warehouse.data.model.WarehousePreorderRow
 import com.pegasusx.warehouse.data.model.WarehouseProposeDeliveryRequest
+import com.pegasusx.warehouse.data.model.RecommendReassignResponse
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
@@ -54,6 +55,9 @@ fun OrdersScreen(
     var rejectTarget by remember { mutableStateOf<String?>(null) }
     var rejectPreorderTarget by remember { mutableStateOf<WarehousePreorderRow?>(null) }
     var proposeTarget by remember { mutableStateOf<WarehousePreorderRow?>(null) }
+    var reassignTarget by remember { mutableStateOf<String?>(null) }
+    var reassigning by remember { mutableStateOf(false) }
+    var reassignRecommendations by remember { mutableStateOf<RecommendReassignResponse?>(null) }
     var reasonInput by remember { mutableStateOf("") }
     var actionMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -100,6 +104,25 @@ fun OrdersScreen(
 
     fun load(silent: Boolean = false) {
         if (hubTab == 0) loadActive(silent) else loadPreorders(silent)
+    }
+
+    fun openReassignDialog(orderId: String) {
+        reassignTarget = orderId
+        reassignRecommendations = null
+        scope.launch {
+            try {
+                val resp = opsRepository.recommendReassign(orderId)
+                if (resp.isSuccessful) {
+                    reassignRecommendations = resp.body()
+                } else {
+                    actionMessage = "Failed to load recommendations (${resp.code()})"
+                    reassignTarget = null
+                }
+            } catch (e: Exception) {
+                actionMessage = e.message ?: "Network error"
+                reassignTarget = null
+            }
+        }
     }
 
     LaunchedEffect(hubTab, selectedState) { load() }
@@ -313,6 +336,105 @@ fun OrdersScreen(
         }
     }
 
+    reassignTarget?.let { orderId ->
+        val recs = reassignRecommendations
+        AlertDialog(
+            onDismissRequest = { if (!reassigning) reassignTarget = null },
+            title = { Text("Reassign Order ${orderId.take(8)}") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (recs == null) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                    } else if (recs.recommendations.isEmpty()) {
+                        Text("No suitable trucks available.")
+                    } else {
+                        Text(
+                            "${recs.retailerName} • %.1f VU".format(recs.orderVolumeVu),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxWidth().height(280.dp),
+                        ) {
+                            items(recs.recommendations, key = { it.driverId }) { rec ->
+                                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                rec.driverName.ifBlank { rec.driverId.take(8) },
+                                                style = MaterialTheme.typography.titleSmall,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Text("score %.2f".format(rec.score), style = MaterialTheme.typography.labelMedium)
+                                        }
+                                        Text(
+                                            listOfNotNull(
+                                                rec.licensePlate.takeIf { it.isNotBlank() },
+                                                rec.vehicleClass.takeIf { it.isNotBlank() }
+                                            ).joinToString(" • "),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    reassigning = true
+                                                    scope.launch {
+                                                        try {
+                                                            val resp = opsRepository.reassignOrder(orderId, rec.driverId, true)
+                                                            actionMessage = if (resp.isSuccessful) "Reassigned (Partial)" else "Failed"
+                                                            reassignTarget = null
+                                                            load(silent = true)
+                                                        } catch (e: Exception) {
+                                                            actionMessage = e.message
+                                                        } finally {
+                                                            reassigning = false
+                                                        }
+                                                    }
+                                                },
+                                                enabled = !reassigning,
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                            ) { Text("Partial") }
+                                            Button(
+                                                onClick = {
+                                                    reassigning = true
+                                                    scope.launch {
+                                                        try {
+                                                            val resp = opsRepository.reassignOrder(orderId, rec.driverId, false)
+                                                            actionMessage = if (resp.isSuccessful) "Reassigned (Complete)" else "Failed"
+                                                            reassignTarget = null
+                                                            load(silent = true)
+                                                        } catch (e: Exception) {
+                                                            actionMessage = e.message
+                                                        } finally {
+                                                            reassigning = false
+                                                        }
+                                                    }
+                                                },
+                                                enabled = !reassigning,
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                            ) { Text("Complete") }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                if (reassigning) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    TextButton(onClick = { reassignTarget = null }) { Text("Close") }
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             Column {
@@ -392,9 +514,11 @@ fun OrdersScreen(
                         enabled = actingId != order.orderId,
                         canDelay = flags.canDelay,
                         canReject = flags.canReject,
+                        canReassign = flags.canReassign,
                         onOpenDetail = { onOrderClick(order.orderId) },
                         onDelay = { proposeActiveTarget = order.orderId; reasonInput = "" },
                         onReject = { rejectTarget = order.orderId; reasonInput = "" },
+                        onReassign = { openReassignDialog(order.orderId) },
                     )
                 }
             }

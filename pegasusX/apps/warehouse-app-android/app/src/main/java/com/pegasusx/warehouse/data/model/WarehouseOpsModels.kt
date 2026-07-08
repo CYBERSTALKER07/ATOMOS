@@ -245,3 +245,43 @@ data class WarehouseOpsBoardResponse(
     @SerialName("loading_manifests") val loadingManifests: List<WarehouseOpsBoardManifest> = emptyList(),
     @SerialName("fetched_at") val fetchedAt: String? = null,
 )
+
+@Serializable
+data class RecommendReassignRequest(
+    @SerialName("order_id") val orderId: String,
+)
+
+@Serializable
+data class TruckRecommendation(
+    @SerialName("driver_id") val driverId: String = "",
+    @SerialName("driver_name") val driverName: String = "",
+    @SerialName("vehicle_id") val vehicleId: String = "",
+    @SerialName("vehicle_class") val vehicleClass: String = "",
+    @SerialName("license_plate") val licensePlate: String = "",
+    @SerialName("score") val score: Double = 0.0,
+    @SerialName("reason") val reason: String = "",
+    @SerialName("to_route") val toRoute: String = "",
+)
+
+@Serializable
+data class RecommendReassignResponse(
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("retailer_name") val retailerName: String = "",
+    @SerialName("order_volume_vu") val orderVolumeVu: Double = 0.0,
+    @SerialName("current_driver") val currentDriver: String = "",
+    val recommendations: List<TruckRecommendation> = emptyList(),
+)
+
+@Serializable
+data class ReassignOrderRequest(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("to_driver_id") val toDriverId: String,
+    val reason: String = "warehouse-reassign",
+    @SerialName("to_manifest_id") val toManifestId: String? = null,
+    @SerialName("is_partial") val isPartial: Boolean = false,
+)
+
+@Serializable
+data class StatusResponse(
+    val status: String = "",
+)

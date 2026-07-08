@@ -9,6 +9,8 @@ enum AppTab: String, CaseIterable {
     case fleet = "Fleet"
     case staff = "Staff"
     case insights = "Insights"
+    case analytics = "Analytics"
+    case manifestExceptions = "Exceptions"
 
     var icon: String {
         switch self {
@@ -20,6 +22,8 @@ enum AppTab: String, CaseIterable {
         case .fleet: "truck.box"
         case .staff: "person.2"
         case .insights: "chart.bar.xaxis"
+        case .analytics: "chart.pie"
+        case .manifestExceptions: "exclamationmark.triangle"
         }
     }
 }
@@ -32,6 +36,8 @@ struct MainTabView: View {
             DashboardView(
                 onOpenSupplyRequests: { selectedTab = .supplyRequests },
                 onOpenPayloadOverride: { selectedTab = .payloadOverride },
+                onOpenManifestExceptions: { selectedTab = .manifestExceptions },
+                onOpenAnalytics: { selectedTab = .analytics },
                 onOpenInsights: { selectedTab = .insights }
             )
                 .tabItem { Label(AppTab.dashboard.rawValue, systemImage: AppTab.dashboard.icon) }
@@ -42,7 +48,7 @@ struct MainTabView: View {
             TransferListView()
                 .tabItem { Label(AppTab.transfers.rawValue, systemImage: AppTab.transfers.icon) }
                 .tag(AppTab.transfers)
-            SupplyRequestsView()
+            SupplyRequestsHubView()
                 .tabItem { Label(AppTab.supplyRequests.rawValue, systemImage: AppTab.supplyRequests.icon) }
                 .tag(AppTab.supplyRequests)
             PayloadOverrideView()
@@ -57,6 +63,12 @@ struct MainTabView: View {
             InsightsView()
                 .tabItem { Label(AppTab.insights.rawValue, systemImage: AppTab.insights.icon) }
                 .tag(AppTab.insights)
+            NavigationStack { AnalyticsView() }
+                .tabItem { Label(AppTab.analytics.rawValue, systemImage: AppTab.analytics.icon) }
+                .tag(AppTab.analytics)
+            NavigationStack { ManifestExceptionsView() }
+                .tabItem { Label(AppTab.manifestExceptions.rawValue, systemImage: AppTab.manifestExceptions.icon) }
+                .tag(AppTab.manifestExceptions)
         }
     }
 }

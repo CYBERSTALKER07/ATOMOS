@@ -118,6 +118,16 @@ struct MainTabView: View {
             pathMonitor?.cancel()
             pathMonitor = nil
         }
+        .alert("Rescue Proposed", isPresented: $vm.showRescueProposalAlert) {
+            Button("Accept Rescue", role: .none) {
+                Task { await vm.acceptRescue() }
+            }
+            Button("Reject", role: .cancel) {
+                Task { await vm.rejectRescue() }
+            }
+        } message: {
+            Text("A nearby truck broke down. Do you accept the rescue?")
+        }
     }
 }
 

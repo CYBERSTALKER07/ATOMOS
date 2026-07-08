@@ -83,6 +83,18 @@ class WarehouseOperationsRepository @Inject constructor(
             WarehouseIdempotencyKeys.orderOverflow(orderId),
         )
 
+    suspend fun recommendReassign(orderId: String): Response<RecommendReassignResponse> =
+        api.recommendReassign(
+            RecommendReassignRequest(orderId = orderId),
+            WarehouseIdempotencyKeys.recommendReassign(orderId),
+        )
+
+    suspend fun reassignOrder(orderId: String, driverId: String, isPartial: Boolean): Response<StatusResponse> =
+        api.reassignOrder(
+            ReassignOrderRequest(orderId = orderId, toDriverId = driverId, isPartial = isPartial),
+            WarehouseIdempotencyKeys.reassignOrder(orderId, driverId),
+        )
+
     suspend fun refreshToken(refreshToken: String): Response<AuthResponse> =
         api.refreshToken(RefreshTokenRequest(refreshToken))
 

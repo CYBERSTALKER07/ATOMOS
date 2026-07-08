@@ -16,41 +16,11 @@ fun ControlTowerScreen() {
     var isNetworkView by remember { mutableStateOf(true) }
     
     // Mock Data
-    val nodes = remember {
-        listOf(
-            NetworkNode("WH-1", "warehouse", "Central Hub"),
-            NetworkNode("WH-2", "warehouse", "East DC"),
-            NetworkNode("RT-1", "retailer", "Store Alpha"),
-            NetworkNode("RT-2", "retailer", "Store Beta"),
-            NetworkNode("DR-1", "driver", "Driver 104"),
-            NetworkNode("DR-2", "driver", "Driver 211")
-        )
-    }
+    val nodes = remember { emptyList<NetworkNode>() }
 
-    val links = remember {
-        listOf(
-            NetworkLink("WH-1", "RT-1"),
-            NetworkLink("WH-1", "RT-2"),
-            NetworkLink("WH-2", "RT-1"),
-            NetworkLink("WH-1", "DR-1"),
-            NetworkLink("DR-1", "RT-1"),
-            NetworkLink("WH-2", "DR-2")
-        )
-    }
+    val links = remember { emptyList<NetworkLink>() }
 
-    val h3Data = remember {
-        val h3 = H3Core.newInstance()
-        val data = mutableListOf<H3DensityData>()
-        val centerLat = 37.74
-        val centerLng = -122.4
-        for (i in 0..50) {
-            val lat = centerLat + (Math.random() - 0.5) * 0.5
-            val lng = centerLng + (Math.random() - 0.5) * 0.5
-            val hex = h3.latLngToCellAddress(lat, lng, 8)
-            data.add(H3DensityData(hex, (Math.random() * 100).toInt()))
-        }
-        data
-    }
+    val h3Data = remember { emptyList<H3DensityData>() }
 
 
 

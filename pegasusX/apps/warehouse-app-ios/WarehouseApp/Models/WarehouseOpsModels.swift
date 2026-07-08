@@ -391,3 +391,65 @@ enum HandoffPulseSupport {
         return haystack.range(of: "PREORDER|ACCEPT|DISPATCH|SEAL|MANIFEST", options: .regularExpression) != nil
     }
 }
+
+struct RecommendReassignRequest: Encodable {
+    let orderId: String
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+    }
+}
+
+struct TruckRecommendation: Decodable {
+    let driverId: String
+    let driverName: String
+    let vehicleId: String
+    let vehicleClass: String
+    let licensePlate: String
+    let score: Double
+    let reason: String
+    let toRoute: String
+
+    enum CodingKeys: String, CodingKey {
+        case driverId = "driver_id"
+        case driverName = "driver_name"
+        case vehicleId = "vehicle_id"
+        case vehicleClass = "vehicle_class"
+        case licensePlate = "license_plate"
+        case score
+        case reason
+        case toRoute = "to_route"
+    }
+}
+
+struct RecommendReassignResponse: Decodable {
+    let orderId: String
+    let retailerName: String
+    let orderVolumeVu: Double
+    let currentDriver: String
+    let recommendations: [TruckRecommendation]
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case retailerName = "retailer_name"
+        case orderVolumeVu = "order_volume_vu"
+        case currentDriver = "current_driver"
+        case recommendations
+    }
+}
+
+struct ReassignOrderRequest: Encodable {
+    let orderId: String
+    let toDriverId: String
+    let reason: String
+    let toManifestId: String?
+    let isPartial: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case toDriverId = "to_driver_id"
+        case reason
+        case toManifestId = "to_manifest_id"
+        case isPartial = "is_partial"
+    }
+}

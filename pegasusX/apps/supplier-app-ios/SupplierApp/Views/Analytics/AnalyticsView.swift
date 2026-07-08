@@ -265,7 +265,7 @@ private struct PlanningBrainSection: View {
             let key = SupplierIdempotencyKeys.planningScenario(
                 scopeId: scope,
                 factoryDowntimeHours: Int(downtimeHours),
-                demandDeltaPct: Int(demandDeltaPct)
+                demandDeltaPct: demandDeltaPct
             )
             scenario = try await SupplierOperationsService.runPlanningScenario(
                 factoryDowntimeHours: Int(downtimeHours),

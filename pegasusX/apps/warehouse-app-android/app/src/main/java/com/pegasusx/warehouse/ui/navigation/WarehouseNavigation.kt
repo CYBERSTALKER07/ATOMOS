@@ -78,6 +78,7 @@ import com.pegasusx.warehouse.ui.screens.setup.LocationSetupScreen
 import com.pegasusx.warehouse.ui.screens.staff.StaffScreen
 import com.pegasusx.warehouse.ui.screens.tomorrowboard.TomorrowBoardScreen
 import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestsScreen
+import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestDetailScreen
 import com.pegasusx.warehouse.ui.screens.transfers.TransferActionsScreen
 import com.pegasusx.warehouse.ui.screens.treasury.TreasuryScreen
 import com.pegasusx.warehouse.ui.screens.vehicles.VehicleDetailScreen

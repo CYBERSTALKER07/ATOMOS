@@ -29,7 +29,7 @@ struct NetworkPulseStrip: View {
                             }
                             .frame(minWidth: 180, maxWidth: 240, alignment: .leading)
                             .padding()
-                            .background(SupplierTheme.surface)
+                            .background(SupplierTheme.card)
                             .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
                         }
                     }

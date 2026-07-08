@@ -59,7 +59,7 @@ fun ReplenishmentPoliciesScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading policies…", modifier = Modifier.padding(padding))
+            loading -> SupplierLoadingState("Loading policies…", body = "", modifier = Modifier.padding(padding))
             error != null -> SupplierStatePane(
                 kind = SupplierStateKind.Error,
                 headline = "Policies unavailable",

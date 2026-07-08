@@ -1,0 +1,2 @@
+U:RDoc::Attr[iI"location:ETI")Nanaimo::Reader::ParseError#location;TI"RW;T:publico:RDoc::Markup::Document:@parts[o:RDoc::Markup::Paragraph;	[I"J@return [[Integer, Integer]] The (line, column) offset into the plist;To:RDoc::Markup::Verbatim;	[I"where the error occurred;T:@format0:
+@fileI"lib/nanaimo/reader.rb;T:0@omit_headings_from_table_of_contents_below0F@I" Nanaimo::Reader::ParseError;TcRDoc::NormalClass0

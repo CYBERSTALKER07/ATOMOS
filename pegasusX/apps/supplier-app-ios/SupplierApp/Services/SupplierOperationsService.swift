@@ -279,6 +279,25 @@ enum SupplierOperationsService {
         return try await APIClient.shared.get("v1/supplier/orders", query: query)
     }
 
+    static func recommendReassign(orderId: String) async throws -> RecommendReassignResponse {
+        try await APIClient.shared.get("v1/supplier/recommend-reassign", query: ["order_id": orderId])
+    }
+
+    static func applyReassign(
+        orderId: String,
+        driverId: String,
+        isPartial: Bool,
+        idempotencyKey: String
+    ) async throws {
+        let request = ApplyReassignRequest(driverId: driverId, isPartial: isPartial)
+        try await APIClient.shared.postVoid(
+            "v1/supplier/reassign-order",
+            query: ["order_id": orderId],
+            body: request,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
     static func returns(status: String = "PENDING", limit: Int = 100, offset: Int = 0) async throws -> SupplierReturnsResponse {
         try await APIClient.shared.get(
             "v1/supplier/returns",

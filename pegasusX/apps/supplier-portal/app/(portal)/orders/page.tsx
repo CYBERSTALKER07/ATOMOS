@@ -17,7 +17,7 @@ import { SUPPLIER_ORDERS_REFRESH_EVENTS } from '@/lib/supplier-ws-events';
 import { useSupplierSessionReconcile } from '@/lib/use-supplier-session-reconcile';
 import { useSupplierWsRefresh } from '@/lib/use-supplier-ws-refresh';
 import { ListToolbar } from '@/components/ListToolbar';
-import { OrderActionDialog, OrderOpsCard } from '@/components/orders';
+import { OrderActionDialog, OrderOpsCard, ReDispatchDialog } from '@/components/orders';
 import { useToast } from '@/components/Toast';
 import { PageChrome } from '@/components/PageChrome';
 import EmptyState from '@/components/EmptyState';
@@ -80,7 +80,7 @@ export default function OrdersPage() {
   const [dialog, setDialog] = useState<{
     orderId: string;
     warehouseId?: string;
-    kind: 'propose' | 'reject';
+    kind: 'propose' | 'reject' | 'reassign';
   } | null>(null);
   const [reason, setReason] = useState('');
   const [proposedDate, setProposedDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -314,6 +314,10 @@ export default function OrdersPage() {
                           }
                         : undefined
                     }
+                    canReassignOverride={flags.canReassign}
+                    onReassign={() => {
+                      setDialog({ orderId: order.order_id, warehouseId: order.warehouse_id, kind: 'reassign' });
+                    }}
                   />
                 </div>
               );
@@ -337,6 +341,16 @@ export default function OrdersPage() {
           setReason('');
         }}
         onConfirm={() => void runWarehouseMutation()}
+      />
+      <ReDispatchDialog
+        open={dialog?.kind === 'reassign'}
+        orderId={dialog?.kind === 'reassign' ? dialog.orderId : ''}
+        onClose={() => setDialog(null)}
+        onSuccess={() => {
+          setDialog(null);
+          toast('Order reassigned successfully.', 'success');
+          void loadOrders();
+        }}
       />
       {dialog?.kind === 'propose' ? (
         <dialog

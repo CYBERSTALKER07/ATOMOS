@@ -25,6 +25,7 @@ const NAV: NavSection[] = [
       { href: '/preorders', icon: 'orders', label: 'Pre-orders' },
       { href: '/tomorrow-board', icon: 'orders', label: 'Tomorrow board' },
       { href: '/dispatch', icon: 'dispatch', label: 'Dispatch' },
+      { href: '/dispatch/rescues', icon: 'dispatch', label: 'Rescues' },
       { href: '/dispatch-settings', icon: 'settings', label: 'Dispatch Settings' },
       { href: '/manifests', icon: 'manifests', label: 'Manifests' },
     ],
@@ -46,6 +47,7 @@ const NAV: NavSection[] = [
     items: [
       { href: '/drivers', icon: 'fleet', label: 'Drivers' },
       { href: '/vehicles', icon: 'fleet', label: 'Trucks' },
+      { href: '/fleet-live-map', icon: 'map', label: 'Live fleet' },
       { href: '/dispatch-locks', icon: 'lock', label: 'Dispatch Locks' },
     ],
   },

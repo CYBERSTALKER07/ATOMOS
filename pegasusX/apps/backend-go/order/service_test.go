@@ -150,6 +150,10 @@ func (r *testRepo) ListConditionReports(_ context.Context, _ string) ([]Conditio
 	return append([]ConditionReport(nil), r.conditionReports...), nil
 }
 
+func (r *testRepo) FindSiblingDriversForOrder(ctx context.Context, orderID string) ([]string, error) {
+	return nil, nil
+}
+
 func (r *testRepo) ListRetailerOrders(_ context.Context, retailerID string, limit int) ([]Order, error) {
 	if r.getErr != nil {
 		return nil, r.getErr

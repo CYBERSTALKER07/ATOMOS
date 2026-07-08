@@ -32,7 +32,7 @@ fun SupplierPulseStrip(
             text = "Loading network pulse…",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = modifier.padding(vertical = PegasusSpacing.s8),
+            modifier = modifier.padding(vertical = PegasusSpacing.sm),
         )
         return
     }
@@ -43,13 +43,13 @@ fun SupplierPulseStrip(
             text = "Network pulse",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(bottom = PegasusSpacing.s8),
+            modifier = Modifier.padding(bottom = PegasusSpacing.sm),
         )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.s12),
+            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             events.take(12).forEach { event ->
                 Card(

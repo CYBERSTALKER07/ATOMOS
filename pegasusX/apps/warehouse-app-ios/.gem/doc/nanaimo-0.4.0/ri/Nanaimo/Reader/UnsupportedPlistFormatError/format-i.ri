@@ -1,0 +1,2 @@
+U:RDoc::Attr[iI"format:ETI"8Nanaimo::Reader::UnsupportedPlistFormatError#format;TI"R;T:publico:RDoc::Markup::Document:@parts[o:RDoc::Markup::Paragraph;	[I"-@return [Symbol] The unsupported format.;T:
+@fileI"lib/nanaimo/reader.rb;T:0@omit_headings_from_table_of_contents_below0F@I"1Nanaimo::Reader::UnsupportedPlistFormatError;TcRDoc::NormalClass0

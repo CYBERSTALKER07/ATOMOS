@@ -50,6 +50,10 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     var returnGoodsLines: [ReturnGoodsLine] = []
     var returnGoodsTotalUnits: Int64 = 0
 
+    // Rescue Flow
+    var showRescueProposalAlert = false
+    var pendingRescueId: String?
+
     /// Orders that have already been auto-transitioned to ARRIVED (one-shot guard)
     private var arrivedIds: Set<String> = []
     private var navigationStepIndex = 0
@@ -144,6 +148,16 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     func handleSocketEvent(_ event: DriverSocketState.DriverEvent?) {
         guard let event else { return }
+
+        if event.type == "RESCUE_PROPOSED" {
+            if let rescueId = event.rescueId {
+                self.pendingRescueId = rescueId
+                self.showRescueProposalAlert = true
+                Haptics.heavy()
+            }
+            return
+        }
+
         guard DriverWsRefresh.shouldRefreshManifest(eventType: event.type) else { return }
         Task {
             await loadMissions(silent: true)
@@ -422,6 +436,31 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         } catch {
             isEndingSession = false
             endSessionError = "Failed to end session: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Rescue Handling
+
+    func acceptRescue() async {
+        guard let rescueId = pendingRescueId else { return }
+        do {
+            try await fleetService.respondRescue(rescueId: rescueId, accept: true)
+            self.showRescueProposalAlert = false
+            self.pendingRescueId = nil
+            await loadMissions(silent: false)
+        } catch {
+            print("Failed to accept rescue: \(error)")
+        }
+    }
+
+    func rejectRescue() async {
+        guard let rescueId = pendingRescueId else { return }
+        do {
+            try await fleetService.respondRescue(rescueId: rescueId, accept: false)
+            self.showRescueProposalAlert = false
+            self.pendingRescueId = nil
+        } catch {
+            print("Failed to reject rescue: \(error)")
         }
     }
 

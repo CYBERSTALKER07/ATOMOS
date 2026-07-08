@@ -151,6 +151,13 @@ interface DriverApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null
     ): Map<String, String>
 
+    // Start Handshake for reassigned (partial/complete) orders
+    @POST("v1/fleet/orders/{id}/reassign-handshake")
+    suspend fun reassignHandshake(
+        @Path("id") orderId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, String>
+
     // Driver depart — starts route, transitions truck to IN_TRANSIT, triggers live ETA
     @POST("v1/fleet/driver/depart")
     suspend fun depart(
@@ -266,6 +273,18 @@ interface DriverApi {
     suspend fun markCreditDelivery(
         @Body body: Map<String, String>,
         @Header("Idempotency-Key") idempotencyKey: String,
+    ): Map<String, String>
+
+    // ── Rescue Operations ──
+
+    @POST("v1/driver/ops/rescue/request")
+    suspend fun requestRescue(
+        @Body body: Map<String, String>,
+    ): Map<String, String>
+
+    @POST("v1/driver/ops/rescue/respond")
+    suspend fun respondRescue(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
     ): Map<String, String>
 
     // Edge 33: Report missing items after seal

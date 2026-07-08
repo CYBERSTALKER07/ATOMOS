@@ -163,10 +163,10 @@ class PayloadRepository @Inject constructor(
             idempotencyKey = PayloadIdempotencyKeys.fleetReassign(orderIds),
         )
 
-    suspend fun applyReassignOrder(orderId: String, toDriverId: String, reason: String = "payload-redispatch"): StatusResponse {
+    suspend fun applyReassignOrder(orderId: String, toDriverId: String, reason: String = "payload-redispatch", isPartial: Boolean = false): StatusResponse {
         return api.reassignOrder(
-            req = ReassignOrderRequest(orderId = orderId, toDriverId = toDriverId, reason = reason),
-            idempotencyKey = PayloadIdempotencyKeys.applyReassign(orderId, toDriverId),
+            req = ReassignOrderRequest(orderId = orderId, toDriverId = toDriverId, reason = reason, isPartial = isPartial),
+            idempotencyKey = PayloadIdempotencyKeys.applyReassign(orderId, toDriverId) + (if (isPartial) "-partial" else ""),
         )
     }
 

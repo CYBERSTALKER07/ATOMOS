@@ -107,13 +107,16 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
-    func reassignOrder(orderId: String, toDriverId: String, reason: String = "payload-redispatch") async throws -> StatusResponse {
-        let payload = ["order_id": orderId, "to_driver_id": toDriverId, "reason": reason]
-        return try await post(
-            "v1/payloader/reassign-order",
-            body: payload,
-            headers: ["Idempotency-Key": PayloadIdempotency.applyReassign(orderId: orderId, toDriverId: toDriverId)]
-        )
+    func reassignOrder(orderId: String, toDriverId: String, isPartial: Bool = false, reason: String = "payload-redispatch") async throws -> StatusResponse {
+        let payload: [String: Any] = ["order_id": orderId, "to_driver_id": toDriverId, "reason": reason, "is_partial": isPartial]
+        // Convert to data
+        let bodyData = try JSONSerialization.data(withJSONObject: payload)
+        
+        var req = try buildRequest(path: "v1/payloader/reassign-order", method: "POST", authenticated: true)
+        req.setValue(PayloadIdempotency.applyReassign(orderId: orderId, toDriverId: toDriverId), forHTTPHeaderField: "Idempotency-Key")
+        req.httpBody = bodyData
+        
+        return try await execute(req)
     }
 
     // MARK: - Manifest lifecycle

@@ -43,69 +43,14 @@ protocol FleetServiceProtocol {
 
     /// POST /v1/delivery/split-payment — record cash/card split.
     func splitPayment(orderId: String, cashMinor: Int64, cardMinor: Int64, currency: String?) async throws -> SplitPaymentResponse
+
+    /// POST /v1/driver/ops/rescue/request — Driver requests rescue
+    func requestRescue(reason: String, note: String) async throws
+
+    /// POST /v1/driver/ops/rescue/respond — Driver responds to a rescue proposal
+    func respondRescue(rescueId: String, accept: Bool) async throws
+
+    /// POST /v1/fleet/orders/{id}/reassign-handshake — Driver handshakes reassigned order
+    func reassignHandshake(orderId: String) async throws
 }
 
-// MARK: - Stub Implementation
-
-final class FleetServiceStub: FleetServiceProtocol {
-
-    static let shared = FleetServiceStub()
-
-    func fetchActiveMissions(routeId: String) async throws -> [Mission] {
-        try await Task.sleep(nanoseconds: 500_000_000)
-        return Mission.mockMissions
-    }
-
-    func deliverOrder(orderId: String, scannedToken: String) async throws {
-        try await Task.sleep(nanoseconds: 500_000_000)
-    }
-
-    func validateQR(orderId: String, scannedToken: String) async throws -> ValidateQRResponse {
-        try await Task.sleep(nanoseconds: 500_000_000)
-        return ValidateQRResponse(orderId: orderId, retailerName: "Mock Store", totalAmount: 100_000, state: "ARRIVED", items: [])
-    }
-
-    func confirmOffload(orderId: String) async throws -> ConfirmOffloadResponse {
-        try await Task.sleep(nanoseconds: 500_000_000)
-        return ConfirmOffloadResponse(orderId: orderId, state: "AWAITING_PAYMENT", paymentMethod: "CASH", amount: 100_000, invoiceId: nil, retailerId: "RET-001", message: "Collect 100000")
-    }
-
-    func completeOrder(orderId: String) async throws {
-        try await Task.sleep(nanoseconds: 500_000_000)
-    }
-
-    func collectCash(orderId: String) async throws -> CollectCashResponse {
-        try await Task.sleep(nanoseconds: 500_000_000)
-        return CollectCashResponse(orderId: orderId, state: "COMPLETED", amount: 100_000, distanceM: 25.0, message: "Cash collected")
-    }
-
-    func fetchOrderLineItems(orderId: String) async throws -> [LineItem] {
-        try await Task.sleep(nanoseconds: 500_000_000)
-        return LineItem.mockLineItems
-    }
-
-    func amendOrder(orderId: String, driverId: String, items: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus, reason: String, customReason: String?)]) async throws {
-        try await Task.sleep(nanoseconds: 500_000_000)
-        // Stub: always succeeds
-    }
-
-    func verifyHandshake(orderId: String, token: String, latitude: Double, longitude: Double) async throws -> VerifyHandshakeResponse {
-        try await Task.sleep(nanoseconds: 200_000_000)
-        return VerifyHandshakeResponse(success: true, message: "ok")
-    }
-
-    func updateOrderDuringDelivery(orderId: String, latitude: Double, longitude: Double) async throws -> UpdateOrderDuringDeliveryResponse {
-        try await Task.sleep(nanoseconds: 200_000_000)
-        return UpdateOrderDuringDeliveryResponse(success: true, message: "ok")
-    }
-
-    func markCreditDelivery(orderId: String, photoProofUrl: String?) async throws -> [String: String] {
-        try await Task.sleep(nanoseconds: 200_000_000)
-        return ["status": "DELIVERED_ON_CREDIT", "order_id": orderId]
-    }
-
-    func splitPayment(orderId: String, cashMinor: Int64, cardMinor: Int64, currency: String?) async throws -> SplitPaymentResponse {
-        try await Task.sleep(nanoseconds: 200_000_000)
-        return SplitPaymentResponse(status: "split_recorded")
-    }
-}

@@ -23,57 +23,15 @@ import {
 } from "recharts";
 import { cellToBoundary, latLngToCell } from "h3-js";
 
-// Mock Data for Network Graph
-const mockNodes: NetworkNode[] = [
-  { id: "WH-1", type: "warehouse", label: "Central Hub", status: "active" },
-  { id: "WH-2", type: "warehouse", label: "East DC", status: "active" },
-  { id: "RT-1", type: "retailer", label: "Store Alpha", status: "busy" },
-  { id: "RT-2", type: "retailer", label: "Store Beta", status: "idle" },
-  { id: "RT-3", type: "retailer", label: "Store Gamma", status: "active" },
-  { id: "DR-1", type: "driver", label: "Driver 104", status: "active" },
-  { id: "DR-2", type: "driver", label: "Driver 211", status: "busy" },
-  { id: "DR-3", type: "driver", label: "Driver 305", status: "active" },
-];
 
-const mockLinks: NetworkLink[] = [
-  { source: "WH-1", target: "RT-1", value: 10 },
-  { source: "WH-1", target: "RT-2", value: 5 },
-  { source: "WH-2", target: "RT-3", value: 8 },
-  { source: "WH-1", target: "DR-1", value: 2 },
-  { source: "DR-1", target: "RT-1", value: 4 },
-  { source: "WH-2", target: "DR-2", value: 3 },
-  { source: "DR-2", target: "RT-3", value: 6 },
-  { source: "WH-1", target: "DR-3", value: 1 },
-  { source: "DR-3", target: "RT-2", value: 5 },
-];
 
-// Mock Data for Map
+// Removed Mock Data
 const generateH3Data = () => {
-  const data = [];
-  const centerLat = 37.74;
-  const centerLng = -122.4;
-  for (let i = 0; i < 50; i++) {
-    const lat = centerLat + (Math.random() - 0.5) * 0.5;
-    const lng = centerLng + (Math.random() - 0.5) * 0.5;
-    const hex = latLngToCell(lat, lng, 8);
-    data.push({ hex, count: Math.floor(Math.random() * 100) });
-  }
-  return data;
+  return [];
 };
 
-// Mock Data for Charts
-const performanceData = [
-  { name: "Q1", actual: 4000, plan: 2400 },
-  { name: "Q2", actual: 3000, plan: 1398 },
-  { name: "Q3", actual: 2000, plan: 9800 },
-  { name: "Q4", actual: 2780, plan: 3908 },
-];
-
-const scenariosData = [
-  { name: "Revenue", baseline: 4000, upside: 5000 },
-  { name: "Cash Flow", baseline: 3000, upside: 3500 },
-  { name: "Gross Margin", baseline: 2000, upside: 3000 },
-];
+const performanceData: Record<string, unknown>[] = [];
+const scenariosData: Record<string, unknown>[] = [];
 
 export default function ControlTowerPage() {
   const [view, setView] = useState<"network" | "map">("network");
@@ -82,8 +40,8 @@ export default function ControlTowerPage() {
   
   const { networkNodes, networkLinks, h3Data: wsH3Data } = useControlTowerWebSocket(supplierId);
 
-  const displayNodes = networkNodes.length > 0 ? networkNodes : mockNodes;
-  const displayLinks = networkLinks.length > 0 ? networkLinks : mockLinks;
+  const displayNodes = networkNodes;
+  const displayLinks = networkLinks;
 
   const [h3Data, setH3Data] = useState<{hex: string, count: number}[]>([]);
 

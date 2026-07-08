@@ -842,6 +842,8 @@ export interface SupplierManifestRow {
   total_vu: number;
   total_volume_vu?: number;
   max_volume_vu?: number;
+  split_group_id?: string;
+  sibling_manifest_ids?: string[];
   updated_at: string;
 }
 
@@ -897,8 +899,10 @@ export interface SupplierManifestOrderWire {
   order_id: string;
   retailer_id?: string;
   amount: number;
+  payment_gateway?: string;
   state: string;
   status: string;
+  split_group_id?: string;
   route_id?: string;
   warehouse_id?: string;
   delivery_expectation?: DeliveryExpectation;

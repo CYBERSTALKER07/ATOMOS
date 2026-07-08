@@ -12,18 +12,8 @@ type RevenueHeatmapProps = {
   className?: string;
 };
 
-// Mock data: H3 indexes (resolution 4) with revenue weight
-const MOCK_H3_REVENUE_DATA = [
-  { h3: '8426eabffffffff', revenue: 50000 },
-  { h3: '8426e83ffffffff', revenue: 80000 },
-  { h3: '8426c11ffffffff', revenue: 20000 },
-  { h3: '8426c2bffffffff', revenue: 45000 },
-  { h3: '8426d57ffffffff', revenue: 95000 },
-  { h3: '8426d43ffffffff', revenue: 10000 },
-  { h3: '842a107ffffffff', revenue: 120000 }, // New York area
-  { h3: '842a10bffffffff', revenue: 90000 },
-  { h3: '8442c9bffffffff', revenue: 110000 }, // LA area
-];
+// Removed Mock Data
+const MOCK_H3_REVENUE_DATA: { h3: string; revenue: number }[] = [];
 
 export default function RevenueHeatmap({ className }: RevenueHeatmapProps) {
   const geojsonData = useMemo<GeoJSON.FeatureCollection<GeoJSON.Polygon>>(() => {

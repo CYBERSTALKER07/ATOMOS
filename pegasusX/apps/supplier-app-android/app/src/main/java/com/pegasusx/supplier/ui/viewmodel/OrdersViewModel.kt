@@ -22,6 +22,10 @@ data class OrdersUiState(
     val loading: Boolean = true,
     val error: String? = null,
     val vettingId: String? = null,
+    val reassignTarget: String? = null,
+    val reassignRecommendations: com.pegasusx.supplier.data.model.RecommendReassignResponse? = null,
+    val reassignMessage: String? = null,
+    val isReassigning: Boolean = false,
 )
 
 @HiltViewModel
@@ -129,6 +133,59 @@ class OrdersViewModel @Inject constructor(
                 _state.update { it.copy(error = e.message) }
             } finally {
                 _state.update { it.copy(vettingId = null) }
+            }
+        }
+    fun dismissReassignMessage() {
+        _state.update { it.copy(reassignMessage = null) }
+    }
+
+    fun openReassignDialog(orderId: String) {
+        _state.update { it.copy(reassignTarget = orderId, reassignRecommendations = null, reassignMessage = null) }
+        viewModelScope.launch {
+            try {
+                val resp = ops.recommendReassign(orderId)
+                if (resp.isSuccessful) {
+                    _state.update { it.copy(reassignRecommendations = resp.body()) }
+                } else {
+                    _state.update {
+                        it.copy(
+                            reassignMessage = "Failed to load recommendations (${resp.code()})",
+                            reassignTarget = null
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(reassignMessage = e.message ?: "Network error", reassignTarget = null) }
+            }
+        }
+    }
+
+    fun closeReassignDialog() {
+        if (!_state.value.isReassigning) {
+            _state.update { it.copy(reassignTarget = null, reassignRecommendations = null) }
+        }
+    }
+
+    fun applyReassign(orderId: String, driverId: String, partial: Boolean) {
+        _state.update { it.copy(isReassigning = true, reassignMessage = null) }
+        viewModelScope.launch {
+            try {
+                val resp = ops.applyReassign(orderId, driverId, partial)
+                if (resp.isSuccessful) {
+                    _state.update {
+                        it.copy(
+                            reassignMessage = if (partial) "Reassigned (Partial)" else "Reassigned (Full)",
+                            reassignTarget = null
+                        )
+                    }
+                    load(silent = true)
+                } else {
+                    _state.update { it.copy(reassignMessage = "Failed (${resp.code()})") }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(reassignMessage = e.message ?: "Network error") }
+            } finally {
+                _state.update { it.copy(isReassigning = false) }
             }
         }
     }

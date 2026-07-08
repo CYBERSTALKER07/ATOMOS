@@ -21,7 +21,8 @@ enum DriverWsRefresh {
              "SHOP_CLOSED_RESOLVED",
              "NEGOTIATION_RESOLVED",
              "DELIVERY_SESSION_UPDATED",
-             "DRIVER_AVAILABILITY_CHANGED":
+             "DRIVER_AVAILABILITY_CHANGED",
+             "REASSIGN_HANDSHAKE_COMPLETED":
             return true
         default:
             return false

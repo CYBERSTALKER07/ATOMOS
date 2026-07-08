@@ -22,7 +22,7 @@ const firebaseConfig = {
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-const auth: Auth = getAuth(app);
+const auth = getAuth(app);
 
 function shouldUseAuthEmulator(): boolean {
   if (process.env.NEXT_PUBLIC_USE_FIREBASE_AUTH_EMULATOR === "1") return true;
@@ -60,7 +60,7 @@ export async function exchangeCustomToken(customToken: string): Promise<string> 
 }
 
 export async function getFirebaseIdToken(): Promise<string> {
-  const user: User | null = auth.currentUser;
+  const user = auth.currentUser;
   if (!user) return "";
   try {
     return await user.getIdToken(false);
@@ -77,7 +77,8 @@ export async function firebaseSignOut(): Promise<void> {
   }
 }
 
-let phoneConfirmation: ConfirmationResult | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let phoneConfirmation: any = null;
 
 class EmulatorRecaptchaVerifier {
   type = "recaptcha" as const;

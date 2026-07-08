@@ -338,7 +338,7 @@ fun HomeScreen(
                 response = state.recommendations,
                 reassigning = state.reassigning,
                 onDismiss = viewModel::closeReDispatch,
-                onPick = { driverId -> viewModel.reassignTo(driverId) },
+                onPick = { driverId, isPartial -> viewModel.reassignTo(driverId, isPartial) },
             )
         }
         if (state.showNotificationsPanel) {
@@ -1448,7 +1448,7 @@ private fun ReDispatchDialog(
     response: RecommendReassignResponse?,
     reassigning: Boolean,
     onDismiss: () -> Unit,
-    onPick: (String) -> Unit,
+    onPick: (String, Boolean) -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1480,7 +1480,8 @@ private fun ReDispatchDialog(
                                 RecommendationCard(
                                     rec = rec,
                                     enabled = !reassigning,
-                                    onPick = { onPick(rec.driverId) },
+                                    onPickComplete = { onPick(rec.driverId, false) },
+                                    onPickPartial = { onPick(rec.driverId, true) },
                                 )
                             }
                         }
@@ -1502,14 +1503,13 @@ private fun ReDispatchDialog(
 private fun RecommendationCard(
     rec: TruckRecommendation,
     enabled: Boolean,
-    onPick: () -> Unit,
+    onPickComplete: () -> Unit,
+    onPickPartial: () -> Unit,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onPick),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -1544,6 +1544,25 @@ private fun RecommendationCard(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+            ) {
+                OutlinedButton(
+                    onClick = onPickPartial,
+                    enabled = enabled,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                ) {
+                    Text("Partial", style = MaterialTheme.typography.labelMedium)
+                }
+                Button(
+                    onClick = onPickComplete,
+                    enabled = enabled,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                ) {
+                    Text("Complete", style = MaterialTheme.typography.labelMedium)
+                }
             }
         }
     }
