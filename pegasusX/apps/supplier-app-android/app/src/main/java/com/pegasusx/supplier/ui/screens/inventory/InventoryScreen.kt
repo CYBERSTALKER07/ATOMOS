@@ -12,9 +12,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pegasus.design.showFullScreenLoading
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.viewmodel.InventoryViewModel
 
@@ -29,24 +29,26 @@ fun InventoryScreen(
     Scaffold(topBar = { TopAppBar(title = { Text("Inventory") }) }) { padding ->
         Box(Modifier.padding(padding)) {
             when {
-                showFullScreenLoading(state.loading, state.items.isNotEmpty()) -> SupplierLoadingState("Loading inventory…", "SKU list")
-                state.error != null && state.items.isEmpty() -> SupplierStatePane(
-                    kind = SupplierStateKind.Error,
+                showFullScreenLoading(state.loading, state.items.isNotEmpty()) -> PegasusLoadingState("Loading inventory…", "SKU list")
+                state.error != null && state.items.isEmpty() -> PegasusStatePane(
+                    kind = PegasusStateKind.Error,
                     headline = "Inventory unavailable",
                     body = state.error!!,
                     actionLabel = "Retry",
                     onAction = { viewModel.load() },
                 )
-                state.items.isEmpty() -> SupplierStatePane(
-                    kind = SupplierStateKind.Empty,
+                state.items.isEmpty() -> PegasusStatePane(
+                    kind = PegasusStateKind.Empty,
                     headline = "No SKUs",
                     body = "Inventory items will appear here.",
                 )
-                else -> LazyColumn(
+                else -> androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                    columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 340.dp),
                     contentPadding = PaddingValues(PegasusSpacing.lg),
                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                 ) {
-                    items(state.items, key = { it.sku }) { item ->
+                    androidx.compose.foundation.lazy.grid.items(state.items, key = { it.sku }) { item ->
                         ListItem(
                             headlineContent = { Text(item.productName) },
                             supportingContent = { Text("SKU ${item.sku} · qty ${item.quantity}") },

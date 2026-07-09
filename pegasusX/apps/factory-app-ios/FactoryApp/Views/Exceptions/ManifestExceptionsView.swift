@@ -32,13 +32,12 @@ struct ManifestExceptionsView: View {
                     )
                 )
             } else {
-                List {
+                ResponsiveGridContentWrapper {
                     ForEach(Array(exceptions.enumerated()), id: \.element.id) { index, exception in
                         ExceptionRow(exception: exception)
                             .staggeredAppear(index: index)
                     }
                 }
-                .listStyle(.plain)
             }
         }
         .background(LabTheme.background)

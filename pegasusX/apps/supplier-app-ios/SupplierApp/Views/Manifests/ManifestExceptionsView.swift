@@ -15,7 +15,8 @@ struct ManifestExceptionsView: View {
             } else if rows.isEmpty {
                 SupplierEmptyView(title: "No exceptions", message: "No manifest gate exceptions in the current window.")
             } else {
-                List(rows) { row in
+                ResponsiveGridContentWrapper {
+                    ForEach(rows) { row in
                     NavigationLink {
                         ManifestDetailView(manifestId: row.manifestId)
                     } label: {
@@ -29,7 +30,6 @@ struct ManifestExceptionsView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Gate exceptions")

@@ -15,9 +15,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
 import com.pegasusx.supplier.ui.components.SupplierLeadingIcon
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.components.formatMinorAmount
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.viewmodel.TreasuryViewModel
@@ -65,13 +65,13 @@ fun TreasuryHubScreen(
         },
     ) { padding ->
         when {
-            showFullScreenLoading(state.loading, state.earnings != null) -> SupplierLoadingState(
+            showFullScreenLoading(state.loading, state.earnings != null) -> PegasusLoadingState(
                 title = "Loading treasury…",
                 body = "KPIs and links",
                 modifier = Modifier.padding(padding),
             )
-            state.error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            state.error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Treasury unavailable",
                 body = state.error!!,
                 modifier = Modifier.padding(padding),

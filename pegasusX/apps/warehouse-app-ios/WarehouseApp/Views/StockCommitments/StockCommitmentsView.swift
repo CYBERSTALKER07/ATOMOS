@@ -22,13 +22,13 @@ struct StockCommitmentsView: View {
                     message: "No stock is currently reserved for pre-orders."
                 )
             } else {
-                List(commitments) { row in
+                ResponsiveGridContentWrapper {
+                    ForEach(commitments) { row in
                     StockCommitmentCard(row: row)
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                 }
-                .listStyle(.plain)
             }
         }
         .navigationTitle("Stock Commitments")

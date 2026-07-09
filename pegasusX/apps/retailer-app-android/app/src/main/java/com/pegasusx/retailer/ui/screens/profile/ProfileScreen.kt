@@ -1,5 +1,14 @@
 package com.pegasusx.retailer.ui.screens.profile
 
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,12 +22,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.pegasusx.retailer.ui.components.RetailerMetricTile
-import com.pegasusx.retailer.ui.components.RetailerRuntimeBanner
-import com.pegasusx.retailer.ui.components.RetailerRuntimeTone
+import com.pegasus.design.PegasusRuntimeBanner
+import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.retailer.ui.components.RetailerSectionHeader
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
@@ -93,10 +101,13 @@ fun ProfileScreen(
         )
     }
 
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         val syncMessage = when {
             uiState.isLoading -> "Syncing profile and settings..."
@@ -108,11 +119,11 @@ fun ProfileScreen(
             item {
                 val loadIssue = uiState.loadIssue
                 val tone = when (loadIssue) {
-                    ProfileLoadIssue.OFFLINE -> RetailerRuntimeTone.Offline
-                    ProfileLoadIssue.RESTRICTED, ProfileLoadIssue.ERROR -> RetailerRuntimeTone.Warning
-                    null -> if (uiState.isLoading) RetailerRuntimeTone.Refreshing else RetailerRuntimeTone.Live
+                    ProfileLoadIssue.OFFLINE -> PegasusRuntimeTone.Offline
+                    ProfileLoadIssue.RESTRICTED, ProfileLoadIssue.ERROR -> PegasusRuntimeTone.Warning
+                    null -> if (uiState.isLoading) PegasusRuntimeTone.Refreshing else PegasusRuntimeTone.Live
                 }
-                RetailerRuntimeBanner(
+                PegasusRuntimeBanner(
                     tone = tone,
                     message = syncMessage,
                     onRetry = if (!uiState.isLoading) viewModel::refresh else null,

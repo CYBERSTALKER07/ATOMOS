@@ -1,5 +1,14 @@
 package com.pegasus.payload.ui.home
 
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -19,8 +28,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
@@ -100,13 +107,11 @@ import com.pegasus.payload.ui.components.HandoffInboxCard
 import com.pegasus.payload.ui.components.ManifestKpiGrid
 import com.pegasus.payload.ui.components.PayloadConnectionStatus
 import com.pegasus.payload.ui.components.PulseStrip
-import com.pegasus.payload.ui.components.PayloadInlineLoading
-import com.pegasus.payload.ui.components.PayloadLoadingState
 import com.pegasus.payload.ui.components.PayloadSectionTitle
 import com.pegasus.payload.ui.components.PayloadSpacing
-import com.pegasus.payload.ui.components.PayloadStateKind
-import com.pegasus.payload.ui.components.PayloadStatePane
 import com.pegasus.payload.ui.components.PayloadStatusChip
+import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.PegasusStateKind
 
 /**
  * Master-detail home with Phase 4 loading workflow.
@@ -157,8 +162,8 @@ fun HomeScreen(
         }
     }
     LaunchedEffect(state.barcodeScanMessage) {
-        state.barcodeScanMessage?.let {
-            snackbarHostState.showSnackbar(it)
+        if (state.barcodeScanMessage != null) {
+            kotlinx.coroutines.delay(3000)
             viewModel.clearBarcodeScanMessage()
         }
     }
@@ -388,14 +393,17 @@ private fun NotificationsSheet(
             }
             HorizontalDivider()
             if (items.isEmpty()) {
-                PayloadStatePane(
-                    kind = PayloadStateKind.Empty,
+                PegasusStatePane(
+                    kind = PegasusStateKind.Empty,
                     headline = "No notifications",
                     body = "New events will appear here in real time.",
                     modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
                 )
             } else {
-                LazyColumn(Modifier.fillMaxWidth()) {
+                LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        Modifier.fillMaxWidth()
+    ) {
                     items(items, key = { it.notificationId }) { n ->
                         NotificationRow(
                             item = n,
@@ -434,19 +442,21 @@ private fun ManifestExceptionsSheet(
             }
             HorizontalDivider()
             when {
-                loading && items.isEmpty() -> PayloadLoadingState(
+                loading && items.isEmpty() -> com.pegasus.design.PegasusLoadingState(
                     title = "Loading exceptions",
                     body = "Fetching overflow, damaged, and manual removals.",
                     modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
-                    compact = true,
                 )
-                items.isEmpty() -> PayloadStatePane(
-                    kind = PayloadStateKind.Empty,
+                items.isEmpty() -> PegasusStatePane(
+                    kind = PegasusStateKind.Empty,
                     headline = "No exceptions",
                     body = "Overflow, damaged, and manual removals appear here.",
                     modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
                 )
-                else -> LazyColumn(Modifier.fillMaxWidth()) {
+                else -> LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        Modifier.fillMaxWidth()
+    ) {
                     items(items, key = { it.exceptionId }) { row ->
                         Column(
                             Modifier
@@ -573,10 +583,13 @@ private fun TruckListPane(
                 }
             }
             if (!isExpanded) {
-                LazyColumn(
+                LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                     contentPadding = PaddingValues(vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
+                    
+                
+    ) {
                     items(trucks, key = { it.id }) { truck ->
                         val selected = truck.id == selectedTruckId
                         IconButton(onClick = { onSelect(truck.id) }) {
@@ -644,18 +657,21 @@ private fun TruckListPane(
                 )
             }
             if (loading && trucks.isEmpty() && error == null) {
-                PayloadLoadingState(
+                com.pegasus.design.PegasusLoadingState(
                     title = "Loading vehicles",
                     body = "Refreshing supplier fleet availability for this shift.",
                 )
             } else if (!loading && trucks.isEmpty() && error == null) {
-                PayloadStatePane(
-                    kind = PayloadStateKind.Truck,
+                PegasusStatePane(
+                    kind = PegasusStateKind.Empty,
                     headline = "No vehicles available",
                     body = "Pull to refresh once dispatch assigns trucks.",
                 )
             }
-            LazyColumn(contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+            LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+    ) {
                 items(trucks, key = { it.id }) { truck ->
                     TruckRow(truck, selected = truck.id == selectedTruckId, onClick = { onSelect(truck.id) })
                     Spacer(Modifier.height(6.dp))
@@ -744,8 +760,8 @@ private fun ManifestDetailPane(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (truck == null) {
-                PayloadStatePane(
-                    kind = PayloadStateKind.Truck,
+                PegasusStatePane(
+                    kind = PegasusStateKind.Empty,
                     headline = "Select a vehicle",
                     body = "Pick a truck from the sidebar to load its manifest.",
                 )
@@ -762,6 +778,14 @@ private fun ManifestDetailPane(
                 EscalatedBanner(message = msg, onDismiss = onClearEscalated)
             }
 
+            state.barcodeScanMessage?.let { msg ->
+                com.pegasus.design.PegasusRuntimeBanner(
+                    tone = if (msg.contains("error", ignoreCase = true) || msg.contains("failed", ignoreCase = true) || msg.contains("not", ignoreCase = true)) com.pegasus.design.PegasusRuntimeTone.Warning else com.pegasus.design.PegasusRuntimeTone.Live,
+                    message = msg,
+                    onRetry = null,
+                )
+            }
+
             // All Sealed success — terminal state, supersedes everything else.
             if (state.manifestSealed) {
                 AllSealedSuccessCard(
@@ -772,14 +796,14 @@ private fun ManifestDetailPane(
             }
 
             when {
-                state.loadingManifest -> PayloadLoadingState(
+                state.loadingManifest -> com.pegasus.design.PegasusLoadingState(
                     title = "Loading manifest",
                     body = "Syncing orders and volume for this vehicle.",
                 )
-                state.manifest == null -> PayloadStatePane(
-                    kind = PayloadStateKind.Manifest,
+                state.manifest == null -> PegasusStatePane(
+                    kind = PegasusStateKind.Empty,
                     headline = "No open manifest",
-                    body = "This truck has no DRAFT or LOADING manifest. Wait for dispatch.",
+                    body = "This vehicle doesn't have an active loading manifest.",
                 )
                 else -> {
                     ManifestKpiGrid(manifest = state.manifest)
@@ -947,12 +971,16 @@ private fun OrderChecklist(
     onScanProduct: () -> Unit,
 ) {
     if (loading) {
-        PayloadInlineLoading()
+        com.pegasus.design.PegasusLoadingState(
+            title = "Fetching manifest",
+            body = "Loading the checklist items assigned to this vehicle.",
+            modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),
+        )
         return
     }
     if (orders.isEmpty()) {
-        PayloadStatePane(
-            kind = PayloadStateKind.Manifest,
+        PegasusStatePane(
+            kind = PegasusStateKind.Empty,
             headline = "No live orders",
             body = "No LOADED orders for this vehicle yet. They appear once dispatch assigns them.",
             modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),
@@ -969,10 +997,13 @@ private fun OrderChecklist(
                 title = "Orders (${sealedOrderIds.size}/${orders.size} sealed)",
             )
             // Order chips
-            LazyColumn(
+            LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth().height(160.dp),
-            ) {
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
                 items(orders, key = { it.orderId }) { order ->
                     OrderChip(
                         order = order,
@@ -1008,10 +1039,13 @@ private fun OrderChecklist(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
-                    LazyColumn(
+                    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.fillMaxWidth().height(220.dp),
-                    ) {
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
                         items(selected.items, key = { it.lineItemId }) { item ->
                             ItemRow(
                                 checked = item.lineItemId in checkedItems,
@@ -1264,11 +1298,14 @@ private fun AllSealedSuccessCard(
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    LazyColumn(
+                    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         contentPadding = PaddingValues(12.dp),
                         modifier = Modifier.height(160.dp),
-                    ) {
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
                         items(dispatchCodes.entries.toList(), key = { it.key }) { (orderId, code) ->
                             Row(
                                 Modifier.fillMaxWidth(),
@@ -1456,7 +1493,11 @@ private fun ReDispatchDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (loading) {
-                    PayloadInlineLoading()
+                    com.pegasus.design.PegasusLoadingState(
+                        title = "Loading recommendations",
+                        body = "Finding nearby drivers to re-dispatch this order.",
+                        modifier = Modifier.fillMaxWidth().padding(32.dp)
+                    )
                 } else if (response == null) {
                     Text("No recommendations available.", style = MaterialTheme.typography.bodySmall)
                 } else {
@@ -1472,10 +1513,13 @@ private fun ReDispatchDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     } else {
-                        LazyColumn(
+                        LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.fillMaxWidth().height(280.dp),
-                        ) {
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
                             items(response.recommendations, key = { it.driverId }) { rec ->
                                 RecommendationCard(
                                     rec = rec,

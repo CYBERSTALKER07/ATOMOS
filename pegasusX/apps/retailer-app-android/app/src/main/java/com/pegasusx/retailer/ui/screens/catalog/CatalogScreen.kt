@@ -43,10 +43,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.ProductCategory
 import com.pegasusx.retailer.ui.components.ProductCard
-import com.pegasusx.retailer.ui.components.RetailerLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.retailer.ui.components.RetailerSectionHeader
-import com.pegasusx.retailer.ui.components.RetailerStateKind
-import com.pegasusx.retailer.ui.components.RetailerStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
 import com.pegasusx.retailer.ui.theme.PillShape
 
@@ -146,8 +146,8 @@ fun CatalogScreen(
             }
 
             isSearching -> {
-                RetailerStatePane(
-                    kind = RetailerStateKind.NoResults,
+                PegasusStatePane(
+                    kind = PegasusStateKind.NoResults,
                     headline = "No products found",
                     body = "Try a different name, category, or supplier keyword.",
                     actionLabel = "Clear search",
@@ -157,13 +157,21 @@ fun CatalogScreen(
 
             uiState.browseMode == CatalogBrowseMode.ALL_PRODUCTS -> {
                 if (uiState.isLoadingProducts && uiState.products.isEmpty()) {
-                    RetailerLoadingState(
+                    PegasusLoadingState(
                         title = "Loading catalog",
                         body = "Fetching all products from connected suppliers…",
                     )
+                } else if (uiState.error != null && uiState.products.isEmpty()) {
+                    PegasusStatePane(
+                        kind = PegasusStateKind.Error,
+                        headline = "Couldn't load products",
+                        body = uiState.error ?: "An unexpected error occurred",
+                        actionLabel = "Retry",
+                        onAction = viewModel::refresh,
+                    )
                 } else if (uiState.products.isEmpty()) {
-                    RetailerStatePane(
-                        kind = RetailerStateKind.Empty,
+                    PegasusStatePane(
+                        kind = PegasusStateKind.Empty,
                         headline = "No products",
                         body = "Connected suppliers have not published catalog SKUs yet.",
                         actionLabel = "Refresh",
@@ -217,13 +225,27 @@ fun CatalogScreen(
             }
 
             else -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 160.dp),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
+                if (uiState.isLoading && uiState.categories.isEmpty()) {
+                    PegasusLoadingState(
+                        title = "Loading categories",
+                        body = "Fetching product categories…",
+                    )
+                } else if (uiState.error != null && uiState.categories.isEmpty()) {
+                    PegasusStatePane(
+                        kind = PegasusStateKind.Error,
+                        headline = "Couldn't load categories",
+                        body = uiState.error ?: "An unexpected error occurred",
+                        actionLabel = "Retry",
+                        onAction = viewModel::refresh,
+                    )
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 160.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         RetailerSectionHeader(
                             title = "Buy workspace",
@@ -236,12 +258,12 @@ fun CatalogScreen(
                             onClick = { onCategoryCash(category.id, category.name) },
                         )
                     }
+                    }
                 }
             }
         }
     }
 }
-
 @Composable
 private fun CategoryCard(
     category: ProductCategory,

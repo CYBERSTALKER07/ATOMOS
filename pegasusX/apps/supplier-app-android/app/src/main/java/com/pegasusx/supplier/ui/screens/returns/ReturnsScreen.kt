@@ -11,9 +11,9 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.ResolveReturnRequest
 import com.pegasusx.supplier.data.model.SupplierReturnRow
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
@@ -93,17 +93,17 @@ fun ReturnsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading returns…", "Driver-rejected delivery lines")
-            error != null && items.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading returns…", "Driver-rejected delivery lines")
+            error != null && items.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Returns unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            items.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            items.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No open returns",
                 body = "Rejected quantities will appear here after driver offload.",
                 modifier = Modifier.padding(padding),

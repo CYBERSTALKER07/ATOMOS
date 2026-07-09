@@ -18,9 +18,9 @@ import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import com.pegasusx.supplier.ui.components.FleetLiveMapLibre
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -142,21 +142,21 @@ fun FleetLiveMapScreen(
             }
         }
         when {
-            loading && routes.isEmpty() -> SupplierLoadingState(
+            loading && routes.isEmpty() -> PegasusLoadingState(
                 "Loading live fleet…",
                 "Sealed manifest routes",
                 modifier = Modifier.padding(padding),
             )
-            error != null && routes.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            error != null && routes.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Live fleet unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { scope.launch { load() } },
             )
-            routes.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            routes.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No active routes",
                 body = "Sealed manifests with route geometry appear here during dispatch.",
                 modifier = Modifier.padding(padding),

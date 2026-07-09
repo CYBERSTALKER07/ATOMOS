@@ -1,18 +1,29 @@
 package com.pegasusx.factory.ui.screens.notifications
 
+import androidx.compose.ui.unit.dp
+
+import androidx.compose.foundation.lazy.grid.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -112,56 +123,60 @@ fun NotificationInboxScreen(
             )
         },
     ) { innerPadding ->
-        when {
-            loading -> Box(
-                Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
-            error != null -> Box(
-                Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    TextButton(onClick = { load() }) { Text("Retry") }
-                }
-            }
-            items.isEmpty() -> Box(
-                Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("No notifications yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-            ) {
-                items(items, key = { it.id }) { item ->
-                    ListItem(
-                        headlineContent = {
-                            Text(
-                                item.title.ifBlank { item.type.ifBlank { "Notification" } },
-                                fontWeight = if (item.readAt == null) FontWeight.SemiBold else FontWeight.Normal,
-                            )
-                        },
-                        supportingContent = {
-                            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
-                                if (item.body.isNotBlank()) {
-                                    Text(item.body, style = MaterialTheme.typography.bodySmall)
-                                }
-                                if (item.createdAt.isNotBlank()) {
-                                    Text(
-                                        item.createdAt,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 340.dp),
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+        ) {
+            when {
+                loading && items.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }) {
+                    PegasusLoadingState(
+                        title = "Loading Notifications",
+                        body = "Fetching your latest alerts and messages."
                     )
-                    HorizontalDivider()
+                }
+                error != null && items.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }) {
+                    PegasusStatePane(
+                        kind = PegasusStateKind.Error,
+                        headline = "Unable to load notifications",
+                        body = error!!,
+                        actionLabel = "Retry",
+                        onAction = { load() }
+                    )
+                }
+                items.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }) {
+                    PegasusStatePane(
+                        kind = PegasusStateKind.Empty,
+                        headline = "No notifications",
+                        body = "You're all caught up."
+                    )
+                }
+                else -> {
+                    items(items, key = { it.id }) { item ->
+                        ListItem(
+                            headlineContent = {
+                                Text(
+                                    item.title.ifBlank { item.type.ifBlank { "Notification" } },
+                                    fontWeight = if (item.readAt == null) FontWeight.SemiBold else FontWeight.Normal,
+                                )
+                            },
+                            supportingContent = {
+                                Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                                    if (item.body.isNotBlank()) {
+                                        Text(item.body, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    if (item.createdAt.isNotBlank()) {
+                                        Text(
+                                            item.createdAt,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        HorizontalDivider()
+                    }
                 }
             }
         }

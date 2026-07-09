@@ -16,10 +16,10 @@ import com.pegasusx.supplier.data.model.PlanningScenarioResult
 import com.pegasusx.supplier.data.model.PlanningSAndOPSnapshot
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
@@ -65,9 +65,9 @@ fun PlanningBrainScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading…", body = "", modifier = Modifier.padding(padding))
-            error != null && sandop == null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading…", body = "", modifier = Modifier.padding(padding))
+            error != null && sandop == null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Planning unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),

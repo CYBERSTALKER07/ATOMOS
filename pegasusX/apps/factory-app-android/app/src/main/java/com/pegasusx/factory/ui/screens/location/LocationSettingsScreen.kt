@@ -10,8 +10,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -126,13 +128,19 @@ fun LocationSettingsScreen(
         },
     ) { padding ->
         when {
-            loading -> Box(Modifier.padding(padding).fillMaxSize()) {
-                CircularProgressIndicator(Modifier.padding(PegasusSpacing.lg))
-            }
-            error != null -> Column(Modifier.padding(padding).padding(PegasusSpacing.lg)) {
-                Text(error!!, color = MaterialTheme.colorScheme.error)
-                TextButton(onClick = { load() }) { Text("Retry") }
-            }
+            loading -> PegasusLoadingState(
+                title = "Updating...",
+                body = "Applying location settings...",
+                modifier = Modifier.padding(padding).fillMaxSize()
+            )
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
+                headline = "Update Failed",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier.padding(padding).fillMaxSize()
+            )
             else -> Column(
                 modifier = Modifier
                     .padding(padding)

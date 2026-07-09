@@ -14,7 +14,7 @@ struct DemandHistoryView: View {
             } else if let error {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else if let history {
-                List {
+                ResponsiveGridContentWrapper {
                     if let demandConfidence {
                         Section {
                             ForecastConfidenceView(
@@ -52,7 +52,6 @@ struct DemandHistoryView: View {
                         SupplierEmptyView(title: "No forecast data", message: "Demand predictions will appear when analytics is active.")
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)

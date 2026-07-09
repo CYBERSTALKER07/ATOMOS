@@ -1,5 +1,13 @@
 package com.pegasusx.factory.ui.screens.override
 
+import androidx.compose.foundation.lazy.grid.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,8 +20,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.LocalShipping
@@ -59,11 +65,11 @@ import com.pegasusx.factory.data.model.ManifestTransfer
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasusx.factory.data.remote.FactoryRealtimeStatus
-import com.pegasusx.factory.ui.components.FactoryLoadingState
-import com.pegasusx.factory.ui.components.FactoryRuntimeBanner
-import com.pegasusx.factory.ui.components.FactoryRuntimeTone
-import com.pegasusx.factory.ui.components.FactoryStateKind
-import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusRuntimeBanner
+import com.pegasus.design.PegasusRuntimeTone
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import com.pegasusx.factory.util.FactoryIdempotencyKeys
@@ -273,12 +279,12 @@ fun PayloadOverrideScreen(
         else -> "Waiting for first sync"
     }
     val runtimeTone = when {
-        staleMessage != null && realtimeStatus == FactoryRealtimeStatus.OFFLINE -> FactoryRuntimeTone.Offline
-        staleMessage != null -> FactoryRuntimeTone.Warning
-        realtimeStatus == FactoryRealtimeStatus.OFFLINE -> FactoryRuntimeTone.Offline
-        realtimeStatus == FactoryRealtimeStatus.RECONNECTING || realtimeStatus == FactoryRealtimeStatus.CONNECTING -> FactoryRuntimeTone.Refreshing
-        refreshing -> FactoryRuntimeTone.Refreshing
-        else -> FactoryRuntimeTone.Live
+        staleMessage != null && realtimeStatus == FactoryRealtimeStatus.OFFLINE -> PegasusRuntimeTone.Offline
+        staleMessage != null -> PegasusRuntimeTone.Warning
+        realtimeStatus == FactoryRealtimeStatus.OFFLINE -> PegasusRuntimeTone.Offline
+        realtimeStatus == FactoryRealtimeStatus.RECONNECTING || realtimeStatus == FactoryRealtimeStatus.CONNECTING -> PegasusRuntimeTone.Refreshing
+        refreshing -> PegasusRuntimeTone.Refreshing
+        else -> PegasusRuntimeTone.Live
     }
 
     Scaffold(
@@ -296,15 +302,15 @@ fun PayloadOverrideScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading -> FactoryLoadingState(
+            loading -> PegasusLoadingState(
                 title = "Loading payload override",
                 body = "Fetching live loading manifests that can be rebalanced or released.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            error != null -> FactoryStatePane(
-                kind = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) FactoryStateKind.Offline else FactoryStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) PegasusStateKind.Offline else PegasusStateKind.Error,
                 headline = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) "Payload override unavailable offline" else "Unable to load loading manifests",
                 body = error!!,
                 actionLabel = "Retry",
@@ -313,19 +319,22 @@ fun PayloadOverrideScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            manifests.isEmpty() -> FactoryStatePane(
-                kind = FactoryStateKind.Empty,
+            manifests.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No manifests are currently loading",
                 body = "Payload override becomes available when at least one manifest reaches the loading state.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            else -> LazyColumn(
+            else -> LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-            ) {
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)
+    ) {
                 item {
                     OverrideSummaryCard(
                         manifests = manifests,
@@ -439,7 +448,7 @@ fun PayloadOverrideScreen(
 private fun OverrideSummaryCard(
     manifests: List<Manifest>,
     runtimeStatus: String,
-    runtimeTone: FactoryRuntimeTone,
+    runtimeTone: PegasusRuntimeTone,
 ) {
     val transferCount = manifests.sumOf { it.transfers.size }
     ElevatedCard(
@@ -461,7 +470,7 @@ private fun OverrideSummaryCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            FactoryRuntimeBanner(
+            PegasusRuntimeBanner(
                 tone = runtimeTone,
                 message = runtimeStatus,
             )

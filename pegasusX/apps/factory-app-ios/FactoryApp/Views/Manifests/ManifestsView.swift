@@ -44,7 +44,6 @@ struct ManifestsView: View {
                             }
                         }
                     }
-                    .listStyle(.plain)
                 }
             }
             .navigationTitle("Manifests")

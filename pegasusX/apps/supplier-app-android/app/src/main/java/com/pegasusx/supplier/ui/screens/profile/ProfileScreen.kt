@@ -6,9 +6,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierProfile
 import com.pegasusx.supplier.data.remote.SupplierApi
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -37,14 +37,14 @@ fun ProfileScreen(api: SupplierApi) {
     Scaffold(topBar = { TopAppBar(title = { Text("Profile") }) }) { padding ->
         Box(Modifier.padding(padding)) {
             when {
-                loading -> SupplierLoadingState("Loading profile…", "Supplier account")
-                error != null -> SupplierStatePane(
-                    kind = SupplierStateKind.Error,
+                loading -> PegasusLoadingState("Loading profile…", "Supplier account")
+                error != null -> PegasusStatePane(
+                    kind = PegasusStateKind.Error,
                     headline = "Profile unavailable",
                     body = error!!,
                 )
-                profile == null -> SupplierStatePane(
-                    kind = SupplierStateKind.Empty,
+                profile == null -> PegasusStatePane(
+                    kind = PegasusStateKind.Empty,
                     headline = "No profile",
                     body = "",
                 )

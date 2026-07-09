@@ -1,5 +1,14 @@
 package com.pegasus.payload.ui.inbound
 
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,8 +19,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -23,6 +30,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusRuntimeBanner
+import com.pegasus.design.PegasusRuntimeTone
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -178,16 +189,19 @@ fun InboundReturnsScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
+            loading -> com.pegasus.design.PegasusLoadingState(
+                title = "Loading inbound queue",
+                body = "Fetching returns and exceptions awaiting gate entry.",
+                modifier = Modifier.fillMaxSize().padding(innerPadding)
+            )
+            error != null -> com.pegasus.design.PegasusStatePane(
+                kind = com.pegasus.design.PegasusStateKind.Error,
+                headline = "Failed to load",
+                body = error!!,
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                actionLabel = "Retry",
+                onAction = { load() }
+            )
             else -> Column(Modifier.fillMaxSize().padding(innerPadding)) {
                 TabRow(selectedTabIndex = tab.ordinal) {
                     Tab(
@@ -228,7 +242,11 @@ fun InboundReturnsScreen(
                     )
                 }
                 statusMessage?.let {
-                    Text(it, modifier = Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall)
+                    PegasusRuntimeBanner(
+                        tone = if (it.contains("error", ignoreCase = true) || it.contains("failed", ignoreCase = true)) PegasusRuntimeTone.Warning else PegasusRuntimeTone.Live,
+                        message = it,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
                 }
                 if (selected.isNotEmpty()) {
                     Row(
@@ -270,18 +288,21 @@ fun InboundReturnsScreen(
                 }
                 val visible = if (tab == InboundTab.Queue) rows else history
                 if (visible.isEmpty()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            if (tab == InboundTab.Queue) "No returns at gate" else "No completed receives yet",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    PegasusStatePane(
+                        kind = PegasusStateKind.Empty,
+                        headline = if (tab == InboundTab.Queue) "No returns at gate" else "No history",
+                        body = if (tab == InboundTab.Queue) "There are no incoming returns to process." else "No completed receives yet.",
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                    )
                 } else {
-                    LazyColumn(
+                    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxSize(),
-                    ) {
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
                         items(visible, key = { it.returnId }) { row ->
                             val checked = selected.contains(row.returnId)
                             ElevatedCard(

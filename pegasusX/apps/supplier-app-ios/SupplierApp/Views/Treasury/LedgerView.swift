@@ -14,7 +14,8 @@ struct LedgerView: View {
             } else if rows.isEmpty {
                 SupplierEmptyView(title: "No ledger entries", message: "Payment movements will appear here.")
             } else {
-                List(rows) { row in
+                ResponsiveGridContentWrapper {
+                    ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(row.entryType).font(.headline)
                         Text(MoneyFormat.minor(row.amountMinor, currency: row.currency)).font(.subheadline)
@@ -22,7 +23,6 @@ struct LedgerView: View {
                         Text(row.occurredAt).font(.caption)
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Payment ledger")

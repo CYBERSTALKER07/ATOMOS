@@ -171,6 +171,7 @@ fun PegasusRuntimeBanner(
     tone: PegasusRuntimeTone,
     message: String,
     modifier: Modifier = Modifier,
+    onRetry: (() -> Unit)? = null,
 ) {
     val palette = pegasusRuntimePalette(tone)
 
@@ -186,7 +187,12 @@ fun PegasusRuntimeBanner(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(imageVector = palette.icon, contentDescription = null, tint = palette.content)
-            Text(text = message, style = MaterialTheme.typography.labelMedium)
+            Text(text = message, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+            if (onRetry != null) {
+                androidx.compose.material3.TextButton(onClick = onRetry) {
+                    Text("Retry", color = palette.content)
+                }
+            }
         }
     }
 }

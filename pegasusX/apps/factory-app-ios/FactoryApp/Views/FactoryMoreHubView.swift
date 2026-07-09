@@ -4,7 +4,7 @@ struct FactoryMoreHubView: View {
     var onSelect: (FactorySection) -> Void
 
     var body: some View {
-        List {
+        ResponsiveGridContentWrapper {
             Section("Primary") {
                 ForEach(FactorySection.primarySections.filter { !FactorySection.compactTabs.contains($0) }) { section in
                     Button(section.rawValue) { onSelect(section) }

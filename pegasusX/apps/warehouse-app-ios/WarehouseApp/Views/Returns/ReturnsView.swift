@@ -105,14 +105,13 @@ struct ReturnsView: View {
             if returns.isEmpty {
                 ContentUnavailableView("No inbound returns", systemImage: "arrow.uturn.backward.circle")
             } else {
-                List {
+                ResponsiveGridContentWrapper {
                     Section("Arrived at gate") {
                         ForEach(returns) { item in
                             returnRow(item, selectable: true)
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
     }
@@ -122,14 +121,13 @@ struct ReturnsView: View {
             if history.isEmpty {
                 ContentUnavailableView("No history", systemImage: "clock.arrow.circlepath")
             } else {
-                List {
+                ResponsiveGridContentWrapper {
                     Section("Completed receives") {
                         ForEach(history) { item in
                             returnRow(item, selectable: false)
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
     }

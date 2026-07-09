@@ -14,14 +14,14 @@ struct ActivityView: View {
             } else if rows.isEmpty {
                 SupplierEmptyView(title: "No recent activity", message: "Operational events will stream here.")
             } else {
-                List(rows) { row in
+                ResponsiveGridContentWrapper {
+                    ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(row.type).font(.headline)
                         Text(row.description).font(.subheadline)
                         Text(row.timestamp).font(.caption)
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Activity")

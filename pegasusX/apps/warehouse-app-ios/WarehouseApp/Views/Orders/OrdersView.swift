@@ -51,7 +51,7 @@ struct OrdersView: View {
                     } else if hubTab == .preorders && preorders.isEmpty {
                         ContentUnavailableView("No pre-orders", systemImage: "calendar")
                     } else {
-                        List {
+                        ResponsiveGridContentWrapper {
                             if hubTab == .active {
                                 ForEach(orders) { order in
                                     NavigationLink(value: order.orderId) {
@@ -86,7 +86,6 @@ struct OrdersView: View {
                                 }
                             }
                         }
-                        .listStyle(.insetGrouped)
                     }
                 }
             }
@@ -296,6 +295,7 @@ private struct OrderOpsCardView: View {
                 .font(.subheadline.monospacedDigit())
                 .foregroundStyle(.secondary)
         }
+        .labCard()
         .contextMenu {
             if let onDelay, canDelay {
                 Button(delayLabel) { onDelay() }

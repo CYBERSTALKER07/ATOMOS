@@ -1,8 +1,9 @@
 package com.pegasusx.warehouse.ui.screens.payment
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -11,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.PaymentGateway
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
@@ -78,10 +80,12 @@ fun PaymentConfigScreen(
                 contentAlignment = Alignment.Center,
             ) { Text("No payment gateways configured") }
 
-            else -> LazyColumn(
-                modifier = Modifier.padding(padding).fillMaxSize(),
+            else -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 340.dp),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                modifier = Modifier.fillMaxSize().padding(padding),
             ) {
                 items(gateways, key = { it.gatewayName }) { gw ->
                     ListItem(

@@ -1,8 +1,9 @@
 package com.pegasusx.warehouse.ui.screens.crm
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -10,9 +11,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.Retailer
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -53,21 +58,31 @@ fun CRMScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.lg))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
-            retailers.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Text("No retailers", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            else -> LazyColumn(
+            loading && retailers.isEmpty() -> PegasusLoadingState(
+                title = "Loading retailers…",
+                body = "Fetching your retail partners",
+                modifier = Modifier.fillMaxSize().padding(innerPadding)
+            )
+            error != null && retailers.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
+                headline = "Retailers unavailable",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier.fillMaxSize().padding(innerPadding)
+            )
+            retailers.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
+                headline = "No retailers",
+                body = "You have no retail partners yet.",
+                modifier = Modifier.fillMaxSize().padding(innerPadding)
+            )
+            else -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 340.dp),
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
                 items(retailers, key = { it.retailerId }) { r ->
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {

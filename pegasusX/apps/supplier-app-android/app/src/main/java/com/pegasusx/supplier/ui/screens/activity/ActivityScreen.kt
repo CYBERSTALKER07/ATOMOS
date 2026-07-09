@@ -10,9 +10,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierActivityEvent
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -55,17 +55,17 @@ fun ActivityScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading activity…", "Recent supplier events")
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading activity…", "Recent supplier events")
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Activity unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            rows.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            rows.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No recent activity",
                 body = "Operational events will stream here.",
                 modifier = Modifier.padding(padding),

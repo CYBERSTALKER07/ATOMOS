@@ -12,9 +12,9 @@ import com.pegasusx.supplier.data.model.ShopClosedAttemptRow
 import com.pegasusx.supplier.data.model.ShopClosedResolveRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.realtime.SupplierReconnectRecoveryEffect
 import com.pegasusx.supplier.util.SUPPLIER_RECONNECT_RECOVERY_HINT
@@ -100,17 +100,17 @@ fun ShopClosedScreen(
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading shop-closed queue…", "Active attempts")
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading shop-closed queue…", "Active attempts")
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Queue unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            rows.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            rows.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No active attempts",
                 body = "Driver-reported shop-closed cases appear here.",
                 modifier = Modifier.padding(padding),

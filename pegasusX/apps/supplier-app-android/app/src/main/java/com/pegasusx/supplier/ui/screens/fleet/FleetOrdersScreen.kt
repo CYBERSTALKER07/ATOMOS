@@ -10,9 +10,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierFleetOrderRow
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -55,27 +55,29 @@ fun FleetOrdersScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading fleet orders…", "In-flight assignments")
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading fleet orders…", "In-flight assignments")
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Fleet orders unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            rows.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            rows.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No fleet orders",
                 body = "Active route assignments appear here.",
                 modifier = Modifier.padding(padding),
             )
-            else -> LazyColumn(
+            else -> androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 340.dp),
                 modifier = Modifier.padding(padding).fillMaxSize(),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
-                items(rows, key = { it.orderId }) { row ->
+                androidx.compose.foundation.lazy.grid.items(rows, key = { it.orderId }) { row ->
                     ElevatedCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(PegasusSpacing.lg)) {
                             Text(row.orderId, style = MaterialTheme.typography.titleMedium)

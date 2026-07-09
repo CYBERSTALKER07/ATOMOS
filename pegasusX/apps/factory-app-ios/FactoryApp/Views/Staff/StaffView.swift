@@ -23,7 +23,7 @@ struct StaffView: View {
                         message: "No staff members are registered for this factory."
                     )
                 } else {
-                    List {
+                    ResponsiveGridContentWrapper {
                         Section {
                             FactorySectionHeader(
                                 title: "Staff roster",
@@ -59,7 +59,6 @@ struct StaffView: View {
                             }
                         }
                     }
-                    .listStyle(.plain)
                     .navigationDestination(for: String.self) { staffId in
                         StaffDetailView(staffId: staffId)
                     }

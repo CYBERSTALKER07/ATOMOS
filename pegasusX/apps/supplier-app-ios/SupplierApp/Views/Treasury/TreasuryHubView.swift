@@ -28,7 +28,7 @@ struct TreasuryHubView: View {
                             KpiTile(title: "Mismatches", value: "\(vm.mismatchCount)", systemImage: "scalemass", tint: vm.mismatchCount > 0 ? SupplierTheme.destructive : SupplierTheme.success)
                         }
 
-                        List {
+                        ResponsiveGridContentWrapper {
                             Section("Treasury surfaces") {
                                 NavigationLink { LedgerView() } label: {
                                     Label("Payment ledger", systemImage: "banknote")

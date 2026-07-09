@@ -1,8 +1,9 @@
 package com.pegasusx.warehouse.ui.screens.orders
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FilterList
@@ -352,8 +353,10 @@ fun OrdersScreen(
                             "${recs.retailerName} • %.1f VU".format(recs.orderVolumeVu),
                             style = MaterialTheme.typography.bodyMedium,
                         )
-                        LazyColumn(
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = 340.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.fillMaxWidth().height(280.dp),
                         ) {
                             items(recs.recommendations, key = { it.driverId }) { rec ->
@@ -499,9 +502,11 @@ fun OrdersScreen(
                 Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                     Text("No scheduled pre-orders", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-            hubTab == 0 -> LazyColumn(
+            hubTab == 0 -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 340.dp),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 items(orders, key = { it.orderId }) { order ->
@@ -522,9 +527,11 @@ fun OrdersScreen(
                     )
                 }
             }
-            else -> LazyColumn(
+            else -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 340.dp),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 items(preorders, key = { it.orderId }) { row ->

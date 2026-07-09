@@ -11,8 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pegasusx.supplier.ui.components.SupplierRuntimeBanner
-import com.pegasusx.supplier.ui.components.SupplierRuntimeTone
+import com.pegasus.design.PegasusRuntimeBanner
+import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.viewmodel.OnboardingViewModel
 
@@ -80,8 +80,8 @@ fun BusinessSetupScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             state.error?.let {
-                SupplierRuntimeBanner(
-                    tone = SupplierRuntimeTone.Warning,
+                PegasusRuntimeBanner(
+                    tone = PegasusRuntimeTone.Warning,
                     message = it,
                     modifier = Modifier.fillMaxWidth(),
                 )

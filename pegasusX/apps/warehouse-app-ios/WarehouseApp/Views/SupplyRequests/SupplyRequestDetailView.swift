@@ -24,7 +24,7 @@ struct SupplyRequestDetailView: View {
                     Button("Retry") { load() }
                 }
             } else if let request {
-                List {
+                ResponsiveGridContentWrapper {
                     if let statusMessage {
                         Section { Text(statusMessage).foregroundStyle(.green) }
                     }
@@ -49,7 +49,6 @@ struct SupplyRequestDetailView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             } else {
                 ContentUnavailableView("Not found", systemImage: "tray", description: Text("Supply request not found"))
             }

@@ -1,9 +1,17 @@
 package com.pegasusx.factory.ui.screens.transfer
 
+import androidx.compose.ui.unit.dp
+
+import androidx.compose.foundation.lazy.grid.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -16,10 +24,10 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.factory.data.model.Transfer
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
-import com.pegasusx.factory.ui.components.FactoryLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.factory.ui.components.FactoryMetricTile
-import com.pegasusx.factory.ui.components.FactoryStateKind
-import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.components.FactoryStatusChip
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
@@ -120,21 +128,21 @@ fun TransferListScreen(
             }
 
             when {
-                loading && transfers.isEmpty() -> FactoryLoadingState(
+                loading && transfers.isEmpty() -> PegasusLoadingState(
                     title = "Loading transfers",
                     body = "Fetching the current transfer pipeline for this factory.",
                     modifier = Modifier.fillMaxSize(),
                 )
-                error != null -> FactoryStatePane(
-                    kind = FactoryStateKind.Error,
+                error != null -> PegasusStatePane(
+                    kind = PegasusStateKind.Error,
                     headline = "Unable to load transfers",
                     body = error!!,
                     actionLabel = "Retry",
                     onAction = { load() },
                     modifier = Modifier.fillMaxSize(),
                 )
-                transfers.isEmpty() -> FactoryStatePane(
-                    kind = if (selectedFilter == "ALL") FactoryStateKind.Empty else FactoryStateKind.NoResults,
+                transfers.isEmpty() -> PegasusStatePane(
+                    kind = if (selectedFilter == "ALL") PegasusStateKind.Empty else PegasusStateKind.NoResults,
                     headline = if (selectedFilter == "ALL") "No transfers available" else "No ${selectedFilter.replace('_', ' ')} transfers",
                     body = if (selectedFilter == "ALL") {
                         "Transfers will appear here as soon as warehouse demand enters the factory pipeline."
@@ -145,10 +153,13 @@ fun TransferListScreen(
                     onAction = if (selectedFilter == "ALL") null else ({ selectedFilter = "ALL" }),
                     modifier = Modifier.fillMaxSize(),
                 )
-                else -> LazyColumn(
+                else -> LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                     contentPadding = PaddingValues(PegasusSpacing.lg),
                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                ) {
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)
+    ) {
                     item {
                         TransferListSummary(
                             count = transfers.size,

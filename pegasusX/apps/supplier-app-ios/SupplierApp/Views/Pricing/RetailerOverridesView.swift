@@ -19,7 +19,7 @@ struct RetailerOverridesView: View {
             } else if let error, overrides.isEmpty {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else {
-                List {
+                ResponsiveGridContentWrapper {
                     if let error {
                         Text(error).font(.caption).foregroundStyle(.red)
                     }
@@ -44,7 +44,6 @@ struct RetailerOverridesView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)

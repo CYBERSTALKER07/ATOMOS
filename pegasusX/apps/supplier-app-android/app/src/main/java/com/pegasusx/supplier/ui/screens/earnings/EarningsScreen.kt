@@ -7,9 +7,9 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierEarnings
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -55,14 +55,14 @@ fun EarningsScreen(api: SupplierApi, ops: SupplierOperationsRepository) {
     Scaffold(topBar = { TopAppBar(title = { Text("Earnings") }) }) { padding ->
         Box(Modifier.padding(padding)) {
             when {
-                loading -> SupplierLoadingState("Loading earnings…", "Treasury summary")
-                error != null -> SupplierStatePane(
-                    kind = SupplierStateKind.Error,
+                loading -> PegasusLoadingState("Loading earnings…", "Treasury summary")
+                error != null -> PegasusStatePane(
+                    kind = PegasusStateKind.Error,
                     headline = "Earnings unavailable",
                     body = error!!,
                 )
-                earnings == null -> SupplierStatePane(
-                    kind = SupplierStateKind.Empty,
+                earnings == null -> PegasusStatePane(
+                    kind = PegasusStateKind.Empty,
                     headline = "No data",
                     body = "Earnings not available.",
                 )

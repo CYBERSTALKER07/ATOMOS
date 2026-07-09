@@ -15,7 +15,8 @@ struct ManifestsView: View {
             } else if rows.isEmpty {
                 SupplierEmptyView(title: "No manifests", message: "Loading manifests will appear here.")
             } else {
-                List(rows) { row in
+                ResponsiveGridContentWrapper {
+                    ForEach(rows) { row in
                     NavigationLink {
                         ManifestDetailView(manifestId: row.manifestId)
                     } label: {
@@ -28,7 +29,6 @@ struct ManifestsView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Manifests")

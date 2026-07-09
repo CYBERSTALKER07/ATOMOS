@@ -14,10 +14,10 @@ import com.pegasusx.supplier.data.remote.GeocodeApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.AddressLocationField
 import com.pegasusx.supplier.ui.components.AddressLocationValue
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -70,9 +70,9 @@ fun FactoriesScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading factories…", "Topology nodes", Modifier.padding(padding))
-            error != null && factories.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading factories…", "Topology nodes", Modifier.padding(padding))
+            error != null && factories.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Factories unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
@@ -85,8 +85,8 @@ fun FactoriesScreen(
                     .fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-                SupplierStatePane(
-                    kind = SupplierStateKind.Empty,
+                PegasusStatePane(
+                    kind = PegasusStateKind.Empty,
                     headline = "No factories",
                     body = "Add a production node linked to your warehouse network.",
                     actionLabel = "Add first factory",

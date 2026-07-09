@@ -2,7 +2,7 @@ import SwiftUI
 
 struct MoreHubView: View {
     var body: some View {
-        List {
+        ResponsiveGridContentWrapper {
             Section("Fulfillment") {
                 NavigationLink { ManifestsView() } label: {
                     Label("Manifests", systemImage: "doc.text")

@@ -1,8 +1,10 @@
 package com.pegasusx.warehouse.ui.screens.preorders
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -50,7 +52,12 @@ fun StockCommitmentsScreen(api: WarehouseApi, onBack: (() -> Unit)? = null) {
                 CircularProgressIndicator()
             }
         } else {
-            LazyColumn(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 340.dp),
+                modifier = Modifier.padding(padding).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 items(rows, key = { it.skuId }) { row ->
                     ElevatedCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp)) {

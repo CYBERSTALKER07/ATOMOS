@@ -22,7 +22,8 @@ struct ManifestsView: View {
                 } else if manifests.isEmpty {
                     ContentUnavailableView("No Manifests", systemImage: "doc.on.doc", description: Text("No manifests found"))
                 } else {
-                    List(manifests) { manifest in
+                    ResponsiveGridContentWrapper {
+                        ForEach(manifests) { manifest in
                         HStack {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(String(manifest.manifestId.prefix(8)))
@@ -34,7 +35,6 @@ struct ManifestsView: View {
                             Spacer()
                         }
                     }
-                    .listStyle(.insetGrouped)
                 }
             }
             .background(LabTheme.background)

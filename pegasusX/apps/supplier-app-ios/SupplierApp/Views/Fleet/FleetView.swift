@@ -85,10 +85,9 @@ struct FleetView: View {
         if (segment == 0 && drivers.isEmpty) || (segment == 1 && vehicles.isEmpty) {
             SupplierEmptyView(title: emptyTitle, message: emptyMessage)
         } else {
-            List {
+            ResponsiveGridContentWrapper {
                 rows()
             }
-            .listStyle(.insetGrouped)
             .supplierReadableWidth()
         }
     }

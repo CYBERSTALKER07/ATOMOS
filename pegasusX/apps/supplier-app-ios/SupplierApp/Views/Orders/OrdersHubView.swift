@@ -88,7 +88,8 @@ struct OrdersQueueView: View {
         } else if vm.orders.isEmpty {
           SupplierEmptyView(title: "No orders", message: "Nothing in this queue.")
         } else {
-          List(vm.orders) { order in
+          ResponsiveGridContentWrapper {
+              ForEach(vm.orders) { order in
             NavigationLink {
               OrderDetailPanel(order: order, vm: vm)
             } label: {
@@ -100,7 +101,6 @@ struct OrdersQueueView: View {
               )
             }
           }
-          .listStyle(.insetGrouped)
         }
       }
       .refreshable { await vm.load(silent: true) }
@@ -163,7 +163,8 @@ struct OrdersQueueView: View {
       } else if vm.orders.isEmpty {
         SupplierEmptyView(title: "No orders", message: "Nothing in this queue.")
       } else {
-        List(vm.orders, selection: $vm.selection) { order in
+        ResponsiveGridContentWrapper {
+            ForEach(vm.orders, selection: $vm.selection) { order in
           OrderRow(order: order)
             .tag(order)
         }

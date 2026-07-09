@@ -7,9 +7,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -69,9 +69,9 @@ fun ReconciliationScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) 
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading reconciliation…", "Settlement authority")
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading reconciliation…", "Settlement authority")
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Reconciliation unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),

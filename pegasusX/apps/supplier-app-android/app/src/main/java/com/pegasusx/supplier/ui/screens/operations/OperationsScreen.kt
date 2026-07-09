@@ -16,7 +16,7 @@ import com.pegasusx.supplier.data.model.SUPPLIER_BROADCAST_TEMPLATES
 import com.pegasusx.supplier.data.model.SupplierBroadcastRequest
 import com.pegasusx.supplier.data.model.SupplierEmpathyAdoption
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierMetricTile
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
@@ -172,7 +172,7 @@ fun OperationsScreen(
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         if (loading && empathy == null) {
-            SupplierLoadingState("Loading operations…", "Empathy adoption and operator tools")
+            PegasusLoadingState("Loading operations…", "Empathy adoption and operator tools")
             return@Scaffold
         }
         Column(

@@ -40,9 +40,9 @@ import com.pegasusx.factory.data.model.FleetVehicleRow
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasusx.factory.util.FactoryIdempotencyKeys
-import com.pegasusx.factory.ui.components.FactoryLoadingState
-import com.pegasusx.factory.ui.components.FactoryStateKind
-import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -157,15 +157,15 @@ fun CreateTransferScreen(
         },
     ) { innerPadding ->
         when {
-            loadingFleet -> FactoryLoadingState(
+            loadingFleet -> PegasusLoadingState(
                 title = "Preparing form",
                 body = "Loading fleet assignment options.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            error != null -> FactoryStatePane(
-                kind = FactoryStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Unable to load fleet",
                 body = error!!,
                 actionLabel = "Retry",

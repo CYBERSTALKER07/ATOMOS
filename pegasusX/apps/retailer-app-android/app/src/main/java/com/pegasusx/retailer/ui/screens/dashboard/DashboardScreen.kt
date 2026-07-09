@@ -1,5 +1,14 @@
 package com.pegasusx.retailer.ui.screens.dashboard
 
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,9 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -70,8 +77,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.ui.components.RetailerMetricTile
-import com.pegasusx.retailer.ui.components.RetailerRuntimeBanner
-import com.pegasusx.retailer.ui.components.RetailerRuntimeTone
+import com.pegasus.design.PegasusRuntimeBanner
+import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.retailer.ui.components.RetailerSectionHeader
 import com.pegasusx.retailer.ui.components.modifiers.bounceCash
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
@@ -111,11 +118,14 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            LazyColumn(
+            LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 modifier = Modifier.fillMaxSize(),
-            ) {
+        horizontalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
                 if (uiState.loadIssue != null || uiState.isLoading) {
                     item {
                         val loadIssue = uiState.loadIssue
@@ -124,11 +134,11 @@ fun DashboardScreen(
                             else -> "Syncing dashboard data..."
                         }
                         val tone = when (loadIssue) {
-                            DashboardLoadIssue.OFFLINE -> RetailerRuntimeTone.Offline
-                            DashboardLoadIssue.RESTRICTED, DashboardLoadIssue.ERROR -> RetailerRuntimeTone.Warning
-                            null -> RetailerRuntimeTone.Refreshing
+                            DashboardLoadIssue.OFFLINE -> PegasusRuntimeTone.Offline
+                            DashboardLoadIssue.RESTRICTED, DashboardLoadIssue.ERROR -> PegasusRuntimeTone.Warning
+                            null -> PegasusRuntimeTone.Refreshing
                         }
-                        RetailerRuntimeBanner(
+                        PegasusRuntimeBanner(
                             tone = tone,
                             message = syncMessage,
                             onRetry = loadIssue?.let { { viewModel.refresh() } },
@@ -215,7 +225,7 @@ fun DashboardScreen(
                     }
                 }
 
-                item { Spacer(modifier = Modifier.height(32.dp)) }
+                item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(32.dp)) }
             }
         }
     }

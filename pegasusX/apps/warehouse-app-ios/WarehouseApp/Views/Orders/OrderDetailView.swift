@@ -38,7 +38,7 @@ struct OrderDetailView: View {
                     Button("Retry") { load() }
                 }
             } else if let order {
-                List {
+                ResponsiveGridContentWrapper {
                     Section("Summary") {
                         LabeledContent("State", value: order.state)
                         LabeledContent("Total", value: "\(order.totalUzs.formatted()) UZS")
@@ -87,7 +87,6 @@ struct OrderDetailView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Order detail")

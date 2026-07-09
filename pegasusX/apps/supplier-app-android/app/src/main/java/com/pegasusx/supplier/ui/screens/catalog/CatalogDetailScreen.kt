@@ -8,9 +8,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.CatalogProduct
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.components.formatMinorAmount
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -60,14 +60,14 @@ fun CatalogDetailScreen(
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when {
-                loading -> SupplierLoadingState("Loading product…", productId.take(12))
-                error != null -> SupplierStatePane(
-                    kind = SupplierStateKind.Error,
+                loading -> PegasusLoadingState("Loading product…", productId.take(12))
+                error != null -> PegasusStatePane(
+                    kind = PegasusStateKind.Error,
                     headline = "Product unavailable",
                     body = error!!,
                 )
-                product == null -> SupplierStatePane(
-                    kind = SupplierStateKind.Empty,
+                product == null -> PegasusStatePane(
+                    kind = PegasusStateKind.Empty,
                     headline = "Not found",
                     body = "No product for this ID.",
                 )

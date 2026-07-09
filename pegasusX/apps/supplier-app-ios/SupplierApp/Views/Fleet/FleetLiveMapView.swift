@@ -94,7 +94,8 @@ struct FleetLiveMapView: View {
                     }
                 }
                 if !exceptionCells.isEmpty {
-                    List(exceptionCells) { cell in
+                    ResponsiveGridContentWrapper {
+                        ForEach(exceptionCells) { cell in
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Cell \(cell.h3Cell.prefix(12))… · \(cell.severity)")
                                 .font(.subheadline.bold())
@@ -103,7 +104,6 @@ struct FleetLiveMapView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .listStyle(.plain)
                 }
                 }
             }

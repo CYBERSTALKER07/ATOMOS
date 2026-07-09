@@ -130,7 +130,8 @@ struct DemandForecastView: View {
                 description: Text("No daily demand projection for this window.")
             )
         } else {
-            List(forecast.series) { day in
+            ResponsiveGridContentWrapper {
+                ForEach(forecast.series) { day in
                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                     Text(day.date)
                         .font(.headline)
@@ -142,7 +143,6 @@ struct DemandForecastView: View {
                 }
                 .padding(.vertical, LabTheme.spacingXS)
             }
-            .listStyle(.insetGrouped)
         }
     }
 

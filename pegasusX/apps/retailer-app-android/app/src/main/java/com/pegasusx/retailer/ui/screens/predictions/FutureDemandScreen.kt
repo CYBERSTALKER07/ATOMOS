@@ -1,5 +1,17 @@
 package com.pegasusx.retailer.ui.screens.predictions
 
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.itemsIndexed
+
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -7,8 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -35,8 +46,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.ui.screens.orders.AiPlannedCard
 import com.pegasusx.retailer.ui.components.PegasusEmptyState
-import com.pegasusx.retailer.ui.components.RetailerRuntimeBanner
-import com.pegasusx.retailer.ui.components.RetailerRuntimeTone
+import com.pegasus.design.PegasusRuntimeBanner
+import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.retailer.ui.screens.orders.OrdersViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,8 +74,8 @@ fun FutureDemandScreen(
         )
 
         uiState.syncMessage?.let { message ->
-            RetailerRuntimeBanner(
-                tone = RetailerRuntimeTone.Warning,
+            PegasusRuntimeBanner(
+                tone = PegasusRuntimeTone.Warning,
                 message = message,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 onRetry = viewModel::refresh,
@@ -86,9 +97,12 @@ fun FutureDemandScreen(
                 message = "AI-predicted orders based on your history will appear here.",
             )
         } else {
-            LazyColumn(
+            LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            ) {
+            
+    ) {
                 itemsIndexed(uiState.predictions, key = { _, f -> f.id }) { _, forecast ->
                     AiPlannedCard(
                         forecast = forecast,
@@ -101,7 +115,7 @@ fun FutureDemandScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
-                item { Spacer(modifier = Modifier.height(32.dp)) }
+                item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(32.dp)) }
             }
         }
     }

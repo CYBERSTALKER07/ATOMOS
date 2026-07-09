@@ -1,5 +1,17 @@
 package com.pegasusx.retailer.ui.screens.autoorder
 
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.itemsIndexed
+
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -16,8 +28,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -95,10 +106,13 @@ fun AutoOrderScreen(
         return
     }
 
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         val syncMessage = when {
             uiState.loadIssue != null -> uiState.error ?: uiState.syncMessage.orEmpty()

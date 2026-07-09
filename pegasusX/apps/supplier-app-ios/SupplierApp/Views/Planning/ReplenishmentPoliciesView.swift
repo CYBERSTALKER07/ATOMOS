@@ -12,7 +12,7 @@ struct ReplenishmentPoliciesView: View {
             } else if let error {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else if let policy {
-                List {
+                ResponsiveGridContentWrapper {
                     Section("Auto-approval") {
                         LabeledContent("Stable replenishment", value: policy.autoApproveStable ? "Enabled" : "Disabled")
                         LabeledContent("Predictive push", value: policy.autoApprovePredictivePush ? "Enabled" : "Disabled")
@@ -27,7 +27,6 @@ struct ReplenishmentPoliciesView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)

@@ -17,7 +17,8 @@ struct NegotiationsView: View {
             } else if rows.isEmpty {
                 SupplierEmptyView(title: "No pending negotiations", message: "Driver quantity proposals appear here.")
             } else {
-                List(rows) { row in
+                ResponsiveGridContentWrapper {
+                    ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: 8) {
                         Text(row.orderId).font(.headline)
                         Text("\(row.items.count) line items · Driver \(row.driverId)").font(.caption)
@@ -30,7 +31,6 @@ struct NegotiationsView: View {
                         .buttonStyle(.bordered)
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Negotiations")

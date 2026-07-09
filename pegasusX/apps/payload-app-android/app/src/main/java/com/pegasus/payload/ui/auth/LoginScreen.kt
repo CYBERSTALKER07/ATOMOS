@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
@@ -29,8 +30,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pegasus.payload.ui.components.PayloadStateKind
-import com.pegasus.payload.ui.components.PayloadStatePane
+import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.PegasusStateKind
 
 /**
  * LoginScreen — Firebase phone OTP (primary) with PIN dev fallback.
@@ -106,12 +107,13 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                     }
 
                     state.error?.let { msg ->
-                        PayloadStatePane(
-                            kind = PayloadStateKind.AuthFailure,
-                            headline = "Login failed",
+                        PegasusStatePane(
+                            kind = PegasusStateKind.AuthFailure,
+                            headline = "Authentication Failed",
                             body = msg,
-                            compact = true,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),
+                            actionLabel = "Dismiss",
+                            onAction = viewModel::clearError,
                         )
                     }
 
@@ -125,15 +127,7 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                                         .fillMaxWidth()
                                         .height(56.dp),
                                 ) {
-                                    if (state.loading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.height(20.dp),
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            strokeWidth = 2.dp,
-                                        )
-                                    } else {
-                                        Text("Send Code", style = MaterialTheme.typography.titleMedium)
-                                    }
+                                    Text("Send Code", style = MaterialTheme.typography.titleMedium)
                                 }
                             } else {
                                 Button(
@@ -143,15 +137,7 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                                         .fillMaxWidth()
                                         .height(56.dp),
                                 ) {
-                                    if (state.loading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.height(20.dp),
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            strokeWidth = 2.dp,
-                                        )
-                                    } else {
-                                        Text("Verify & Sign In", style = MaterialTheme.typography.titleMedium)
-                                    }
+                                    Text("Verify & Sign In", style = MaterialTheme.typography.titleMedium)
                                 }
                                 OutlinedButton(
                                     onClick = { viewModel.sendOtp(activity) },
@@ -170,15 +156,7 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                                     .fillMaxWidth()
                                     .height(56.dp),
                             ) {
-                                if (state.loading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.height(20.dp),
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        strokeWidth = 2.dp,
-                                    )
-                                } else {
-                                    Text("Sign In with PIN", style = MaterialTheme.typography.titleMedium)
-                                }
+                                Text("Sign In with PIN", style = MaterialTheme.typography.titleMedium)
                             }
                         }
                     }
@@ -194,6 +172,15 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                         Text(
                             if (state.mode == LoginMode.Otp) "Use PIN (dev)" else "Use phone OTP",
                         )
+                    }
+                }
+            }
+            if (state.loading) {
+                Surface(modifier = Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.4f)) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface, modifier = Modifier.padding(32.dp)) {
+                            com.pegasus.design.PegasusLoadingState(title = "Authenticating", body = "Verifying credentials with dispatch.", modifier = Modifier.padding(32.dp))
+                        }
                     }
                 }
             }

@@ -2,14 +2,19 @@ package com.pegasusx.warehouse.ui.screens.more
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.pegasusx.warehouse.ui.navigation.WarehouseRoutes
 import com.pegasusx.warehouse.ui.portal.WarehousePortalFeature
@@ -71,24 +76,25 @@ fun MoreHubScreen(
             )
         },
     ) { innerPadding ->
-        LazyColumn(
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 340.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            item { SectionHeader("Fulfillment") }
+            item(span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Fulfillment") }
             fulfillment.forEach { dest ->
                 item { MoreRow(dest, onNavigate) }
             }
-            item { SectionHeader("Inventory") }
+            item(span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Inventory") }
             inventory.forEach { dest ->
                 item { MoreRow(dest, onNavigate) }
             }
-            item { SectionHeader("Operations") }
+            item(span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Operations") }
             operations.forEach { dest ->
                 item { MoreRow(dest, onNavigate) }
             }
-            item { SectionHeader("Portal only") }
+            item(span = { GridItemSpan(maxLineSpan) }) { SectionHeader("Portal only") }
             portalAccount.forEach { dest ->
                 item { MoreRow(dest, onNavigate) }
             }

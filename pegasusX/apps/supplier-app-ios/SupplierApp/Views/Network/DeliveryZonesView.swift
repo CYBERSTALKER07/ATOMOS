@@ -14,7 +14,7 @@ struct DeliveryZonesView: View {
             } else if warehouses.isEmpty {
                 SupplierEmptyView(title: "No coverage", message: "No warehouse coverage configured.")
             } else {
-                List {
+                ResponsiveGridContentWrapper {
                     Section("Warehouse coverage") {
                         ForEach(warehouses) { node in
                             VStack(alignment: .leading, spacing: 4) {
@@ -31,7 +31,6 @@ struct DeliveryZonesView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)

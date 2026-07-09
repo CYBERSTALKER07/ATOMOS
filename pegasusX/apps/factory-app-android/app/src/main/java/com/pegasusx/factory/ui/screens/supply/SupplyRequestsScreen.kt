@@ -1,5 +1,13 @@
 package com.pegasusx.factory.ui.screens.supply
 
+import androidx.compose.foundation.lazy.grid.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,8 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -56,11 +62,11 @@ import com.pegasusx.factory.data.model.SupplyRequestTransitionRequest
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
-import com.pegasusx.factory.ui.components.FactoryLoadingState
-import com.pegasusx.factory.ui.components.FactoryRuntimeBanner
-import com.pegasusx.factory.ui.components.FactoryRuntimeTone
-import com.pegasusx.factory.ui.components.FactoryStateKind
-import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusRuntimeBanner
+import com.pegasus.design.PegasusRuntimeTone
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import java.text.DateFormat
@@ -242,12 +248,12 @@ fun SupplyRequestsScreen(
         else -> "Waiting for first sync"
     }
     val runtimeTone = when {
-        staleMessage != null && realtimeStatus == FactoryRealtimeStatus.OFFLINE -> FactoryRuntimeTone.Offline
-        staleMessage != null -> FactoryRuntimeTone.Warning
-        realtimeStatus == FactoryRealtimeStatus.OFFLINE -> FactoryRuntimeTone.Offline
-        realtimeStatus == FactoryRealtimeStatus.RECONNECTING || realtimeStatus == FactoryRealtimeStatus.CONNECTING -> FactoryRuntimeTone.Refreshing
-        refreshing -> FactoryRuntimeTone.Refreshing
-        else -> FactoryRuntimeTone.Live
+        staleMessage != null && realtimeStatus == FactoryRealtimeStatus.OFFLINE -> PegasusRuntimeTone.Offline
+        staleMessage != null -> PegasusRuntimeTone.Warning
+        realtimeStatus == FactoryRealtimeStatus.OFFLINE -> PegasusRuntimeTone.Offline
+        realtimeStatus == FactoryRealtimeStatus.RECONNECTING || realtimeStatus == FactoryRealtimeStatus.CONNECTING -> PegasusRuntimeTone.Refreshing
+        refreshing -> PegasusRuntimeTone.Refreshing
+        else -> PegasusRuntimeTone.Live
     }
 
     fulfillModal?.let { (request, options) ->
@@ -310,15 +316,15 @@ fun SupplyRequestsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading -> FactoryLoadingState(
+            loading -> PegasusLoadingState(
                 title = "Loading supply requests",
                 body = "Fetching the current warehouse demand queue for this factory.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            error != null -> FactoryStatePane(
-                kind = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) FactoryStateKind.Offline else FactoryStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) PegasusStateKind.Offline else PegasusStateKind.Error,
                 headline = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) "Supply queue unavailable offline" else "Unable to load supply requests",
                 body = error!!,
                 actionLabel = "Retry",
@@ -327,8 +333,8 @@ fun SupplyRequestsScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            filteredRequests.isEmpty() -> FactoryStatePane(
-                kind = if (filter == "ALL") FactoryStateKind.Empty else FactoryStateKind.NoResults,
+            filteredRequests.isEmpty() -> PegasusStatePane(
+                kind = if (filter == "ALL") PegasusStateKind.Empty else PegasusStateKind.NoResults,
                 headline = if (filter == "ALL") "No supply requests in queue" else "No ${filter.replace('_', ' ')} requests right now",
                 body = if (filter == "ALL") {
                     "Warehouse demand will appear here as soon as requests reach this factory queue."
@@ -341,11 +347,14 @@ fun SupplyRequestsScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            else -> LazyColumn(
+            else -> LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-            ) {
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)
+    ) {
                 item {
                     FilterRow(
                         selected = filter,
@@ -414,7 +423,7 @@ private fun SupplySummaryCard(
     total: Int,
     visible: Int,
     runtimeStatus: String,
-    runtimeTone: FactoryRuntimeTone,
+    runtimeTone: PegasusRuntimeTone,
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -435,7 +444,7 @@ private fun SupplySummaryCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            FactoryRuntimeBanner(
+            PegasusRuntimeBanner(
                 tone = runtimeTone,
                 message = runtimeStatus,
             )

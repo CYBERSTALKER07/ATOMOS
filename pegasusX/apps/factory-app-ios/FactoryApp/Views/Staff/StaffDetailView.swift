@@ -20,7 +20,7 @@ struct StaffDetailView: View {
                     Button("Retry") { Task { await load() } }
                 }
             } else if let staff {
-                List {
+                ResponsiveGridContentWrapper {
                     Section {
                         LabeledContent("Name", value: staff.name)
                         LabeledContent("Role", value: staff.role)
@@ -30,7 +30,6 @@ struct StaffDetailView: View {
                         LabeledContent("Joined", value: staff.joinedAt.isEmpty ? "—" : staff.joinedAt)
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Staff")

@@ -22,11 +22,11 @@ import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasusx.factory.ui.components.ClientPolicyBanner
 import com.pegasusx.factory.ui.components.FactoryKpiBadge
 import com.pegasusx.factory.ui.components.FactoryKpiTile
-import com.pegasusx.factory.ui.components.FactoryLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.factory.ui.components.FactoryMetricTile
 import com.pegasusx.factory.ui.components.FactorySectionTitle
-import com.pegasusx.factory.ui.components.FactoryStateKind
-import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.navigation.FactoryRoutes
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
@@ -161,15 +161,15 @@ fun DashboardScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> FactoryLoadingState(
+            loading -> PegasusLoadingState(
                 title = "Loading dashboard",
                 body = "Fetching live factory metrics for loading, fleet, and staffing.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            error != null -> FactoryStatePane(
-                kind = FactoryStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Unable to load dashboard",
                 body = error!!,
                 actionLabel = "Retry",

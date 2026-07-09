@@ -15,20 +15,14 @@ struct InventoryView: View {
         NavigationStack {
             Group {
                 if loading && items.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    WarehouseLoadingView(title: "Loading inventory…", message: "Fetching latest stock quantities")
                 } else if let error, items.isEmpty {
-                    ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") { load() }
-                    }
+                    WarehouseErrorView(message: error, retry: { load() })
                 } else if items.isEmpty {
-                    ContentUnavailableView("No Inventory", systemImage: "archivebox", description: Text("Inventory is empty"))
+                    WarehouseEmptyView(title: "No Inventory Items", message: "There are no matching items.")
                 } else {
-                    List(items) { item in
+                    ResponsiveGridContentWrapper {
+                        ForEach(items) { item in
                         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
                             HStack {
                                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
@@ -62,8 +56,8 @@ struct InventoryView: View {
                             .pickerStyle(.menu)
                             .disabled(policySavingId == item.productId)
                         }
+                        .labCard()
                     }
-                    .listStyle(.insetGrouped)
                 }
             }
             .background(LabTheme.background)

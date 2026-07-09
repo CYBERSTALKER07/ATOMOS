@@ -35,9 +35,9 @@ import com.pegasusx.supplier.data.model.SupplierTopologyResponse
 import com.pegasusx.supplier.data.model.SupplierTopologyUpdateRequest
 import com.pegasusx.supplier.data.model.SupplierTopologyWarehouseInput
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -206,9 +206,9 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading topology…", "Node topology")
-            error != null && topology == null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading topology…", "Node topology")
+            error != null && topology == null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Topology unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
@@ -297,8 +297,8 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                     }) { Text("Add factory") }
                 }
             }
-            topology == null || (topology!!.warehouses.isEmpty() && topology!!.factories.isEmpty()) -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            topology == null || (topology!!.warehouses.isEmpty() && topology!!.factories.isEmpty()) -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No nodes",
                 body = "No warehouses or factories configured.",
                 modifier = Modifier.padding(padding),

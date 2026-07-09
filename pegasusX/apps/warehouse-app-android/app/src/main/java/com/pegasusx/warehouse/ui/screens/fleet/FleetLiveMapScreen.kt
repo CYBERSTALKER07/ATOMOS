@@ -1,8 +1,10 @@
 package com.pegasusx.warehouse.ui.screens.fleet
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -71,36 +73,33 @@ fun FleetLiveMapScreen(
         },
     ) { padding ->
         when {
-            loading && routes.isEmpty() -> Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = androidx.compose.ui.Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
-            error != null && routes.isEmpty() -> Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = androidx.compose.ui.Alignment.Center,
-            ) {
-                Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Button(onClick = { scope.launch { load() } }) { Text("Retry") }
-                }
-            }
-            routes.isEmpty() -> Box(
-                Modifier.fillMaxSize().padding(padding),
-                contentAlignment = androidx.compose.ui.Alignment.Center,
-            ) {
-                Text(
-                    "No active routes",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            else -> LazyColumn(
+            loading && routes.isEmpty() -> com.pegasus.design.PegasusLoadingState(
+                title = "Loading fleet map...",
+                body = "Fetching live locations and routes",
+                modifier = Modifier.padding(padding),
+            )
+            error != null && routes.isEmpty() -> com.pegasus.design.PegasusStatePane(
+                kind = com.pegasus.design.PegasusStateKind.Error,
+                headline = "Failed to load map",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { scope.launch { load() } },
+                modifier = Modifier.padding(padding),
+            )
+            routes.isEmpty() -> com.pegasus.design.PegasusStatePane(
+                kind = com.pegasus.design.PegasusStateKind.Empty,
+                headline = "No active routes",
+                body = "There are no fleet routes currently active.",
+                modifier = Modifier.padding(padding),
+            )
+            else -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 340.dp),
                 modifier = Modifier.padding(padding).fillMaxSize(),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
-                item {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     FleetLiveMapLibre(
                         routes = routes,
                         modifier = Modifier

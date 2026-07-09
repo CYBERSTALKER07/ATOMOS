@@ -1,8 +1,14 @@
 package com.pegasusx.factory.ui.screens.transfer
 
+import androidx.compose.foundation.lazy.grid.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -15,9 +21,9 @@ import com.pegasusx.factory.data.model.TransitionRequest
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
-import com.pegasusx.factory.ui.components.FactoryLoadingState
-import com.pegasusx.factory.ui.components.FactoryStateKind
-import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -121,15 +127,15 @@ fun TransferDetailScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading && transfer == null -> FactoryLoadingState(
+            loading && transfer == null -> PegasusLoadingState(
                 title = "Loading transfer",
                 body = "Fetching the latest manifest details and item breakdown.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            error != null -> FactoryStatePane(
-                kind = FactoryStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Unable to load transfer",
                 body = error!!,
                 actionLabel = "Retry",
@@ -138,11 +144,14 @@ fun TransferDetailScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            transfer != null -> LazyColumn(
+            transfer != null -> LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-            ) {
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)
+    ) {
                 item {
                     TransferOverviewCard(transfer = transfer!!)
                 }
@@ -254,8 +263,8 @@ fun TransferDetailScreen(
                     }
                 }
             }
-            else -> FactoryStatePane(
-                kind = FactoryStateKind.NoResults,
+            else -> PegasusStatePane(
+                kind = PegasusStateKind.NoResults,
                 headline = "Transfer not found",
                 body = "This transfer is no longer available or could not be resolved for this factory.",
                 actionLabel = "Back",

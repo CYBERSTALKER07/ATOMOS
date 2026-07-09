@@ -16,10 +16,10 @@ import com.pegasusx.supplier.data.model.FleetVehicle
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -91,9 +91,9 @@ fun FleetScreen(
                 Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Vehicles (${vehicles.size})") })
             }
             when {
-                showFullScreenLoading(loading, hasData) -> SupplierLoadingState("Loading fleet…", "Drivers and vehicles")
-                error != null -> SupplierStatePane(
-                    kind = SupplierStateKind.Error,
+                showFullScreenLoading(loading, hasData) -> PegasusLoadingState("Loading fleet…", "Drivers and vehicles")
+                error != null -> PegasusStatePane(
+                    kind = PegasusStateKind.Error,
                     headline = "Fleet unavailable",
                     body = error!!,
                     actionLabel = "Retry",
@@ -109,7 +109,7 @@ fun FleetScreen(
 @Composable
 private fun FleetDriversList(drivers: List<FleetDriver>) {
     if (drivers.isEmpty()) {
-        SupplierStatePane(SupplierStateKind.Empty, headline = "No drivers", body = "Fleet drivers will appear here.")
+        PegasusStatePane(PegasusStateKind.Empty, headline = "No drivers", body = "Fleet drivers will appear here.")
         return
     }
     LazyColumn(
@@ -135,7 +135,7 @@ private fun FleetDriversList(drivers: List<FleetDriver>) {
 @Composable
 private fun FleetVehiclesList(vehicles: List<FleetVehicle>) {
     if (vehicles.isEmpty()) {
-        SupplierStatePane(SupplierStateKind.Empty, headline = "No vehicles", body = "Fleet vehicles will appear here.")
+        PegasusStatePane(PegasusStateKind.Empty, headline = "No vehicles", body = "Fleet vehicles will appear here.")
         return
     }
     LazyColumn(

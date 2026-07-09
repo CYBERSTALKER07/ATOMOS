@@ -48,8 +48,8 @@ import com.pegasusx.factory.data.model.LoginRequest
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FirebaseAuthHelper
 import com.pegasusx.factory.data.remote.TokenHolder
-import com.pegasusx.factory.ui.components.FactoryRuntimeBanner
-import com.pegasusx.factory.ui.components.FactoryRuntimeTone
+import com.pegasus.design.PegasusRuntimeBanner
+import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -286,8 +286,8 @@ fun LoginScreen(
 
             if (error != null) {
                 Spacer(Modifier.height(PegasusSpacing.sm))
-                FactoryRuntimeBanner(
-                    tone = FactoryRuntimeTone.Warning,
+                PegasusRuntimeBanner(
+                    tone = PegasusRuntimeTone.Warning,
                     message = error!!,
                     modifier = Modifier.fillMaxWidth(),
                 )

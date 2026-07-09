@@ -21,10 +21,10 @@ import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
 import com.pegasusx.warehouse.ui.components.WarehouseKpiBadge
 import com.pegasusx.warehouse.ui.components.WarehouseKpiTile
-import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
-import com.pegasusx.warehouse.ui.components.WarehouseStateKind
-import com.pegasusx.warehouse.ui.components.WarehouseStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.navigation.WarehouseRoutes
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
@@ -114,13 +114,13 @@ fun DashboardScreen(
         },
     ) { innerPadding ->
         when {
-            loading && !hasData -> WarehouseLoadingState(
+            loading && !hasData -> PegasusLoadingState(
                 title = "Loading dashboard…",
                 body = "Warehouse KPIs and fleet snapshot",
                 modifier = Modifier.padding(innerPadding),
             )
-            error != null && !hasData -> WarehouseStatePane(
-                kind = WarehouseStateKind.Error,
+            error != null && !hasData -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Dashboard unavailable",
                 body = error!!,
                 actionLabel = "Retry",

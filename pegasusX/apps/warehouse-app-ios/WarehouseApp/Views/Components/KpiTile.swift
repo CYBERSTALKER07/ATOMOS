@@ -26,6 +26,8 @@ struct KpiTile: View {
                 .font(.title2.bold())
                 .minimumScaleFactor(0.8)
                 .lineLimit(1)
+                .contentTransition(.numericText(value: 0))
+                .animation(.snappy, value: value)
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)

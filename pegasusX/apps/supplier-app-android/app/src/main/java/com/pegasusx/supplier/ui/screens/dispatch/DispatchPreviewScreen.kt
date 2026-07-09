@@ -23,9 +23,9 @@ import com.pegasusx.supplier.util.SUPPLIER_RECONNECT_RECOVERY_HINT
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import com.pegasusx.supplier.ui.realtime.SupplierReconnectRecoveryEffect
 import com.pegasusx.supplier.ui.components.DispatchPreviewMapLibre
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
@@ -301,9 +301,9 @@ private fun DispatchPreviewBody(
     val capacityExceeded = truckEffective > 0 && selectedVolume > truckEffective
 
     when {
-        loading && preview == null -> SupplierLoadingState("Loading dispatch preview…", "Dispatch snapshot", modifier)
-        error != null && preview == null -> SupplierStatePane(
-            kind = SupplierStateKind.Error,
+        loading && preview == null -> PegasusLoadingState("Loading dispatch preview…", "Dispatch snapshot", modifier)
+        error != null && preview == null -> PegasusStatePane(
+            kind = PegasusStateKind.Error,
             headline = "Preview unavailable",
             body = error,
             modifier = modifier,

@@ -25,6 +25,21 @@ struct HomeView: View {
             PulseStrip(events: viewModel.pulseEvents, loading: viewModel.pulseLoading)
             navigationRoot
         }
+        .overlay {
+            if viewModel.startingLoading {
+                Color.black.opacity(0.4).ignoresSafeArea()
+                PayloadLoadingView(title: "STARTING LOADING", message: "Opening manifest for loading.")
+                    .background(TermTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: TermTheme.radiusMD, style: .continuous))
+                    .padding(32)
+            } else if viewModel.sealingManifest {
+                Color.black.opacity(0.4).ignoresSafeArea()
+                PayloadLoadingView(title: "SEALING MANIFEST", message: "Finalizing load process.")
+                    .background(TermTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: TermTheme.radiusMD, style: .continuous))
+                    .padding(32)
+            }
+        }
             .homeSheets(
                 viewModel: viewModel,
                 tokenStore: tokenStore,
@@ -58,7 +73,7 @@ struct HomeView: View {
                 onScanProduct: { showProductScanner = true }
             )
             .navigationTitle("Manifest")
-            .navigationSplitViewColumnWidth(min: 480, ideal: 720)
+            .navigationSplitViewColumnWidth(min: 320, ideal: 720)
             .toolbar { detailToolbar }
         }
         .navigationSplitViewStyle(.balanced)
@@ -262,44 +277,49 @@ private struct HomeBannerOverlay: View {
     @Bindable var viewModel: HomeViewModel
 
     var body: some View {
-        VStack(spacing: 8) {
-            if let msg = viewModel.barcodeScanMessage {
-                InfoBanner(text: msg, tint: .blue)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .task {
-                        try? await Task.sleep(nanoseconds: 3_000_000_000)
-                        viewModel.clearBarcodeScanMessage()
-                    }
+        if viewModel.barcodeScanMessage != nil ||
+           viewModel.missingItemsReportedMessage != nil ||
+           viewModel.queuedNoticeMessage != nil ||
+           viewModel.syncCompleteMessage != nil {
+            VStack(spacing: 8) {
+                if let msg = viewModel.barcodeScanMessage {
+                    InfoBanner(text: msg, tint: .blue)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .task {
+                            try? await Task.sleep(nanoseconds: 3_000_000_000)
+                            viewModel.clearBarcodeScanMessage()
+                        }
+                }
+                if let msg = viewModel.missingItemsReportedMessage {
+                    InfoBanner(text: msg, tint: .orange)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .task {
+                            try? await Task.sleep(nanoseconds: 3_000_000_000)
+                            viewModel.clearMissingItemsReportedMessage()
+                        }
+                }
+                if let msg = viewModel.queuedNoticeMessage {
+                    InfoBanner(text: msg, tint: .orange)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .task {
+                            try? await Task.sleep(nanoseconds: 3_000_000_000)
+                            viewModel.clearQueuedNoticeMessage()
+                        }
+                }
+                if let msg = viewModel.syncCompleteMessage {
+                    InfoBanner(text: msg, tint: .green)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .task {
+                            try? await Task.sleep(nanoseconds: 3_000_000_000)
+                            viewModel.clearSyncCompleteMessage()
+                        }
+                }
             }
-            if let msg = viewModel.missingItemsReportedMessage {
-                InfoBanner(text: msg, tint: .orange)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .task {
-                        try? await Task.sleep(nanoseconds: 3_000_000_000)
-                        viewModel.clearMissingItemsReportedMessage()
-                    }
-            }
-            if let msg = viewModel.queuedNoticeMessage {
-                InfoBanner(text: msg, tint: .orange)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .task {
-                        try? await Task.sleep(nanoseconds: 3_000_000_000)
-                        viewModel.clearQueuedNoticeMessage()
-                    }
-            }
-            if let msg = viewModel.syncCompleteMessage {
-                InfoBanner(text: msg, tint: .green)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .task {
-                        try? await Task.sleep(nanoseconds: 3_000_000_000)
-                        viewModel.clearSyncCompleteMessage()
-                    }
-            }
+            .animation(.easeInOut, value: viewModel.queuedNoticeMessage)
+            .animation(.easeInOut, value: viewModel.syncCompleteMessage)
+            .animation(.easeInOut, value: viewModel.barcodeScanMessage)
+            .padding()
         }
-        .animation(.easeInOut, value: viewModel.queuedNoticeMessage)
-        .animation(.easeInOut, value: viewModel.syncCompleteMessage)
-        .animation(.easeInOut, value: viewModel.barcodeScanMessage)
-        .padding()
     }
 }
 
@@ -396,12 +416,10 @@ private struct TruckSidebar: View {
 
             Group {
                 if viewModel.loadingTrucks && viewModel.trucks.isEmpty {
-                    PayloadStateView(
-                        variant: .truck,
+                    PayloadLoadingView(
                         title: "LOADING_VEHICLES",
                         message: "Refreshing supplier fleet availability for this shift."
                     )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if viewModel.trucks.isEmpty {
                     PayloadStateView(
                         variant: .truck,
@@ -553,12 +571,10 @@ private struct ManifestDetailView: View {
                     onStartNew: { Task { await viewModel.startNewManifest() } }
                 )
             } else if viewModel.loadingManifest && viewModel.manifest == nil {
-                PayloadStateView(
-                    variant: .manifest,
+                PayloadLoadingView(
                     title: "LOADING_MANIFEST",
                     message: "Loading the active checklist for this truck."
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let m = viewModel.manifest {
                 ManifestWorkflow(
                     manifest: m,
@@ -607,13 +623,9 @@ private struct ManifestWorkflow: View {
                     Button {
                         Task { await viewModel.startLoading() }
                     } label: {
-                        if viewModel.startingLoading {
-                            ProgressView().controlSize(.regular)
-                        } else {
-                            Text("Start Loading")
-                                .font(.headline)
-                                .frame(maxWidth: .infinity, minHeight: 48)
-                        }
+                        Text("Start Loading")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 48)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(viewModel.startingLoading)
@@ -647,11 +659,7 @@ private struct ManifestWorkflow: View {
                         } label: {
                             HStack {
                                 Image(systemName: "lock.fill")
-                                if viewModel.sealingManifest {
-                                    ProgressView().controlSize(.regular)
-                                } else {
-                                    Text("Seal Manifest").font(.headline)
-                                }
+                                Text("Seal Manifest").font(.headline)
                             }
                             .frame(maxWidth: .infinity, minHeight: 48)
                         }
@@ -684,14 +692,10 @@ private struct OrderChecklistSection: View {
             .padding(.horizontal, 4)
 
             if viewModel.loadingOrders {
-                PayloadStateView(
-                    variant: .manifest,
+                PayloadLoadingView(
                     title: "FETCHING_MANIFEST",
-                    message: "Loading the checklist items assigned to this vehicle.",
-                    compact: true
+                    message: "Loading the checklist items assigned to this vehicle."
                 )
-                .frame(maxWidth: .infinity)
-                .padding()
             } else if viewModel.orders.isEmpty {
                 PayloadStateView(
                     variant: .manifest,
@@ -1564,16 +1568,18 @@ private struct NotificationsSheet: View {
                         compact: false
                     )
                 } else {
-                    List {
-                        ForEach(viewModel.notifications) { n in
-                            NotificationRow(item: n) {
-                                if n.isUnread { viewModel.markNotificationRead(n.notificationId) }
-                            } onHandoffAction: { link in
-                                Task { await viewModel.handleHandoffLink(link) }
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ForEach(viewModel.notifications) { n in
+                                NotificationRow(item: n) {
+                                    if n.isUnread { viewModel.markNotificationRead(n.notificationId) }
+                                } onHandoffAction: { link in
+                                    Task { await viewModel.handleHandoffLink(link) }
+                                }
                             }
                         }
+                        .padding()
                     }
-                    .listStyle(.plain)
                 }
             }
             .navigationTitle("Notifications")
@@ -1610,24 +1616,28 @@ private struct ManifestExceptionsSheet: View {
                         compact: false
                     )
                 } else {
-                    List(viewModel.manifestExceptions) { row in
-                        VStack(alignment: .leading, spacing: TermTheme.s8) {
-                            HStack(spacing: TermTheme.s8) {
-                                PayloadStatusBadge(text: row.reason)
-                                if row.escalated {
-                                    PayloadStatusBadge(text: "ESCALATED", tint: TermTheme.alert)
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            ForEach(viewModel.manifestExceptions) { row in
+                                VStack(alignment: .leading, spacing: TermTheme.s8) {
+                                    HStack(spacing: TermTheme.s8) {
+                                        PayloadStatusBadge(text: row.reason)
+                                        if row.escalated {
+                                            PayloadStatusBadge(text: "ESCALATED", tint: TermTheme.alert)
+                                        }
+                                    }
+                                    Text("Order \(row.orderId.prefix(8)) · Manifest \(row.manifestId.prefix(8))")
+                                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                                        .foregroundStyle(TermTheme.secondary)
+                                    Text("Attempts \(row.attemptCount)")
+                                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                        .foregroundStyle(TermTheme.tertiary)
                                 }
+                                .padding(.vertical, TermTheme.s4)
                             }
-                            Text("Order \(row.orderId.prefix(8)) · Manifest \(row.manifestId.prefix(8))")
-                                .font(.system(size: 13, weight: .medium, design: .monospaced))
-                                .foregroundStyle(TermTheme.secondary)
-                            Text("Attempts \(row.attemptCount)")
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                .foregroundStyle(TermTheme.tertiary)
                         }
-                        .padding(.vertical, TermTheme.s4)
+                        .padding()
                     }
-                    .listStyle(.plain)
                 }
             }
             .navigationTitle("Manifest exceptions")

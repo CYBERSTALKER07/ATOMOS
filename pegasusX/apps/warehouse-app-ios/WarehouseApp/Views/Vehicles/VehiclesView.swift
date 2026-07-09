@@ -24,7 +24,8 @@ struct VehiclesView: View {
                 } else if vehicles.isEmpty {
                     ContentUnavailableView("No Trucks", systemImage: "truck.box", description: Text("Add a truck to get started"))
                 } else {
-                    List(vehicles) { vehicle in
+                    ResponsiveGridContentWrapper {
+                        ForEach(vehicles) { vehicle in
                         NavigationLink {
                             VehicleDetailView(vehicleId: vehicle.vehicleId)
                         } label: {
@@ -53,7 +54,6 @@ struct VehiclesView: View {
                             }
                         }
                     }
-                    .listStyle(.insetGrouped)
                 }
             }
             .background(LabTheme.background)

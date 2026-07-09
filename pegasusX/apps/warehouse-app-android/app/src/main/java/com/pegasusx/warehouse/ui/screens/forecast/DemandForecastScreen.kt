@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -224,19 +226,21 @@ private fun ProductsForecastBody(
     val urgent = forecast.products.count { it.priority.equals("URGENT", ignoreCase = true) }
     val normal = forecast.products.count { it.priority.equals("NORMAL", ignoreCase = true) }
 
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(PegasusSpacing.lg),
         verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
     ) {
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Text(
                 "AI-powered stock recommendations from 4 data sources",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                 modifier = Modifier.fillMaxWidth(),
@@ -268,7 +272,7 @@ private fun ProductsForecastBody(
             ForecastProductCard(product = product, fmt = fmt)
         }
         forecast.generatedAt?.takeIf { it.isNotBlank() }?.let { generatedAt ->
-            item {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 Text(
                     "Generated ${formatGeneratedAt(generatedAt)} · ${forecast.forecastDays}-day window",
                     style = MaterialTheme.typography.labelSmall,
@@ -302,10 +306,12 @@ private fun SeriesForecastBody(
         return
     }
 
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(PegasusSpacing.lg),
         verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
     ) {
         items(forecast.series, key = DemandForecastDay::date) { day ->
             ElevatedCard(Modifier.fillMaxWidth()) {

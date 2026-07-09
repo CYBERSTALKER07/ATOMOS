@@ -23,7 +23,8 @@ struct ReplenishmentView: View {
                     message: "No replenishment insights for this warehouse."
                 )
             } else {
-                List(insights) { insight in
+                ResponsiveGridContentWrapper {
+                    ForEach(insights) { insight in
                     VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
                         HStack(spacing: LabTheme.spacingXS) {
                             Text(insight.productName)
@@ -69,7 +70,6 @@ struct ReplenishmentView: View {
                     }
                     .padding(.vertical, LabTheme.spacingXS)
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Replenishment")

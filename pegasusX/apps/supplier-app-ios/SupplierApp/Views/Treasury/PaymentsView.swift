@@ -13,7 +13,7 @@ struct PaymentsView: View {
             } else if let error {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else if let authority {
-                List {
+                ResponsiveGridContentWrapper {
                     Section("Scope") {
                         PaymentsKpiRow(label: "Supplier scope", value: authority.supplierId.isEmpty ? "(global)" : authority.supplierId)
                         PaymentsKpiRow(label: "Grouped rows", value: "\(authority.count)")
@@ -78,7 +78,6 @@ struct PaymentsView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             } else {
                 SupplierEmptyView(title: "No data", message: "No settlement authority data available.")
             }

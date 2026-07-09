@@ -140,7 +140,7 @@ struct NotificationInboxView: View {
                         description: Text("You'll be notified about order updates here")
                     )
                 } else {
-                    List {
+                    ResponsiveGridContentWrapper {
                         ForEach(Array(vm.items.enumerated()), id: \.element.id) { index, notif in
                             Button {
                                 Haptics.light()
@@ -170,7 +170,6 @@ struct NotificationInboxView: View {
                             .listRowBackground(Color.clear)
                         }
                     }
-                    .listStyle(.plain)
                 }
             }
             .navigationTitle("Notifications")

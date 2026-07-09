@@ -2,8 +2,10 @@ package com.pegasusx.warehouse.ui.screens.analytics
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -70,13 +72,15 @@ fun AnalyticsScreen(
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
-            data != null -> LazyColumn(
+            data != null -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 340.dp),
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
                 // KPI row
-                item {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
                         KpiCard("Total Orders", data!!.totalOrders.toString(), Modifier.weight(1f))
                         KpiCard("Revenue", "${fmt.format(data!!.totalRevenue)} UZS", Modifier.weight(1f))

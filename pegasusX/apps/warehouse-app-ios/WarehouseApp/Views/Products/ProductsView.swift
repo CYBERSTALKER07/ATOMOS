@@ -22,7 +22,8 @@ struct ProductsView: View {
                 } else if products.isEmpty {
                     ContentUnavailableView("No Products", systemImage: "shippingbox", description: Text("Product catalog is empty"))
                 } else {
-                    List(products) { product in
+                    ResponsiveGridContentWrapper {
+                        ForEach(products) { product in
                         HStack {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(product.name)
@@ -37,7 +38,6 @@ struct ProductsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .listStyle(.insetGrouped)
                 }
             }
             .background(LabTheme.background)

@@ -23,7 +23,7 @@ struct FleetView: View {
                         message: "No vehicles are registered for this factory yet."
                     )
                 } else {
-                    List {
+                    ResponsiveGridContentWrapper {
                         Section {
                             FactorySectionHeader(
                                 title: "Fleet roster",
@@ -57,7 +57,6 @@ struct FleetView: View {
                             }
                         }
                     }
-                    .listStyle(.plain)
                 }
             }
             .background(LabTheme.background)

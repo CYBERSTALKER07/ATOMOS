@@ -23,7 +23,7 @@ struct ManifestDetailView: View {
                     Button("Retry") { Task { await load() } }
                 }
             } else if let detail {
-                List {
+                ResponsiveGridContentWrapper {
                     Section {
                         Text(detail.manifest.manifestId)
                             .font(.footnote.monospaced())
@@ -69,7 +69,6 @@ struct ManifestDetailView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Manifest")

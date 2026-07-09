@@ -21,7 +21,8 @@ struct PaymentConfigView: View {
             } else if gateways.isEmpty {
                 ContentUnavailableView("No Gateways", systemImage: "creditcard", description: Text("No payment gateways configured"))
             } else {
-                List(gateways) { gw in
+                ResponsiveGridContentWrapper {
+                    ForEach(gateways) { gw in
                     HStack {
                         VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                             Text(gw.name)
@@ -35,7 +36,6 @@ struct PaymentConfigView: View {
                             .foregroundStyle(gw.isActive ? .green : .secondary)
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .task { load() }

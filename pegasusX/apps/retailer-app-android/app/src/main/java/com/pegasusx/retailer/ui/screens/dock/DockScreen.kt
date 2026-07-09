@@ -1,5 +1,14 @@
 package com.pegasusx.retailer.ui.screens.dock
 
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -16,8 +25,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
@@ -46,8 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.retailer.data.model.TrackingOrder
 import com.pegasusx.retailer.ui.components.PegasusEmptyState
-import com.pegasusx.retailer.ui.components.RetailerRuntimeBanner
-import com.pegasusx.retailer.ui.components.RetailerRuntimeTone
+import com.pegasus.design.PegasusRuntimeBanner
+import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.retailer.ui.components.TrackingQROverlay
 import com.pegasusx.retailer.ui.theme.PillShape
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
@@ -80,8 +87,8 @@ fun DockScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
         uiState.syncMessage?.let { message ->
-            RetailerRuntimeBanner(
-                tone = if (uiState.isRefreshing) RetailerRuntimeTone.Refreshing else RetailerRuntimeTone.Warning,
+            PegasusRuntimeBanner(
+                tone = if (uiState.isRefreshing) PegasusRuntimeTone.Refreshing else PegasusRuntimeTone.Warning,
                 message = message,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 onRetry = if (!uiState.isRefreshing) viewModel::refresh else null,
@@ -116,10 +123,13 @@ fun DockScreen(
                 )
             }
             else -> {
-                LazyColumn(
+                LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
                     items(uiState.supplierGroups, key = { it.supplierId }) { group ->
                         SupplierDockSection(
                             group = group,
@@ -130,7 +140,7 @@ fun DockScreen(
                             onShowQr = viewModel::showQr,
                         )
                     }
-                    item { Spacer(modifier = Modifier.height(24.dp)) }
+                    item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(24.dp)) }
                 }
             }
         }

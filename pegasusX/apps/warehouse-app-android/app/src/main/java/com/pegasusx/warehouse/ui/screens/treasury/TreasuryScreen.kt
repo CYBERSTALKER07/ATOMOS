@@ -1,23 +1,26 @@
 package com.pegasusx.warehouse.ui.screens.treasury
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.Invoice
 import com.pegasusx.warehouse.data.model.TreasuryOverview
 import com.pegasusx.warehouse.data.remote.WarehouseApi
-import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseMetricTile
 import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
-import com.pegasusx.warehouse.ui.components.WarehouseStateKind
-import com.pegasusx.warehouse.ui.components.WarehouseStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -75,13 +78,13 @@ fun TreasuryScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> WarehouseLoadingState(
+            loading -> PegasusLoadingState(
                 title = "Loading treasury…",
                 body = "Financial overview and invoices",
                 modifier = Modifier.padding(innerPadding),
             )
-            error != null -> WarehouseStatePane(
-                kind = WarehouseStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Treasury unavailable",
                 body = error!!,
                 actionLabel = "Retry",
@@ -95,12 +98,14 @@ fun TreasuryScreen(
                 }
                 when (tab) {
                     0 -> overview?.let { o ->
-                        LazyColumn(
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = 340.dp),
                             contentPadding = PaddingValues(PegasusSpacing.lg),
                             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                         ) {
-                            item { WarehouseSectionTitle("Financial snapshot") }
-                            item {
+                            item(span = { GridItemSpan(maxLineSpan) }) { WarehouseSectionTitle("Financial snapshot") }
+                            item(span = { GridItemSpan(maxLineSpan) }) {
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                                     modifier = Modifier.fillMaxWidth(),
@@ -117,7 +122,7 @@ fun TreasuryScreen(
                                     )
                                 }
                             }
-                            item {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
                                 WarehouseMetricTile(
                                     label = "Paid",
                                     value = "${fmt.format(o.totalPaid)} UZS",
@@ -128,15 +133,17 @@ fun TreasuryScreen(
                     }
                     1 -> {
                         if (invoices.isEmpty()) {
-                            WarehouseStatePane(
-                                kind = WarehouseStateKind.Empty,
+                            PegasusStatePane(
+                                kind = PegasusStateKind.Empty,
                                 headline = "No invoices",
                                 body = "Retailer invoices will appear here when issued.",
                             )
                         } else {
-                            LazyColumn(
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 340.dp),
                                 contentPadding = PaddingValues(PegasusSpacing.lg),
                                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                             ) {
                                 items(invoices, key = { it.invoiceId }) { inv ->
                                     val displayAmount = if (inv.amount > 0) inv.amount else inv.amountUzs

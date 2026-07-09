@@ -25,6 +25,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import java.util.Locale
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 
 enum class WarehouseKpiBadge {
     Alert,
@@ -56,12 +62,20 @@ fun WarehouseKpiTile(
                 badge?.let { WarehouseKpiBadgeChip(badge = it) }
             }
             Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.headlineMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                AnimatedContent(
+                    targetState = value,
+                    transitionSpec = {
+                        (slideInVertically { height -> height } + fadeIn()).togetherWith(slideOutVertically { height -> -height } + fadeOut())
+                    },
+                    label = "valueAnimation"
+                ) { targetValue ->
+                    Text(
+                        text = targetValue,
+                        style = MaterialTheme.typography.headlineMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodySmall,

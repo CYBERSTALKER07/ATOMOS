@@ -58,6 +58,10 @@ func (s *consumerRepoStub) ListOrdersByStatus(context.Context, string, string, i
 func (s *consumerRepoStub) CreateConditionReport(context.Context, ConditionReport, func(outbox.TxnBuffer) error) error {
 	return nil
 }
+
+func (s *consumerRepoStub) FindSiblingDriversForOrder(ctx context.Context, orderID string) ([]string, error) {
+	return nil, nil
+}
 func (s *consumerRepoStub) ListConditionReports(context.Context, string) ([]ConditionReport, error) {
 	return nil, nil
 }

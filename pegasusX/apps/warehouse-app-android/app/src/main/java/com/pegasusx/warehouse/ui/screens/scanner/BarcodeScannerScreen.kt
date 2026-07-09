@@ -65,13 +65,13 @@ fun BarcodeScannerScreen(
                     }
                 }
                 ScannerState.ERROR -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Error", color = Color.Red, style = MaterialTheme.typography.headlineMedium)
-                        Text(errorMessage ?: "Unknown error", color = Color.White, modifier = Modifier.padding(16.dp), textAlign = TextAlign.Center)
-                        Button(onClick = { viewModel.reset(); viewModel.startScanning() }) {
-                            Text("Try Again")
-                        }
-                    }
+                    com.pegasus.design.PegasusStatePane(
+                        kind = com.pegasus.design.PegasusStateKind.Error,
+                        headline = "Scanner Error",
+                        body = errorMessage ?: "Unknown error",
+                        actionLabel = "Try Again",
+                        onAction = { viewModel.reset(); viewModel.startScanning() }
+                    )
                 }
                 ScannerState.IDLE -> {
                     // Wait for start

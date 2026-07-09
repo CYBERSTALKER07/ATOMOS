@@ -30,7 +30,7 @@ struct SavedCardsView: View {
     }
     
     var body: some View {
-        List {
+        ResponsiveGridContentWrapper {
             if returnTo == "delivery_payment" {
                 Section {
                     HStack {

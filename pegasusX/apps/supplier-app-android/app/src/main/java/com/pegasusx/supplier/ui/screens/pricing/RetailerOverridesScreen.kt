@@ -15,9 +15,9 @@ import com.pegasusx.supplier.data.model.RetailerOverridePreview
 import com.pegasusx.supplier.data.model.RetailerOverridePreviewRequest
 import com.pegasusx.supplier.data.model.RetailerPriceOverride
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
@@ -108,17 +108,17 @@ fun RetailerOverridesScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading overrides…", "Per-retailer pricing")
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading overrides…", "Per-retailer pricing")
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Overrides unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            overrides.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            overrides.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No overrides",
                 body = "Create retailer-specific product prices.",
                 modifier = Modifier.padding(padding),

@@ -135,6 +135,8 @@ class OrdersViewModel @Inject constructor(
                 _state.update { it.copy(vettingId = null) }
             }
         }
+    }
+
     fun dismissReassignMessage() {
         _state.update { it.copy(reassignMessage = null) }
     }

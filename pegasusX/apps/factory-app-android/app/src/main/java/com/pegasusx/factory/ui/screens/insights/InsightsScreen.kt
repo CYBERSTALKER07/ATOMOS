@@ -1,8 +1,14 @@
 package com.pegasusx.factory.ui.screens.insights
 
+import androidx.compose.foundation.lazy.grid.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -14,9 +20,9 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.factory.data.model.Insight
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
-import com.pegasusx.factory.ui.components.FactoryLoadingState
-import com.pegasusx.factory.ui.components.FactoryStateKind
-import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.*
 import kotlinx.coroutines.launch
@@ -80,15 +86,15 @@ fun InsightsScreen(
         },
     ) { innerPadding ->
         when {
-            loading && insights.isEmpty() -> FactoryLoadingState(
+            loading && insights.isEmpty() -> PegasusLoadingState(
                 title = "Loading insights",
                 body = "Fetching replenishment pressure and restock signals for this factory.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            error != null -> FactoryStatePane(
-                kind = FactoryStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Unable to load insights",
                 body = error!!,
                 actionLabel = "Retry",
@@ -97,19 +103,22 @@ fun InsightsScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            insights.isEmpty() -> FactoryStatePane(
-                kind = FactoryStateKind.Empty,
+            insights.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No replenishment insights",
                 body = "Insights will appear here when stock velocity produces factory-level alerts.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            else -> LazyColumn(
+            else -> LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-            ) {
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)
+    ) {
                 items(insights, key = { it.id }) { insight ->
                     InsightCard(insight)
                 }

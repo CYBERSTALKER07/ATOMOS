@@ -314,21 +314,19 @@ struct PayloadOverrideView: View {
         NavigationStack {
             Group {
                 if loading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    FactoryLoadingState(
+                        title: "Loading override",
+                        message: "Fetching active loading manifests for payload override."
+                    )
                 } else if let error {
-                    ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") { Task { await load() } }
+                    FactoryErrorView(message: error) {
+                        Task { await load() }
                     }
                 } else if manifests.isEmpty {
-                    ContentUnavailableView(
-                        "No Loading Manifests",
-                        systemImage: "shippingbox",
-                        description: Text("Payload override becomes available when at least one manifest reaches loading.")
+                    FactoryStateView(
+                        kind: .empty,
+                        headline: "No Loading Manifests",
+                        message: "Payload override becomes available when at least one manifest reaches loading."
                     )
                 } else {
                     ScrollView {
@@ -682,7 +680,7 @@ private struct MoveTransferSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            ResponsiveGridContentWrapper {
                 Section("Select target manifest") {
                     if manifests.isEmpty {
                         Text("No alternate loading manifest is available right now.")

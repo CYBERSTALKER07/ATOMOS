@@ -10,8 +10,8 @@ echo "=========================================="
 echo "Seeding PegasusX Mock Credentials..."
 echo "=========================================="
 
-echo "[1/4] Registering Supplier Admin..."
-SUPPLIER_JSON=$(cat <<EOF
+echo "[1/5] Registering Supplier Admin..."
+SUPPLIER_JSON=$(cat <<INNER_EOF
 {
   "account": {
     "legalName": "Mock Supplier",
@@ -36,7 +36,7 @@ SUPPLIER_JSON=$(cat <<EOF
   "categories": ["electronics"],
   "phone": "+998901111111"
 }
-EOF
+INNER_EOF
 )
 
 SUPPLIER_RESP=$(curl -s -X POST "$BASE_URL/v1/auth/supplier/register" \
@@ -57,20 +57,35 @@ fi
 
 echo "  Supplier registered! Token obtained."
 
-echo "[2/4] Creating Warehouse Admin..."
+echo "[2/5] Fetching Topology..."
+TOPOLOGY_RESP=$(curl -s -X GET "$BASE_URL/v1/supplier/topology" -H "Authorization: Bearer $TOKEN")
+WAREHOUSE_ID=$(echo $TOPOLOGY_RESP | grep -o '"warehouse_id":"[^"]*' | head -1 | grep -o '[^"]*$')
+FACTORY_ID=$(echo $TOPOLOGY_RESP | grep -o '"factory_id":"[^"]*' | head -1 | grep -o '[^"]*$')
+
+if [ -z "$WAREHOUSE_ID" ]; then
+  echo "Failed to get warehouse_id."
+  exit 1
+fi
+if [ -z "$FACTORY_ID" ]; then
+  echo "Failed to get factory_id."
+  exit 1
+fi
+echo "  Topology fetched."
+
+echo "[3/5] Creating Warehouse Admin..."
 curl -s -X POST "$BASE_URL/v1/supplier/org/members" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Warehouse Admin",
     "phone": "+998902222222",
-    "role": "WAREHOUSE_ADMIN",
+    "supplier_role": "WAREHOUSE_ADMIN",
     "password": "password123",
-    "pin": "1234"
+    "assigned_warehouse_id": "'"$WAREHOUSE_ID"'"
   }' > /dev/null
 echo "  Warehouse Admin created."
 
-echo "[3/4] Creating Fleet Driver..."
+echo "[4/5] Creating Fleet Driver..."
 # Need to use WAREHOUSE as home_node_type to assign them to a hub.
 curl -s -X POST "$BASE_URL/v1/supplier/fleet/drivers" \
   -H "Authorization: Bearer $TOKEN" \
@@ -80,11 +95,11 @@ curl -s -X POST "$BASE_URL/v1/supplier/fleet/drivers" \
     "phone": "+998903333333",
     "pin": "1234",
     "home_node_type": "WAREHOUSE",
-    "home_node_id": "seed-warehouse-1"
+    "home_node_id": "'"$WAREHOUSE_ID"'"
   }' > /dev/null
 echo "  Driver created."
 
-echo "[4/4] Registering Retailer..."
+echo "[5/5] Registering Retailer & Creating Payloader..."
 curl -s -X POST "$BASE_URL/v1/auth/retailer/register" \
   -H "Content-Type: application/json" \
   -d '{
@@ -96,11 +111,25 @@ curl -s -X POST "$BASE_URL/v1/auth/retailer/register" \
   }' > /dev/null
 echo "  Retailer registered."
 
+curl -s -X POST "$BASE_URL/v1/supplier/org/members" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Mock Payloader",
+    "phone": "+998901110022",
+    "supplier_role": "PAYLOADER",
+    "password": "33333333",
+    "assigned_warehouse_id": "'"$WAREHOUSE_ID"'"
+  }' > /dev/null
+echo "  Payloader created."
+
+
 echo "=========================================="
 echo "Done! You can now log into the UIs using these mock credentials:"
 echo "------------------------------------------"
 echo "  Supplier Portal   : +998901111111 / password123"
-echo "  Warehouse Portal  : +998902222222 / password123 (or pin 1234 if mobile)"
+echo "  Warehouse Portal  : +998902222222 / password123"
 echo "  Driver App        : +998903333333 / pin 1234"
 echo "  Retailer App      : +998904444444 / password123"
+echo "  Payloader App     : +998901110022 / pin 33333333 (DEV PIN)"
 echo "=========================================="

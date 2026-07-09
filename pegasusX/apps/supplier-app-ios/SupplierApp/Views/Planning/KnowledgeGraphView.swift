@@ -12,7 +12,7 @@ struct KnowledgeGraphView: View {
             } else if let error {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else if let graph {
-                List {
+                ResponsiveGridContentWrapper {
                     Section("Nodes (\(graph.nodes.count))") {
                         ForEach(graph.nodes) { node in
                             VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
@@ -36,7 +36,6 @@ struct KnowledgeGraphView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)

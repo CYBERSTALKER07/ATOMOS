@@ -12,10 +12,10 @@ import com.pegasusx.supplier.data.model.DemandHistoryPoint
 import com.pegasusx.supplier.data.model.DemandUpcomingRow
 import com.pegasusx.supplier.data.model.ForecastConfidence
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.screens.planning.ForecastConfidenceView
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.formatForecastUpdatedAt
@@ -80,17 +80,17 @@ fun DemandHistoryScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading demand history…", "14-day series")
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading demand history…", "14-day series")
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Demand history unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            timeSeries.isEmpty() && upcoming.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            timeSeries.isEmpty() && upcoming.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No demand data",
                 body = "Predictions and actuals will appear here.",
                 modifier = Modifier.padding(padding),

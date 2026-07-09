@@ -18,7 +18,7 @@ struct AIRecommendationsView: View {
             } else if let error, items.isEmpty {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else {
-                List {
+                ResponsiveGridContentWrapper {
                     Section {
                         Picker("Status", selection: $filter) {
                             ForEach(statusFilters, id: \.self) { Text($0).tag($0) }
@@ -42,7 +42,6 @@ struct AIRecommendationsView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)

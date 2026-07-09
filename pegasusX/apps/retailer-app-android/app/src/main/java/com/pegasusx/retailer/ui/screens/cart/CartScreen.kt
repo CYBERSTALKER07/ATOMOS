@@ -1,5 +1,19 @@
 package com.pegasusx.retailer.ui.screens.cart
 
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.itemsIndexed
+
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -15,8 +29,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.pegasusx.retailer.ui.theme.PillShape
@@ -135,11 +148,14 @@ fun CartScreen(
             }
 
             // ── Cart items ──
-            LazyColumn(
+            LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.weight(1f),
-            ) {
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
                 // Header row
                 item {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -170,7 +186,7 @@ fun CartScreen(
                     )
                 }
 
-                item { Spacer(modifier = Modifier.height(16.dp)) }
+                item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(16.dp)) }
             }
 
             // ── Bottom bar ──
@@ -481,36 +497,11 @@ private fun CartBottomBar(subtotal: String, onCheckout: () -> Unit) {
 
 @Composable
 private fun EmptyCartView() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-            // Double ring empty state
-            Box(contentAlignment = Alignment.Center) {
-                Box(modifier = Modifier.size(130.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)))
-                Box(modifier = Modifier.size(100.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.ShoppingCart, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
-                }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-            Text("Your cart is empty", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                "Browse the catalog and add\nproducts to get started",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(20.dp))
-            Surface(
-                onClick = { /* user taps Catalog tab instead */ },
-                shape = PillShape,
-                color = MaterialTheme.colorScheme.primary,
-            ) {
-                Row(modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.GridView, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onPrimary)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Browse Catalog", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onPrimary)
-                }
-            }
-        }
-    }
+    PegasusStatePane(
+        kind = PegasusStateKind.Empty,
+        headline = "Your cart is empty",
+        body = "Browse the catalog and add\nproducts to get started",
+        actionLabel = "Browse Catalog",
+        onAction = { /* user taps Catalog tab instead */ }
+    )
 }

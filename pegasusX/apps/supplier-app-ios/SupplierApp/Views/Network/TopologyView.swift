@@ -70,7 +70,7 @@ struct TopologyView: View {
     }
 
     private var readOnlyList: some View {
-        List {
+        ResponsiveGridContentWrapper {
             Section("Warehouses (\(warehouses.count))") {
                 ForEach(warehouses) { node in
                     NodeRow(
@@ -90,7 +90,6 @@ struct TopologyView: View {
                 }
             }
         }
-        .listStyle(.insetGrouped)
     }
 
     private var editForm: some View {

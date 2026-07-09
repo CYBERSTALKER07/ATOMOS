@@ -10,9 +10,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierTopologyWarehouse
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -55,17 +55,17 @@ fun DeliveryZonesScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading delivery zones…", "Warehouse coverage")
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading delivery zones…", "Warehouse coverage")
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Delivery zones unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            warehouses.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            warehouses.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No coverage",
                 body = "No warehouse coverage configured.",
                 modifier = Modifier.padding(padding),

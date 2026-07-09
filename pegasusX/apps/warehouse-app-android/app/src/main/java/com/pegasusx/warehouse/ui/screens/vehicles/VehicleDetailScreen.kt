@@ -31,10 +31,10 @@ import com.pegasusx.warehouse.data.model.UpdateVehicleRequest
 import com.pegasusx.warehouse.data.model.Vehicle
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
-import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
-import com.pegasusx.warehouse.ui.components.WarehouseStateKind
-import com.pegasusx.warehouse.ui.components.WarehouseStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
@@ -129,13 +129,13 @@ fun VehicleDetailScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading && vehicle == null -> WarehouseLoadingState(
+            loading && vehicle == null -> PegasusLoadingState(
                 title = "Loading truck…",
                 body = "Fleet vehicle details",
                 modifier = Modifier.padding(innerPadding),
             )
-            error != null && vehicle == null -> WarehouseStatePane(
-                kind = WarehouseStateKind.Error,
+            error != null && vehicle == null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Truck unavailable",
                 body = error!!,
                 actionLabel = "Retry",

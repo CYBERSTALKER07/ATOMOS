@@ -1,8 +1,9 @@
 package com.pegasusx.warehouse.ui.screens.preorders
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -14,6 +15,9 @@ import com.pegasusx.warehouse.data.model.WarehousePreorderRow
 import com.pegasusx.warehouse.data.model.WarehouseProposeDeliveryRequest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -187,12 +191,31 @@ fun PreordersScreen(
         },
     ) { padding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            error != null -> Text(error!!, modifier = Modifier.padding(padding).padding(16.dp))
-            rows.isEmpty() -> Text("No scheduled pre-orders", modifier = Modifier.padding(padding).padding(16.dp))
-            else -> LazyColumn(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            loading && rows.isEmpty() -> PegasusLoadingState(
+                title = "Loading pre-orders…",
+                body = "Fetching scheduled deliveries",
+                modifier = Modifier.fillMaxSize().padding(padding)
+            )
+            error != null && rows.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
+                headline = "Pre-orders unavailable",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier.fillMaxSize().padding(padding)
+            )
+            rows.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
+                headline = "No scheduled pre-orders",
+                body = "No future orders waiting for delivery scheduling.",
+                modifier = Modifier.fillMaxSize().padding(padding)
+            )
+            else -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 340.dp),
+                modifier = Modifier.padding(padding).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 items(rows, key = { it.orderId }) { row ->
                     ElevatedCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

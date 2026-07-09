@@ -15,7 +15,7 @@ struct NotificationInboxView: View {
             } else if items.isEmpty {
                 ContentUnavailableView("No notifications", systemImage: "bell")
             } else {
-                List {
+                ResponsiveGridContentWrapper {
                     ForEach(items) { item in
                         VStack(alignment: .leading, spacing: 4) {
                             Text(item.title.isEmpty ? (item.type.isEmpty ? "Notification" : item.type) : item.title)
@@ -34,7 +34,6 @@ struct NotificationInboxView: View {
                         .padding(.vertical, 4)
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle(unreadCount > 0 ? "Notifications (\(unreadCount))" : "Notifications")

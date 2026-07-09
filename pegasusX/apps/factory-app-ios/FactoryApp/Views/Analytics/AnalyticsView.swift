@@ -14,7 +14,7 @@ struct AnalyticsView: View {
     var body: some View {
         Group {
             if loading {
-                FactoryLoadingView(
+                FactoryLoadingState(
                     title: "Loading analytics",
                     message: "Fetching factory throughput, manifest pressure, and exception queue."
                 )

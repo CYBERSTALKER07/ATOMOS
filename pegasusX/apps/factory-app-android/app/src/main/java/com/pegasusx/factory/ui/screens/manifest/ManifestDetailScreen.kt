@@ -1,13 +1,21 @@
 package com.pegasusx.factory.ui.screens.manifest
 
+import androidx.compose.ui.unit.dp
+
+import androidx.compose.foundation.lazy.grid.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -33,9 +41,9 @@ import androidx.compose.ui.text.font.FontFamily
 import com.pegasusx.factory.data.model.ManifestDetailResponse
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
-import com.pegasusx.factory.ui.components.FactoryLoadingState
-import com.pegasusx.factory.ui.components.FactoryStateKind
-import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -129,13 +137,13 @@ fun ManifestDetailScreen(
         },
     ) { innerPadding ->
         when {
-            loading && detail == null -> FactoryLoadingState(
+            loading && detail == null -> PegasusLoadingState(
                 title = "Loading manifest",
                 body = "Fetching manifest detail and lifecycle history.",
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             )
-            error != null -> FactoryStatePane(
-                kind = FactoryStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Unable to load manifest",
                 body = error!!,
                 actionLabel = "Retry",
@@ -145,11 +153,14 @@ fun ManifestDetailScreen(
             detail != null -> {
                 val manifest = detail!!.manifest
                 val next = nextManifestLifecycleStep(manifest.state)
-                LazyColumn(
+                LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                     contentPadding = PaddingValues(PegasusSpacing.lg),
                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
-                ) {
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)
+    ) {
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                             Text(manifest.id, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace)

@@ -25,7 +25,8 @@ struct PromotionsView: View {
                     message: "Create a sale for products, categories, or your full catalog."
                 )
             } else {
-                List(promotions) { promo in
+                ResponsiveGridContentWrapper {
+                    ForEach(promotions) { promo in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(promo.name)
                             .font(.headline)
@@ -67,7 +68,6 @@ struct PromotionsView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)

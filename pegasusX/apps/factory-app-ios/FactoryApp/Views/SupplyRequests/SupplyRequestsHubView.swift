@@ -43,7 +43,6 @@ struct SupplyRequestsHubView: View {
                             }
                         }
                     }
-                    .listStyle(.plain)
                 }
             }
             .navigationTitle("Supply Requests")

@@ -1,8 +1,10 @@
 package com.pegasusx.warehouse.ui.screens.tomorrowboard
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -70,22 +72,24 @@ fun TomorrowBoardScreen(
         },
     ) { innerPadding ->
         if (loading) {
-            Box(
-                Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = androidx.compose.ui.Alignment.Center,
-            ) {
-                CircularProgressIndicator()
+            Box(Modifier.padding(innerPadding)) {
+                com.pegasus.design.PegasusLoadingState(
+                    title = "Loading board...",
+                    body = "Fetching operations for $date",
+                )
             }
             return@Scaffold
         }
 
         val rows = preorders.map { it to "Pre-order" } + deliverBefore.map { it to "Deliver by" }
 
-        LazyColumn(
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 340.dp),
             modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 OutlinedTextField(
                     value = date,
                     onValueChange = { date = it },
@@ -95,11 +99,25 @@ fun TomorrowBoardScreen(
                 )
             }
             if (error != null) {
-                item { Text(error!!, color = MaterialTheme.colorScheme.error) }
+                item(span = { GridItemSpan(maxLineSpan) }) { 
+                    com.pegasus.design.PegasusStatePane(
+                        kind = com.pegasus.design.PegasusStateKind.Error,
+                        headline = "Failed to load board",
+                        body = error!!,
+                        actionLabel = "Retry",
+                        onAction = { load() }
+                    )
+                }
             }
-            if (rows.isEmpty()) {
-                item { Text("No orders scheduled for this date.") }
-            } else {
+            if (rows.isEmpty() && error == null) {
+                item(span = { GridItemSpan(maxLineSpan) }) { 
+                    com.pegasus.design.PegasusStatePane(
+                        kind = com.pegasus.design.PegasusStateKind.Empty,
+                        headline = "No operations",
+                        body = "No orders scheduled for this date."
+                    )
+                }
+            } else if (rows.isNotEmpty()) {
                 items(rows, key = { (order, lane) -> "$lane-${order.orderId}" }) { (order, lane) ->
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

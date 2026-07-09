@@ -11,9 +11,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierManifestExceptionRow
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -61,17 +61,17 @@ fun ManifestExceptionsScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading exceptions…", "Manifest gate")
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading exceptions…", "Manifest gate")
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Exceptions unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            rows.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            rows.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No exceptions",
                 body = "No manifest gate exceptions in the current window.",
                 modifier = Modifier.padding(padding),

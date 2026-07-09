@@ -2,8 +2,9 @@ package com.pegasusx.warehouse.ui.screens.vehicles
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -20,9 +21,9 @@ import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
 import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
-import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
-import com.pegasusx.warehouse.ui.components.WarehouseStateKind
-import com.pegasusx.warehouse.ui.components.WarehouseStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
@@ -82,29 +83,31 @@ fun VehiclesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading && vehicles.isEmpty() -> WarehouseLoadingState(
+            loading && vehicles.isEmpty() -> PegasusLoadingState(
                 title = "Loading trucks…",
                 body = "Fleet vehicle roster",
                 modifier = Modifier.padding(innerPadding),
             )
-            error != null -> WarehouseStatePane(
-                kind = WarehouseStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Trucks unavailable",
                 body = error!!,
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.padding(innerPadding),
             )
-            vehicles.isEmpty() -> WarehouseStatePane(
-                kind = WarehouseStateKind.Empty,
+            vehicles.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No trucks",
                 body = "Fleet trucks will appear here.",
                 modifier = Modifier.padding(innerPadding),
             )
-            else -> LazyColumn(
+            else -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 340.dp),
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
                 items(vehicles, key = { it.vehicleId }) { v ->
                     ElevatedCard(

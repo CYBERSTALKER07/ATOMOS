@@ -1,5 +1,14 @@
 package com.pegasusx.retailer.ui.screens.suppliers
 
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,8 +21,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -159,11 +166,14 @@ fun SupplierCatalogScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     uiState.isLoading && uiState.products.isEmpty() -> {
-                        LazyColumn(
+                        LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
-                        ) {
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
                             item {
                                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Box(
@@ -205,11 +215,14 @@ fun SupplierCatalogScreen(
                     }
 
                     else -> {
-                        LazyColumn(
+                        LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
-                        ) {
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
                             groupedProducts.forEach { (categoryName, products) ->
                                 item(key = "header-$categoryName") {
                                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

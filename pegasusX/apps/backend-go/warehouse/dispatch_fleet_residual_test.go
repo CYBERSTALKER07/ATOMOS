@@ -37,7 +37,7 @@ func TestDriverResidualVolumes_WithTopOff(t *testing.T) {
 
 func TestFleetEffectiveCapacityVU(t *testing.T) {
 	drivers := []PortalDriver{
-		{DriverID: "d1", IsActive: true, TruckStatus: "AVAILABLE", MaxVolumeVU: 100},
+		{DriverID: "d1", IsActive: true, OnShift: true, TruckStatus: "AVAILABLE", MaxVolumeVU: 100},
 	}
 	fleetCtx := fleetDispatchContext{InTransit: map[string]bool{}}
 	total := fleetEffectiveCapacityVU(drivers, fleetCtx)

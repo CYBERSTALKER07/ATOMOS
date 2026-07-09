@@ -25,9 +25,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import com.pegasusx.factory.data.model.StaffMember
 import com.pegasusx.factory.data.remote.FactoryApi
-import com.pegasusx.factory.ui.components.FactoryLoadingState
-import com.pegasusx.factory.ui.components.FactoryStateKind
-import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -77,13 +77,13 @@ fun StaffDetailScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> FactoryLoadingState(
+            loading -> PegasusLoadingState(
                 title = "Loading staff",
                 body = "Fetching operator profile.",
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             )
-            error != null -> FactoryStatePane(
-                kind = FactoryStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Unable to load staff",
                 body = error!!,
                 actionLabel = "Retry",

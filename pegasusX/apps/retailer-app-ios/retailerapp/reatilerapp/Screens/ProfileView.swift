@@ -503,7 +503,7 @@ struct FamilyMembersView: View {
     private let api = APIClient.shared
 
     var body: some View {
-        List {
+        ResponsiveGridContentWrapper {
             if isLoading && members.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, alignment: .center)

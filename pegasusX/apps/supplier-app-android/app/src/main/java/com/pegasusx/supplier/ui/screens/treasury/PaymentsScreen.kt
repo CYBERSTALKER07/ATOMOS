@@ -13,9 +13,9 @@ import com.pegasusx.supplier.data.model.SettlementAuthorityResponse
 import com.pegasusx.supplier.data.model.SettlementAuthorityRow
 import com.pegasusx.supplier.data.model.SettlementCurrencyTotal
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -69,17 +69,17 @@ fun PaymentsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
     ) { padding ->
         val data = authority
         when {
-            loading -> SupplierLoadingState("Loading settlement authority…", "Payment settlement")
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading settlement authority…", "Payment settlement")
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Payment authority unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            data == null -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            data == null -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No data",
                 body = "No settlement authority data available.",
                 modifier = Modifier.padding(padding),

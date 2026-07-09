@@ -345,7 +345,7 @@ struct DispatchView: View {
             return driver.maxVolumeVu * dispatchTetrisBuffer
         }()
 
-        List {
+        ResponsiveGridContentWrapper {
             if !fleetVehicles.isEmpty {
                 Section("Fleet trucks (\(fleetVehicles.count))") {
                     ForEach(fleetVehicles) { vehicle in
@@ -521,7 +521,6 @@ struct DispatchView: View {
                 }
             }
         }
-        .listStyle(.insetGrouped)
     }
 
     @ViewBuilder
@@ -529,7 +528,7 @@ struct DispatchView: View {
         if preview.availableDrivers.isEmpty && preview.unavailableDrivers.isEmpty {
             ContentUnavailableView("No Drivers", systemImage: "person.badge.key", description: Text("No available drivers"))
         } else {
-            List {
+            ResponsiveGridContentWrapper {
                 if !preview.availableDrivers.isEmpty {
                     Section("Available") {
                         ForEach(preview.availableDrivers) { driver in
@@ -545,7 +544,6 @@ struct DispatchView: View {
                     }
                 }
             }
-            .listStyle(.insetGrouped)
         }
     }
 
@@ -581,7 +579,8 @@ struct DispatchView: View {
         if supplyRequests.isEmpty {
             ContentUnavailableView("No Supply Requests", systemImage: "shippingbox", description: Text("No active supply requests"))
         } else {
-            List(supplyRequests) { request in
+            ResponsiveGridContentWrapper {
+                ForEach(supplyRequests) { request in
                 HStack {
                     VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                         Text(String(request.requestId.prefix(8)))
@@ -601,7 +600,6 @@ struct DispatchView: View {
                     }
                 }
             }
-            .listStyle(.insetGrouped)
         }
     }
 
@@ -610,7 +608,8 @@ struct DispatchView: View {
         if dispatchLocks.isEmpty {
             ContentUnavailableView("No Dispatch Locks", systemImage: "lock.open", description: Text("Dispatch is currently unlocked"))
         } else {
-            List(dispatchLocks) { lock in
+            ResponsiveGridContentWrapper {
+                ForEach(dispatchLocks) { lock in
                 HStack {
                     VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                         Text(lock.lockType)
@@ -628,7 +627,6 @@ struct DispatchView: View {
                     }
                 }
             }
-            .listStyle(.insetGrouped)
         }
     }
 

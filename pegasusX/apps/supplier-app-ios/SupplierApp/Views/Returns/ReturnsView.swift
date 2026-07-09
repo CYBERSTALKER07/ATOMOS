@@ -23,7 +23,8 @@ struct ReturnsView: View {
                     message: "Rejected delivery quantities appear here after driver offload."
                 )
             } else {
-                List(items) { row in
+                ResponsiveGridContentWrapper {
+                    ForEach(items) { row in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(row.productName).font(.headline)
                         Text("Qty \(row.quantity) · \(row.reason)")
@@ -75,7 +76,6 @@ struct ReturnsView: View {
                     }
                     .padding(.vertical, 4)
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)

@@ -24,7 +24,8 @@ struct SupplyRequestsHubView: View {
                     message: "No supply requests in this state."
                 )
             } else {
-                List(filtered) { request in
+                ResponsiveGridContentWrapper {
+                    ForEach(filtered) { request in
                     NavigationLink {
                         SupplyRequestDetailView(requestId: request.requestId)
                     } label: {
@@ -47,7 +48,6 @@ struct SupplyRequestsHubView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Supply Requests")

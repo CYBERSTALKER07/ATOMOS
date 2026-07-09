@@ -23,13 +23,12 @@ struct InsightsView: View {
                 } else if insights.isEmpty {
                     ContentUnavailableView("No Insights", systemImage: "chart.bar.xaxis", description: Text("No replenishment insights"))
                 } else {
-                    List {
+                    ResponsiveGridContentWrapper {
                         ForEach(Array(insights.enumerated()), id: \.element.id) { index, insight in
                             InsightRow(insight: insight)
                                 .staggeredAppear(index: index)
                         }
                     }
-                    .listStyle(.plain)
                 }
             }
             .background(LabTheme.background)

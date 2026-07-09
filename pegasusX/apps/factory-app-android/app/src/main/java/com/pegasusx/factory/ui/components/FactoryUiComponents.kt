@@ -262,25 +262,6 @@ fun FactorySectionHeader(
 }
 
 @Composable
-fun FactoryInlineEmptyState(
-    message: String,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(PegasusSpacing.lg),
-        )
-    }
-}
-
-@Composable
 fun FactoryLeadingIcon(
     icon: ImageVector,
     modifier: Modifier = Modifier,

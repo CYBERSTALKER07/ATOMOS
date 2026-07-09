@@ -757,6 +757,25 @@
         {
           "properties": {
             "type": {
+              "const": "ORDER_CAPACITY_OVERFLOW"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderCapacityOverflowEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "ORDER_CONDITION_REPORTED"
             }
           },
@@ -1536,6 +1555,25 @@
         {
           "properties": {
             "type": {
+              "const": "SPLIT_SHIPMENT_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SplitShipmentCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "SUPPLIER_BILLING_CONFIGURED"
             }
           },
@@ -1989,6 +2027,7 @@
         "NEGOTIATION_RESOLVED",
         "ORDER_AMENDED",
         "ORDER_ASSIGNED",
+        "ORDER_CAPACITY_OVERFLOW",
         "ORDER_CONDITION_REPORTED",
         "ORDER_CREATED",
         "ORDER_FINALIZED",
@@ -2030,6 +2069,7 @@
         "SHOP_CLOSED_RESOLVED",
         "SHOP_CLOSED_RESPONSE",
         "SPLIT_PAYMENT_CREATED",
+        "SPLIT_SHIPMENT_CREATED",
         "SUPPLIER_BILLING_CONFIGURED",
         "SUPPLIER_BILLING_UPDATED",
         "SUPPLIER_CREATED",
@@ -2101,6 +2141,7 @@
     "NEGOTIATION_RESOLVED": "UnknownEventPayload",
     "ORDER_AMENDED": "UnknownEventPayload",
     "ORDER_ASSIGNED": "UnknownEventPayload",
+    "ORDER_CAPACITY_OVERFLOW": "UnknownEventPayload",
     "ORDER_CONDITION_REPORTED": "UnknownEventPayload",
     "ORDER_CREATED": "UnknownEventPayload",
     "ORDER_FINALIZED": "UnknownEventPayload",
@@ -2142,6 +2183,7 @@
     "SHOP_CLOSED_RESOLVED": "UnknownEventPayload",
     "SHOP_CLOSED_RESPONSE": "UnknownEventPayload",
     "SPLIT_PAYMENT_CREATED": "UnknownEventPayload",
+    "SPLIT_SHIPMENT_CREATED": "UnknownEventPayload",
     "SUPPLIER_BILLING_CONFIGURED": "UnknownEventPayload",
     "SUPPLIER_BILLING_UPDATED": "UnknownEventPayload",
     "SUPPLIER_CREATED": "UnknownEventPayload",

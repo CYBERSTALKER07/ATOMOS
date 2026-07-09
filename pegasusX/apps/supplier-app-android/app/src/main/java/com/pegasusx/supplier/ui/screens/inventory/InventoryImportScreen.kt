@@ -12,8 +12,8 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.ImportSessionCreateRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.TokenHolder
-import com.pegasusx.supplier.ui.components.SupplierRuntimeBanner
-import com.pegasusx.supplier.ui.components.SupplierRuntimeTone
+import com.pegasus.design.PegasusRuntimeBanner
+import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
@@ -212,15 +212,15 @@ fun InventoryImportScreen(
                 }
             }
             statusMessage?.let {
-                SupplierRuntimeBanner(
-                    tone = SupplierRuntimeTone.Live,
+                PegasusRuntimeBanner(
+                    tone = PegasusRuntimeTone.Live,
                     message = it,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             error?.let {
-                SupplierRuntimeBanner(
-                    tone = SupplierRuntimeTone.Warning,
+                PegasusRuntimeBanner(
+                    tone = PegasusRuntimeTone.Warning,
                     message = it,
                     modifier = Modifier.fillMaxWidth(),
                 )

@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.pegasus.design.PegasusLoadingState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -146,7 +146,11 @@ fun LocationSetupScreen(
         topBar = { TopAppBar(title = { Text("Factory location") }) },
     ) { padding ->
         if (loading) {
-            CircularProgressIndicator(Modifier.padding(padding).padding(PegasusSpacing.lg))
+            PegasusLoadingState(
+                title = "Saving...",
+                body = "Configuring factory location.",
+                modifier = Modifier.padding(padding).fillMaxSize()
+            )
             return@Scaffold
         }
         Column(

@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -268,12 +270,14 @@ fun OrderDetailScreen(
                 val canOverflow = flags.canOverflow
                 val showOps = canDelay || canReject || canOverflow
 
-                LazyColumn(
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 340.dp),
                     contentPadding = PaddingValues(PegasusSpacing.lg),
                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                 ) {
-                    item {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                             modifier = Modifier.fillMaxWidth(),
@@ -282,7 +286,7 @@ fun OrderDetailScreen(
                             SummaryCard("Total", "${fmt.format(current.totalUzs)} UZS", Modifier.weight(1f))
                         }
                     }
-                    item {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
                         Text(
                             text = "Retailer: ${current.retailerName.ifBlank { "—" }}",
                             style = MaterialTheme.typography.bodyMedium,
@@ -290,7 +294,7 @@ fun OrderDetailScreen(
                         )
                     }
                     if (showOps) {
-                        item {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             HorizontalDivider()
                             Spacer(Modifier.height(PegasusSpacing.xs))
                             Text("Warehouse actions", style = MaterialTheme.typography.titleMedium)
@@ -323,7 +327,7 @@ fun OrderDetailScreen(
                             }
                         }
                     }
-                    item {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
                         HorizontalDivider()
                         Spacer(Modifier.height(PegasusSpacing.sm))
                         Text("Line Items", style = MaterialTheme.typography.titleMedium)

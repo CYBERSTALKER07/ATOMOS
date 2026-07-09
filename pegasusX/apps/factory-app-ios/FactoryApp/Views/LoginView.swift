@@ -71,15 +71,8 @@ struct LoginView: View {
                         Button {
                             sendOtp()
                         } label: {
-                            Group {
-                                if loading {
-                                    ProgressView()
-                                        .tint(.white)
-                                } else {
-                                    Text("Send Code")
-                                }
-                            }
-                            .frame(maxWidth: 360, minHeight: 44)
+                            Text("Send Code")
+                                .frame(maxWidth: 360, minHeight: 44)
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.primary)
@@ -88,15 +81,8 @@ struct LoginView: View {
                         Button {
                             verifyOtp()
                         } label: {
-                            Group {
-                                if loading {
-                                    ProgressView()
-                                        .tint(.white)
-                                } else {
-                                    Text("Sign In")
-                                }
-                            }
-                            .frame(maxWidth: 360, minHeight: 44)
+                            Text("Sign In")
+                                .frame(maxWidth: 360, minHeight: 44)
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.primary)
@@ -114,15 +100,8 @@ struct LoginView: View {
                     Button {
                         passwordLogin()
                     } label: {
-                        Group {
-                            if loading {
-                                ProgressView()
-                                    .tint(.white)
-                            } else {
-                                Text("Sign In")
-                            }
-                        }
-                        .frame(maxWidth: 360, minHeight: 44)
+                        Text("Sign In")
+                            .frame(maxWidth: 360, minHeight: 44)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.primary)
@@ -141,6 +120,14 @@ struct LoginView: View {
         .padding()
         .onAppear {
             FirebaseAuthHelper.shared.configure()
+        }
+        .overlay {
+            if loading {
+                FactoryLoadingState(
+                    title: otpSent ? "Signing in" : "Sending code",
+                    message: "Connecting to Pegasus..."
+                )
+            }
         }
     }
 

@@ -17,7 +17,8 @@ struct ShopClosedView: View {
             } else if rows.isEmpty {
                 SupplierEmptyView(title: "No active attempts", message: "Driver-reported shop-closed cases appear here.")
             } else {
-                List(rows) { row in
+                ResponsiveGridContentWrapper {
+                    ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: 8) {
                         Text(row.orderId).font(.headline)
                         Text("Driver \(row.driverId) · Retailer \(row.retailerId)").font(.caption)
@@ -32,7 +33,6 @@ struct ShopClosedView: View {
                         .buttonStyle(.bordered)
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Shop closed")

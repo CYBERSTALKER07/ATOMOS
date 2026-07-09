@@ -26,7 +26,8 @@ struct PricingView: View {
             } else if filtered.isEmpty {
                 SupplierEmptyView(title: "No matches", message: "No products match \"\(query)\".")
             } else {
-                List(filtered) { product in
+                ResponsiveGridContentWrapper {
+                    ForEach(filtered) { product in
                     NavigationLink {
                         ProductPricingDetailView(product: product) {
                             Task { await load(silent: true) }
@@ -40,7 +41,6 @@ struct PricingView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)

@@ -21,7 +21,8 @@ struct WarehousesView: View {
                     showAdd = true
                 }
             } else {
-                List(warehouses) { warehouse in
+                ResponsiveGridContentWrapper {
+                    ForEach(warehouses) { warehouse in
                     VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
                         Text(warehouse.name).font(.headline)
                         Text(warehouse.address.isEmpty ? "Coordinates on file" : warehouse.address)
@@ -30,7 +31,6 @@ struct WarehousesView: View {
                         SupplierStatusBadge(text: warehouse.isOnShift ? "ON_SHIFT" : "OFF_SHIFT")
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)

@@ -1,12 +1,19 @@
 package com.pegasusx.retailer.ui.screens.suppliers
 
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -71,7 +78,11 @@ fun ConnectSupplierSheet(
                     )
                 }
                 else -> {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
                         items(uiState.searchResults, key = { it.id }) { supplier ->
                             ConnectSupplierRow(
                                 supplier = supplier,

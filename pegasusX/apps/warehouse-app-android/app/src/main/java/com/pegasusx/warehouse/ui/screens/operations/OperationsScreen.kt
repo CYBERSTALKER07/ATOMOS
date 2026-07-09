@@ -45,7 +45,7 @@ import com.pegasusx.warehouse.data.model.RetailerOverridePreview
 import com.pegasusx.warehouse.data.model.WarehouseBroadcastRequest
 import com.pegasusx.warehouse.data.model.WarehouseBroadcastTemplateCreateRequest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
-import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
@@ -221,7 +221,7 @@ fun OperationsScreen(api: WarehouseApi, onBack: (() -> Unit)? = null) {
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         if (loading && templates.isEmpty()) {
-            WarehouseLoadingState(
+            PegasusLoadingState(
                 title = "Loading operations",
                 body = "Fetching broadcast templates and depot tools",
                 modifier = Modifier.padding(padding),

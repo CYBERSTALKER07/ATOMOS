@@ -25,7 +25,7 @@ struct StaffView: View {
                 } else if staff.isEmpty {
                     ContentUnavailableView("No Staff", systemImage: "person.2", description: Text("Add staff members"))
                 } else {
-                    List(staff) { member in
+                    ResponsiveGridView(data: staff) { member in
                         HStack {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(member.name)
@@ -48,7 +48,6 @@ struct StaffView: View {
                                 }
                         }
                     }
-                    .listStyle(.insetGrouped)
                 }
             }
             .background(LabTheme.background)

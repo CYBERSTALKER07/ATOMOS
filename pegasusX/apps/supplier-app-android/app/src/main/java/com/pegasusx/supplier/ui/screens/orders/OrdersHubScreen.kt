@@ -2,8 +2,9 @@ package com.pegasusx.supplier.ui.screens.orders
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
@@ -18,10 +19,10 @@ import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.data.model.SupplierOrder
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.components.formatMinorAmount
 import com.pegasusx.supplier.ui.screens.dispatch.DispatchPreviewScreen
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
@@ -119,29 +120,31 @@ private fun OrdersQueueContent(
     onReject: (SupplierOrder, String) -> Unit,
 ) {
     when {
-        showFullScreenLoading(state.loading, state.orders.isNotEmpty()) -> SupplierLoadingState(
+        showFullScreenLoading(state.loading, state.orders.isNotEmpty()) -> PegasusLoadingState(
             title = "Loading orders…",
             body = "Supplier order queue",
             modifier = modifier,
         )
-        state.error != null -> SupplierStatePane(
-            kind = SupplierStateKind.Error,
+        state.error != null -> PegasusStatePane(
+            kind = PegasusStateKind.Error,
             headline = "Orders unavailable",
             body = state.error!!,
             actionLabel = "Retry",
             onAction = onRetry,
             modifier = modifier,
         )
-        state.orders.isEmpty() -> SupplierStatePane(
-            kind = SupplierStateKind.Empty,
+        state.orders.isEmpty() -> PegasusStatePane(
+            kind = PegasusStateKind.Empty,
             headline = "No orders",
             body = "Orders for this filter will appear here.",
             modifier = modifier,
         )
-        else -> LazyColumn(
+        else -> LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 340.dp),
             modifier = modifier.fillMaxSize(),
             contentPadding = PaddingValues(PegasusSpacing.lg),
             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             items(state.orders, key = { it.orderId }) { order ->
                 val amount = formatMinorAmount(order.totalMinor, order.currency)

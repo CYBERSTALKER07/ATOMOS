@@ -1,11 +1,11 @@
 package com.pegasusx.factory.ui.screens.analytics
 
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Analytics
@@ -22,11 +22,11 @@ import com.pegasusx.factory.data.model.FactoryAnalyticsOverview
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.ui.components.FactoryKpiBadge
 import com.pegasusx.factory.ui.components.FactoryKpiTile
-import com.pegasusx.factory.ui.components.FactoryLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.factory.ui.components.FactoryOpsListCard
 import com.pegasusx.factory.ui.components.FactorySectionTitle
-import com.pegasusx.factory.ui.components.FactoryStateKind
-import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -112,15 +112,15 @@ fun AnalyticsScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> FactoryLoadingState(
+            loading -> PegasusLoadingState(
                 title = "Loading analytics",
                 body = "Fetching factory throughput, manifest pressure, and exception queue.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            error != null -> FactoryStatePane(
-                kind = FactoryStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Unable to load analytics overview",
                 body = error!!,
                 actionLabel = "Retry",
@@ -144,10 +144,13 @@ private fun AnalyticsContent(
     overview: FactoryAnalyticsOverview,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
         contentPadding = PaddingValues(PegasusSpacing.lg),
         verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)
     ) {
         item {
             LazyVerticalGrid(

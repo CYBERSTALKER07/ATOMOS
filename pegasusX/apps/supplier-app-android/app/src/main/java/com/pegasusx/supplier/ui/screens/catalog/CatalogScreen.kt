@@ -12,8 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -54,9 +55,9 @@ import com.pegasusx.supplier.data.model.CatalogProductUpdateRequest
 import com.pegasusx.supplier.data.remote.CatalogImageUploader
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -361,20 +362,22 @@ fun CatalogScreen(
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when {
-                showFullScreenLoading(loading, products.isNotEmpty()) -> SupplierLoadingState("Loading catalog…", "Product VU")
-                error != null && products.isEmpty() -> SupplierStatePane(
-                    kind = SupplierStateKind.Error,
+                showFullScreenLoading(loading, products.isNotEmpty()) -> PegasusLoadingState("Loading catalog…", "Product VU")
+                error != null && products.isEmpty() -> PegasusStatePane(
+                    kind = PegasusStateKind.Error,
                     headline = "Catalog unavailable",
                     body = error!!,
                 )
-                products.isEmpty() -> SupplierStatePane(
-                    kind = SupplierStateKind.Empty,
+                products.isEmpty() -> PegasusStatePane(
+                    kind = PegasusStateKind.Empty,
                     headline = "No products",
                     body = "Tap + to create a product and set unit volume.",
                 )
-                else -> LazyColumn(
+                else -> LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 340.dp),
                     contentPadding = PaddingValues(PegasusSpacing.lg),
                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                 ) {
                     if (error != null) {
                         item {

@@ -1,5 +1,17 @@
 package com.pegasusx.retailer.ui.screens.orders
 
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.itemsIndexed
+
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -15,8 +27,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -69,13 +80,14 @@ import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.OrderStatus
 import com.pegasusx.retailer.ui.components.CountdownTimer
-import com.pegasusx.retailer.ui.components.PegasusEmptyState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.retailer.ui.components.ShimmerOrderList
 import com.pegasusx.retailer.ui.components.OrderDetailSheet
 import com.pegasusx.retailer.ui.components.OrderStatusBadge
 import com.pegasusx.retailer.ui.components.QROverlay
-import com.pegasusx.retailer.ui.components.RetailerRuntimeBanner
-import com.pegasusx.retailer.ui.components.RetailerRuntimeTone
+import com.pegasus.design.PegasusRuntimeBanner
+import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.retailer.ui.components.statusColor
 import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusOrange
@@ -175,10 +187,10 @@ fun OrdersScreen(
                 val loadIssue = requireNotNull(uiState.loadIssue)
                 val issueMessage = uiState.error ?: uiState.syncMessage.orEmpty()
                 val tone = when (loadIssue) {
-                    OrdersLoadIssue.OFFLINE -> RetailerRuntimeTone.Offline
-                    OrdersLoadIssue.RESTRICTED, OrdersLoadIssue.ERROR -> RetailerRuntimeTone.Warning
+                    OrdersLoadIssue.OFFLINE -> PegasusRuntimeTone.Offline
+                    OrdersLoadIssue.RESTRICTED, OrdersLoadIssue.ERROR -> PegasusRuntimeTone.Warning
                 }
-                RetailerRuntimeBanner(
+                PegasusRuntimeBanner(
                     tone = tone,
                     message = issueMessage,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -275,10 +287,14 @@ private fun ActiveOrdersList(
         return
     }
     if (orders.isEmpty()) {
-        PegasusEmptyState(icon = Icons.Rounded.Inventory2, title = "No Active Orders", message = "Orders being prepared or en route will appear here")
+        PegasusStatePane(kind = PegasusStateKind.Empty, headline = "No Active Orders", body = "Orders being prepared or en route will appear here")
         return
     }
-    LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         itemsIndexed(orders, key = { _, o -> o.id }) { _, order ->
             ActiveOrderCard(
                 order = order,
@@ -286,7 +302,7 @@ private fun ActiveOrdersList(
                 onQRCash = { onQRCash(order) },
             )
         }
-        item { Spacer(modifier = Modifier.height(32.dp)) }
+        item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(32.dp)) }
     }
 }
 
@@ -312,10 +328,14 @@ private fun OrderedList(
         return
     }
     if (orders.isEmpty()) {
-        PegasusEmptyState(icon = Icons.Rounded.Receipt, title = "No Pending Orders", message = "Orders awaiting dispatch will appear here")
+        PegasusStatePane(kind = PegasusStateKind.Empty, headline = "No Pending Orders", body = "Orders awaiting dispatch will appear here")
         return
     }
-    LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         itemsIndexed(orders, key = { _, o -> o.id }) { _, order ->
             OrderedCard(
                 order = order,
@@ -329,7 +349,7 @@ private fun OrderedList(
                 onRejectDeliveryProposal = { onRejectDeliveryProposal(order) },
             )
         }
-        item { Spacer(modifier = Modifier.height(32.dp)) }
+        item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(32.dp)) }
     }
 }
 
@@ -350,10 +370,14 @@ private fun AiPlannedList(
         return
     }
     if (predictions.isEmpty()) {
-        PegasusEmptyState(icon = Icons.Rounded.AutoAwesome, title = "No AI Predictions", message = "AI-predicted orders based on your history will appear here")
+        PegasusStatePane(kind = PegasusStateKind.Empty, headline = "No AI Predictions", body = "AI-predicted orders based on your history will appear here")
         return
     }
-    LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         itemsIndexed(predictions, key = { _, f -> f.id }) { _, forecast ->
             AiPlannedCard(
                 forecast = forecast,
@@ -362,7 +386,7 @@ private fun AiPlannedList(
                 onReject = { onReject(forecast) },
             )
         }
-        item { Spacer(modifier = Modifier.height(32.dp)) }
+        item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(32.dp)) }
     }
 }
 

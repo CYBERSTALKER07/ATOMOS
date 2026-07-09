@@ -14,7 +14,7 @@ struct ProfileView: View {
                 } else if let error {
                     SupplierErrorView(message: error) { Task { await load() } }
                 } else if let profile {
-                    List {
+                    ResponsiveGridContentWrapper {
                         Section("Business") {
                             LabeledContent("Legal name", value: profile.legalName)
                             LabeledContent("Contact", value: profile.contactName)
@@ -46,7 +46,6 @@ struct ProfileView: View {
                             }
                         }
                     }
-                    .listStyle(.insetGrouped)
                     .supplierReadableWidth()
                 }
             }

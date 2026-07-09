@@ -16,10 +16,10 @@ import com.pegasusx.supplier.data.remote.GeocodeApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.AddressLocationField
 import com.pegasusx.supplier.ui.components.AddressLocationValue
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -72,9 +72,9 @@ fun WarehousesScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading warehouses…", "Topology nodes", Modifier.padding(padding))
-            error != null && warehouses.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading warehouses…", "Topology nodes", Modifier.padding(padding))
+            error != null && warehouses.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Warehouses unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
@@ -87,8 +87,8 @@ fun WarehousesScreen(
                     .fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-                SupplierStatePane(
-                    kind = SupplierStateKind.Empty,
+                PegasusStatePane(
+                    kind = PegasusStateKind.Empty,
                     headline = "No warehouses",
                     body = "Add your first distribution node to start fulfilling orders.",
                     actionLabel = "Add first warehouse",

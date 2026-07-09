@@ -27,7 +27,8 @@ struct DriversView: View {
                 } else if drivers.isEmpty {
                     ContentUnavailableView("No Drivers", systemImage: "person.badge.key", description: Text("Add a driver to get started"))
                 } else {
-                    List(drivers) { driver in
+                    ResponsiveGridContentWrapper {
+                        ForEach(drivers) { driver in
                         HStack {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(driver.name)
@@ -73,7 +74,6 @@ struct DriversView: View {
                             }
                         }
                     }
-                    .listStyle(.insetGrouped)
                 }
             }
             .background(LabTheme.background)

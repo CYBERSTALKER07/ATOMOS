@@ -26,10 +26,10 @@ import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierPulseStrip
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.screens.planning.ForecastConfidenceView
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.forecastConfidenceFromDemand
@@ -132,13 +132,13 @@ fun DashboardScreen(
         },
     ) { padding ->
         when {
-            showFullScreenLoading(loading, dashboard != null) -> SupplierLoadingState(
+            showFullScreenLoading(loading, dashboard != null) -> PegasusLoadingState(
                 title = "Loading dashboard…",
                 body = "Fetching supplier KPIs",
                 modifier = Modifier.padding(padding),
             )
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Dashboard unavailable",
                 body = error!!,
                 actionLabel = "Retry",

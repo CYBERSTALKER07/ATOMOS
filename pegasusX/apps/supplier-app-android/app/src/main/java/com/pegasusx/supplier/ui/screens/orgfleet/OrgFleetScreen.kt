@@ -17,9 +17,9 @@ import com.pegasusx.supplier.data.remote.TokenHolder
 import com.pegasusx.supplier.util.SUPPLIER_RECONNECT_RECOVERY_HINT
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import com.pegasusx.supplier.ui.realtime.SupplierReconnectRecoveryEffect
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -107,9 +107,9 @@ fun OrgFleetScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading org & fleet…", "Topology and rosters")
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading org & fleet…", "Topology and rosters")
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Onboarding unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
@@ -253,7 +253,7 @@ fun OrgFleetScreen(
 @Composable
 private fun DriverRoster(drivers: List<FleetDriver>, topology: SupplierTopologyResponse?) {
     if (drivers.isEmpty()) {
-        SupplierStatePane(SupplierStateKind.Empty, "No drivers", "Create a driver to start fleet onboarding.")
+        PegasusStatePane(PegasusStateKind.Empty, "No drivers", "Create a driver to start fleet onboarding.")
         return
     }
     LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg)) {
@@ -271,7 +271,7 @@ private fun DriverRoster(drivers: List<FleetDriver>, topology: SupplierTopologyR
 @Composable
 private fun VehicleRoster(vehicles: List<FleetVehicle>, topology: SupplierTopologyResponse?) {
     if (vehicles.isEmpty()) {
-        SupplierStatePane(SupplierStateKind.Empty, "No vehicles", "Create a vehicle for driver assignment.")
+        PegasusStatePane(PegasusStateKind.Empty, "No vehicles", "Create a vehicle for driver assignment.")
         return
     }
     LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg)) {
@@ -294,7 +294,7 @@ private fun OrgRoster(
     actionId: String?,
 ) {
     if (members.isEmpty()) {
-        SupplierStatePane(SupplierStateKind.Empty, "No org members", "Create warehouse, factory, or payload staff.")
+        PegasusStatePane(PegasusStateKind.Empty, "No org members", "Create warehouse, factory, or payload staff.")
         return
     }
     LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg)) {

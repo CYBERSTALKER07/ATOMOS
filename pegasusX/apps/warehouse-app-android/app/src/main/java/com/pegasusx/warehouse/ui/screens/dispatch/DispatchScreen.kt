@@ -1,8 +1,10 @@
 package com.pegasusx.warehouse.ui.screens.dispatch
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -36,12 +38,12 @@ import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.components.DispatchPreviewMapLibre
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
 import com.pegasusx.warehouse.ui.components.HandoffTimelineSection
-import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.OrderDetailOpenMode
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
-import com.pegasusx.warehouse.ui.components.WarehouseStateKind
-import com.pegasusx.warehouse.ui.components.WarehouseStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeStatus
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
@@ -660,13 +662,13 @@ fun DispatchScreen(
         },
     ) { innerPadding ->
         when {
-            loading && preview == null -> WarehouseLoadingState(
+            loading && preview == null -> PegasusLoadingState(
                 title = "Loading dispatch…",
                 body = "Orders, drivers, supply, and locks",
                 modifier = Modifier.padding(innerPadding),
             )
-            error != null && preview == null -> WarehouseStatePane(
-                kind = WarehouseStateKind.Error,
+            error != null && preview == null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Dispatch unavailable",
                 body = error!!,
                 actionLabel = "Retry",
@@ -710,10 +712,12 @@ fun DispatchScreen(
                                     title = "Fleet trucks (${fleetVehicles.size})",
                                     modifier = Modifier.padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.sm),
                                 )
-                                LazyColumn(
+                                LazyVerticalGrid(
+                                    columns = GridCells.Adaptive(minSize = 340.dp),
                                     modifier = Modifier.heightIn(max = 320.dp),
                                     contentPadding = PaddingValues(horizontal = PegasusSpacing.lg),
                                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                                 ) {
                                     items(fleetVehicles, key = { it.vehicleId }) { vehicle ->
                                         val selectedReason = vehicleReasons[vehicle.vehicleId]
@@ -743,8 +747,8 @@ fun DispatchScreen(
                                 }
                             }
                         if (preview!!.undispatchedOrders.isEmpty()) {
-                            WarehouseStatePane(
-                                kind = WarehouseStateKind.Empty,
+                            PegasusStatePane(
+                                kind = PegasusStateKind.Empty,
                                 headline = "All orders dispatched",
                                 body = "No undispatched orders remain in the preview queue.",
                             )
@@ -849,9 +853,11 @@ fun DispatchScreen(
                                         )
                                     }
                                 }
-                                LazyColumn(
+                                LazyVerticalGrid(
+                                    columns = GridCells.Adaptive(minSize = 340.dp),
                                     contentPadding = PaddingValues(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.md),
                                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                                 ) {
                                 items(preview!!.undispatchedOrders, key = { it.orderId }) { o ->
                                     OrderOpsCard(
@@ -882,7 +888,7 @@ fun DispatchScreen(
                                     )
                                 }
                                 if (preview!!.windowConstrainedCount > 0 || preview!!.optimizerWarnings.isNotEmpty()) {
-                                    item {
+                                    item(span = { GridItemSpan(maxLineSpan) }) {
                                         Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                             WarehouseSectionTitle("Smart suggest preview")
                                             if (preview!!.windowConstrainedCount > 0) {
@@ -902,7 +908,7 @@ fun DispatchScreen(
                                     }
                                 }
                                 if (preview!!.proposedRoutes.isNotEmpty()) {
-                                    item {
+                                    item(span = { GridItemSpan(maxLineSpan) }) {
                                         Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                                             WarehouseSectionTitle("Smart suggest routes (${preview!!.proposedRoutes.size})")
                                             DispatchPreviewMapLibre(routes = preview!!.proposedRoutes)
@@ -938,15 +944,20 @@ fun DispatchScreen(
                     }
                     1 -> {
                         if (preview!!.availableDrivers.isEmpty() && preview!!.unavailableDrivers.isEmpty()) {
-                            WarehouseStatePane(
-                                kind = WarehouseStateKind.Empty,
+                            PegasusStatePane(
+                                kind = PegasusStateKind.Empty,
                                 headline = "No drivers",
                                 body = "Available and unavailable drivers will appear here.",
                             )
                         } else {
-                            LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 340.dp),
+                                contentPadding = PaddingValues(PegasusSpacing.lg),
+                                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                            ) {
                                 if (preview!!.availableDrivers.isNotEmpty()) {
-                                    item { WarehouseSectionTitle("Available") }
+                                    item(span = { GridItemSpan(maxLineSpan) }) { WarehouseSectionTitle("Available") }
                                 }
                                 items(preview!!.availableDrivers, key = { it.driverId }) { d ->
                                     val supporting = buildString {
@@ -962,7 +973,7 @@ fun DispatchScreen(
                                     )
                                 }
                                 if (preview!!.unavailableDrivers.isNotEmpty()) {
-                                    item { WarehouseSectionTitle("Vehicle unavailable") }
+                                    item(span = { GridItemSpan(maxLineSpan) }) { WarehouseSectionTitle("Vehicle unavailable") }
                                 }
                                 items(preview!!.unavailableDrivers, key = { "unavailable-${it.driverId}" }) { d ->
                                     WarehouseOpsListCard(
@@ -982,13 +993,18 @@ fun DispatchScreen(
                     }
                     2 -> {
                         if (supplyRequests.isEmpty()) {
-                            WarehouseStatePane(
-                                kind = WarehouseStateKind.Empty,
+                            PegasusStatePane(
+                                kind = PegasusStateKind.Empty,
                                 headline = "No supply requests",
                                 body = "Active factory supply requests will appear here.",
                             )
                         } else {
-                            LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 340.dp),
+                                contentPadding = PaddingValues(PegasusSpacing.lg),
+                                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                            ) {
                                 items(supplyRequests, key = { it.requestId }) { request ->
                                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                                         Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
@@ -1018,13 +1034,18 @@ fun DispatchScreen(
                     }
                     3 -> {
                         if (dispatchLocks.isEmpty()) {
-                            WarehouseStatePane(
-                                kind = WarehouseStateKind.Empty,
+                            PegasusStatePane(
+                                kind = PegasusStateKind.Empty,
                                 headline = "Dispatch unlocked",
                                 body = "No active dispatch locks for this warehouse scope.",
                             )
                         } else {
-                            LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 340.dp),
+                                contentPadding = PaddingValues(PegasusSpacing.lg),
+                                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                            ) {
                                 items(dispatchLocks, key = { it.lockId }) { lock ->
                                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                                         Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {

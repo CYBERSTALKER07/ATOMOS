@@ -23,12 +23,17 @@ struct PreordersView: View {
 
     var body: some View {
         Group {
-            if loading {
-                ProgressView()
+            if loading && rows.isEmpty {
+                WarehouseLoadingView(title: "Loading pre-orders…", message: "Fetching scheduled deliveries")
             } else if rows.isEmpty {
-                ContentUnavailableView("No pre-orders", systemImage: "calendar")
+                if let error = statusMessage, error.contains("network") || error.contains("fail") {
+                    WarehouseErrorView(message: error, retry: { Task { await load() } })
+                } else {
+                    WarehouseEmptyView(title: "No scheduled pre-orders", message: "No future orders waiting for delivery scheduling.")
+                }
             } else {
-                List(rows) { row in
+                ResponsiveGridContentWrapper {
+                    ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(row.orderId).font(.headline)
                         Text("Status: \(row.status)").font(.caption)
@@ -230,12 +235,13 @@ struct StockCommitmentsView: View {
 
     var body: some View {
         Group {
-            if loading {
-                ProgressView()
+            if loading && rows.isEmpty {
+                WarehouseLoadingView(title: "Loading commitments…", message: "Calculating stock reservations")
             } else if rows.isEmpty {
-                ContentUnavailableView("No commitments", systemImage: "archivebox")
+                WarehouseEmptyView(title: "No commitments", message: "No stock is currently reserved for upcoming orders.")
             } else {
-                List(rows) { row in
+                ResponsiveGridContentWrapper {
+                    ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(row.name ?? row.skuId).font(.headline)
                         Text("Available \(row.availableQty) · ASAP \(row.reservedAsap) · Scheduled \(row.reservedScheduled)")

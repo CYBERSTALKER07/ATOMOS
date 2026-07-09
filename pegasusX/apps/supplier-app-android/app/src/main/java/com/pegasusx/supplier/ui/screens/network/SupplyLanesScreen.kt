@@ -10,9 +10,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierSupplyLaneRow
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import kotlin.math.min
@@ -56,17 +56,17 @@ fun SupplyLanesScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading supply lanes…", "Warehouse lanes")
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading supply lanes…", "Warehouse lanes")
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Supply lanes unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            lanes.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            lanes.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No lanes",
                 body = "No active warehouse lanes. Configure nodes on topology.",
                 modifier = Modifier.padding(padding),

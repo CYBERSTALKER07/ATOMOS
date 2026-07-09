@@ -529,7 +529,8 @@ struct CheckoutView: View {
 
     private var paymentPickerSheet: some View {
         NavigationStack {
-            List(paymentOptions, id: \.id) { option in
+            ResponsiveGridContentWrapper {
+                ForEach(paymentOptions, id: \.id) { option in
                 Button {
                     withAnimation(AnimationConstants.express) {
                         selectedPaymentId = option.id

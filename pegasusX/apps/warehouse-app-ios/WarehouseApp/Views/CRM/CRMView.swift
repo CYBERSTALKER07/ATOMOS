@@ -22,7 +22,8 @@ struct CRMView: View {
                 } else if retailers.isEmpty {
                     ContentUnavailableView("No Retailers", systemImage: "storefront", description: Text("No retailer relationships"))
                 } else {
-                    List(retailers) { retailer in
+                    ResponsiveGridContentWrapper {
+                        ForEach(retailers) { retailer in
                         HStack {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(retailer.name)
@@ -38,7 +39,6 @@ struct CRMView: View {
                             }
                         }
                     }
-                    .listStyle(.insetGrouped)
                 }
             }
             .background(LabTheme.background)

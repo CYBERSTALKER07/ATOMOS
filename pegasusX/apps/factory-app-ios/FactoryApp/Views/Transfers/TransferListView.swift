@@ -75,7 +75,6 @@ struct TransferListView: View {
                             }
                         }
                     }
-                    .listStyle(.plain)
                 }
             }
             .background(LabTheme.background)

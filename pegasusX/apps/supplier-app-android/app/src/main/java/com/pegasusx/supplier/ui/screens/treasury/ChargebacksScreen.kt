@@ -13,8 +13,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pegasusx.supplier.ui.components.SupplierRuntimeBanner
-import com.pegasusx.supplier.ui.components.SupplierRuntimeTone
+import com.pegasus.design.PegasusRuntimeBanner
+import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.viewmodel.TreasuryViewModel
 
@@ -98,15 +98,15 @@ fun ChargebacksScreen(
             ) { Text("Record reversal") }
 
             state.message?.let {
-                SupplierRuntimeBanner(
-                    tone = SupplierRuntimeTone.Live,
+                PegasusRuntimeBanner(
+                    tone = PegasusRuntimeTone.Live,
                     message = it,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             state.error?.let {
-                SupplierRuntimeBanner(
-                    tone = SupplierRuntimeTone.Warning,
+                PegasusRuntimeBanner(
+                    tone = PegasusRuntimeTone.Warning,
                     message = it,
                     modifier = Modifier.fillMaxWidth(),
                 )

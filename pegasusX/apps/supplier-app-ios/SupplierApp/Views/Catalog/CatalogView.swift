@@ -65,7 +65,7 @@ struct CatalogView: View {
     }
 
     private var catalogList: some View {
-        List {
+        ResponsiveGridContentWrapper {
             if let error {
                 Text(error)
                     .font(.caption)
@@ -75,7 +75,6 @@ struct CatalogView: View {
                 catalogRow(product)
             }
         }
-        .listStyle(.insetGrouped)
     }
 
     private func catalogRow(_ product: CatalogProduct) -> some View {

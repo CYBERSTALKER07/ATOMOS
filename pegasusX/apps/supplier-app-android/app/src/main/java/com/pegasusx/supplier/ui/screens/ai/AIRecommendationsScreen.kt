@@ -11,9 +11,9 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierAIRecommendation
 import com.pegasusx.supplier.data.model.SupplierAIRecommendationDecisionRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -113,16 +113,16 @@ fun AIRecommendationsScreen(ops: SupplierOperationsRepository, onBack: () -> Uni
                 )
             }
             when {
-                loading -> SupplierLoadingState("Loading recommendations…", "AI advisory")
-                error != null -> SupplierStatePane(
-                    kind = SupplierStateKind.Error,
+                loading -> PegasusLoadingState("Loading recommendations…", "AI advisory")
+                error != null -> PegasusStatePane(
+                    kind = PegasusStateKind.Error,
                     headline = "Recommendations unavailable",
                     body = error!!,
                     actionLabel = "Retry",
                     onAction = { load() },
                 )
-                items.isEmpty() -> SupplierStatePane(
-                    kind = SupplierStateKind.Empty,
+                items.isEmpty() -> PegasusStatePane(
+                    kind = PegasusStateKind.Empty,
                     headline = "No recommendations",
                     body = "No ${filter.lowercase()} advisory rows for this supplier.",
                 )

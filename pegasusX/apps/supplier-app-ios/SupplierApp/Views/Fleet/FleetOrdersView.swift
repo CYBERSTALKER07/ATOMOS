@@ -14,14 +14,14 @@ struct FleetOrdersView: View {
             } else if rows.isEmpty {
                 SupplierEmptyView(title: "No fleet orders", message: "Active route assignments appear here.")
             } else {
-                List(rows) { row in
+                ResponsiveGridContentWrapper {
+                    ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(row.orderId).font(.headline)
                         Text("\(row.status) · Driver \(row.driverId ?? "—")").font(.subheadline)
                         if let routeId = row.routeId { Text("Route \(routeId)").font(.caption) }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Fleet orders")

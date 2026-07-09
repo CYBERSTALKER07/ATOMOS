@@ -16,11 +16,11 @@ import com.pegasusx.supplier.data.model.SeasonalOverrideInput
 import com.pegasusx.supplier.data.model.SeasonalOverrideRow
 import com.pegasusx.supplier.data.model.SeasonalTemplatesResponse
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
@@ -73,9 +73,9 @@ fun PlanningSettingsScreen(
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading settings…", body = "", modifier = Modifier.padding(padding))
-            error != null && data == null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading settings…", body = "", modifier = Modifier.padding(padding))
+            error != null && data == null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Planning settings unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),

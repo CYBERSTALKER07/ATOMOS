@@ -76,11 +76,11 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.pegasusx.retailer.data.model.TrackingOrder
 import com.pegasusx.retailer.ui.components.RetailerListCard
-import com.pegasusx.retailer.ui.components.RetailerLoadingState
-import com.pegasusx.retailer.ui.components.RetailerRuntimeBanner
-import com.pegasusx.retailer.ui.components.RetailerRuntimeTone
-import com.pegasusx.retailer.ui.components.RetailerStateKind
-import com.pegasusx.retailer.ui.components.RetailerStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusRuntimeBanner
+import com.pegasus.design.PegasusRuntimeTone
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -173,11 +173,11 @@ fun DeliveryMapScreen(
         if (syncMessage != null) {
             val loadIssue = uiState.loadIssue
             val tone = when (loadIssue) {
-                TrackingLoadIssue.OFFLINE -> RetailerRuntimeTone.Offline
-                TrackingLoadIssue.RESTRICTED, TrackingLoadIssue.ERROR -> RetailerRuntimeTone.Warning
-                null -> RetailerRuntimeTone.Refreshing
+                TrackingLoadIssue.OFFLINE -> PegasusRuntimeTone.Offline
+                TrackingLoadIssue.RESTRICTED, TrackingLoadIssue.ERROR -> PegasusRuntimeTone.Warning
+                null -> PegasusRuntimeTone.Refreshing
             }
-            RetailerRuntimeBanner(
+            PegasusRuntimeBanner(
                 tone = tone,
                 message = syncMessage,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -219,7 +219,7 @@ fun DeliveryMapScreen(
         // Map
         Box(modifier = Modifier.fillMaxSize()) {
             if (uiState.isLoading && uiState.orders.isEmpty()) {
-                RetailerLoadingState(
+                PegasusLoadingState(
                     title = "Loading deliveries",
                     body = "Fetching live driver positions and inbound orders…",
                 )
@@ -314,8 +314,8 @@ fun DeliveryMapScreen(
 
                 // Empty state
                 if (visibleOrders.isEmpty() && !uiState.isLoading) {
-                    RetailerStatePane(
-                        kind = RetailerStateKind.Empty,
+                    PegasusStatePane(
+                        kind = PegasusStateKind.Empty,
                         headline = "No active deliveries",
                         body = uiState.emptyStateMessage,
                         actionLabel = "Refresh",

@@ -59,7 +59,8 @@ struct TreasuryView: View {
                         if invoices.isEmpty {
                             WarehouseEmptyView(title: "No Invoices", message: "No invoices found for this warehouse.")
                         } else {
-                            List(invoices) { inv in
+                            ResponsiveGridContentWrapper {
+                                ForEach(invoices) { inv in
                                 HStack(alignment: .top) {
                                     VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                         Text(inv.retailerName)
@@ -77,7 +78,6 @@ struct TreasuryView: View {
                                     WarehouseStatusBadge(text: inv.status)
                                 }
                             }
-                            .listStyle(.insetGrouped)
                         }
                     default:
                         PaymentConfigView()

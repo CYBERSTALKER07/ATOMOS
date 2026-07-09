@@ -43,6 +43,10 @@ class LoginViewModel @Inject constructor(
         _state.value = _state.value.copy(phone = value, error = null)
     }
 
+    fun clearError() {
+        _state.value = _state.value.copy(error = null)
+    }
+
     fun onOtpChange(value: String) {
         if (value.length <= 6 && value.all { it.isDigit() }) {
             _state.value = _state.value.copy(otpCode = value, error = null)

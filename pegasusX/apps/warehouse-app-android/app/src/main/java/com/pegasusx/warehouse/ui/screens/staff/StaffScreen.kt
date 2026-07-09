@@ -1,8 +1,9 @@
 package com.pegasusx.warehouse.ui.screens.staff
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -82,9 +83,11 @@ fun StaffScreen(
             staff.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Text("No staff members", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            else -> LazyColumn(
+            else -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 340.dp),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 items(staff, key = { it.workerId }) { s ->

@@ -1,5 +1,15 @@
 package com.pegasusx.factory.ui.screens.exceptions
 
+import androidx.compose.ui.unit.dp
+
+import androidx.compose.foundation.lazy.grid.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -7,8 +17,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -35,9 +43,9 @@ import androidx.compose.ui.text.font.FontFamily
 import com.pegasusx.factory.data.model.ManifestException
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
-import com.pegasusx.factory.ui.components.FactoryLoadingState
-import com.pegasusx.factory.ui.components.FactoryStateKind
-import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import java.text.DateFormat
@@ -110,15 +118,15 @@ fun ManifestExceptionsScreen(
         },
     ) { innerPadding ->
         when {
-            loading && exceptions.isEmpty() -> FactoryLoadingState(
+            loading && exceptions.isEmpty() -> PegasusLoadingState(
                 title = "Loading exceptions",
                 body = "Fetching transfers removed from manifests during loading.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            error != null -> FactoryStatePane(
-                kind = FactoryStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Unable to load exceptions",
                 body = error!!,
                 actionLabel = "Retry",
@@ -127,13 +135,16 @@ fun ManifestExceptionsScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            else -> LazyColumn(
+            else -> LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
-            ) {
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)
+    ) {
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                         FilterChip(
@@ -150,8 +161,8 @@ fun ManifestExceptionsScreen(
                 }
                 if (exceptions.isEmpty()) {
                     item {
-                        FactoryStatePane(
-                            kind = FactoryStateKind.Empty,
+                        PegasusStatePane(
+                            kind = PegasusStateKind.Empty,
                             headline = if (escalatedOnly) "No escalated exceptions" else "No exceptions",
                             body = if (escalatedOnly) {
                                 "No transfers have hit the DLQ threshold (3+ overflows)."

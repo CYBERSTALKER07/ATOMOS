@@ -235,7 +235,8 @@ struct PayloadOverrideView: View {
     private func moveTransferSheet(_ candidate: MoveCandidate) -> some View {
         NavigationStack {
             let targets = manifests.filter { $0.id != candidate.sourceManifestId }
-            List(targets, selection: $selectedTargetManifestId) { target in
+            ResponsiveGridContentWrapper {
+                ForEach(targets, selection: $selectedTargetManifestId) { target in
                 VStack(alignment: .leading) {
                     Text(target.truckPlate.isEmpty ? String(target.truckId.prefix(8)) : target.truckPlate)
                         .font(.headline)

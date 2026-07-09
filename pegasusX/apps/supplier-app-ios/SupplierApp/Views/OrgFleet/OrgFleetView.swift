@@ -92,7 +92,8 @@ struct OrgFleetView: View {
             if drivers.isEmpty {
                 SupplierEmptyView(title: "No drivers", message: "Create a driver to start fleet onboarding.")
             } else {
-                List(drivers) { driver in
+                ResponsiveGridContentWrapper {
+                    ForEach(drivers) { driver in
                     VStack(alignment: .leading) {
                         Text(driver.name).font(.headline)
                         Text("\(nodeLabel(type: driver.homeNodeType, id: driver.homeNodeId)) · \(driver.phone)")
@@ -108,7 +109,8 @@ struct OrgFleetView: View {
             if vehicles.isEmpty {
                 SupplierEmptyView(title: "No vehicles", message: "Create a vehicle for driver assignment.")
             } else {
-                List(vehicles) { vehicle in
+                ResponsiveGridContentWrapper {
+                    ForEach(vehicles) { vehicle in
                     VStack(alignment: .leading) {
                         Text(vehicle.label ?? vehicle.licensePlate).font(.headline)
                         Text("\(vehicle.licensePlate) · \(nodeLabel(type: vehicle.homeNodeType, id: vehicle.homeNodeId))")
@@ -124,7 +126,8 @@ struct OrgFleetView: View {
             if orgMembers.isEmpty {
                 SupplierEmptyView(title: "No org members", message: "Create warehouse, factory, or payload staff.")
             } else {
-                List(orgMembers) { member in
+                ResponsiveGridContentWrapper {
+                    ForEach(orgMembers) { member in
                     VStack(alignment: .leading) {
                         Text(member.name).font(.headline)
                         Text("\(member.supplierRole) · \(member.phone) · \(member.isActive ? "Active" : "Inactive")")

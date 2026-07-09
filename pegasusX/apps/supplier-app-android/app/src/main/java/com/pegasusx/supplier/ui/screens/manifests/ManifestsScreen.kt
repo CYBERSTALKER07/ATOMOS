@@ -14,10 +14,10 @@ import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.data.model.SupplierManifestRow
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -84,21 +84,21 @@ fun ManifestsScreen(
         },
     ) { padding ->
         when {
-            showFullScreenLoading(loading, rows.isNotEmpty()) -> SupplierLoadingState(
+            showFullScreenLoading(loading, rows.isNotEmpty()) -> PegasusLoadingState(
                 title = "Loading manifests…",
                 body = "Supplier manifest queue",
                 modifier = Modifier.padding(padding),
             )
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Manifests unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            rows.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            rows.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No manifests",
                 body = "Loading manifests will appear here.",
                 modifier = Modifier.padding(padding),

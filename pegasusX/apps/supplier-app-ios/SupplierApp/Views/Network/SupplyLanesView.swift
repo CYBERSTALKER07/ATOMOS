@@ -14,7 +14,7 @@ struct SupplyLanesView: View {
             } else if lanes.isEmpty {
                 SupplierEmptyView(title: "No lanes", message: "No active warehouse lanes. Configure nodes on topology.")
             } else {
-                List {
+                ResponsiveGridContentWrapper {
                     ForEach(lanes) { lane in
                         Section(lane.name.isEmpty ? lane.warehouseId : lane.name) {
                             LaneMetricRow(label: "H3 coverage estimate", value: "\(lane.h3Cells) cells")
@@ -25,7 +25,6 @@ struct SupplyLanesView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)

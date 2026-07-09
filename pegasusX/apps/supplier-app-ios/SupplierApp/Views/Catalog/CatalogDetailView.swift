@@ -13,7 +13,7 @@ struct CatalogDetailView: View {
             } else if let error {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else if let product {
-                List {
+                ResponsiveGridContentWrapper {
                     Section("Product") {
                         LabeledContent("ID", value: product.productId)
                         LabeledContent("Name", value: product.name)
@@ -27,7 +27,6 @@ struct CatalogDetailView: View {
                         LabeledContent("Version", value: "\(product.version)")
                     }
                 }
-                .listStyle(.insetGrouped)
             } else {
                 SupplierEmptyView(title: "Product not found", message: "Select a catalog item to view details.")
             }

@@ -19,11 +19,11 @@ import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.util.SUPPLIER_RECONNECT_RECOVERY_HINT
 import com.pegasusx.supplier.ui.realtime.SupplierReconnectRecoveryEffect
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.components.SupplierStatusChip
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -95,21 +95,21 @@ fun ManifestDetailScreen(
     ) { padding ->
         val data = detail
         when {
-            loading -> SupplierLoadingState(
+            loading -> PegasusLoadingState(
                 title = "Loading manifest…",
                 body = manifestId,
                 modifier = Modifier.padding(padding),
             )
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Manifest unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            data == null -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            data == null -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "Not found",
                 body = "Manifest could not be loaded.",
                 modifier = Modifier.padding(padding),

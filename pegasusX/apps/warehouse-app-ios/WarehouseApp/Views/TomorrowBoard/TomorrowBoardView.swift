@@ -25,7 +25,7 @@ struct TomorrowBoardView: View {
             } else if let error, preorders.isEmpty && deliverBefore.isEmpty {
                 WarehouseErrorView(message: error) { load() }
             } else {
-                List {
+                ResponsiveGridContentWrapper {
                     Section {
                         DatePicker("Date", selection: $date, displayedComponents: .date)
                             .onChange(of: date) { _, _ in load() }

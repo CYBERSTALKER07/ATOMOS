@@ -16,10 +16,10 @@ import com.pegasusx.supplier.data.model.CatalogProductUpdateRequest
 import com.pegasusx.supplier.data.model.SupplierPromotion
 import com.pegasusx.supplier.data.model.SupplierPromotionUpsertRequest
 import com.pegasusx.supplier.data.remote.SupplierApi
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.components.formatMinorAmount
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -64,17 +64,17 @@ fun PricingScreen(api: SupplierApi, onBack: () -> Unit) {
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading pricing…", "Catalog products", Modifier.padding(padding))
-            error != null && products.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading pricing…", "Catalog products", Modifier.padding(padding))
+            error != null && products.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Pricing unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            products.isEmpty() -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            products.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No products to price",
                 body = "Add products in Catalog first. They will appear here for list and sale pricing.",
                 modifier = Modifier.padding(padding),

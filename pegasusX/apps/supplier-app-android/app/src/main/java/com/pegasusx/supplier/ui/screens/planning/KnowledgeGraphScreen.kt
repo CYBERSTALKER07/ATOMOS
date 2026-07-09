@@ -11,11 +11,11 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.KnowledgeGraphNode
 import com.pegasusx.supplier.data.model.SupplierKnowledgeGraph
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -59,17 +59,17 @@ fun KnowledgeGraphScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading knowledge graph…", body = "", modifier = Modifier.padding(padding))
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading knowledge graph…", body = "", modifier = Modifier.padding(padding))
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Knowledge graph unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            graph == null -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            graph == null -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No graph data",
                 body = "Planning entities will appear when the graph is populated.",
                 modifier = Modifier.padding(padding),

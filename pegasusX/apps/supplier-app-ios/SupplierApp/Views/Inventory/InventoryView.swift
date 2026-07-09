@@ -46,7 +46,8 @@ struct InventoryView: View {
             .supplierReadableWidth()
             .padding()
         } else {
-            List(vm.filtered) { item in
+            ResponsiveGridContentWrapper {
+                ForEach(vm.filtered) { item in
                 HStack {
                     VStack(alignment: .leading) {
                         Text(item.productName)
@@ -59,7 +60,6 @@ struct InventoryView: View {
                     quantityCell(item)
                 }
             }
-            .listStyle(.insetGrouped)
         }
     }
 

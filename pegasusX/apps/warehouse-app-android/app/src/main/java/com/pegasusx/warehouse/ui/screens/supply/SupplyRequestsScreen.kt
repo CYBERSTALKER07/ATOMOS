@@ -1,8 +1,9 @@
 package com.pegasusx.warehouse.ui.screens.supply
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -10,14 +11,15 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.CreateWarehouseSupplyRequestRequest
 import com.pegasusx.warehouse.data.model.WarehouseSupplyRequest
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import com.pegasusx.warehouse.data.remote.WarehouseApi
-import com.pegasusx.warehouse.ui.components.WarehouseLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
-import com.pegasusx.warehouse.ui.components.WarehouseStateKind
-import com.pegasusx.warehouse.ui.components.WarehouseStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -113,21 +115,21 @@ fun SupplyRequestsScreen(
         },
     ) { padding ->
         when {
-            loading -> WarehouseLoadingState(
+            loading -> PegasusLoadingState(
                 title = "Loading supply requests…",
                 body = "Factory supply queue",
                 modifier = Modifier.padding(padding),
             )
-            error != null -> WarehouseStatePane(
-                kind = WarehouseStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Supply requests unavailable",
                 body = error!!,
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.padding(padding),
             )
-            requests.isEmpty() -> WarehouseStatePane(
-                kind = WarehouseStateKind.Empty,
+            requests.isEmpty() -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No supply requests",
                 body = if (stateFilter == "ALL") {
                     "Submitted factory supply requests will appear here."
@@ -136,10 +138,12 @@ fun SupplyRequestsScreen(
                 },
                 modifier = Modifier.padding(padding),
             )
-            else -> LazyColumn(
+            else -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 340.dp),
                 modifier = Modifier.padding(padding).fillMaxSize(),
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
                 items(requests, key = { it.requestId }) { request ->
                     WarehouseOpsListCard(

@@ -13,9 +13,9 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierReplenishmentPolicy
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
-import com.pegasusx.supplier.ui.components.SupplierLoadingState
-import com.pegasusx.supplier.ui.components.SupplierStateKind
-import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -59,17 +59,17 @@ fun ReplenishmentPoliciesScreen(
         },
     ) { padding ->
         when {
-            loading -> SupplierLoadingState("Loading policies…", body = "", modifier = Modifier.padding(padding))
-            error != null -> SupplierStatePane(
-                kind = SupplierStateKind.Error,
+            loading -> PegasusLoadingState("Loading policies…", body = "", modifier = Modifier.padding(padding))
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Policies unavailable",
                 body = error!!,
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
             )
-            policy == null -> SupplierStatePane(
-                kind = SupplierStateKind.Empty,
+            policy == null -> PegasusStatePane(
+                kind = PegasusStateKind.Empty,
                 headline = "No policy",
                 body = "Replenishment policy has not been configured.",
                 modifier = Modifier.padding(padding),

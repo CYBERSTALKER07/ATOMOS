@@ -14,7 +14,7 @@ struct ReconciliationView: View {
             } else if let error {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else {
-                List {
+                ResponsiveGridContentWrapper {
                     Section {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Settlement net (authority)").font(.caption).foregroundStyle(.secondary)
@@ -33,7 +33,6 @@ struct ReconciliationView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)

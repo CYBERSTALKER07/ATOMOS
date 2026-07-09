@@ -16,7 +16,7 @@ struct GeoReportView: View {
             } else if lanes.isEmpty {
                 SupplierEmptyView(title: "No coverage", message: "No active lanes to report on.")
             } else {
-                List {
+                ResponsiveGridContentWrapper {
                     Section {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Estimated H3 cells in service").font(.caption).foregroundStyle(.secondary)
@@ -39,7 +39,6 @@ struct GeoReportView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .background(SupplierTheme.background)

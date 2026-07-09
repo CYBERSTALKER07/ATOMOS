@@ -1,8 +1,16 @@
 package com.pegasusx.factory.ui.screens.loadingbay
 
+import androidx.compose.ui.unit.dp
+
+import androidx.compose.foundation.lazy.grid.items
+
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+
+import androidx.compose.foundation.lazy.grid.GridCells
+
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.LocalShipping
@@ -17,13 +25,12 @@ import com.pegasusx.factory.data.model.Transfer
 import com.pegasusx.factory.util.filterHandoffPulseEvents
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
-import com.pegasusx.factory.ui.components.FactoryInlineEmptyState
-import com.pegasusx.factory.ui.components.FactoryLoadingState
+import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.factory.ui.components.FactoryMetricTile
 import com.pegasusx.factory.ui.components.FactorySectionHeader
 import com.pegasusx.factory.ui.components.HandoffTimelineSection
-import com.pegasusx.factory.ui.components.FactoryStateKind
-import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasus.design.PegasusStateKind
+import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.components.FactoryStatusChip
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
@@ -149,15 +156,15 @@ fun LoadingBayScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading && transfers.isEmpty() -> FactoryLoadingState(
+            loading && transfers.isEmpty() -> PegasusLoadingState(
                 title = "Loading bay status",
                 body = "Fetching approved, loading, and dispatched transfer groups for the bay.",
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            error != null -> FactoryStatePane(
-                kind = FactoryStateKind.Error,
+            error != null -> PegasusStatePane(
+                kind = PegasusStateKind.Error,
                 headline = "Unable to load loading bay",
                 body = error!!,
                 actionLabel = "Retry",
@@ -166,11 +173,14 @@ fun LoadingBayScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            else -> LazyColumn(
+            else -> LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 340.dp),
+        
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-            ) {
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)
+    ) {
                 item {
                     BayOverviewCard(
                         readyCount = approved.size,
@@ -186,7 +196,13 @@ fun LoadingBayScreen(
                 }
                 item { FactorySectionHeader(title = "Ready for Loading", count = approved.size) }
                 if (approved.isEmpty()) {
-                    item { FactoryInlineEmptyState("No approved transfers are waiting at the bay.") }
+                    item(span = { GridItemSpan(maxLineSpan) }) { 
+                        PegasusStatePane(
+                            kind = PegasusStateKind.Empty,
+                            headline = "Empty Queue",
+                            body = "No approved transfers are waiting at the bay."
+                        )
+                    }
                 } else {
                     items(approved, key = { it.id }) { transfer ->
                         TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
@@ -194,7 +210,13 @@ fun LoadingBayScreen(
                 }
                 item { FactorySectionHeader(title = "Now Loading", count = loadingState.size) }
                 if (loadingState.isEmpty()) {
-                    item { FactoryInlineEmptyState("Nothing is actively loading right now.") }
+                    item(span = { GridItemSpan(maxLineSpan) }) { 
+                        PegasusStatePane(
+                            kind = PegasusStateKind.Empty,
+                            headline = "Empty Queue",
+                            body = "Nothing is actively loading right now."
+                        )
+                    }
                 } else {
                     items(loadingState, key = { it.id }) { transfer ->
                         TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
@@ -202,7 +224,13 @@ fun LoadingBayScreen(
                 }
                 item { FactorySectionHeader(title = "Dispatched", count = dispatched.size) }
                 if (dispatched.isEmpty()) {
-                    item { FactoryInlineEmptyState("No transfers have been dispatched in the current view.") }
+                    item(span = { GridItemSpan(maxLineSpan) }) { 
+                        PegasusStatePane(
+                            kind = PegasusStateKind.Empty,
+                            headline = "Empty Queue",
+                            body = "No transfers have been dispatched in the current view."
+                        )
+                    }
                 } else {
                     items(dispatched, key = { it.id }) { transfer ->
                         TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
