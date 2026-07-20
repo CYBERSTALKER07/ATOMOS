@@ -1,0 +1,181 @@
+google_project_service.gke_apis["iam.googleapis.com"]: Refreshing state... [id=pegasus-503013/iam.googleapis.com]
+google_project_service.gke_apis["artifactregistry.googleapis.com"]: Refreshing state... [id=pegasus-503013/artifactregistry.googleapis.com]
+google_project_service.required_apis["compute.googleapis.com"]: Refreshing state... [id=pegasus-503013/compute.googleapis.com]
+google_secret_manager_secret.firebase_project_id: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-firebase-project-id]
+google_secret_manager_secret.kafka_topic_spatial: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-kafka-topic-spatial]
+google_secret_manager_secret.tauri_updater_pubkey: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-tauri-updater-pubkey]
+google_secret_manager_secret.firebase_auth_enabled: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-firebase-auth-enabled]
+google_project_service.gke_apis["container.googleapis.com"]: Refreshing state... [id=pegasus-503013/container.googleapis.com]
+google_project_service.required_apis["monitoring.googleapis.com"]: Refreshing state... [id=pegasus-503013/monitoring.googleapis.com]
+google_secret_manager_secret.apple_notarize_apple_id: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-apple-notarize-apple-id]
+google_project_service.required_apis["redis.googleapis.com"]: Refreshing state... [id=pegasus-503013/redis.googleapis.com]
+google_project_service.required_apis["secretmanager.googleapis.com"]: Refreshing state... [id=pegasus-503013/secretmanager.googleapis.com]
+google_project_service.required_apis["spanner.googleapis.com"]: Refreshing state... [id=pegasus-503013/spanner.googleapis.com]
+google_secret_manager_secret.google_maps_api_key: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-google-maps-api-key]
+google_secret_manager_secret.windows_codesign_pfx: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-windows-codesign-pfx]
+google_secret_manager_secret.kafka_bootstrap_servers: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-kafka-bootstrap-servers]
+google_secret_manager_secret.kafka_topic_webhooks: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-kafka-topic-webhooks]
+google_monitoring_notification_channel.budget_email["blackfoxenterprise3697@gmail.com"]: Refreshing state... [id=projects/pegasus-503013/notificationChannels/11524296919953851321]
+google_secret_manager_secret.jwt_secret: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-jwt-secret]
+google_secret_manager_secret.global_pay_webhook_secret: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-global-pay-webhook-secret]
+google_secret_manager_secret.kafka_topic_main: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-kafka-topic-orders]
+google_service_account.backend_runtime[0]: Refreshing state... [id=projects/pegasus-503013/serviceAccounts/staging-backend@pegasus-503013.iam.gserviceaccount.com]
+google_secret_manager_secret.kafka_topic_realtime: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-kafka-topic-realtime]
+google_secret_manager_secret.apple_notarize_app_password: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-apple-notarize-app-password]
+google_secret_manager_secret.stripe_webhook_secret: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-stripe-webhook-secret]
+google_secret_manager_secret.tauri_signing_private_key: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-tauri-signing-private-key]
+google_secret_manager_secret.windows_codesign_password: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-windows-codesign-password]
+google_secret_manager_secret.adyen_webhook_secret: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-adyen-webhook-secret]
+google_secret_manager_secret.apple_notarize_team_id: Refreshing state... [id=projects/pegasus-503013/secrets/pegasusx-staging-apple-notarize-team-id]
+google_secret_manager_secret_version.firebase_project_id[0]: Refreshing state... [id=projects/1002695564567/secrets/pegasusx-staging-firebase-project-id/versions/1]
+google_secret_manager_secret_version.kafka_topic_spatial: Refreshing state... [id=projects/1002695564567/secrets/pegasusx-staging-kafka-topic-spatial/versions/1]
+google_secret_manager_secret_version.firebase_auth_enabled: Refreshing state... [id=projects/1002695564567/secrets/pegasusx-staging-firebase-auth-enabled/versions/1]
+google_secret_manager_secret_version.kafka_topic_webhooks: Refreshing state... [id=projects/1002695564567/secrets/pegasusx-staging-kafka-topic-webhooks/versions/1]
+google_secret_manager_secret_version.kafka_bootstrap_servers[0]: Refreshing state... [id=projects/1002695564567/secrets/pegasusx-staging-kafka-bootstrap-servers/versions/1]
+google_billing_budget.pegasusx_monthly[0]: Refreshing state... [id=billingAccounts/01BFC8-0FA416-0BBA18/budgets/b84cbcfd-796a-40e2-bb99-6685bc60c812]
+google_secret_manager_secret_version.kafka_topic_main: Refreshing state... [id=projects/1002695564567/secrets/pegasusx-staging-kafka-topic-orders/versions/1]
+google_secret_manager_secret_version.kafka_topic_realtime: Refreshing state... [id=projects/1002695564567/secrets/pegasusx-staging-kafka-topic-realtime/versions/1]
+google_project_iam_member.backend_spanner[0]: Refreshing state... [id=pegasus-503013/roles/spanner.databaseUser/serviceAccount:staging-backend@pegasus-503013.iam.gserviceaccount.com]
+google_project_iam_member.backend_secrets[0]: Refreshing state... [id=pegasus-503013/roles/secretmanager.secretAccessor/serviceAccount:staging-backend@pegasus-503013.iam.gserviceaccount.com]
+google_project_iam_member.backend_redis[0]: Refreshing state... [id=pegasus-503013/roles/redis.editor/serviceAccount:staging-backend@pegasus-503013.iam.gserviceaccount.com]
+google_artifact_registry_repository.pegasusx[0]: Refreshing state... [id=projects/pegasus-503013/locations/asia-south1/repositories/pegasusx-staging-images]
+google_compute_network.pegasusx_vpc: Refreshing state... [id=projects/pegasus-503013/global/networks/pegasusx-staging-vpc]
+google_spanner_instance.ledger: Refreshing state... [id=pegasus-503013/pegasusx-staging-spanner]
+google_redis_instance.cache: Refreshing state... [id=projects/pegasus-503013/locations/asia-south1/instances/pegasusx-staging-redis]
+google_container_cluster.pegasusx[0]: Refreshing state... [id=projects/pegasus-503013/locations/asia-south1/clusters/pegasusx-staging-gke]
+google_spanner_database.main: Refreshing state... [id=pegasusx-staging-spanner/pegasusx-staging-db]
+google_service_account_iam_member.backend_wi[0]: Refreshing state... [id=projects/pegasus-503013/serviceAccounts/staging-backend@pegasus-503013.iam.gserviceaccount.com/roles/iam.workloadIdentityUser/serviceAccount:pegasus-503013.svc.id.goog[pegasusx/backend-go]]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # google_billing_budget.pegasusx_monthly[0] will be updated in-place
+  ~ resource "google_billing_budget" "pegasusx_monthly" {
+        id              = "billingAccounts/01BFC8-0FA416-0BBA18/budgets/b84cbcfd-796a-40e2-bb99-6685bc60c812"
+        name            = "b84cbcfd-796a-40e2-bb99-6685bc60c812"
+        # (3 unchanged attributes hidden)
+
+      ~ budget_filter {
+          ~ projects               = [
+              - "projects/1002695564567",
+              + "projects/pegasus-503013",
+            ]
+            # (7 unchanged attributes hidden)
+        }
+
+        # (4 unchanged blocks hidden)
+    }
+
+  # google_storage_bucket.app_updates will be created
+  + resource "google_storage_bucket" "app_updates" {
+      + effective_labels            = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + force_destroy               = false
+      + id                          = (known after apply)
+      + labels                      = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + location                    = "ASIA-SOUTH1"
+      + name                        = "pegasus-503013-pegasusx-staging-app-updates"
+      + project                     = (known after apply)
+      + project_number              = (known after apply)
+      + public_access_prevention    = (known after apply)
+      + rpo                         = (known after apply)
+      + self_link                   = (known after apply)
+      + storage_class               = "STANDARD"
+      + terraform_labels            = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + time_created                = (known after apply)
+      + uniform_bucket_level_access = true
+      + updated                     = (known after apply)
+      + url                         = (known after apply)
+
+      + cors {
+          + max_age_seconds = 3600
+          + method          = [
+              + "GET",
+              + "HEAD",
+              + "OPTIONS",
+            ]
+          + origin          = [
+              + "*",
+            ]
+          + response_header = [
+              + "*",
+            ]
+        }
+
+      + soft_delete_policy (known after apply)
+
+      + versioning (known after apply)
+
+      + website (known after apply)
+    }
+
+  # google_storage_bucket_iam_member.public_updates will be created
+  + resource "google_storage_bucket_iam_member" "public_updates" {
+      + bucket = "pegasus-503013-pegasusx-staging-app-updates"
+      + etag   = (known after apply)
+      + id     = (known after apply)
+      + member = "allUsers"
+      + role   = "roles/storage.objectViewer"
+    }
+
+Plan: 2 to add, 1 to change, 0 to destroy.
+
+Changes to Outputs:
+  ~ app_updates_bucket_name             = "pegasusx-staging-app-updates" -> "pegasus-503013-pegasusx-staging-app-updates"
+google_billing_budget.pegasusx_monthly[0]: Modifying... [id=billingAccounts/01BFC8-0FA416-0BBA18/budgets/b84cbcfd-796a-40e2-bb99-6685bc60c812]
+google_storage_bucket.app_updates: Creating...
+google_billing_budget.pegasusx_monthly[0]: Modifications complete after 3s [id=billingAccounts/01BFC8-0FA416-0BBA18/budgets/b84cbcfd-796a-40e2-bb99-6685bc60c812]
+google_storage_bucket.app_updates: Creation complete after 7s [id=pegasus-503013-pegasusx-staging-app-updates]
+google_storage_bucket_iam_member.public_updates: Creating...
+google_storage_bucket_iam_member.public_updates: Creation complete after 10s [id=b/pegasus-503013-pegasusx-staging-app-updates/roles/storage.objectViewer/allUsers]
+
+Apply complete! Resources: 2 added, 1 changed, 0 destroyed.
+
+Outputs:
+
+adyen_webhook_secret_id = "pegasusx-staging-adyen-webhook-secret"
+app_updates_bucket_name = "pegasus-503013-pegasusx-staging-app-updates"
+artifact_registry_repository = "pegasusx-staging-images"
+artifact_registry_url = "asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images"
+backend_runtime_service_account = "staging-backend@pegasus-503013.iam.gserviceaccount.com"
+firebase_auth_enabled_secret = "pegasusx-staging-firebase-auth-enabled"
+firebase_project_id_secret = "pegasusx-staging-firebase-project-id"
+gke_cluster_name = "pegasusx-staging-gke"
+global_pay_webhook_secret_id = "pegasusx-staging-global-pay-webhook-secret"
+google_maps_api_key_secret_id = "pegasusx-staging-google-maps-api-key"
+jwt_secret_id = "pegasusx-staging-jwt-secret"
+kafka_bootstrap_secret = "pegasusx-staging-kafka-bootstrap-servers"
+kafka_topic_main_secret = "pegasusx-staging-kafka-topic-orders"
+kafka_topic_realtime_secret = "pegasusx-staging-kafka-topic-realtime"
+kafka_topic_spatial_secret = "pegasusx-staging-kafka-topic-spatial"
+kafka_topic_webhooks_secret = "pegasusx-staging-kafka-topic-webhooks"
+project_id = "pegasus-503013"
+redis_host = <sensitive>
+redis_port = 6378
+spanner_database_uri = "projects/pegasus-503013/instances/pegasusx-staging-spanner/databases/pegasusx-staging-db"
+stripe_webhook_secret_id = "pegasusx-staging-stripe-webhook-secret"
+tauri_signing_private_key_secret_id = "pegasusx-staging-tauri-signing-private-key"
+tauri_updater_pubkey_secret_id = "pegasusx-staging-tauri-updater-pubkey"
+tenant_slug = "staging"
+windows_codesign_password_secret_id = "pegasusx-staging-windows-codesign-password"
+windows_codesign_pfx_secret_id = "pegasusx-staging-windows-codesign-pfx"

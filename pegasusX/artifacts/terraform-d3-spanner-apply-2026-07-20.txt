@@ -1,0 +1,336 @@
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # google_billing_budget.pegasusx_monthly[0] will be created
+  + resource "google_billing_budget" "pegasusx_monthly" {
+      + billing_account = "01444D-F6DDEC-B7DC05"
+      + display_name    = "pegasusX monthly cap (staging)"
+      + id              = (known after apply)
+      + name            = (known after apply)
+
+      + all_updates_rule {
+          + disable_default_iam_recipients   = false
+          + enable_project_level_recipients  = false
+          + monitoring_notification_channels = (known after apply)
+          + schema_version                   = "1.0"
+        }
+
+      + amount {
+          + specified_amount {
+              + currency_code = "USD"
+              + units         = "1500"
+            }
+        }
+
+      + budget_filter {
+          + credit_types           = (known after apply)
+          + credit_types_treatment = "INCLUDE_ALL_CREDITS"
+          + labels                 = (known after apply)
+          + projects               = [
+              + "projects/void-494000",
+            ]
+          + services               = (known after apply)
+          + subaccounts            = (known after apply)
+        }
+
+      + threshold_rules {
+          + spend_basis       = "CURRENT_SPEND"
+          + threshold_percent = 0.8
+        }
+      + threshold_rules {
+          + spend_basis       = "CURRENT_SPEND"
+          + threshold_percent = 1
+        }
+    }
+
+  # google_monitoring_notification_channel.budget_email["cyberstalkerx7@gmail.com"] will be created
+  + resource "google_monitoring_notification_channel" "budget_email" {
+      + display_name        = "pegasusX budget alert (cyberstalkerx7@gmail.com)"
+      + enabled             = true
+      + force_delete        = false
+      + id                  = (known after apply)
+      + labels              = {
+          + "email_address" = "cyberstalkerx7@gmail.com"
+        }
+      + name                = (known after apply)
+      + project             = "void-494000"
+      + type                = "email"
+      + user_labels         = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "purpose"     = "billing-budget"
+          + "tenant"      = "staging"
+        }
+      + verification_status = (known after apply)
+    }
+
+  # google_project_service.required_apis["compute.googleapis.com"] will be created
+  + resource "google_project_service" "required_apis" {
+      + disable_on_destroy = false
+      + id                 = (known after apply)
+      + project            = "void-494000"
+      + service            = "compute.googleapis.com"
+    }
+
+  # google_project_service.required_apis["monitoring.googleapis.com"] will be created
+  + resource "google_project_service" "required_apis" {
+      + disable_on_destroy = false
+      + id                 = (known after apply)
+      + project            = "void-494000"
+      + service            = "monitoring.googleapis.com"
+    }
+
+  # google_project_service.required_apis["redis.googleapis.com"] will be created
+  + resource "google_project_service" "required_apis" {
+      + disable_on_destroy = false
+      + id                 = (known after apply)
+      + project            = "void-494000"
+      + service            = "redis.googleapis.com"
+    }
+
+  # google_project_service.required_apis["secretmanager.googleapis.com"] will be created
+  + resource "google_project_service" "required_apis" {
+      + disable_on_destroy = false
+      + id                 = (known after apply)
+      + project            = "void-494000"
+      + service            = "secretmanager.googleapis.com"
+    }
+
+  # google_project_service.required_apis["spanner.googleapis.com"] will be created
+  + resource "google_project_service" "required_apis" {
+      + disable_on_destroy = false
+      + id                 = (known after apply)
+      + project            = "void-494000"
+      + service            = "spanner.googleapis.com"
+    }
+
+  # google_spanner_database.main will be created
+  + resource "google_spanner_database" "main" {
+      + database_dialect         = (known after apply)
+      + deletion_protection      = true
+      + enable_drop_protection   = false
+      + id                       = (known after apply)
+      + instance                 = "pegasusx-staging-spanner"
+      + name                     = "pegasusx-staging-db"
+      + project                  = "void-494000"
+      + state                    = (known after apply)
+      + version_retention_period = (known after apply)
+    }
+
+  # google_spanner_instance.ledger will be created
+  + resource "google_spanner_instance" "ledger" {
+      + config                       = "regional-asia-south1"
+      + default_backup_schedule_type = (known after apply)
+      + display_name                 = "pegasusx-staging ledger"
+      + edition                      = (known after apply)
+      + effective_labels             = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+      + force_destroy                = false
+      + id                           = (known after apply)
+      + instance_type                = (known after apply)
+      + labels                       = {
+          + "app"         = "pegasusx"
+          + "environment" = "staging"
+          + "managed_by"  = "terraform"
+          + "tenant"      = "staging"
+        }
+      + name                         = "pegasusx-staging-spanner"
+      + num_nodes                    = (known after apply)
+      + processing_units             = 100
+      + project                      = "void-494000"
+      + state                        = (known after apply)
+      + terraform_labels             = {
+          + "app"                        = "pegasusx"
+          + "environment"                = "staging"
+          + "goog-terraform-provisioned" = "true"
+          + "managed_by"                 = "terraform"
+          + "tenant"                     = "staging"
+        }
+    }
+
+Plan: 9 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  ~ spanner_database_uri = "projects/your-gcp-project-id/instances/pegasusx-staging-spanner/databases/pegasusx-staging-db" -> "projects/void-494000/instances/pegasusx-staging-spanner/databases/pegasusx-staging-db"
+google_project_service.required_apis["compute.googleapis.com"]: Creating...
+google_project_service.required_apis["redis.googleapis.com"]: Creating...
+google_project_service.required_apis["monitoring.googleapis.com"]: Creating...
+google_project_service.required_apis["spanner.googleapis.com"]: Creating...
+google_project_service.required_apis["secretmanager.googleapis.com"]: Creating...
+google_monitoring_notification_channel.budget_email["cyberstalkerx7@gmail.com"]: Creating...
+google_monitoring_notification_channel.budget_email["cyberstalkerx7@gmail.com"]: Creation complete after 1s [id=projects/void-494000/notificationChannels/14232424860129266362]
+google_billing_budget.pegasusx_monthly[0]: Creating...
+google_project_service.required_apis["redis.googleapis.com"]: Creation complete after 5s [id=void-494000/redis.googleapis.com]
+google_project_service.required_apis["monitoring.googleapis.com"]: Creation complete after 5s [id=void-494000/monitoring.googleapis.com]
+google_project_service.required_apis["spanner.googleapis.com"]: Creation complete after 5s [id=void-494000/spanner.googleapis.com]
+google_project_service.required_apis["secretmanager.googleapis.com"]: Creation complete after 5s [id=void-494000/secretmanager.googleapis.com]
+google_project_service.required_apis["compute.googleapis.com"]: Creation complete after 5s [id=void-494000/compute.googleapis.com]
+google_spanner_instance.ledger: Creating...
+google_spanner_instance.ledger: Still creating... [00m10s elapsed]
+google_spanner_instance.ledger: Still creating... [00m20s elapsed]
+google_spanner_instance.ledger: Still creating... [00m30s elapsed]
+google_spanner_instance.ledger: Creation complete after 35s [id=void-494000/pegasusx-staging-spanner]
+google_spanner_database.main: Creating...
+google_spanner_database.main: Still creating... [00m10s elapsed]
+google_spanner_database.main: Still creating... [00m20s elapsed]
+google_spanner_database.main: Still creating... [00m30s elapsed]
+google_spanner_database.main: Still creating... [00m40s elapsed]
+google_spanner_database.main: Creation complete after 49s [id=pegasusx-staging-spanner/pegasusx-staging-db]
+
+Warning: Resource targeting is in effect
+
+You are creating a plan with the -target option, which means that the result
+of this plan may not represent all of the changes requested by the current
+configuration.
+
+The -target option is not for routine use, and is provided only for
+exceptional situations such as recovering from errors or mistakes, or when
+Terraform specifically suggests to use it as part of an error message.
+
+Warning: Applied changes may be incomplete
+
+The plan was created with the -target option in effect, so some changes
+requested in the configuration may have been ignored and the output values
+may not be fully updated. Run the following command to verify that no other
+changes are pending:
+    terraform plan
+
+Note that the -target option is not suitable for routine use, and is provided
+only for exceptional situations such as recovering from errors or mistakes,
+or when Terraform specifically suggests to use it as part of an error
+message.
+
+Error: Error creating Budget: googleapi: Error 403: Your application is authenticating by using local Application Default Credentials. The billingbudgets.googleapis.com API requires a quota project, which is not set by default. To learn how to set your quota project, see https://cloud.google.com/docs/authentication/adc-troubleshooting/user-creds .
+Details:
+[
+  {
+    "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+    "domain": "googleapis.com",
+    "metadata": {
+      "consumer": "projects/764086051850",
+      "service": "billingbudgets.googleapis.com"
+    },
+    "reason": "SERVICE_DISABLED"
+  },
+  {
+    "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+    "locale": "en-US",
+    "message": "Your application is authenticating by using local Application Default Credentials. The billingbudgets.googleapis.com API requires a quota project, which is not set by default. To learn how to set your quota project, see https://cloud.google.com/docs/authentication/adc-troubleshooting/user-creds ."
+  }
+]
+
+  with google_billing_budget.pegasusx_monthly[0],
+  on budget.tf line 40, in resource "google_billing_budget" "pegasusx_monthly":
+  40: resource "google_billing_budget" "pegasusx_monthly" {
+
+google_monitoring_notification_channel.budget_email["cyberstalkerx7@gmail.com"]: Refreshing state... [id=projects/void-494000/notificationChannels/14232424860129266362]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # google_billing_budget.pegasusx_monthly[0] will be created
+  + resource "google_billing_budget" "pegasusx_monthly" {
+      + billing_account = "01444D-F6DDEC-B7DC05"
+      + display_name    = "pegasusX monthly cap (staging)"
+      + id              = (known after apply)
+      + name            = (known after apply)
+
+      + all_updates_rule {
+          + disable_default_iam_recipients   = false
+          + enable_project_level_recipients  = false
+          + monitoring_notification_channels = [
+              + "projects/void-494000/notificationChannels/14232424860129266362",
+            ]
+          + schema_version                   = "1.0"
+        }
+
+      + amount {
+          + specified_amount {
+              + currency_code = "USD"
+              + units         = "1500"
+            }
+        }
+
+      + budget_filter {
+          + credit_types           = (known after apply)
+          + credit_types_treatment = "INCLUDE_ALL_CREDITS"
+          + labels                 = (known after apply)
+          + projects               = [
+              + "projects/void-494000",
+            ]
+          + services               = (known after apply)
+          + subaccounts            = (known after apply)
+        }
+
+      + threshold_rules {
+          + spend_basis       = "CURRENT_SPEND"
+          + threshold_percent = 0.8
+        }
+      + threshold_rules {
+          + spend_basis       = "CURRENT_SPEND"
+          + threshold_percent = 1
+        }
+    }
+
+Plan: 1 to add, 0 to change, 0 to destroy.
+google_billing_budget.pegasusx_monthly[0]: Creating...
+google_billing_budget.pegasusx_monthly[0]: Creation complete after 2s [id=billingAccounts/01444D-F6DDEC-B7DC05/budgets/b1b11d04-97ed-4aa3-baf3-08f0e8eb06d7]
+
+Warning: Resource targeting is in effect
+
+You are creating a plan with the -target option, which means that the result
+of this plan may not represent all of the changes requested by the current
+configuration.
+
+The -target option is not for routine use, and is provided only for
+exceptional situations such as recovering from errors or mistakes, or when
+Terraform specifically suggests to use it as part of an error message.
+
+Warning: Applied changes may be incomplete
+
+The plan was created with the -target option in effect, so some changes
+requested in the configuration may have been ignored and the output values
+may not be fully updated. Run the following command to verify that no other
+changes are pending:
+    terraform plan
+
+Note that the -target option is not suitable for routine use, and is provided
+only for exceptional situations such as recovering from errors or mistakes,
+or when Terraform specifically suggests to use it as part of an error
+message.
+
+Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+adyen_webhook_secret_id = "pegasusx-staging-adyen-webhook-secret"
+artifact_registry_repository = "pegasusx-staging-images"
+artifact_registry_url = "asia-south1-docker.pkg.dev/your-gcp-project-id/pegasusx-staging-images"
+backend_runtime_service_account = "staging-backend@your-gcp-project-id.iam.gserviceaccount.com"
+firebase_auth_enabled_secret = "pegasusx-staging-firebase-auth-enabled"
+firebase_project_id_secret = "pegasusx-staging-firebase-project-id"
+gke_cluster_name = "pegasusx-staging-gke"
+global_pay_webhook_secret_id = "pegasusx-staging-global-pay-webhook-secret"
+google_maps_api_key_secret_id = "pegasusx-staging-google-maps-api-key"
+jwt_secret_id = "pegasusx-staging-jwt-secret"
+kafka_bootstrap_secret = "pegasusx-staging-kafka-bootstrap-servers"
+kafka_topic_main_secret = "pegasusx-staging-kafka-topic-orders"
+kafka_topic_realtime_secret = "pegasusx-staging-kafka-topic-realtime"
+kafka_topic_spatial_secret = "pegasusx-staging-kafka-topic-spatial"
+kafka_topic_webhooks_secret = "pegasusx-staging-kafka-topic-webhooks"
+project_id = "your-gcp-project-id"
+spanner_database_uri = "projects/void-494000/instances/pegasusx-staging-spanner/databases/pegasusx-staging-db"
+stripe_webhook_secret_id = "pegasusx-staging-stripe-webhook-secret"
+tenant_slug = "staging"

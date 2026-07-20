@@ -15,7 +15,7 @@ import (
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestSimOrderLifecycle_HappyPath(t *testing.T) {
-	// Simulate: Pending → Loaded → InTransit → Arrived → AwaitingPayment → Completed
+	// ADR-009: AwaitingPayment → Fiscalizing → Completed (not soft COMPLETED).
 	transitions := []struct {
 		from order.Status
 		to   order.Status
@@ -24,7 +24,8 @@ func TestSimOrderLifecycle_HappyPath(t *testing.T) {
 		{order.StatusLoaded, order.StatusInTransit},
 		{order.StatusInTransit, order.StatusArrived},
 		{order.StatusArrived, order.StatusAwaitingPayment},
-		{order.StatusAwaitingPayment, order.StatusCompleted},
+		{order.StatusAwaitingPayment, order.StatusFiscalizing},
+		{order.StatusFiscalizing, order.StatusCompleted},
 	}
 
 	for _, tr := range transitions {
@@ -32,11 +33,11 @@ func TestSimOrderLifecycle_HappyPath(t *testing.T) {
 			t.Fatalf("happy path %s → %s: %v", tr.from, tr.to, err)
 		}
 	}
-	t.Log("happy path lifecycle: Pending → Loaded → InTransit → Arrived → AwaitingPayment → Completed ✓")
+	t.Log("happy path: … → AwaitingPayment → Fiscalizing → Completed ✓")
 }
 
 func TestSimOrderLifecycle_CashPath(t *testing.T) {
-	// Simulate: Pending → Loaded → InTransit → Arrived → PendingCashCollection → Completed
+	// ADR-009: PendingCashCollection → Fiscalizing → Completed (or FiscalFailed → retry/force).
 	transitions := []struct {
 		from order.Status
 		to   order.Status
@@ -45,7 +46,8 @@ func TestSimOrderLifecycle_CashPath(t *testing.T) {
 		{order.StatusLoaded, order.StatusInTransit},
 		{order.StatusInTransit, order.StatusArrived},
 		{order.StatusArrived, order.StatusPendingCashCollection},
-		{order.StatusPendingCashCollection, order.StatusCompleted},
+		{order.StatusPendingCashCollection, order.StatusFiscalizing},
+		{order.StatusFiscalizing, order.StatusCompleted},
 	}
 
 	for _, tr := range transitions {
@@ -53,11 +55,15 @@ func TestSimOrderLifecycle_CashPath(t *testing.T) {
 			t.Fatalf("cash path %s → %s: %v", tr.from, tr.to, err)
 		}
 	}
-	t.Log("cash path lifecycle: Pending → Loaded → InTransit → Arrived → PendingCashCollection → Completed ✓")
+	// Soft complete must stay illegal.
+	if err := order.ValidateStatusTransition(order.StatusPendingCashCollection, order.StatusCompleted); err == nil {
+		t.Fatal("PENDING_CASH_COLLECTION → COMPLETED must be denied (fiscal hard-gate)")
+	}
+	t.Log("cash path: … → PendingCashCollection → Fiscalizing → Completed ✓")
 }
 
 func TestSimOrderLifecycle_CreditPath(t *testing.T) {
-	// Simulate: Arrived → DeliveredOnCredit → Completed
+	// §9.1: credit leave-behind does not complete; settlement → Fiscalizing → Completed.
 	transitions := []struct {
 		from order.Status
 		to   order.Status
@@ -66,7 +72,8 @@ func TestSimOrderLifecycle_CreditPath(t *testing.T) {
 		{order.StatusLoaded, order.StatusInTransit},
 		{order.StatusInTransit, order.StatusArrived},
 		{order.StatusArrived, order.StatusDeliveredOnCredit},
-		{order.StatusDeliveredOnCredit, order.StatusCompleted},
+		{order.StatusDeliveredOnCredit, order.StatusFiscalizing},
+		{order.StatusFiscalizing, order.StatusCompleted},
 	}
 
 	for _, tr := range transitions {
@@ -74,7 +81,10 @@ func TestSimOrderLifecycle_CreditPath(t *testing.T) {
 			t.Fatalf("credit path %s → %s: %v", tr.from, tr.to, err)
 		}
 	}
-	t.Log("credit path lifecycle: Pending → ... → Arrived → DeliveredOnCredit → Completed ✓")
+	if err := order.ValidateStatusTransition(order.StatusDeliveredOnCredit, order.StatusCompleted); err == nil {
+		t.Fatal("DELIVERED_ON_CREDIT → COMPLETED must be denied (settle money first)")
+	}
+	t.Log("credit path: … → DeliveredOnCredit → Fiscalizing → Completed ✓")
 }
 
 func TestSimOrderLifecycle_CancellationPaths(t *testing.T) {
@@ -263,12 +273,14 @@ func TestSimOrderLifecycle_RollbackInTransitToPending(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestSimOrderLifecycle_StressHappyPath(t *testing.T) {
+	// ADR-009 fiscal hard-gate: COMPLETED only after FISCALIZING.
 	happyPath := []order.Status{
 		order.StatusPending,
 		order.StatusLoaded,
 		order.StatusInTransit,
 		order.StatusArrived,
 		order.StatusAwaitingPayment,
+		order.StatusFiscalizing,
 		order.StatusCompleted,
 	}
 

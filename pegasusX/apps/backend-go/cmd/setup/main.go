@@ -30,7 +30,8 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	// Full base DDL + indexes on a 100 PU cloud instance often exceeds 15m.
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 
 	cfg, err := bootstrap.LoadConfig()

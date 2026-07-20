@@ -4,6 +4,7 @@
 > Code can be green while credentials are still fake — this doc separates **software readiness** from **live credential cutover**.
 
 **Related:**  
+[`CLOUD_SERVICES_WIRING_PLAN.md`](./CLOUD_SERVICES_WIRING_PLAN.md) — **step-by-step Layer B wiring sequence** ·  
 [`WIRE_READY_STAGING_RUNBOOK.md`](./WIRE_READY_STAGING_RUNBOOK.md) ·  
 [`CLOUD_CREDENTIALS_CHECKLIST.md`](./CLOUD_CREDENTIALS_CHECKLIST.md) ·  
 [`PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md`](./PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md) ·  

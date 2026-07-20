@@ -43,11 +43,11 @@ resource "google_container_cluster" "pegasusx" {
 
   enable_autopilot = true
   networking_mode  = "VPC_NATIVE"
-  ip_allocation_policy {
-    cluster_secondary_range_name  = "pods"
-    services_secondary_range_name = "services"
-  }
-  network    = google_compute_network.pegasusx_vpc.name
+  # Auto-mode VPC has no pre-created secondary ranges named "pods"/"services".
+  # Empty policy lets GKE allocate pod/service CIDRs (Autopilot-compatible).
+  ip_allocation_policy {}
+  network = google_compute_network.pegasusx_vpc.name
+  # Auto-mode creates a regional subnet with the same name as the network.
   subnetwork = google_compute_network.pegasusx_vpc.name
 
   release_channel {
@@ -72,6 +72,8 @@ resource "google_service_account_iam_member" "backend_wi" {
   service_account_id = google_service_account.backend_runtime[0].name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[pegasusx/backend-go]"
+  # Workload Identity pool is only available after the Autopilot cluster is fully ready.
+  depends_on = [google_container_cluster.pegasusx]
 }
 
 resource "google_project_iam_member" "backend_spanner" {

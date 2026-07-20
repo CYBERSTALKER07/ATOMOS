@@ -193,7 +193,9 @@ func LoadConfig() (*Config, error) {
 		HTTPPort:                        envOr("HTTP_PORT", "8080"),
 		WorkerHTTPPort:                  envOr("WORKER_HTTP_PORT", "8081"),
 		RunMode:                         envOr("PEGASUSX_RUN_MODE", RunModeAll),
-		SpannerEmulatorHost:             envOr("SPANNER_EMULATOR_HOST", "localhost:9010"),
+		// Empty emulator host = real GCP. Local SSMR defaults to emulator only when
+		// SPANNER_PROJECT is the local sandbox (or SPANNER_EMULATOR_HOST is set).
+		SpannerEmulatorHost:             resolveSpannerEmulatorHost(),
 		SpannerProject:                  envOr("SPANNER_PROJECT", "pegasusx-local"),
 		SpannerInstance:                 envOr("SPANNER_INSTANCE", "pegasusx-instance"),
 		SpannerDatabase:                 envOr("SPANNER_DATABASE", "pegasusx-db"),
@@ -1857,6 +1859,24 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// resolveSpannerEmulatorHost returns the emulator endpoint for local SSMR, or
+// empty string for real Cloud Spanner (ADC + public API).
+//
+// Priority:
+//  1. SPANNER_EMULATOR_HOST if set (including empty → force cloud)
+//  2. Non-local SPANNER_PROJECT → cloud (no emulator)
+//  3. Default localhost:9010 for pegasusx-local / unset project
+func resolveSpannerEmulatorHost() string {
+	if v, ok := os.LookupEnv("SPANNER_EMULATOR_HOST"); ok {
+		return v
+	}
+	project := strings.TrimSpace(os.Getenv("SPANNER_PROJECT"))
+	if project != "" && project != "pegasusx-local" {
+		return ""
+	}
+	return "localhost:9010"
 }
 
 func envBool(key string, fallback bool) bool {

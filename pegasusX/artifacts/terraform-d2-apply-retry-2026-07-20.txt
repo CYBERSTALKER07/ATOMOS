@@ -1,0 +1,284 @@
+google_monitoring_dashboard.ai_worker_launch[0]: Refreshing state... [id=projects/152120884601/dashboards/c83a3c8a-93ea-493b-bbc3-2a9ddf8ced06]
+google_secret_manager_secret.apple_notarize_app_password: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-apple-notarize-app-password]
+google_project_service.gke_apis["container.googleapis.com"]: Refreshing state... [id=void-494000/container.googleapis.com]
+google_secret_manager_secret.windows_codesign_pfx: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-windows-codesign-pfx]
+google_project_service.gke_apis["iam.googleapis.com"]: Refreshing state... [id=void-494000/iam.googleapis.com]
+google_secret_manager_secret.tauri_signing_private_key: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-tauri-signing-private-key]
+google_project_service.gke_apis["artifactregistry.googleapis.com"]: Refreshing state... [id=void-494000/artifactregistry.googleapis.com]
+google_secret_manager_secret.tauri_updater_pubkey: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-tauri-updater-pubkey]
+google_monitoring_alert_policy.spanner_cpu_high[0]: Refreshing state... [id=projects/void-494000/alertPolicies/11737365145897493553]
+google_secret_manager_secret.firebase_project_id: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-firebase-project-id]
+google_secret_manager_secret.windows_codesign_password: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-windows-codesign-password]
+google_secret_manager_secret.kafka_topic_main: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-kafka-topic-orders]
+google_secret_manager_secret.firebase_auth_enabled: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-firebase-auth-enabled]
+google_secret_manager_secret.apple_notarize_team_id: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-apple-notarize-team-id]
+google_secret_manager_secret.kafka_bootstrap_servers: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-kafka-bootstrap-servers]
+google_secret_manager_secret.google_maps_api_key: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-google-maps-api-key]
+google_secret_manager_secret.global_pay_webhook_secret: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-global-pay-webhook-secret]
+google_secret_manager_secret.kafka_topic_webhooks: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-kafka-topic-webhooks]
+google_secret_manager_secret.kafka_topic_realtime: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-kafka-topic-realtime]
+google_secret_manager_secret.apple_notarize_apple_id: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-apple-notarize-apple-id]
+google_secret_manager_secret.jwt_secret: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-jwt-secret]
+google_project_service.required_apis["spanner.googleapis.com"]: Refreshing state... [id=void-494000/spanner.googleapis.com]
+google_project_service.required_apis["compute.googleapis.com"]: Refreshing state... [id=void-494000/compute.googleapis.com]
+google_project_service.required_apis["monitoring.googleapis.com"]: Refreshing state... [id=void-494000/monitoring.googleapis.com]
+google_project_service.required_apis["redis.googleapis.com"]: Refreshing state... [id=void-494000/redis.googleapis.com]
+google_project_service.required_apis["secretmanager.googleapis.com"]: Refreshing state... [id=void-494000/secretmanager.googleapis.com]
+google_service_account.backend_runtime[0]: Refreshing state... [id=projects/void-494000/serviceAccounts/staging-backend@void-494000.iam.gserviceaccount.com]
+google_secret_manager_secret.kafka_topic_spatial: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-kafka-topic-spatial]
+google_secret_manager_secret.stripe_webhook_secret: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-stripe-webhook-secret]
+google_monitoring_notification_channel.budget_email["cyberstalkerx7@gmail.com"]: Refreshing state... [id=projects/void-494000/notificationChannels/14232424860129266362]
+google_storage_bucket.app_updates: Refreshing state... [id=pegasusx-staging-app-updates]
+google_secret_manager_secret.adyen_webhook_secret: Refreshing state... [id=projects/void-494000/secrets/pegasusx-staging-adyen-webhook-secret]
+google_secret_manager_secret_version.firebase_project_id[0]: Refreshing state... [id=projects/152120884601/secrets/pegasusx-staging-firebase-project-id/versions/1]
+google_secret_manager_secret_version.kafka_topic_main: Refreshing state... [id=projects/152120884601/secrets/pegasusx-staging-kafka-topic-orders/versions/1]
+google_secret_manager_secret_version.firebase_auth_enabled: Refreshing state... [id=projects/152120884601/secrets/pegasusx-staging-firebase-auth-enabled/versions/1]
+google_secret_manager_secret_version.kafka_bootstrap_servers[0]: Refreshing state... [id=projects/152120884601/secrets/pegasusx-staging-kafka-bootstrap-servers/versions/1]
+google_secret_manager_secret_version.kafka_topic_webhooks: Refreshing state... [id=projects/152120884601/secrets/pegasusx-staging-kafka-topic-webhooks/versions/1]
+google_secret_manager_secret_version.kafka_topic_realtime: Refreshing state... [id=projects/152120884601/secrets/pegasusx-staging-kafka-topic-realtime/versions/1]
+google_secret_manager_secret_version.kafka_topic_spatial: Refreshing state... [id=projects/152120884601/secrets/pegasusx-staging-kafka-topic-spatial/versions/1]
+google_project_iam_member.backend_secrets[0]: Refreshing state... [id=void-494000/roles/secretmanager.secretAccessor/serviceAccount:staging-backend@void-494000.iam.gserviceaccount.com]
+google_project_iam_member.backend_spanner[0]: Refreshing state... [id=void-494000/roles/spanner.databaseUser/serviceAccount:staging-backend@void-494000.iam.gserviceaccount.com]
+google_project_iam_member.backend_redis[0]: Refreshing state... [id=void-494000/roles/redis.editor/serviceAccount:staging-backend@void-494000.iam.gserviceaccount.com]
+google_billing_budget.pegasusx_monthly[0]: Refreshing state... [id=billingAccounts/01444D-F6DDEC-B7DC05/budgets/b1b11d04-97ed-4aa3-baf3-08f0e8eb06d7]
+google_storage_bucket_iam_member.public_updates: Refreshing state... [id=b/pegasusx-staging-app-updates/roles/storage.objectViewer/allUsers]
+google_compute_network.pegasusx_vpc: Refreshing state... [id=projects/void-494000/global/networks/pegasusx-staging-vpc]
+google_spanner_instance.ledger: Refreshing state... [id=void-494000/pegasusx-staging-spanner]
+google_artifact_registry_repository.pegasusx[0]: Refreshing state... [id=projects/void-494000/locations/asia-south1/repositories/pegasusx-staging-images]
+google_redis_instance.cache: Refreshing state... [id=projects/void-494000/locations/asia-south1/instances/pegasusx-staging-redis]
+google_container_cluster.pegasusx[0]: Refreshing state... [id=projects/void-494000/locations/asia-south1/clusters/pegasusx-staging-gke]
+google_spanner_database.main: Refreshing state... [id=pegasusx-staging-spanner/pegasusx-staging-db]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+  - destroy
+
+Terraform will perform the following actions:
+
+  # google_billing_budget.pegasusx_monthly[0] will be updated in-place
+  ~ resource "google_billing_budget" "pegasusx_monthly" {
+        id              = "billingAccounts/01444D-F6DDEC-B7DC05/budgets/b1b11d04-97ed-4aa3-baf3-08f0e8eb06d7"
+        name            = "b1b11d04-97ed-4aa3-baf3-08f0e8eb06d7"
+        # (3 unchanged attributes hidden)
+
+      ~ budget_filter {
+          ~ projects               = [
+              - "projects/152120884601",
+              + "projects/void-494000",
+            ]
+            # (7 unchanged attributes hidden)
+        }
+
+        # (4 unchanged blocks hidden)
+    }
+
+  # google_monitoring_alert_policy.spanner_cpu_high[0] will be destroyed
+  # (because index [0] is out of range for count)
+  - resource "google_monitoring_alert_policy" "spanner_cpu_high" {
+      - combiner              = "OR" -> null
+      - creation_record       = [
+          - {
+              - mutate_time = "2026-07-20T08:43:27.096169831Z"
+              - mutated_by  = "cyberstalkerx7@gmail.com"
+            },
+        ] -> null
+      - display_name          = "pegasusX — Spanner CPU > 65%" -> null
+      - enabled               = true -> null
+      - id                    = "projects/void-494000/alertPolicies/11737365145897493553" -> null
+      - name                  = "projects/void-494000/alertPolicies/11737365145897493553" -> null
+      - notification_channels = [] -> null
+      - project               = "void-494000" -> null
+      - user_labels           = {} -> null
+        # (1 unchanged attribute hidden)
+
+      - conditions {
+          - display_name = "spanner instance cpu high" -> null
+          - name         = "projects/void-494000/alertPolicies/11737365145897493553/conditions/11737365145897495138" -> null
+
+          - condition_threshold {
+              - comparison              = "COMPARISON_GT" -> null
+              - duration                = "600s" -> null
+              - filter                  = "metric.type=\"spanner.googleapis.com/instance/cpu/utilization\" resource.type=\"spanner_instance\"" -> null
+              - threshold_value         = 0.65 -> null
+                # (2 unchanged attributes hidden)
+
+              - aggregations {
+                  - alignment_period     = "60s" -> null
+                  - group_by_fields      = [] -> null
+                  - per_series_aligner   = "ALIGN_MEAN" -> null
+                    # (1 unchanged attribute hidden)
+                }
+            }
+        }
+
+      - documentation {
+          - content   = "Spanner CPU above 65% for 10 minutes. Review hot queries in docs/SPANNER_HOT_PATH_REVIEW.md and dashboard stale-read usage." -> null
+          - mime_type = "text/markdown" -> null
+            # (1 unchanged attribute hidden)
+        }
+    }
+
+  # google_monitoring_dashboard.ai_worker_launch[0] will be destroyed
+  # (because index [0] is out of range for count)
+  - resource "google_monitoring_dashboard" "ai_worker_launch" {
+      - dashboard_json = jsonencode(
+            {
+              - displayName  = "pegasusX — AI Worker Launch"
+              - etag         = "69ee4b5ef128a375e85deed93ac58081"
+              - mosaicLayout = {
+                  - columns = 12
+                  - tiles   = [
+                      - {
+                          - height = 4
+                          - widget = {
+                              - scorecard = {
+                                  - gaugeView       = {
+                                      - upperBound = 1
+                                    }
+                                  - timeSeriesQuery = {
+                                      - timeSeriesFilter = {
+                                          - aggregation = {
+                                              - alignmentPeriod    = "60s"
+                                              - crossSeriesReducer = "REDUCE_MEAN"
+                                              - perSeriesAligner   = "ALIGN_MEAN"
+                                            }
+                                          - filter      = "metric.type=\"prometheus.googleapis.com/void_ai_worker_up/gauge\" resource.type=\"prometheus_target\""
+                                        }
+                                    }
+                                }
+                              - title     = "AI Worker Up"
+                            }
+                          - width  = 4
+                        },
+                      - {
+                          - height = 4
+                          - widget = {
+                              - scorecard = {
+                                  - gaugeView       = {
+                                      - upperBound = 1
+                                    }
+                                  - timeSeriesQuery = {
+                                      - timeSeriesFilter = {
+                                          - aggregation = {
+                                              - alignmentPeriod    = "60s"
+                                              - crossSeriesReducer = "REDUCE_MEAN"
+                                              - perSeriesAligner   = "ALIGN_MEAN"
+                                            }
+                                          - filter      = "metric.type=\"prometheus.googleapis.com/void_ai_worker_ready/gauge\" resource.type=\"prometheus_target\""
+                                        }
+                                    }
+                                }
+                              - title     = "AI Worker Ready"
+                            }
+                          - width  = 4
+                          - xPos   = 4
+                        },
+                      - {
+                          - height = 4
+                          - widget = {
+                              - scorecard = {
+                                  - timeSeriesQuery = {
+                                      - timeSeriesFilter = {
+                                          - aggregation = {
+                                              - alignmentPeriod    = "60s"
+                                              - crossSeriesReducer = "REDUCE_MAX"
+                                              - perSeriesAligner   = "ALIGN_MAX"
+                                            }
+                                          - filter      = "metric.type=\"prometheus.googleapis.com/void_kafka_consumer_lag_seconds/gauge\" resource.type=\"prometheus_target\" metric.labels.consumer=\"pegasusx-ai-worker\""
+                                        }
+                                    }
+                                }
+                              - title     = "AI Worker Kafka Lag"
+                            }
+                          - width  = 4
+                          - xPos   = 8
+                        },
+                      - {
+                          - height = 4
+                          - widget = {
+                              - title   = "AI Worker Kafka Lag Trend"
+                              - xyChart = {
+                                  - dataSets = [
+                                      - {
+                                          - plotType        = "LINE"
+                                          - targetAxis      = "Y1"
+                                          - timeSeriesQuery = {
+                                              - timeSeriesFilter = {
+                                                  - aggregation = {
+                                                      - alignmentPeriod  = "60s"
+                                                      - perSeriesAligner = "ALIGN_MAX"
+                                                    }
+                                                  - filter      = "metric.type=\"prometheus.googleapis.com/void_kafka_consumer_lag_seconds/gauge\" resource.type=\"prometheus_target\" metric.labels.consumer=\"pegasusx-ai-worker\""
+                                                }
+                                            }
+                                        },
+                                    ]
+                                  - yAxis    = {
+                                      - label = "seconds"
+                                      - scale = "LINEAR"
+                                    }
+                                }
+                            }
+                          - width  = 12
+                          - yPos   = 4
+                        },
+                    ]
+                }
+              - name         = "projects/152120884601/dashboards/c83a3c8a-93ea-493b-bbc3-2a9ddf8ced06"
+            }
+        ) -> null
+      - id             = "projects/152120884601/dashboards/c83a3c8a-93ea-493b-bbc3-2a9ddf8ced06" -> null
+      - project        = "void-494000" -> null
+    }
+
+  # google_service_account_iam_member.backend_wi[0] will be created
+  + resource "google_service_account_iam_member" "backend_wi" {
+      + etag               = (known after apply)
+      + id                 = (known after apply)
+      + member             = "serviceAccount:void-494000.svc.id.goog[pegasusx/backend-go]"
+      + role               = "roles/iam.workloadIdentityUser"
+      + service_account_id = "projects/void-494000/serviceAccounts/staging-backend@void-494000.iam.gserviceaccount.com"
+    }
+
+Plan: 1 to add, 1 to change, 2 to destroy.
+google_monitoring_dashboard.ai_worker_launch[0]: Destroying... [id=projects/152120884601/dashboards/c83a3c8a-93ea-493b-bbc3-2a9ddf8ced06]
+google_monitoring_alert_policy.spanner_cpu_high[0]: Destroying... [id=projects/void-494000/alertPolicies/11737365145897493553]
+google_service_account_iam_member.backend_wi[0]: Creating...
+google_billing_budget.pegasusx_monthly[0]: Modifying... [id=billingAccounts/01444D-F6DDEC-B7DC05/budgets/b1b11d04-97ed-4aa3-baf3-08f0e8eb06d7]
+google_monitoring_alert_policy.spanner_cpu_high[0]: Destruction complete after 2s
+google_monitoring_dashboard.ai_worker_launch[0]: Destruction complete after 2s
+google_billing_budget.pegasusx_monthly[0]: Modifications complete after 2s [id=billingAccounts/01444D-F6DDEC-B7DC05/budgets/b1b11d04-97ed-4aa3-baf3-08f0e8eb06d7]
+google_service_account_iam_member.backend_wi[0]: Creation complete after 7s [id=projects/void-494000/serviceAccounts/staging-backend@void-494000.iam.gserviceaccount.com/roles/iam.workloadIdentityUser/serviceAccount:void-494000.svc.id.goog[pegasusx/backend-go]]
+
+Apply complete! Resources: 1 added, 1 changed, 2 destroyed.
+
+Outputs:
+
+adyen_webhook_secret_id = "pegasusx-staging-adyen-webhook-secret"
+app_updates_bucket_name = "pegasusx-staging-app-updates"
+artifact_registry_repository = "pegasusx-staging-images"
+artifact_registry_url = "asia-south1-docker.pkg.dev/void-494000/pegasusx-staging-images"
+backend_runtime_service_account = "staging-backend@void-494000.iam.gserviceaccount.com"
+firebase_auth_enabled_secret = "pegasusx-staging-firebase-auth-enabled"
+firebase_project_id_secret = "pegasusx-staging-firebase-project-id"
+gke_cluster_name = "pegasusx-staging-gke"
+global_pay_webhook_secret_id = "pegasusx-staging-global-pay-webhook-secret"
+google_maps_api_key_secret_id = "pegasusx-staging-google-maps-api-key"
+jwt_secret_id = "pegasusx-staging-jwt-secret"
+kafka_bootstrap_secret = "pegasusx-staging-kafka-bootstrap-servers"
+kafka_topic_main_secret = "pegasusx-staging-kafka-topic-orders"
+kafka_topic_realtime_secret = "pegasusx-staging-kafka-topic-realtime"
+kafka_topic_spatial_secret = "pegasusx-staging-kafka-topic-spatial"
+kafka_topic_webhooks_secret = "pegasusx-staging-kafka-topic-webhooks"
+project_id = "void-494000"
+redis_host = <sensitive>
+redis_port = 6378
+spanner_database_uri = "projects/void-494000/instances/pegasusx-staging-spanner/databases/pegasusx-staging-db"
+stripe_webhook_secret_id = "pegasusx-staging-stripe-webhook-secret"
+tauri_signing_private_key_secret_id = "pegasusx-staging-tauri-signing-private-key"
+tauri_updater_pubkey_secret_id = "pegasusx-staging-tauri-updater-pubkey"
+tenant_slug = "staging"
+windows_codesign_password_secret_id = "pegasusx-staging-windows-codesign-password"
+windows_codesign_pfx_secret_id = "pegasusx-staging-windows-codesign-pfx"

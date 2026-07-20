@@ -66,6 +66,8 @@ Specifically:
 - `LOAD_TEST_SLO.md` — 10k retailer concurrency profile
 - `CLOUD_CREDENTIALS_CHECKLIST.md` — Boss handoff for GCP/Firebase/payments
 - `PRE_CLOUD_THIRD_PARTY_GATE.md` — software hard-gate (fakes) before real PSP/OFD/Firebase/Maps
+- `CLOUD_SERVICES_WIRING_PLAN.md` — step-by-step cloud + third-party wiring (Layer B only)
+- `CLOUD_DEVOPS_DEEP_DIVE_PLAN.md` — enterprise deep dives: K8s, Terraform, Docker, Kafka, Redis, Firebase, …
 - `WIRE_READY_STAGING_RUNBOOK.md` — local gates before GCP wire
 - `CLOUD_CUTOVER_RUNBOOK.md` — staging/production cutover sequence
 - `LOAD_TEST_REPORT.md` — load run results template

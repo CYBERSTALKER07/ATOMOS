@@ -267,6 +267,12 @@ func runReturnGateReceiveE2E(
 		return fmt.Errorf("return-gate collect cash status %d body %s", status, string(respBody))
 	}
 
+	// ADR-009 Phase 6: return-complete is blocked while any order is FISCALIZING / FISCAL_FAILED.
+	// Wait for fiscal worker SUCCESS → COMPLETED before ending shift.
+	if err := waitOrderStatus(ctx, client, base, driverToken, orderID, "COMPLETED", 45*time.Second); err != nil {
+		return fmt.Errorf("return-gate wait fiscal COMPLETED: %w", err)
+	}
+
 	if err := ensureSmokeProductBarcode(ctx, cfg, supplierID, sku, barcode); err != nil {
 		return fmt.Errorf("ensure product barcode: %w", err)
 	}
@@ -276,8 +282,15 @@ func runReturnGateReceiveE2E(
 	if err != nil {
 		return err
 	}
+	// After fiscal SUCCESS, tryCompleteManifest may already complete the manifest and return the driver.
+	// Treat no_dispatched_manifest as idempotent success; open_fiscal_block is still a hard fail.
 	if status != http.StatusOK {
-		return fmt.Errorf("return-gate return-complete status %d body %s", status, string(respBody))
+		body := string(respBody)
+		if status == http.StatusConflict && strings.Contains(body, "no_dispatched_manifest") {
+			// Manifest already completed post-fiscal — OK for return gate.
+		} else {
+			return fmt.Errorf("return-gate return-complete status %d body %s", status, body)
+		}
 	}
 
 	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/returns/inbound?physical_status=ARRIVED&limit=50", nil, payloaderToken, "")
