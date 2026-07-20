@@ -2,7 +2,9 @@
 
 **Last updated:** 2026-07-20  
 **Purpose:** Single source of truth for what is **already applied**, what to **apply next**, and what **not** to touch.  
-**Repo path:** `pegasusX/` under V.O.I.D monorepo.
+**Repo path:** `pegasusX/` under V.O.I.D monorepo.  
+
+**Full E2E step list:** [`CLOUD_E2E_WIRING_STEPS.md`](./CLOUD_E2E_WIRING_STEPS.md)
 
 ---
 
