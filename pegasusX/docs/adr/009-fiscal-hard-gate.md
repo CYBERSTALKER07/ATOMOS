@@ -124,10 +124,12 @@ Payloads: integer `amount_minor`, `attempt_id`, `order_id`, **`supplier_id`** (l
 ## SSMR markers
 
 - `PX_E2E_FISCAL_CASH_OK`
-- `PX_E2E_FISCAL_CARD_OK`
 - `PX_E2E_FISCAL_FAIL_RETRY_OK`
 - `PX_E2E_FISCAL_FORCE_OK`
-- `PX_E2E_FISCAL_NO_SOFT_COMPLETE`
+- `PX_E2E_FISCAL_SHORTFALL_OK`
+- `PX_E2E_FISCAL_SHIFT_FREEZE_OK`
+- `PX_E2E_FISCAL_ALL_OK`  
+  (`make test-ssmr-fiscal`; card-at-delivery covered by unit `SettleExternalPayment` — optional later marker `PX_E2E_FISCAL_CARD_OK`)
 
 ## Consequences
 

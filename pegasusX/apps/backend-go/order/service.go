@@ -1305,6 +1305,19 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 		return UpdateStatusResponse{}, err
 	}
 
+	// ADR-009 hard-gate: no COMPLETED without reconstructible fiscal SUCCESS or audited FORCE.
+	// Force-complete and fiscal worker set FiscalStatus in the same mutation as COMPLETED;
+	// generic status patches (incl. reconciliation resolve) must not soft-complete.
+	if nextStatus == StatusCompleted {
+		fs := strings.TrimSpace(current.FiscalStatus)
+		if fs != FiscalStatusSuccess && fs != FiscalStatusForceSkipped {
+			return UpdateStatusResponse{}, fmt.Errorf(
+				"%w: COMPLETED requires fiscal SUCCESS or FORCE_SKIPPED (use force-complete with reason_code); fiscal_status=%s",
+				ErrInvalidStatusTransition, fs,
+			)
+		}
+	}
+
 	if current.Status == nextStatus {
 		return UpdateStatusResponse{
 			OrderID:        current.OrderID,

@@ -37,6 +37,55 @@
       "title": "AIRecommendationPayload",
       "type": "object"
     },
+    "CashVariancePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "currency": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "expected_minor": {
+          "type": "integer"
+        },
+        "note": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "overage_minor": {
+          "type": "integer"
+        },
+        "received_minor": {
+          "type": "integer"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "shortfall_minor": {
+          "type": "integer"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "trace_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "currency",
+        "expected_minor",
+        "order_id",
+        "received_minor",
+        "supplier_id"
+      ],
+      "title": "CashVariancePayload",
+      "type": "object"
+    },
     "CommandPayload": {
       "additionalProperties": true,
       "properties": {
@@ -1730,6 +1779,44 @@
         }
       ],
       "title": "CartSyncUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CashVariancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CASH_OVERAGE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CashOverageEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CashVariancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CASH_SHORTFALL"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CashShortfallEnvelope"
     },
     {
       "allOf": [
@@ -3733,6 +3820,8 @@
         "AI_RECOMMENDATION_CREATED",
         "AI_RECOMMENDATION_DECIDED",
         "CART_SYNC_UPDATED",
+        "CASH_OVERAGE",
+        "CASH_SHORTFALL",
         "COMMAND_DISPATCHED",
         "COMMAND_RECEIVED",
         "COMMAND_SETTLED",
@@ -3851,6 +3940,8 @@
     "AI_RECOMMENDATION_CREATED": "AIRecommendationPayload",
     "AI_RECOMMENDATION_DECIDED": "AIRecommendationPayload",
     "CART_SYNC_UPDATED": "SyncPayload",
+    "CASH_OVERAGE": "CashVariancePayload",
+    "CASH_SHORTFALL": "CashVariancePayload",
     "COMMAND_DISPATCHED": "CommandPayload",
     "COMMAND_RECEIVED": "CommandPayload",
     "COMMAND_SETTLED": "CommandPayload",

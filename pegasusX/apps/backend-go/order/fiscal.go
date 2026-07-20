@@ -627,8 +627,11 @@ func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, or
 			Message:  "Order already completed",
 		}, nil
 	}
-	if orderRecord.Status != StatusFiscalFailed && orderRecord.Status != StatusFiscalizing {
-		return CollectCashResponse{}, fmt.Errorf("%w: must be FISCAL_FAILED or FISCALIZING (current %s)", ErrInvalidStatusTransition, orderRecord.Status)
+	// FISCAL_* normal path; RECONCILIATION_REQUIRED = payment landed after cancel / trapped funds (must audit force, not soft-complete).
+	switch orderRecord.Status {
+	case StatusFiscalFailed, StatusFiscalizing, StatusReconciliationRequired:
+	default:
+		return CollectCashResponse{}, fmt.Errorf("%w: must be FISCAL_FAILED, FISCALIZING, or RECONCILIATION_REQUIRED (current %s)", ErrInvalidStatusTransition, orderRecord.Status)
 	}
 
 	now := s.now().UTC()

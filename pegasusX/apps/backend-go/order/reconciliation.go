@@ -9,8 +9,9 @@ import (
 )
 
 type reconcileResolveRequest struct {
-	OrderID string `json:"order_id"`
-	Action  string `json:"action"` // "COMPLETE" or "CANCEL"
+	OrderID    string `json:"order_id"`
+	Action     string `json:"action"` // "COMPLETE" or "CANCEL"
+	ReasonCode string `json:"reason_code,omitempty"` // required for COMPLETE (ADR-009 force audit)
 }
 
 // HandleListReconciliationOrders is GET /v1/supplier/reconciliation.
@@ -85,17 +86,6 @@ func (s *Service) HandleResolveReconciliation(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	var nextStatus Status
-	switch req.Action {
-	case "COMPLETE":
-		nextStatus = StatusCompleted
-	case "CANCEL":
-		nextStatus = StatusCancelled
-	default:
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid action"})
-		return
-	}
-
 	actorID := claims.Subject
 	if actorID == "" {
 		actorID = "system"
@@ -107,7 +97,7 @@ func (s *Service) HandleResolveReconciliation(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
 		return
 	}
-	
+
 	if claims.Role == auth.RoleAdmin && orderRecord.SupplierID != claims.SupplierID {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
@@ -119,17 +109,48 @@ func (s *Service) HandleResolveReconciliation(w http.ResponseWriter, r *http.Req
 	}
 
 	updateClaims := auth.Claims{Role: auth.RoleAdmin, Subject: actorID}
-	updateReq := UpdateStatusRequest{Status: string(nextStatus), Reason: "reconciliation_resolved"}
-	_, err = s.UpdateStatus(ctx, updateClaims, req.OrderID, updateReq)
-	if err != nil {
-		s.log.ErrorContext(ctx, "reconciliation resolve failed", "order_id", req.OrderID, "err", err)
-		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+
+	switch req.Action {
+	case "COMPLETE":
+		// ADR-009: trapped-funds resolve must leave an audited FORCE_SKIPPED fiscal attempt —
+		// never soft COMPLETED without reconstructible fiscal truth.
+		reason := strings.TrimSpace(req.ReasonCode)
+		if reason == "" {
+			reason = ForceReasonOpsEscalation
+		}
+		resp, fErr := s.ForceCompleteOrder(ctx, updateClaims, req.OrderID, reason)
+		if fErr != nil {
+			s.log.ErrorContext(ctx, "reconciliation force-complete failed", "order_id", req.OrderID, "err", fErr)
+			s.writeOrderMutationError(w, "reconciliation complete failed", req.OrderID, fErr)
+			return
+		}
+		s.invalidateOrderCache(ctx, req.OrderID)
+		respBytes, _ := json.Marshal(map[string]any{
+			"status":      string(resp.State),
+			"attempt_id":  resp.AttemptID,
+			"fiscal_path": "FORCE_SKIPPED",
+			"message":     resp.Message,
+		})
+		s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+		idemCommitted = true
+		writeJSONBytes(w, http.StatusOK, respBytes)
+		return
+	case "CANCEL":
+		updateReq := UpdateStatusRequest{Status: string(StatusCancelled), Reason: "reconciliation_resolved"}
+		_, err = s.UpdateStatus(ctx, updateClaims, req.OrderID, updateReq)
+		if err != nil {
+			s.log.ErrorContext(ctx, "reconciliation cancel failed", "order_id", req.OrderID, "err", err)
+			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+			return
+		}
+		s.invalidateOrderCache(ctx, req.OrderID)
+		respBytes, _ := json.Marshal(map[string]string{"status": string(StatusCancelled)})
+		s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
+		idemCommitted = true
+		writeJSONBytes(w, http.StatusOK, respBytes)
+		return
+	default:
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid action"})
 		return
 	}
-
-	s.invalidateOrderCache(ctx, req.OrderID)
-	respBytes, _ := json.Marshal(map[string]string{"status": string(nextStatus)})
-	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
-	idemCommitted = true
-	writeJSONBytes(w, http.StatusOK, respBytes)
 }

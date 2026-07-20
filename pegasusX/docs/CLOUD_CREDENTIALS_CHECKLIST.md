@@ -77,6 +77,23 @@
 - iOS: `packages/mobile-ios-barcode` (AVFoundation)
 - payload-terminal: `expo-camera`
 
+### Fiscal / OFD (ADR-009 hard-gate)
+
+**Software path must be green with `FISCAL_PROVIDER=FAKE` first** (`make test-ssmr-fiscal`). Do not put production OFD keys in SSMR Docker.
+
+| Secret / env | Purpose |
+|--------------|---------|
+| `FISCAL_PROVIDER` | `FAKE` (local/SSMR) or `MY_SOLIQ` (sandbox/prod HTTP adapter) |
+| `FISCAL_MY_SOLIQ_BASE_URL` | OFD / my.soliq-class API base (required when MY_SOLIQ) |
+| `FISCAL_MY_SOLIQ_API_KEY` | Bearer / API key |
+| `FISCAL_MY_SOLIQ_TIN` | Supplier taxpayer ID (STIR) |
+| `FISCAL_MY_SOLIQ_PATH` | Optional path, default `/v1/receipts` |
+| `FISCAL_MY_SOLIQ_TIMEOUT_MS` | Optional; default aligns with 8s OFD timeout |
+
+Code: `apps/backend-go/order/fiscal_provider.go`. Misconfigured MY_SOLIQ **hard-fails** (never invents SUCCESS).
+
+See [`PRE_CLOUD_THIRD_PARTY_GATE.md`](./PRE_CLOUD_THIRD_PARTY_GATE.md) §2–§5.
+
 ### Payments — Global Pay.UZ (primary)
 
 Boss provides API credentials. Wire into Secret Manager + backend env:

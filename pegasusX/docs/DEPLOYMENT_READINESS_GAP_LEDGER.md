@@ -158,9 +158,24 @@ make test-ssmr-infra
 | Launch validator enterprise k8s checks | **Closed** — `scripts/validate_launch_readiness.py`, `validate_backend_k8s.sh` |
 | ai-worker freeze-lock consumer | **Pre-existing** — `apps/ai-worker/main.go` consumes `KAFKA_TOPIC_FREEZE_LOCKS` |
 
+## Pre-cloud money path (ADR-009) — software layer (2026-07-20)
+
+Canonical checklist: [`PRE_CLOUD_THIRD_PARTY_GATE.md`](./PRE_CLOUD_THIRD_PARTY_GATE.md).
+
+| ID | Item | Status |
+|----|------|--------|
+| PC-01 | Fiscal SM + worker + FAKE OFD + SSMR markers | **Closed** — `make test-ssmr-fiscal` → `__SSMR_FISCAL_OK__` |
+| PC-02 | `CASH_SHORTFALL`/`CASH_OVERAGE` WS fanout (was silent parity no-op) | **Closed** — `kafka/notification_dispatcher.go` |
+| PC-03 | Shared `EventType` + events.schema CashVariance | **Closed** — `packages/types`, `contracts/events.schema.json` |
+| PC-04 | Shift freeze open fiscal | **Closed** — `GET /v1/driver/open-fiscal` + return-complete 409 |
+| PC-05 | Live OFD (`FISCAL_PROVIDER=MY_SOLIQ`) + PSP keys | **Open** — boss credential track only |
+| PC-06 | Optional ledger journal for shortfall | **Deferred** — outbox events sufficient for pilot |
+| PC-07 | Dedicated card fiscal SSMR marker | **Open (P2)** |
+| PC-08 | Reconciliation COMPLETE soft-completed without fiscal | **Closed 2026-07-20** — resolve COMPLETE → audited force; UpdateStatus blocks soft COMPLETED |
+
 ## P0 — Live credential validation (boss + staging)
 
-Code gates (`make test-ssmr-infra`, `make px12-preflight`) do **not** prove live API credentials. Use [`PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md`](./PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md).
+Code gates (`make test-ssmr-infra`, `make test-ssmr-fiscal`, `make px12-preflight`) do **not** prove live API credentials. Use [`PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md`](./PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md).
 
 | ID | Item | Owner | Status |
 |----|------|-------|--------|
@@ -170,6 +185,7 @@ Code gates (`make test-ssmr-infra`, `make px12-preflight`) do **not** prove live
 | LC-04 | Firebase OTP per role row (real device) | Client | **Open** — plist/json per app |
 | LC-05 | Maps geocode + OSRM dispatch geometry | Platform | **Open** — `GOOGLE_MAPS_API_KEY`, OSRM sidecar |
 | LC-06 | Staging sign-off table complete | Release owner | **Open** — blocks `PEGASUSX_ENV=production` |
+| LC-07 | OFD / my.soliq sandbox after fiscal software green | Finance + Platform | **Open** — `FISCAL_MY_SOLIQ_*` after `test-ssmr-fiscal` |
 
 Automated pre-check: `PUBLIC_BASE_URL=<staging> bash scripts/validate_staging_credentials.sh` → `staging-credentials-ok`.
 

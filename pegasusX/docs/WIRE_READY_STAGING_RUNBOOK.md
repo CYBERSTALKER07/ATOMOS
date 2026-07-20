@@ -2,6 +2,8 @@
 
 Automated loop before GCP wiring. See [COST_GOVERNANCE_RUNBOOK.md](./COST_GOVERNANCE_RUNBOOK.md) for year-1 pilot caps ($1,700/mo).
 
+**Money / OFD / PSP pre-cloud gate:** [`PRE_CLOUD_THIRD_PARTY_GATE.md`](./PRE_CLOUD_THIRD_PARTY_GATE.md) — what must work with **fakes** before real third-party credentials.
+
 ## Local gates (run until green)
 
 ```bash
@@ -9,6 +11,9 @@ cd pegasusX
 
 # Loop A — every commit / before push
 make wire-ready                    # exit: wire-ready-ok (requires Docker)
+
+# Loop A′ — money hard-gate (ADR-009) before any real PSP / OFD
+make test-ssmr-fiscal              # exit: __SSMR_FISCAL_OK__
 
 # Loop C — release candidate
 make px12-preflight                # exit: px12-preflight-ok
@@ -21,6 +26,7 @@ PUBLIC_BASE_URL=https://api.staging.example.com make p1-pilot-weekly
 ## Exit criteria to start staging wire
 
 - [ ] `make wire-ready` → `wire-ready-ok`
+- [ ] `make test-ssmr-fiscal` → `__SSMR_FISCAL_OK__` (**required before real payment/OFD keys** — see [`PRE_CLOUD_THIRD_PARTY_GATE.md`](./PRE_CLOUD_THIRD_PARTY_GATE.md))
 - [ ] `make px12-preflight` → `px12-preflight-ok`
 - [ ] Changes committed to `main` (or release branch)
 

@@ -7,6 +7,7 @@ Use before onboarding real shops, drivers, and retailers. Complements [`LAUNCH_R
 ```bash
 cd pegasusX
 make wire-ready              # full gate before staging wire (includes SSMR)
+make test-ssmr-fiscal        # fiscal hard-gate markers (fakes only — see PRE_CLOUD_THIRD_PARTY_GATE.md)
 make p0-preflight              # subset; use P0_SKIP_SSMR=1 if Docker unavailable
 P0_SKIP_SSMR=1 make p0-preflight   # skip Docker SSMR when infra not up
 PUBLIC_BASE_URL=https://api.staging.example.com make p0-preflight  # + cloud smoke
@@ -21,6 +22,7 @@ PUBLIC_BASE_URL=https://api.staging.example.com make p0-preflight  # + cloud smo
 | `gen-contracts-gate` | Event schema ↔ generated stubs |
 | `gap-hunter-gate` | Producer/consumer event shape parity |
 | `test-ssmr-infra` | Cross-role E2E (`PX_E2E_*` markers) |
+| `test-ssmr-fiscal` | ADR-009 money hard-gate (`PX_E2E_FISCAL_*` → `__SSMR_FISCAL_OK__`) — **before real PSP/OFD** |
 | `kubectl kustomize overlays/prod` | Renderable prod stack (ingress, worker, API) |
 
 ## GCP / staging (before prod traffic)

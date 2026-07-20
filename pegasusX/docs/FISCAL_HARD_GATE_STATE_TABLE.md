@@ -152,18 +152,18 @@ Regression tests must include:
 
 | Marker | Update |
 |--------|--------|
-| Lifecycle vertical cash path | Expect `FISCALIZING` then worker → `COMPLETED` |
-| `PX_E2E_FISCAL_*` | New markers (ADR-009) |
-| Fake OFD | Success by default; fail when `X-SSMR-Fiscal-Fail: 1` or order id prefix |
+| Lifecycle vertical cash path | Expect `FISCALIZING` then worker → `COMPLETED` + `PX_E2E_FISCAL_CASH_OK` |
+| `PX_E2E_FISCAL_*` | `make test-ssmr-fiscal` → cash / fail+retry / force / shortfall / shift-freeze |
+| Fake OFD | Success by default; **fail hooks:** order_id or retailer_id contains `fiscal-fail`, or `amount_minor=13` |
 
 ## 8. Implementation checklist for agents
 
 - [x] Apply `20260720_order_fiscal_receipts.ddl` (SSMR emulator verified 2026-07-20)
-- [ ] Constants + SM + tests
-- [ ] Events triple-lock
-- [ ] CollectCash / card clear rewrite
-- [ ] Worker + fake provider
-- [ ] Retry + force-complete APIs
-- [ ] Dispatcher fanout (explicit cases — no silent drop)
-- [ ] Driver/retailer/supplier UI
-- [ ] Update lifecycle vertical + full SSMR
+- [x] Constants + SM + tests
+- [x] Events triple-lock (`FISCAL_*`, `ORDER_FORCE_COMPLETED`, `CASH_SHORTFALL`/`CASH_OVERAGE`)
+- [x] CollectCash / card clear → `FISCALIZING` (no soft COMPLETED)
+- [x] Worker + fake provider + `MY_SOLIQ` HTTP adapter (`FISCAL_PROVIDER`)
+- [x] Retry + force-complete APIs (ADMIN + WAREHOUSE_ADMIN)
+- [x] Dispatcher fanout (fiscal + cash variance — no silent drop)
+- [x] Driver/retailer/supplier UI (fiscal wait, shortfall input, shift freeze)
+- [x] Lifecycle vertical + `make test-ssmr-fiscal` (`__SSMR_FISCAL_OK__` 2026-07-20)

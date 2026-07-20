@@ -759,15 +759,17 @@ func runWarehouseDispatchExecute(ctx context.Context, client *http.Client, base,
 
 func runWarehouseFleetMgmtE2E(ctx context.Context, client *http.Client, base, cookie string, cfg *bootstrap.Config, supplierID string) (string, string, error) {
 	whID := demoWarehouseID()
-	plate := fmt.Sprintf("WH%04d", time.Now().Unix()%10000)
+	// Unique suffix so multi-order fiscal spines mint independent fleet rows.
+	idemSfx := fmt.Sprintf("%d", time.Now().UnixNano())
+	plate := fmt.Sprintf("WH%s", idemSfx[len(idemSfx)-6:])
 	vehicleBody, _ := json.Marshal(map[string]any{
-		"label":         "SSMR WH Ops Truck",
+		"label":         "SSMR WH Ops Truck " + plate,
 		"license_plate": plate,
 		"vehicle_class": "CLASS_A",
 		"max_volume_vu": 8.0,
 	})
 	vehicleURL := base + "/v1/warehouse/ops/vehicles?warehouse_id=" + whID
-	status, respBody, _, err := clientPost(ctx, client, vehicleURL, vehicleBody, cookie, "ssmr-wh-ops-vehicle")
+	status, respBody, _, err := clientPost(ctx, client, vehicleURL, vehicleBody, cookie, "ssmr-wh-ops-vehicle-"+idemSfx)
 	if err != nil {
 		return "", "", err
 	}
@@ -785,11 +787,11 @@ func runWarehouseFleetMgmtE2E(ctx context.Context, client *http.Client, base, co
 	}
 
 	driverBody, _ := json.Marshal(map[string]any{
-		"name":  "SSMR WH Ops Driver",
-		"phone": fmt.Sprintf("+99890100%04d", time.Now().Unix()%10000),
+		"name":  "SSMR WH Ops Driver " + plate,
+		"phone": fmt.Sprintf("+99890%s", idemSfx[len(idemSfx)-7:]),
 	})
 	driverURL := base + "/v1/warehouse/ops/drivers?warehouse_id=" + whID
-	status, respBody, _, err = clientPost(ctx, client, driverURL, driverBody, cookie, "ssmr-wh-ops-driver")
+	status, respBody, _, err = clientPost(ctx, client, driverURL, driverBody, cookie, "ssmr-wh-ops-driver-"+idemSfx)
 	if err != nil {
 		return "", "", err
 	}
@@ -808,7 +810,7 @@ func runWarehouseFleetMgmtE2E(ctx context.Context, client *http.Client, base, co
 
 	assignBody, _ := json.Marshal(map[string]string{"vehicle_id": vehicleResp.VehicleID})
 	assignURL := base + "/v1/warehouse/ops/drivers/" + driverResp.DriverID + "/assign-vehicle?warehouse_id=" + whID
-	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, assignURL, assignBody, cookie, "ssmr-wh-assign-vehicle")
+	status, respBody, _, err = clientDo(ctx, client, http.MethodPatch, assignURL, assignBody, cookie, "ssmr-wh-assign-vehicle-"+idemSfx)
 	if err != nil {
 		return "", "", err
 	}
@@ -875,7 +877,7 @@ func runWarehouseDispatchExecuteWithWS(ctx context.Context, client *http.Client,
 		wsErrCh <- waitForWSMessage(ctx, conn, "DISPATCH_COMMITTED")
 	}()
 
-	hint, err := runWarehouseDispatchExecute(ctx, client, base, supplierCookie, orderID, driverID, vehicleID, "ssmr-dispatch-execute")
+	hint, err := runWarehouseDispatchExecute(ctx, client, base, supplierCookie, orderID, driverID, vehicleID, "ssmr-dispatch-execute-"+orderID)
 	if err != nil {
 		return nil, err
 	}

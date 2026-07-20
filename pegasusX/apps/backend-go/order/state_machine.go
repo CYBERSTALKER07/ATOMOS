@@ -25,8 +25,8 @@ func ValidateStatusTransition(current Status, next Status) error {
 		allowed = next == StatusAwaitingPayment || next == StatusDeliveredOnCredit
 	case StatusDeliveredOnCredit:
 		// §9.1: fiscal only when money received — settlement capture enters FISCALIZING.
-		// Force-complete (ADMIN/WAREHOUSE_ADMIN) may still land COMPLETED via service gate.
-		allowed = next == StatusFiscalizing || next == StatusCompleted
+		// Force-complete does not start from credit leave-behind (must settle money first).
+		allowed = next == StatusFiscalizing
 	case StatusAwaitingPayment:
 		// Card/cash capture → FISCALIZING; cash choice → PENDING_CASH_COLLECTION.
 		allowed = next == StatusFiscalizing || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit

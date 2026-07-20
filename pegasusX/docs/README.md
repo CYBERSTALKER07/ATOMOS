@@ -65,5 +65,7 @@ Specifically:
 - `ROLE_ROW_PARITY_MATRIX.md` — Pegasus vs pegasusX screen/API matrix
 - `LOAD_TEST_SLO.md` — 10k retailer concurrency profile
 - `CLOUD_CREDENTIALS_CHECKLIST.md` — Boss handoff for GCP/Firebase/payments
+- `PRE_CLOUD_THIRD_PARTY_GATE.md` — software hard-gate (fakes) before real PSP/OFD/Firebase/Maps
+- `WIRE_READY_STAGING_RUNBOOK.md` — local gates before GCP wire
 - `CLOUD_CUTOVER_RUNBOOK.md` — staging/production cutover sequence
 - `LOAD_TEST_REPORT.md` — load run results template

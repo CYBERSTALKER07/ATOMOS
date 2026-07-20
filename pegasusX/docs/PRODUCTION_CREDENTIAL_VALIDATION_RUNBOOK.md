@@ -97,6 +97,19 @@ curl -sS -X POST "$PUBLIC_BASE_URL/v1/webhooks/global-pay" \
 
 ---
 
+### 2b. Fiscal / OFD (only after software green)
+
+**Pre-req:** `make test-ssmr-fiscal` → `__SSMR_FISCAL_OK__` with `FISCAL_PROVIDER=FAKE`.  
+See [`PRE_CLOUD_THIRD_PARTY_GATE.md`](./PRE_CLOUD_THIRD_PARTY_GATE.md).
+
+| Env | Setting |
+|-----|---------|
+| Staging software | Keep `FISCAL_PROVIDER=FAKE` until OFD sandbox contract signed |
+| OFD sandbox | `FISCAL_PROVIDER=MY_SOLIQ` + `FISCAL_MY_SOLIQ_BASE_URL` / `API_KEY` / `TIN` in GSM |
+| Pass criteria | Collect-cash order → attempt `SUCCESS` with real `fiscal_receipt_id` + QR; replay same `attempt_id` does not create a second fiscal document |
+
+Misconfigured MY_SOLIQ must **fail** attempts (order → `FISCAL_FAILED`), never invent SUCCESS.
+
 ### 3. Payme / Click (sandbox)
 
 **Handlers:** `payment/payme_webhook.go`, `payment/click_webhook.go`.

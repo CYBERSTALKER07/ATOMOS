@@ -101,7 +101,9 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleWarehouseOperationalEvent(ctx, msg.Value, traceID)
 	case events.EventPaymentRequired, events.EventPaymentCleared, events.EventSettlementRequired, events.EventDeliveryDisputed,
 		events.EventFiscalReceiptRequested, events.EventFiscalReceiptSucceeded, events.EventFiscalReceiptFailed,
-		events.EventOrderForceCompleted:
+		events.EventOrderForceCompleted,
+		// ADR-009 cash variance — must not fall through to silent parity no-op.
+		events.EventCashShortfall, events.EventCashOverage:
 		return d.handleSupplierFinanceEvent(ctx, msg.Value, traceID)
 	case events.EventOrderCreated, events.EventOrderStatusChanged, events.EventOrderFinalized:
 		return d.handleOrderEvent(ctx, msg.Value, traceID)

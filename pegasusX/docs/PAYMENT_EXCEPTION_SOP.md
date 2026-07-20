@@ -22,7 +22,8 @@ Provide a repeatable process for payment exceptions in pegasusX so support and f
    - `GET /v1/payment/reconciliation/mismatches`
 3. Confirm state-transition evidence:
    - payment state events (`PAYMENT_REQUIRED`, `PAYMENT_CLEARED`, `SETTLEMENT_REQUIRED`, `DELIVERY_DISPUTED`)
-   - immutable ledger row presence for the affected session/order.
+   - fiscal hard-gate events (`FISCAL_RECEIPT_*`, `ORDER_FORCE_COMPLETED`, `CASH_SHORTFALL` / `CASH_OVERAGE`) and order status `FISCALIZING` / `FISCAL_FAILED` / `COMPLETED`
+   - immutable ledger row presence for the affected session/order; fiscal attempts in `OrderFiscalReceipts`.
 4. Check replay/idempotency posture:
    - duplicate webhook should replay one durable outcome.
    - same idempotency key with different payload should produce `409 idempotency_key_payload_mismatch`.

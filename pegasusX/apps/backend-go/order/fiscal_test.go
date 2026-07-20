@@ -343,6 +343,41 @@ func TestOfflineBatchIdempotentWhenAlreadyCompleted(t *testing.T) {
 	}
 }
 
+func TestUpdateStatusCannotSoftCompleteWithoutFiscal(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusReconciliationRequired)
+	o.FiscalStatus = FiscalStatusNone
+	repo := &testRepo{found: true, order: o}
+	svc := newTestService(repo, now)
+	admin := auth.Claims{Subject: "admin-1", Role: auth.RoleAdmin, SupplierID: o.SupplierID}
+	_, err := svc.UpdateStatus(context.Background(), admin, o.OrderID, UpdateStatusRequest{
+		Status: string(StatusCompleted),
+		Reason: "soft",
+	})
+	if err == nil || !errors.Is(err, ErrInvalidStatusTransition) {
+		t.Fatalf("got %v want ErrInvalidStatusTransition fiscal gate", err)
+	}
+}
+
+func TestForceCompleteFromReconciliationRequired(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusReconciliationRequired)
+	o.FiscalStatus = ""
+	repo := &testRepo{found: true, order: o}
+	svc := newTestService(repo, now)
+	admin := auth.Claims{Subject: "admin-1", Role: auth.RoleAdmin}
+	resp, err := svc.ForceCompleteOrder(context.Background(), admin, o.OrderID, ForceReasonOpsEscalation)
+	if err != nil {
+		t.Fatalf("force from reconciliation: %v", err)
+	}
+	if resp.State != StatusCompleted {
+		t.Fatalf("state=%s want COMPLETED", resp.State)
+	}
+	if repo.captured.FiscalStatus != FiscalStatusForceSkipped {
+		t.Fatalf("fiscal=%s want FORCE_SKIPPED", repo.captured.FiscalStatus)
+	}
+}
+
 func TestNormalizeForceReasonCode(t *testing.T) {
 	got, err := NormalizeForceReasonCode("  ofd_down ")
 	if err != nil || got != ForceReasonOFDDown {
