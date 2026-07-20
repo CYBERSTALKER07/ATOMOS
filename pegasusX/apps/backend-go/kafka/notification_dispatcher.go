@@ -99,7 +99,9 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleWarehouseCreated(ctx, msg.Value, traceID)
 	case events.EventWarehouseSupplyRequestOpened, events.EventWarehouseDispatchLockChanged:
 		return d.handleWarehouseOperationalEvent(ctx, msg.Value, traceID)
-	case events.EventPaymentRequired, events.EventPaymentCleared, events.EventSettlementRequired, events.EventDeliveryDisputed:
+	case events.EventPaymentRequired, events.EventPaymentCleared, events.EventSettlementRequired, events.EventDeliveryDisputed,
+		events.EventFiscalReceiptRequested, events.EventFiscalReceiptSucceeded, events.EventFiscalReceiptFailed,
+		events.EventOrderForceCompleted:
 		return d.handleSupplierFinanceEvent(ctx, msg.Value, traceID)
 	case events.EventOrderCreated, events.EventOrderStatusChanged, events.EventOrderFinalized:
 		return d.handleOrderEvent(ctx, msg.Value, traceID)
@@ -159,9 +161,31 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleCreditEvent(ctx, msg.Value, traceID)
 	case events.EventProductHandlingUpdated:
 		return d.handleProductHandlingUpdated(ctx, msg.Value, traceID)
+	case events.EventWarehouseLocationUpdated:
+		return d.handleWarehouseLocationUpdated(ctx, msg.Value, traceID)
+	case events.EventFactoryLocationUpdated:
+		return d.handleFactoryLocationUpdated(ctx, msg.Value, traceID)
+	case events.EventSupplyRequestAccepted, events.EventSupplyRequestUpdate,
+		events.EventFactorySupplyRequestUpdate:
+		// Supply-request family (warehouse + factory) — multi-pod fanout.
+		return d.handleSupplyRequestEvent(ctx, msg.Value, traceID)
+	case events.EventWarehouseTransferCreated, events.EventWarehouseTransferReceived,
+		events.EventSupplyTransferApproaching:
+		return d.handleTransferEvent(ctx, msg.Value, traceID)
+	case events.EventSplitShipmentCreated, events.EventOrderCapacityOverflow:
+		return d.handleWarehouseOperationalEvent(ctx, msg.Value, traceID)
 	default:
 		if strings.HasPrefix(envelope.Type, "MANIFEST_") {
 			return d.handleManifestEvent(ctx, msg.Value, traceID)
+		}
+		// Nested factory supply broadcasts sometimes use FACTORY_SUPPLY_* names.
+		if strings.HasPrefix(envelope.Type, "FACTORY_SUPPLY_") {
+			return d.handleSupplyRequestEvent(ctx, msg.Value, traceID)
+		}
+		// WAREHOUSE_TRANSFER_* does not match TRANSFER_* prefix — route explicitly by family.
+		if strings.HasPrefix(envelope.Type, "WAREHOUSE_TRANSFER_") ||
+			strings.HasPrefix(envelope.Type, "SUPPLY_TRANSFER_") {
+			return d.handleTransferEvent(ctx, msg.Value, traceID)
 		}
 		return d.dispatchParityEvent(ctx, envelope.Type, msg.Value, traceID)
 	}
@@ -408,6 +432,47 @@ func (d *NotificationDispatcher) handleSupplierFinanceEvent(ctx context.Context,
 		d.broadcastDriver(ctx, strings.TrimSpace(meta.DriverID), payload)
 	}
 	slog.DebugContext(ctx, "fanned out finance event", "event_type", e.Type, "order_id", e.OrderID)
+	return nil
+}
+
+// handleWarehouseLocationUpdated fans topology location changes to supplier +
+// warehouse rooms (multi-pod). Local handlers also broadcast in-process.
+func (d *NotificationDispatcher) handleWarehouseLocationUpdated(ctx context.Context, payload []byte, traceID string) error {
+	var e events.WarehouseEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode warehouse location event: %w", err)
+	}
+	aggregateID := strings.TrimSpace(e.WarehouseID)
+	if aggregateID == "" {
+		aggregateID = e.SupplierID
+	}
+	if d.dropFanout(e.Type, traceID, aggregateID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	d.broadcastWarehouse(ctx, e.WarehouseID, payload)
+	return nil
+}
+
+// handleFactoryLocationUpdated fans factory geo updates to supplier + factory rooms.
+func (d *NotificationDispatcher) handleFactoryLocationUpdated(ctx context.Context, payload []byte, traceID string) error {
+	var e events.FactoryEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode factory location event: %w", err)
+	}
+	aggregateID := strings.TrimSpace(e.FactoryID)
+	if aggregateID == "" {
+		aggregateID = e.SupplierID
+	}
+	if d.dropFanout(e.Type, traceID, aggregateID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	factoryRoom := strings.TrimSpace(e.FactoryID)
+	if factoryRoom == "" {
+		factoryRoom = e.SupplierID
+	}
+	d.broadcastFactory(ctx, factoryRoom, payload)
 	return nil
 }
 

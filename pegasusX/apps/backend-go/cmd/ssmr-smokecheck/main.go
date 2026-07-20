@@ -23,7 +23,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|payment|shop-closed|manifest-seal|loadtokens|planning-baseline-seed]")
+		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|lifecycle-vertical|payment|shop-closed|manifest-seal|loadtokens|planning-baseline-seed]")
 		os.Exit(1)
 	}
 
@@ -42,6 +42,12 @@ func main() {
 		timeout = loadTokensTimeout()
 	case "e2e":
 		timeout = e2eTimeout()
+	case "lifecycle-vertical":
+		// Focused spine is shorter than full ecosystem e2e.
+		timeout = e2eTimeout()
+		if timeout > 2*time.Minute {
+			timeout = 2 * time.Minute
+		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -61,6 +67,8 @@ func main() {
 		checkErr = runSpatialCheck(ctx, cfg)
 	case "e2e":
 		checkErr = runE2ECheck(ctx, cfg)
+	case "lifecycle-vertical":
+		checkErr = runLifecycleVerticalE2E(ctx, cfg)
 	case "payment":
 		checkErr = runPaymentSmokeCheck(ctx, cfg)
 	case "shop-closed":

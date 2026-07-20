@@ -26,10 +26,19 @@ struct RootView: View {
     @Environment(TokenStore.self) private var tokenStore
     @State private var driverSocketState = DriverSocketState.shared
     @State private var clientPolicyMessage: String?
+    @State private var clientPolicyForce = false
+    @State private var pendingManifest: AutoUpdater.Manifest?
 
     var body: some View {
         VStack(spacing: 0) {
-            ClientPolicyBanner(message: clientPolicyMessage)
+            ClientPolicyBanner(
+                message: clientPolicyMessage,
+                force: clientPolicyForce,
+                onUpdate: clientPolicyMessage == nil ? nil : {
+                    AutoUpdater.promptInstall(manifest: pendingManifest, force: clientPolicyForce)
+                },
+                onDismiss: clientPolicyForce ? nil : { clientPolicyMessage = nil },
+            )
             Group {
                 if tokenStore.isAuthenticated {
                     MainTabView()
@@ -80,39 +89,47 @@ struct RootView: View {
             struct ClientPolicy: Decodable {
                 let outdated: Bool
                 let forceUpdate: Bool
+                let updateDeferred: Bool
                 let minimumVersion: String
+                let recommendedVersion: String?
+                let updateURL: String?
                 let deferReason: String?
 
                 enum CodingKeys: String, CodingKey {
                     case outdated
                     case forceUpdate = "force_update"
+                    case updateDeferred = "update_deferred"
                     case minimumVersion = "minimum_version"
+                    case recommendedVersion = "recommended_version"
+                    case updateURL = "update_url"
                     case deferReason = "defer_reason"
                 }
             }
             var components = URLComponents()
             components.queryItems = [
-                URLQueryItem(name: "role", value: "DRIVER"),
+                URLQueryItem(name: "role", value: EnterpriseUpdateConfig.policyRole),
                 URLQueryItem(name: "platform", value: "ios"),
                 URLQueryItem(name: "version", value: version),
-                URLQueryItem(name: "channel", value: "production"),
+                URLQueryItem(name: "channel", value: EnterpriseUpdateConfig.channel),
             ]
             let query = components.percentEncodedQuery.map { "?\($0)" } ?? ""
             let policy: ClientPolicy = try await APIClient.shared.get(
                 "/v1/platform/client-policy\(query)"
             )
-            if policy.outdated || policy.forceUpdate {
-                var message = policy.forceUpdate ? "Update required" : "Update available"
-                if !policy.minimumVersion.isEmpty {
-                    message += " — minimum version \(policy.minimumVersion)"
-                }
-                if let deferReason = policy.deferReason, !deferReason.isEmpty {
-                    message += ". \(deferReason)"
-                }
-                clientPolicyMessage = message
-                AutoUpdater.checkForUpdates()
-            } else {
-                clientPolicyMessage = nil
+            let state = await AutoUpdater.evaluate(
+                outdated: policy.outdated,
+                forceUpdate: policy.forceUpdate,
+                updateDeferred: policy.updateDeferred,
+                minimumVersion: policy.minimumVersion,
+                recommendedVersion: policy.recommendedVersion,
+                deferReason: policy.deferReason,
+                updateURL: policy.updateURL,
+            )
+            clientPolicyMessage = state.message
+            clientPolicyForce = state.force
+            pendingManifest = state.manifest
+            if state.force, state.available {
+                AutoUpdater.promptInstall(manifest: state.manifest, force: true)
             }
         } catch {
             // Policy fetch is optional on local/dev stacks.

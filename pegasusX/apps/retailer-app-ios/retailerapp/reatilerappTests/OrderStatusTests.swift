@@ -33,6 +33,14 @@ struct OrderStatusTests {
         #expect(OrderStatus.pendingCashCollection.displayName == "Cash Collection")
     }
 
+    @Test func displayName_fiscalizing() {
+        #expect(OrderStatus.fiscalizing.displayName == "Pending Fiscal")
+    }
+
+    @Test func displayName_fiscalFailed() {
+        #expect(OrderStatus.fiscalFailed.displayName == "Fiscal Failed")
+    }
+
     @Test func displayName_completed() {
         #expect(OrderStatus.completed.displayName == "Delivered")
     }
@@ -58,7 +66,10 @@ struct OrderStatusTests {
     // MARK: - isActive
 
     @Test func isActive_activeStates() {
-        let active: [OrderStatus] = [.loaded, .dispatched, .inTransit, .arrived, .awaitingPayment, .pendingCashCollection]
+        let active: [OrderStatus] = [
+            .loaded, .dispatched, .inTransit, .arrived, .awaitingPayment, .pendingCashCollection,
+            .fiscalizing, .fiscalFailed,
+        ]
         for status in active {
             #expect(status.isActive == true, "\(status) should be active")
         }

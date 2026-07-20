@@ -250,7 +250,20 @@ fun RetailerNavigation(
             },
         ) { innerPadding ->
             Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                ClientPolicyBanner(message = navState.clientPolicyMessage)
+                ClientPolicyBanner(
+                    message = navState.clientPolicyMessage,
+                    force = navState.clientPolicyForce,
+                    onUpdate = if (navState.clientPolicyMessage != null) {
+                        { navigationViewModel.onUpdateClick() }
+                    } else {
+                        null
+                    },
+                    onDismiss = if (!navState.clientPolicyForce) {
+                        { navigationViewModel.dismissClientPolicyBanner() }
+                    } else {
+                        null
+                    },
+                )
                 RetailerOperationsStrip(
                     navState = navState,
                     navSyncMessage = navSyncMessage,
@@ -624,10 +637,11 @@ fun RetailerNavigation(
         val hidePaymentForAddCard =
             navBackStackEntry?.destination?.route?.startsWith("SAVED_CARDS_DELIVERY_PAYMENT") == true
 
-        // Auto-transition to SUCCESS when ORDER_COMPLETED arrives via WebSocket
-        LaunchedEffect(navState.orderCompleted) {
-            if (navState.orderCompleted) {
-                paymentPhase = PaymentPhase.SUCCESS
+        // ADR-009: fiscalizing while OFD runs; SUCCESS only after fiscal/order complete.
+        LaunchedEffect(navState.fiscalizing, navState.orderCompleted) {
+            when {
+                navState.orderCompleted -> paymentPhase = PaymentPhase.SUCCESS
+                navState.fiscalizing -> paymentPhase = PaymentPhase.FISCALIZING
             }
         }
 

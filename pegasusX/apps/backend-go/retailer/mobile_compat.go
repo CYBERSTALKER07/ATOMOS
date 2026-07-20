@@ -294,6 +294,16 @@ func mobileTrackingOrder(order TrackingOrder) map[string]any {
 	if order.PaymentStatus != "" {
 		m["payment_status"] = order.PaymentStatus
 	}
+	// ADR-009 fiscal receipt surface (snake_case for mobile clients).
+	if fs := strings.TrimSpace(order.FiscalStatus); fs != "" {
+		m["fiscal_status"] = fs
+	}
+	if qr := strings.TrimSpace(order.FiscalQR); qr != "" {
+		m["fiscal_qr"] = qr
+	}
+	if rid := strings.TrimSpace(order.LatestFiscalReceiptID); rid != "" {
+		m["latest_fiscal_receipt_id"] = rid
+	}
 
 	if order.DriverLocation != nil {
 		m["driver_location"] = order.DriverLocation

@@ -133,10 +133,20 @@ func (d *NotificationDispatcher) dispatchParityEvent(ctx context.Context, eventT
 
 	default:
 		switch {
-		case strings.HasPrefix(eventType, "TRANSFER_"):
+		case strings.HasPrefix(eventType, "TRANSFER_"),
+			strings.HasPrefix(eventType, "WAREHOUSE_TRANSFER_"),
+			strings.HasPrefix(eventType, "SUPPLY_TRANSFER_"):
 			return d.handleTransferEvent(ctx, payload, traceID)
-		case strings.HasPrefix(eventType, "SUPPLY_REQUEST_"):
+		case eventType == events.EventSplitShipmentCreated,
+			eventType == events.EventOrderCapacityOverflow:
+			return d.handleWarehouseOperationalEvent(ctx, payload, traceID)
+		case strings.HasPrefix(eventType, "SUPPLY_REQUEST_"),
+			strings.HasPrefix(eventType, "FACTORY_SUPPLY_"):
 			return d.handleSupplyRequestEvent(ctx, payload, traceID)
+		case eventType == events.EventWarehouseLocationUpdated:
+			return d.handleWarehouseLocationUpdated(ctx, payload, traceID)
+		case eventType == events.EventFactoryLocationUpdated:
+			return d.handleFactoryLocationUpdated(ctx, payload, traceID)
 		case strings.HasPrefix(eventType, "INVENTORY_IMPORT_"):
 			return d.handleImportEvent(ctx, payload, traceID)
 		case strings.HasPrefix(eventType, "OPTIMIZATION_"), eventType == "DEMAND_FORECAST_READY":
@@ -281,14 +291,45 @@ func (d *NotificationDispatcher) handleTransferEvent(ctx context.Context, payloa
 	if err != nil {
 		return err
 	}
+	// Typed WarehouseEvent / nested transfer payloads.
+	if e.warehouseID() == "" && e.supplierID() == "" {
+		var wh events.WarehouseEvent
+		if json.Unmarshal(payload, &wh) == nil {
+			if e.Type == "" {
+				e.Type = wh.Type
+			}
+			if e.WarehouseID == "" {
+				e.WarehouseID = wh.WarehouseID
+			}
+			if e.SupplierID == "" {
+				e.SupplierID = wh.SupplierID
+			}
+			if e.FactoryID == "" {
+				e.FactoryID = wh.FactoryID
+			}
+			if e.TransferID == "" {
+				e.TransferID = wh.TransferID
+				if e.TransferID == "" {
+					e.TransferID = wh.LinkedTransferID
+				}
+			}
+		}
+	}
 	aggregateID := strings.TrimSpace(e.TransferID)
 	if aggregateID == "" {
 		aggregateID = e.ManifestID
+	}
+	if aggregateID == "" {
+		aggregateID = e.warehouseID()
+	}
+	if aggregateID == "" {
+		aggregateID = e.supplierID()
 	}
 	if d.dropFanout(e.Type, traceID, aggregateID) {
 		return nil
 	}
 	d.broadcastSupplier(ctx, e.supplierID(), payload)
+	d.broadcastWarehouse(ctx, e.warehouseID(), payload)
 	factoryRoom := e.factoryID()
 	if factoryRoom == "" {
 		factoryRoom = e.supplierID()
@@ -303,11 +344,45 @@ func (d *NotificationDispatcher) handleSupplyRequestEvent(ctx context.Context, p
 	if err != nil {
 		return err
 	}
+	// Nested local factory broadcasts: { "type": "...", "data": { warehouse_id, ... } }
+	if e.Type == "" || (e.warehouseID() == "" && e.factoryID() == "" && e.supplierID() == "") {
+		var nested struct {
+			Type string `json:"type"`
+			Data struct {
+				RequestID   string `json:"request_id"`
+				WarehouseID string `json:"warehouse_id"`
+				FactoryID   string `json:"factory_id"`
+				SupplierID  string `json:"supplier_id"`
+				State       string `json:"state"`
+			} `json:"data"`
+		}
+		if json.Unmarshal(payload, &nested) == nil {
+			if e.Type == "" {
+				e.Type = nested.Type
+			}
+			if e.WarehouseID == "" {
+				e.WarehouseID = nested.Data.WarehouseID
+			}
+			if e.FactoryID == "" {
+				e.FactoryID = nested.Data.FactoryID
+			}
+			if e.SupplierID == "" {
+				e.SupplierID = nested.Data.SupplierID
+			}
+			if e.OrderID == "" {
+				e.OrderID = nested.Data.RequestID
+			}
+		}
+	}
 	if d.dropFanout(e.Type, traceID, e.dedupAggregateID()) {
 		return nil
 	}
 	d.broadcastSupplier(ctx, e.supplierID(), payload)
-	d.broadcastFactory(ctx, e.factoryID(), payload)
+	factoryRoom := e.factoryID()
+	if factoryRoom == "" {
+		factoryRoom = e.supplierID()
+	}
+	d.broadcastFactory(ctx, factoryRoom, payload)
 	d.broadcastWarehouse(ctx, e.warehouseID(), payload)
 	return nil
 }

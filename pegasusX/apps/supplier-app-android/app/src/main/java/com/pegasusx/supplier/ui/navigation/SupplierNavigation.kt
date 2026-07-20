@@ -11,6 +11,9 @@ import com.pegasusx.supplier.ui.navigation.SupplierSection
 import com.pegasusx.supplier.BuildConfig
 import com.pegasusx.supplier.data.remote.TokenHolder
 import com.pegasusx.supplier.ui.components.ClientPolicyBanner
+import com.pegasusx.supplier.service.AutoUpdater
+import com.pegasusx.supplier.service.EnterpriseUpdateConfig
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -197,32 +200,41 @@ fun SupplierNavigation(
     val showBottomBar = !useDrawer && currentRoute in tabs.map { it.route }
     var isRailExpanded by remember { mutableStateOf(true) }
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
+    var clientPolicyForce by remember { mutableStateOf(false) }
+    var pendingManifest by remember { mutableStateOf<AutoUpdater.Manifest?>(null) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val autoUpdater = remember(context) { AutoUpdater(context.applicationContext) }
+
+    DisposableEffect(autoUpdater) {
+        autoUpdater.register()
+        onDispose { autoUpdater.cleanup() }
+    }
 
     fun loadClientPolicy() {
         scope.launch {
             try {
                 val resp = api.getClientPolicy(
+                    role = EnterpriseUpdateConfig.POLICY_ROLE,
                     platform = "android",
                     version = BuildConfig.VERSION_NAME,
+                    channel = EnterpriseUpdateConfig.CHANNEL,
                 )
                 if (resp.isSuccessful && resp.body() != null) {
-                    val policy = resp.body()!!
-                    clientPolicyMessage = if (policy.outdated || policy.forceUpdate) {
-                        buildString {
-                            append(if (policy.forceUpdate) "Update required" else "Update available")
-                            if (policy.minimumVersion.isNotBlank()) {
-                                append(" — minimum version ${policy.minimumVersion}")
-                            }
-                            policy.deferReason?.takeIf { it.isNotBlank() }?.let { append(". $it") }
-                        }
-                    } else {
-                        null
-                    }
+                    val state = autoUpdater.checkFromPolicy(resp.body()!!, autoDownload = false)
+                    clientPolicyMessage = state.message
+                    clientPolicyForce = state.force
+                    pendingManifest = state.manifest
                 }
             } catch (_: Exception) {
                 // Policy fetch is optional on local/dev stacks.
             }
+        }
+    }
+
+    fun onUpdateClick() {
+        scope.launch {
+            autoUpdater.startUpdate(pendingManifest)
         }
     }
 
@@ -561,7 +573,20 @@ fun SupplierNavigation(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        ClientPolicyBanner(clientPolicyMessage)
+        ClientPolicyBanner(
+            message = clientPolicyMessage,
+            force = clientPolicyForce,
+            onUpdate = if (clientPolicyMessage != null) {
+                { onUpdateClick() }
+            } else {
+                null
+            },
+            onDismiss = if (!clientPolicyForce) {
+                { clientPolicyMessage = null }
+            } else {
+                null
+            },
+        )
         if (useDrawer) {
             Row(Modifier.weight(1f).fillMaxSize()) {
                 SupplierNavigationDrawer(

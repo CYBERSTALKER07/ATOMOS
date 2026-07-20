@@ -127,8 +127,10 @@ class ProfileViewModel @Inject constructor(
 
             try {
                 val policy = api.getClientPolicy(
+                    role = com.pegasusx.retailer.service.EnterpriseUpdateConfig.POLICY_ROLE,
                     platform = "android",
                     version = com.pegasusx.retailer.BuildConfig.VERSION_NAME,
+                    channel = com.pegasusx.retailer.service.EnterpriseUpdateConfig.CHANNEL,
                 )
                 val outdated = policy.jsonObject["outdated"]?.jsonPrimitive?.boolean == true
                 val force = policy.jsonObject["force_update"]?.jsonPrimitive?.boolean == true

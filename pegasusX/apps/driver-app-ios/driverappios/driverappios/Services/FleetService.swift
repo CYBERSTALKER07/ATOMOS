@@ -20,11 +20,14 @@ protocol FleetServiceProtocol {
     /// POST /v1/order/confirm-offload — ARRIVED → AWAITING_PAYMENT
     func confirmOffload(orderId: String) async throws -> ConfirmOffloadResponse
 
-    /// POST /v1/order/complete — AWAITING_PAYMENT → COMPLETED
+    /// POST /v1/order/complete — capture → FISCALIZING (ADR-009)
     func completeOrder(orderId: String) async throws
 
-    /// POST /v1/order/collect-cash — PENDING_CASH_COLLECTION → COMPLETED with geofence
+    /// POST /v1/order/collect-cash — cash capture → FISCALIZING (ADR-009)
     func collectCash(orderId: String) async throws -> CollectCashResponse
+
+    /// POST /v1/order/{id}/fiscal/retry
+    func retryFiscal(orderId: String) async throws -> CollectCashResponse
 
     /// GET /v1/order-items/{orderId} → [LineItem]
     func fetchOrderLineItems(orderId: String) async throws -> [LineItem]

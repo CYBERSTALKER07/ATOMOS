@@ -276,6 +276,8 @@ export type OrderStatus =
   | "AWAITING_PAYMENT"
   | "PENDING_CASH_COLLECTION"
   | "DELIVERED_ON_CREDIT"
+  | "FISCALIZING"
+  | "FISCAL_FAILED"
   | "COMPLETED"
   | "CANCELLED"
   | "RECONCILIATION_REQUIRED"
@@ -285,6 +287,14 @@ export type OrderStatus =
   | "DISPATCHED"
   | "ARRIVING"
   | "EN_ROUTE";
+
+/** ADR-009 fiscal attempt / order rollup status. */
+export type FiscalStatus =
+  | "NONE"
+  | "PENDING"
+  | "SUCCESS"
+  | "FAILED"
+  | "FORCE_SKIPPED";
 
 export type OrderSource = "MANUAL" | "MANUAL_PREORDER" | "AI_PREORDER" | "BACKORDER";
 
@@ -1534,6 +1544,9 @@ export interface SupplierOrder {
   route_id?: RouteId;
   manifest_id?: ManifestId;
   status: string;
+  /** ADR-009 denorm rollup when present: NONE | PENDING | SUCCESS | FAILED | FORCE_SKIPPED */
+  fiscal_status?: FiscalStatus | string;
+  latest_fiscal_receipt_id?: string;
   tracking_status?: string;
   decision?: string;
   note?: string;

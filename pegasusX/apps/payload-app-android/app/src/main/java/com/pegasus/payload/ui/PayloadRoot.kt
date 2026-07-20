@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +21,7 @@ import com.pegasus.payload.BuildConfig
 import com.pegasus.payload.data.repository.AuthRepository
 import com.pegasus.payload.data.remote.PayloadApi
 import com.pegasus.payload.service.AutoUpdater
+import com.pegasus.payload.service.EnterpriseUpdateConfig
 import com.pegasus.payload.ui.auth.LoginScreen
 import com.pegasus.payload.ui.components.ClientPolicyBanner
 import com.pegasus.payload.ui.home.HomeScreen
@@ -40,15 +42,34 @@ import javax.inject.Inject
 fun PayloadRoot(viewModel: RootViewModel = hiltViewModel()) {
     val session by viewModel.session.collectAsStateWithLifecycle()
     val clientPolicyMessage by viewModel.clientPolicyMessage.collectAsStateWithLifecycle()
+    val clientPolicyForce by viewModel.clientPolicyForce.collectAsStateWithLifecycle()
     var showInboundReturns by remember { mutableStateOf(false) }
 
     LaunchedEffect(session) {
         viewModel.loadClientPolicy()
     }
 
+    DisposableEffect(Unit) {
+        viewModel.registerUpdater()
+        onDispose { /* ViewModel.onCleared cleans up */ }
+    }
+
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxSize()) {
-            ClientPolicyBanner(clientPolicyMessage)
+            ClientPolicyBanner(
+                message = clientPolicyMessage,
+                force = clientPolicyForce,
+                onUpdate = if (clientPolicyMessage != null) {
+                    { viewModel.onUpdateClick() }
+                } else {
+                    null
+                },
+                onDismiss = if (!clientPolicyForce) {
+                    { viewModel.dismissPolicyBanner() }
+                } else {
+                    null
+                },
+            )
             when {
                 session == null -> LoginScreen()
                 showInboundReturns -> InboundReturnsScreen(onBack = { showInboundReturns = false })
@@ -72,36 +93,46 @@ class RootViewModel @Inject constructor(
     private val autoUpdater = AutoUpdater(context.applicationContext)
     private val _clientPolicyMessage = MutableStateFlow<String?>(null)
     val clientPolicyMessage: StateFlow<String?> = _clientPolicyMessage.asStateFlow()
+    private val _clientPolicyForce = MutableStateFlow(false)
+    val clientPolicyForce: StateFlow<Boolean> = _clientPolicyForce.asStateFlow()
+    private var pendingManifest: AutoUpdater.Manifest? = null
 
     init {
         loadClientPolicy()
+    }
+
+    fun registerUpdater() {
+        autoUpdater.register()
     }
 
     fun loadClientPolicy() {
         viewModelScope.launch {
             runCatching {
                 val resp = api.getClientPolicy(
+                    role = EnterpriseUpdateConfig.POLICY_ROLE,
                     platform = "android",
                     version = BuildConfig.VERSION_NAME,
+                    channel = EnterpriseUpdateConfig.CHANNEL,
                 )
                 if (resp.isSuccessful && resp.body() != null) {
-                    val policy = resp.body()!!
-                    _clientPolicyMessage.value = if (policy.outdated || policy.forceUpdate) {
-                        buildString {
-                            append(if (policy.forceUpdate) "Update required" else "Update available")
-                            if (policy.minimumVersion.isNotBlank()) {
-                                append(" — minimum version ${policy.minimumVersion}")
-                            }
-                            policy.deferReason?.takeIf { it.isNotBlank() }?.let { append(". $it") }
-                        }
-                    } else {
-                        null
-                    }
-                    if (policy.outdated || policy.forceUpdate) {
-                        autoUpdater.checkForUpdates(BuildConfig.VERSION_CODE)
-                    }
+                    val state = autoUpdater.checkFromPolicy(resp.body()!!, autoDownload = false)
+                    _clientPolicyMessage.value = state.message
+                    _clientPolicyForce.value = state.force
+                    pendingManifest = state.manifest
                 }
             }
+        }
+    }
+
+    fun onUpdateClick() {
+        viewModelScope.launch {
+            autoUpdater.startUpdate(pendingManifest)
+        }
+    }
+
+    fun dismissPolicyBanner() {
+        if (!_clientPolicyForce.value) {
+            _clientPolicyMessage.value = null
         }
     }
 

@@ -10,6 +10,8 @@ const STATUS_MAP: Record<string, { tone: string }> = {
   ARRIVED_SHOP_CLOSED:     { tone: 'warning-strong' },
   AWAITING_PAYMENT:        { tone: 'warning' },
   PENDING_CASH_COLLECTION: { tone: 'warning' },
+  FISCALIZING:             { tone: 'warning' },
+  FISCAL_FAILED:           { tone: 'danger' },
   COMPLETED:               { tone: 'success-strong' },
   CANCELLED:               { tone: 'danger' },
   CANCEL_REQUESTED:        { tone: 'accent' },

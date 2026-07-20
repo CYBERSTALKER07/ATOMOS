@@ -125,6 +125,142 @@ func TestNotificationDispatcher_ManifestEventUsesFactoryRoom(t *testing.T) {
 	}
 }
 
+func TestNotificationDispatcher_WarehouseLocationFansSupplierAndWarehouse(t *testing.T) {
+	t.Parallel()
+
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	warehouseConn := &dispatcherConnSpy{id: "warehouse"}
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	warehouseHub := ws.NewHub("warehouse", nil, nil)
+	supplierHub.Subscribe("supplier:sup-1", supplierConn)
+	warehouseHub.Subscribe("warehouse:wh-1", warehouseConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub:  supplierHub,
+		WarehouseHub: warehouseHub,
+	})
+
+	payload, _ := json.Marshal(map[string]any{
+		"type":         events.EventWarehouseLocationUpdated,
+		"trace_id":     "trace-loc-wh",
+		"supplier_id":  "sup-1",
+		"warehouse_id": "wh-1",
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(supplierConn.messages) != 1 || len(warehouseConn.messages) != 1 {
+		t.Fatalf("expected warehouse location fanout supplier=%d warehouse=%d",
+			len(supplierConn.messages), len(warehouseConn.messages))
+	}
+}
+
+func TestNotificationDispatcher_FactoryLocationFansSupplierAndFactory(t *testing.T) {
+	t.Parallel()
+
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	factoryConn := &dispatcherConnSpy{id: "factory"}
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	factoryHub := ws.NewHub("factory", nil, nil)
+	supplierHub.Subscribe("supplier:sup-1", supplierConn)
+	factoryHub.Subscribe("factory:fc-1", factoryConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub: supplierHub,
+		FactoryHub:  factoryHub,
+	})
+
+	payload, _ := json.Marshal(map[string]any{
+		"type":        events.EventFactoryLocationUpdated,
+		"trace_id":    "trace-loc-fc",
+		"supplier_id": "sup-1",
+		"factory_id":  "fc-1",
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(supplierConn.messages) != 1 || len(factoryConn.messages) != 1 {
+		t.Fatalf("expected factory location fanout supplier=%d factory=%d",
+			len(supplierConn.messages), len(factoryConn.messages))
+	}
+}
+
+func TestNotificationDispatcher_WarehouseTransferCreatedFansRoles(t *testing.T) {
+	t.Parallel()
+
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	warehouseConn := &dispatcherConnSpy{id: "warehouse"}
+	factoryConn := &dispatcherConnSpy{id: "factory"}
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	warehouseHub := ws.NewHub("warehouse", nil, nil)
+	factoryHub := ws.NewHub("factory", nil, nil)
+	supplierHub.Subscribe("supplier:sup-1", supplierConn)
+	warehouseHub.Subscribe("warehouse:wh-1", warehouseConn)
+	factoryHub.Subscribe("factory:fc-1", factoryConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub:  supplierHub,
+		WarehouseHub: warehouseHub,
+		FactoryHub:   factoryHub,
+	})
+
+	payload, _ := json.Marshal(map[string]any{
+		"type":         events.EventWarehouseTransferCreated,
+		"trace_id":     "trace-xfer",
+		"supplier_id":  "sup-1",
+		"warehouse_id": "wh-1",
+		"factory_id":   "fc-1",
+		"transfer_id":  "xfer-1",
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(supplierConn.messages) != 1 || len(warehouseConn.messages) != 1 || len(factoryConn.messages) != 1 {
+		t.Fatalf("expected transfer fanout supplier=%d warehouse=%d factory=%d",
+			len(supplierConn.messages), len(warehouseConn.messages), len(factoryConn.messages))
+	}
+}
+
+func TestNotificationDispatcher_FactorySupplyRequestUpdateFansRoles(t *testing.T) {
+	t.Parallel()
+
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	factoryConn := &dispatcherConnSpy{id: "factory"}
+	warehouseConn := &dispatcherConnSpy{id: "warehouse"}
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	factoryHub := ws.NewHub("factory", nil, nil)
+	warehouseHub := ws.NewHub("warehouse", nil, nil)
+	supplierHub.Subscribe("supplier:sup-1", supplierConn)
+	factoryHub.Subscribe("factory:sup-1", factoryConn) // fallback room = supplier when factory_id empty
+	warehouseHub.Subscribe("warehouse:wh-1", warehouseConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub:  supplierHub,
+		FactoryHub:   factoryHub,
+		WarehouseHub: warehouseHub,
+	})
+
+	// Nested factory local-broadcast shape + flat supplier/warehouse for Kafka parity.
+	payload, _ := json.Marshal(map[string]any{
+		"type":         events.EventFactorySupplyRequestUpdate,
+		"trace_id":     "trace-supply",
+		"supplier_id":  "sup-1",
+		"warehouse_id": "wh-1",
+		"data": map[string]any{
+			"request_id":   "sr-1",
+			"warehouse_id": "wh-1",
+			"state":        "ACKNOWLEDGED",
+		},
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(supplierConn.messages) != 1 || len(warehouseConn.messages) != 1 {
+		t.Fatalf("expected supply update fanout supplier=%d warehouse=%d factory=%d",
+			len(supplierConn.messages), len(warehouseConn.messages), len(factoryConn.messages))
+	}
+}
+
 func TestNotificationDispatcher_VehicleCreatedDoesNotFanDriverHub(t *testing.T) {
 	t.Parallel()
 

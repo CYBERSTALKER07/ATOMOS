@@ -549,3 +549,33 @@ type RescueEvent struct {
 	WarehouseID    string `json:"warehouse_id,omitempty"`
 	SupplierID     string `json:"supplier_id,omitempty"`
 }
+
+// FiscalReceiptEvent is the ADR-009 OFD attempt lifecycle payload (integer Tiyin).
+type FiscalReceiptEvent struct {
+	BaseEvent
+	OrderID         string `json:"order_id"`
+	AttemptID       string `json:"attempt_id"`
+	SupplierID      string `json:"supplier_id"`
+	RetailerID      string `json:"retailer_id,omitempty"`
+	AmountMinor     int64  `json:"amount_minor"`
+	Currency        string `json:"currency"`
+	PaymentMethod   string `json:"payment_method,omitempty"`
+	Provider        string `json:"provider,omitempty"`
+	Status          string `json:"status,omitempty"`
+	FiscalReceiptID string `json:"fiscal_receipt_id,omitempty"`
+	FiscalQR        string `json:"fiscal_qr,omitempty"`
+	ErrorCode       string `json:"error_code,omitempty"`
+	ErrorMessage    string `json:"error_message,omitempty"`
+	TraceID         string `json:"trace_id,omitempty"`
+}
+
+// OrderForceCompletedEvent is emitted when ADMIN/WAREHOUSE_ADMIN force-completes past fiscal failure.
+type OrderForceCompletedEvent struct {
+	BaseEvent
+	OrderID    string `json:"order_id"`
+	SupplierID string `json:"supplier_id"`
+	RetailerID string `json:"retailer_id,omitempty"`
+	ReasonCode string `json:"reason_code"`
+	ActorID    string `json:"actor_id"`
+	TraceID    string `json:"trace_id,omitempty"`
+}

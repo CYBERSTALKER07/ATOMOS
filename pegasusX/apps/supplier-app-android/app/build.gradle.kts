@@ -112,6 +112,29 @@ android {
         buildConfigField("String", "PORTAL_BASE_URL", "\"http://$devPortalHost:3000\"")
     }
 
+
+    // distribution: enterprise = website CDN OTA; store = Play Store (no CDN APK install)
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("enterprise") {
+            dimension = "distribution"
+            isDefault = true
+            buildConfigField("String", "DISTRIBUTION_CHANNEL", "\"enterprise\"")
+            buildConfigField("boolean", "ENABLE_CDN_OTA", "true")
+            buildConfigField("String", "STORE_LISTING_URL", "\"\"")
+        }
+        create("store") {
+            dimension = "distribution"
+            buildConfigField("String", "DISTRIBUTION_CHANNEL", "\"production\"")
+            buildConfigField("boolean", "ENABLE_CDN_OTA", "false")
+            buildConfigField(
+                "String",
+                "STORE_LISTING_URL",
+                "\"https://play.google.com/store/apps/details?id=com.pegasusx.supplier\"",
+            )
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true

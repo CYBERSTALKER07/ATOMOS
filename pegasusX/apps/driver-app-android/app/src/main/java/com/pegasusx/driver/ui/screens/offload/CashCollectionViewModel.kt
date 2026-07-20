@@ -24,6 +24,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
+/** ADR-009 cash path phases for driver UI. */
+enum class CashFiscalPhase {
+    COLLECT,
+    FISCALIZING,
+    FISCAL_FAILED,
+    DONE,
+}
+
 data class CashCollectionUiState(
     val orderId: String = "",
     val amount: Long = 0,
@@ -31,6 +39,9 @@ data class CashCollectionUiState(
     val showConfirmDialog: Boolean = false,
     val isCompleting: Boolean = false,
     val completed: Boolean = false,
+    val phase: CashFiscalPhase = CashFiscalPhase.COLLECT,
+    val attemptId: String = "",
+    val fiscalStatus: String = "",
     val splitPaymentRecorded: Boolean = false,
     val error: String? = null,
     val distanceM: Double? = null,
@@ -57,6 +68,45 @@ class CashCollectionViewModel @Inject constructor(
         viewModelScope.launch {
             driverWebSocket.onReconnect.collect {
                 recoverInFlightMutation()
+            }
+        }
+        viewModelScope.launch {
+            driverWebSocket.messages.collect { msg ->
+                if (msg.orderId != null && msg.orderId != orderId) return@collect
+                when (msg.type) {
+                    "ORDER_COMPLETED", "ORDER_FINALIZED", "FISCAL_RECEIPT_SUCCEEDED" -> {
+                        _state.update {
+                            it.copy(
+                                phase = CashFiscalPhase.DONE,
+                                completed = true,
+                                isCompleting = false,
+                                fiscalStatus = "SUCCESS",
+                                error = null,
+                            )
+                        }
+                    }
+                    "FISCAL_RECEIPT_FAILED", "ORDER_STATUS_CHANGED" -> {
+                        val status = (msg.status ?: msg.state).orEmpty().uppercase()
+                        if (status == "FISCAL_FAILED" || msg.type == "FISCAL_RECEIPT_FAILED") {
+                            _state.update {
+                                it.copy(
+                                    phase = CashFiscalPhase.FISCAL_FAILED,
+                                    isCompleting = false,
+                                    fiscalStatus = "FAILED",
+                                    error = "Fiscal receipt failed. Retry or call supervisor.",
+                                )
+                            }
+                        } else if (status == "COMPLETED") {
+                            _state.update {
+                                it.copy(phase = CashFiscalPhase.DONE, completed = true, isCompleting = false)
+                            }
+                        } else if (status == "FISCALIZING") {
+                            _state.update {
+                                it.copy(phase = CashFiscalPhase.FISCALIZING, isCompleting = false)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -140,12 +190,58 @@ class CashCollectionViewModel @Inject constructor(
                     ),
                     idempotencyKey = DriverIdempotencyKeys.collectCash(orderId),
                 )
+                val nextPhase = when (resp.state.uppercase()) {
+                    "COMPLETED" -> CashFiscalPhase.DONE
+                    "FISCAL_FAILED" -> CashFiscalPhase.FISCAL_FAILED
+                    else -> CashFiscalPhase.FISCALIZING
+                }
                 _state.update {
-                    it.copy(isCompleting = false, completed = true, distanceM = resp.distanceM)
+                    it.copy(
+                        isCompleting = false,
+                        completed = nextPhase == CashFiscalPhase.DONE,
+                        phase = nextPhase,
+                        distanceM = resp.distanceM,
+                        attemptId = resp.attemptId,
+                        fiscalStatus = resp.fiscalStatus.ifBlank {
+                            if (nextPhase == CashFiscalPhase.FISCALIZING) "PENDING" else resp.state
+                        },
+                        error = if (nextPhase == CashFiscalPhase.FISCAL_FAILED) {
+                            "Fiscal receipt failed. Retry or call supervisor."
+                        } else null,
+                    )
                 }
             } catch (e: Exception) {
                 val msg = e.message ?: "Failed to collect cash"
                 _state.update { it.copy(isCompleting = false, error = msg) }
+            }
+        }
+    }
+
+    fun retryFiscal() {
+        viewModelScope.launch {
+            _state.update { it.copy(isCompleting = true, error = null) }
+            try {
+                val resp = api.retryFiscal(
+                    orderId = orderId,
+                    idempotencyKey = DriverIdempotencyKeys.fiscalRetry(orderId),
+                )
+                _state.update {
+                    it.copy(
+                        isCompleting = false,
+                        phase = CashFiscalPhase.FISCALIZING,
+                        attemptId = resp.attemptId.ifBlank { it.attemptId },
+                        fiscalStatus = "PENDING",
+                        error = null,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isCompleting = false,
+                        phase = CashFiscalPhase.FISCAL_FAILED,
+                        error = e.message ?: "Fiscal retry failed",
+                    )
+                }
             }
         }
     }

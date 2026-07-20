@@ -20,6 +20,7 @@ func TestUnifiedCheckout_CreatesSingleSupplierOrder(t *testing.T) {
 		Log:          slog.Default(),
 	})
 
+	// Scaffold path (no Spanner): client unit prices still accepted for unit tests.
 	resp, err := svc.UnifiedCheckout(context.Background(), "ret-1", UnifiedCheckoutRequest{
 		Latitude:  41.31,
 		Longitude: 69.24,
@@ -50,6 +51,17 @@ func TestUnifiedCheckout_CreatesSingleSupplierOrder(t *testing.T) {
 	}
 	if repo.createCalls != 1 {
 		t.Fatalf("createCalls = %d, want 1", repo.createCalls)
+	}
+}
+
+func TestAuthoritativeCheckoutLines_RejectsBadItems(t *testing.T) {
+	t.Parallel()
+	svc := NewService(ServiceConfig{SupplierID: "sup-1", Currency: "UZS", Log: slog.Default()})
+	_, err := svc.authoritativeCheckoutLines(context.Background(), "ret-1", []UnifiedCheckoutLineItem{{
+		SkuID: "", Quantity: 1, UnitPrice: 100,
+	}})
+	if err == nil {
+		t.Fatal("expected error for empty sku")
 	}
 }
 

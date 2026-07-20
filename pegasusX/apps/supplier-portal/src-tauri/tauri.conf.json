@@ -30,19 +30,12 @@
     "security": {
       "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' http://localhost:8180 http://127.0.0.1:8180 http://localhost:9099 http://127.0.0.1:9099 http://10.0.2.2:8180 ws://localhost:8180 ws://127.0.0.1:8180 ws://10.0.2.2:8180 wss://localhost:8180"
     },
-    "macOSPrivateApi": true,
-    "updater": {
-      "active": true,
-      "endpoints": [
-        "https://storage.googleapis.com/pegasusx-ssmr-app-updates/supplier-desktop/{{target}}/{{arch}}/updater.json"
-      ],
-      "dialog": true,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhDREMyMEEzRkY5NEYzQjMKUldTejg1VC9veURjakZ6R3NoSmZ6NGIyOGVBZVBZZGs5TkdMWk9XRTArQ2UyakJNZ01XYXZtS0UK"
-    }
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -62,6 +55,15 @@
     "deep-link": {
       "desktop": {
         "schemes": ["pegasusx-supplier"]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhDREMyMEEzRkY5NEYzQjMKUldTejg1VC9veURjakZ6R3NoSmZ6NGIyOGVBZVBZZGs5TkdMWk9XRTArQ2UyakJNZ01XYXZtS0UK",
+      "endpoints": [
+        "https://storage.googleapis.com/pegasusx-ssmr-app-updates/supplier-desktop/{{target}}/{{arch}}/updater.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

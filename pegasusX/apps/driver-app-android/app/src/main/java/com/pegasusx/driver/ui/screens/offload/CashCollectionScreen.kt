@@ -11,9 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,16 +32,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.pegasusx.driver.ui.components.DriverGpsBanner
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.StatusGreen
-import com.pegasusx.driver.ui.components.DriverGpsBanner
 import com.pegasusx.driver.ui.theme.StatusRed
 import com.pegasusx.driver.ui.theme.formattedAmount
 
@@ -56,10 +56,10 @@ fun CashCollectionScreen(
     var backConfirmed by remember { mutableStateOf(false) }
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
 
-    // Block back press while submitting to prevent duplicate completion
-    BackHandler(enabled = state.isCompleting) { /* swallow — submission in flight */ }
-    // Show confirmation before allowing exit; once confirmed, handler is disabled so system back proceeds
-    BackHandler(enabled = !state.isCompleting && !backConfirmed) { showExitConfirm = true }
+    BackHandler(enabled = state.isCompleting || state.phase == CashFiscalPhase.FISCALIZING) { }
+    BackHandler(enabled = !state.isCompleting && state.phase == CashFiscalPhase.COLLECT && !backConfirmed) {
+        showExitConfirm = true
+    }
 
     if (showExitConfirm) {
         AlertDialog(
@@ -72,14 +72,14 @@ fun CashCollectionScreen(
             dismissButton = {
                 TextButton(onClick = {
                     showExitConfirm = false
-                    backConfirmed = true         // disables our BackHandler
-                    backDispatcher?.onBackPressed() // system back now pops the screen
+                    backConfirmed = true
+                    backDispatcher?.onBackPressed()
                 }) { Text("Leave") }
             }
         )
     }
 
-    if (state.completed) {
+    if (state.completed || state.phase == CashFiscalPhase.DONE) {
         onComplete()
         return
     }
@@ -92,100 +92,178 @@ fun CashCollectionScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = Icons.Default.Payments,
-            contentDescription = null,
-            tint = StatusGreen,
-            modifier = Modifier.size(80.dp)
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "COLLECT CASH",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Black,
-            fontFamily = FontFamily.Monospace,
-            color = lab.fgTertiary,
-            letterSpacing = 1.5.sp
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = state.amount.formattedAmount(),
-            fontSize = 38.sp,
-            fontWeight = FontWeight.Bold,
-            color = lab.fg
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Collect the amount above from the retailer before completing delivery.",
-            fontSize = 14.sp,
-            color = lab.fgTertiary,
-            textAlign = TextAlign.Center
-        )
-
-        state.error?.let { error ->
-            Spacer(modifier = Modifier.height(12.dp))
-            if (error.contains("GPS", ignoreCase = true)) {
-                DriverGpsBanner(
-                    message = error,
-                    modifier = Modifier.fillMaxWidth(),
+        when (state.phase) {
+            CashFiscalPhase.FISCALIZING -> {
+                Icon(
+                    imageVector = Icons.Default.HourglassTop,
+                    contentDescription = null,
+                    tint = lab.fgTertiary,
+                    modifier = Modifier.size(80.dp)
                 )
-            } else {
-                Text(text = error, color = StatusRed, fontSize = 12.sp, textAlign = TextAlign.Center)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(48.dp))
-
-        // Edge 35: Split Payment button
-        OutlinedButton(
-            onClick = { viewModel.recordSplitPayment() },
-            enabled = !state.isCompleting,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = MaterialTheme.shapes.medium,
-        ) {
-            Text(
-                text = "Split Payment (Pay Now + Pay Later)",
-                fontWeight = FontWeight.Medium,
-                fontSize = 14.sp
-            )
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Button(
-            onClick = {
-                if (state.cashReceived) {
-                    viewModel.collectCash()
-                } else {
-                    viewModel.acknowledgeCashReceived()
-                }
-            },
-            enabled = !state.isCompleting,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = MaterialTheme.shapes.medium,
-            colors = ButtonDefaults.buttonColors(containerColor = StatusGreen)
-        ) {
-            if (state.isCompleting) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "FISCALIZING",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace,
+                    color = lab.fgTertiary,
+                    letterSpacing = 1.5.sp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = state.amount.formattedAmount(),
+                    fontSize = 34.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = lab.fg
+                )
+                Spacer(modifier = Modifier.height(16.dp))
                 CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(20.dp),
+                    color = lab.fg,
+                    modifier = Modifier.size(28.dp),
                     strokeWidth = 2.dp
                 )
-            } else {
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = if (state.cashReceived) "Confirm & Complete" else "Cash Received",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
+                    text = "Cash captured. Waiting for fiscal receipt…",
+                    fontSize = 14.sp,
+                    color = lab.fgTertiary,
+                    textAlign = TextAlign.Center
                 )
+            }
+            CashFiscalPhase.FISCAL_FAILED -> {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = StatusRed,
+                    modifier = Modifier.size(80.dp)
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "FISCAL FAILED",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace,
+                    color = StatusRed,
+                    letterSpacing = 1.5.sp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Retry fiscal receipt or call supervisor for force-complete.",
+                    fontSize = 14.sp,
+                    color = lab.fgTertiary,
+                    textAlign = TextAlign.Center
+                )
+                state.error?.let { error ->
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(text = error, color = StatusRed, fontSize = 12.sp, textAlign = TextAlign.Center)
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+                Button(
+                    onClick = { viewModel.retryFiscal() },
+                    enabled = !state.isCompleting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = ButtonDefaults.buttonColors(containerColor = StatusGreen)
+                ) {
+                    if (state.isCompleting) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(text = "Retry Fiscal", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    }
+                }
+            }
+            else -> {
+                Icon(
+                    imageVector = Icons.Default.Payments,
+                    contentDescription = null,
+                    tint = StatusGreen,
+                    modifier = Modifier.size(80.dp)
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "COLLECT CASH",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace,
+                    color = lab.fgTertiary,
+                    letterSpacing = 1.5.sp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = state.amount.formattedAmount(),
+                    fontSize = 38.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = lab.fg
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Collect the amount above from the retailer before completing delivery.",
+                    fontSize = 14.sp,
+                    color = lab.fgTertiary,
+                    textAlign = TextAlign.Center
+                )
+                state.error?.let { error ->
+                    Spacer(modifier = Modifier.height(12.dp))
+                    if (error.contains("GPS", ignoreCase = true)) {
+                        DriverGpsBanner(
+                            message = error,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        Text(text = error, color = StatusRed, fontSize = 12.sp, textAlign = TextAlign.Center)
+                    }
+                }
+                Spacer(modifier = Modifier.height(48.dp))
+                OutlinedButton(
+                    onClick = { viewModel.recordSplitPayment() },
+                    enabled = !state.isCompleting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = MaterialTheme.shapes.medium,
+                ) {
+                    Text(
+                        text = "Split Payment (Pay Now + Pay Later)",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        if (state.cashReceived) {
+                            viewModel.collectCash()
+                        } else {
+                            viewModel.acknowledgeCashReceived()
+                        }
+                    },
+                    enabled = !state.isCompleting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = ButtonDefaults.buttonColors(containerColor = StatusGreen)
+                ) {
+                    if (state.isCompleting) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = if (state.cashReceived) "Confirm cash capture" else "Cash Received",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+                }
             }
         }
     }
@@ -197,7 +275,7 @@ fun CashCollectionScreen(
             text = {
                 Text(
                     "You received ${state.amount.formattedAmount()} from the retailer. " +
-                        "This will complete the delivery and cannot be undone."
+                        "Payment will be captured and a fiscal receipt requested."
                 )
             },
             confirmButton = {
@@ -207,7 +285,7 @@ fun CashCollectionScreen(
                         viewModel.collectCash()
                     },
                     enabled = !state.isCompleting,
-                ) { Text("Complete Delivery") }
+                ) { Text("Capture & Fiscalize") }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissConfirmDialog() }) { Text("Go Back") }

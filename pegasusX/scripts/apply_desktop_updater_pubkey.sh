@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Inject TAURI_UPDATER_PUBKEY into all four desktop tauri.conf.json files.
-# Defaults to contracts/desktop-updater/dev.pub (CI / local unsigned builds).
+# Inject TAURI_UPDATER_PUBKEY into all four desktop tauri.conf.json files
+# under plugins.updater (Tauri 2). Defaults to contracts/desktop-updater/dev.pub.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -40,7 +40,16 @@ import sys
 path, pubkey = sys.argv[1], sys.argv[2]
 with open(path, encoding="utf-8") as fh:
     data = json.load(fh)
-data.setdefault("app", {}).setdefault("updater", {})["pubkey"] = pubkey
+# Tauri 2: plugins.updater.pubkey (drop legacy app.updater if present)
+app_cfg = data.get("app") or {}
+if isinstance(app_cfg, dict) and "updater" in app_cfg:
+    del app_cfg["updater"]
+data["app"] = app_cfg
+plugins = data.setdefault("plugins", {})
+updater = plugins.setdefault("updater", {})
+updater["pubkey"] = pubkey
+if "endpoints" not in updater or not updater["endpoints"]:
+    raise SystemExit(f"missing plugins.updater.endpoints in {path}")
 with open(path, "w", encoding="utf-8") as fh:
     json.dump(data, fh, indent=2)
     fh.write("\n")

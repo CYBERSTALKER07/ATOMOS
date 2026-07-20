@@ -33,6 +33,8 @@ export const ORDER_STATE_CHIP: Record<string, string> = {
   DELAYED: 'status-chip--draft',
   ARRIVED: 'status-chip--ready',
   COMPLETED: 'status-chip--stable',
+  FISCALIZING: 'status-chip--warning',
+  FISCAL_FAILED: 'status-chip--danger',
   CANCELLED: 'status-chip--critical',
   SCHEDULED: 'status-chip--draft',
   AUTO_ACCEPTED: 'status-chip--ready',

@@ -190,6 +190,16 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
+    /// POST /v1/order/{id}/fiscal/retry — ADR-009
+    func retryFiscal(orderId: String) async throws -> CollectCashResponse {
+        struct Empty: Encodable {}
+        return try await post(
+            "v1/order/\(orderId)/fiscal/retry",
+            body: Empty(),
+            headers: ["Idempotency-Key": DriverIdempotency.fiscalRetry(orderId: orderId)]
+        )
+    }
+
     func transitionState(orderId: String, newState: String) async throws -> Order {
         let body = ["state": newState]
         return try await patch(

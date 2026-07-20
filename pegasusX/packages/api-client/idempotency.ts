@@ -24,6 +24,14 @@ export function driverCollectCashKey(orderId: string, driverId: string): string 
   return `driver-collect-cash:${driverId}:${orderId}`;
 }
 
+export function driverFiscalRetryKey(orderId: string, driverId: string): string {
+  return `driver-fiscal-retry:${driverId}:${orderId}:${Math.floor(Date.now() / 60_000)}`;
+}
+
+export function adminForceCompleteKey(orderId: string, reasonCode: string): string {
+  return `admin-force-complete:${orderId}:${stableHash(reasonCode)}`;
+}
+
 export function driverAmendOrderKey(
   orderId: string,
   driverId: string,

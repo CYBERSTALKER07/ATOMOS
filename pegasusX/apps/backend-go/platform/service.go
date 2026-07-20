@@ -57,9 +57,7 @@ func NewService(policies PolicyRepository, sessions SessionChecker, log *slog.Lo
 
 // Evaluate returns the client policy for the given tuple and actor (optional deferral).
 func (s *Service) Evaluate(ctx context.Context, role, platform, channel, clientVersion, actorID string) (ClientPolicyResponse, error) {
-	if channel == "" {
-		channel = "production"
-	}
+	channel = NormalizeChannel(channel)
 	platform = normalizePlatform(platform)
 	role = normalizeRole(role)
 
@@ -68,9 +66,34 @@ func (s *Service) Evaluate(ctx context.Context, role, platform, channel, clientV
 		return ClientPolicyResponse{}, err
 	}
 	if !ok {
+		// Fall back to production row if enterprise-specific policy not seeded yet.
+		if IsEnterpriseChannel(channel) {
+			if prod, prodOK, prodErr := s.policies.GetPolicy(ctx, role, platform, "production"); prodErr != nil {
+				return ClientPolicyResponse{}, prodErr
+			} else if prodOK {
+				policy = prod
+				policy.Channel = EnterpriseChannel
+				ok = true
+			}
+		}
+	}
+	if !ok {
 		policy = PolicyRow{
 			Role: role, Platform: platform, Channel: channel,
 			MinimumVersion: "0.0.0", RecommendedVersion: "0.0.0",
+		}
+	}
+
+	updateURL := strings.TrimSpace(policy.UpdateURL)
+	// Fill default update_url by distribution channel when policy row has none.
+	if updateURL == "" {
+		switch {
+		case IsEnterpriseChannel(channel):
+			// Website / sideload: CDN updater.json (APK / enterprise IPA).
+			updateURL = DefaultEnterpriseManifestURL(role, platform)
+		case IsStoreChannel(channel):
+			// App Store / Play: public store listing (never CDN OTA).
+			updateURL = DefaultStoreUpdateURL(role, platform)
 		}
 	}
 
@@ -81,10 +104,16 @@ func (s *Service) Evaluate(ctx context.Context, role, platform, channel, clientV
 		ClientVersion:      clientVersion,
 		MinimumVersion:     policy.MinimumVersion,
 		RecommendedVersion: policy.RecommendedVersion,
-		UpdateURL:          policy.UpdateURL,
+		UpdateURL:          updateURL,
 		ForceUpdate:        policy.ForceUpdate,
 	}
 	if clientVersion != "" && CompareSemver(clientVersion, policy.MinimumVersion) < 0 {
+		resp.Outdated = true
+	}
+	// Also flag outdated when recommended_version is higher (soft recommend).
+	if !resp.Outdated && clientVersion != "" && policy.RecommendedVersion != "" &&
+		policy.RecommendedVersion != "0.0.0" &&
+		CompareSemver(clientVersion, policy.RecommendedVersion) < 0 {
 		resp.Outdated = true
 	}
 	if policy.ForceUpdate && resp.Outdated && actorID != "" {

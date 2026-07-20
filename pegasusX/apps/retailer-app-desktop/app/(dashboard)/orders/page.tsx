@@ -47,6 +47,8 @@ const chipCfg: Record<
 > = {
   IN_TRANSIT: { color: "warning", label: "In Transit" },
   COMPLETED: { color: "success", label: "Completed" },
+  FISCALIZING: { color: "warning", label: "Pending fiscal" },
+  FISCAL_FAILED: { color: "danger", label: "Fiscal failed" },
   PENDING: { color: "default", label: "Order Placed" },
   PENDING_REVIEW: { color: "default", label: "Pending Review" },
   LOADED: { color: "default", label: "Approved" },

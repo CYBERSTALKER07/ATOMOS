@@ -15,10 +15,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import com.pegasusx.factory.BuildConfig
 import com.pegasusx.factory.data.model.DashboardStats
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
+import com.pegasusx.factory.service.AutoUpdater
+import com.pegasusx.factory.service.EnterpriseUpdateConfig
 import com.pegasusx.factory.ui.components.ClientPolicyBanner
 import com.pegasusx.factory.ui.components.FactoryKpiBadge
 import com.pegasusx.factory.ui.components.FactoryKpiTile
@@ -64,30 +67,41 @@ fun DashboardScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
+    var clientPolicyForce by remember { mutableStateOf(false) }
+    var pendingManifest by remember { mutableStateOf<AutoUpdater.Manifest?>(null) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val autoUpdater = remember { AutoUpdater(context.applicationContext) }
+
+    DisposableEffect(autoUpdater) {
+        autoUpdater.register()
+        onDispose { autoUpdater.cleanup() }
+    }
 
     fun loadClientPolicy() {
         scope.launch {
             try {
                 val resp = api.getClientPolicy(
+                    role = EnterpriseUpdateConfig.POLICY_ROLE,
                     platform = "android",
                     version = BuildConfig.VERSION_NAME,
+                    channel = EnterpriseUpdateConfig.CHANNEL,
                 )
                 if (resp.isSuccessful && resp.body() != null) {
-                    val policy = resp.body()!!
-                    if (policy.outdated || policy.forceUpdate) {
-                        clientPolicyMessage = buildString {
-                            append(if (policy.forceUpdate) "Update required" else "Update available")
-                            if (policy.minimumVersion.isNotBlank()) {
-                                append(" — minimum version ${policy.minimumVersion}")
-                            }
-                            policy.deferReason?.takeIf { it.isNotBlank() }?.let { append(". $it") }
-                        }
-                    }
+                    val state = autoUpdater.checkFromPolicy(resp.body()!!, autoDownload = false)
+                    clientPolicyMessage = state.message
+                    clientPolicyForce = state.force
+                    pendingManifest = state.manifest
                 }
             } catch (_: Exception) {
                 // Policy fetch is optional on local/dev stacks.
             }
+        }
+    }
+
+    fun onUpdateClick() {
+        scope.launch {
+            autoUpdater.startUpdate(pendingManifest)
         }
     }
 
@@ -186,7 +200,20 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    ClientPolicyBanner(clientPolicyMessage)
+                    ClientPolicyBanner(
+                        message = clientPolicyMessage,
+                        force = clientPolicyForce,
+                        onUpdate = if (clientPolicyMessage != null) {
+                            { onUpdateClick() }
+                        } else {
+                            null
+                        },
+                        onDismiss = if (!clientPolicyForce) {
+                            { clientPolicyMessage = null }
+                        } else {
+                            null
+                        },
+                    )
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     DashboardHeroCard(

@@ -1,35 +1,29 @@
 package com.pegasusx.retailer.updater
 
-import android.app.DownloadManager
 import android.content.Context
-import android.net.Uri
-import android.os.Environment
-import android.util.Log
+import com.pegasusx.retailer.service.AutoUpdater as EnterpriseAutoUpdater
 
 /**
- * Scaffolding for the self-hosted APK auto-updater.
- * In a production setup, this would poll the app-versions API for the Android channel
- * and use DownloadManager to fetch the new APK and prompt installation.
+ * Deprecated package path — delegates to [com.pegasusx.retailer.service.AutoUpdater]
+ * for website-only enterprise OTA.
  */
-class AutoUpdater(private val context: Context) {
+@Deprecated(
+    message = "Use com.pegasusx.retailer.service.AutoUpdater",
+    replaceWith = ReplaceWith("AutoUpdater", "com.pegasusx.retailer.service.AutoUpdater"),
+)
+class AutoUpdater(context: Context) {
+    private val impl = EnterpriseAutoUpdater(context.applicationContext)
 
     fun checkForUpdates() {
-        // TODO: Implement API call to check for latest version
-        Log.d("AutoUpdater", "Checking for updates...")
+        // No-op without policy; navigation ViewModel drives enterprise checks.
     }
 
     fun downloadAndInstallApk(apkUrl: String, version: String) {
-        val request = DownloadManager.Request(Uri.parse(apkUrl)).apply {
-            setTitle("Pegasus Retailer Update")
-            setDescription("Downloading version $version")
-            setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "PegasusRetailer_$version.apk")
-            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        }
+        // Legacy helper retained for call sites; prefer startUpdate(manifest).
+        checkForUpdates()
+    }
 
-        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        manager.enqueue(request)
-        
-        // TODO: Register a BroadcastReceiver for DownloadManager.ACTION_DOWNLOAD_COMPLETE
-        // to automatically trigger the ACTION_VIEW intent to install the APK.
+    fun cleanup() {
+        impl.cleanup()
     }
 }

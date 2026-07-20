@@ -2,11 +2,17 @@
 //  CashCollectionView.swift
 //  driverappios
 //
-//  Shown after driver confirms offload for CASH orders.
-//  Displays the amount to collect, then driver taps "Collected — Complete".
+//  Cash capture + ADR-009 fiscal wait / retry.
 //
 
 import SwiftUI
+
+private enum CashFiscalPhase {
+    case collect
+    case fiscalizing
+    case fiscalFailed
+    case done
+}
 
 struct CashCollectionView: View {
 
@@ -18,11 +24,11 @@ struct CashCollectionView: View {
 
     @State private var isCompleting = false
     @State private var errorMessage: String?
+    @State private var phase: CashFiscalPhase = .collect
     @State private var driverSocketState = DriverSocketState.shared
 
     var body: some View {
         VStack(spacing: 0) {
-            // MARK: - Header
             HStack {
                 Spacer()
                 Button { onCancel() } label: {
@@ -32,43 +38,77 @@ struct CashCollectionView: View {
                         .frame(width: 28, height: 28)
                         .background(LabTheme.fg.opacity(0.06), in: Circle())
                 }
+                .disabled(phase == .fiscalizing || isCompleting)
             }
             .padding(.horizontal, LabTheme.s24)
             .padding(.top, LabTheme.s24)
 
             Spacer()
 
-            // MARK: - Cash Icon
-            Image(systemName: "banknote.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(LabTheme.success)
-                .padding(.bottom, LabTheme.s16)
+            switch phase {
+            case .fiscalizing:
+                Image(systemName: "hourglass")
+                    .font(.system(size: 64))
+                    .foregroundStyle(LabTheme.warning)
+                    .padding(.bottom, LabTheme.s16)
+                Text("Fiscalizing")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(LabTheme.fg)
+                    .padding(.bottom, LabTheme.s8)
+                Text(amount.formattedAmount)
+                    .font(.system(size: 36, weight: .bold, design: .monospaced))
+                    .foregroundStyle(LabTheme.fg)
+                    .padding(.bottom, LabTheme.s16)
+                ProgressView()
+                    .scaleEffect(1.2)
+                    .padding(.bottom, LabTheme.s8)
+                Text("Cash captured. Waiting for fiscal receipt…")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(LabTheme.fgTertiary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, LabTheme.s24)
 
-            Text("Collect Cash")
-                .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(LabTheme.fg)
-                .padding(.bottom, LabTheme.s8)
+            case .fiscalFailed:
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 64))
+                    .foregroundStyle(LabTheme.destructive)
+                    .padding(.bottom, LabTheme.s16)
+                Text("Fiscal Failed")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(LabTheme.fg)
+                    .padding(.bottom, LabTheme.s8)
+                Text("Retry fiscal receipt or call supervisor for force-complete.")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(LabTheme.fgTertiary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, LabTheme.s24)
 
-            Text(orderId)
-                .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                .foregroundStyle(LabTheme.fgSecondary)
-                .padding(.bottom, LabTheme.s16)
-
-            // MARK: - Amount
-            Text(amount.formattedAmount)
-                .font(.system(size: 42, weight: .bold, design: .monospaced))
-                .foregroundStyle(LabTheme.fg)
-                .padding(.bottom, LabTheme.s8)
-
-            Text("Collect this amount from the retailer before completing.")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(LabTheme.fgTertiary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, LabTheme.s24)
+            default:
+                Image(systemName: "banknote.fill")
+                    .font(.system(size: 64))
+                    .foregroundStyle(LabTheme.success)
+                    .padding(.bottom, LabTheme.s16)
+                Text("Collect Cash")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(LabTheme.fg)
+                    .padding(.bottom, LabTheme.s8)
+                Text(orderId)
+                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(LabTheme.fgSecondary)
+                    .padding(.bottom, LabTheme.s16)
+                Text(amount.formattedAmount)
+                    .font(.system(size: 42, weight: .bold, design: .monospaced))
+                    .foregroundStyle(LabTheme.fg)
+                    .padding(.bottom, LabTheme.s8)
+                Text("Collect this amount from the retailer before completing.")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(LabTheme.fgTertiary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, LabTheme.s24)
+            }
 
             Spacer()
 
-            // MARK: - Error
             if let error = errorMessage {
                 Text(error)
                     .font(.system(size: 13, weight: .medium))
@@ -77,8 +117,7 @@ struct CashCollectionView: View {
                     .padding(.bottom, LabTheme.s8)
             }
 
-            // MARK: - Edge 35: Split Payment Button
-            if let onSplitPayment {
+            if phase == .collect, let onSplitPayment {
                 Button {
                     onSplitPayment(orderId, amount)
                 } label: {
@@ -102,27 +141,45 @@ struct CashCollectionView: View {
                 .padding(.bottom, LabTheme.s8)
             }
 
-            // MARK: - Button
-            Button {
-                completeWithCash()
-            } label: {
-                HStack(spacing: 8) {
-                    if isCompleting {
-                        ProgressView().tint(LabTheme.buttonFg)
+            if phase == .collect {
+                Button { completeWithCash() } label: {
+                    HStack(spacing: 8) {
+                        if isCompleting { ProgressView().tint(LabTheme.buttonFg) }
+                        Text("Cash Collected — Capture")
+                            .font(.system(size: 15, weight: .bold))
                     }
-                    Text("Cash Collected — Complete")
-                        .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(LabTheme.buttonFg)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(LabTheme.fg, in: .rect(cornerRadius: LabTheme.buttonRadius))
                 }
-                .foregroundStyle(LabTheme.buttonFg)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(LabTheme.fg, in: .rect(cornerRadius: LabTheme.buttonRadius))
+                .disabled(isCompleting)
+                .padding(.horizontal, LabTheme.s24)
+                .padding(.bottom, LabTheme.s24)
+            } else if phase == .fiscalFailed {
+                Button { retryFiscal() } label: {
+                    HStack(spacing: 8) {
+                        if isCompleting { ProgressView().tint(LabTheme.buttonFg) }
+                        Text("Retry Fiscal")
+                            .font(.system(size: 15, weight: .bold))
+                    }
+                    .foregroundStyle(LabTheme.buttonFg)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(LabTheme.fg, in: .rect(cornerRadius: LabTheme.buttonRadius))
+                }
+                .disabled(isCompleting)
+                .padding(.horizontal, LabTheme.s24)
+                .padding(.bottom, LabTheme.s24)
             }
-            .disabled(isCompleting)
-            .padding(.horizontal, LabTheme.s24)
-            .padding(.bottom, LabTheme.s24)
         }
         .background(LabTheme.bg)
+        .onChange(of: phase) { _, newPhase in
+            if newPhase == .done { onCompleted() }
+        }
+        .task(id: driverSocketState.eventSequence) {
+            handleSocketEvent(driverSocketState.lastEvent)
+        }
         .onChange(of: driverSocketState.reconnectEpoch) { _, _ in
             Task {
                 let hadInFlight = isCompleting
@@ -135,6 +192,31 @@ struct CashCollectionView: View {
         }
     }
 
+    private func handleSocketEvent(_ event: DriverSocketState.DriverEvent?) {
+        guard let event, event.orderId == orderId else { return }
+        let status = (event.status ?? event.state ?? "").uppercased()
+        switch event.type {
+        case "ORDER_COMPLETED", "ORDER_FINALIZED", "FISCAL_RECEIPT_SUCCEEDED":
+            phase = .done
+            Haptics.success()
+        case "FISCAL_RECEIPT_FAILED":
+            phase = .fiscalFailed
+            errorMessage = "Fiscal receipt failed. Retry or call supervisor."
+            Haptics.warning()
+        case "ORDER_STATUS_CHANGED":
+            if status == "COMPLETED" {
+                phase = .done
+            } else if status == "FISCAL_FAILED" {
+                phase = .fiscalFailed
+                errorMessage = "Fiscal receipt failed. Retry or call supervisor."
+            } else if status == "FISCALIZING" {
+                phase = .fiscalizing
+            }
+        default:
+            break
+        }
+    }
+
     private func completeWithCash() {
         isCompleting = true
         errorMessage = nil
@@ -142,10 +224,34 @@ struct CashCollectionView: View {
             do {
                 let resp = try await FleetServiceLive.shared.collectCash(orderId: orderId)
                 Haptics.success()
-                _ = resp // distanceM available if needed
-                onCompleted()
+                let st = resp.state.uppercased()
+                if st == "COMPLETED" {
+                    phase = .done
+                } else if st == "FISCAL_FAILED" {
+                    phase = .fiscalFailed
+                    errorMessage = "Fiscal receipt failed. Retry or call supervisor."
+                } else {
+                    phase = .fiscalizing
+                }
+                isCompleting = false
             } catch {
                 isCompleting = false
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func retryFiscal() {
+        isCompleting = true
+        errorMessage = nil
+        Task {
+            do {
+                _ = try await FleetServiceLive.shared.retryFiscal(orderId: orderId)
+                phase = .fiscalizing
+                isCompleting = false
+            } catch {
+                isCompleting = false
+                phase = .fiscalFailed
                 errorMessage = error.localizedDescription
             }
         }

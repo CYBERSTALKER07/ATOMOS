@@ -9,11 +9,13 @@ import { ToastProvider } from "./Toast";
 import { ThemeProvider } from "./ThemeProvider";
 import { PortalOfflineTray } from "@/lib/portal-offline-tray";
 import { DesktopDeepLinkBootstrap } from "@/lib/desktop-deep-link";
+import { EnterpriseDesktopUpdateBootstrap } from "@/lib/desktop-updater";
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
       <DesktopDeepLinkBootstrap />
+      <EnterpriseDesktopUpdateBootstrap />
       <div className="app-root min-h-screen w-full">
         <AuthGuard>
           <FactoryShell>

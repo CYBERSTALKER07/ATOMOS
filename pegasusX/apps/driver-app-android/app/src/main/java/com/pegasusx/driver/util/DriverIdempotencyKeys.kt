@@ -15,6 +15,9 @@ object DriverIdempotencyKeys {
 
     fun collectCash(orderId: String): String = "driver-collect-cash:${driverId()}:$orderId"
 
+    fun fiscalRetry(orderId: String): String =
+        "driver-fiscal-retry:${driverId()}:$orderId:${System.currentTimeMillis() / 60_000}"
+
     fun confirmPaymentBypass(orderId: String): String = "driver-confirm-payment-bypass:${driverId()}:$orderId"
 
     fun bypassOffload(orderId: String): String = "driver-bypass-offload:${driverId()}:$orderId"

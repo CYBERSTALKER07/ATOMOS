@@ -233,6 +233,10 @@ type TrackingOrder struct {
 	DeliveryExpectation   *order.DeliveryExpectation `json:"delivery_expectation,omitempty"`
 	IsApproaching         bool                     `json:"is_approaching"`
 	PaymentStatus         string                   `json:"payment_status,omitempty"`
+	// ADR-009 fiscal hard-gate fields for receipt / tracking surfaces.
+	FiscalStatus          string                   `json:"fiscal_status,omitempty"`
+	FiscalQR              string                   `json:"fiscal_qr,omitempty"`
+	LatestFiscalReceiptID string                   `json:"latest_fiscal_receipt_id,omitempty"`
 	DeliveryLat           float64                  `json:"-"`
 	DeliveryLng           float64                  `json:"-"`
 }

@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
-// SettleExternalPayment transitions an order from AWAITING_PAYMENT to COMPLETED, driven by webhook notifications.
+// SettleExternalPayment transitions AWAITING_PAYMENT → FISCALIZING after card/webhook clear (ADR-009).
+// COMPLETED is deferred until fiscal SUCCESS (worker) or audited force-complete.
 func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gateway string) error {
 	orderRecord, found, err := s.repo.GetOrder(ctx, orderID)
 	if err != nil {
@@ -19,19 +21,33 @@ func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gat
 	}
 	if orderRecord.Status != StatusAwaitingPayment {
 		if orderRecord.Status == StatusCancelled {
-			// Money captured against a cancelled order must never vanish into a
-			// log line: route it to the supplier reconciliation queue.
 			return s.flagPaymentAfterCancel(ctx, orderRecord, gateway)
+		}
+		if orderRecord.Status == StatusFiscalizing || orderRecord.Status == StatusCompleted {
+			s.log.InfoContext(ctx, "external payment settlement already past capture", "order_id", orderID, "status", orderRecord.Status)
+			return nil
 		}
 		s.log.InfoContext(ctx, "skipping external payment settlement, order not awaiting payment", "order_id", orderID, "status", orderRecord.Status)
 		return nil
 	}
 
 	previousStatus := orderRecord.Status
-	orderRecord.Status = StatusCompleted
+	method := strings.TrimSpace(gateway)
+	if method == "" {
+		method = "CARD"
+	}
+	row := s.newFiscalPendingRow(orderRecord, method, "")
+	orderRecord.Status = StatusFiscalizing
 	// Version must stay at the value read from Spanner: UpdateOrder compares it
 	// against the stored row for optimistic concurrency and increments it itself.
-	orderRecord.UpdatedAt = s.now()
+	if s.now != nil {
+		orderRecord.UpdatedAt = s.now()
+	} else {
+		orderRecord.UpdatedAt = time.Now().UTC()
+	}
+	orderRecord.FiscalStatus = FiscalStatusPending
+	orderRecord.LatestFiscalAttemptID = row.AttemptID
+	orderRecord.PendingFiscalReceipts = []FiscalReceiptRow{row}
 
 	err = s.repo.UpdateOrder(ctx, orderRecord, nil, func(txn outbox.TxnBuffer) error {
 		if err := emitOrderStatusChanged(ctx, txn, orderStatusEmitParams{
@@ -41,24 +57,13 @@ func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gat
 		}); err != nil {
 			return err
 		}
-		if err := emitPaymentCleared(ctx, txn, orderRecord, gateway); err != nil {
-			return err
-		}
-		return emitOrderFinalized(ctx, txn, orderRecord)
+		return emitPaymentCaptureFiscal(ctx, txn, orderRecord, row, method)
 	})
 	if err != nil {
 		return err
 	}
 
 	s.afterOrderMutation(ctx, orderRecord)
-
-	// Manifest completion logic
-	if orderRecord.ManifestID != "" {
-		if err := s.tryCompleteManifest(ctx, orderRecord.ManifestID); err != nil {
-			s.log.ErrorContext(ctx, "failed to complete manifest during settlement", "manifest_id", orderRecord.ManifestID, "err", err)
-		}
-	}
-
 	return nil
 }
 

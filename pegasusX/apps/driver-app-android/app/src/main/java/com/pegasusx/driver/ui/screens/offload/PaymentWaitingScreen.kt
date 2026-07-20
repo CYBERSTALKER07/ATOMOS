@@ -7,7 +7,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,11 +14,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,7 +32,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -74,6 +72,30 @@ fun PaymentWaitingScreen(
         label = "pulse_alpha"
     )
 
+    val title = when {
+        state.fiscalFailed -> "FISCAL FAILED"
+        state.fiscalizing -> "FISCALIZING"
+        state.paymentSettled -> "PAYMENT RECEIVED"
+        else -> "AWAITING PAYMENT"
+    }
+    val subtitle = when {
+        state.fiscalFailed -> "Fiscal receipt failed. Retry or call supervisor for force-complete."
+        state.fiscalizing -> "Payment captured. Waiting for fiscal receipt…"
+        state.paymentSettled -> "Finalizing delivery…"
+        else -> "Waiting for retailer to complete payment..."
+    }
+    val icon = when {
+        state.fiscalFailed -> Icons.Default.Warning
+        state.fiscalizing -> Icons.Default.HourglassTop
+        state.paymentSettled -> Icons.Default.CheckCircle
+        else -> Icons.Default.HourglassTop
+    }
+    val iconTint = when {
+        state.fiscalFailed -> StatusRed
+        state.paymentSettled && !state.fiscalizing -> StatusGreen
+        else -> lab.fgTertiary
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -83,22 +105,22 @@ fun PaymentWaitingScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = if (state.paymentSettled) Icons.Default.CheckCircle else Icons.Default.HourglassTop,
+            imageVector = icon,
             contentDescription = null,
-            tint = if (state.paymentSettled) StatusGreen else lab.fgTertiary,
+            tint = iconTint,
             modifier = Modifier
                 .size(80.dp)
-                .alpha(if (state.paymentSettled) 1f else pulseAlpha)
+                .alpha(if (state.paymentSettled && !state.fiscalizing && !state.fiscalFailed) 1f else pulseAlpha)
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = if (state.paymentSettled) "PAYMENT RECEIVED" else "AWAITING PAYMENT",
+            text = title,
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             fontFamily = FontFamily.Monospace,
-            color = if (state.paymentSettled) StatusGreen else lab.fgTertiary,
+            color = if (state.fiscalFailed) StatusRed else if (state.paymentSettled && !state.fiscalizing) StatusGreen else lab.fgTertiary,
             letterSpacing = 1.5.sp
         )
 
@@ -123,21 +145,21 @@ fun PaymentWaitingScreen(
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "Payme",
+            text = "Card / terminal",
             fontSize = 13.sp,
             color = lab.fgTertiary
         )
 
-        if (!state.paymentSettled) {
-            Spacer(modifier = Modifier.height(32.dp))
-            Text(
-                text = "Waiting for retailer to complete payment...",
-                fontSize = 13.sp,
-                color = lab.fgTertiary,
-                textAlign = TextAlign.Center
-            )
-        } else if (state.isCompleting) {
-            Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(32.dp))
+        Text(
+            text = subtitle,
+            fontSize = 13.sp,
+            color = lab.fgTertiary,
+            textAlign = TextAlign.Center
+        )
+
+        if (state.fiscalizing || state.isCompleting) {
+            Spacer(modifier = Modifier.height(24.dp))
             CircularProgressIndicator(
                 color = lab.fg,
                 modifier = Modifier.size(28.dp),
@@ -150,7 +172,20 @@ fun PaymentWaitingScreen(
             Text(text = error, color = StatusRed, fontSize = 12.sp, textAlign = TextAlign.Center)
         }
 
-        if (state.error != null && state.paymentSettled) {
+        if (state.fiscalFailed) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = { viewModel.retryFiscal() },
+                enabled = !state.isCompleting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.buttonColors(containerColor = StatusGreen),
+            ) {
+                Text(text = "Retry Fiscal", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+        } else if (state.error != null && state.paymentSettled && !state.fiscalizing) {
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = { viewModel.completeOrder() },
@@ -161,7 +196,7 @@ fun PaymentWaitingScreen(
                 shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(containerColor = StatusGreen),
             ) {
-                Text(text = "Retry Complete Delivery", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(text = "Retry Capture", fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
         }
     }

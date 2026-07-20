@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import type { WarehouseOrderDetail } from '@pegasusx/types';
-import { ApiError } from '@pegasusx/api-client';
+import { adminForceCompleteKey, ApiError } from '@pegasusx/api-client';
 import Icon from '@/components/Icon';
 import { OrderTimelinePanel } from '@/components/OrderTimelinePanel';
 import PageTransition from '@/components/PageTransition';
@@ -33,6 +33,7 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [reason, setReason] = useState('');
+  const [forceReason, setForceReason] = useState('OFD_DOWN');
   const [proposedDate, setProposedDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const load = useCallback(async () => {
@@ -71,6 +72,8 @@ export default function OrderDetailPage() {
 
   const state = (order?.state ?? order?.status ?? '').toUpperCase();
   const flags = orderActionFlags(state);
+  const canForceFiscal =
+    state === 'FISCAL_FAILED' || state === 'FISCALIZING';
   const total = order?.total_uzs ?? order?.total_minor ?? 0;
   const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
 
@@ -145,15 +148,59 @@ export default function OrderDetailPage() {
               </div>
             </section>
 
-            {showOps ? (
+            {showOps || canForceFiscal ? (
               <aside className="wh-bay-panel wh-bay--ops wh-order-bento-ops">
                 <div className="wh-section-head">
                   <div>
                     <h2 className="wh-section-title">Quick actions</h2>
-                    <p className="wh-section-desc">Propose a new date or cancel. Retailer is notified.</p>
+                    <p className="wh-section-desc">
+                      {canForceFiscal
+                        ? 'Fiscal hard-gate exception or logistics actions.'
+                        : 'Propose a new date or cancel. Retailer is notified.'}
+                    </p>
                   </div>
                 </div>
                 <div className="p-5 space-y-4">
+                  {canForceFiscal ? (
+                    <div className="space-y-2 rounded-xl border border-[var(--desk-warning)]/30 bg-[var(--desk-warning)]/10 p-3">
+                      <p className="text-xs font-medium uppercase tracking-wider text-[var(--desk-warning)]">
+                        Force-complete (fiscal)
+                      </p>
+                      <p className="text-xs text-[var(--muted)]">
+                        Audited skip when OFD is stuck. Requires reason code.
+                      </p>
+                      <select
+                        className="portal-input"
+                        value={forceReason}
+                        onChange={(e) => setForceReason(e.target.value)}
+                        disabled={acting}
+                      >
+                        {['OFD_DOWN', 'OFD_TIMEOUT', 'OPS_ESCALATION', 'TAX_EXEMPT_POLICY', 'OTHER'].map(
+                          (code) => (
+                            <option key={code} value={code}>
+                              {code}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={acting || !forceReason}
+                        className="portal-btn portal-btn--primary w-full"
+                        onClick={() =>
+                          runMutation('Force-completed (fiscal skipped)', () =>
+                            warehouseApi.forceCompleteOrder(
+                              orderId,
+                              { reason_code: forceReason },
+                              adminForceCompleteKey(orderId, forceReason),
+                            ),
+                          )
+                        }
+                      >
+                        Force complete
+                      </button>
+                    </div>
+                  ) : null}
                   {flags.canDelay ? (
                     <label className="portal-field">
                       <span className="portal-label">Proposed delivery date</span>

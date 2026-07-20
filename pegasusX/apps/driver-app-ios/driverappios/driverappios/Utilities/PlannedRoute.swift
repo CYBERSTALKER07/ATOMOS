@@ -21,7 +21,7 @@ func buildPlannedRouteCoordinates(orders: [Order], activeRouteId: String?) -> [C
 func resolveActiveRouteId(orders: [Order]) -> String? {
     let executionStates: Set<OrderState> = [
         .IN_TRANSIT, .ARRIVING, .ARRIVED, .ARRIVED_SHOP_CLOSED,
-        .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION, .DISPATCHED, .LOADED,
+        .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION, .FISCALIZING, .FISCAL_FAILED, .DISPATCHED, .LOADED,
     ]
     let active = orders.first { order in
         executionStates.contains(order.state)

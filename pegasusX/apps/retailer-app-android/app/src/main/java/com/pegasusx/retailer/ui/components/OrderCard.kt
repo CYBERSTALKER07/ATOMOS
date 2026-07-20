@@ -153,6 +153,8 @@ fun OrderStatus.statusColor(): Color = when (this) {
     OrderStatus.NO_CAPACITY -> StatusRed
     OrderStatus.AWAITING_PAYMENT -> StatusOrange
     OrderStatus.PENDING_CASH_COLLECTION -> StatusOrange
+    OrderStatus.FISCALIZING -> StatusOrange
+    OrderStatus.FISCAL_FAILED -> StatusRed
     OrderStatus.QUARANTINE -> StatusOrange
     OrderStatus.DELIVERED_ON_CREDIT -> StatusGreen
     OrderStatus.RECONCILIATION_REQUIRED -> StatusOrange

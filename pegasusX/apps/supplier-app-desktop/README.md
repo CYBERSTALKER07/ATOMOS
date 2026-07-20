@@ -1,6 +1,6 @@
 # Supplier desktop (pegasusX)
 
-**Canonical desktop surface:** `pegasusX/apps/supplier-portal` (Next.js + Tauri 2), same product role as legacy `admin-portal`.
+**Canonical desktop surface:** [`../supplier-portal`](../supplier-portal) (Next.js + Tauri 2), same product role as legacy `admin-portal`.
 
 ```bash
 cd pegasusX
@@ -10,6 +10,9 @@ pnpm run tauri:dev      # desktop
 pnpm run tauri:build    # release
 ```
 
-API: `http://localhost:8180`. Native mobile row clients: `supplier-app-ios`, `supplier-app-android`.
+| Item | Value |
+|------|--------|
+| API | `http://localhost:8180` (local) |
+| Native mobile | `supplier-app-ios`, `supplier-app-android` |
 
-There is no separate `supplier-app-desktop` codebase; this folder is a discoverability anchor only.
+There is no separate `supplier-app-desktop` app tree; this folder is a **discoverability anchor**. `pnpm dev` / `tauri:dev` print the redirect and exit non-zero so CI does not treat an empty app as build success.

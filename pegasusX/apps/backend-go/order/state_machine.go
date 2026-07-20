@@ -19,15 +19,24 @@ func ValidateStatusTransition(current Status, next Status) error {
 	case StatusInTransit:
 		allowed = next == StatusArrived || next == StatusCancelled || next == StatusCancelRequested || next == StatusPending
 	case StatusArrived:
-		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusCompleted || next == StatusDeliveredOnCredit || next == StatusCancelRequested
+		// ADR-009: no soft ARRIVED → COMPLETED (fiscal hard-gate).
+		allowed = next == StatusAwaitingPayment || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit || next == StatusCancelRequested
 	case StatusArrivedShopClosed:
 		allowed = next == StatusAwaitingPayment || next == StatusDeliveredOnCredit
 	case StatusDeliveredOnCredit:
-		allowed = next == StatusCompleted
+		// §9.1: fiscal only when money received — settlement capture enters FISCALIZING.
+		// Force-complete (ADMIN/WAREHOUSE_ADMIN) may still land COMPLETED via service gate.
+		allowed = next == StatusFiscalizing || next == StatusCompleted
 	case StatusAwaitingPayment:
-		allowed = next == StatusCompleted || next == StatusPendingCashCollection
+		// Card/cash capture → FISCALIZING; cash choice → PENDING_CASH_COLLECTION.
+		allowed = next == StatusFiscalizing || next == StatusPendingCashCollection || next == StatusDeliveredOnCredit
 	case StatusPendingCashCollection:
-		allowed = next == StatusCompleted
+		allowed = next == StatusFiscalizing
+	case StatusFiscalizing:
+		allowed = next == StatusCompleted || next == StatusFiscalFailed
+	case StatusFiscalFailed:
+		// Retry → FISCALIZING; force-complete → COMPLETED (role-gated in service).
+		allowed = next == StatusFiscalizing || next == StatusCompleted
 	case StatusCancelRequested:
 		// Approve -> CANCELLED; deny/resume -> back to the operational leg it
 		// was requested from. Without exits this status would brick the order.
@@ -40,6 +49,13 @@ func ValidateStatusTransition(current Status, next Status) error {
 		allowed = next == StatusCompleted || next == StatusCancelled
 	case StatusBackordered:
 		allowed = next == StatusPending || next == StatusScheduled || next == StatusCancelled
+	case StatusScheduled:
+		// Preorder: midnight guard may auto-accept; T-1 promote → PENDING;
+		// retailer/warehouse may cancel before promote.
+		allowed = next == StatusAutoAccepted || next == StatusPending || next == StatusCancelled || next == StatusCancelRequested
+	case StatusAutoAccepted:
+		// Confirmed preorder waiting for T-1 promote into the operational queue.
+		allowed = next == StatusPending || next == StatusCancelled || next == StatusCancelRequested
 	default:
 		allowed = false
 	}

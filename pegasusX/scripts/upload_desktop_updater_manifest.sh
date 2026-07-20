@@ -1,26 +1,46 @@
 #!/usr/bin/env bash
-# Build and upload a Tauri desktop updater.json (+ optional bundle) to GCS.
+# Build and upload a Tauri 2 desktop updater.json (+ optional bundle) to GCS.
 #
 # Usage:
-#   ./scripts/upload_desktop_updater_manifest.sh <app> <version> <bundle-path> [arch]
+#   ./scripts/upload_desktop_updater_manifest.sh <app> <version> <bundle-path> [os] [arch]
 #
-# Example:
+# Example (Windows NSIS):
 #   ./scripts/upload_desktop_updater_manifest.sh retailer-app-desktop 0.1.1 \
-#     apps/retailer-app-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+#     apps/retailer-app-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe \
+#     windows x86_64
+#
+# Example (macOS aarch64):
+#   ./scripts/upload_desktop_updater_manifest.sh supplier-portal 0.1.1 \
+#     path/to/app.app.tar.gz darwin aarch64
 #
 # Requires: TAURI_SIGNING_PRIVATE_KEY (or TAURI_SIGNING_PRIVATE_KEY_PATH), gsutil, pnpm
+#
+# CDN layout (Tauri 2 {{target}}/{{arch}}):
+#   gs://BUCKET/{slug}/{os}/{arch}/updater.json
+#   e.g. supplier-desktop/windows/x86_64/updater.json
 set -euo pipefail
 
 APP="${1:-}"
 VERSION="${2:-}"
 BUNDLE_GLOB="${3:-}"
-ARCH="${4:-x86_64}"
-TARGET="${TAURI_WINDOWS_TARGET:-x86_64-pc-windows-msvc}"
+# Tauri 2 endpoint vars: target ∈ {windows,darwin,linux}, arch ∈ {x86_64,aarch64,...}
+OS_TARGET="${4:-windows}"
+ARCH="${5:-x86_64}"
 
 if [[ -z "$APP" || -z "$VERSION" || -z "$BUNDLE_GLOB" ]]; then
-  echo "Usage: $0 <app> <version> <bundle-glob> [arch]" >&2
+  echo "Usage: $0 <app> <version> <bundle-glob> [os=windows] [arch=x86_64]" >&2
   exit 1
 fi
+
+case "$OS_TARGET" in
+  windows|darwin|linux) ;;
+  win) OS_TARGET="windows" ;;
+  mac|macos|osx) OS_TARGET="darwin" ;;
+  *)
+    echo "Unknown os target: $OS_TARGET (use windows|darwin|linux)" >&2
+    exit 1
+    ;;
+esac
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -37,7 +57,8 @@ case "$APP" in
 esac
 
 BUCKET="${DESKTOP_UPDATES_GCS_BUCKET:-pegasusx-ssmr-app-updates}"
-GCS_PREFIX="gs://${BUCKET}/${SLUG}/${TARGET}/${ARCH}"
+GCS_PREFIX="gs://${BUCKET}/${SLUG}/${OS_TARGET}/${ARCH}"
+PLATFORM_KEY="${OS_TARGET}-${ARCH}"
 
 shopt -s nullglob
 BUNDLE_FILES=($BUNDLE_GLOB)
@@ -66,12 +87,12 @@ MANIFEST="$(mktemp)"
 cat >"$MANIFEST" <<EOF
 {
   "version": "${VERSION}",
-  "notes": "Desktop release ${VERSION}",
+  "notes": "Desktop enterprise release ${VERSION}",
   "pub_date": "${PUB_DATE}",
   "platforms": {
-    "${TARGET}": {
+    "${PLATFORM_KEY}": {
       "signature": "${SIGNATURE}",
-      "url": "https://storage.googleapis.com/${BUCKET}/${SLUG}/${TARGET}/${ARCH}/${BUNDLE_NAME}"
+      "url": "https://storage.googleapis.com/${BUCKET}/${SLUG}/${OS_TARGET}/${ARCH}/${BUNDLE_NAME}"
     }
   }
 }
@@ -80,3 +101,5 @@ EOF
 gsutil cp "$MANIFEST" "${GCS_PREFIX}/updater.json"
 rm -f "$MANIFEST"
 echo "upload-desktop-updater-ok: ${GCS_PREFIX}/updater.json"
+echo "  platform key: ${PLATFORM_KEY}"
+echo "  endpoint: https://storage.googleapis.com/${BUCKET}/${SLUG}/{{target}}/{{arch}}/updater.json"

@@ -100,6 +100,8 @@ struct ContentView: View {
     @State private var shopClosedAlert: ShopClosedAlertEvent?
     @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var clientPolicyMessage: String?
+    @State private var clientPolicyForce = false
+    @State private var pendingManifest: AutoUpdater.Manifest?
     @State private var rescueWarningMessage: String?
     @State private var deliveriesHubInitialTab: DeliveriesHubTab = .map
 
@@ -120,7 +122,14 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ClientPolicyBanner(message: clientPolicyMessage)
+            ClientPolicyBanner(
+                message: clientPolicyMessage,
+                force: clientPolicyForce,
+                onUpdate: clientPolicyMessage == nil ? nil : {
+                    AutoUpdater.shared.promptInstall(manifest: pendingManifest, force: clientPolicyForce)
+                },
+                onDismiss: clientPolicyForce ? nil : { clientPolicyMessage = nil },
+            )
             RescueWarningBanner(message: rescueWarningMessage) {
                 withAnimation(AnimationConstants.fluid) { rescueWarningMessage = nil }
             }
@@ -769,28 +778,47 @@ struct ContentView: View {
             struct ClientPolicy: Decodable {
                 let outdated: Bool?
                 let forceUpdate: Bool?
+                let updateDeferred: Bool?
                 let minimumVersion: String?
+                let recommendedVersion: String?
+                let updateURL: String?
+                let deferReason: String?
                 enum CodingKeys: String, CodingKey {
                     case outdated
                     case forceUpdate = "force_update"
+                    case updateDeferred = "update_deferred"
                     case minimumVersion = "minimum_version"
+                    case recommendedVersion = "recommended_version"
+                    case updateURL = "update_url"
+                    case deferReason = "defer_reason"
                 }
             }
+            let role = EnterpriseUpdateConfig.policyRole
+            let channel = EnterpriseUpdateConfig.channel
             let policy: ClientPolicy = try await api.get(
-                path: "/v1/platform/client-policy?role=RETAILER&platform=ios&version=\(version)&channel=production"
+                path: "/v1/platform/client-policy?role=\(role)&platform=ios&version=\(version)&channel=\(channel)"
             )
-            if policy.outdated == true || policy.forceUpdate == true {
-                let prefix = policy.forceUpdate == true ? "Update required" : "Update available"
-                if let min = policy.minimumVersion, !min.isEmpty {
-                    clientPolicyMessage = "\(prefix) — minimum version \(min)"
-                } else {
-                    clientPolicyMessage = prefix
+            let state = await AutoUpdater.shared.evaluate(
+                outdated: policy.outdated == true,
+                forceUpdate: policy.forceUpdate == true,
+                updateDeferred: policy.updateDeferred == true,
+                minimumVersion: policy.minimumVersion,
+                recommendedVersion: policy.recommendedVersion,
+                deferReason: policy.deferReason,
+                updateURL: policy.updateURL,
+            )
+            clientPolicyMessage = state.message
+            clientPolicyForce = state.force
+            pendingManifest = state.manifest
+            if state.force, state.available {
+                await MainActor.run {
+                    AutoUpdater.shared.promptInstall(manifest: state.manifest, force: true)
                 }
-            } else {
-                clientPolicyMessage = nil
             }
         } catch {
             clientPolicyMessage = nil
+            clientPolicyForce = false
+            pendingManifest = nil
         }
     }
 

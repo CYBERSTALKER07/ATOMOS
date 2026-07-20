@@ -98,6 +98,13 @@ const (
 	EventPaymentRequired     = "PAYMENT_REQUIRED"
 	EventSettlementRequired  = "SETTLEMENT_REQUIRED"
 
+	// @Sync(FiscalReceiptEvent) ADR-009 fiscal hard-gate
+	EventFiscalReceiptRequested = "FISCAL_RECEIPT_REQUESTED"
+	EventFiscalReceiptSucceeded = "FISCAL_RECEIPT_SUCCEEDED"
+	EventFiscalReceiptFailed    = "FISCAL_RECEIPT_FAILED"
+	// @Sync(OrderForceCompletedEvent)
+	EventOrderForceCompleted = "ORDER_FORCE_COMPLETED"
+
 	// @Sync(ManifestEvent)
 	EventManifestDraftCreated   = "MANIFEST_DRAFT_CREATED"
 	EventManifestLoadingStarted = "MANIFEST_LOADING_STARTED"

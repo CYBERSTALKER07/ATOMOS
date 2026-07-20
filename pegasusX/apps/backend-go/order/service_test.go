@@ -255,9 +255,14 @@ func TestValidateStatusTransitionMatrix(t *testing.T) {
 		{name: "in transit to arrived", current: StatusInTransit, next: StatusArrived},
 		{name: "arrived to awaiting payment", current: StatusArrived, next: StatusAwaitingPayment},
 		{name: "arrived to pending cash collection", current: StatusArrived, next: StatusPendingCashCollection},
-		{name: "arrived to completed", current: StatusArrived, next: StatusCompleted},
-		{name: "awaiting payment to completed", current: StatusAwaitingPayment, next: StatusCompleted},
-		{name: "pending cash collection to completed", current: StatusPendingCashCollection, next: StatusCompleted},
+		{name: "arrived to completed denied (fiscal hard-gate)", current: StatusArrived, next: StatusCompleted, wantErr: true},
+		{name: "awaiting payment to fiscalizing", current: StatusAwaitingPayment, next: StatusFiscalizing},
+		{name: "pending cash collection to fiscalizing", current: StatusPendingCashCollection, next: StatusFiscalizing},
+		{name: "awaiting payment to completed denied", current: StatusAwaitingPayment, next: StatusCompleted, wantErr: true},
+		{name: "pending cash collection to completed denied", current: StatusPendingCashCollection, next: StatusCompleted, wantErr: true},
+		{name: "fiscalizing to completed", current: StatusFiscalizing, next: StatusCompleted},
+		{name: "fiscalizing to fiscal failed", current: StatusFiscalizing, next: StatusFiscalFailed},
+		{name: "fiscal failed to fiscalizing", current: StatusFiscalFailed, next: StatusFiscalizing},
 		{name: "no-op allowed", current: StatusCompleted, next: StatusCompleted},
 		{name: "pending to completed denied", current: StatusPending, next: StatusCompleted, wantErr: true},
 		{name: "loaded to arrived denied", current: StatusLoaded, next: StatusArrived, wantErr: true},
@@ -265,6 +270,11 @@ func TestValidateStatusTransitionMatrix(t *testing.T) {
 		{name: "awaiting payment to arrived denied", current: StatusAwaitingPayment, next: StatusArrived, wantErr: true},
 		{name: "completed to cancelled denied", current: StatusCompleted, next: StatusCancelled, wantErr: true},
 		{name: "cancelled to pending denied", current: StatusCancelled, next: StatusPending, wantErr: true},
+		{name: "scheduled to pending", current: StatusScheduled, next: StatusPending},
+		{name: "scheduled to auto accepted", current: StatusScheduled, next: StatusAutoAccepted},
+		{name: "auto accepted to pending", current: StatusAutoAccepted, next: StatusPending},
+		{name: "scheduled to loaded denied", current: StatusScheduled, next: StatusLoaded, wantErr: true},
+		{name: "auto accepted to in transit denied", current: StatusAutoAccepted, next: StatusInTransit, wantErr: true},
 	}
 
 	for _, tc := range cases {
@@ -751,8 +761,8 @@ func TestServiceSubmitDeliveryPersistsProofArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected submit delivery error: %v", err)
 	}
-	if !resp.Success || resp.NewState != StatusCompleted {
-		t.Fatalf("response=%+v want success with COMPLETED state", resp)
+	if !resp.Success || resp.NewState != StatusAwaitingPayment {
+		t.Fatalf("response=%+v want success with AWAITING_PAYMENT state (ADR-009 handoff opens payment)", resp)
 	}
 	if len(repo.lastProofs) != 1 {
 		t.Fatalf("len(lastProofs)=%d want 1", len(repo.lastProofs))
@@ -796,7 +806,7 @@ func TestServiceCollectCashGeofenceRejectsFarDriver(t *testing.T) {
 	}
 }
 
-func TestServiceCollectCashFinalizesWithPaymentEvents(t *testing.T) {
+func TestServiceCollectCashEntersFiscalizingWithPaymentEvents(t *testing.T) {
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	repo := &testRepo{found: true, order: deliveryTestOrder(StatusAwaitingPayment)}
 	svc := newTestService(repo, now)
@@ -809,8 +819,11 @@ func TestServiceCollectCashFinalizesWithPaymentEvents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected collect cash error: %v", err)
 	}
-	if resp.State != StatusCompleted {
-		t.Fatalf("state = %s, want %s", resp.State, StatusCompleted)
+	if resp.State != StatusFiscalizing {
+		t.Fatalf("state = %s, want %s", resp.State, StatusFiscalizing)
+	}
+	if resp.AttemptID == "" {
+		t.Fatal("expected attempt_id on fiscalizing response")
 	}
 	if resp.Amount != 1500 || resp.Currency != "UZS" {
 		t.Fatalf("amount/currency = %d/%s, want 1500/UZS", resp.Amount, resp.Currency)
@@ -818,9 +831,13 @@ func TestServiceCollectCashFinalizesWithPaymentEvents(t *testing.T) {
 	if resp.DistanceM > deliveryGeofenceMeters {
 		t.Fatalf("distance = %.2f, want within %.2f", resp.DistanceM, deliveryGeofenceMeters)
 	}
-	if repo.captured.Status != StatusCompleted {
-		t.Fatalf("captured status = %s, want %s", repo.captured.Status, StatusCompleted)
+	if repo.captured.Status != StatusFiscalizing {
+		t.Fatalf("captured status = %s, want %s", repo.captured.Status, StatusFiscalizing)
 	}
+	if len(repo.captured.PendingFiscalReceipts) != 1 {
+		t.Fatalf("pending fiscal receipts = %d, want 1", len(repo.captured.PendingFiscalReceipts))
+	}
+	// ORDER_STATUS_CHANGED + PAYMENT_CLEARED + FISCAL_RECEIPT_REQUESTED
 	if repo.bufferedEvents != 3 {
 		t.Fatalf("buffered events = %d, want 3", repo.bufferedEvents)
 	}
@@ -833,6 +850,18 @@ func TestServiceCollectCashFinalizesWithPaymentEvents(t *testing.T) {
 	}
 	if proof.DistanceM == nil || *proof.DistanceM > deliveryGeofenceMeters {
 		t.Fatalf("proof distance = %+v want within %.2f", proof.DistanceM, deliveryGeofenceMeters)
+	}
+
+	// Worker success → COMPLETED + ORDER_FINALIZED
+	attemptID := resp.AttemptID
+	if err := svc.ApplyFiscalWorkerResult(context.Background(), "ord-1", attemptID); err != nil {
+		t.Fatalf("fiscal worker: %v", err)
+	}
+	if repo.captured.Status != StatusCompleted {
+		t.Fatalf("after fiscal status = %s, want COMPLETED", repo.captured.Status)
+	}
+	if repo.captured.FiscalStatus != FiscalStatusSuccess {
+		t.Fatalf("fiscal status = %s, want SUCCESS", repo.captured.FiscalStatus)
 	}
 }
 

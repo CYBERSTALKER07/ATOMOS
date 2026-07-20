@@ -13,6 +13,7 @@ struct DeliveryMapView: View {
     @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var orders: [TrackingOrder] = []
     @State private var recentReceipts: [TrackingOrder] = []
+    @State private var fiscalQRReceipt: TrackingOrder?
     @State private var suppliers: [SupplierFilter] = []
     @State private var selectedSupplierIds: Set<String> = []
     @State private var isLoading = false
@@ -90,33 +91,45 @@ struct DeliveryMapView: View {
             }
             .ignoresSafeArea(edges: .bottom)
 
-            // Recent receipts
+            // Recent receipts (ADR-009: fiscal label + QR when available)
             if !recentReceipts.isEmpty {
                 VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
                     Text("Recent receipts")
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text("Completed deliveries from the tracking feed.")
+                    Text("Completed deliveries. Tap for fiscal QR when available.")
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
 
                     ScrollView {
                         VStack(spacing: AppTheme.spacingSM) {
                             ForEach(recentReceipts.prefix(6)) { receipt in
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(receipt.supplierName.isEmpty ? "Supplier" : receipt.supplierName)
-                                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                                        Text("#\(receipt.orderId.suffix(8))")
-                                            .font(.system(.caption2, design: .monospaced))
-                                            .foregroundStyle(AppTheme.textTertiary)
+                                Button {
+                                    if !receipt.fiscalQr.isEmpty {
+                                        fiscalQRReceipt = receipt
                                     }
-                                    Spacer()
-                                    Text(receipt.displayTotal)
-                                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                } label: {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(receipt.supplierName.isEmpty ? "Supplier" : receipt.supplierName)
+                                                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                            Text("#\(receipt.orderId.suffix(8)) · \(receipt.fiscalReceiptLabel)")
+                                                .font(.system(.caption2, design: .monospaced))
+                                                .foregroundStyle(AppTheme.textTertiary)
+                                        }
+                                        Spacer()
+                                        if !receipt.fiscalQr.isEmpty {
+                                            Image(systemName: "qrcode")
+                                                .font(.system(size: 14, weight: .semibold))
+                                                .foregroundStyle(AppTheme.accent)
+                                        }
+                                        Text(receipt.displayTotal)
+                                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                    }
+                                    .padding(AppTheme.spacingMD)
+                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppTheme.radiusSM))
                                 }
-                                .padding(AppTheme.spacingMD)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppTheme.radiusSM))
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -195,6 +208,34 @@ struct DeliveryMapView: View {
         .task { await observeWebSocket() }
         .task(id: refreshCenter.refreshToken) { await refreshTrackingState() }
         .onChange(of: visibleOrders.count) { fitCamera() }
+        .sheet(item: $fiscalQRReceipt) { receipt in
+            NavigationStack {
+                VStack(spacing: AppTheme.spacingLG) {
+                    Text("Fiscal receipt")
+                        .font(.system(.title3, design: .rounded, weight: .bold))
+                    Text(receipt.fiscalReceiptLabel)
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundStyle(AppTheme.textSecondary)
+                    if !receipt.fiscalQr.isEmpty {
+                        QRCodeView(data: receipt.fiscalQr, size: 220)
+                    }
+                    if !receipt.latestFiscalReceiptId.isEmpty {
+                        Text("ID · \(receipt.latestFiscalReceiptId)")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(AppTheme.textTertiary)
+                    }
+                    Spacer()
+                }
+                .padding(AppTheme.spacingLG)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") { fiscalQRReceipt = nil }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
     }
 
     // MARK: - Data

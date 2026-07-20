@@ -56,6 +56,8 @@ const chipCfg: Record<
   AWAITING_PAYMENT: { color: "warning", label: "Awaiting Payment" },
   PENDING_CASH_COLLECTION: { color: "warning", label: "Cash Collection" },
   COMPLETED: { color: "success", label: "Completed" },
+  FISCALIZING: { color: "warning", label: "Pending fiscal" },
+  FISCAL_FAILED: { color: "danger", label: "Fiscal failed" },
   CANCELLED: { color: "danger", label: "Cancelled" },
   CANCEL_REQUESTED: { color: "danger", label: "Cancel Requested" },
   NO_CAPACITY: { color: "danger", label: "No Capacity" },
@@ -457,7 +459,17 @@ export default function TrackingPage() {
           description="Completed deliveries from the tracking feed."
         >
           <div className="space-y-2 max-h-40 overflow-y-auto !mt-0">
-            {recentReceipts.slice(0, 6).map((receipt) => (
+            {recentReceipts.slice(0, 6).map((receipt) => {
+              const st = (receipt.state || "").toUpperCase();
+              const fiscalLabel =
+                st === "FISCALIZING"
+                  ? "Pending fiscal"
+                  : st === "FISCAL_FAILED"
+                    ? "Fiscal failed"
+                    : st === "COMPLETED"
+                      ? "Fiscalized"
+                      : receipt.state || "—";
+              return (
               <div
                 key={receipt.order_id}
                 className="flex items-center justify-between rounded-xl border border-[var(--desk-border)] px-3 py-2"
@@ -467,14 +479,15 @@ export default function TrackingPage() {
                     {receipt.supplier_name || "Supplier"}
                   </p>
                   <p className="text-[10px] font-mono text-[var(--desk-text-tertiary)]">
-                    #{receipt.order_id.slice(-8)}
+                    #{receipt.order_id.slice(-8)} · {fiscalLabel}
                   </p>
                 </div>
                 <span className="text-sm font-light tabular-nums">
                   {formatAmount(receipt.total_amount)}
                 </span>
               </div>
-            ))}
+            );
+            })}
           </div>
         </PageSection>
       )}

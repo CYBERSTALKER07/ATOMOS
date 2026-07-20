@@ -57,7 +57,9 @@ import com.pegasusx.retailer.ui.theme.StatusOrangeSoft
 import com.pegasusx.retailer.ui.theme.StatusRed
 import com.pegasusx.retailer.ui.theme.StatusRedSoft
 
-enum class PaymentPhase { CHOOSE, CASH_CONFIRM, PROCESSING, CASH_PENDING, SUCCESS, FAILED }
+enum class PaymentPhase {
+    CHOOSE, CASH_CONFIRM, PROCESSING, CASH_PENDING, FISCALIZING, SUCCESS, FAILED
+}
 
 private data class CardGatewayOption(
     val gateway: String,
@@ -140,6 +142,7 @@ fun DeliveryPaymentSheetContent(
             PaymentPhase.CASH_CONFIRM -> CashConfirmContent(event, onConfirmCash, onBackToPaymentChoice)
             PaymentPhase.PROCESSING -> ProcessingContent()
             PaymentPhase.CASH_PENDING -> CashPendingContent(event)
+            PaymentPhase.FISCALIZING -> FiscalizingContent(event)
             PaymentPhase.SUCCESS -> SuccessContent(event, onDismiss)
             PaymentPhase.FAILED -> FailedContent(errorMessage, onRetry, onDismiss)
         }
@@ -483,6 +486,42 @@ private fun CashPendingContent(event: RetailerWSMessage) {
 }
 
 @Composable
+private fun FiscalizingContent(event: RetailerWSMessage) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(48.dp),
+            strokeWidth = 4.dp,
+            strokeCap = StrokeCap.Round,
+            color = StatusOrange,
+        )
+        Spacer(modifier.height(20.dp))
+        Text(
+            "Pending Fiscal Receipt",
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+        )
+        Spacer(modifier.height(8.dp))
+        Text(
+            "${event.amount}",
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = StatusOrange,
+        )
+        Spacer(modifier.height(12.dp))
+        Text(
+            "Payment is captured. Official fiscal document is being issued…",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
 private fun SuccessContent(event: RetailerWSMessage, onDismiss: () -> Unit) {
     Column(
         modifier = Modifier
@@ -507,7 +546,7 @@ private fun SuccessContent(event: RetailerWSMessage, onDismiss: () -> Unit) {
         }
         Spacer(Modifier.height(20.dp))
         Text(
-            "Payment Complete",
+            "Paid & Fiscalized",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
         )
         Spacer(Modifier.height(8.dp))

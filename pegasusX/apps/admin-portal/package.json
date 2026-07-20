@@ -1,0 +1,13 @@
+{
+  "name": "@pegasusx/admin-portal",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Deprecated stub — canonical admin/supplier surface is supplier-portal",
+  "scripts": {
+    "dev": "node ./redirect.mjs",
+    "build": "node ./redirect.mjs --check",
+    "start": "node ./redirect.mjs",
+    "tauri:dev": "node ./redirect.mjs",
+    "tauri:build": "node ./redirect.mjs --check"
+  }
+}

@@ -545,7 +545,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     /// Derive truck status from current order states
     private func deriveTruckStatus() {
-        let activeStates: Set<OrderState> = [.IN_TRANSIT, .ARRIVING, .ARRIVED, .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION]
+        let activeStates: Set<OrderState> = [.IN_TRANSIT, .ARRIVING, .ARRIVED, .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION, .FISCALIZING, .FISCAL_FAILED]
         let hasActive = orders.contains { activeStates.contains($0.state) }
         let hasLoaded = orders.contains { $0.state == .LOADED || $0.state == .DISPATCHED }
         let allDone = !orders.isEmpty && orders.allSatisfy { $0.state == .COMPLETED || $0.state == .CANCELLED }

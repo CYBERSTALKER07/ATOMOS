@@ -41,6 +41,15 @@ func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) erro
 		if payload.OrderID != "" {
 			return c.service.SettleExternalPayment(ctx, payload.OrderID, payload.Gateway)
 		}
+	case events.EventFiscalReceiptRequested:
+		var payload events.FiscalReceiptEvent
+		if err := json.Unmarshal(msg.Value, &payload); err != nil {
+			c.log.ErrorContext(ctx, "failed to unmarshal fiscal receipt requested payload", "err", err)
+			return nil
+		}
+		if payload.OrderID != "" && payload.AttemptID != "" {
+			return c.service.ApplyFiscalWorkerResult(ctx, payload.OrderID, payload.AttemptID)
+		}
 	case events.EventPaymentFailed:
 		var fin events.FinanceEvent
 		if err := json.Unmarshal(msg.Value, &fin); err != nil {

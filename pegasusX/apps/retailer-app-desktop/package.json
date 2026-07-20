@@ -16,7 +16,12 @@
     "tauri:build:win": "TAURI_BUILD=1 tauri build --target x86_64-pc-windows-msvc",
     "tauri:build:debug": "TAURI_BUILD=1 tauri build --debug",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "tauri:build:store": "NEXT_PUBLIC_DESKTOP_DISTRIBUTION=store TAURI_BUILD=1 tauri build --config src-tauri/tauri.store.conf.json",
+    "tauri:build:store:win": "NEXT_PUBLIC_DESKTOP_DISTRIBUTION=store TAURI_BUILD=1 tauri build --target x86_64-pc-windows-msvc --config src-tauri/tauri.microsoftstore.conf.json",
+    "tauri:build:store:mac": "NEXT_PUBLIC_DESKTOP_DISTRIBUTION=store TAURI_BUILD=1 tauri build --target universal-apple-darwin --config src-tauri/tauri.macappstore.conf.json",
+    "tauri:build:enterprise:win": "NEXT_PUBLIC_DESKTOP_DISTRIBUTION=enterprise TAURI_BUILD=1 tauri build --target x86_64-pc-windows-msvc",
+    "tauri:build:enterprise:mac": "NEXT_PUBLIC_DESKTOP_DISTRIBUTION=enterprise TAURI_BUILD=1 tauri build --target universal-apple-darwin"
   },
   "dependencies": {
     "@heroui/react": "^3.1.0",
@@ -34,7 +39,9 @@
     "@tauri-apps/plugin-dialog": "^2.7.0",
     "@tauri-apps/plugin-fs": "^2.5.0",
     "@tauri-apps/plugin-deep-link": "^2.4.9",
+    "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-sql": "^2.2.0",
+    "@tauri-apps/plugin-updater": "^2.9.0",
     "firebase": "^12.12.0",
     "framer-motion": "^12.40.0",
     "h3-js": "^4.5.0",

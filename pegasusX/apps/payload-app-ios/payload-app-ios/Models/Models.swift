@@ -433,14 +433,20 @@ struct ClientPolicyResponse: Decodable {
     let role: String
     let outdated: Bool
     let forceUpdate: Bool
+    let updateDeferred: Bool?
     let minimumVersion: String
+    let recommendedVersion: String?
+    let updateURL: String?
     let deferReason: String?
 
     enum CodingKeys: String, CodingKey {
         case role
         case outdated
         case forceUpdate = "force_update"
+        case updateDeferred = "update_deferred"
         case minimumVersion = "minimum_version"
+        case recommendedVersion = "recommended_version"
+        case updateURL = "update_url"
         case deferReason = "defer_reason"
     }
 }

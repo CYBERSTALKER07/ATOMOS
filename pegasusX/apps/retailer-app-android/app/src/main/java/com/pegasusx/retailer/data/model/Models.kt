@@ -41,6 +41,8 @@ enum class OrderStatus {
     @SerialName("ARRIVED_SHOP_CLOSED") ARRIVED_SHOP_CLOSED,
     @SerialName("AWAITING_PAYMENT") AWAITING_PAYMENT,
     @SerialName("PENDING_CASH_COLLECTION") PENDING_CASH_COLLECTION,
+    @SerialName("FISCALIZING") FISCALIZING,
+    @SerialName("FISCAL_FAILED") FISCAL_FAILED,
     @SerialName("CANCEL_REQUESTED") CANCEL_REQUESTED,
     @SerialName("NO_CAPACITY") NO_CAPACITY,
     @SerialName("COMPLETED") COMPLETED,
@@ -65,6 +67,8 @@ enum class OrderStatus {
             ARRIVED_SHOP_CLOSED -> "Shop Closed"
             AWAITING_PAYMENT -> "Payment Required"
             PENDING_CASH_COLLECTION -> "Cash Collection"
+            FISCALIZING -> "Pending Fiscal"
+            FISCAL_FAILED -> "Fiscal Failed"
             CANCEL_REQUESTED -> "Cancel Requested"
             NO_CAPACITY -> "No Capacity"
             COMPLETED -> "Delivered"
@@ -76,7 +80,10 @@ enum class OrderStatus {
         }
 
     val isActive: Boolean
-        get() = this in listOf(AUTO_ACCEPTED, LOADED, DISPATCHED, IN_TRANSIT, ARRIVING, ARRIVED, ARRIVED_SHOP_CLOSED, AWAITING_PAYMENT, PENDING_CASH_COLLECTION)
+        get() = this in listOf(
+            AUTO_ACCEPTED, LOADED, DISPATCHED, IN_TRANSIT, ARRIVING, ARRIVED, ARRIVED_SHOP_CLOSED,
+            AWAITING_PAYMENT, PENDING_CASH_COLLECTION, FISCALIZING, FISCAL_FAILED,
+        )
 
     /** 6-step logistics pipeline for the timeline. */
     val progressFraction: Float
@@ -89,6 +96,7 @@ enum class OrderStatus {
             ARRIVING, ARRIVED, ARRIVED_SHOP_CLOSED -> 0.83f
             AWAITING_PAYMENT -> 0.83f
             PENDING_CASH_COLLECTION -> 0.83f
+            FISCALIZING, FISCAL_FAILED -> 0.92f
             COMPLETED, DELIVERED_ON_CREDIT -> 1.0f
             CANCELLED, CANCEL_REQUESTED, NO_CAPACITY, QUARANTINE, RECONCILIATION_REQUIRED, DELAYED -> 0f
         }
@@ -103,6 +111,8 @@ enum class OrderStatus {
             ARRIVING, ARRIVED, ARRIVED_SHOP_CLOSED -> "5/6"
             AWAITING_PAYMENT -> "Pay"
             PENDING_CASH_COLLECTION -> "Cash"
+            FISCALIZING -> "Fiscal"
+            FISCAL_FAILED -> "Fiscal!"
             COMPLETED, DELIVERED_ON_CREDIT -> "Done"
             CANCELLED, CANCEL_REQUESTED, NO_CAPACITY, QUARANTINE, RECONCILIATION_REQUIRED, DELAYED -> "X"
         }
@@ -121,7 +131,7 @@ enum class OrderStatus {
             LOADED -> 1
             DISPATCHED -> 2
             IN_TRANSIT -> 3
-            ARRIVING, ARRIVED, ARRIVED_SHOP_CLOSED, AWAITING_PAYMENT, PENDING_CASH_COLLECTION -> 4
+            ARRIVING, ARRIVED, ARRIVED_SHOP_CLOSED, AWAITING_PAYMENT, PENDING_CASH_COLLECTION, FISCALIZING, FISCAL_FAILED -> 4
             COMPLETED, DELIVERED_ON_CREDIT -> 5
             CANCELLED, CANCEL_REQUESTED, NO_CAPACITY, QUARANTINE, RECONCILIATION_REQUIRED, DELAYED -> -1
         }
@@ -886,8 +896,27 @@ data class TrackingOrder(
     @SerialName("live_location_available") val liveLocationAvailable: Boolean = false,
     @SerialName("delivery_token") val deliveryToken: String = "",
     @SerialName("created_at") val createdAt: String = "",
+    @SerialName("fiscal_status") val fiscalStatus: String = "",
+    @SerialName("fiscal_qr") val fiscalQr: String = "",
+    @SerialName("latest_fiscal_receipt_id") val latestFiscalReceiptId: String = "",
     val items: List<TrackingOrderItem> = emptyList(),
-)
+) {
+    /** Retailer receipt label for tracking / recent receipts. */
+    val fiscalReceiptLabel: String
+        get() {
+            val st = state.uppercase()
+            val fs = fiscalStatus.uppercase()
+            return when {
+                fs == "SUCCESS" || st == "COMPLETED" ->
+                    if (latestFiscalReceiptId.isNotBlank()) "Fiscalized · $latestFiscalReceiptId"
+                    else "Fiscalized"
+                fs == "PENDING" || st == "FISCALIZING" -> "Pending fiscal"
+                fs == "FAILED" || st == "FISCAL_FAILED" -> "Fiscal failed"
+                fs == "FORCE_SKIPPED" -> "Fiscal exception"
+                else -> st.ifBlank { "—" }
+            }
+        }
+}
 
 @Serializable
 data class TrackingResponse(

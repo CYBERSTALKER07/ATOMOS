@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
+import { desktopClientPolicyContext } from "@pegasusx/desktop-bridge";
 import { getClientPolicy } from "../lib/api";
 
 type PolicyState = {
@@ -17,8 +18,10 @@ export default function ClientPolicyBanner() {
 
   useEffect(() => {
     const version =
-      process.env.NEXT_PUBLIC_RETAILER_APP_VERSION?.trim() || "1.0.0";
-    void getClientPolicy("web", version)
+      process.env.NEXT_PUBLIC_RETAILER_APP_VERSION?.trim() || "0.1.0";
+    // Tauri: enterprise → website CDN; store → production (MS/Mac App Store).
+    const { platform, channel } = desktopClientPolicyContext();
+    void getClientPolicy(platform, version, channel)
       .then(async (res) => {
         if (!res.ok) return;
         const data = (await res.json()) as {

@@ -16,13 +16,22 @@ struct SupplierAdaptiveShell: View {
     @State private var isSidebarExpanded = true
     @State private var compactTab: CompactTab = .dashboard
     @State private var clientPolicyMessage: String?
+    @State private var clientPolicyForce = false
+    @State private var pendingManifest: AutoUpdater.Manifest?
 
     @State private var pathMonitor: NWPathMonitor?
     @State private var wasOffline = false
 
     var body: some View {
         VStack(spacing: 0) {
-            ClientPolicyBanner(message: clientPolicyMessage)
+            ClientPolicyBanner(
+                message: clientPolicyMessage,
+                force: clientPolicyForce,
+                onUpdate: clientPolicyMessage == nil ? nil : {
+                    AutoUpdater.shared.promptInstall(manifest: pendingManifest, force: clientPolicyForce)
+                },
+                onDismiss: clientPolicyForce ? nil : { clientPolicyMessage = nil },
+            )
             Group {
                 if horizontalSizeClass == .regular {
                     regularShell
@@ -212,36 +221,46 @@ struct SupplierAdaptiveShell: View {
             struct ClientPolicy: Decodable {
                 let outdated: Bool
                 let forceUpdate: Bool
+                let updateDeferred: Bool
                 let minimumVersion: String
+                let recommendedVersion: String?
+                let updateURL: String?
                 let deferReason: String?
 
                 enum CodingKeys: String, CodingKey {
                     case outdated
                     case forceUpdate = "force_update"
+                    case updateDeferred = "update_deferred"
                     case minimumVersion = "minimum_version"
+                    case recommendedVersion = "recommended_version"
+                    case updateURL = "update_url"
                     case deferReason = "defer_reason"
                 }
             }
             let policy: ClientPolicy = try await APIClient.shared.get(
                 "v1/platform/client-policy",
                 query: [
-                    "role": "ADMIN",
+                    "role": EnterpriseUpdateConfig.policyRole,
                     "platform": "ios",
                     "version": version,
-                    "channel": "production",
+                    "channel": EnterpriseUpdateConfig.channel,
                 ],
             )
-            if policy.outdated || policy.forceUpdate {
-                var message = policy.forceUpdate ? "Update required" : "Update available"
-                if !policy.minimumVersion.isEmpty {
-                    message += " — minimum version \(policy.minimumVersion)"
-                }
-                if let deferReason = policy.deferReason, !deferReason.isEmpty {
-                    message += ". \(deferReason)"
-                }
-                clientPolicyMessage = message
-            } else {
-                clientPolicyMessage = nil
+            let state = await AutoUpdater.shared.evaluate(
+                outdated: policy.outdated,
+                forceUpdate: policy.forceUpdate,
+                updateDeferred: policy.updateDeferred,
+                minimumVersion: policy.minimumVersion,
+                recommendedVersion: policy.recommendedVersion,
+                deferReason: policy.deferReason,
+                updateURL: policy.updateURL,
+            )
+            clientPolicyMessage = state.message
+            clientPolicyForce = state.force
+            pendingManifest = state.manifest
+            // Force-required: surface install sheet immediately (still dismissible only if deferred).
+            if state.force, state.available {
+                AutoUpdater.shared.promptInstall(manifest: state.manifest, force: true)
             }
         } catch {
             // Policy fetch is optional on local/dev stacks.

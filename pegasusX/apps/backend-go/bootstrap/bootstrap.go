@@ -110,15 +110,25 @@ type Config struct {
 	LogFormat string
 
 	RequireInfraAdapters bool
-	ReliabilityEnabled   bool
-	AllowAuthBypass      bool
-	MaxSuppliers         int
+	// AllowMemoryFallback permits in-memory repos/outbox/cache when Spanner/Redis
+	// are down. Forced false in production and whenever RequireInfraAdapters is true.
+	// Set ALLOW_MEMORY_FALLBACK=true only for SSMR/local drills without full infra.
+	AllowMemoryFallback bool
+	ReliabilityEnabled  bool
+	AllowAuthBypass     bool
+	MaxSuppliers        int
 
 	OptimizerBaseURL string
 	RoutingOSRMURL   string
 	InternalAPIKey   string
 	GCSBucketName    string
 	GoogleMapsAPIKey string
+
+	// UpdatesBaseURL is the public CDN/origin used by OTA manifests (no trailing slash).
+	// Env: UPDATES_BASE_URL. Required when PEGASUSX_ENV=production.
+	UpdatesBaseURL string
+	// UpdatesDefaultVersion is the fallback app version advertised by updater routes.
+	UpdatesDefaultVersion string
 }
 
 // App holds every long-lived singleton. Wire new app-wide dependencies here,
@@ -222,6 +232,7 @@ func LoadConfig() (*Config, error) {
 		LogLevel:                        envOr("LOG_LEVEL", "info"),
 		LogFormat:                       envOr("LOG_FORMAT", "json"),
 		RequireInfraAdapters:            envBool("REQUIRE_INFRA_ADAPTERS", true),
+		AllowMemoryFallback:             envBool("ALLOW_MEMORY_FALLBACK", false),
 		ReliabilityEnabled:              envBool("RELIABILITY_MIDDLEWARE_ENABLED", true),
 		AllowAuthBypass:                 envBool("ALLOW_AUTH_BYPASS", false),
 		MaxSuppliers:                    envInt("MAX_SUPPLIERS", 10),
@@ -230,12 +241,18 @@ func LoadConfig() (*Config, error) {
 		InternalAPIKey:                  envOr("INTERNAL_API_KEY", "dev-internal-key"),
 		GCSBucketName:                   envOr("GCS_BUCKET_NAME", ""),
 		GoogleMapsAPIKey:                envOr("GOOGLE_MAPS_API_KEY", envOr("GOOGLE_PLACES_API_KEY", "")),
+		UpdatesBaseURL:                  strings.TrimRight(strings.TrimSpace(envOr("UPDATES_BASE_URL", "")), "/"),
+		UpdatesDefaultVersion:           envOr("UPDATES_DEFAULT_VERSION", "1.0.0"),
 	}
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET required")
 	}
 	if strings.TrimSpace(cfg.KafkaTopicMainDLQ) == "" && strings.TrimSpace(cfg.KafkaTopicMain) != "" {
 		cfg.KafkaTopicMainDLQ = strings.TrimSpace(cfg.KafkaTopicMain) + "-dlq"
+	}
+	// Enterprise fail-closed: production and strict infra never allow memory repos.
+	if isProductionEnv() || cfg.RequireInfraAdapters {
+		cfg.AllowMemoryFallback = false
 	}
 	if err := cfg.ValidateProductionProfile(); err != nil {
 		return nil, err
@@ -245,16 +262,20 @@ func LoadConfig() (*Config, error) {
 
 // NewApp constructs the composition root. New singletons attach here.
 //
-// Scaffold note: the cache + idempotency + retailer-repo bindings are
-// in-memory while the Spanner / Redis / Kafka clients are still being wired.
-// Swap each binding inside this function when the production client lands —
-// downstream packages depend only on the interfaces, not the implementations.
+// Persistence policy:
+//   - Spanner + Redis + Kafka are required when RequireInfraAdapters=true (default)
+//     or PEGASUSX_ENV=production. Bootstrap fails closed; no silent memory path.
+//   - In-memory repos/outbox/cache are only used when AllowMemoryFallback=true
+//     (ALLOW_MEMORY_FALLBACK=true and non-production, non-strict). Downstream
+//     packages depend on interfaces, not concrete stores.
 func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	log := slog.Default()
 	outboundCircuits := NewOutboundCircuits()
 	ws.SetAllowedOrigins(cfg.WebSocketAllowedOrigins)
 	if cfg.RequireInfraAdapters {
-		log.Info("strict infra adapter mode enabled")
+		log.Info("strict infra adapter mode enabled", "memory_fallback", false)
+	} else if cfg.AllowMemoryFallback {
+		log.Warn("ALLOW_MEMORY_FALLBACK enabled — not for production traffic")
 	}
 
 	if err := storage.InitGCS(ctx, cfg.GCSBucketName); err != nil {
@@ -279,22 +300,35 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		MaxRetryBackoff: 512 * time.Millisecond,
 	}
 	if redisBackend, err := newRedisRuntimeAdapter(redisCfg); err != nil {
+		if cfg.RequireInfraAdapters {
+			return nil, fmt.Errorf("redis backend init failed (REQUIRE_INFRA_ADAPTERS): %w", err)
+		}
 		log.Warn("redis backend init failed; using in-memory cache",
 			"addr", cfg.RedisAddr,
 			"err", err,
 		)
 	} else if err := redisBackend.Ping(ctx); err != nil {
+		_ = redisBackend.Close()
+		if cfg.RequireInfraAdapters {
+			return nil, fmt.Errorf("redis ping failed (REQUIRE_INFRA_ADAPTERS): %w", err)
+		}
 		log.Warn("redis ping failed; using in-memory cache",
 			"addr", cfg.RedisAddr,
 			"err", err,
 		)
-		_ = redisBackend.Close()
 	} else {
 		redisAdapter = redisBackend
-		cbBackend := cache.NewCircuitBreakerBackend(redisBackend, cacheBackend)
+		// Fail-closed circuit under strict infra: no silent memory cache under load.
+		failClosedCache := cfg.RequireInfraAdapters || isProductionEnv()
+		cbBackend := cache.NewCircuitBreakerBackendWithMode(redisBackend, cacheBackend, failClosedCache)
 		cacheBackend = cbBackend
 		redisEnabled = true
-		log.Info("redis cache backend enabled", "addr", cfg.RedisAddr, "pool_size", cfg.RedisPoolSize, "tls", cfg.RedisTLSEnabled)
+		log.Info("redis cache backend enabled",
+			"addr", cfg.RedisAddr,
+			"pool_size", cfg.RedisPoolSize,
+			"tls", cfg.RedisTLSEnabled,
+			"circuit_fail_closed", failClosedCache,
+		)
 	}
 	if cfg.RequireInfraAdapters && !redisEnabled {
 		return nil, fmt.Errorf("require infra adapters: redis unavailable")
@@ -323,6 +357,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	outboxPublisher := outbox.Publisher(&loggingOutboxPublisher{log: log})
 	cleanup := make([]func(), 0, 3)
 	if client, store, err := tryNewSpannerOutboxStore(ctx, cfg); err != nil {
+		if !cfg.allowsRepoMemoryFallback() {
+			return nil, fmt.Errorf("spanner outbox store unavailable (memory fallback disabled): %w", err)
+		}
 		log.Warn("spanner outbox store unavailable; using in-memory outbox store",
 			"database", spannerDatabasePath(cfg),
 			"err", err,
@@ -346,6 +383,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	kafkaEnabled := false
 	if kafkaPublisher, err := newKafkaRuntimePublisher(cfg.KafkaBrokers, outbox.KafkaPublisherConfig{}); err != nil {
+		if cfg.RequireInfraAdapters {
+			return nil, fmt.Errorf("kafka publisher init failed (REQUIRE_INFRA_ADAPTERS): %w", err)
+		}
 		log.Warn("kafka publisher init failed; using logging publisher",
 			"brokers", cfg.KafkaBrokers,
 			"err", err,
@@ -386,6 +426,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		supplierRepo = supplier.NewSpannerRepository(spannerClient)
 		log.Info("retailer and supplier repositories enabled", "backend", "spanner")
 	} else {
+		if err := cfg.ensureMemoryFallbackAllowed("retailer/supplier repositories"); err != nil {
+			return nil, err
+		}
 		retailerRepo = memory.NewRetailerRepo(outboxAppender)
 		supplierRepo = memory.NewSupplierRepo(outboxAppender)
 		log.Warn("retailer and supplier repository fallback enabled", "backend", "in-memory")
@@ -523,6 +566,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		orderWarehouseResolver = order.NewSpannerWarehouseResolver(spannerClient)
 		log.Info("order repository enabled", "backend", "spanner")
 	} else {
+		if err := cfg.ensureMemoryFallbackAllowed("order repository"); err != nil {
+			return nil, err
+		}
 		orderRepo = memory.NewOrderRepo(outboxAppender, &memory.RetailerReceivingWindowAdapter{Repo: retailerRepo})
 		log.Warn("order repository fallback enabled", "backend", "in-memory")
 	}
@@ -531,6 +577,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		paymentRepo = payment.NewSpannerRepository(spannerClient)
 		log.Info("payment repository enabled", "backend", "spanner")
 	} else {
+		if err := cfg.ensureMemoryFallbackAllowed("payment repository"); err != nil {
+			return nil, err
+		}
 		paymentRepo = memory.NewPaymentRepo(outboxAppender)
 		log.Warn("payment repository fallback enabled", "backend", "in-memory")
 	}
@@ -539,6 +588,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		creditRepo = credit.NewSpannerRepository(spannerClient)
 		log.Info("credit repository enabled", "backend", "spanner")
 	} else {
+		if err := cfg.ensureMemoryFallbackAllowed("credit repository"); err != nil {
+			return nil, err
+		}
 		creditRepo = memory.NewCreditRepo(outboxAppender)
 		log.Warn("credit repository fallback enabled", "backend", "in-memory")
 	}
@@ -638,6 +690,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		payloadRepo = payload.NewSpannerRepository(spannerClient, supplierSeed.SupplierID, warehouseNodeID)
 		log.Info("factory and payload repositories enabled", "backend", "spanner")
 	} else {
+		if err := cfg.ensureMemoryFallbackAllowed("driver/factory/payload repositories"); err != nil {
+			return nil, err
+		}
 		driverRepo = driver.NewInMemoryRepository()
 		factoryRepo = factory.NewInMemoryRepository()
 		payloadRepo = payload.NewInMemoryRepository()
@@ -825,8 +880,13 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var warehouseRepo warehouse.Repository
 	if spannerClient != nil {
 		warehouseRepo = warehouse.NewSpannerRepository(spannerClient)
+		log.Info("warehouse repository enabled", "backend", "spanner")
 	} else {
+		if err := cfg.ensureMemoryFallbackAllowed("warehouse repository"); err != nil {
+			return nil, err
+		}
 		warehouseRepo = warehouse.NewInMemoryRepository()
+		log.Warn("warehouse repository fallback enabled", "backend", "in-memory")
 	}
 
 	var warehouseAnalytics warehouse.WarehouseAnalyticsQuery

@@ -96,12 +96,12 @@ enum AppTheme {
     /// Maps order/ops status strings to semantic badge tints (aligned with supplier/warehouse native).
     static func statusTint(for status: String) -> Color {
         switch status.uppercased() {
-        case "COMPLETED", "DONE", "ACTIVE", "APPROVED", "ARRIVED", "RECEIVED", "PAID", "LIVE":
+        case "COMPLETED", "DONE", "ACTIVE", "APPROVED", "ARRIVED", "RECEIVED", "PAID", "LIVE", "SUCCESS":
             return success
         case "PENDING", "AWAITING_PAYMENT", "LOADING", "IN_TRANSIT", "DISPATCHED", "ARRIVING",
-             "OPEN", "SUBMITTED", "WAITING", "AWAITING DISPATCH":
+             "OPEN", "SUBMITTED", "WAITING", "AWAITING DISPATCH", "FISCALIZING", "PENDING_CASH_COLLECTION":
             return warning
-        case "CANCELLED", "REJECTED", "FAILED", "EXCEPTION", "CRITICAL":
+        case "CANCELLED", "REJECTED", "FAILED", "EXCEPTION", "CRITICAL", "FISCAL_FAILED":
             return destructive
         default:
             return textSecondary

@@ -233,8 +233,15 @@ func main() {
 		FirebaseVerifier:    firebaseVerifier,
 	})
 
+	updatesBase := strings.TrimSpace(cfg.UpdatesBaseURL)
+	if updatesBase == "" {
+		// Non-production default for local OTA smoke only; production rejects empty via ValidateProductionProfile.
+		updatesBase = "http://localhost:" + cfg.HTTPPort
+		slog.Warn("UPDATES_BASE_URL unset; using local HTTP origin for updater manifests", "base_url", updatesBase)
+	}
 	updateroutes.RegisterRoutes(r, updateroutes.Deps{
-		BaseURL: "https://void.example.com", // Adjust accordingly for environments
+		BaseURL:        updatesBase,
+		DefaultVersion: cfg.UpdatesDefaultVersion,
 	})
 
 	catalogroutes.RegisterRoutes(r, catalogroutes.Deps{

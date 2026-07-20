@@ -89,6 +89,10 @@ final class FleetServiceLive: FleetServiceProtocol {
         )
     }
 
+    func retryFiscal(orderId: String) async throws -> CollectCashResponse {
+        try await api.retryFiscal(orderId: orderId)
+    }
+
     // MARK: - Fetch Order Line Items
 
     func fetchOrderLineItems(orderId: String) async throws -> [LineItem] {

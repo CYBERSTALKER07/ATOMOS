@@ -1,0 +1,3 @@
+-- MOVED: canonical migration is
+-- pegasusX/apps/backend-go/schema/migrations/20260720_order_fiscal_receipts.ddl
+-- Do not apply this stub.

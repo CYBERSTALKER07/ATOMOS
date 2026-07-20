@@ -46,6 +46,7 @@ import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.service.AutoUpdater
+import com.pegasusx.warehouse.service.EnterpriseUpdateConfig
 import com.pegasusx.warehouse.ui.components.ClientPolicyBanner
 import com.pegasusx.warehouse.ui.components.WarehouseBottomBar
 import com.pegasusx.warehouse.ui.components.WarehouseNavigationDrawer
@@ -151,6 +152,8 @@ fun WarehouseNavigation(
     val context = LocalContext.current
     var networkAvailable by remember { mutableStateOf(true) }
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
+    var clientPolicyForce by remember { mutableStateOf(false) }
+    var pendingManifest by remember { mutableStateOf<AutoUpdater.Manifest?>(null) }
     val scope = rememberCoroutineScope()
     val autoUpdater = remember { AutoUpdater(context.applicationContext) }
     val useDrawer = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
@@ -163,6 +166,7 @@ fun WarehouseNavigation(
     var lastNavWasTab by remember { mutableStateOf(true) }
 
     DisposableEffect(autoUpdater) {
+        autoUpdater.register()
         onDispose { autoUpdater.cleanup() }
     }
 
@@ -170,29 +174,26 @@ fun WarehouseNavigation(
         scope.launch {
             try {
                 val resp = api.getClientPolicy(
+                    role = EnterpriseUpdateConfig.POLICY_ROLE,
                     platform = "android",
                     version = BuildConfig.VERSION_NAME,
+                    channel = EnterpriseUpdateConfig.CHANNEL,
                 )
                 if (resp.isSuccessful && resp.body() != null) {
-                    val policy = resp.body()!!
-                    clientPolicyMessage = if (policy.outdated || policy.forceUpdate) {
-                        buildString {
-                            append(if (policy.forceUpdate) "Update required" else "Update available")
-                            if (policy.minimumVersion.isNotBlank()) {
-                                append(" — minimum version ${policy.minimumVersion}")
-                            }
-                            policy.deferReason?.takeIf { it.isNotBlank() }?.let { append(". $it") }
-                        }
-                    } else {
-                        null
-                    }
-                    if (policy.outdated || policy.forceUpdate) {
-                        autoUpdater.checkForUpdates(BuildConfig.VERSION_CODE)
-                    }
+                    val state = autoUpdater.checkFromPolicy(resp.body()!!, autoDownload = false)
+                    clientPolicyMessage = state.message
+                    clientPolicyForce = state.force
+                    pendingManifest = state.manifest
                 }
             } catch (_: Exception) {
                 // Policy fetch is optional on local/dev stacks.
             }
+        }
+    }
+
+    fun onUpdateClick() {
+        scope.launch {
+            autoUpdater.startUpdate(pendingManifest)
         }
     }
 
@@ -553,9 +554,26 @@ fun WarehouseNavigation(
             }
     }
 
+    val policyBanner: @Composable () -> Unit = {
+        ClientPolicyBanner(
+            message = clientPolicyMessage,
+            force = clientPolicyForce,
+            onUpdate = if (clientPolicyMessage != null) {
+                { onUpdateClick() }
+            } else {
+                null
+            },
+            onDismiss = if (!clientPolicyForce) {
+                { clientPolicyMessage = null }
+            } else {
+                null
+            },
+        )
+    }
+
     if (showShell) {
-        Column(Modifier.fillMaxSize()) {
-            ClientPolicyBanner(clientPolicyMessage)
+        Column(modifier.fillMaxSize()) {
+            policyBanner()
             Row(Modifier.weight(1f)) {
             if (useDrawer) {
                 WarehouseNavigationDrawer(
@@ -582,7 +600,7 @@ fun WarehouseNavigation(
         }
     } else {
         Column(Modifier.fillMaxSize()) {
-            ClientPolicyBanner(clientPolicyMessage)
+            policyBanner()
             navHost(Modifier.weight(1f).fillMaxSize())
         }
     }

@@ -17,6 +17,8 @@ import com.pegasusx.retailer.data.model.formatRetailerAmount
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.PendingPaymentSession
 import com.pegasusx.retailer.services.PendingOrderSyncScheduler
+import com.pegasusx.retailer.service.AutoUpdater
+import com.pegasusx.retailer.service.EnterpriseUpdateConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import android.content.Context
@@ -54,6 +56,8 @@ data class NavigationUiState(
     val avatarInitial: String = "?",
     val paymentEvent: RetailerWSMessage? = null,
     val orderCompleted: Boolean = false,
+    /** ADR-009: payment captured, waiting on OFD fiscal receipt. */
+    val fiscalizing: Boolean = false,
     val paymentFailed: Boolean = false,
     val paymentFailureMessage: String = "",
     val isRefreshing: Boolean = false,
@@ -63,6 +67,7 @@ data class NavigationUiState(
     val reconnectEpoch: Long = 0,
     val unreadNotificationCount: Int = 0,
     val clientPolicyMessage: String? = null,
+    val clientPolicyForce: Boolean = false,
 ) {
     val activeOrderCount: Int get() = activeOrders.size
     val floatingStatusText: String
@@ -111,7 +116,11 @@ class NavigationViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(NavigationUiState())
     val uiState: StateFlow<NavigationUiState> = _uiState.asStateFlow()
 
+    private val autoUpdater = AutoUpdater(appContext.applicationContext)
+    private var pendingManifest: AutoUpdater.Manifest? = null
+
     init {
+        autoUpdater.register()
         val name = tokenManager.getUserName() ?: ""
         _uiState.update {
             it.copy(
@@ -163,25 +172,52 @@ class NavigationViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val policy = api.getClientPolicy(
+                    role = EnterpriseUpdateConfig.POLICY_ROLE,
                     platform = "android",
                     version = com.pegasusx.retailer.BuildConfig.VERSION_NAME,
+                    channel = EnterpriseUpdateConfig.CHANNEL,
                 )
-                val outdated = policy.jsonObject["outdated"]?.jsonPrimitive?.boolean == true
-                val force = policy.jsonObject["force_update"]?.jsonPrimitive?.boolean == true
-                val minimum = policy.jsonObject["minimum_version"]?.jsonPrimitive?.content
-                if (outdated || force) {
-                    _uiState.update {
-                        it.copy(
-                            clientPolicyMessage = buildString {
-                                append(if (force) "Update required" else "Update available")
-                                if (!minimum.isNullOrBlank()) append(" — minimum version $minimum")
-                            },
-                        )
-                    }
+                val obj = policy.jsonObject
+                val outdated = obj["outdated"]?.jsonPrimitive?.boolean == true
+                val forceUpdate = obj["force_update"]?.jsonPrimitive?.boolean == true
+                val updateDeferred = obj["update_deferred"]?.jsonPrimitive?.boolean == true
+                val minimum = obj["minimum_version"]?.jsonPrimitive?.content
+                val recommended = obj["recommended_version"]?.jsonPrimitive?.content
+                val deferReason = obj["defer_reason"]?.jsonPrimitive?.content
+                val updateUrl = obj["update_url"]?.jsonPrimitive?.content
+
+                val state = autoUpdater.checkFromPolicyFields(
+                    outdated = outdated,
+                    forceUpdate = forceUpdate,
+                    updateDeferred = updateDeferred,
+                    minimumVersion = minimum,
+                    recommendedVersion = recommended,
+                    deferReason = deferReason,
+                    updateUrl = updateUrl,
+                    autoDownload = false,
+                )
+                pendingManifest = state.manifest
+                _uiState.update {
+                    it.copy(
+                        clientPolicyMessage = state.message,
+                        clientPolicyForce = state.force,
+                    )
                 }
             } catch (_: Exception) {
                 // Policy fetch is optional on local/dev stacks.
             }
+        }
+    }
+
+    fun onUpdateClick() {
+        viewModelScope.launch {
+            autoUpdater.startUpdate(pendingManifest)
+        }
+    }
+
+    fun dismissClientPolicyBanner() {
+        if (!_uiState.value.clientPolicyForce) {
+            _uiState.update { it.copy(clientPolicyMessage = null) }
         }
     }
 
@@ -219,7 +255,15 @@ class NavigationViewModel @Inject constructor(
     }
 
     fun clearPaymentEvent() {
-        _uiState.update { it.copy(paymentEvent = null, orderCompleted = false, paymentFailed = false, paymentFailureMessage = "") }
+        _uiState.update {
+            it.copy(
+                paymentEvent = null,
+                orderCompleted = false,
+                fiscalizing = false,
+                paymentFailed = false,
+                paymentFailureMessage = "",
+            )
+        }
         loadActiveOrders()
         loadPendingPayments()
     }
@@ -347,12 +391,30 @@ class NavigationViewModel @Inject constructor(
         }
         viewModelScope.launch {
             retailerWebSocket.events
-                .filter { it.type == "ORDER_COMPLETED" }
+                .filter {
+                    it.type == "ORDER_COMPLETED" ||
+                        it.type == "ORDER_FINALIZED" ||
+                        it.type == "FISCAL_RECEIPT_SUCCEEDED"
+                }
                 .collect { msg ->
-                    // If this completion matches the active payment event, signal success
                     val current = _uiState.value.paymentEvent
                     if (current != null && current.orderId == msg.orderId) {
-                        _uiState.update { it.copy(orderCompleted = true) }
+                        _uiState.update { it.copy(orderCompleted = true, fiscalizing = false) }
+                    }
+                    loadActiveOrders()
+                }
+        }
+        viewModelScope.launch {
+            retailerWebSocket.events
+                .filter {
+                    it.type == "FISCAL_RECEIPT_REQUESTED" ||
+                        it.type == "PAYMENT_CLEARED" ||
+                        (it.type == "ORDER_STATUS_CHANGED" && it.state.equals("FISCALIZING", true))
+                }
+                .collect { msg ->
+                    val current = _uiState.value.paymentEvent
+                    if (current != null && current.orderId == msg.orderId) {
+                        _uiState.update { it.copy(fiscalizing = true, orderCompleted = false) }
                     }
                     loadActiveOrders()
                 }
@@ -373,10 +435,10 @@ class NavigationViewModel @Inject constructor(
             retailerWebSocket.events
                 .filter { it.type == "PAYMENT_SETTLED" || it.type == "GLOBAL_PAYNT_SETTLED" }
                 .collect { msg ->
-                    // If this settlement matches the active payment event, signal success
+                    // Money settled — still wait for fiscal SUCCESS before orderCompleted (ADR-009).
                     val current = _uiState.value.paymentEvent
                     if (current != null && current.orderId == msg.orderId) {
-                        _uiState.update { it.copy(orderCompleted = true) }
+                        _uiState.update { it.copy(fiscalizing = true, orderCompleted = false) }
                     }
                     loadActiveOrders()
                 }
@@ -445,8 +507,9 @@ class NavigationViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        super.onCleared()
+        autoUpdater.cleanup()
         retailerWebSocket.disconnect()
+        super.onCleared()
     }
 
     private fun resolveLoadIssue(error: Exception): NavigationLoadIssue {

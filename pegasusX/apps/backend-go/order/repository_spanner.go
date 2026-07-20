@@ -251,47 +251,116 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			}
 		}
 
+		orderMap := map[string]any{
+			"OrderId":                o.OrderID,
+			"WarehouseId":            o.WarehouseID,
+			"DriverId":               nullableString(o.DriverID),
+			"VehicleId":              nullableString(o.VehicleID),
+			"RouteId":                nullableString(o.RouteID),
+			"ManifestId":             nullableString(o.ManifestID),
+			"DeliveryToken":          nullableString(o.QRToken),
+			"Status":                 string(o.Status),
+			"OrderSource":            string(o.Source),
+			"ConfirmationStatus":     string(o.ConfirmationStatus),
+			"LineItemsJson":          lineItemsRaw,
+			"TotalMinor":             o.TotalMinor,
+			"OriginalTotalMinor":     originalTotalMinorForUpdate(o),
+			"Currency":               o.Currency,
+			"H3Cell":                 o.H3Cell,
+			"Lat":                    o.Lat,
+			"Lng":                    o.Lng,
+			"RequestedDeliveryDate":  nullableTime(o.RequestedDeliveryDate),
+			"DeliverBefore":          nullableTime(o.DeliverBefore),
+			"DeliveryPriority":       string(o.DeliveryPriority),
+			"DeliveryFeeMinor":       o.DeliveryFeeMinor,
+			"WarehouseNotes":         nullableString(o.WarehouseNotes),
+			"AutoConfirmAt":          nullableTime(o.AutoConfirmAt),
+			"DecisionAt":             nullableTime(o.DecisionAt),
+			"DecisionBy":             nullableString(o.DecisionBy),
+			"DerivedFromOrderId":     nullableString(o.DerivedFromOrderID),
+			"PreorderReminderSentAt": nullableTime(o.PreorderReminderSentAt),
+			"NudgeNotifiedAt":        nullableTime(o.NudgeNotifiedAt),
+			"ConfirmationNotifiedAt": nullableTime(o.ConfirmationNotifiedAt),
+			"CancelLockedAt":         nullableTime(o.CancelLockedAt),
+			"CancelLockReason":       nullableString(o.CancelLockReason),
+			"CancelLockExpiresAt":    nullableTime(o.CancelLockExpiresAt),
+			"ProposedDeliveryDate":   nullableTime(o.ProposedDeliveryDate),
+			"DeliveryProposalAt":     nullableTime(o.DeliveryProposalAt),
+			"DeliveryProposalBy":     nullableString(o.DeliveryProposalBy),
+			"DeliveryProposalReason": nullableString(o.DeliveryProposalReason),
+			"Version":                o.Version,
+			"UpdatedAt":              o.UpdatedAt,
+		}
+		// ADR-009 denorm fiscal rollup (columns additive; tolerate missing until migrate).
+		if strings.TrimSpace(o.FiscalStatus) != "" {
+			orderMap["FiscalStatus"] = o.FiscalStatus
+		}
+		if strings.TrimSpace(o.LatestFiscalReceiptID) != "" {
+			orderMap["LatestFiscalReceiptId"] = o.LatestFiscalReceiptID
+		}
+		if strings.TrimSpace(o.LatestFiscalAttemptID) != "" {
+			orderMap["LatestFiscalAttemptId"] = o.LatestFiscalAttemptID
+		}
+		if o.FiscalizedAt != nil {
+			orderMap["FiscalizedAt"] = *o.FiscalizedAt
+		}
 		mutations := []*spanner.Mutation{
-			spanner.UpdateMap("Orders", map[string]any{
-				"OrderId":                o.OrderID,
-				"WarehouseId":            o.WarehouseID,
-				"DriverId":               nullableString(o.DriverID),
-				"VehicleId":              nullableString(o.VehicleID),
-				"RouteId":                nullableString(o.RouteID),
-				"ManifestId":             nullableString(o.ManifestID),
-				"DeliveryToken":          nullableString(o.QRToken),
-				"Status":                 string(o.Status),
-				"OrderSource":            string(o.Source),
-				"ConfirmationStatus":     string(o.ConfirmationStatus),
-				"LineItemsJson":          lineItemsRaw,
-				"TotalMinor":             o.TotalMinor,
-				"OriginalTotalMinor":     originalTotalMinorForUpdate(o),
-				"Currency":               o.Currency,
-				"H3Cell":                 o.H3Cell,
-				"Lat":                    o.Lat,
-				"Lng":                    o.Lng,
-				"RequestedDeliveryDate":  nullableTime(o.RequestedDeliveryDate),
-				"DeliverBefore":          nullableTime(o.DeliverBefore),
-				"DeliveryPriority":       string(o.DeliveryPriority),
-				"DeliveryFeeMinor":       o.DeliveryFeeMinor,
-				"WarehouseNotes":         nullableString(o.WarehouseNotes),
-				"AutoConfirmAt":          nullableTime(o.AutoConfirmAt),
-				"DecisionAt":             nullableTime(o.DecisionAt),
-				"DecisionBy":             nullableString(o.DecisionBy),
-				"DerivedFromOrderId":     nullableString(o.DerivedFromOrderID),
-				"PreorderReminderSentAt": nullableTime(o.PreorderReminderSentAt),
-				"NudgeNotifiedAt":        nullableTime(o.NudgeNotifiedAt),
-				"ConfirmationNotifiedAt": nullableTime(o.ConfirmationNotifiedAt),
-				"CancelLockedAt":         nullableTime(o.CancelLockedAt),
-				"CancelLockReason":       nullableString(o.CancelLockReason),
-				"CancelLockExpiresAt":    nullableTime(o.CancelLockExpiresAt),
-				"ProposedDeliveryDate":   nullableTime(o.ProposedDeliveryDate),
-				"DeliveryProposalAt":     nullableTime(o.DeliveryProposalAt),
-				"DeliveryProposalBy":     nullableString(o.DeliveryProposalBy),
-				"DeliveryProposalReason": nullableString(o.DeliveryProposalReason),
-				"Version":                o.Version,
-				"UpdatedAt":              o.UpdatedAt,
-			}),
+			spanner.UpdateMap("Orders", orderMap),
+		}
+
+		for _, fr := range o.PendingFiscalReceipts {
+			if strings.TrimSpace(fr.AttemptID) == "" || strings.TrimSpace(fr.OrderID) == "" {
+				continue
+			}
+			createdAt := fr.CreatedAt.UTC()
+			if createdAt.IsZero() {
+				createdAt = time.Now().UTC()
+			}
+			updatedAt := fr.UpdatedAt.UTC()
+			if updatedAt.IsZero() {
+				updatedAt = createdAt
+			}
+			mutations = append(mutations, spanner.InsertMap("OrderFiscalReceipts", map[string]any{
+				"OrderId":             fr.OrderID,
+				"AttemptId":           fr.AttemptID,
+				"SupplierId":          fr.SupplierID,
+				"RetailerId":          nullableString(fr.RetailerID),
+				"Provider":            fr.Provider,
+				"Status":              fr.Status,
+				"FiscalReceiptId":     nullableString(fr.FiscalReceiptID),
+				"FiscalQR":            nullableString(fr.FiscalQR),
+				"AmountMinor":         fr.AmountMinor,
+				"Currency":            fr.Currency,
+				"PaymentMethod":       nullableString(fr.PaymentMethod),
+				"ProviderPayloadJSON": fr.ProviderPayload,
+				"ErrorCode":           nullableString(fr.ErrorCode),
+				"ErrorMessage":        nullableString(fr.ErrorMessage),
+				"ReasonCode":          nullableString(fr.ReasonCode),
+				"ActorId":             nullableString(fr.ActorID),
+				"TraceId":             nullableString(fr.TraceID),
+				"CreatedAt":           createdAt,
+				"UpdatedAt":           updatedAt,
+			}))
+		}
+		if o.FiscalReceiptUpdate != nil {
+			fr := *o.FiscalReceiptUpdate
+			updatedAt := fr.UpdatedAt.UTC()
+			if updatedAt.IsZero() {
+				updatedAt = time.Now().UTC()
+			}
+			mutations = append(mutations, spanner.UpdateMap("OrderFiscalReceipts", map[string]any{
+				"OrderId":             fr.OrderID,
+				"AttemptId":           fr.AttemptID,
+				"Status":              fr.Status,
+				"FiscalReceiptId":     nullableString(fr.FiscalReceiptID),
+				"FiscalQR":            nullableString(fr.FiscalQR),
+				"ProviderPayloadJSON": fr.ProviderPayload,
+				"ErrorCode":           nullableString(fr.ErrorCode),
+				"ErrorMessage":        nullableString(fr.ErrorMessage),
+				"ReasonCode":          nullableString(fr.ReasonCode),
+				"ActorId":             nullableString(fr.ActorID),
+				"UpdatedAt":           updatedAt,
+			}))
 		}
 
 		for _, ret := range o.PendingSupplierReturns {

@@ -139,8 +139,12 @@ func TestEventConsumer_PaymentClearedAwaitingKeepsReadVersion(t *testing.T) {
 	if repo.updated[0].Version != 7 {
 		t.Fatalf("expected read version 7 passed to UpdateOrder, got %d", repo.updated[0].Version)
 	}
-	if repo.updated[0].Status != StatusCompleted {
-		t.Fatalf("expected COMPLETED, got %s", repo.updated[0].Status)
+	// ADR-009: external clear enters FISCALIZING (not COMPLETED until OFD success).
+	if repo.updated[0].Status != StatusFiscalizing {
+		t.Fatalf("expected FISCALIZING, got %s", repo.updated[0].Status)
+	}
+	if len(repo.updated[0].PendingFiscalReceipts) != 1 {
+		t.Fatalf("expected 1 pending fiscal receipt, got %d", len(repo.updated[0].PendingFiscalReceipts))
 	}
 }
 

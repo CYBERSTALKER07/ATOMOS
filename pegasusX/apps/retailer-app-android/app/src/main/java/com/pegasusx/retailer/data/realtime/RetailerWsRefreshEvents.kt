@@ -12,6 +12,10 @@ object RetailerWsRefreshEvents {
         "ORDER_DISPATCHED",
         "ORDER_DELAYED",
         "ORDER_REROUTED",
+        "FISCAL_RECEIPT_REQUESTED",
+        "FISCAL_RECEIPT_SUCCEEDED",
+        "FISCAL_RECEIPT_FAILED",
+        "ORDER_FORCE_COMPLETED",
     )
 
     val dispatch: Set<String> = orderStatus + setOf(
@@ -25,6 +29,10 @@ object RetailerWsRefreshEvents {
         "PAYMENT_FAILED",
         "PAYMENT_EXPIRED",
         "DELIVERY_SESSION_UPDATED",
+        "FISCAL_RECEIPT_REQUESTED",
+        "FISCAL_RECEIPT_SUCCEEDED",
+        "FISCAL_RECEIPT_FAILED",
+        "ORDER_FORCE_COMPLETED",
     )
 
     fun shouldRefresh(eventType: String, allowed: Set<String> = dispatch): Boolean =

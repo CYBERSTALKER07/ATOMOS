@@ -255,7 +255,11 @@ final class APIClient: @unchecked Sendable {
     }
 
     func clientPolicy(platform: String, version: String) async throws -> ClientPolicyResponse {
-        try await get("v1/platform/client-policy?role=PAYLOAD&platform=\(platform)&version=\(version)&channel=production")
+        let role = EnterpriseUpdateConfig.policyRole
+        let channel = EnterpriseUpdateConfig.channel
+        try await get(
+            "v1/platform/client-policy?role=\(role)&platform=\(platform)&version=\(version)&channel=\(channel)"
+        )
     }
 
     // MARK: - Inbound returns gate

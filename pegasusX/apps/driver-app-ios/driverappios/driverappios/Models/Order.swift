@@ -21,6 +21,8 @@ enum OrderState: String, Codable, CaseIterable {
     case ARRIVED_SHOP_CLOSED
     case AWAITING_PAYMENT
     case PENDING_CASH_COLLECTION
+    case FISCALIZING
+    case FISCAL_FAILED
     case CANCEL_REQUESTED
     case NO_CAPACITY
     case COMPLETED
@@ -41,6 +43,8 @@ enum OrderState: String, Codable, CaseIterable {
         case .ARRIVED_SHOP_CLOSED:      return "Shop Closed"
         case .AWAITING_PAYMENT:         return "Awaiting Payment"
         case .PENDING_CASH_COLLECTION:  return "Cash Collection"
+        case .FISCALIZING:              return "Fiscalizing"
+        case .FISCAL_FAILED:            return "Fiscal Failed"
         case .CANCEL_REQUESTED:         return "Cancel Requested"
         case .NO_CAPACITY:              return "No Capacity"
         case .COMPLETED:                return "Completed"
@@ -52,7 +56,8 @@ enum OrderState: String, Codable, CaseIterable {
 
     var isActive: Bool {
         switch self {
-        case .LOADED, .DISPATCHED, .IN_TRANSIT, .ARRIVING, .ARRIVED, .ARRIVED_SHOP_CLOSED, .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION, .DELIVERED_ON_CREDIT:
+        case .LOADED, .DISPATCHED, .IN_TRANSIT, .ARRIVING, .ARRIVED, .ARRIVED_SHOP_CLOSED,
+             .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION, .FISCALIZING, .FISCAL_FAILED, .DELIVERED_ON_CREDIT:
             return true
         default:
             return false
@@ -288,6 +293,9 @@ struct CollectCashResponse: Codable {
     let amount: Int
     let distanceM: Double
     let message: String
+    let attemptId: String?
+    let fiscalStatus: String?
+    let currency: String?
 
     enum CodingKeys: String, CodingKey {
         case orderId = "order_id"
@@ -295,6 +303,9 @@ struct CollectCashResponse: Codable {
         case amount = "amount"
         case distanceM = "distance_m"
         case message
+        case attemptId = "attempt_id"
+        case fiscalStatus = "fiscal_status"
+        case currency
     }
 }
 

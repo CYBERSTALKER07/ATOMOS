@@ -284,7 +284,9 @@ func (s *Service) authoritativeCheckoutLines(
 	retailerID string,
 	items []UnifiedCheckoutLineItem,
 ) ([]LineItem, error) {
-	inputs := make([]promotion.LineInput, 0, len(items))
+	// Client unit_price is a hint only. Enterprise path loads catalog PriceMinor
+	// (and optional promos/overrides) so checkout cannot underpay.
+	draft := make([]LineItem, 0, len(items))
 	for i, item := range items {
 		sku := strings.TrimSpace(item.SkuID)
 		if sku == "" || item.Quantity <= 0 {
@@ -293,20 +295,48 @@ func (s *Service) authoritativeCheckoutLines(
 		if item.UnitPrice < 0 {
 			return nil, fmt.Errorf("items[%d].unit_price must be >= 0", i)
 		}
-		inputs = append(inputs, promotion.LineInput{
-			ProductID: sku,
+		draft = append(draft, LineItem{
+			SKU:       sku,
 			Quantity:  item.Quantity,
-			UnitPrice: item.UnitPrice,
-			Currency:  s.currency,
+			UnitPrice: item.UnitPrice, // overwritten by catalog when Spanner is available
 		})
 	}
+
+	// Production / SSMR: Spanner catalog is the price authority (same as Create).
+	if s.spannerClient != nil {
+		normalized, _, err := s.normalizeAndQuoteLineItems(ctx, draft)
+		if err != nil {
+			return nil, err
+		}
+		if s.promotions != nil {
+			normalized, err = s.applyPromotionsToLines(ctx, retailerID, normalized)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return s.enrichLineItemVolumes(ctx, normalized)
+	}
+
+	// No Spanner: promotion service can still rewrite list prices when its repo is wired.
 	if s.promotions != nil {
+		inputs := make([]promotion.LineInput, 0, len(draft))
+		for _, line := range draft {
+			inputs = append(inputs, promotion.LineInput{
+				ProductID: line.SKU,
+				Quantity:  line.Quantity,
+				UnitPrice: line.UnitPrice,
+				Currency:  s.currency,
+			})
+		}
 		quote, err := s.promotions.QuoteCheckout(ctx, s.supplierID, retailerID, inputs)
 		if err != nil {
 			return nil, err
 		}
 		lineItems := make([]LineItem, 0, len(quote.Lines))
 		for _, line := range quote.Lines {
+			if line.UnitPrice < 0 {
+				return nil, fmt.Errorf("catalog price missing for sku %s", line.ProductID)
+			}
 			lineItems = append(lineItems, LineItem{
 				SKU:         line.ProductID,
 				Name:        line.ProductID,
@@ -317,14 +347,46 @@ func (s *Service) authoritativeCheckoutLines(
 		}
 		return s.enrichLineItemVolumes(ctx, lineItems)
 	}
-	lineItems := make([]LineItem, 0, len(inputs))
-	for _, line := range inputs {
-		lineItems = append(lineItems, LineItem{
-			SKU:       line.ProductID,
-			Name:      line.ProductID,
+
+	// Scaffold / unit-test path only (no Spanner, no promotions). Client prices
+	// remain so offline tests can exercise order create without a catalog.
+	return s.enrichLineItemVolumes(ctx, draft)
+}
+
+// applyPromotionsToLines re-quotes already catalog-priced lines so discounts
+// never apply on top of client-supplied unit prices.
+func (s *Service) applyPromotionsToLines(ctx context.Context, retailerID string, lines []LineItem) ([]LineItem, error) {
+	if s.promotions == nil || len(lines) == 0 {
+		return lines, nil
+	}
+	inputs := make([]promotion.LineInput, 0, len(lines))
+	for _, line := range lines {
+		inputs = append(inputs, promotion.LineInput{
+			ProductID: line.SKU,
 			Quantity:  line.Quantity,
 			UnitPrice: line.UnitPrice,
+			Currency:  s.currency,
 		})
 	}
-	return s.enrichLineItemVolumes(ctx, lineItems)
+	quote, err := s.promotions.QuoteCheckout(ctx, s.supplierID, retailerID, inputs)
+	if err != nil {
+		return nil, err
+	}
+	bySKU := make(map[string]LineItem, len(lines))
+	for _, line := range lines {
+		bySKU[line.SKU] = line
+	}
+	out := make([]LineItem, 0, len(quote.Lines))
+	for _, q := range quote.Lines {
+		base := bySKU[q.ProductID]
+		base.SKU = q.ProductID
+		base.Quantity = q.Quantity
+		base.UnitPrice = q.UnitPrice
+		base.PromotionID = q.PromotionID
+		if base.Name == "" {
+			base.Name = q.ProductID
+		}
+		out = append(out, base)
+	}
+	return out, nil
 }

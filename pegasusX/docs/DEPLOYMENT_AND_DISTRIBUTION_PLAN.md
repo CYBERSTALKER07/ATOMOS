@@ -15,7 +15,7 @@ One monorepo, many ship units. Backend, ai-worker, and each client surface deplo
 | Kafka | Confluent Cloud or managed Kafka | Bootstrap in Secret Manager (`kafka_bootstrap_servers`) |
 | Container images | Artifact Registry | `REGION-docker.pkg.dev/PROJECT/pegasusx/{backend-go,ai-worker}` |
 | Web portals | Cloud Run or Firebase App Hosting | Next.js apps; env `NEXT_PUBLIC_API_URL` |
-| Desktop installers | GCS + Cloud CDN | Signed URLs for Tauri `.msi`/`.dmg`; optional MS Store MSIX |
+| Desktop installers | GCS + Cloud CDN **and** stores | Website enterprise SKU (CDN OTA) + Microsoft Store / Mac App Store SKUs (`channel=production`) |
 | Secrets | Secret Manager + Workload Identity | JWT, webhooks, Firebase, Kafka topics |
 
 See [`infra/terraform/gke.tf`](infra/terraform/gke.tf) for cluster, registry, and Workload Identity wiring.
@@ -45,9 +45,10 @@ Release tag `vYYYY.MM.DD` triggers all workflows; each artifact publishes indepe
 
 | Surface | Channel | Update mechanism |
 |---------|---------|------------------|
-| iOS native | App Store / TestFlight | Store review; `GET /v1/platform/client-policy` for force/min version |
-| Android native | Google Play | In-app update (flexible) or immediate when below `minimum_version` |
-| Windows desktop (Tauri) | MS Store + website CDN | Tauri updater plugin + signed manifest on GCS (`pegasusx-ssmr-app-updates`) |
+| iOS native | App Store / TestFlight (`channel=production`) | Client-policy + open App Store listing; no CDN itms-services. See [`NATIVE_APP_STORE_DISTRIBUTION.md`](NATIVE_APP_STORE_DISTRIBUTION.md) |
+| Android native | Google Play (`channel=production`, flavor `store`) | Client-policy + open Play listing; no CDN APK OTA. See [`NATIVE_APP_STORE_DISTRIBUTION.md`](NATIVE_APP_STORE_DISTRIBUTION.md) |
+| Desktop (Tauri, website SKU) | Website / CDN (`channel=enterprise`) | Tauri updater + GCS. See [`ENTERPRISE_WEBSITE_DESKTOP_UPDATES.md`](ENTERPRISE_WEBSITE_DESKTOP_UPDATES.md). |
+| Desktop (Tauri, store SKU) | Microsoft Store + Mac App Store (`channel=production`) | Store auto-update; open listing from policy. See [`DESKTOP_APP_STORE_DISTRIBUTION.md`](DESKTOP_APP_STORE_DISTRIBUTION.md). |
 
 ### Tauri desktop distribution (four role portals)
 

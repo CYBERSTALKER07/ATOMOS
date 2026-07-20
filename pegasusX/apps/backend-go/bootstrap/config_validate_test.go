@@ -26,9 +26,45 @@ func TestValidateProductionProfile_RequiresInfraAdapters(t *testing.T) {
 	cfg.StripeWebhookSecret = "prod-stripe-secret"
 	cfg.PaymeWebhookSecret = "prod-payme-secret"
 	cfg.ClickWebhookSecret = "prod-click-secret"
+	cfg.UpdatesBaseURL = "https://cdn.void.example"
 
 	if err := cfg.ValidateProductionProfile(); err == nil {
 		t.Fatal("expected production profile to require infra adapters")
+	}
+}
+
+func TestValidateProductionProfile_RequiresUpdatesBaseURL(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = true
+	cfg.AllowMemoryFallback = false
+	cfg.JWTSecret = "prod-jwt-secret-value"
+	cfg.GlobalPayWebhookSecret = "prod-global-pay-secret"
+	cfg.AdyenWebhookSecret = "prod-adyen-secret"
+	cfg.StripeWebhookSecret = "prod-stripe-secret"
+	cfg.PaymeWebhookSecret = "prod-payme-secret"
+	cfg.ClickWebhookSecret = "prod-click-secret"
+	cfg.UpdatesBaseURL = ""
+
+	if err := cfg.ValidateProductionProfile(); err == nil {
+		t.Fatal("expected missing UPDATES_BASE_URL to fail production profile")
+	}
+}
+
+func TestEnsureMemoryFallbackAllowed_BlocksByDefault(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "ssmr")
+	cfg := testConfig()
+	cfg.TestingMode = false
+	cfg.RequireInfraAdapters = true
+	cfg.AllowMemoryFallback = false
+	if err := cfg.ensureMemoryFallbackAllowed("order repository"); err == nil {
+		t.Fatal("expected memory fallback blocked under strict infra")
+	}
+
+	cfg.RequireInfraAdapters = false
+	cfg.AllowMemoryFallback = true
+	if err := cfg.ensureMemoryFallbackAllowed("order repository"); err != nil {
+		t.Fatalf("expected memory fallback allowed: %v", err)
 	}
 }
 

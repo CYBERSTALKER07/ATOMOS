@@ -8,26 +8,45 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// CircuitBreakerBackend wraps a primary backend (Redis) and falls back
-// to an in-memory backend when the circuit opens due to failures.
+// CircuitBreakerBackend wraps a primary backend (Redis) and optionally falls
+// back to an in-memory backend when the circuit opens due to failures.
+//
+// When FailClosed is true (production / REQUIRE_INFRA_ADAPTERS), open-circuit
+// and primary errors surface to callers instead of silently serving memory
+// cache — preventing split-brain invalidation and stale multi-pod state.
 type CircuitBreakerBackend struct {
-	primary  Backend
-	fallback Backend
-	breaker  *circuit.Breaker
+	primary    Backend
+	fallback   Backend
+	breaker    *circuit.Breaker
+	FailClosed bool
 }
 
-// NewCircuitBreakerBackend constructs a circuit breaker backend.
+// NewCircuitBreakerBackend constructs a circuit breaker backend with memory fallback.
 func NewCircuitBreakerBackend(primary, fallback Backend) *CircuitBreakerBackend {
+	return NewCircuitBreakerBackendWithMode(primary, fallback, false)
+}
+
+// NewCircuitBreakerBackendWithMode constructs a circuit breaker backend.
+// failClosed=true rejects operations when Redis is unavailable (enterprise default).
+func NewCircuitBreakerBackendWithMode(primary, fallback Backend, failClosed bool) *CircuitBreakerBackend {
 	cfg := circuit.Config{
 		FailureThreshold: 5,
 		FailureWindow:    10 * time.Second,
 		OpenDuration:     30 * time.Second,
 	}
 	return &CircuitBreakerBackend{
-		primary:  primary,
-		fallback: fallback,
-		breaker:  circuit.New("redis-cache", cfg),
+		primary:    primary,
+		fallback:   fallback,
+		breaker:    circuit.New("redis-cache", cfg),
+		FailClosed: failClosed,
 	}
+}
+
+func (c *CircuitBreakerBackend) useFallback(err error) bool {
+	if c == nil || c.FailClosed || c.fallback == nil {
+		return false
+	}
+	return err == circuit.ErrUpstreamUnavailable
 }
 
 // Client exposes the underlying Redis client if available.
@@ -73,8 +92,11 @@ func (c *CircuitBreakerBackend) Get(ctx context.Context, key string) ([]byte, bo
 		return getErr
 	})
 
-	if err == circuit.ErrUpstreamUnavailable {
+	if c.useFallback(err) {
 		return c.fallback.Get(ctx, key)
+	}
+	if err == circuit.ErrUpstreamUnavailable {
+		return nil, false, err
 	}
 	return val, ok, err
 }
@@ -85,7 +107,7 @@ func (c *CircuitBreakerBackend) Set(ctx context.Context, key string, value []byt
 		return c.primary.Set(ctx, key, value, ttl)
 	})
 
-	if err == circuit.ErrUpstreamUnavailable {
+	if c.useFallback(err) {
 		return c.fallback.Set(ctx, key, value, ttl)
 	}
 	return err
@@ -97,7 +119,7 @@ func (c *CircuitBreakerBackend) Delete(ctx context.Context, keys ...string) erro
 		return c.primary.Delete(ctx, keys...)
 	})
 
-	if err == circuit.ErrUpstreamUnavailable {
+	if c.useFallback(err) {
 		return c.fallback.Delete(ctx, keys...)
 	}
 	return err
@@ -109,7 +131,7 @@ func (c *CircuitBreakerBackend) Publish(ctx context.Context, channel string, mes
 		return c.primary.Publish(ctx, channel, message)
 	})
 
-	if err == circuit.ErrUpstreamUnavailable {
+	if c.useFallback(err) {
 		return c.fallback.Publish(ctx, channel, message)
 	}
 	return err
@@ -126,7 +148,7 @@ func (c *CircuitBreakerBackend) Subscribe(ctx context.Context, channel string) (
 		return subErr
 	})
 
-	if err == circuit.ErrUpstreamUnavailable {
+	if c.useFallback(err) {
 		return c.fallback.Subscribe(ctx, channel)
 	}
 	return out, cancel, err

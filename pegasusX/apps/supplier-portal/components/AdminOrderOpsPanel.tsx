@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import {
+  adminForceCompleteKey,
   adminOrderAssignKey,
   adminOrderStatusPatchKey,
   ApiError,
 } from '@pegasusx/api-client';
 import type { SupplierOrder } from '@pegasusx/types';
 import { createSupplierApi } from '@/lib/api';
+import StatusChip from '@/components/StatusChip';
 
 const STATUS_OPTIONS = [
   'PENDING',
@@ -17,6 +19,14 @@ const STATUS_OPTIONS = [
   'DELAYED',
   'CANCELLED',
   'COMPLETED',
+] as const;
+
+const FORCE_REASON_OPTIONS = [
+  'OFD_DOWN',
+  'OFD_TIMEOUT',
+  'OPS_ESCALATION',
+  'TAX_EXEMPT_POLICY',
+  'OTHER',
 ] as const;
 
 const supplierApi = createSupplierApi();
@@ -46,6 +56,20 @@ export function AdminOrderOpsPanel({
   const [vehicleId, setVehicleId] = useState(order.vehicle_id ?? '');
   const [nextStatus, setNextStatus] = useState(order.status);
   const [statusReason, setStatusReason] = useState('');
+  const [forceReason, setForceReason] = useState<string>('OFD_DOWN');
+
+  const statusUpper = (order.status || '').toUpperCase();
+  const canForceComplete =
+    statusUpper === 'FISCAL_FAILED' || statusUpper === 'FISCALIZING';
+  const fiscalLabel = order.fiscal_status
+    ? String(order.fiscal_status)
+    : statusUpper === 'FISCALIZING'
+      ? 'PENDING'
+      : statusUpper === 'FISCAL_FAILED'
+        ? 'FAILED'
+        : statusUpper === 'COMPLETED'
+          ? 'SUCCESS'
+          : undefined;
 
   const assignDriver = async () => {
     const trimmedDriver = driverId.trim();
@@ -94,8 +118,38 @@ export function AdminOrderOpsPanel({
     }
   };
 
+  const forceComplete = async () => {
+    const reason = forceReason.trim();
+    if (!reason) {
+      onError('Reason code is required for force-complete.');
+      return;
+    }
+    onBusyChange(order.order_id);
+    try {
+      await supplierApi.forceCompleteOrder(
+        order.order_id,
+        { reason_code: reason },
+        adminForceCompleteKey(order.order_id, reason),
+      );
+      onSuccess();
+    } catch (err) {
+      onError(err instanceof ApiError ? err.message : 'force_complete_failed');
+    } finally {
+      onBusyChange(null);
+    }
+  };
+
   return (
     <div className="mt-2">
+      {fiscalLabel ? (
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="md-typescale-label-small text-[var(--color-md-on-surface-variant)]">
+            Fiscal
+          </span>
+          <StatusChip status={fiscalLabel} label={`Fiscal ${fiscalLabel}`} size="sm" />
+          <StatusChip status={order.status} size="sm" />
+        </div>
+      ) : null}
       <button
         type="button"
         className="md-btn md-btn-text md-typescale-label-medium px-0"
@@ -105,6 +159,36 @@ export function AdminOrderOpsPanel({
       </button>
       {open ? (
         <div className="mt-3 space-y-4 rounded-2xl border border-[var(--color-md-outline-variant)] bg-[var(--color-md-surface-container-low)] p-4">
+          {canForceComplete ? (
+            <div>
+              <p className="md-typescale-label-medium mb-2">Force-complete (fiscal exception)</p>
+              <p className="md-typescale-body-small mb-2 text-[var(--color-md-on-surface-variant)]">
+                Audited skip of OFD when fiscal is stuck. Requires reason code. Not for drivers.
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <select
+                  className="md-input-outlined flex-1 px-3 py-2"
+                  value={forceReason}
+                  onChange={(e) => setForceReason(e.target.value)}
+                  disabled={busy}
+                >
+                  {FORCE_REASON_OPTIONS.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="md-btn md-btn-filled"
+                  onClick={forceComplete}
+                  disabled={busy}
+                >
+                  Force complete
+                </button>
+              </div>
+            </div>
+          ) : null}
           {canAssign ? (
           <div>
             <p className="md-typescale-label-medium mb-2">Assign driver</p>

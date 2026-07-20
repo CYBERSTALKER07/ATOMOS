@@ -55,6 +55,7 @@ import com.pegasusx.driver.data.remote.DriverOutdatedState
 import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.services.OfflineSyncScheduler
 import com.pegasusx.driver.service.AutoUpdater
+import com.pegasusx.driver.service.EnterpriseUpdateConfig
 import com.pegasusx.driver.data.remote.TokenHolder
 import com.pegasusx.driver.ui.components.ClientPolicyBanner
 import com.pegasusx.driver.ui.screens.auth.LoginScreen
@@ -125,10 +126,13 @@ fun DriverNavigation(
     val outdatedState by driverWebSocket.outdatedState.collectAsState()
     var networkAvailable by remember { mutableStateOf(true) }
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
+    var clientPolicyForce by remember { mutableStateOf(false) }
+    var pendingManifest by remember { mutableStateOf<AutoUpdater.Manifest?>(null) }
     val scope = rememberCoroutineScope()
     val autoUpdater = remember { AutoUpdater(context.applicationContext) }
 
     DisposableEffect(autoUpdater) {
+        autoUpdater.register()
         onDispose { autoUpdater.cleanup() }
     }
 
@@ -136,26 +140,24 @@ fun DriverNavigation(
         scope.launch {
             try {
                 val policy = api.getClientPolicy(
+                    role = EnterpriseUpdateConfig.POLICY_ROLE,
                     platform = "android",
                     version = BuildConfig.VERSION_NAME,
+                    channel = EnterpriseUpdateConfig.CHANNEL,
                 )
-                clientPolicyMessage = if (policy.outdated || policy.forceUpdate) {
-                        buildString {
-                            append(if (policy.forceUpdate) "Update required" else "Update available")
-                            if (policy.minimumVersion.isNotBlank()) {
-                                append(" — minimum version ${policy.minimumVersion}")
-                            }
-                            policy.deferReason?.takeIf { it.isNotBlank() }?.let { append(". $it") }
-                        }
-                    } else {
-                        null
-                    }
-                if (policy.outdated || policy.forceUpdate) {
-                    autoUpdater.checkForUpdates(BuildConfig.VERSION_CODE)
-                }
+                val state = autoUpdater.checkFromPolicy(policy, autoDownload = false)
+                clientPolicyMessage = state.message
+                clientPolicyForce = state.force
+                pendingManifest = state.manifest
             } catch (_: Exception) {
                 // Policy fetch is optional on local/dev stacks.
             }
+        }
+    }
+
+    fun onUpdateClick() {
+        scope.launch {
+            autoUpdater.startUpdate(pendingManifest)
         }
     }
 
@@ -211,7 +213,20 @@ fun DriverNavigation(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        ClientPolicyBanner(clientPolicyMessage)
+        ClientPolicyBanner(
+            message = clientPolicyMessage,
+            force = clientPolicyForce,
+            onUpdate = if (clientPolicyMessage != null) {
+                { onUpdateClick() }
+            } else {
+                null
+            },
+            onDismiss = if (!clientPolicyForce) {
+                { clientPolicyMessage = null }
+            } else {
+                null
+            },
+        )
         Box(modifier = Modifier.weight(1f)) {
             NavHost(
                 navController = navController,

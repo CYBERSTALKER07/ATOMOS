@@ -26,6 +26,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/ai-worker/optimizer"
 	"github.com/pegasusx/pegasusx/apps/ai-worker/planningingest"
 	"github.com/pegasusx/pegasusx/apps/ai-worker/predictivepush"
+	"github.com/pegasusx/pegasusx/apps/ai-worker/synthesis"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	contract "github.com/pegasusx/pegasusx/packages/optimizer-contract"
@@ -404,13 +405,28 @@ func processMessage(ctx context.Context, msg kafka.Message, spannerClient *spann
 	logger.Info("processing event")
 
 	switch env.Type {
-	case events.EventOrderCreated:
-		// AI preorder/recommendation synthesis removed from PegasusX; optimizer-only worker.
-		logger.Debug("order_created ignored (ai synthesis disabled)")
+	case events.EventOrderCreated,
+		"ORDER_COMPLETED",
+		"ORDER_STATUS_CHANGED",
+		"ORDER_DELIVERED":
+		if synthesisDisabled() {
+			logger.Debug("ai synthesis disabled via AI_SYNTHESIS_ENABLED=false")
+			return nil
+		}
+		engine := synthesis.New(spannerClient, logger)
+		if err := engine.HandleOrderEvent(ctx, env.Type, msg.Value); err != nil {
+			logger.Error("ai synthesis failed", "err", err)
+			return err
+		}
 		return nil
 	default:
 		logger.Debug("unhandled event type")
 	}
 
 	return nil
+}
+
+func synthesisDisabled() bool {
+	v := strings.TrimSpace(strings.ToLower(os.Getenv("AI_SYNTHESIS_ENABLED")))
+	return v == "0" || v == "false" || v == "off" || v == "no"
 }

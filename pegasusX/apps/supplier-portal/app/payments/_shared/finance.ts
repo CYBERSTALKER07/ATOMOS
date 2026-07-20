@@ -38,6 +38,10 @@ interface SupplierWebSocketSessionResponse {
 const supplierFinanceRefreshEventTypes = new Set([
   "PAYMENT_REQUIRED",
   "PAYMENT_CLEARED",
+  "FISCAL_RECEIPT_REQUESTED",
+  "FISCAL_RECEIPT_SUCCEEDED",
+  "FISCAL_RECEIPT_FAILED",
+  "ORDER_FORCE_COMPLETED",
   "SETTLEMENT_REQUIRED",
   "DELIVERY_DISPUTED",
 ]);

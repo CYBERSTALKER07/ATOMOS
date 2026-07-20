@@ -9,10 +9,19 @@ import SwiftUI
 struct RootView: View {
     @Environment(TokenStore.self) private var tokenStore
     @State private var clientPolicyMessage: String?
+    @State private var clientPolicyForce = false
+    @State private var pendingManifest: AutoUpdater.Manifest?
 
     var body: some View {
         VStack(spacing: 0) {
-            ClientPolicyBanner(message: clientPolicyMessage)
+            ClientPolicyBanner(
+                message: clientPolicyMessage,
+                force: clientPolicyForce,
+                onUpdate: clientPolicyMessage == nil ? nil : {
+                    AutoUpdater.promptInstall(manifest: pendingManifest, force: clientPolicyForce)
+                },
+                onDismiss: clientPolicyForce ? nil : { clientPolicyMessage = nil },
+            )
             Group {
                 if tokenStore.isAuthenticated {
                     HomeView()
@@ -34,20 +43,20 @@ struct RootView: View {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
         do {
             let policy = try await APIClient.shared.clientPolicy(platform: "ios", version: version)
-            if policy.outdated || policy.forceUpdate {
-                var message = policy.forceUpdate ? "Update required" : "Update available"
-                if !policy.minimumVersion.isEmpty {
-                    message += " — minimum version \(policy.minimumVersion)"
-                }
-                if let deferReason = policy.deferReason, !deferReason.isEmpty {
-                    message += ". \(deferReason)"
-                }
-                clientPolicyMessage = message
-                if policy.outdated || policy.forceUpdate {
-                    AutoUpdater.checkForUpdates()
-                }
-            } else {
-                clientPolicyMessage = nil
+            let state = await AutoUpdater.evaluate(
+                outdated: policy.outdated,
+                forceUpdate: policy.forceUpdate,
+                updateDeferred: policy.updateDeferred ?? false,
+                minimumVersion: policy.minimumVersion,
+                recommendedVersion: policy.recommendedVersion,
+                deferReason: policy.deferReason,
+                updateURL: policy.updateURL,
+            )
+            clientPolicyMessage = state.message
+            clientPolicyForce = state.force
+            pendingManifest = state.manifest
+            if state.force, state.available {
+                AutoUpdater.promptInstall(manifest: state.manifest, force: true)
             }
         } catch {
             // Policy fetch is optional on local/dev stacks.

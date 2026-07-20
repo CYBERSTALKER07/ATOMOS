@@ -174,6 +174,8 @@ export {
   driverOffloadKey,
   driverCompleteKey,
   driverCollectCashKey,
+  driverFiscalRetryKey,
+  adminForceCompleteKey,
   driverAvailabilityKey,
   retailerCheckoutKey,
   retailerUnifiedCheckoutKey,
@@ -614,6 +616,29 @@ export class ApiClient {
   ): Promise<OrderStatusPatchResponse> {
     return this.request<OrderStatusPatchResponse>(`/v1/order/${encodeURIComponent(orderId)}/status`, "PATCH", {
       body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** ADMIN / WAREHOUSE_ADMIN — audited force-complete past fiscal failure (ADR-009). */
+  async forceCompleteOrder(
+    orderId: string,
+    request: { reason_code: string },
+    idempotencyKey: string,
+  ): Promise<{ order_id: string; state: string; message?: string; attempt_id?: string }> {
+    return this.request(`/v1/order/${encodeURIComponent(orderId)}/force-complete`, "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  /** DRIVER / ADMIN / WAREHOUSE_ADMIN — retry fiscal when FISCAL_FAILED. */
+  async retryFiscal(
+    orderId: string,
+    idempotencyKey: string,
+  ): Promise<{ order_id: string; state: string; attempt_id?: string; message?: string }> {
+    return this.request(`/v1/order/${encodeURIComponent(orderId)}/fiscal/retry`, "POST", {
+      body: {},
       idempotencyKey,
     });
   }

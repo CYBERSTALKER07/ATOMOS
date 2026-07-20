@@ -1,0 +1,16 @@
+{
+  "bundle": {
+    "createUpdaterArtifacts": false,
+    "publisher": "PegasusX",
+    "windows": {
+      "webviewInstallMode": {
+        "type": "offlineInstaller"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": []
+    }
+  }
+}

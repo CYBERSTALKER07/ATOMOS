@@ -1,36 +1,43 @@
-# Pricing Authority Rules (B03)
+# Pricing Authority Rules
 
 ## Purpose
-Define who owns pricing decisions and how support should respond while pegasusX pricing APIs evolve.
 
-## Current runtime authority
-1. Pricing authority is backend-owned by supplier-side policy surfaces.
-2. Retailer checkout/order entry (`POST /v1/order/create`) accepts line items and prices, but rule enforcement beyond request validation is still an active B03 technical track.
-3. No dedicated `/v1/supplier/pricing/*` authority endpoints are mounted in pegasusX at this stage.
+Define who owns list prices, promotions, and checkout totals so support and clients never invent money.
+
+## Current runtime authority (pegasusX)
+
+1. **Catalog list price** lives in Spanner `Products.PriceMinor` (supplier catalog).
+2. **Per-retailer overrides** live in supplier pricing/override tables and are applied server-side.
+3. **Promotions** (`promotion` package) discount **server** list/override prices only.
+4. **Order create** (`POST /v1/order/create` / retailer create paths) runs `normalizeAndQuoteLineItems` — **client `unit_price_minor` is ignored** when Spanner is available; missing SKUs fail closed.
+5. **Unified checkout / preview** (`authoritativeCheckoutLines`) uses the same catalog authority when Spanner is available, then optional promo quote. Scaffold/unit tests without Spanner may still accept client unit prices.
+6. **Supplier APIs:** `GET|PATCH /v1/supplier/pricing/rules`, retailer-overrides, promotions CRUD.
 
 ## Support-facing policy
-1. Treat supplier pricing as canonical business authority.
-2. Retailer-facing price disputes should be logged as policy disputes unless a clear backend contract defect is proven.
-3. Do not ask clients to hardcode pricing behavior as a workaround.
-4. If observed behavior conflicts with agreed supplier policy, escalate with evidence instead of advising manual frontend-only overrides.
 
-## Operational handling categories
+1. Treat supplier catalog + overrides as canonical.
+2. Retailer price disputes: compare catalog/override/promo at order `created_at`, not cart UI alone.
+3. Do not tell clients to hardcode prices as a workaround.
+4. Escalate with request/response + order id + SKU when totals disagree with policy.
 
-| Category | Definition | Initial owner | Escalation owner |
-|---|---|---|---|
-| Policy clarification | Retailer questions expected price/tier behavior | Retailer support | Supplier operations |
-| Suspected backend pricing defect | Reproducible mismatch between requested and persisted/returned pricing state | Retailer support | Backend platform |
-| Data-entry issue | Incorrect line item or quantity sent by client | Retailer support | Retailer operations |
-| Scope mismatch | Retailer acting outside seeded supplier scope assumptions | Retailer support | Product + backend |
+## Operational handling
 
-## Required evidence for pricing defect escalation
-1. Retailer id and supplier id.
-2. Full request payload (line items, quantities, unit prices, currency).
-3. Response body and status.
-4. Timestamp (UTC).
-5. Expected policy behavior documented by supplier operations.
+| Category | Definition | Owner |
+|----------|------------|--------|
+| Policy clarification | Expected tier/promo not understood | Supplier ops |
+| Suspected backend defect | Reproducible mismatch vs catalog | Backend platform |
+| Client stale cache | UI showed old price; server charged catalog | Retailer support (refresh) |
+| Scope mismatch | Wrong supplier/retailer context | Product + backend |
 
-## Interim guardrails until dedicated pricing endpoints land
-1. Keep all pricing-dispute outcomes documented in support tickets.
-2. Link disputes to B03 anchor `PX2-A3` for implementation tracking.
-3. Avoid undocumented side agreements that bypass backend authority.
+## Evidence for defect escalation
+
+1. Retailer id + supplier id  
+2. SKU list + quantities  
+3. Request payload and response totals  
+4. UTC timestamp  
+5. Expected catalog `PriceMinor` / override / promo at that time  
+
+## Non-goals (v1)
+
+- Client-trusted unit prices in production (Spanner present).  
+- Quantity negotiation (410 `feature_disabled`).  

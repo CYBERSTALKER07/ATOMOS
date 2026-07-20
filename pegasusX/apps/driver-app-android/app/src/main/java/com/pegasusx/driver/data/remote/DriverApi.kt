@@ -122,17 +122,24 @@ interface DriverApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null
     ): ConfirmOffloadResponse
 
-    // Complete order — AWAITING_PAYMENT → COMPLETED after payment settled
+    // Complete order — capture → FISCALIZING (ADR-009); COMPLETED after fiscal SUCCESS
     @POST("v1/order/complete")
     suspend fun completeOrder(
         @Body request: CompleteOrderRequest,
         @Header("Idempotency-Key") idempotencyKey: String? = null
     ): Order
 
-    // Collect cash — PENDING_CASH_COLLECTION → COMPLETED with geofence validation
+    // Collect cash — geofence capture → FISCALIZING (ADR-009)
     @POST("v1/order/collect-cash")
     suspend fun collectCash(
         @Body request: CollectCashRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null
+    ): CollectCashResponse
+
+    // Fiscal retry when FISCAL_FAILED
+    @POST("v1/order/{orderId}/fiscal/retry")
+    suspend fun retryFiscal(
+        @Path("orderId") orderId: String,
         @Header("Idempotency-Key") idempotencyKey: String? = null
     ): CollectCashResponse
 

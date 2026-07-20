@@ -114,3 +114,21 @@ export {
   type DesktopPrintOptions,
 } from "./print";
 export { desktopDeepLinkToPath, subscribeDesktopDeepLinks } from "./deep-link";
+export {
+  checkAndInstallDesktopUpdate,
+  checkDesktopUpdate,
+  desktopClientPolicyContext,
+  desktopDistribution,
+  desktopStoreListingUrl,
+  ENTERPRISE_DESKTOP_CHANNEL,
+  ENTERPRISE_DESKTOP_PLATFORM,
+  installPendingDesktopUpdate,
+  isDesktopCdnOtaEnabled,
+  isDesktopStoreBuild,
+  isDesktopUpdaterAvailable,
+  openDesktopStoreListing,
+  STORE_DESKTOP_CHANNEL,
+  type DesktopDistribution,
+  type DesktopUpdateInfo,
+  type DesktopUpdateProgress,
+} from "./updater";

@@ -18,6 +18,7 @@ struct DeliveryPaymentSheetView: View {
         case cashConfirm
         case processing
         case cashPending
+        case fiscalizing
         case success
         case failed
     }
@@ -42,6 +43,8 @@ struct DeliveryPaymentSheetView: View {
                     processingContent
                 case .cashPending:
                     cashPendingContent
+                case .fiscalizing:
+                    fiscalizingContent
                 case .success:
                     successContent
                 case .failed:
@@ -280,6 +283,28 @@ struct DeliveryPaymentSheetView: View {
         }
     }
 
+    // MARK: - Fiscalizing (ADR-009)
+
+    private var fiscalizingContent: some View {
+        VStack(spacing: AppTheme.spacingXL) {
+            Spacer()
+            ProgressView()
+                .scaleEffect(1.5)
+                .tint(AppTheme.warning)
+            Text("Pending Fiscal Receipt")
+                .font(.system(.title2, design: .rounded, weight: .bold))
+                .foregroundStyle(AppTheme.textPrimary)
+            Text(formattedAmount)
+                .font(.system(.title3, design: .rounded, weight: .semibold))
+                .foregroundStyle(AppTheme.warning)
+            Text("Payment is captured.\nOfficial fiscal document is being issued…")
+                .font(.system(.subheadline, design: .rounded))
+                .foregroundStyle(AppTheme.textSecondary)
+                .multilineTextAlignment(.center)
+            Spacer()
+        }
+    }
+
     // MARK: - Success
 
     private var successContent: some View {
@@ -295,7 +320,7 @@ struct DeliveryPaymentSheetView: View {
                     .foregroundStyle(AppTheme.success)
             }
 
-            Text("Payment Complete")
+            Text("Paid & Fiscalized")
                 .font(.system(.title2, design: .rounded, weight: .bold))
                 .foregroundStyle(AppTheme.textPrimary)
 
@@ -454,9 +479,22 @@ struct DeliveryPaymentSheetView: View {
             case .orderCompleted(let completed) where completed.orderId == self.event.orderId:
                 phase = .success
                 return
-            case .paymentSettled(let settled) where settled.orderId == self.event.orderId:
+            case .fiscalSucceeded(let succeeded) where succeeded.orderId == self.event.orderId:
                 phase = .success
                 return
+            case .paymentSettled(let settled) where settled.orderId == self.event.orderId:
+                // Money cleared — still wait for fiscal (ADR-009).
+                phase = .fiscalizing
+            case .fiscalizing(let orderId) where orderId == self.event.orderId:
+                phase = .fiscalizing
+            case .orderStatusChanged(let orderId, let state) where orderId == self.event.orderId:
+                let st = state.uppercased()
+                if st == "FISCALIZING" {
+                    phase = .fiscalizing
+                } else if st == "COMPLETED" {
+                    phase = .success
+                    return
+                }
             default:
                 continue
             }

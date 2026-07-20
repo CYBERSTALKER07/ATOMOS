@@ -38,6 +38,7 @@ type PaymentState =
   | "confirm-cash"
   | "processing"
   | "cash-pending"
+  | "fiscalizing"
   | "success"
   | "error";
 
@@ -167,11 +168,48 @@ export default function PaymentModal() {
     useCallback(
       (msg: WsMessage) => {
         if (event && msg.order_id === event.order_id) {
+          // ADR-009: money cleared still waits on fiscal unless already final.
+          setState((prev) => (prev === "success" ? prev : "fiscalizing"));
+        }
+      },
+      [event],
+    ),
+  );
+
+  useWsEvent(
+    "PAYMENT_CLEARED",
+    useCallback(
+      (msg: WsMessage) => {
+        if (event && msg.order_id === event.order_id) {
+          setState((prev) => (prev === "success" ? prev : "fiscalizing"));
+        }
+      },
+      [event],
+    ),
+  );
+
+  useWsEvent(
+    "FISCAL_RECEIPT_REQUESTED",
+    useCallback(
+      (msg: WsMessage) => {
+        if (event && msg.order_id === event.order_id) {
+          setState("fiscalizing");
+        }
+      },
+      [event],
+    ),
+  );
+
+  useWsEvent(
+    "FISCAL_RECEIPT_SUCCEEDED",
+    useCallback(
+      (msg: WsMessage) => {
+        if (event && msg.order_id === event.order_id) {
           setState("success");
           setTimeout(() => {
             setEvent(null);
             setState("idle");
-          }, 2000);
+          }, 2500);
         }
       },
       [event],
@@ -183,11 +221,7 @@ export default function PaymentModal() {
     useCallback(
       (msg: WsMessage) => {
         if (event && msg.order_id === event.order_id) {
-          setState("success");
-          setTimeout(() => {
-            setEvent(null);
-            setState("idle");
-          }, 2000);
+          setState((prev) => (prev === "success" ? prev : "fiscalizing"));
         }
       },
       [event],
@@ -420,10 +454,10 @@ export default function PaymentModal() {
               </div>
               <div>
                 <h2 className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
-                  Payment Settled
+                  Paid &amp; fiscalized
                 </h2>
                 <p className="md-typescale-body-medium text-[var(--desk-text-secondary)] mt-1">
-                  Order #{event.order_id.slice(-8)} transition complete
+                  Order #{event.order_id.slice(-8)} complete with fiscal receipt
                 </p>
               </div>
             </div>
@@ -519,7 +553,22 @@ export default function PaymentModal() {
                         Awaiting driver cash collection
                       </p>
                       <p className="text-xs text-[var(--desk-text-tertiary)] mt-1">
-                        The driver will collect {formatAmount(event.amount)} UZS and complete the delivery.
+                        The driver will collect {formatAmount(event.amount)} UZS, then a fiscal receipt is issued.
+                      </p>
+                    </div>
+                  </div>
+                ) : state === "fiscalizing" ? (
+                  <div className="flex flex-col items-center gap-4 py-8 text-center">
+                    <Loader2
+                      size={36}
+                      className="animate-spin text-[var(--desk-accent)]"
+                    />
+                    <div>
+                      <p className="md-typescale-body-medium font-light text-[var(--desk-text-primary)]">
+                        Pending fiscal receipt
+                      </p>
+                      <p className="text-xs text-[var(--desk-text-tertiary)] mt-1">
+                        Payment is captured. Official fiscal document is being issued…
                       </p>
                     </div>
                   </div>

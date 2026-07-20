@@ -26,6 +26,7 @@
     "process:default",
     "process:allow-exit",
     "process:allow-restart",
-    "sql:default"
+    "sql:default",
+    "updater:default"
   ]
 }

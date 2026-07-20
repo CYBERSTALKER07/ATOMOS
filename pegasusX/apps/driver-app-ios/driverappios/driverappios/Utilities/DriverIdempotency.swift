@@ -25,6 +25,10 @@ enum DriverIdempotency {
         "driver-complete:\(driverId()):\(orderId)"
     }
 
+    static func fiscalRetry(orderId: String) -> String {
+        "driver-fiscal-retry:\(driverId()):\(orderId):\(Int(Date().timeIntervalSince1970 / 60))"
+    }
+
     static func collectCash(orderId: String) -> String {
         "driver-collect-cash:\(driverId()):\(orderId)"
     }

@@ -5,6 +5,7 @@ import SupplierShell from "./SupplierShell";
 import { ThemeProvider } from "./ThemeProvider";
 import { DesktopCacheBootstrap } from "@/lib/desktop-cache-bootstrap";
 import { DesktopDeepLinkBootstrap } from "@/lib/desktop-deep-link";
+import { EnterpriseDesktopUpdateBootstrap } from "@/lib/desktop-updater";
 import { PortalOfflineTray } from "@/lib/portal-offline-tray";
 
 export default function Providers({ children }: { children: ReactNode }) {
@@ -12,6 +13,7 @@ export default function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider>
       <DesktopCacheBootstrap />
       <DesktopDeepLinkBootstrap />
+      <EnterpriseDesktopUpdateBootstrap />
       <div className="app-root min-h-screen w-full">
         <SupplierShell>{children}</SupplierShell>
         <PortalOfflineTray />

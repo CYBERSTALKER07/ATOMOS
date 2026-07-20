@@ -21,6 +21,8 @@ fun resolveActiveOrder(orders: List<Order>): Order? {
         OrderState.ARRIVED_SHOP_CLOSED,
         OrderState.AWAITING_PAYMENT,
         OrderState.PENDING_CASH_COLLECTION,
+        OrderState.FISCALIZING,
+        OrderState.FISCAL_FAILED,
         OrderState.DISPATCHED,
         OrderState.LOADED,
     )
@@ -51,6 +53,8 @@ fun resolveMapPhase(activeOrder: Order?): MapPhase {
 
         OrderState.AWAITING_PAYMENT,
         OrderState.PENDING_CASH_COLLECTION,
+        OrderState.FISCALIZING,
+        OrderState.FISCAL_FAILED,
         -> MapPhase.VERIFYING
 
         else -> MapPhase.IDLE

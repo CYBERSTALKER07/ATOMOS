@@ -12,3 +12,4 @@ Canonical decisions for PegasusX backend and platform. Update when product or in
 | [006](006-kafka-consumer-cutover.md) | Kafka consumer domain cutover | Accepted |
 | [007](007-dedicated-ws-service.md) | Dedicated WebSocket service (deferred) | Proposed |
 | [008](008-desktop-tauri-strategy.md) | Desktop — Next.js 15 + Tauri 2 portals | Accepted |
+| [009](009-fiscal-hard-gate.md) | Fiscal hard-gate at delivery (OFD) | Accepted |

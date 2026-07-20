@@ -78,6 +78,8 @@ fun StateBadge(state: OrderState) {
         OrderState.AWAITING_PAYMENT -> Warning to "AWAITING PAYMENT"
         OrderState.DISPATCHED -> StatusBlue to "DISPATCHED"
         OrderState.PENDING_CASH_COLLECTION -> Warning to "CASH COLLECTION"
+        OrderState.FISCALIZING -> Warning to "FISCALIZING"
+        OrderState.FISCAL_FAILED -> Destructive to "FISCAL FAILED"
         OrderState.CANCEL_REQUESTED -> StatusBlue to "CANCEL REQUESTED"
         OrderState.NO_CAPACITY -> Destructive to "NO CAPACITY"
         OrderState.QUARANTINE -> Destructive to "QUARANTINE"

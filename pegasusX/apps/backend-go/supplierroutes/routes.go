@@ -77,6 +77,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/billing/setup", d.Service.HandleConfigureBilling)
 		gr.Get("/v1/supplier/profile", d.Service.HandleProfile)
 		gr.Put("/v1/supplier/profile", d.Service.HandleProfile)
+		// Enterprise alias: api-client getSupplierSettings → same projection as profile.
+		gr.Get("/v1/supplier/settings", d.Service.HandleProfile)
 		gr.Get("/v1/supplier/pricing/rules", d.Service.HandlePricingRules)
 		gr.Patch("/v1/supplier/pricing/rules", d.Service.HandlePricingRules)
 		gr.Get("/v1/supplier/pricing/retailer-overrides", d.Service.HandleRetailerPricingOverrides)

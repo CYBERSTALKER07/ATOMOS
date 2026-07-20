@@ -72,7 +72,20 @@ struct OrderCompletedEvent: Decodable {
         case type
         case orderId = "order_id"
         case amountUzs = "amount"
+        case amountMinor = "amount_minor"
         case message
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        type = try c.decodeIfPresent(String.self, forKey: .type) ?? ""
+        orderId = try c.decode(String.self, forKey: .orderId)
+        if let amount = try c.decodeIfPresent(Int.self, forKey: .amountUzs) {
+            amountUzs = amount
+        } else {
+            amountUzs = try c.decodeIfPresent(Int.self, forKey: .amountMinor) ?? 0
+        }
+        message = try c.decodeIfPresent(String.self, forKey: .message) ?? ""
     }
 }
 
@@ -138,6 +151,8 @@ enum RetailerWSEvent {
     case paymentRequired(PaymentRequiredEvent)
     case orderCompleted(OrderCompletedEvent)
     case paymentSettled(OrderCompletedEvent)
+    case fiscalizing(orderId: String)
+    case fiscalSucceeded(OrderCompletedEvent)
     case paymentFailed(PaymentFailureEvent)
     case paymentExpired(PaymentFailureEvent)
     case driverApproaching(orderId: String, deliveryToken: String, driverLatitude: Double?, driverLongitude: Double?, supplierId: String, supplierName: String)
@@ -291,13 +306,23 @@ final class RetailerWebSocket {
             if let event = try? decoder.decode(PaymentRequiredEvent.self, from: data) {
                 emit(.paymentRequired(event))
             }
-        case "ORDER_COMPLETED":
+        case "ORDER_COMPLETED", "ORDER_FINALIZED", "FISCAL_RECEIPT_SUCCEEDED":
             if let event = try? decoder.decode(OrderCompletedEvent.self, from: data) {
-                emit(.orderCompleted(event))
+                if type == "FISCAL_RECEIPT_SUCCEEDED" {
+                    emit(.fiscalSucceeded(event))
+                } else {
+                    emit(.orderCompleted(event))
+                }
             }
-        case "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED":
-            if let event = try? decoder.decode(OrderCompletedEvent.self, from: data) {
+        case "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED", "PAYMENT_CLEARED", "FISCAL_RECEIPT_REQUESTED":
+            if type == "FISCAL_RECEIPT_REQUESTED" || type == "PAYMENT_CLEARED" {
+                if let orderId = json["order_id"] as? String {
+                    emit(.fiscalizing(orderId: orderId))
+                }
+            } else if let event = try? decoder.decode(OrderCompletedEvent.self, from: data) {
+                // Money settled — UI still waits for fiscal success (ADR-009).
                 emit(.paymentSettled(event))
+                emit(.fiscalizing(orderId: event.orderId))
             }
         case "PAYMENT_FAILED", "GLOBAL_PAYNT_FAILED":
             if let event = try? decoder.decode(PaymentFailureEvent.self, from: data) {
@@ -318,8 +343,15 @@ final class RetailerWebSocket {
             }
         case "ORDER_STATUS_CHANGED":
             if let orderId = json["order_id"] as? String {
-                let state = json["state"] as? String ?? ""
+                let state = (json["state"] as? String ?? json["status"] as? String ?? "").uppercased()
                 emit(.orderStatusChanged(orderId: orderId, state: state))
+                if state == "FISCALIZING" {
+                    emit(.fiscalizing(orderId: orderId))
+                } else if state == "COMPLETED" {
+                    if let event = try? decoder.decode(OrderCompletedEvent.self, from: data) {
+                        emit(.orderCompleted(event))
+                    }
+                }
             }
         case "DELIVERY_SESSION_UPDATED":
             if let orderId = json["order_id"] as? String {

@@ -1,0 +1,11 @@
+{
+  "bundle": {
+    "createUpdaterArtifacts": false,
+    "publisher": "PegasusX"
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": []
+    }
+  }
+}

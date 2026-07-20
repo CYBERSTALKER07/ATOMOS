@@ -52,6 +52,8 @@ const (
 	StatusAwaitingPayment        Status = "AWAITING_PAYMENT"
 	StatusPendingCashCollection  Status = "PENDING_CASH_COLLECTION"
 	StatusDeliveredOnCredit      Status = "DELIVERED_ON_CREDIT"
+	StatusFiscalizing            Status = "FISCALIZING"   // ADR-009: payment captured, OFD in flight
+	StatusFiscalFailed           Status = "FISCAL_FAILED" // ADR-009: last OFD attempt failed
 	StatusCompleted              Status = "COMPLETED"
 	StatusCancelled              Status = "CANCELLED"
 	StatusCancelRequested        Status = "CANCEL_REQUESTED"
@@ -100,6 +102,9 @@ var (
 	ErrBackorderPaymentDeferred  = errors.New("backorder_payment_deferred")
 	ErrPaymentBeforeDelivery     = errors.New("payment_before_delivery_not_allowed")
 	ErrCreditLimitBreached       = errors.New("credit_limit_breached")
+	ErrFiscalNotFailed           = errors.New("fiscal_not_failed")
+	ErrForceCompleteForbidden    = errors.New("force_complete_forbidden")
+	ErrForceReasonRequired       = errors.New("force_reason_required")
 )
 
 // LineItem is one line on an order.
@@ -165,10 +170,20 @@ type Order struct {
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
 
+	// Denormalized fiscal rollup (Orders columns; ADR-009).
+	FiscalStatus           string
+	LatestFiscalReceiptID  string
+	LatestFiscalAttemptID  string
+	FiscalizedAt           *time.Time
+
 	// PendingSupplierReturns is written in the same UpdateOrder transaction and not stored on Orders.
 	PendingSupplierReturns []SupplierReturn `json:"-"`
 	// ConditionReports is written in the same UpdateOrder transaction and not stored on Orders.
 	ConditionReports []ConditionReport `json:"-"`
+	// PendingFiscalReceipts are inserted in the same UpdateOrder transaction (ADR-009).
+	PendingFiscalReceipts []FiscalReceiptRow `json:"-"`
+	// FiscalReceiptUpdate updates an existing attempt row (PENDING → SUCCESS|FAILED).
+	FiscalReceiptUpdate *FiscalReceiptRow `json:"-"`
 }
 
 // DeliveryProofType classifies one immutable delivery handoff proof row.
@@ -610,13 +625,16 @@ type CollectCashRequest struct {
 }
 
 // CollectCashResponse matches the driver mobile cash-collection contract.
+// ADR-009: State is FISCALIZING after capture (not COMPLETED until fiscal SUCCESS).
 type CollectCashResponse struct {
-	OrderID   string  `json:"order_id"`
-	State     Status  `json:"state"`
-	Amount    int64   `json:"amount"`
-	Currency  string  `json:"currency"`
-	DistanceM float64 `json:"distance_m"`
-	Message   string  `json:"message"`
+	OrderID       string  `json:"order_id"`
+	State         Status  `json:"state"`
+	Amount        int64   `json:"amount"`
+	Currency      string  `json:"currency"`
+	DistanceM     float64 `json:"distance_m"`
+	Message       string  `json:"message"`
+	AttemptID     string  `json:"attempt_id,omitempty"`
+	FiscalStatus  string  `json:"fiscal_status,omitempty"`
 }
 
 // DriverOrderLineItem is a driver-mobile compatible line-item snapshot.
@@ -654,8 +672,10 @@ type driverTransitionRequest struct {
 	ClientTimestamp     *time.Time
 	Precheck            func(Order) error
 	TransformNextStatus func(Order, Status) Status
-	BuildProofs         func(Order) []DeliveryProofArtifact
-	EmitExtra           func(outbox.TxnBuffer, Order, Status) error
+	// PrepareOrder mutates the post-transition order before persist (fiscal rows, denorm).
+	PrepareOrder func(*Order, Status) // previousStatus
+	BuildProofs  func(Order) []DeliveryProofArtifact
+	EmitExtra    func(outbox.TxnBuffer, Order, Status) error
 }
 
 type driverTransitionResult struct {
@@ -1429,7 +1449,8 @@ func (s *Service) MarkArrived(ctx context.Context, claims auth.Claims, orderID s
 	}, nil
 }
 
-// SubmitDelivery completes a QR/offline-token handoff path for driver clients.
+// SubmitDelivery records QR/offline-token handoff and opens payment settlement (ADR-009).
+// Does not complete the order — money + fiscal hard-gate still required.
 func (s *Service) SubmitDelivery(ctx context.Context, claims auth.Claims, req DeliverySubmitRequest) (DeliverySubmitResponse, error) {
 	if strings.TrimSpace(req.OrderID) == "" {
 		return DeliverySubmitResponse{}, errors.New("order_id required")
@@ -1441,14 +1462,20 @@ func (s *Service) SubmitDelivery(ctx context.Context, claims auth.Claims, req De
 	var distanceM float64
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
 		OrderID:         req.OrderID,
-		NextStatus:      StatusCompleted,
+		NextStatus:      StatusAwaitingPayment,
 		Reason:          "driver_delivery_submit",
 		ClientTimestamp: req.ClientTimestamp,
 		TransformNextStatus: func(orderRecord Order, next Status) Status {
-			if orderRecord.Status == StatusCancelled && next == StatusCompleted {
+			if orderRecord.Status == StatusCancelled {
 				return StatusReconciliationRequired
 			}
-			return next
+			// Already past handoff — leave payment/fiscal states alone.
+			switch orderRecord.Status {
+			case StatusAwaitingPayment, StatusPendingCashCollection, StatusFiscalizing, StatusFiscalFailed, StatusCompleted, StatusDeliveredOnCredit:
+				return orderRecord.Status
+			default:
+				return next
+			}
 		},
 		Precheck: func(orderRecord Order) error {
 			if token := req.token(); token != "" {
@@ -1483,23 +1510,23 @@ func (s *Service) SubmitDelivery(ctx context.Context, claims auth.Claims, req De
 				deliveryProofDistance(distanceM, latitude, longitude),
 			)
 		},
-		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
-			return emitOrderFinalized(ctx, txn, orderRecord)
+		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, previousStatus Status) error {
+			if orderRecord.Status != StatusAwaitingPayment || previousStatus == StatusAwaitingPayment {
+				return nil
+			}
+			if err := s.emitSettlementRequired(ctx, txn, orderRecord); err != nil {
+				return err
+			}
+			return s.emitPaymentRequired(ctx, txn, orderRecord)
 		},
 	})
 	if err != nil {
 		return DeliverySubmitResponse{}, err
 	}
 
-	if result.Order.ManifestID != "" && result.Order.Status == StatusCompleted {
-		if err := s.tryCompleteManifest(ctx, result.Order.ManifestID); err != nil {
-			s.log.ErrorContext(ctx, "failed to complete manifest after delivery", "manifest_id", result.Order.ManifestID, "err", err)
-		}
-	}
-
 	return DeliverySubmitResponse{
 		Success:  true,
-		Message:  "Delivery completed.",
+		Message:  "Handoff recorded. Awaiting payment and fiscal receipt.",
 		NewState: result.Order.Status,
 	}, nil
 }
@@ -1534,20 +1561,37 @@ func (s *Service) ConfirmOffload(ctx context.Context, claims auth.Claims, req Co
 	}, nil
 }
 
-// CompleteOrder finalizes a non-cash or externally settled driver handoff.
+// CompleteOrder captures non-cash settlement intent and enters fiscal hard-gate (ADR-009).
+// Order becomes FISCALIZING; COMPLETED only after fiscal SUCCESS (or audited force-complete).
 func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req CompleteOrderRequest) (DriverOrderResponse, error) {
 	var distanceM float64
+	var attemptID string
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
 		OrderID:         req.OrderID,
-		NextStatus:      StatusCompleted,
+		NextStatus:      StatusFiscalizing,
 		Reason:          "complete_order",
 		ClientTimestamp: req.ClientTimestamp,
 		Precheck: func(orderRecord Order) error {
+			switch orderRecord.Status {
+			case StatusAwaitingPayment, StatusDeliveredOnCredit, StatusFiscalizing:
+			default:
+				return fmt.Errorf("%w: complete requires AWAITING_PAYMENT or credit settlement (current %s)", ErrInvalidStatusTransition, orderRecord.Status)
+			}
+			if orderRecord.Status == StatusFiscalizing {
+				return nil
+			}
 			computedDistance, err := validatePointerGeofence(req.Latitude, req.Longitude, orderRecord)
 			if err == nil {
 				distanceM = computedDistance
 			}
 			return err
+		},
+		PrepareOrder: func(o *Order, _ Status) {
+			row := s.newFiscalPendingRow(*o, "CARD", s.newID())
+			attemptID = row.AttemptID
+			o.PendingFiscalReceipts = []FiscalReceiptRow{row}
+			o.FiscalStatus = FiscalStatusPending
+			o.LatestFiscalAttemptID = row.AttemptID
 		},
 		BuildProofs: func(orderRecord Order) []DeliveryProofArtifact {
 			latitude, longitude := deliveryProofCoordinatesFromPointers(req.Latitude, req.Longitude)
@@ -1571,12 +1615,13 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 					DriverID:   claims.Subject,
 					SupplierID: orderRecord.SupplierID,
 					RetailerID: orderRecord.RetailerID,
-					Status:     string(StatusCompleted),
+					Status:     string(StatusFiscalizing),
 				}); err != nil {
 					return err
 				}
 			}
-			return emitOrderFinalized(ctx, txn, orderRecord)
+			row := orderRecord.PendingFiscalReceipts[0]
+			return emitPaymentCaptureFiscal(ctx, txn, orderRecord, row, "CARD")
 		},
 	})
 	if err != nil {
@@ -1588,39 +1633,56 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 				s.log.Error("clear credit balance failed", "order_id", result.Order.OrderID, "err", clearErr)
 			}
 		}
-		// Trigger card payment capture if a capturer is configured and the order is non-zero.
-		// CompleteOrder is only called for non-cash completions.
 		if s.paymentCapturer != nil && result.Order.TotalMinor > 0 {
 			go func() {
-				// Fire-and-forget capture in a background context so the driver app is not blocked.
 				captureCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
-				err := s.paymentCapturer.CaptureCardPayment(captureCtx, result.Order.OrderID, result.Order.TotalMinor, result.Order.Currency)
-				if err != nil {
+				if err := s.paymentCapturer.CaptureCardPayment(captureCtx, result.Order.OrderID, result.Order.TotalMinor, result.Order.Currency); err != nil {
 					s.log.Error("failed to capture card payment", "order_id", result.Order.OrderID, "error", err)
 				}
 			}()
 		}
 	}
 
-	return driverOrderResponse(result.Order, "Delivery finalized."), nil
+	msg := "Payment captured. Waiting for fiscal receipt."
+	if attemptID != "" {
+		_ = attemptID
+	}
+	return driverOrderResponse(result.Order, msg), nil
 }
 
-// CollectCash geofence-confirms cash collection and finalizes the order.
+// CollectCash geofence-confirms cash collection, captures payment, and starts fiscal hard-gate (ADR-009).
+// Order becomes FISCALIZING; COMPLETED only after fiscal SUCCESS (or audited force-complete).
 func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req CollectCashRequest) (CollectCashResponse, error) {
 	var distanceM float64
+	var attemptID string
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
 		OrderID:         req.OrderID,
-		NextStatus:      StatusCompleted,
+		NextStatus:      StatusFiscalizing,
 		Reason:          "collect_cash",
 		ClientTimestamp: req.ClientTimestamp,
 		Precheck: func(orderRecord Order) error {
+			switch orderRecord.Status {
+			case StatusPendingCashCollection, StatusAwaitingPayment, StatusDeliveredOnCredit, StatusFiscalizing:
+			default:
+				return fmt.Errorf("%w: collect cash requires payment capture state (current %s)", ErrInvalidStatusTransition, orderRecord.Status)
+			}
+			if orderRecord.Status == StatusFiscalizing {
+				return nil
+			}
 			computedDistance, err := validateRequiredGeofence(req.Latitude, req.Longitude, orderRecord)
 			if err != nil {
 				return err
 			}
 			distanceM = computedDistance
 			return nil
+		},
+		PrepareOrder: func(o *Order, _ Status) {
+			row := s.newFiscalPendingRow(*o, "CASH", s.newID())
+			attemptID = row.AttemptID
+			o.PendingFiscalReceipts = []FiscalReceiptRow{row}
+			o.FiscalStatus = FiscalStatusPending
+			o.LatestFiscalAttemptID = row.AttemptID
 		},
 		BuildProofs: func(orderRecord Order) []DeliveryProofArtifact {
 			latitude, longitude := deliveryProofCoordinatesFromValues(req.Latitude, req.Longitude)
@@ -1644,15 +1706,13 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 					DriverID:   claims.Subject,
 					SupplierID: orderRecord.SupplierID,
 					RetailerID: orderRecord.RetailerID,
-					Status:     string(StatusCompleted),
+					Status:     string(StatusFiscalizing),
 				}); err != nil {
 					return err
 				}
 			}
-			if err := emitPaymentCleared(ctx, txn, orderRecord, "CASH"); err != nil {
-				return err
-			}
-			return emitOrderFinalized(ctx, txn, orderRecord)
+			row := orderRecord.PendingFiscalReceipts[0]
+			return emitPaymentCaptureFiscal(ctx, txn, orderRecord, row, "CASH")
 		},
 	})
 	if err != nil {
@@ -1660,15 +1720,27 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 	}
 	if result.NoChange {
 		distanceM = 0
+		return CollectCashResponse{
+			OrderID:      result.Order.OrderID,
+			State:        result.Order.Status,
+			Amount:       result.Order.TotalMinor,
+			Currency:     result.Order.Currency,
+			DistanceM:    distanceM,
+			Message:      "Cash collection already fiscalizing.",
+			AttemptID:    result.Order.LatestFiscalAttemptID,
+			FiscalStatus: result.Order.FiscalStatus,
+		}, nil
 	}
 
 	return CollectCashResponse{
-		OrderID:   result.Order.OrderID,
-		State:     result.Order.Status,
-		Amount:    result.Order.TotalMinor,
-		Currency:  result.Order.Currency,
-		DistanceM: distanceM,
-		Message:   "Cash collected.",
+		OrderID:      result.Order.OrderID,
+		State:        result.Order.Status,
+		Amount:       result.Order.TotalMinor,
+		Currency:     result.Order.Currency,
+		DistanceM:    distanceM,
+		Message:      "Cash collected. Waiting for fiscal receipt.",
+		AttemptID:    attemptID,
+		FiscalStatus: FiscalStatusPending,
 	}, nil
 }
 
@@ -1709,6 +1781,9 @@ func (s *Service) transitionDriverOrder(ctx context.Context, claims auth.Claims,
 		current.UpdatedAt = s.now()
 	}
 	s.applyHandoffLifecycle(&current, previousStatus, previousDriverID)
+	if req.PrepareOrder != nil {
+		req.PrepareOrder(&current, previousStatus)
+	}
 	if err := s.persistDriverTransition(ctx, claims, req, current, previousStatus); err != nil {
 		return driverTransitionResult{}, err
 	}
@@ -2420,9 +2495,75 @@ func (s *Service) writeOrderMutationError(w http.ResponseWriter, operation strin
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "assignment_required"})
 	case errors.Is(err, ErrServiceabilityUnavailable):
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "delivery_perimeter_unavailable"})
+	case errors.Is(err, ErrFiscalNotFailed):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "fiscal_not_failed"})
+	case errors.Is(err, ErrForceCompleteForbidden):
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "force_complete_forbidden"})
+	case errors.Is(err, ErrForceReasonRequired):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "force_reason_required"})
 	default:
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 	}
+}
+
+// HandleFiscalRetry is POST /v1/order/{orderID}/fiscal/retry
+func (s *Service) HandleFiscalRetry(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	orderID := strings.TrimSpace(chiURLParam(r, "orderID"))
+	if orderID == "" {
+		// fallback for body-based clients
+		var body struct {
+			OrderID string `json:"order_id"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		orderID = strings.TrimSpace(body.OrderID)
+	}
+	resp, err := s.RetryFiscal(r.Context(), claims, orderID)
+	if err != nil {
+		s.writeOrderMutationError(w, "fiscal retry failed", orderID, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// HandleForceComplete is POST /v1/order/{orderID}/force-complete
+func (s *Service) HandleForceComplete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	orderID := strings.TrimSpace(chiURLParam(r, "orderID"))
+	var body struct {
+		OrderID    string `json:"order_id"`
+		ReasonCode string `json:"reason_code"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if orderID == "" {
+		orderID = strings.TrimSpace(body.OrderID)
+	}
+	resp, err := s.ForceCompleteOrder(r.Context(), claims, orderID, body.ReasonCode)
+	if err != nil {
+		s.writeOrderMutationError(w, "force complete failed", orderID, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func chiURLParam(r *http.Request, key string) string {
+	return chi.URLParam(r, key)
 }
 
 // ── wire shapes ────────────────────────────────────────────────────────────

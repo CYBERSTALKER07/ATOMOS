@@ -30,6 +30,7 @@ class ProblemDetailException(val problem: ProblemDetail) :
 enum class OrderState {
     PENDING, PENDING_REVIEW, SCHEDULED, LOADED, DISPATCHED, IN_TRANSIT, ARRIVING, ARRIVED,
     ARRIVED_SHOP_CLOSED, AWAITING_PAYMENT, PENDING_CASH_COLLECTION,
+    FISCALIZING, FISCAL_FAILED,
     CANCEL_REQUESTED, NO_CAPACITY, COMPLETED, CANCELLED,
     QUARANTINE, DELIVERED_ON_CREDIT
 }
@@ -223,8 +224,12 @@ data class CollectCashResponse(
     val state: String = "",
     @SerialName("amount") val amount: Long = 0,
     @SerialName("distance_m") val distanceM: Double = 0.0,
-    val message: String = ""
+    val message: String = "",
+    @SerialName("attempt_id") val attemptId: String = "",
+    @SerialName("fiscal_status") val fiscalStatus: String = "",
+    val currency: String = "UZS",
 )
+
 
 @Serializable
 data class DepartRequest(

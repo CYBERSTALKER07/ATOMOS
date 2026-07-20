@@ -47,6 +47,8 @@ enum OrderStatus: String, Codable, CaseIterable {
     case arrivedShopClosed = "ARRIVED_SHOP_CLOSED"
     case awaitingPayment = "AWAITING_PAYMENT"
     case pendingCashCollection = "PENDING_CASH_COLLECTION"
+    case fiscalizing = "FISCALIZING"
+    case fiscalFailed = "FISCAL_FAILED"
     case cancelRequested = "CANCEL_REQUESTED"
     case noCapacity = "NO_CAPACITY"
     case completed = "COMPLETED"
@@ -70,6 +72,8 @@ enum OrderStatus: String, Codable, CaseIterable {
         case .arrivedShopClosed: "Shop Closed"
         case .awaitingPayment: "Awaiting Payment"
         case .pendingCashCollection: "Cash Collection"
+        case .fiscalizing: "Pending Fiscal"
+        case .fiscalFailed: "Fiscal Failed"
         case .cancelRequested: "Cancel Requested"
         case .noCapacity: "No Capacity"
         case .completed: "Delivered"
@@ -91,7 +95,8 @@ enum OrderStatus: String, Codable, CaseIterable {
         case .arrived: "systemGreen"
         case .arrivedShopClosed: "systemOrange"
         case .awaitingPayment: "systemPurple"
-        case .pendingCashCollection: "systemOrange"
+        case .pendingCashCollection, .fiscalizing: "systemOrange"
+        case .fiscalFailed: "systemRed"
         case .completed, .deliveredOnCredit: "systemGreen"
         case .cancelled, .cancelRequested, .noCapacity: "systemRed"
         case .quarantine, .delayed, .reconciliationRequired: "systemYellow"
@@ -100,7 +105,8 @@ enum OrderStatus: String, Codable, CaseIterable {
 
     var isActive: Bool {
         switch self {
-        case .loaded, .dispatched, .inTransit, .arriving, .arrived, .arrivedShopClosed, .awaitingPayment, .pendingCashCollection, .autoAccepted:
+        case .loaded, .dispatched, .inTransit, .arriving, .arrived, .arrivedShopClosed,
+             .awaitingPayment, .pendingCashCollection, .fiscalizing, .fiscalFailed, .autoAccepted:
             return true
         default:
             return false
@@ -119,7 +125,7 @@ enum OrderStatus: String, Codable, CaseIterable {
         case .loaded: 1
         case .dispatched: 2
         case .inTransit: 3
-        case .arriving, .arrived, .arrivedShopClosed: 4
+        case .arriving, .arrived, .arrivedShopClosed, .awaitingPayment, .pendingCashCollection, .fiscalizing, .fiscalFailed: 4
         case .completed, .deliveredOnCredit: 5
         case .cancelled, .cancelRequested, .noCapacity, .quarantine, .reconciliationRequired, .delayed: -1
         default: -1
@@ -393,6 +399,9 @@ struct TrackingOrder: Codable, Identifiable, Hashable {
     let isApproaching: Bool
     let deliveryToken: String
     let createdAt: String
+    let fiscalStatus: String
+    let fiscalQr: String
+    let latestFiscalReceiptId: String
     let items: [TrackingOrderItem]
 
     enum CodingKeys: String, CodingKey {
@@ -411,11 +420,53 @@ struct TrackingOrder: Codable, Identifiable, Hashable {
         case isApproaching = "is_approaching"
         case deliveryToken = "delivery_token"
         case createdAt = "created_at"
+        case fiscalStatus = "fiscal_status"
+        case fiscalQr = "fiscal_qr"
+        case latestFiscalReceiptId = "latest_fiscal_receipt_id"
         case items
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        orderId = try c.decode(String.self, forKey: .orderId)
+        supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
+        supplierName = try c.decodeIfPresent(String.self, forKey: .supplierName) ?? ""
+        warehouseId = try c.decodeIfPresent(String.self, forKey: .warehouseId)
+        warehouseName = try c.decodeIfPresent(String.self, forKey: .warehouseName)
+        driverId = try c.decodeIfPresent(String.self, forKey: .driverId) ?? ""
+        state = try c.decodeIfPresent(String.self, forKey: .state) ?? ""
+        totalAmount = try c.decodeIfPresent(Int.self, forKey: .totalAmount) ?? 0
+        orderSource = try c.decodeIfPresent(String.self, forKey: .orderSource) ?? ""
+        driverLatitude = try c.decodeIfPresent(Double.self, forKey: .driverLatitude)
+        driverLongitude = try c.decodeIfPresent(Double.self, forKey: .driverLongitude)
+        liveLocationAvailable = try c.decodeIfPresent(Bool.self, forKey: .liveLocationAvailable) ?? false
+        isApproaching = try c.decodeIfPresent(Bool.self, forKey: .isApproaching) ?? false
+        deliveryToken = try c.decodeIfPresent(String.self, forKey: .deliveryToken) ?? ""
+        createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
+        fiscalStatus = try c.decodeIfPresent(String.self, forKey: .fiscalStatus) ?? ""
+        fiscalQr = try c.decodeIfPresent(String.self, forKey: .fiscalQr) ?? ""
+        latestFiscalReceiptId = try c.decodeIfPresent(String.self, forKey: .latestFiscalReceiptId) ?? ""
+        items = try c.decodeIfPresent([TrackingOrderItem].self, forKey: .items) ?? []
     }
 
     var displayTotal: String {
         "\(totalAmount.formatted())"
+    }
+
+    /// Receipt row label for tracking / recent receipts.
+    var fiscalReceiptLabel: String {
+        let st = state.uppercased()
+        let fs = fiscalStatus.uppercased()
+        if fs == "SUCCESS" || st == "COMPLETED" {
+            if !latestFiscalReceiptId.isEmpty {
+                return "Fiscalized · \(latestFiscalReceiptId)"
+            }
+            return "Fiscalized"
+        }
+        if fs == "PENDING" || st == "FISCALIZING" { return "Pending fiscal" }
+        if fs == "FAILED" || st == "FISCAL_FAILED" { return "Fiscal failed" }
+        if fs == "FORCE_SKIPPED" { return "Fiscal exception" }
+        return st.isEmpty ? "—" : st
     }
 
     var isGreen: Bool {

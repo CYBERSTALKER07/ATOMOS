@@ -402,7 +402,8 @@ func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID s
 		             COALESCE(o.OrderSource, 'MANUAL'), o.DeliverBefore, o.RequestedDeliveryDate,
 		             COALESCE(o.DeliveryPriority, 'STANDARD'), COALESCE(o.ConfirmationStatus, 'CONFIRMED'),
 		             o.ProposedDeliveryDate, COALESCE(o.ReceivingWindowOpen, ''), COALESCE(o.ReceivingWindowClose, ''),
-		             COALESCE(v.LicensePlate, '')
+		             COALESCE(v.LicensePlate, ''),
+		             COALESCE(o.FiscalStatus, ''), COALESCE(o.LatestFiscalReceiptId, '')
 		      FROM Orders@{FORCE_INDEX=Idx_Orders_ByRetailerCreated} o
 		      LEFT JOIN Vehicles v ON v.VehicleId = o.VehicleId
 		      WHERE o.RetailerId = @RetailerId
@@ -412,13 +413,27 @@ func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID s
 		      OFFSET @Offset`,
 		Params: map[string]interface{}{
 			"RetailerId": retailerID,
-			"Statuses":   []string{"PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION"},
-			"Limit":      int64(limit),
-			"Offset":     int64(offset),
+			// Include ADR-009 terminalizing states so retailers see pending/failed fiscal in active tracking.
+			"Statuses": []string{
+				"PENDING", "LOADED", "IN_TRANSIT", "ARRIVED",
+				"AWAITING_PAYMENT", "PENDING_CASH_COLLECTION",
+				"FISCALIZING", "FISCAL_FAILED",
+			},
+			"Limit":  int64(limit),
+			"Offset": int64(offset),
 		},
 	}
 
-	return r.queryTrackingOrders(ctx, stmt, "query retailer tracking orders")
+	orders, err := r.queryTrackingOrders(ctx, stmt, "query retailer tracking orders")
+	if err != nil {
+		return nil, err
+	}
+	if err := r.attachFiscalReceipts(ctx, orders); err != nil {
+		// Non-fatal when fiscal table not yet migrated: leave denorm-only fields.
+		// Log via empty return only if hard failure — table missing returns empty map.
+		_ = err
+	}
+	return orders, nil
 }
 
 // ListRecentReceipts returns recent completed retailer orders as receipt snapshots.
@@ -442,7 +457,8 @@ func (r *SpannerRepository) ListRecentReceipts(ctx context.Context, retailerID s
 		             COALESCE(o.OrderSource, 'MANUAL'), o.DeliverBefore, o.RequestedDeliveryDate,
 		             COALESCE(o.DeliveryPriority, 'STANDARD'), COALESCE(o.ConfirmationStatus, 'CONFIRMED'),
 		             o.ProposedDeliveryDate, COALESCE(o.ReceivingWindowOpen, ''), COALESCE(o.ReceivingWindowClose, ''),
-		             COALESCE(v.LicensePlate, '')
+		             COALESCE(v.LicensePlate, ''),
+		             COALESCE(o.FiscalStatus, ''), COALESCE(o.LatestFiscalReceiptId, '')
 		      FROM Orders o
 		      LEFT JOIN Vehicles v ON v.VehicleId = o.VehicleId
 		      WHERE o.RetailerId = @RetailerId
@@ -463,7 +479,102 @@ func (r *SpannerRepository) ListRecentReceipts(ctx context.Context, retailerID s
 	if err := r.attachReceiptDossiers(ctx, orders); err != nil {
 		return nil, err
 	}
+	_ = r.attachFiscalReceipts(ctx, orders)
 	return orders, nil
+}
+
+// attachFiscalReceipts fills FiscalQR from the latest SUCCESS fiscal attempt (ADR-009).
+func (r *SpannerRepository) attachFiscalReceipts(ctx context.Context, orders []TrackingOrder) error {
+	if r == nil || r.client == nil || len(orders) == 0 {
+		return nil
+	}
+	orderIDs := uniqueTrackingOrderIDs(orders)
+	if len(orderIDs) == 0 {
+		return nil
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT OrderId, COALESCE(FiscalReceiptId, ''), COALESCE(FiscalQR, ''), Status
+		      FROM OrderFiscalReceipts
+		      WHERE OrderId IN UNNEST(@OrderIds)
+		        AND Status IN UNNEST(@Statuses)
+		      ORDER BY CreatedAt DESC`,
+		Params: map[string]interface{}{
+			"OrderIds": orderIDs,
+			"Statuses": []string{"SUCCESS", "FORCE_SKIPPED", "PENDING", "FAILED"},
+		},
+	}
+
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	defer iter.Stop()
+
+	type fiscalSnap struct {
+		receiptID string
+		qr        string
+		status    string
+	}
+	// First row per order is latest (ORDER BY CreatedAt DESC).
+	byOrder := make(map[string]fiscalSnap, len(orderIDs))
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			// Table may not exist until migration — soft-fail.
+			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "OrderFiscalReceipts") {
+				return nil
+			}
+			return fmt.Errorf("query order fiscal receipts: %w", err)
+		}
+		var orderID, receiptID, qr, status string
+		if err := row.Columns(&orderID, &receiptID, &qr, &status); err != nil {
+			return fmt.Errorf("scan order fiscal receipts: %w", err)
+		}
+		orderID = strings.TrimSpace(orderID)
+		if orderID == "" {
+			continue
+		}
+		if _, exists := byOrder[orderID]; exists {
+			continue
+		}
+		byOrder[orderID] = fiscalSnap{
+			receiptID: strings.TrimSpace(receiptID),
+			qr:        strings.TrimSpace(qr),
+			status:    strings.TrimSpace(status),
+		}
+	}
+
+	for i := range orders {
+		oid := strings.TrimSpace(orders[i].OrderID)
+		snap, ok := byOrder[oid]
+		if !ok {
+			// Fall back: COMPLETED with empty fiscal → treat as SUCCESS for label if denorm set.
+			if strings.EqualFold(orders[i].Status, "COMPLETED") && strings.TrimSpace(orders[i].FiscalStatus) == "" {
+				orders[i].FiscalStatus = "SUCCESS"
+			}
+			continue
+		}
+		if strings.TrimSpace(orders[i].FiscalStatus) == "" {
+			switch strings.ToUpper(snap.status) {
+			case "SUCCESS":
+				orders[i].FiscalStatus = "SUCCESS"
+			case "FORCE_SKIPPED":
+				orders[i].FiscalStatus = "FORCE_SKIPPED"
+			case "PENDING":
+				orders[i].FiscalStatus = "PENDING"
+			case "FAILED":
+				orders[i].FiscalStatus = "FAILED"
+			}
+		}
+		if strings.TrimSpace(orders[i].LatestFiscalReceiptID) == "" && snap.receiptID != "" {
+			orders[i].LatestFiscalReceiptID = snap.receiptID
+		}
+		if snap.qr != "" {
+			orders[i].FiscalQR = snap.qr
+		}
+	}
+	return nil
 }
 
 func (r *SpannerRepository) attachReceiptDossiers(ctx context.Context, orders []TrackingOrder) error {
@@ -1133,6 +1244,8 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 		receivingOpen       string
 		receivingClose      string
 		licensePlate        string
+		fiscalStatus        string
+		latestFiscalReceipt string
 	)
 	if err := row.Columns(
 		&tracking.OrderID,
@@ -1161,6 +1274,8 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 		&receivingOpen,
 		&receivingClose,
 		&licensePlate,
+		&fiscalStatus,
+		&latestFiscalReceipt,
 	); err != nil {
 		return TrackingOrder{}, fmt.Errorf("scan retailer tracking order: %w", err)
 	}
@@ -1172,6 +1287,19 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 		tracking.TrackingStatus = "assigned"
 	}
 	tracking.LicensePlate = licensePlate
+	tracking.FiscalStatus = strings.TrimSpace(fiscalStatus)
+	tracking.LatestFiscalReceiptID = strings.TrimSpace(latestFiscalReceipt)
+	// Derive fiscal status from order state when denorm empty (pre-migration rows).
+	if tracking.FiscalStatus == "" {
+		switch strings.ToUpper(strings.TrimSpace(tracking.Status)) {
+		case "FISCALIZING":
+			tracking.FiscalStatus = "PENDING"
+		case "FISCAL_FAILED":
+			tracking.FiscalStatus = "FAILED"
+		case "COMPLETED":
+			tracking.FiscalStatus = "SUCCESS"
+		}
+	}
 	tracking.LiveLocationAvailable = false
 	tracking.Items = decodeTrackingLineItems(lineItems)
 	if lat.Valid {
